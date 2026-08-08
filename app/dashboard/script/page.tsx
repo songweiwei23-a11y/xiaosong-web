@@ -48,7 +48,9 @@ export default function ScriptPage() {
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState("抖音");
   const [duration, setDuration] = useState("60秒");
-  const [customDuration, setCustomDuration] = useState("60");
+  const [customDuration, setCustomDuration] = useState("");
+  // 时长模式：preset=预设选择 / custom=自定义秒数 / ai=AI推荐（由Dify判断）
+  const [durationMode, setDurationMode] = useState<"preset" | "custom" | "ai">("preset");
   const [style, setStyle] = useState("专业");
   const [targetGroup, setTargetGroup] = useState("");
   const [boomElements, setBoomElements] = useState<string[]>([]);
@@ -174,18 +176,20 @@ export default function ScriptPage() {
   const isAdScript = () => activeTab === "ad";
 
   const handleSmartRecommend = () => {
-    // 智能推荐逻辑
     if (platform === "抖音") {
-      setDuration("60秒");
-      setStyle("幽默");
+      setDurationMode("preset"); setDuration("60秒"); setStyle("幽默");
     } else if (platform === "小红书") {
-      setDuration("90秒");
-      setStyle("干货");
+      setDurationMode("preset"); setDuration("90秒"); setStyle("干货");
+    } else if (platform === "视频号") {
+      setDurationMode("preset"); setDuration("60秒"); setStyle("温情");
+    } else if (platform === "快手") {
+      setDurationMode("preset"); setDuration("30秒"); setStyle("接地气");
     } else if (platform === "B站") {
-      setDuration("3-5分钟");
-      setStyle("专业");
+      setDurationMode("preset"); setDuration("3-5分钟"); setStyle("专业");
+    } else {
+      setDurationMode("ai");
     }
-    notify("已根据平台智能推荐时长和风格！");
+    notify("✅ 已根据平台智能推荐时长和风格！");
   };
 
   const handleGenerate = async () => {
@@ -217,8 +221,13 @@ export default function ScriptPage() {
       const selectedTargetGroup = customTargetGroup || targetGroup || "通用受众";
       const selectedStyle = customStyle || style || "专业";
         
-        // 时长:优先使用自定义输入的秒数
-        const finalDuration = customDuration ? `${customDuration}秒` : duration;
+        // 时长：三种模式 — AI推荐 / 自定义秒数 / 预设选择
+        const isAiDuration = durationMode === "ai";
+        const finalDuration = isAiDuration
+          ? "由AI根据主题和平台智能判断"
+          : durationMode === "custom" && customDuration
+            ? `${customDuration}秒`
+            : duration;
         
       // 提取档案和定位信息
       let profileInfo = "";
@@ -261,7 +270,7 @@ ${scriptContext}
         structureDetail,
         hookDetail,
         elementsWithNames,
-        duration,
+        duration: isAiDuration ? (customDuration ? `${customDuration}秒` : duration) : finalDuration,
         isAd,
         dealReasonsCount: dealReasons.length  // 传入成交理由数量
       });
@@ -284,7 +293,13 @@ ${scriptContext}
       const shouldNotSayExamples = getShouldNotSayExamples(helperProfile);
       const contentFocus = getContentFocus(helperProfile.fans_level || "");
       const smartHookRecommendation = `${smartHook.hookType}：${smartHook.reason}`;
-      const timeAllocation = getTimeAllocation(structureName, finalDuration);
+      // AI模式下用平台常见默认值兜底时间分配计算，避免 parseInt 得到 NaN
+      const durationForCalc = isAiDuration
+        ? (customDuration ? `${customDuration}秒` : "60秒")
+        : finalDuration;
+      const timeAllocation = isAiDuration
+        ? "由AI依据主题与平台节奏自行分配各段时长（开场钩子→主体→情绪高潮→结尾CTA）"
+        : getTimeAllocation(structureName, durationForCalc);
       const stepTasks = getStepTasks(structureName);
 
       const fourStepWorkflow = `
@@ -295,7 +310,9 @@ ${scriptContext}
 - 不写空泛定位，必须和主题、行业、账号信息直接相关
 
 ### 第2步：正文脚本
-- 按${finalDuration}完整输出可直接拍摄的脚本
+- ${isAiDuration
+  ? "请根据主题复杂度、平台调性与内容节奏，自行判断最合适的视频总时长（并在脚本开头用一行标注：建议时长：XX秒），再据此完整输出可直接拍摄的脚本"
+  : `按${finalDuration}完整输出可直接拍摄的脚本`}
 - 必须包含秒数、镜头/画面、口播台词、字幕/音效/动作建议
 - 开头3秒直接进入冲突、痛点、反常识或利益点，禁止废话开场
 
@@ -370,7 +387,7 @@ ${executionContext}
 - **广告类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
 - **行业**：${selectedIndustry}
 - **平台**：${platform}
-- **时长**：${finalDuration}
+- **时长**：${isAiDuration ? "由AI根据主题与平台智能判断（请在脚本开头标注建议时长）" : finalDuration}
 - **主题/活动**：${topic}
 
 ${profileInfo}${positioningInfo}
@@ -442,7 +459,7 @@ ${executionContext}
 - **内容类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
 - **行业领域**：${selectedIndustry}
 - **平台**：${platform}
-- **时长**：${finalDuration}
+- **时长**：${isAiDuration ? "由AI根据主题与平台智能判断（请在脚本开头标注建议时长）" : finalDuration}
 - **主题**：${topic}
 
 ${profileInfo}${positioningInfo}
@@ -551,7 +568,14 @@ ${formatRequirements}
         setTimeout(async () => {
           try {
             console.log("💾 保存历史记录...", "长度:", fullResult.length);
-            const inputData = { topic, scriptType, platform, duration };
+            const inputData = {
+              topic, scriptType, platform,
+              duration: durationMode === "ai"
+                ? "AI推荐"
+                : durationMode === "custom" && customDuration
+                  ? `${customDuration}秒`
+                  : duration
+            };
             await saveGenerationHistory("脚本生成", inputData, fullResult);
             console.log("✅ 历史记录已保存");
             
@@ -564,7 +588,11 @@ ${formatRequirements}
                 profile_id: selectedProfileId || null,
                 positioning_id: selectedPositioningId || null,
                 script_type: scriptType,
-                duration: parseInt(customDuration) || 60,
+                duration: durationMode === "custom" && customDuration
+                  ? parseInt(customDuration) || 60
+                  : durationMode === "preset"
+                    ? parseInt(duration) || 60
+                    : 60,
                 content_form: "口播",
                 script_content: fullResult,
               };
@@ -741,15 +769,63 @@ ${formatRequirements}
                 <label className="mb-2 block text-sm font-medium text-foreground">
                   视频时长
                 </label>
-                <select
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  className="w-full rounded-lg border border-border p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
-                >
-                  {DURATIONS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
+                {/* 三种时长模式 Tab */}
+                <div className="flex rounded-lg overflow-hidden border border-border text-xs mb-2">
+                  {([
+                    { id: "preset", label: "预设" },
+                    { id: "custom", label: "自定义" },
+                    { id: "ai",     label: "✨ AI推荐" },
+                  ] as const).map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setDurationMode(m.id)}
+                      className={`flex-1 py-1.5 font-medium transition-colors ${
+                        durationMode === m.id
+                          ? "bg-blue-500 text-white"
+                          : "bg-background text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
                   ))}
-                </select>
+                </div>
+
+                {/* 预设下拉 */}
+                {durationMode === "preset" && (
+                  <select
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-background p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                  >
+                    {DURATIONS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                )}
+
+                {/* 自定义输入 */}
+                {durationMode === "custom" && (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={5}
+                      max={600}
+                      value={customDuration}
+                      onChange={(e) => setCustomDuration(e.target.value)}
+                      placeholder="输入秒数"
+                      className="w-full rounded-lg border border-border bg-background p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                    />
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">秒</span>
+                  </div>
+                )}
+
+                {/* AI推荐提示 */}
+                {durationMode === "ai" && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-2 text-xs text-blue-700 dark:text-blue-300">
+                    ✨ AI 将根据主题、平台和内容复杂度自动判断最佳时长，并在脚本开头标注建议时长
+                  </div>
+                )}
               </div>
             </div>
 
