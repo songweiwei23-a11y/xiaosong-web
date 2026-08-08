@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  compiler: {
+    // 生产构建移除 console，保留 error/warn 便于线上排查
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
   // 说明：本应用为同源调用（前端与 API 同域），无需开放跨域。
   // 如未来确有跨域需求，请将允许来源收敛为具体域名白名单，切勿使用 "*"。
   async headers() {

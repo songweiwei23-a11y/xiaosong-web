@@ -1,62 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { requireAdmin, getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {}
-          },
-        },
-      }
-    );
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: '无管理员权限' }, { status: 403 });
     }
 
-    const { data: adminData } = await supabase
-      .from('admin_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!adminData) {
-      return NextResponse.json({ error: 'No admin permission' }, { status: 403 });
-    }
-
+    const supabase = await getServerSupabase();
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
-
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
@@ -72,24 +29,19 @@ export async function GET(request: Request) {
     }
 
     if (!users || users.length === 0) {
-      return NextResponse.json({
-        users: [],
-        total: count || 0,
-        page,
-        pageSize,
-        totalPages: 0,
-      });
+      return NextResponse.json({ users: [], total: count || 0, page, pageSize, totalPages: 0 });
     }
 
-    const userIds = users.map(u => u.user_id);
-    const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers();
-    
+    // 邮箱需 service_role 的 admin API 才能读取
+    const serviceClient = getServiceSupabase();
+    const { data: authUsersData } = await serviceClient.auth.admin.listUsers();
+
     const emailMap = new Map<string, string>();
     authUsersData?.users?.forEach((au: any) => {
       emailMap.set(au.id, au.email || 'Unknown');
     });
 
-    const usersWithEmail = users.map(userSetting => ({
+    const usersWithEmail = users.map((userSetting) => ({
       user_id: userSetting.user_id,
       email: emailMap.get(userSetting.user_id) || 'Unknown',
       membership_level: userSetting.subscription_tier || 'free',
@@ -107,50 +59,21 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Exception:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Server error',
-      message: error instanceof Error ? error.message : String(error)
+      message: error instanceof Error ? error.message : String(error),
     }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {}
-          },
-        },
-      }
-    );
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: '无管理员权限' }, { status: 403 });
     }
 
-    const { data: adminData } = await supabase
-      .from('admin_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!adminData) {
-      return NextResponse.json({ error: 'No admin permission' }, { status: 403 });
-    }
-
+    const supabase = await getServerSupabase();
     const body = await request.json();
     const { userId, membership_level, quota } = body;
 
@@ -176,9 +99,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true, user: data });
   } catch (error) {
     console.error('Exception:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Server error',
-      message: error instanceof Error ? error.message : String(error)
+      message: error instanceof Error ? error.message : String(error),
     }, { status: 500 });
   }
 }

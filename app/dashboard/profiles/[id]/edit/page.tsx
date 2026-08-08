@@ -128,7 +128,7 @@ export default function EditProfilePage() {
                 ? 'bg-purple-600 text-white'
                 : step < currentStep
                 ? 'bg-green-500 text-white'
-                : 'bg-gray-200 text-gray-500'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             {step < currentStep ? '✓' : step}
@@ -136,7 +136,7 @@ export default function EditProfilePage() {
           {step < 5 && (
             <div
               className={`w-16 h-1 ${
-                step < currentStep ? 'bg-green-500' : 'bg-gray-200'
+                step < currentStep ? 'bg-green-500' : 'bg-muted'
               }`}
             />
           )}
@@ -147,31 +147,31 @@ export default function EditProfilePage() {
 
   if (fetching) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">加载中...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-background py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-sm p-8">
+        <div className="bg-card border border-border rounded-lg shadow-sm p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">编辑档案</h1>
-            <p className="mt-2 text-gray-600">更新您的账号信息</p>
+            <h1 className="text-3xl font-bold text-foreground">编辑档案</h1>
+            <p className="mt-2 text-muted-foreground">更新您的账号信息</p>
           </div>
 
           {renderStepIndicator()}
 
           <div className="mb-8">
-            <p className="text-gray-600">编辑功能正在开发中，请先删除旧档案后重新创建</p>
+            <p className="text-muted-foreground">编辑功能正在开发中，请先删除旧档案后重新创建</p>
           </div>
 
-          <div className="flex justify-between pt-6 border-t border-gray-200">
+          <div className="flex justify-between pt-6 border-t border-border">
             <button
               onClick={() => router.push('/dashboard/profiles')}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70"
             >
               返回档案列表
             </button>
