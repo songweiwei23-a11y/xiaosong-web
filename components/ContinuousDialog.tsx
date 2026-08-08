@@ -34,6 +34,7 @@ export default function ContinuousDialog({
   const [isMinimized, setIsMinimized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     if (isOpen && initialContent) {
@@ -56,6 +57,17 @@ export default function ContinuousDialog({
     }
   }, [isOpen, isMinimized])
 
+  // 卸载/关闭时中断未完成的流式请求，避免内存泄漏与野回调
+  useEffect(() => {
+    if (!isOpen) {
+      abortRef.current?.abort()
+      abortRef.current = null
+    }
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [isOpen])
+
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return
 
@@ -76,8 +88,13 @@ export default function ContinuousDialog({
         willSendInitialContent: !conversationId && !!initialContent
       })
 
+      const controller = new AbortController()
+      abortRef.current = controller
+      const timeoutId = setTimeout(() => controller.abort(), 90_000)
+
       const response = await fetch('/api/dify/chat', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: userInput,
@@ -90,9 +107,20 @@ export default function ContinuousDialog({
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`请求失败: ${errorText}`)
+        clearTimeout(timeoutId)
+        let msg = `服务返回 ${response.status}`
+        try {
+          const errJson = await response.json()
+          if (errJson?.error) msg = errJson.error
+        } catch {
+          // 响应体非 JSON，保留状态码文案
+        }
+        if (response.status === 401) msg = '登录已过期，请重新登录'
+        if (response.status === 402) msg = msg || '本月生成次数已用完，请升级会员'
+        throw new Error(msg)
       }
+
+      clearTimeout(timeoutId)
 
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
@@ -160,13 +188,20 @@ export default function ContinuousDialog({
       }
 
     } catch (error) {
+      const isAbort = error instanceof DOMException && error.name === 'AbortError'
+      if (isAbort && !isOpen) return // 用户主动关闭，无需提示
+
       console.error('发送失败:', error)
+      const content = isAbort
+        ? '⏱️ 请求超时（超过90秒无响应），请检查网络后重试'
+        : `❌ 发送失败：${error instanceof Error ? error.message : '未知错误'}`
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `❌ 发送失败：${error instanceof Error ? error.message : '未知错误'}`,
+        content,
         timestamp: new Date()
       }])
     } finally {
+      abortRef.current = null
       setIsLoading(false)
     }
   }
@@ -182,17 +217,17 @@ export default function ContinuousDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className={`bg-white rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ${
+      <div className={`bg-card rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ${
         isMinimized ? 'w-96 h-16' : 'w-[90vw] max-w-4xl h-[80vh]'
       }`}>
-        <div className="flex items-center justify-between p-4 border-b-2 border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
+        <div className="flex items-center justify-between p-4 border-b-2 border-border bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/40 dark:to-blue-950/40">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">持续对话</h3>
-              <p className="text-xs text-gray-600">
+              <h3 className="font-bold text-foreground">持续对话</h3>
+              <p className="text-xs text-muted-foreground">
                 {conversationId ? '✅ Dify原生记忆' : '🆕 新对话'} • {taskType}
               </p>
             </div>
@@ -201,27 +236,27 @@ export default function ContinuousDialog({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsMinimized(!isMinimized)}
-              className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
               title={isMinimized ? '展开' : '最小化'}
             >
               {isMinimized ? (
-                <Maximize2 className="w-5 h-5 text-gray-600" />
+                <Maximize2 className="w-5 h-5 text-muted-foreground" />
               ) : (
-                <Minimize2 className="w-5 h-5 text-gray-600" />
+                <Minimize2 className="w-5 h-5 text-muted-foreground" />
               )}
             </button>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <X className="w-5 h-5 text-muted-foreground" />
             </button>
           </div>
         </div>
 
         {!isMinimized && (
           <>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/40">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -231,18 +266,18 @@ export default function ContinuousDialog({
                     className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                       msg.role === 'user'
                         ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                        : 'bg-white border-2 border-gray-200 text-gray-900'
+                        : 'bg-card border-2 border-border text-foreground'
                     }`}
                   >
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-sm max-w-none">
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     ) : (
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     )}
                     <div className={`text-xs mt-2 ${
-                      msg.role === 'user' ? 'text-purple-100' : 'text-gray-400'
+                      msg.role === 'user' ? 'text-purple-100' : 'text-muted-foreground'
                     }`}>
                       {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -252,7 +287,7 @@ export default function ContinuousDialog({
               
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white border-2 border-gray-200 rounded-2xl px-4 py-3">
+                  <div className="bg-card border-2 border-border rounded-2xl px-4 py-3">
                     <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
                   </div>
                 </div>
@@ -261,7 +296,7 @@ export default function ContinuousDialog({
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="border-t border-gray-200 p-4 bg-white">
+            <div className="border-t border-border p-4 bg-card">
               <div className="flex gap-3">
                 <textarea
                   ref={inputRef}
@@ -270,7 +305,7 @@ export default function ContinuousDialog({
                   onKeyDown={handleKeyDown}
                   placeholder="继续对话... (Enter发送，Shift+Enter换行)"
                   rows={2}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none resize-none"
+                  className="flex-1 px-4 py-3 border-2 border-border bg-background text-foreground rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 focus:outline-none resize-none"
                   disabled={isLoading}
                 />
                 <button
@@ -287,7 +322,7 @@ export default function ContinuousDialog({
                 </button>
               </div>
               
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 💡 Dify原生记忆 + 知识库 • 可以持续追问、展开、优化
               </p>
             </div>

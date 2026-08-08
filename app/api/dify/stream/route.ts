@@ -13,7 +13,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { sessionId, saveHistory } = body;
     let query = '';
-    
+
+    // 原始用户输入必须在任何改写之前固定下来。
+    // 之前只在“已有历史”分支里赋值，导致会话首轮的用户消息永远不入库，
+    // 对话记忆无法从第一轮开始累积。
+    const originalQuery: string = body.query || '';
+
     // 如果需要对话记忆，加载历史对话
     if (sessionId && saveHistory) {
       console.log('🔍 加载对话历史，Session ID:', sessionId);
@@ -21,9 +26,8 @@ export async function POST(req: NextRequest) {
       if (history.length > 0) {
         console.log(`📚 找到 ${history.length} 条历史消息`);
         const formattedHistory = formatConversationHistory(history);
-        // 将历史对话添加到查询前面
-        body.originalQuery = body.query; // 保存原始查询
-        body.query = formattedHistory + body.query;
+        // 将历史对话拼到查询前面（自由问答类分支会直接读取 body.query）
+        body.query = formattedHistory + originalQuery;
       } else {
         console.log('📭 没有历史消息');
       }
@@ -481,7 +485,7 @@ export async function POST(req: NextRequest) {
           }
           
           // 保存对话历史
-          if (sessionId && saveHistory && body.originalQuery) {
+          if (sessionId && saveHistory && originalQuery) {
             console.log('💾 保存对话历史到数据库...');
             
             // 保存用户消息
@@ -489,7 +493,7 @@ export async function POST(req: NextRequest) {
               sessionId: sessionId,
               taskType: body.taskType || '未知',
               role: 'user',
-              content: body.originalQuery
+              content: originalQuery
             });
             
             // 保存助手回复（如果有完整回复）

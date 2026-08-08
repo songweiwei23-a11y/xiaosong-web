@@ -8,6 +8,29 @@ export interface GuardResult {
 }
 
 /**
+ * API 守卫：仅要求已登录，不检查也不扣减配额。
+ * 适用于 CRUD 类接口（读写自己的数据），生成类接口请用 requireUserWithQuota。
+ *
+ * - 未登录 -> 401
+ */
+export async function requireUser(): Promise<GuardResult> {
+  const supabase = await getServerSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: '请先登录' }, { status: 401 }),
+    };
+  }
+
+  return { ok: true, userId: user.id };
+}
+
+/**
  * API 守卫：要求已登录，并检查用户仍有可用配额（不扣减）。
  * 扣减由 incrementUsageServer 完成，应在 Dify 生成成功后调用。
  *

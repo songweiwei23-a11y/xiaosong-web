@@ -30,7 +30,7 @@ export function LandingNavCTA() {
       <Link href="/login" className="text-muted-foreground hover:text-blue-600 transition-colors">
         登录
       </Link>
-      <Link href="/dashboard" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-5 py-2 rounded-full hover:shadow-lg transition-all">
+      <Link href="/login?redirect=/dashboard" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-5 py-2 rounded-full hover:shadow-lg transition-all">
         免费试用
       </Link>
     </>

@@ -1,79 +1,63 @@
-﻿import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { requireUser } from '@/lib/api-guard'
+import { getServerSupabase } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
-function createClient() {
-  const cookieStore = cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-      },
-    }
-  )
-}
-
 export async function GET(request: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response!
 
+  const supabase = await getServerSupabase()
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
 
   if (id) {
-    // 获取单个脚本
     const { data, error } = await supabase
       .from('scripts')
       .select('*')
       .eq('id', id)
-      .eq('user_id', user.id)
-      .single()
+      .eq('user_id', guard.userId!)
+      .maybeSingle()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-
-    return NextResponse.json(data)
-  } else {
-    // 获取所有脚本（按创建时间倒序）
-    const { data, error } = await supabase
-      .from('scripts')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data) {
+      return NextResponse.json({ error: '脚本不存在' }, { status: 404 })
     }
 
     return NextResponse.json(data)
   }
+
+  const { data, error } = await supabase
+    .from('scripts')
+    .select('*')
+    .eq('user_id', guard.userId!)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json(data)
 }
 
 export async function POST(request: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response!
+
+  const supabase = await getServerSupabase()
+  const body = await request.json()
+
+  if (!body.script_content) {
+    return NextResponse.json({ error: '脚本内容不能为空' }, { status: 400 })
   }
 
-  const body = await request.json()
-  
   const { data, error } = await supabase
     .from('scripts')
     .insert({
-      user_id: user.id,
+      user_id: guard.userId!,
       profile_id: body.profile_id || null,
       positioning_id: body.positioning_id || null,
       topic_id: body.topic_id || null,
@@ -97,22 +81,19 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response!
 
+  const supabase = await getServerSupabase()
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
-  
+
   if (!id) {
-    return NextResponse.json({ error: 'Script ID required' }, { status: 400 })
+    return NextResponse.json({ error: '缺少脚本 ID' }, { status: 400 })
   }
 
   const body = await request.json()
-  
+
   const { data, error } = await supabase
     .from('scripts')
     .update({
@@ -120,37 +101,37 @@ export async function PUT(request: Request) {
       conversation_id: body.conversation_id || null,
     })
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', guard.userId!)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  if (!data) {
+    return NextResponse.json({ error: '脚本不存在或无权限' }, { status: 404 })
   }
 
   return NextResponse.json(data)
 }
 
 export async function DELETE(request: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response!
 
+  const supabase = await getServerSupabase()
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
-  
+
   if (!id) {
-    return NextResponse.json({ error: 'Script ID required' }, { status: 400 })
+    return NextResponse.json({ error: '缺少脚本 ID' }, { status: 400 })
   }
 
   const { error } = await supabase
     .from('scripts')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', guard.userId!)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -20,7 +20,7 @@ import { evaluateScriptQualityStrict, formatQualityReport } from "@/lib/quality-
 import { useState, useEffect } from "react";
 import { Sparkles, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { notify, confirmDialog } from '@/components/ui/feedback';
+import { notify } from '@/components/ui/feedback';
 
 // 静态配置与折叠组件已抽离
 import {
@@ -41,6 +41,7 @@ import {
   BUDGETS
 } from "./constants";
 import { CollapsibleSection } from "./CollapsibleSection";
+import { useScriptHistory } from "./useScriptHistory";
 
 
 export default function ScriptPage() {
@@ -77,13 +78,17 @@ export default function ScriptPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const [result, setResult] = useState("");
-  
-  // 历史记录
-  const [scriptHistory, setScriptHistory] = useState<any[]>([]);
-  
-  // 持续对话
-  const [showDialog, setShowDialog] = useState(false);
-  const [dialogInitialContent, setDialogInitialContent] = useState("");
+
+  // 历史记录 + 持续对话（已抽离为 hook）
+  const {
+    scriptHistory,
+    loadScriptHistory,
+    deleteHistory,
+    showDialog,
+    dialogInitialContent,
+    openContinuousDialog,
+    closeContinuousDialog,
+  } = useScriptHistory();
   
   // 档案和定位关联
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -96,7 +101,6 @@ export default function ScriptPage() {
   useEffect(() => {
     loadProfiles();
     loadPositionings();
-    loadScriptHistory();
   }, []);
 
   const loadProfiles = async () => {
@@ -121,38 +125,6 @@ export default function ScriptPage() {
     } catch (error) {
       console.error("加载定位失败:", error);
     }
-  };
-
-  // 加载脚本历史记录
-  const loadScriptHistory = async () => {
-    try {
-      const response = await fetch("/api/script-history");
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setScriptHistory(data);
-      }
-    } catch (error) {
-      console.error("加载历史记录失败:", error);
-    }
-  };
-
-  // 删除历史记录
-  const deleteHistory = async (id: string) => {
-    if (!await confirmDialog('确定要删除这条记录吗？', { tone: 'danger', confirmText: '删除', title: '确认删除' })) return;
-    try {
-      const response = await fetch(`/api/script-history?id=${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        await loadScriptHistory();
-      }
-    } catch (error) {
-      console.error("删除失败:", error);
-    }
-  };
-
-  // 打开持续对话
-  const openContinuousDialog = (content: string) => {
-    setDialogInitialContent(content);
-    setShowDialog(true);
   };
 
   const toggleBoomElement = (id: string) => {
@@ -270,7 +242,7 @@ ${scriptContext}
         structureDetail,
         hookDetail,
         elementsWithNames,
-        duration: isAiDuration ? (customDuration ? `${customDuration}秒` : duration) : finalDuration,
+        duration: isAiDuration ? "AI自行推断的最佳时长" : finalDuration,
         isAd,
         dealReasonsCount: dealReasons.length  // 传入成交理由数量
       });
@@ -1230,24 +1202,26 @@ ${formatRequirements}
             />
           </CollapsibleSection>
 
-          {/* Generate Button */}
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || !topic.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 font-bold text-white shadow-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none transition-all"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                生成中...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-5 w-5" />
-                生成专业脚本
-              </>
-            )}
-          </button>
+          {/* Generate Button - 移动端固定在底部 */}
+          <div className="md:static md:mt-0 sticky bottom-0 left-0 right-0 bg-card border-t border-border md:border-0 p-4 md:p-0 -mx-8 md:mx-0 z-10">
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating || !topic.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 font-bold text-white shadow-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none transition-all"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  生成中...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-5 w-5" />
+                  生成专业脚本
+                </>
+              )}
+            </button>
+          </div>
 
         </div>
       </div>
@@ -1273,7 +1247,7 @@ ${formatRequirements}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground line-clamp-2">
-                        {item.result.substring(0, 100)}...
+                        {item.result.replace(/[#*`>\-|]/g, "").replace(/\s+/g, " ").trim().slice(0, 80)}...
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(item.created_at).toLocaleString('zh-CN')}
@@ -1343,7 +1317,7 @@ ${formatRequirements}
               )}
 
               {result && (
-                <div className="prose prose-slate prose-lg max-w-none">
+                <div className="prose prose-slate dark:prose-invert prose-lg max-w-none">
                   <ReactMarkdown>{result}</ReactMarkdown>
                 </div>
               )}
@@ -1355,7 +1329,7 @@ ${formatRequirements}
       {/* 持续对话弹窗 */}
       <ContinuousDialog
         isOpen={showDialog}
-        onClose={() => setShowDialog(false)}
+        onClose={closeContinuousDialog}
         initialContent={dialogInitialContent}
         taskType="脚本生成"
       />

@@ -61,13 +61,14 @@ export async function checkQuota(): Promise<number | null> {
       .from("user_settings")
       .select("quota_used, quota_limit")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
-    if (!settings) {
-      return 0;
+    // 无 settings 记录 或 quota_limit 为 null → 视为未设限（与服务端守卫一致）
+    if (!settings || settings.quota_limit == null) {
+      return Number.POSITIVE_INFINITY;
     }
 
-    return settings.quota_limit - settings.quota_used;
+    return Math.max(0, settings.quota_limit - (settings.quota_used ?? 0));
   } catch (error) {
     console.error("检查配额异常:", error);
     return 0;
