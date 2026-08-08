@@ -1,0 +1,974 @@
+﻿"use client";
+
+import { useState } from "react";
+import { Sparkles, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+
+// 脚本类型配置
+const SCRIPT_TYPES = {
+  teach: { label: "教知识", desc: "教学类内容，传授技能和知识" },
+  show: { label: "晒过程", desc: "展示类内容，分享经历和成果" },
+  discuss: { label: "聊话题", desc: "观点类内容，表达看法和思考" },
+  story: { label: "讲故事", desc: "故事类内容，讲述经历和案例" },
+  ad_lead: { label: "留资获客", desc: "收集线索、加微信、留电话" },
+  ad_group: { label: "团购促销", desc: "美团/抖音团购、限时优惠" },
+  ad_offline: { label: "线下引流", desc: "到店核销、实体店导流" },
+  ad_product: { label: "产品种草", desc: "产品推广、功能展示" },
+};
+
+const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
+const DURATIONS = ["15秒", "30秒", "60秒", "90秒", "3-5分钟"];
+
+// 内容创作类行业
+const CONTENT_INDUSTRIES = [
+  "自媒体运营", "知识分享", "职场技能", "副业赚钱",
+  "摄影摄像", "剪辑后期", "写作文案", "设计美工",
+  "情感心理", "亲子育儿", "家庭教育", "学习方法",
+  "读书分享", "电影解说", "音乐舞蹈", "美食烹饪",
+  "旅行探店", "时尚穿搭", "美妆护肤", "健身运动",
+  "数码科技", "游戏电竞", "宠物养护", "生活技巧",
+];
+
+// 广告引流类行业
+const AD_INDUSTRIES = [
+  "餐饮-火锅", "餐饮-烧烤", "餐饮-小吃", "餐饮-奶茶", "餐饮-咖啡", 
+  "餐饮-西餐", "餐饮-中餐", "餐饮-快餐", "餐饮-甜品",
+  "美业-美容", "美业-美发", "美业-美甲", "美业-皮肤管理", "美业-医美", "美业-SPA",
+  "零售-服装", "零售-鞋包", "零售-数码", "零售-家居", "零售-母婴", "零售-生鲜",
+  "服务-教育培训", "服务-家政保洁", "服务-维修安装", "服务-摄影拍照",
+  "娱乐-酒吧", "娱乐-KTV", "娱乐-影院", "娱乐-剧本杀", "娱乐-桌游", "娱乐-健身房",
+  "住宿-酒店", "住宿-民宿", "住宿-公寓",
+  "汽车-洗车", "汽车-美容", "汽车-维修", "汽车-保养",
+];
+
+const DEAL_REASONS = [
+  { id: "price", label: "💰 价格优势", desc: "性价比高、活动优惠" },
+  { id: "quality", label: "⭐ 品质保证", desc: "材料好、做工精细" },
+  { id: "unique", label: "🎯 独家特色", desc: "独一无二的卖点" },
+  { id: "expert", label: "👨‍⚕️ 专业技术", desc: "专业团队、多年经验" },
+  { id: "service", label: "🤝 服务贴心", desc: "售后完善、响应快" },
+  { id: "trust", label: "💯 信誉保障", desc: "口碑好、老品牌" },
+  { id: "convenient", label: "⚡ 便捷省心", desc: "位置好、流程简单" },
+  { id: "result", label: "🎁 效果明显", desc: "立竿见影、可验证" },
+  { id: "safe", label: "🛡️ 安全放心", desc: "资质全、有保险" },
+  { id: "time", label: "⏰ 节省时间", desc: "快速高效、不耽误" },
+  { id: "custom", label: "🎨 定制化", desc: "量身定做、个性化" },
+  { id: "gift", label: "🎉 赠品福利", desc: "买就送、额外价值" },
+  { id: "guarantee", label: "✅ 效果保证", desc: "不满意退款" },
+  { id: "scarcity", label: "🔥 稀缺性", desc: "限量限时、机会难得" },
+  { id: "social", label: "👥 社交认同", desc: "大家都在用、网红推荐" },
+];
+
+// 扩充的内容风格（15种）
+const STYLES = [
+  "专业", "幽默", "犀利", "温暖", "励志", "治愈",
+  "反转", "悬疑", "干货", "搞笑", "走心", "高冷",
+  "亲切", "激情", "文艺"
+];
+
+// 扩充的目标人群（50+种）
+const TARGET_GROUPS = [
+  // 按年龄
+  "00后学生", "95后职场新人", "90后职场人", "85后管理层", "80后中产", "70后企业主", "银发族",
+  // 按职业
+  "大学生", "研究生", "白领", "金领", "创业者", "小老板", "自由职业者", "全职宝妈", "职场宝妈",
+  // 按收入
+  "月入3k以下", "月入3-8k", "月入8k-2w", "月入2w-5w", "月入5w+",
+  // 按兴趣
+  "美食爱好者", "旅行达人", "健身狂", "宠物主", "摄影师", "游戏玩家", "二次元",
+  // 按身份
+  "准妈妈", "新手妈妈", "二胎妈妈", "考研党", "考公党", "求职者", "技能学习者",
+  // 按需求
+  "自媒体人", "内容创作者", "知识博主", "副业探索者", "转行者", "斜杠青年",
+  "生活方式追求者", "精致女性", "都市白领",
+  "下沉市场用户", "银发族", "Z世代",
+  "宠物主", "健身爱好者", "美食爱好者", "旅行爱好者"
+];
+
+// 八大爆款元素
+const BOOM_ELEMENTS = [
+  { id: "cost", label: "💰 成本", desc: "价格预算相关话题" },
+  { id: "crowd", label: "👥 人群", desc: "特定群体痛点" },
+  { id: "celebrity", label: "⭐ 头牌", desc: "名人IP背书" },
+  { id: "weird", label: "🤪 奇葩", desc: "反常识观点" },
+  { id: "worst", label: "💩 最差", desc: "踩坑避雷经验" },
+  { id: "contrast", label: "⚡ 反差", desc: "强烈对比冲突" },
+  { id: "nostalgia", label: "📼 怀旧", desc: "回忆共鸣点" },
+  { id: "hormone", label: "💕 荷尔蒙", desc: "情感情绪共鸣" },
+];
+
+// 开场钩子类型
+const HOOK_TYPES = [
+  { id: "auto", label: "🤖 AI推荐", desc: "智能匹配最佳钩子" },
+  { id: "money", label: "💰 金钱型", desc: "涉及利益得失" },
+  { id: "mystery", label: "🎁 盲盒型", desc: "制造悬念好奇" },
+  { id: "conflict", label: "⚔️ 对抗型", desc: "反常识挑战" },
+  { id: "verify", label: "🔍 验证型", desc: "揭秘解密真相" },
+  { id: "warm", label: "🌟 温暖型", desc: "送温暖建议" },
+  { id: "emotion", label: "💗 共鸣型", desc: "情感情绪共振" },
+];
+
+// 脚本结构类型（20种）
+const SCRIPT_STRUCTURES = [
+  { id: "auto", label: "🎯 AI推荐", desc: "根据内容智能选择" },
+  { id: "problem", label: "📌 解题型", desc: "难题→危机→解决→步骤" },
+  { id: "recommend", label: "👍 推荐型", desc: "愿景→人群→好奇→理由" },
+  { id: "expose", label: "🔓 揭秘型", desc: "反常识→内幕→示范" },
+  { id: "case", label: "📖 案例型", desc: "案例→拆解→复制" },
+  { id: "train", label: "🚂 火车节", desc: "目标→过程→结果" },
+  { id: "argue", label: "💬 论证型", desc: "观点→论据→升华" },
+  { id: "story", label: "📚 故事型", desc: "现状→困境→转折→成就" },
+  { id: "compare", label: "⚖️ 对比型", desc: "A vs B对比" },
+  { id: "list", label: "📝 清单型", desc: "N个方法/技巧" },
+  { id: "timeline", label: "⏰ 时间线型", desc: "前后变化" },
+  { id: "qa", label: "❓ 问答型", desc: "Q&A解答" },
+  { id: "scene", label: "🎬 情景剧型", desc: "情景再现" },
+  { id: "review", label: "🔍 测评型", desc: "测试→结果" },
+  { id: "challenge", label: "💪 挑战型", desc: "挑战打卡" },
+  { id: "tutorial", label: "📐 教程型", desc: "步骤1→2→3" },
+  { id: "reverse", label: "🔄 反转型", desc: "预期A→实际B" },
+  { id: "summary", label: "📊 盘点型", desc: "年度盘点" },
+  { id: "interview", label: "🎤 采访型", desc: "人物访谈" },
+  { id: "observe", label: "🔬 观察型", desc: "观察→分析" },
+];
+
+// 编导思路
+const DIRECTOR_THOUGHTS = [
+  { id: "emotion", label: "情绪波点设计", desc: "2-3个情绪高潮" },
+  { id: "picture", label: "画面感描述", desc: "细节+动作+类比" },
+  { id: "rhythm", label: "节奏控制", desc: "张弛有度不平铺" },
+  { id: "ending", label: "金句结尾", desc: "≤20字可转发" },
+];
+
+const SCENES = ["室内", "室外", "办公室", "咖啡厅", "街头", "家中"];
+const DEVICES = ["手机", "相机", "专业设备"];
+const BUDGETS = ["低成本(0-500)", "中等(500-2000)", "不限"];
+
+// 折叠组件
+function CollapsibleSection({ 
+  title, 
+  icon: Icon, 
+  defaultOpen = true, 
+  children 
+}: { 
+  title: string; 
+  icon: any; 
+  defaultOpen?: boolean; 
+  children: React.ReactNode 
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  
+  return (
+    <div className="rounded-xl border-2 border-gray-200 bg-white shadow-sm overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Icon className="h-5 w-5 text-blue-600" />
+          <span className="font-bold text-gray-900">{title}</span>
+        </div>
+        {isOpen ? (
+          <ChevronUp className="h-5 w-5 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-5 w-5 text-gray-400" />
+        )}
+      </button>
+      {isOpen && (
+        <div className="p-4 pt-0 space-y-4 border-t border-gray-100">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ScriptPage() {
+  const [scriptType, setScriptType] = useState("teach");
+  const [topic, setTopic] = useState("");
+  const [platform, setPlatform] = useState("抖音");
+  const [duration, setDuration] = useState("60秒");
+  const [style, setStyle] = useState("专业");
+  const [targetGroup, setTargetGroup] = useState("");
+  const [boomElements, setBoomElements] = useState<string[]>([]);
+  const [hookType, setHookType] = useState("auto");
+  const [scriptStructure, setScriptStructure] = useState("auto");
+  const [directorThoughts, setDirectorThoughts] = useState<string[]>(["emotion", "picture"]);
+  const [scene, setScene] = useState("室内");
+  const [device, setDevice] = useState("手机");
+  const [budget, setBudget] = useState("低成本(0-500)");
+  const [personnel, setPersonnel] = useState("一人");
+  const [additionalInfo, setAdditionalInfo] = useState("");
+  
+  // 新增state
+  const [activeTab, setActiveTab] = useState<"content" | "ad">("content");
+  const [dealReasons, setDealReasons] = useState<string[]>([]);
+  const [customTargetGroup, setCustomTargetGroup] = useState("");
+  const [customStyle, setCustomStyle] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [customIndustry, setCustomIndustry] = useState("");
+  const [productInfo, setProductInfo] = useState("");
+  const [priceInfo, setPriceInfo] = useState("");
+  
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [result, setResult] = useState("");
+
+  const toggleBoomElement = (id: string) => {
+    setBoomElements(prev =>
+      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+    );
+  };
+
+  const toggleDirectorThought = (id: string) => {
+    setDirectorThoughts(prev =>
+      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+    );
+  };
+
+  const toggleDealReason = (id: string) => {
+    setDealReasons(prev =>
+      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+    );
+  };
+
+  const isAdScript = () => activeTab === "ad";
+
+  const handleSmartRecommend = () => {
+    // 智能推荐逻辑
+    if (platform === "抖音") {
+      setDuration("60秒");
+      setStyle("幽默");
+    } else if (platform === "小红书") {
+      setDuration("90秒");
+      setStyle("干货");
+    } else if (platform === "B站") {
+      setDuration("3-5分钟");
+      setStyle("专业");
+    }
+    alert("已根据平台智能推荐时长和风格！");
+  };
+
+  const handleGenerate = async () => {
+    if (!topic.trim()) {
+      alert("请输入视频主题");
+      return;
+    }
+
+    setIsGenerating(true);
+    setResult("");
+
+    try {
+      // 构建结构化的query给Dify
+      const dealReasonsText = dealReasons.length > 0 
+        ? dealReasons.map(id => DEAL_REASONS.find(r => r.id === id)?.label).join("、") 
+        : "未选择";
+      
+      const isAd = activeTab === "ad";
+      const selectedIndustry = customIndustry || industry || "未分类";
+      const selectedTargetGroup = customTargetGroup || targetGroup || "通用受众";
+      const selectedStyle = customStyle || style || "专业";
+      
+      const query = isAd ? `# 广告引流短视频脚本生成
+
+⚠️ **重要提示**：这是一个广告引流类脚本，请使用广告公式和成交理由知识库，重点突出产品卖点和转化行动。
+
+## 基础信息
+- **广告类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
+- **行业**：${selectedIndustry}
+- **平台**：${platform}
+- **时长**：${duration}
+- **主题/活动**：${topic}
+
+## 产品信息（核心）
+${productInfo ? `**产品介绍**：${productInfo}` : "⚠️ 未填写产品信息"}
+${priceInfo ? `**价格策略**：${priceInfo}` : ""}
+
+## 目标用户
+- **精准人群**：${selectedTargetGroup}
+- **沟通风格**：${selectedStyle}
+
+## 成交策略
+**选中的成交理由**：${dealReasonsText}
+→ 请围绕这些理由设计转化逻辑，在脚本中自然植入
+
+## 创意要求
+- **开场方式**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（3秒内抓住目标用户）
+- **脚本结构**：${SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "推荐型"}
+- **爆款元素**：${boomElements.length > 0 ? boomElements.join("、") : "根据行业推荐"}
+
+## 拍摄执行
+- **场景**：${scene} | **设备**：${device} | **预算**：${budget} | **人员**：${personnel}
+- **编导思路**：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label).join("、")}
+
+${additionalInfo ? `## 补充要求
+${additionalInfo}` : ""}
+
+---
+**生成要求**：
+1. 使用【广告公式知识库】和【成交理由知识库】
+2. 开场3秒必须直击痛点或利益点
+3. 中段重点展示产品卖点和成交理由
+4. 结尾必须有明确的行动指令（到店/团购/加微信等）
+5. 全程植入产品信息，自然不生硬
+6. 突出价格优势和稀缺性（限时/限量）
+
+请生成完整的广告引流脚本。` : `# 内容创作短视频脚本生成
+
+⚠️ **重要提示**：这是一个内容创作类脚本，请使用编导技巧和脚本公式知识库，重点突出价值输出和情感共鸣。
+
+## 基础信息
+- **内容类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
+- **行业领域**：${selectedIndustry}
+- **平台**：${platform}
+- **时长**：${duration}
+- **主题**：${topic}
+
+## 目标定位
+- **目标受众**：${selectedTargetGroup}
+- **内容风格**：${selectedStyle}
+
+## 创意设计
+- **开场钩子**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（吸引目标受众停留）
+- **脚本结构**：${SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "AI推荐"}
+- **爆款元素**：${boomElements.length > 0 ? boomElements.join("、") : "根据主题推荐"}
+
+## 价值主张
+${dealReasons.length > 0 ? `**核心价值点**：${dealReasonsText}
+→ 请围绕这些价值点设计内容，让用户感受到实用性` : "**核心价值**：提供实用价值，建立信任关系"}
+
+## 拍摄执行
+- **场景**：${scene} | **设备**：${device} | **预算**：${budget} | **人员**：${personnel}
+- **编导思路**：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label).join("、")}
+
+${additionalInfo ? `## 补充要求
+${additionalInfo}` : ""}
+
+---
+**生成要求**：
+1. 使用【编导技巧知识库】和【脚本公式知识库】
+2. 开场要有悬念、反常识或情感共鸣
+3. 中段提供干货价值，解决用户痛点
+4. 结尾升华主题，引导互动（点赞/评论/关注）
+5. 全程注重情感连接，建立信任
+6. 避免硬广，自然输出价值
+
+请生成完整的内容创作脚本。`;
+
+      const response = await fetch("/api/dify/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!response.ok) throw new Error("生成失败");
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("无法读取响应");
+
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        accumulated += chunk;
+        setResult(accumulated);
+      }
+    } catch (error: any) {
+      alert(error.message || "生成失败");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="flex h-screen">
+      {/* Left Panel - Form */}
+      <div className="w-[420px] overflow-y-auto border-r bg-gradient-to-b from-gray-50 to-white p-6">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">脚本生成</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            专业级短视频脚本创作工具
+          </p>
+        </div>
+
+        {/* Tab切换 */}
+        <div className="mb-6 flex gap-2">
+          <button
+            onClick={() => {
+              setActiveTab("content");
+              setScriptType("teach");
+            }}
+            className={`flex-1 rounded-lg py-3 px-4 text-sm font-bold transition-all ${
+              activeTab === "content"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                : "bg-white border-2 border-gray-200 text-gray-600 hover:border-blue-300"
+            }`}
+          >
+            📝 内容创作
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("ad");
+              setScriptType("ad_lead");
+            }}
+            className={`flex-1 rounded-lg py-3 px-4 text-sm font-bold transition-all ${
+              activeTab === "ad"
+                ? "bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg"
+                : "bg-white border-2 border-gray-200 text-gray-600 hover:border-red-300"
+            }`}
+          >
+            💰 广告引流
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* 基础设置 */}
+          <CollapsibleSection title="基础设置" icon={Settings} defaultOpen={true}>
+            {/* Script Type */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                脚本类型
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(SCRIPT_TYPES)
+                  .filter(([key]) => activeTab === "content" ? !key.startsWith("ad_") : key.startsWith("ad_"))
+                  .map(([key, value]) => (
+                  <button
+                    key={key}
+                    onClick={() => setScriptType(key)}
+                    className={`rounded-lg border p-3 text-left text-sm transition-all ${
+                      scriptType === key
+                        ? "border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-700 shadow-md"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                    }`}
+                  >
+                    <div className="font-medium">{value.label}</div>
+                    <div className="mt-1 text-xs text-gray-500">{value.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Topic */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                视频主题 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="例如：普通人做短视频最容易踩的3个坑"
+                className="w-full rounded-lg border border-gray-300 p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                rows={3}
+              />
+            </div>
+
+            {/* Platform & Duration */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  发布平台
+                </label>
+                <select
+                  value={platform}
+                  onChange={(e) => setPlatform(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {PLATFORMS.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  视频时长
+                </label>
+                <select
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {DURATIONS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Smart Recommend Button */}
+            <button
+              onClick={handleSmartRecommend}
+              className="w-full rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 p-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+            >
+              ✨ 根据平台智能推荐
+            </button>
+
+            {/* 行业分类 */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                行业分类 <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={industry}
+                  onChange={(e) => {
+                    setIndustry(e.target.value);
+                    setCustomIndustry("");
+                  }}
+                  className="flex-1 rounded-lg border border-gray-300 p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">选择行业...</option>
+                  {(activeTab === "content" ? CONTENT_INDUSTRIES : AD_INDUSTRIES).map((ind) => (
+                    <option key={ind} value={ind}>{ind}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={customIndustry}
+                  onChange={(e) => {
+                    setCustomIndustry(e.target.value);
+                    setIndustry("");
+                  }}
+                  placeholder="或自定义..."
+                  className="flex-1 rounded-lg border border-gray-300 p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              {(industry || customIndustry) && (
+                <p className="mt-1 text-xs text-blue-600">✅ 当前：{industry || customIndustry}</p>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          {/* 目标定位 */}
+          <CollapsibleSection title="目标定位" icon={Target} defaultOpen={true}>
+            {/* Target Group */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                目标人群
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={targetGroup}
+                  onChange={(e) => {
+                    setTargetGroup(e.target.value);
+                    setCustomTargetGroup("");
+                  }}
+                  className="flex-1 rounded-lg border border-gray-300 p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">选择目标人群...</option>
+                  {TARGET_GROUPS.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={customTargetGroup}
+                  onChange={(e) => {
+                    setCustomTargetGroup(e.target.value);
+                    setTargetGroup("");
+                  }}
+                  placeholder="或自定义..."
+                  className="flex-1 rounded-lg border border-gray-300 p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              {(targetGroup || customTargetGroup) && (
+                <p className="mt-1 text-xs text-blue-600">✅ 当前：{targetGroup || customTargetGroup}</p>
+              )}
+            </div>
+
+            {/* Style */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                内容风格
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {STYLES.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStyle(s)}
+                    className={`rounded-full border px-3 py-1 text-xs transition-all ${
+                      style === s
+                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CollapsibleSection>
+
+          {/* 创意设计 */}
+          <CollapsibleSection title="创意设计" icon={Lightbulb} defaultOpen={true}>
+            {/* 广告类专属：产品信息 */}
+            {isAdScript() && (
+              <>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    产品/店铺信息 <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={productInfo}
+                    onChange={(e) => setProductInfo(e.target.value)}
+                    placeholder="例如：店铺名称、主打产品、核心卖点、特色服务等..."
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    价格信息
+                  </label>
+                  <input
+                    type="text"
+                    value={priceInfo}
+                    onChange={(e) => setPriceInfo(e.target.value)}
+                    placeholder="例如：人均50元、活动价99元、原价199现价99..."
+                    className="w-full rounded-lg border border-gray-300 p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* 开场钩子 */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                开场钩子
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {HOOK_TYPES.map((hook) => (
+                  <button
+                    key={hook.id}
+                    onClick={() => setHookType(hook.id)}
+                    className={`rounded-lg border-2 p-2 text-left transition-all ${
+                      hookType === hook.id
+                        ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-sm"
+                        : "border-gray-200 bg-white hover:border-purple-300"
+                    }`}
+                  >
+                    <div className="text-base mb-0.5">{hook.label.split(' ')[0]}</div>
+                    <div className={`text-xs font-bold ${
+                      hookType === hook.id ? "text-purple-700" : "text-gray-600"
+                    }`}>
+                      {hook.label.split(' ')[1]}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 脚本结构 */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                脚本结构
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {SCRIPT_STRUCTURES.map((structure) => (
+                  <button
+                    key={structure.id}
+                    onClick={() => setScriptStructure(structure.id)}
+                    className={`rounded-lg border-2 p-2 text-left transition-all ${
+                      scriptStructure === structure.id
+                        ? "border-orange-500 bg-gradient-to-br from-orange-50 to-yellow-50 shadow-sm"
+                        : "border-gray-200 bg-white hover:border-orange-300"
+                    }`}
+                  >
+                    <div className="text-base mb-0.5">{structure.label.split(' ')[0]}</div>
+                    <div className={`text-xs font-bold ${
+                      scriptStructure === structure.id ? "text-orange-700" : "text-gray-600"
+                    }`}>
+                      {structure.label.split(' ')[1]}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 八大爆款元素 */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                爆款元素 <span className="text-xs text-gray-400">（可多选）</span>
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {BOOM_ELEMENTS.map((elem) => (
+                  <button
+                    key={elem.id}
+                    onClick={() => toggleBoomElement(elem.id)}
+                    className={`rounded-lg border-2 p-2 text-center transition-all ${
+                      boomElements.includes(elem.id)
+                        ? "border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm scale-105"
+                        : "border-gray-200 bg-white hover:border-blue-300"
+                    }`}
+                  >
+                    <div className="text-xl">{elem.label.split(' ')[0]}</div>
+                    <div className={`text-xs font-bold mt-1 ${
+                      boomElements.includes(elem.id) ? "text-blue-700" : "text-gray-600"
+                    }`}>
+                      {elem.label.split(' ')[1]}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {boomElements.length > 0 && (
+                <p className="mt-2 text-xs text-blue-600">
+                  ✅ 已选择 {boomElements.length} 个元素
+                </p>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          {/* 专业控制 */}
+          <CollapsibleSection title="专业控制" icon={Film} defaultOpen={false}>
+            {/* 编导思路 */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                编导思路
+              </label>
+              <div className="space-y-2">
+                {DIRECTOR_THOUGHTS.map((thought) => (
+                  <label
+                    key={thought.id}
+                    className={`flex cursor-pointer items-start gap-2 rounded-lg border-2 p-2 transition-all ${
+                      directorThoughts.includes(thought.id)
+                        ? "border-green-500 bg-gradient-to-br from-green-50 to-emerald-50"
+                        : "border-gray-200 bg-white hover:border-green-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={directorThoughts.includes(thought.id)}
+                      onChange={() => toggleDirectorThought(thought.id)}
+                      className="mt-0.5 accent-green-600"
+                    />
+                    <div className="flex-1">
+                      <div className={`text-sm font-bold ${
+                        directorThoughts.includes(thought.id) ? "text-green-700" : "text-gray-700"
+                      }`}>
+                        {thought.label}
+                      </div>
+                      <div className="text-xs text-gray-500">{thought.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 拍摄执行 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  拍摄场景
+                </label>
+                <select
+                  value={scene}
+                  onChange={(e) => setScene(e.target.value)}
+                  className="w-full rounded border border-gray-300 p-1.5 text-xs"
+                >
+                  {SCENES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  拍摄设备
+                </label>
+                <select
+                  value={device}
+                  onChange={(e) => setDevice(e.target.value)}
+                  className="w-full rounded border border-gray-300 p-1.5 text-xs"
+                >
+                  {DEVICES.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  预算范围
+                </label>
+                <select
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className="w-full rounded border border-gray-300 p-1.5 text-xs"
+                >
+                  {BUDGETS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  人员配置
+                </label>
+                <div className="flex gap-1">
+                  {["一人", "两人", "多人"].map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPersonnel(p)}
+                      className={`flex-1 rounded border py-1 text-xs ${
+                        personnel === p
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CollapsibleSection>
+
+          {/* 成交理由（所有类型都有）*/}
+          <CollapsibleSection title="成交理由" icon={Target} defaultOpen={isAdScript()}>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                选择成交理由 <span className="text-xs text-gray-400">（可多选，推荐2-3个）</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {DEAL_REASONS.map((reason) => (
+                  <button
+                    key={reason.id}
+                    onClick={() => toggleDealReason(reason.id)}
+                    className={`rounded-lg border-2 p-2 text-left text-xs transition-all ${
+                      dealReasons.includes(reason.id)
+                        ? "border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-sm scale-105"
+                        : "border-gray-200 bg-white hover:border-green-300"
+                    }`}
+                    title={reason.desc}
+                  >
+                    <div className="font-bold">{reason.label}</div>
+                    <div className="mt-1 text-gray-500">{reason.desc}</div>
+                  </button>
+                ))}
+              </div>
+              {dealReasons.length > 0 && (
+                <p className="mt-2 text-xs text-gray-500">
+                  ✅ 已选 {dealReasons.length} 个：{dealReasons.map(id => DEAL_REASONS.find(r => r.id === id)?.label.split(' ')[1]).join('、')}
+                </p>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          {/* 补充说明 */}
+          <CollapsibleSection title="补充说明" icon={FileText} defaultOpen={false}>
+            <textarea
+              value={additionalInfo}
+              onChange={(e) => setAdditionalInfo(e.target.value)}
+              placeholder="其他要求或特殊需求..."
+              className="w-full rounded-lg border border-gray-300 p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+              rows={3}
+            />
+          </CollapsibleSection>
+
+          {/* Generate Button */}
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !topic.trim()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 font-bold text-white shadow-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none transition-all"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                生成中...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-5 w-5" />
+                生成专业脚本
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Right Panel - Result */}
+      <div className="flex-1 overflow-y-auto p-8 bg-white">
+        <div className="mx-auto max-w-4xl">
+          {!result && !isGenerating && (
+            <div className="flex h-full items-center justify-center text-center">
+              <div>
+                <Sparkles className="mx-auto h-16 w-16 text-gray-300" />
+                <p className="mt-6 text-lg font-medium text-gray-500">
+                  填写左侧需求后点击生成按钮
+                </p>
+                <p className="mt-2 text-sm text-gray-400">
+                  AI将结合编导知识库为你生成专业脚本
+                </p>
+              </div>
+            </div>
+          )}
+
+          {(result || isGenerating) && (
+            <div>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">生成结果</h2>
+                {result && (
+                  <div className="flex gap-2">
+                    <button onClick={() => { navigator.clipboard.writeText(result); alert("✅ 已复制到剪贴板"); }} className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 shadow-sm transition-colors">
+                      <Copy className="h-4 w-4" />
+                      复制
+                    </button>
+                    <button onClick={() => { const blob = new Blob([result], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `脚本-${topic || "未命名"}-${new Date().toLocaleDateString()}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }} className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 shadow-sm transition-colors">
+                      <Download className="h-4 w-4" />
+                      下载
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {isGenerating && !result && (
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
+                    <p className="mt-4 text-sm text-gray-500">AI正在创作中...</p>
+                  </div>
+                </div>
+              )}
+
+              {result && (
+                <div className="prose prose-slate prose-lg max-w-none">
+                  <ReactMarkdown>{result}</ReactMarkdown>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

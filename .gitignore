@@ -1,0 +1,71 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# backup files
+*.backup
+*.backup2
+
+# 一次性管理/调试脚本（可能含密钥，禁止提交）
+/setup-admin*.js
+/final-setup-admin.js
+/check-all-users.js
+/check-history.js
+/test-update.js
+/create-admin-api.js
+setup_admin.ps1
+*.zip
+*.log
+coverage/
+# 根目录遗留的临时/构建文件
+build_out*.txt
+build_out*.log
+test_out.log
+npm_install.log
+enhanced_component.tsx
+stage1-imports.txt
+temp_*.txt
+# 不需要追踪的调试配置
+tsconfig.tsbuildinfo
+
+# npm cache (不应追踪)
+.npm-cache/
+.npm/
