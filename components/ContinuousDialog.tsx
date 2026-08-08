@@ -48,8 +48,19 @@ export default function ContinuousDialog({
   }, [isOpen, initialContent])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    // requestAnimationFrame 确保 DOM 已更新，避免 Strict Mode removeChild 竞态
+    const raf = requestAnimationFrame(() => {
+      if (messagesEndRef.current && isOpen) {
+        try {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        } catch (err) {
+          // 忽略 DOM 节点不存在错误（Strict Mode 双重渲染）
+          console.debug('[ContinuousDialog] scroll skipped:', err);
+        }
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messages, isOpen])
 
   useEffect(() => {
     if (isOpen && !isMinimized) {
