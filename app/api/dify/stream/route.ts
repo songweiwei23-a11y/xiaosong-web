@@ -1,6 +1,6 @@
 ﻿import { NextRequest } from 'next/server';
 import { saveConversationMessage, getConversationHistory, formatConversationHistory } from '@/lib/conversation';
-import { requireUserWithQuota } from '@/lib/api-guard';
+import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -474,6 +474,11 @@ export async function POST(req: NextRequest) {
             }
           }
           controller.close();
+
+          // 生成成功（有内容）后，服务端扣减一次配额
+          if (totalChunks > 0 && guard.userId) {
+            await incrementUsageServer(guard.userId);
+          }
           
           // 保存对话历史
           if (sessionId && saveHistory && body.originalQuery) {

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { saveGenerationHistory, incrementUsage, checkQuota } from '@/lib/history';
+import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Film, Loader2, Sparkles, Wand2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -185,7 +185,6 @@ export default function StoryboardPage() {
             console.log("💾 保存历史记录...", "长度:", fullResult.length);
             const inputData = { scriptContent, platform, duration, contentType, visualStyle };
             await saveGenerationHistory("分镜脚本", inputData, fullResult);
-            await incrementUsage();
             console.log("✅ 历史记录已保存");
           } catch (err) {
             console.error("⚠️ 保存失败:", err);

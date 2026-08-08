@@ -14,7 +14,7 @@ import {
   getTimeAllocation,
   getStepTasks
 } from "@/lib/script-helpers";
-import { saveGenerationHistory, incrementUsage, checkQuota } from "@/lib/history";
+import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { evaluateScriptQualityStrict, formatQualityReport } from "@/lib/quality-checker";
 
 import { useState, useEffect } from "react";

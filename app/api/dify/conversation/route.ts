@@ -1,5 +1,5 @@
 ﻿import { NextRequest } from 'next/server';
-import { requireUserWithQuota } from '@/lib/api-guard';
+import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -76,6 +76,9 @@ export async function POST(req: NextRequest) {
             const { done, value } = await reader.read();
             if (done) {
               console.log('✅ 对话完成. Total chunks:', totalChunks);
+              if (totalChunks > 0 && guard.userId) {
+                await incrementUsageServer(guard.userId);
+              }
               break;
             }
 

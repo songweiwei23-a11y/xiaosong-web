@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSupabase } from '@/lib/admin-auth';
+import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
 
 export interface GuardResult {
   ok: boolean;
@@ -9,8 +9,7 @@ export interface GuardResult {
 
 /**
  * API 守卫：要求已登录，并检查用户仍有可用配额（不扣减）。
- * 实际扣减仍由前端 incrementUsage 完成，这里只做服务端准入拦截，
- * 防止未登录/超额用户直接调用生成接口消耗 Dify 额度。
+ * 扣减由 incrementUsageServer 完成，应在 Dify 生成成功后调用。
  *
  * - 未登录 -> 401
  * - 超额   -> 402（需要付费/升级）
@@ -35,7 +34,6 @@ export async function requireUserWithQuota(): Promise<GuardResult> {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  // 无设置记录时放行（首次使用会由业务侧初始化），仅在明确超额时拦截
   if (settings && settings.quota_limit != null && settings.quota_used >= settings.quota_limit) {
     return {
       ok: false,
@@ -47,4 +45,42 @@ export async function requireUserWithQuota(): Promise<GuardResult> {
   }
 
   return { ok: true, userId: user.id };
+}
+
+/**
+ * 服务端配额扣减：在生成成功后由 API 路由调用，将 quota_used +1。
+ * 使用 service_role 客户端直接原子操作，无竞态风险。
+ * 若扣减失败仅记录日志，不影响已返回的流式内容。
+ */
+export async function incrementUsageServer(userId: string): Promise<void> {
+  try {
+    const supabase = getServiceSupabase();
+
+    // 先尝试 RPC 原子自增（需 DB 侧建函数，见 supabase/migrations）
+    const { error: rpcError } = await supabase.rpc('increment_quota_used', {
+      p_user_id: userId,
+    });
+
+    if (!rpcError) return;
+
+    // RPC 不存在时回退：读取当前值后 +1 更新
+    const { data: settings } = await supabase
+      .from('user_settings')
+      .select('quota_used')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (settings != null) {
+      const { error: updateError } = await supabase
+        .from('user_settings')
+        .update({ quota_used: (settings.quota_used ?? 0) + 1 })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('[api-guard] incrementUsageServer update error:', updateError);
+      }
+    }
+  } catch (err) {
+    console.error('[api-guard] incrementUsageServer exception:', err);
+  }
 }

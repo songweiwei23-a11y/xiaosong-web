@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { saveGenerationHistory, incrementUsage, checkQuota } from '@/lib/history';
+import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCircle, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
@@ -221,7 +221,6 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
 
       if (fullResult) {
         await saveGenerationHistory("标题封面", inputData, fullResult);
-        await incrementUsage();
         await loadTitleHistory();
         setShowDialog(true);
       }

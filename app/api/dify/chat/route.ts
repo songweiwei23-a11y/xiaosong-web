@@ -1,5 +1,5 @@
 ﻿import { NextRequest } from 'next/server'
-import { requireUserWithQuota } from '@/lib/api-guard'
+import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard'
 
 const DIFY_CHATBOT_API_KEY = process.env.DIFY_CHATBOT_API_KEY || ''
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1'
@@ -90,6 +90,9 @@ export async function POST(request: NextRequest) {
             if (done) {
               console.log('✅ 对话流结束，有内容:', hasContent)
               controller.close()
+              if (hasContent && guard.userId) {
+                await incrementUsageServer(guard.userId)
+              }
               break
             }
 

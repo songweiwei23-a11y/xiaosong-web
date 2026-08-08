@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { saveGenerationHistory, incrementUsage, checkQuota } from '@/lib/history';
+import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { extractStrategySummary } from '@/lib/positioning-utils';
@@ -229,10 +229,7 @@ export default function PositioningPage() {
         // 保存生成历史
         await saveGenerationHistory("账号定位", { profileSummary, additionalNotes }, fullResult);
 
-        // 增加配额使用
-        await incrementUsage();
-
-        // 打开持续对话，传递 conversation_id
+        // 增加配额使用        // 打开持续对话，传递 conversation_id
         console.log('🎯 打开对话框，Conversation ID:', conversationId || '无');
         setDialogConversationId(conversationId || undefined);
         setShowDialog(true);

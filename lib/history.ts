@@ -1,6 +1,4 @@
 ﻿import { supabase } from "@/lib/supabase/client";
-import { notify } from '@/components/ui/feedback';
-
 /**
  * 保存生成历史记录到数据库
  * @param taskType - 任务类型（脚本生成、选题策划等）
@@ -49,61 +47,6 @@ export async function saveGenerationHistory(
   }
 }
 
-/**
- * 增加用户使用次数
- * @returns 是否成功
- */
-export async function incrementUsage(): Promise<boolean> {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      return false;
-    }
-
-    const userId = session.user.id;
-
-    // 获取当前设置
-    const { data: settings, error: fetchError } = await supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (fetchError || !settings) {
-      console.error("获取用户设置失败:", fetchError);
-      return false;
-    }
-
-    // 检查配额
-    if (settings.quota_used >= settings.quota_limit) {
-      notify("❌ 已达到使用次数上限，请升级会员或联系管理员");
-      return false;
-    }
-
-    // 增加使用次数
-    const { error: updateError } = await supabase
-      .from("user_settings")
-      .update({ quota_used: settings.quota_used + 1 })
-      .eq("user_id", userId);
-
-    if (updateError) {
-      console.error("更新使用次数失败:", updateError);
-      return false;
-    }
-
-    console.log("✅ 使用次数已更新:", settings.quota_used + 1);
-    return true;
-  } catch (error) {
-    console.error("增加使用次数异常:", error);
-    return false;
-  }
-}
-
-/**
- * 检查用户配额
- * @returns 剩余次数，null表示未登录
- */
 export async function checkQuota(): Promise<number | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { CheckCircle, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { saveGenerationHistory, incrementUsage, checkQuota } from '@/lib/history';
+import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
 
 export default function ReviewPage() {
@@ -194,7 +194,6 @@ export default function ReviewPage() {
             console.log("💾 保存历史记录...", "长度:", fullResult.length);
             const inputData = { draftContent, scriptType, platform, duration };
             await saveGenerationHistory("审稿优化", inputData, fullResult);
-            await incrementUsage();
             console.log("✅ 历史记录已保存");
           } catch (err) {
             console.error("⚠️ 保存失败:", err);

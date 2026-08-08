@@ -4,7 +4,7 @@ import { extractStrategySummary } from '@/lib/positioning-utils';
 
 
 import { useState, useEffect } from "react";
-import { saveGenerationHistory, incrementUsage, checkQuota } from '@/lib/history';
+import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Lightbulb, Loader2, TrendingUp, Users, Target, Sparkles, Grid3x3, Zap, Heart, DollarSign, Eye, Flame, Copy, Download, History, MessageCircle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
