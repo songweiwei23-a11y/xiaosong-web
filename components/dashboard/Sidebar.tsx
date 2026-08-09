@@ -18,6 +18,7 @@ const navigation = [
   { name: "审稿优化", href: "/dashboard/review",       icon: CheckCircle },
   { name: "标题封面", href: "/dashboard/title",        icon: Tag },
   { name: "账号定位", href: "/dashboard/positioning",  icon: Target },
+  { name: "个人档案", href: "/dashboard/profiles",     icon: User },
   { name: "成交理由", href: "/dashboard/deal-reason",  icon: Award },
   { name: "知识库",   href: "/dashboard/knowledge",    icon: BookOpen },
 ];

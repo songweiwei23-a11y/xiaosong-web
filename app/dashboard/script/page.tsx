@@ -1254,13 +1254,13 @@ ${formatRequirements}
                       </p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <button
+                      <button aria-label="继续对话"
                         onClick={() => openContinuousDialog(item.result)}
                         className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
                         title="继续对话"
                       >
                         <MessageCircle className="w-4 h-4" />
-                      </button><button
+                      </button><button aria-label="删除历史记录"
                         onClick={() => deleteHistory(item.id)}
                         className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="删除"
@@ -1295,11 +1295,11 @@ ${formatRequirements}
                 <h2 className="text-2xl font-bold text-foreground">生成结果</h2>
                 {result && (
                   <div className="flex gap-2">
-                    <button onClick={() => { navigator.clipboard.writeText(result); notify("✅ 已复制到剪贴板"); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm transition-colors">
+                    <button aria-label="复制脚本到剪贴板" onClick={() => { navigator.clipboard.writeText(result); notify("✅ 已复制到剪贴板"); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm transition-colors">
                       <Copy className="h-4 w-4" />
                       复制
                     </button>
-                    <button onClick={() => { const blob = new Blob([result], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `脚本-${topic || "未命名"}-${new Date().toLocaleDateString()}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm transition-colors">
+                    <button aria-label="下载脚本文件" onClick={() => { const blob = new Blob([result], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `脚本-${topic || "未命名"}-${new Date().toLocaleDateString()}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm transition-colors">
                       <Download className="h-4 w-4" />
                       下载
                     </button>

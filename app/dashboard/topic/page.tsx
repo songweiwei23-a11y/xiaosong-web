@@ -3,6 +3,7 @@
 import { extractStrategySummary } from '@/lib/positioning-utils';
 
 
+
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Lightbulb, Loader2, TrendingUp, Users, Target, Sparkles, Grid3x3, Zap, Heart, DollarSign, Eye, Flame, Copy, Download, History, MessageCircle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
@@ -13,9 +14,25 @@ import { notify, confirmDialog } from '@/components/ui/feedback';
 // 静态配置与类型已抽离
 import { ALL_DEAL_REASONS } from './constants';
 import type { TopicHistory, Profile, Positioning } from './types';
+import { useGenerationPage } from '@/hooks/useGenerationPage';
 
 export default function TopicPage() {
   // 模式控制
+  
+  // 统一生成页基础能力
+  const {
+    history,
+    loadHistory,
+    deleteHistory,
+    showDialog,
+    dialogInitialContent,
+    openContinuousDialog,
+    closeContinuousDialog,
+    quota,
+    copyToClipboard,
+    downloadAsFile,
+  } = useGenerationPage({ taskType: '选题策划' });
+
   const [mode, setMode] = useState("custom"); // "quick" 或 "custom"
 
   // 档案和定位
@@ -27,9 +44,6 @@ export default function TopicPage() {
   // 历史记录
   const [topicHistory, setTopicHistory] = useState<TopicHistory[]>([]);
 
-  // 持续对话
-  const [showDialog, setShowDialog] = useState(false);
-  const [dialogInitialContent, setDialogInitialContent] = useState("");
 
   // 基础表单字段
   const [accountStage, setAccountStage] = useState("");
@@ -145,24 +159,7 @@ export default function TopicPage() {
     }
   };
 
-  // 删除历史记录
-  const deleteHistory = async (id: string) => {
-    if (!await confirmDialog('确定要删除这条记录吗？', { tone: 'danger', confirmText: '删除', title: '确认删除' })) return;
-    try {
-      const response = await fetch(`/api/topics?id=${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        await loadTopicHistory();
-      }
-    } catch (error) {
-      console.error("删除失败:", error);
-    }
-  };
 
-  // 打开持续对话
-  const openContinuousDialog = (content: string) => {
-    setDialogInitialContent(content);
-    setShowDialog(true);
-  };
 
   // 从账号定位中提取选题策划相关的关键信息
   const extractRelevantPositioningInfo = (fullContent: string): string => {
@@ -1185,7 +1182,7 @@ export default function TopicPage() {
         {/* 生成按钮 */}
         <button
           onClick={handleGenerate}
-          disabled={isGenerating}
+          disabled={isGenerating || (mode === "custom" && !accountStage) || (mode === "quick" && (!selectedProfileId || !selectedPositioningId))}
           className={`w-full py-3 rounded-lg font-semibold text-lg transition-all ${
             isGenerating
               ? "bg-muted text-white cursor-not-allowed"
@@ -1303,7 +1300,7 @@ export default function TopicPage() {
       <ContinuousDialog
         taskType="选题策划"
         isOpen={showDialog}
-        onClose={() => setShowDialog(false)}
+        onClose={closeContinuousDialog}
         initialContent={dialogInitialContent}
       />
 
