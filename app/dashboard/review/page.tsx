@@ -1,13 +1,29 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare } from "lucide-react";
+import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
+import { useGenerationPage } from '@/hooks/useGenerationPage';
 
 export default function ReviewPage() {
   // 草稿内容
+
+  // 统一生成页基础能力
+  const {
+    history,
+    loadHistory,
+    deleteHistory,
+    showDialog,
+    dialogInitialContent,
+    openContinuousDialog,
+    closeContinuousDialog,
+    quota: hookQuota,
+    copyToClipboard,
+    downloadAsFile,
+  } = useGenerationPage({ taskType: '审稿优化', historyApiPath: '/api/reviews' });
+
   const [draftContent, setDraftContent] = useState("");
   const [wordCount, setWordCount] = useState(0);
   const [estimatedDuration, setEstimatedDuration] = useState(0);
@@ -190,12 +206,8 @@ export default function ReviewPage() {
       // 保存生成历史记录
       if (fullResult && fullResult.length > 50) {
         setTimeout(async () => {
-          try {
-            console.log("💾 保存历史记录...", "长度:", fullResult.length);
-            const inputData = { draftContent, scriptType, platform, duration };
-            await saveGenerationHistory("审稿优化", inputData, fullResult);
-            console.log("✅ 历史记录已保存");
-          } catch (err) {
+          try {            const inputData = { draftContent, scriptType, platform, duration };
+            await saveGenerationHistory("审稿优化", inputData, fullResult);          } catch (err) {
             console.error("⚠️ 保存失败:", err);
           }
         }, 500);
@@ -204,7 +216,7 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50">
+    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50">
       {/* 左侧输入面板 */}
       <div className="w-[600px] bg-card shadow-2xl p-6 space-y-5 overflow-y-auto">
         
@@ -506,6 +518,16 @@ export default function ReviewPage() {
           </div>
         </div>
 
+
+        {/* 配额显示 */}
+        {hookQuota !== null && (
+          <div className="mb-4 p-3 bg-muted rounded-lg text-sm text-center">
+            <span className={hookQuota > 10 ? "text-green-600 font-semibold" : hookQuota > 0 ? "text-orange-600 font-semibold" : "text-red-600 font-semibold"}>
+              💎 剩余配额：{hookQuota} 次
+            </span>
+          </div>
+        )}
+
         {/* 生成按钮 */}
         <button
           onClick={handleGenerate}
@@ -539,6 +561,22 @@ export default function ReviewPage() {
                 <CheckCircle className="w-6 h-6 text-green-600" />
                 审稿报告
               </h2>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => copyToClipboard(result)}
+                  className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  复制报告
+                </button>
+                <button
+                  onClick={() => downloadAsFile(result, `审稿报告-${new Date().toLocaleDateString()}.txt`)}
+                  className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  下载报告
+                </button>
+              </div>
               <div className="prose prose-slate max-w-none">
                 <ReactMarkdown>{result}</ReactMarkdown>
               </div>

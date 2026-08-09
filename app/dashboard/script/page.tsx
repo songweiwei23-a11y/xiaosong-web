@@ -42,8 +42,6 @@ import {
 } from "./constants";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useScriptHistory } from "./useScriptHistory";
-
-
 export default function ScriptPage() {
   const [scriptType, setScriptType] = useState("teach");
   const [topic, setTopic] = useState("");
@@ -538,9 +536,7 @@ ${formatRequirements}
       // 保存生成历史记录
       if (fullResult && fullResult.length > 50) {
         setTimeout(async () => {
-          try {
-            console.log("💾 保存历史记录...", "长度:", fullResult.length);
-            const inputData = {
+          try {            const inputData = {
               topic, scriptType, platform,
               duration: durationMode === "ai"
                 ? "AI推荐"
@@ -548,9 +544,7 @@ ${formatRequirements}
                   ? `${customDuration}秒`
                   : duration
             };
-            await saveGenerationHistory("脚本生成", inputData, fullResult);
-            console.log("✅ 历史记录已保存");
-            
+            await saveGenerationHistory("脚本生成", inputData, fullResult);            
             // 重新加载历史记录
             await loadScriptHistory();
 
@@ -573,9 +567,7 @@ ${formatRequirements}
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(scriptData),
               });
-              if (scriptRes.ok) {
-                console.log("✅ 脚本已保存到数据库");
-              }
+              if (scriptRes.ok) {              }
             } catch (err) {
               console.error("保存脚本失败:", err);
             }

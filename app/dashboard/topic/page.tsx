@@ -31,7 +31,7 @@ export default function TopicPage() {
     quota,
     copyToClipboard,
     downloadAsFile,
-  } = useGenerationPage({ taskType: '选题策划' });
+  } = useGenerationPage({ taskType: '选题策划', historyApiPath: '/api/topics' });
 
   const [mode, setMode] = useState("custom"); // "quick" 或 "custom"
 
@@ -42,7 +42,7 @@ export default function TopicPage() {
   const [selectedPositioningId, setSelectedPositioningId] = useState("");
 
   // 历史记录
-  const [topicHistory, setTopicHistory] = useState<TopicHistory[]>([]);
+  // topicHistory 已改用 hook 的 history
 
 
   // 基础表单字段
@@ -145,19 +145,6 @@ export default function TopicPage() {
     }
   };
 
-  // 加载历史记录
-  const loadTopicHistory = async () => {
-    try {
-      const response = await fetch("/api/topics");
-      const data = await response.json();
-      // API直接返回数组
-      if (Array.isArray(data)) {
-        setTopicHistory(data);
-      }
-    } catch (error) {
-      console.error("加载历史记录失败:", error);
-    }
-  };
 
 
 
@@ -370,7 +357,7 @@ export default function TopicPage() {
   useEffect(() => {
     loadProfiles();
     loadPositionings();
-    loadTopicHistory();
+    loadHistory();
   }, []);
 
   // 生成选题函数
@@ -733,7 +720,7 @@ export default function TopicPage() {
           })
         });
         if (response.ok) {
-          await loadTopicHistory();
+          await loadHistory();
         }
       }
 
@@ -746,7 +733,7 @@ export default function TopicPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-amber-50">
+    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-amber-50">
       
       {/* 左侧输入面板 */}
       <div className="w-[580px] bg-card shadow-2xl p-6 space-y-5 overflow-y-auto">
@@ -1180,6 +1167,16 @@ export default function TopicPage() {
         </div>
 
         {/* 生成按钮 */}
+
+        {/* 配额显示 */}
+        {quota !== null && (
+          <div className="mb-4 p-3 bg-muted rounded-lg text-sm text-center">
+            <span className={quota > 10 ? "text-green-600 font-semibold" : quota > 0 ? "text-orange-600 font-semibold" : "text-red-600 font-semibold"}>
+              💎 剩余配额：{quota} 次
+            </span>
+          </div>
+        )}
+
         <button
           onClick={handleGenerate}
           disabled={isGenerating || (mode === "custom" && !accountStage) || (mode === "quick" && (!selectedProfileId || !selectedPositioningId))}
@@ -1207,15 +1204,15 @@ export default function TopicPage() {
       <div className="flex-1 overflow-y-auto p-8">
         
         {/* 历史记录 */}
-        {topicHistory.length > 0 && (
+        {history.length > 0 && (
           <div className="bg-card rounded-lg shadow-lg p-6 mb-6">
             <div className="flex items-center gap-2 mb-4">
               <History className="w-5 h-5 text-orange-600" />
               <h3 className="text-lg font-semibold text-foreground">历史选题记录</h3>
-              <span className="text-sm text-muted-foreground">({topicHistory.length})</span>
+              <span className="text-sm text-muted-foreground">({history.length})</span>
             </div>
             <div className="space-y-3 max-h-60 overflow-y-auto">
-              {topicHistory.map((item) => (
+              {history.map((item) => (
                 <div
                   key={item.id}
                   className="p-3 bg-muted rounded-lg border border-border hover:border-orange-300 transition-colors"
@@ -1223,7 +1220,7 @@ export default function TopicPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground line-clamp-2">
-                        {(item.result || item.content || "").substring(0, 100)}...
+                        {(item.result || "").substring(0, 100)}...
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(item.created_at).toLocaleString('zh-CN')}
@@ -1231,7 +1228,7 @@ export default function TopicPage() {
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <button
-                        onClick={() => openContinuousDialog(item.result || item.content || "")}
+                        onClick={() => openContinuousDialog(item.result || "")}
                         className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
                         title="继续对话"
                       >
@@ -1264,6 +1261,13 @@ export default function TopicPage() {
                 >
                   <Copy className="w-4 h-4" />
                   复制全部
+                </button>
+                <button
+                  onClick={() => downloadAsFile(result, `选题策划-${new Date().toLocaleDateString()}.txt`)}
+                  className="px-4 py-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  下载文件
                 </button>
               </div>
             </div>

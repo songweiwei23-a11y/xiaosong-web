@@ -88,7 +88,6 @@ export default function PositioningPage() {
         const active = profiles.find((p: Profile) => p.id === activeId)
         if (active) {
           setActiveProfile(active)
-          console.log('✅ 已加载档案:', active.profile_name)
         }
       }
     } catch (error) {
@@ -173,8 +172,6 @@ export default function PositioningPage() {
 - 竞争劣势：${activeProfile.competitive_weakness || '未设置'}
 `.trim()
 
-    console.log('📋 档案信息:', profileSummary)
-
     try {
       const response = await fetch("/api/dify/stream", {
         method: "POST",
@@ -212,7 +209,6 @@ export default function PositioningPage() {
                 // 捕获 conversation_id
                 if (data.conversation_id) {
                   conversationId = data.conversation_id;
-                  console.log('✅ 捕获到 Conversation ID:', conversationId);
                 }
               } catch (e) {
                 console.error("解析失败:", e);
@@ -230,7 +226,6 @@ export default function PositioningPage() {
         await saveGenerationHistory("账号定位", { profileSummary, additionalNotes }, fullResult);
 
         // 增加配额使用        // 打开持续对话，传递 conversation_id
-        console.log('🎯 打开对话框，Conversation ID:', conversationId || '无');
         setDialogConversationId(conversationId || undefined);
         setShowDialog(true);
       }
@@ -264,7 +259,6 @@ export default function PositioningPage() {
 
       if (res.ok) {
         const newPositioning = await res.json()
-        console.log('✅ 定位已保存:', newPositioning.id)
         // 重新加载定位列表
         loadPositionings()
       }
@@ -279,7 +273,6 @@ export default function PositioningPage() {
     try {
       const res = await fetch(`/api/positioning?id=${id}`, { method: 'DELETE' })
       if (res.ok) {
-        console.log('✅ 定位已删除')
         loadPositionings()
         if (selectedPositioning?.id === id) {
           setSelectedPositioning(null)

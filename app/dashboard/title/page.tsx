@@ -103,9 +103,7 @@ export default function TitlePage() {
     
     try {
       const res = await fetch(`/api/titles?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        console.log('✅ 标题已删除');
-        loadTitleHistory();
+      if (res.ok) {        loadTitleHistory();
         if (selectedHistory?.id === id) {
           setSelectedHistory(null);
           setResult('');

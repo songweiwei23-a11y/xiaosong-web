@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
-import { Film, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Film, Copy, Download, Loader2, Sparkles, Wand2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { notify } from '@/components/ui/feedback';
+import { useGenerationPage } from '@/hooks/useGenerationPage';
 
 const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
 const DURATIONS = ["15秒", "30秒", "60秒", "90秒", "3-5分钟"];
@@ -41,6 +42,21 @@ const VISUAL_STYLES = [
 ];
 
 export default function StoryboardPage() {
+
+  // 统一生成页基础能力
+  const {
+    history,
+    loadHistory,
+    deleteHistory,
+    showDialog,
+    dialogInitialContent,
+    openContinuousDialog,
+    closeContinuousDialog,
+    quota: hookQuota,
+    copyToClipboard,
+    downloadAsFile,
+  } = useGenerationPage({ taskType: '分镜脚本', historyApiPath: '/api/storyboards' });
+
   const [scriptContent, setscriptContent] = useState("");
   const [platform, setPlatform] = useState("抖音");
   const [duration, setDuration] = useState("60秒");
@@ -181,12 +197,8 @@ export default function StoryboardPage() {
       // 保存生成历史记录
       if (fullResult && fullResult.length > 50) {
         setTimeout(async () => {
-          try {
-            console.log("💾 保存历史记录...", "长度:", fullResult.length);
-            const inputData = { scriptContent, platform, duration, contentType, visualStyle };
-            await saveGenerationHistory("分镜脚本", inputData, fullResult);
-            console.log("✅ 历史记录已保存");
-          } catch (err) {
+          try {            const inputData = { scriptContent, platform, duration, contentType, visualStyle };
+            await saveGenerationHistory("分镜脚本", inputData, fullResult);          } catch (err) {
             console.error("⚠️ 保存失败:", err);
           }
         }, 500);
@@ -195,7 +207,7 @@ export default function StoryboardPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-green-50 via-teal-50 to-blue-50">
+    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-green-50 via-teal-50 to-blue-50">
       {/* 左侧面板 - 简洁版 */}
       <div className="w-[400px] bg-card shadow-2xl p-6 space-y-6 overflow-y-auto">
         
@@ -369,6 +381,16 @@ export default function StoryboardPage() {
           </div>
         </div>
 
+
+        {/* 配额显示 */}
+        {hookQuota !== null && (
+          <div className="mb-4 p-3 bg-muted rounded-lg text-sm text-center">
+            <span className={hookQuota > 10 ? "text-green-600 font-semibold" : hookQuota > 0 ? "text-orange-600 font-semibold" : "text-red-600 font-semibold"}>
+              💎 剩余配额：{hookQuota} 次
+            </span>
+          </div>
+        )}
+
         {/* 生成按钮 */}
         <button
           onClick={handleGenerate}
@@ -398,6 +420,22 @@ export default function StoryboardPage() {
                 <Film className="w-6 h-6 text-green-600" />
                 AI生成的分镜脚本
               </h2>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => copyToClipboard(result)}
+                  className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  复制脚本
+                </button>
+                <button
+                  onClick={() => downloadAsFile(result, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
+                  className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  下载脚本
+                </button>
+              </div>
               <div className="prose prose-slate max-w-none">
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
