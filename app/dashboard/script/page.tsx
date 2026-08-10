@@ -1385,7 +1385,7 @@ ${formatRequirements}
       />
 
       {/* 额度提醒弹窗 */}
-      {showQuotaReminder && (
+      {showQuotaReminder && quotaWarnings.length > 0 && (
         <QuotaReminder
           open={showQuotaReminder}
           onClose={() => setShowQuotaReminder(false)}
