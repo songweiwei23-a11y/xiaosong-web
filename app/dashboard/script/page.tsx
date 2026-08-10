@@ -124,6 +124,14 @@ export default function ScriptPage() {
 
   const checkQuotaStatus = useCallback(async () => {
     console.log("🔍 开始检查用户额度...");
+    
+    // 检查本次会话是否已经提醒过
+    const hasShownReminder = sessionStorage.getItem('quota_reminder_shown');
+    if (hasShownReminder === 'true') {
+      console.log("✓ 本次会话已提醒过，跳过额度检查");
+      return;
+    }
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -1388,7 +1396,12 @@ ${formatRequirements}
       {showQuotaReminder && quotaWarnings.length > 0 && (
         <QuotaReminder
           open={showQuotaReminder}
-          onClose={() => setShowQuotaReminder(false)}
+          onClose={() => {
+            setShowQuotaReminder(false);
+            // 记录本次会话已提醒过
+            sessionStorage.setItem('quota_reminder_shown', 'true');
+            console.log("✓ 已记录提醒状态，本次会话不再提醒");
+          }}
           warnings={quotaWarnings}
           planName={planName}
         />
