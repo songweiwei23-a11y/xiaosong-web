@@ -1458,12 +1458,6 @@ ${formatRequirements}
         />
       )}
 
-      {/* 额度用尽页面覆盖层 */}
-      {quotaExhausted && (
-        <div className="fixed inset-0 bg-background z-50 overflow-auto">
-          <QuotaExhausted planName={planName} feature="脚本生成" />
-        </div>
-      )}
     </div>
   );
 }
