@@ -17,7 +17,7 @@ import {
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { evaluateScriptQualityStrict, formatQualityReport } from "@/lib/quality-checker";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sparkles, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { notify } from '@/components/ui/feedback';
@@ -122,7 +122,7 @@ export default function ScriptPage() {
     checkQuota();
   }, []);
 
-  const checkQuotaStatus = async () => {
+  const checkQuotaStatus = useCallback(async () => {
     console.log("🔍 开始检查用户额度...");
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -155,7 +155,7 @@ export default function ScriptPage() {
       console.error("检查额度失败:", error);
       // 不阻塞页面正常使用
     }
-  };
+  }, []);
 
   const loadProfiles = async () => {
     try {
