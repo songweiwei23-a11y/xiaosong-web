@@ -112,30 +112,48 @@ export default function ScriptPage() {
 
   // 检查额度
   useEffect(() => {
-    checkQuotaStatus();
+    const checkQuota = async () => {
+      try {
+        await checkQuotaStatus();
+      } catch (error) {
+        console.error("额度检查初始化失败:", error);
+      }
+    };
+    checkQuota();
   }, []);
 
   const checkQuotaStatus = async () => {
+    console.log("🔍 开始检查用户额度...");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        console.log("用户未登录，跳过额度检查");
+        return;
+      }
 
       const userId = session.user.id;
       const res = await fetch(`/api/quota/check?userId=${userId}`);
       
-      if (res.ok) {
-        const data = await res.json();
-        setPlanName(data.planName || "免费版");
-        
-        if (data.exhausted) {
-          setQuotaExhausted(true);
-        } else if (data.warnings && data.warnings.length > 0) {
-          setQuotaWarnings(data.warnings);
-          setShowQuotaReminder(true);
-        }
+      if (!res.ok) {
+        console.error("额度检查API返回错误:", res.status);
+        return;
+      }
+      
+      const data = await res.json();
+      
+      if (data.planName) {
+        setPlanName(data.planName);
+      }
+      
+      if (data.exhausted) {
+        setQuotaExhausted(true);
+      } else if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
+        setQuotaWarnings(data.warnings);
+        setShowQuotaReminder(true);
       }
     } catch (error) {
       console.error("检查额度失败:", error);
+      // 不阻塞页面正常使用
     }
   };
 
