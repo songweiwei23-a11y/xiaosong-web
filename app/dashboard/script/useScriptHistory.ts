@@ -23,7 +23,7 @@ export function useScriptHistory() {
         });
       }
     } catch (error) {
-      console.error("鍔犺浇鍘嗗彶璁板綍澶辫触:", error);
+      console.error("加载历史记录失败:", error);
     }
   }, []);
 
@@ -33,8 +33,8 @@ export function useScriptHistory() {
       
       const confirmed = await confirmDialog("纭畾瑕佸垹闄よ繖鏉¤褰曞悧锛?, {
         tone: "danger",
-        confirmText: "鍒犻櫎",
-        title: "纭鍒犻櫎",
+        confirmText: "删除",
+        title: "纭删除",
       });
       
       if (!confirmed) return;
@@ -45,17 +45,17 @@ export function useScriptHistory() {
         const response = await fetch(`/api/script-history?id=${id}`, { method: "DELETE" });
         if (response.ok) {
           setScriptHistory(prev => prev.filter(item => item.id !== id));
-          notify("鉁?鍒犻櫎鎴愬姛");
+          notify("鉁?删除鎴愬姛");
           
           setTimeout(() => {
             loadScriptHistory();
           }, 300);
         } else {
-          notify("鉁?鍒犻櫎澶辫触");
+          notify("鉁?删除澶辫触");
         }
       } catch (error) {
-        console.error("鍒犻櫎澶辫触:", error);
-        notify("鉁?鍒犻櫎澶辫触");
+        console.error("删除澶辫触:", error);
+        notify("鉁?删除澶辫触");
       } finally {
         setTimeout(() => {
           setIsDeleting(false);

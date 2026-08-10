@@ -1,0 +1,12 @@
+﻿--- a/app/dashboard/script/page.tsx
++++ b/app/dashboard/script/page.tsx
+@@ -1333,7 +1333,7 @@
+       
+       {/* 额度提醒弹窗 */}
+       {showQuotaReminder && quotaWarnings.length > 0 && (
+-        <QuotaReminder
++        <QuotaReminder 
+           open={showQuotaReminder}
+           onClose={() => setShowQuotaReminder(false)}
+           warnings={quotaWarnings}
+
