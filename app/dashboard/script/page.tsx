@@ -154,7 +154,14 @@ export default function ScriptPage() {
       }
       
       if (data.exhausted) {
-        setQuotaExhausted(true);
+        // 检查本次会话是否已经看过额度用尽提示
+        const hasSeenExhausted = sessionStorage.getItem('quota_exhausted_seen');
+        if (hasSeenExhausted !== 'true') {
+          setQuotaExhausted(true);
+          console.log("⚠️ 额度已用尽，显示提示页面");
+        } else {
+          console.log("✓ 本次会话已看过额度用尽提示，允许继续浏览");
+        }
       } else if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
         setQuotaWarnings(data.warnings);
         setShowQuotaReminder(true);
