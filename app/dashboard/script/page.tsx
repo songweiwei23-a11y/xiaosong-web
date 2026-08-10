@@ -42,6 +42,9 @@ import {
 } from "./constants";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useScriptHistory } from "./useScriptHistory";
+import QuotaReminder from "@/components/quota-reminder";
+import QuotaExhausted from "@/components/quota-exhausted";
+import { supabase } from "@/lib/supabase/client";
 export default function ScriptPage() {
   const [scriptType, setScriptType] = useState("teach");
   const [topic, setTopic] = useState("");
@@ -94,12 +97,47 @@ export default function ScriptPage() {
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const [selectedPositioningId, setSelectedPositioningId] = useState("");
 
+  // 额度提醒相关状态
+  const [quotaWarnings, setQuotaWarnings] = useState<any[]>([]);
+  const [showQuotaReminder, setShowQuotaReminder] = useState(false);
+  const [quotaExhausted, setQuotaExhausted] = useState(false);
+  const [planName, setPlanName] = useState("免费版");
+
 
   // 加载档案和定位
   useEffect(() => {
     loadProfiles();
     loadPositionings();
   }, []);
+
+  // 检查额度
+  useEffect(() => {
+    checkQuotaStatus();
+  }, []);
+
+  const checkQuotaStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const userId = session.user.id;
+      const res = await fetch(`/api/quota/check?userId=${userId}`);
+      
+      if (res.ok) {
+        const data = await res.json();
+        setPlanName(data.planName || "免费版");
+        
+        if (data.exhausted) {
+          setQuotaExhausted(true);
+        } else if (data.warnings && data.warnings.length > 0) {
+          setQuotaWarnings(data.warnings);
+          setShowQuotaReminder(true);
+        }
+      }
+    } catch (error) {
+      console.error("检查额度失败:", error);
+    }
+  };
 
   const loadProfiles = async () => {
     try {
@@ -1325,6 +1363,23 @@ ${formatRequirements}
         initialContent={dialogInitialContent}
         taskType="脚本生成"
       />
+
+      {/* 额度提醒弹窗 */}
+      {showQuotaReminder && (
+        <QuotaReminder
+          open={showQuotaReminder}
+          onClose={() => setShowQuotaReminder(false)}
+          warnings={quotaWarnings}
+          planName={planName}
+        />
+      )}
+
+      {/* 额度用尽页面覆盖层 */}
+      {quotaExhausted && (
+        <div className="fixed inset-0 bg-background z-50 overflow-auto">
+          <QuotaExhausted planName={planName} feature="脚本生成" />
+        </div>
+      )}
     </div>
   );
 }
