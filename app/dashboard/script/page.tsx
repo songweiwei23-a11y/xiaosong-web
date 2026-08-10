@@ -158,11 +158,12 @@ export default function ScriptPage() {
   }, []);
 
   const loadProfiles = async () => {
+    console.log("🔍 开始加载档案...");
     try {
       const res = await fetch("/api/profiles");
       if (res.ok) {
         const data = await res.json();
-        setProfiles(data);
+        console.log("✅ 档案加载成功:", data.length, "条"); setProfiles(data);
       }
     } catch (error) {
       console.error("加载档案失败:", error);
@@ -170,11 +171,12 @@ export default function ScriptPage() {
   };
 
   const loadPositionings = async () => {
+    console.log("🔍 开始加载定位...");
     try {
       const res = await fetch("/api/positioning");
       if (res.ok) {
         const data = await res.json();
-        setPositionings(data);
+        console.log("✅ 定位加载成功:", data.length, "条"); setPositionings(data);
       }
     } catch (error) {
       console.error("加载定位失败:", error);
