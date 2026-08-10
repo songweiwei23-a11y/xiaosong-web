@@ -18,7 +18,7 @@ import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { evaluateScriptQualityStrict, formatQualityReport } from "@/lib/quality-checker";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sparkles, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
+import { Sparkles, AlertCircle, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { notify } from '@/components/ui/feedback';
 
@@ -1306,7 +1306,40 @@ ${formatRequirements}
       <div className="flex-1 overflow-y-auto p-8 bg-card">
         <div className="mx-auto max-w-4xl">
 
-        {/* 历史记录 */}
+        {/* 额度用尽提示条 */}
+      {quotaExhausted && showQuotaBanner && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-red-900 dark:text-red-100">脚本生成额度已用完</p>
+              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                您当前使用的是 <span className="font-semibold">{planName}</span>，升级套餐解锁更多额度
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/membership">
+              <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                立即升级
+              </Button>
+            </Link>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => {
+                setShowQuotaBanner(false);
+                localStorage.setItem('quota_banner_closed_time', Date.now().toString());
+                console.log("✓ 用户关闭提示条，24小时内不再显示");
+              }}
+            >
+              我知道了
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 历史记录 */}
         {scriptHistory.length > 0 && (
           <div className="bg-card rounded-lg shadow-lg p-6 mb-6 border border-border">
             <div className="flex items-center gap-2 mb-4">
