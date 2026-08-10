@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
               console.log('✅ 对话流结束，有内容:', hasContent)
               controller.close()
               if (hasContent && guard.userId) {
-                await incrementUsageServer(guard.userId)
+                await incrementUsageServer(guard.userId, 'chat')
               }
               break
             }
