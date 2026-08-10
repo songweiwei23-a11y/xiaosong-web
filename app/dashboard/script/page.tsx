@@ -125,11 +125,15 @@ export default function ScriptPage() {
   const checkQuotaStatus = useCallback(async () => {
     console.log("🔍 开始检查用户额度...");
     
-    // 检查本次会话是否已经提醒过
-    const hasShownReminder = sessionStorage.getItem('quota_reminder_shown');
-    if (hasShownReminder === 'true') {
-      console.log("✓ 本次会话已提醒过，跳过额度检查");
-      return;
+    // 检查是否在24小时内已经提醒过
+    const lastReminderTime = localStorage.getItem('quota_reminder_time');
+    if (lastReminderTime) {
+      const timeDiff = Date.now() - parseInt(lastReminderTime);
+      const hours = timeDiff / (1000 * 60 * 60);
+      if (hours < 24) {
+        console.log(`✓ ${hours.toFixed(1)}小时内已提醒过，跳过额度检查`);
+        return;
+      }
     }
     
     try {
@@ -155,12 +159,19 @@ export default function ScriptPage() {
       
       if (data.exhausted) {
         // 检查本次会话是否已经看过额度用尽提示
-        const hasSeenExhausted = sessionStorage.getItem('quota_exhausted_seen');
-        if (hasSeenExhausted !== 'true') {
+        const lastExhaustedTime = localStorage.getItem('quota_exhausted_time');
+        let shouldShow = true;
+        if (lastExhaustedTime) {
+          const timeDiff = Date.now() - parseInt(lastExhaustedTime);
+          const hours = timeDiff / (1000 * 60 * 60);
+          shouldShow = hours >= 24;
+          console.log(`⏰ 距离上次提示已过 ${hours.toFixed(1)} 小时`);
+        }
+        if (shouldShow) {
           setQuotaExhausted(true);
           console.log("⚠️ 额度已用尽，显示提示页面");
         } else {
-          console.log("✓ 本次会话已看过额度用尽提示，允许继续浏览");
+          console.log("✓ 24小时内已看过额度用尽提示，允许继续浏览");
         }
       } else if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
         setQuotaWarnings(data.warnings);
@@ -1406,8 +1417,8 @@ ${formatRequirements}
           onClose={() => {
             setShowQuotaReminder(false);
             // 记录本次会话已提醒过
-            sessionStorage.setItem('quota_reminder_shown', 'true');
-            console.log("✓ 已记录提醒状态，本次会话不再提醒");
+            localStorage.setItem('quota_reminder_time', Date.now().toString());
+            console.log("✓ 已记录提醒时间，24小时内不再提醒");
           }}
           warnings={quotaWarnings}
           planName={planName}
