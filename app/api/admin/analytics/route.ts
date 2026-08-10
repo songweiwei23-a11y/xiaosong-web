@@ -1,98 +1,159 @@
-import { NextResponse } from "next/server";
-import { requireAdmin, getServiceSupabase } from "@/lib/admin-auth";
+﻿import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/admin-auth';
 
-export const dynamic = "force-dynamic";
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
-      return NextResponse.json({ error: "无管理员权限" }, { status: 403 });
+      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     }
 
-    const supabase = getServiceSupabase();
+    const { searchParams } = new URL(request.url);
+    const timeRange = searchParams.get('timeRange') || '30d';
 
-    // 获取所有统计数据
-    const { data: { users } } = await supabase.auth.admin.listUsers();
-    const { data: settings } = await supabase.from("user_settings").select("*");
-    const { data: history } = await supabase.from("script_history").select("*");
+    // 计算时间范围
+    const now = new Date();
+    const daysAgo = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+    const startDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
-    // 统计用户数据
-    const totalUsers = users.length;
-    const freeUsers = settings?.filter(s => s.subscription_tier === "free").length || 0;
-    const proUsers = settings?.filter(s => s.subscription_tier === "pro").length || 0;
-    const premiumUsers = settings?.filter(s => s.subscription_tier === "premium").length || 0;
+    // 1. 用户统计
+    const { count: totalUsers } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
 
-    // 统计功能使用
-    const taskStats: Record<string, number> = {};
-    history?.forEach(h => {
-      taskStats[h.task_type] = (taskStats[h.task_type] || 0) + 1;
-    });
+    const { count: newUsers } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', startDate.toISOString());
 
-    // 活跃用户（最近7天有使用记录）
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const activeUsers = new Set(
-      history?.filter(h => new Date(h.created_at) > sevenDaysAgo)
-        .map(h => h.user_id)
-    ).size;
+    // 2. 活跃用户
+    const { data: quotasData } = await supabase
+      .from('user_quotas')
+      .select('user_id, updated_at')
+      .gte('updated_at', startDate.toISOString());
 
-    // 今日新增用户
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const newUsersToday = users.filter(u => new Date(u.created_at) >= today).length;
+    const activeUsers = quotasData ? new Set(quotasData.map(q => q.user_id)).size : 0;
 
-    // 今日使用次数
-    const usagesToday = history?.filter(h => new Date(h.created_at) >= today).length || 0;
+    // 3. 收入统计（从订单表）
+    const { data: paidOrders } = await supabase
+      .from('payment_orders')
+      .select('amount, created_at')
+      .eq('status', 'approved')
+      .gte('created_at', startDate.toISOString());
 
-    // 按日期统计使用量（最近30天）
-    const last30Days = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      return date.toISOString().split('T')[0];
-    }).reverse();
+    const totalRevenue = (paidOrders || []).reduce((sum, order) => sum + order.amount, 0);
 
-    const dailyUsage = last30Days.map(date => {
-      const count = history?.filter(h =>
-        h.created_at.startsWith(date)
-      ).length || 0;
-      return { date, count };
-    });
+    // 4. 功能使用统计
+    const { data: allQuotas } = await supabase
+      .from('user_quotas')
+      .select('*');
 
-    // 功能使用排行
-    const featureRanking = Object.entries(taskStats)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-
-    // 用户增长趋势（最近30天）
-    const userGrowth = last30Days.map(date => {
-      const count = users.filter(u =>
-        u.created_at.split('T')[0] <= date
-      ).length;
-      return { date, count };
-    });
-
-    return NextResponse.json({
-      overview: {
-        totalUsers,
-        freeUsers,
-        proUsers,
-        premiumUsers,
-        activeUsers,
-        newUsersToday,
-        usagesToday,
-        totalUsages: history?.length || 0,
+    const featureUsage = [
+      {
+        name: '脚本生成',
+        key: 'script',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.script_used || 0), 0),
+        icon: 'FileText',
       },
-      taskStats,
-      featureRanking,
-      dailyUsage,
-      userGrowth,
+      {
+        name: '选题策划',
+        key: 'topic',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.topic_used || 0), 0),
+        icon: 'Lightbulb',
+      },
+      {
+        name: '账号定位',
+        key: 'positioning',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.positioning_used || 0), 0),
+        icon: 'Target',
+      },
+      {
+        name: '自由对话',
+        key: 'freeChat',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.free_chat_used || 0), 0),
+        icon: 'MessageCircle',
+      },
+      {
+        name: '分镜脚本',
+        key: 'storyboard',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.storyboard_used || 0), 0),
+        icon: 'Film',
+      },
+      {
+        name: '审稿优化',
+        key: 'review',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.review_used || 0), 0),
+        icon: 'CheckCircle',
+      },
+      {
+        name: '标题封面',
+        key: 'title',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.title_used || 0), 0),
+        icon: 'Tag',
+      },
+      {
+        name: '成交理由',
+        key: 'dealReason',
+        usage: (allQuotas || []).reduce((sum, q) => sum + (q.deal_reason_used || 0), 0),
+        icon: 'DollarSign',
+      },
+    ].sort((a, b) => b.usage - a.usage);
+
+    // 5. 会员分布
+    const { data: subscriptions } = await supabase
+      .from('subscriptions')
+      .select('plan, status')
+      .eq('status', 'active');
+
+    const planDistribution = {
+      free: 0,
+      basic: 0,
+      pro: 0,
+      enterprise: 0,
+    };
+
+    (subscriptions || []).forEach((sub: any) => {
+      const plan = sub.plan || 'free';
+      if (plan in planDistribution) {
+        planDistribution[plan as keyof typeof planDistribution]++;
+      }
     });
 
-  } catch (error: any) {
+    const paidUsers = Object.values(planDistribution).reduce((a, b) => a + b, 0) - planDistribution.free;
+    planDistribution.free = (totalUsers || 0) - paidUsers;
+
+    // 6. 转化率
+    const conversionRate = totalUsers ? ((paidUsers / totalUsers) * 100).toFixed(2) : '0';
+
+    // 7. 平均使用次数
+    const totalUsage = featureUsage.reduce((sum, f) => sum + f.usage, 0);
+    const avgUsagePerUser = totalUsers ? Math.round(totalUsage / totalUsers) : 0;
+
     return NextResponse.json({
-      error: "服务器错误",
-      details: error.message
-    }, { status: 500 });
+      timeRange,
+      stats: {
+        totalUsers: totalUsers || 0,
+        newUsers: newUsers || 0,
+        activeUsers,
+        totalRevenue,
+        paidUsers,
+        conversionRate: parseFloat(conversionRate),
+        avgUsagePerUser,
+      },
+      featureUsage,
+      planDistribution,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('获取分析数据失败:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

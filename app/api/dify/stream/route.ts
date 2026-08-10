@@ -5,6 +5,23 @@ import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
+// 将任务类型映射到功能代码
+function getFeatureFromTaskType(taskType: string): string {
+  const mapping: Record<string, string> = {
+    '脚本生成': 'script',
+    '选题策划': 'topic',
+    '分镜脚本': 'storyboard',
+    '审稿优化': 'review',
+    '标题封面': 'title',
+    '账号定位': 'positioning',
+    '成交理由': 'dealReason',
+    '自由对话': 'freeChat',
+    '知识库': 'knowledge'
+  };
+  return mapping[taskType] || 'script'; // 默认为script
+}
+
+
 export async function POST(req: NextRequest) {
   try {
     const guard = await requireUserWithQuota();
@@ -481,7 +498,7 @@ export async function POST(req: NextRequest) {
 
           // 生成成功（有内容）后，服务端扣减一次配额
           if (totalChunks > 0 && guard.userId) {
-            await incrementUsageServer(guard.userId);
+            await incrementUsageServer(guard.userId, getFeatureFromTaskType(body.taskType));
           }
           
           // 保存对话历史

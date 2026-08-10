@@ -1,9 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { LogIn, Mail, Lock, Sparkles } from "lucide-react";
+import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -28,11 +30,13 @@ export default function LoginPage() {
 
         if (error) throw error;
         
-        setMessage("登录成功！");
-        router.push("/dashboard");
-        router.refresh();
+        setMessage("登录成功！正在跳转...");
+        setTimeout(() => {
+          router.push("/dashboard");
+          router.refresh();
+        }, 500);
       } else {
-        // 注册 - 禁用邮箱验证,直接创建账号
+        // 注册
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -46,45 +50,68 @@ export default function LoginPage() {
 
         if (error) throw error;
 
-        // 检查用户是否需要邮箱验证
         if (data?.user?.identities?.length === 0) {
           setMessage("该邮箱已注册，请直接登录。");
         } else {
           setMessage("注册成功！请切换到登录标签页进行登录。");
+          setTimeout(() => setIsLogin(true), 1500);
         }
       }
     } catch (error: any) {
       console.error("Auth error:", error);
-      setMessage(error.message || "操作失败");
+      setMessage(error.message || "操作失败，请重试");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
+      {/* 背景装饰 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'1s'}} />
+      </div>
+
+      {/* 顶部导航 */}
+      <div className="absolute top-0 left-0 right-0 z-10">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link 
+            href="/" 
+            className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="font-medium">返回首页</span>
+          </Link>
+          <ThemeToggle />
+        </div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10 px-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="w-10 h-10 text-blue-600" />
-            <h1 className="text-3xl font-bold text-foreground">小宋编导工作台</h1>
-          </div>
-          <p className="text-muted-foreground">AI驱动的短视频脚本创作工具</p>
+          <Link href="/" className="inline-flex items-center gap-2 mb-4 hover:scale-105 transition-transform">
+            <Sparkles className="w-10 h-10 text-blue-600 animate-pulse" />
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              小宋编导工作台
+            </h1>
+          </Link>
+          <p className="text-slate-600 dark:text-slate-400">AI驱动的短视频脚本创作工具</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-card rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
+          {/* 登录/注册切换 */}
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => {
                 setIsLogin(true);
                 setMessage("");
               }}
-              className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
                 isLogin
-                  ? "bg-blue-600 text-white"
-                  : "bg-muted text-muted-foreground hover:bg-muted"
+                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               登录
@@ -94,110 +121,127 @@ export default function LoginPage() {
                 setIsLogin(false);
                 setMessage("");
               }}
-              className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
                 !isLogin
-                  ? "bg-blue-600 text-white"
-                  : "bg-muted text-muted-foreground hover:bg-muted"
+                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               注册
             </button>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-4">
+          <form onSubmit={handleAuth} className="space-y-5">
+            {/* 邮箱输入 */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                邮箱
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                邮箱地址
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
                   required
                 />
               </div>
             </div>
 
+            {/* 密码输入 */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
                 密码
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="········"
-                  className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="至少6位密码"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
                   required
                   minLength={6}
                 />
               </div>
             </div>
 
+            {/* 消息提示 */}
             {message && (
-              <div className={`p-3 rounded-lg text-sm ${
+              <div className={`p-3 rounded-lg text-sm font-medium ${
                 message.includes("成功")
-                  ? "bg-green-50 text-green-700"
-                  : "bg-red-50 text-red-700"
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800"
+                  : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
               }`}>
                 {message}
               </div>
             )}
 
+            {/* 提交按钮 */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-muted disabled:cursor-not-allowed transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:from-slate-400 disabled:to-slate-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
             >
               {loading ? (
-                "处理中..."
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  处理中...
+                </>
               ) : (
                 <>
                   <LogIn className="w-5 h-5" />
-                  {isLogin ? "登录" : "注册"}
+                  {isLogin ? "登录账户" : "注册账户"}
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          {/* 切换提示 */}
+          <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
             {isLogin ? "还没有账号？" : "已有账号？"}
             <button
               onClick={() => {
                 setIsLogin(!isLogin);
                 setMessage("");
               }}
-              className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
+              className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"
             >
               {isLogin ? "立即注册" : "立即登录"}
             </button>
           </div>
         </div>
 
-        {/* Features */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-blue-600">8</div>
-            <div className="text-xs text-muted-foreground mt-1">核心功能</div>
+        {/* 功能亮点 */}
+        <div className="mt-8 grid grid-cols-3 gap-4">
+          <div className="text-center p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">8</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">核心功能</div>
           </div>
-          <div>
-            <div className="text-2xl font-bold text-blue-600">100+</div>
-            <div className="text-xs text-muted-foreground mt-1">功能选项</div>
+          <div className="text-center p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">10000+</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">知识库</div>
           </div>
-          <div>
-            <div className="text-2xl font-bold text-blue-600">3秒</div>
-            <div className="text-xs text-muted-foreground mt-1">生成脚本</div>
+          <div className="text-center p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">10秒</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">生成脚本</div>
           </div>
+        </div>
+
+        {/* 底部链接 */}
+        <div className="mt-6 text-center">
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <Home className="w-4 h-4" />
+            返回首页了解更多
+          </Link>
         </div>
       </div>
     </div>
   );
 }
-
-

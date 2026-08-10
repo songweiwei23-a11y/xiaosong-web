@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -79,7 +79,7 @@ export default function AdminPage() {
   const getRoleBadge = (role: string) => {
     const badges: any = {
       developer: { label: "超级管理员", icon: "👨‍💻", color: "bg-red-500" },
-      admin: { label: "管理员", icon: "👑", color: "bg-purple-500" },
+      admin: { label: "管理员", icon: "👔", color: "bg-purple-500" },
       operator: { label: "运营", icon: "📊", color: "bg-blue-500" },
     };
     const badge = badges[role] || badges.operator;
@@ -97,7 +97,7 @@ export default function AdminPage() {
         <div className="container mx-auto px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="text-5xl">🎯</div>
+              <div className="text-5xl">🏆</div>
               <div>
                 <h1 className="text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                   管理后台
@@ -132,97 +132,96 @@ export default function AdminPage() {
               刷新数据
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700">
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-4 bg-gradient-to-br from-blue-100 to-blue-50 dark:to-slate-950 rounded-2xl group-hover:scale-110 transition-transform">
-                    <Users className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-500 dark:text-slate-400">用户</p>
-                    <h3 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      {stats.totalUsers}
-                    </h3>
-                  </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-xl">
+                  <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 </div>
-                <p className="text-sm text-gray-600 dark:text-slate-300">总注册用户</p>
-                <div className="mt-4 flex gap-2 text-xs flex-wrap">
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-slate-700 rounded">免费: {stats.subscriptionStats.free}</span>
-                  <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded">Pro: {stats.subscriptionStats.pro}</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">高级: {stats.subscriptionStats.premium}</span>
-                </div>
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">总用户</span>
               </div>
+              <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
+                {stats.totalUsers}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-slate-400">
+                今日活跃: <span className="font-semibold text-blue-600 dark:text-blue-400">{stats.activeToday}</span>
+              </p>
             </div>
 
-            <div className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700">
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-4 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl group-hover:scale-110 transition-transform">
-                    <Activity className="h-8 w-8 text-green-600" />
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-500 dark:text-slate-400">活跃</p>
-                    <h3 className="text-4xl font-extrabold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">
-                      {stats.activeToday}
-                    </h3>
-                  </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 rounded-xl">
+                  <Activity className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
-                <p className="text-sm text-gray-600 dark:text-slate-300">今日活跃用户</p>
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">API调用</span>
               </div>
+              <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
+                {stats.apiCallsToday}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-slate-400">今日调用次数</p>
             </div>
 
-            <div className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-slate-700">
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-4 bg-gradient-to-br from-purple-100 to-purple-50 rounded-2xl group-hover:scale-110 transition-transform">
-                    <TrendingUp className="h-8 w-8 text-purple-600" />
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-500 dark:text-slate-400">调用</p>
-                    <h3 className="text-4xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                      {stats.apiCallsToday}
-                    </h3>
-                  </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-xl">
+                  <TrendingUp className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                 </div>
-                <p className="text-sm text-gray-600 dark:text-slate-300">今日 API 调用</p>
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">会员</span>
               </div>
+              <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
+                {stats.subscriptionStats.pro + stats.subscriptionStats.premium + stats.subscriptionStats.enterprise}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-slate-400">
+                免费: {stats.subscriptionStats.free} | 付费: {stats.subscriptionStats.pro + stats.subscriptionStats.premium + stats.subscriptionStats.enterprise}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 rounded-xl">
+                  <Activity className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                </div>
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">系统状态</span>
+              </div>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">
+                运行正常
+              </div>
+              <p className="text-sm text-gray-500 dark:text-slate-400">所有服务正常</p>
             </div>
           </div>
         </div>
 
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-6">🛠️ 管理功能</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">选择您需要的功能模块</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-6">🔧 管理功能</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <button
               onClick={() => router.push("/admin/users")}
-              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200"
+              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 bg-gradient-to-br from-blue-100 to-blue-50 dark:to-slate-950 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Users className="h-8 w-8 text-blue-600" />
+                <div className="p-4 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                     用户管理
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-slate-400">查看所有用户、编辑配额、管理会员等级</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">查看用户、编辑配额、管理会员等级</p>
                 </div>
               </div>
             </button>
 
             <button
               onClick={() => notify("系统配置功能开发中...")}
-              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200"
+              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 bg-gradient-to-br from-purple-100 to-purple-50 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Settings className="h-8 w-8 text-purple-600" />
+                <div className="p-4 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Settings className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                     系统配置
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-slate-400">修改系统参数、会员套餐、功能开关</p>
@@ -232,14 +231,14 @@ export default function AdminPage() {
 
             <button
               onClick={() => notify("数据监控功能开发中...")}
-              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200"
+              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Database className="h-8 w-8 text-green-600" />
+                <div className="p-4 bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Database className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                     数据监控
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-slate-400">实时监控系统运行状态、数据库性能</p>
@@ -249,14 +248,14 @@ export default function AdminPage() {
 
             <button
               onClick={() => notify("操作日志功能开发中...")}
-              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200"
+              className="group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 bg-gradient-to-br from-orange-100 to-orange-50 rounded-2xl group-hover:scale-110 transition-transform">
-                  <FileText className="h-8 w-8 text-orange-600" />
+                <div className="p-4 bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                  <FileText className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                     操作日志
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-slate-400">查看管理员操作记录、系统异常日志</p>
@@ -269,7 +268,7 @@ export default function AdminPage() {
         {adminRole === "developer" && (
           <div className="mt-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl shadow-2xl p-8 text-white">
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <span>🔧</span>
+              <span>🔑</span>
               开发者专属功能
             </h2>
             <p className="text-purple-100 mb-6">高级系统管理与维护工具</p>

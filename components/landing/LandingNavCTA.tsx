@@ -17,9 +17,22 @@ export function LandingNavCTA() {
     return () => subscription.unsubscribe();
   }, []);
 
+  if (loggedIn === null) {
+    // 加载中状态
+    return (
+      <div className="flex items-center gap-3">
+        <div className="w-16 h-9 bg-slate-200 dark:bg-slate-700 animate-pulse rounded-full" />
+        <div className="w-24 h-9 bg-slate-200 dark:bg-slate-700 animate-pulse rounded-full" />
+      </div>
+    );
+  }
+
   if (loggedIn) {
     return (
-      <Link href="/dashboard" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-5 py-2 rounded-full hover:shadow-lg transition-all">
+      <Link 
+        href="/dashboard" 
+        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all font-medium"
+      >
         进入工作台
       </Link>
     );
@@ -27,10 +40,16 @@ export function LandingNavCTA() {
 
   return (
     <>
-      <Link href="/login" className="text-muted-foreground hover:text-blue-600 transition-colors">
+      <Link 
+        href="/login" 
+        className="text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
+      >
         登录
       </Link>
-      <Link href="/login?redirect=/dashboard" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-5 py-2 rounded-full hover:shadow-lg transition-all">
+      <Link 
+        href="/login" 
+        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all font-medium"
+      >
         免费试用
       </Link>
     </>

@@ -1,89 +1,68 @@
-﻿import { Loader2 } from 'lucide-react'
+﻿import { Loader2 } from "lucide-react";
 
-interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg'
-  text?: string
-  fullScreen?: boolean
+interface LoadingProps {
+  size?: "sm" | "md" | "lg";
+  text?: string;
+  fullScreen?: boolean;
 }
 
-export function LoadingSpinner({ 
-  size = 'md', 
-  text = '加载中...',
-  fullScreen = false 
-}: LoadingSpinnerProps) {
+export function Loading({ size = "md", text, fullScreen = false }: LoadingProps) {
   const sizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12',
-  }
+    sm: "h-4 w-4",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
+  };
 
   const content = (
     <div className="flex flex-col items-center justify-center gap-3">
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-blue-600`} />
-      {text && (
-        <p className="text-sm text-gray-600">{text}</p>
-      )}
+      <Loader2 className={`${sizeClasses[size]} animate-spin text-purple-600`} />
+      {text && <p className="text-sm text-muted-foreground">{text}</p>}
     </div>
-  )
+  );
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
         {content}
       </div>
-    )
+    );
   }
 
-  return content
+  return content;
 }
 
-interface GeneratingOverlayProps {
-  isGenerating: boolean
-  text?: string
-  progress?: number
-}
-
-export function GeneratingOverlay({ 
-  isGenerating, 
-  text = 'AI 正在生成中...',
-  progress 
-}: GeneratingOverlayProps) {
-  if (!isGenerating) return null
-
+// 骨架屏组件
+export function Skeleton({ className = "" }: { className?: string }) {
   return (
-    <div className="absolute inset-0 bg-white bg-opacity-95 flex flex-col items-center justify-center gap-4 rounded-lg z-10">
-      <div className="relative">
-        <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
-        {progress !== undefined && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-semibold text-blue-600">
-              {progress}%
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="text-center">
-        <p className="text-lg font-medium text-gray-900">{text}</p>
-        <p className="text-sm text-gray-500 mt-1">请稍候，这可能需要几秒钟</p>
-      </div>
-      {progress !== undefined && (
-        <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-blue-600 transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+    <div
+      className={`animate-pulse bg-muted rounded ${className}`}
+      style={{ minHeight: "1rem" }}
+    />
+  );
+}
+
+// 表格骨架屏
+export function TableSkeleton({ rows = 5, columns = 4 }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex gap-4">
+          {Array.from({ length: columns }).map((_, j) => (
+            <Skeleton key={j} className="h-12 flex-1" />
+          ))}
         </div>
-      )}
+      ))}
     </div>
-  )
+  );
 }
 
-export function LoadingDots() {
+// 卡片骨架屏
+export function CardSkeleton() {
   return (
-    <div className="flex gap-1">
-      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+    <div className="border border-border rounded-lg p-6 space-y-4">
+      <Skeleton className="h-6 w-1/3" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-2/3" />
     </div>
-  )
+  );
 }

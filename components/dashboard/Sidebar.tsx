@@ -81,36 +81,25 @@ export function Sidebar() {
             const isActive = pathname === item.href;
             return (
               <Link
-                key={item.name}
+                key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                   isActive
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {item.name}
+                <item.icon className={`h-5 w-5 shrink-0 transition-transform group-hover:scale-110 ${
+                  isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
+                }`} />
+                <span className="truncate">{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t border-border px-3 py-3">
+        <div className="shrink-0 border-t border-border p-4">
           <ProfileSwitcher />
-        </div>
-
-        <div className="border-t border-border p-4">
-          <Link
-            href="/dashboard/membership"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <User className="h-5 w-5 shrink-0" />
-            <div className="min-w-0">
-              <div className="font-medium text-foreground">个人中心</div>
-              <div className="text-xs text-muted-foreground">会员与配额</div>
-            </div>
-          </Link>
         </div>
       </aside>
     </>

@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 /**
  * 统一的服务端管理员鉴权。
  * 从请求 Cookie 中解析当前登录用户，再校验其管理员身份。
- * 校验顺序：admin_roles 表（优先）-> user_settings.is_admin（兼容旧数据）。
+ * 校验顺序：admin_roles 表（优先）> user_settings.is_admin（兼容旧数据）。
  *
  * 返回 null 表示未登录或非管理员，调用方应据此返回 401/403。
  */
@@ -89,5 +89,6 @@ export async function requireAdmin(): Promise<AdminContext | null> {
     return { userId: user.id, email: user.email || '', role: 'admin' };
   }
 
+  // 3) 都不满足 => 非管理员
   return null;
 }

@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 
 export const maxDuration = 60;
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
             if (done) {
               console.log('✅ 对话完成. Total chunks:', totalChunks);
               if (totalChunks > 0 && guard.userId) {
-                await incrementUsageServer(guard.userId);
+                await incrementUsageServer(guard.userId, 'free_chat');
               }
               break;
             }

@@ -49,57 +49,55 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
         const response = await fetch(`${historyApiPath}?id=${id}`, { method: "DELETE" });
         if (response.ok) {
           await loadHistory();
-          notify("✅ 删除成功");
+          notify("✓ 删除成功");
         }
       } catch (error) {
-        notify("❌ 删除失败");
+        notify("✗ 删除失败");
       }
     },
     [historyApiPath, loadHistory]
   );
 
-  const openContinuousDialog = useCallback((content: string) => {
-    setDialogInitialContent(content);
+  const openContinuousDialog = useCallback((initialContent: string) => {
+    setDialogInitialContent(initialContent);
     setShowDialog(true);
   }, []);
 
-  const closeContinuousDialog = useCallback(() => setShowDialog(false), []);
-
-  const loadQuota = useCallback(async () => {
-    try {
-      const q = await checkQuota();
-      setQuota(q);
-    } catch (error) {
-      console.error("加载配额失败:", error);
-    }
+  const closeContinuousDialog = useCallback(() => {
+    setShowDialog(false);
+    setDialogInitialContent("");
   }, []);
 
   const copyToClipboard = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      notify("✅ 已复制到剪贴板");
-    } catch {}
+      notify("✓ 已复制到剪贴板");
+    } catch (error) {
+      notify("✗ 复制失败");
+    }
   }, []);
 
   const downloadAsFile = useCallback((content: string, filename: string) => {
-    try {
-      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      notify("✅ 下载成功");
-    } catch {}
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    notify("✓ 下载成功");
   }, []);
 
   useEffect(() => {
     loadHistory();
+    const loadQuota = async () => {
+      const q = await checkQuota();
+      setQuota(q);
+    };
     loadQuota();
-  }, [loadHistory, loadQuota]);
+  }, [loadHistory]);
 
   return {
     history,
@@ -110,7 +108,6 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
     openContinuousDialog,
     closeContinuousDialog,
     quota,
-    loadQuota,
     copyToClipboard,
     downloadAsFile,
   };

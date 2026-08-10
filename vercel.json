@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 2,
   "builds": [
     {
@@ -7,10 +7,9 @@
     }
   ],
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-    "DIFY_API_KEY": "@dify_api_key",
-    "DIFY_API_URL": "https://api.dify.ai/v1"
+    "NEXT_PUBLIC_APP_NAME": "@NEXT_PUBLIC_APP_NAME",
+    "NEXT_PUBLIC_APP_URL": "@NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_SUPABASE_URL": "@NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@NEXT_PUBLIC_SUPABASE_ANON_KEY"
   }
 }
