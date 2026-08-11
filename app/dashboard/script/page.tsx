@@ -1,4 +1,7 @@
 ﻿"use client";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { extractScriptContext } from "@/lib/positioning-utils";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
