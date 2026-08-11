@@ -105,6 +105,8 @@ export default function ScriptPage() {
   const [showQuotaReminder, setShowQuotaReminder] = useState(false);
   const [quotaExhausted, setQuotaExhausted] = useState(false);
   const [planName, setPlanName] = useState("免费版");
+  const [showQuotaBanner, setShowQuotaBanner] = useState(true);
+
 
 
   // 加载档案和定位
