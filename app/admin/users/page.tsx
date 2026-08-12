@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -249,7 +249,7 @@ export default function UsersPage() {
   };
 
   const handleForceLogout = async (userId: string) => {
-    const confirmed = await confirmDialog('确定要强制该用户登出吗？', { tone: 'warning', confirmText: '确定登出', title: '强制登出' });
+    const confirmed = await confirmDialog('确定要强制该用户登出吗？', { tone: 'danger', confirmText: '确定登出', title: '强制登出' });
     if (!confirmed) return;
     try {
       const response = await fetch('/api/admin/users', {
