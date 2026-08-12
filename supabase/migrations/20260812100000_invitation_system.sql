@@ -1,4 +1,4 @@
-﻿-- ============================================
+-- ============================================
 -- 邀请码系统 + 额度优化
 -- 创建时间: 2026-08-12
 -- 作者: Kiro AI
@@ -241,7 +241,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_update_quota_plans_updated_at ON quota_plans;`nCREATE TRIGGER trigger_update_quota_plans_updated_at
+DROP TRIGGER IF EXISTS trigger_update_quota_plans_updated_at ON quota_plans;
+CREATE TRIGGER trigger_update_quota_plans_updated_at
   BEFORE UPDATE ON quota_plans
   FOR EACH ROW
   EXECUTE FUNCTION update_quota_plans_updated_at();

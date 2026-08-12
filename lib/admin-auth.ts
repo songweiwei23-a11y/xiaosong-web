@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+﻿import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
@@ -64,6 +64,19 @@ export async function requireAdmin(): Promise<AdminContext | null> {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    return null;
+  }
+
+  // 【安全检查】验证账号状态
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('account_status')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  // 如果账号被封禁或删除，拒绝访问
+  if (profile?.account_status === 'banned' || profile?.account_status === 'deleted') {
+    console.warn(`[Security] Blocked admin access for user ${user.id} with status: ${profile.account_status}`);
     return null;
   }
 

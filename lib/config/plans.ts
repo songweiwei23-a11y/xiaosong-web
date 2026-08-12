@@ -6,23 +6,23 @@ export const SUBSCRIPTION_PLANS = {
     price: 0,
     yearlyPrice: 0,
     features: [
-      "知识库：无限使用",
-      "账号定位：1次",
-      "选题策划：3次/月",
-      "脚本生成：20次/月",
-      "自由对话：20次/月",
-      "其他功能：0次"
+      "知识库：10次/月",
+      "账号定位：3次/月",
+      "选题策划：5次/月",
+      "脚本生成：3次/月",
+      "自由对话：15次/月",
+      "其他功能：2-3次/月"
     ],
     quotas: {
-      knowledge: -1,        // -1 表示无限
-      positioning: 1,       // 一次性额度
-      topic: 3,            // 每月
-      script: 20,          // 每月
-      freeChat: 20,        // 每月
-      storyboard: 0,
-      review: 0,
-      title: 0,
-      dealReason: 0
+      knowledge: 10,        // 从无限改为10次/月
+      positioning: 3,       // 从1次改为3次/月
+      topic: 5,             // 从3次改为5次/月
+      script: 3,            // 从20次改为3次/月 ⭐ 主要降低
+      freeChat: 15,         // 从20次改为15次/月
+      storyboard: 2,        // 从0次改为2次/月
+      review: 3,            // 从0次改为3次/月
+      title: 3,             // 从0次改为3次/月
+      dealReason: 3         // 从0次改为3次/月
     }
   },
   basic: {

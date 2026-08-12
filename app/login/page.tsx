@@ -1,15 +1,16 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home } from "lucide-react";
+import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home, Ticket } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [invitationCode, setInvitationCode] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -22,7 +23,7 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        // 登录
+        // 登录逻辑
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -36,7 +37,29 @@ export default function LoginPage() {
           router.refresh();
         }, 500);
       } else {
-        // 注册
+        // 注册逻辑 - 需要邀请码
+        if (!invitationCode.trim()) {
+          setMessage("请输入邀请码");
+          setLoading(false);
+          return;
+        }
+
+        // 1. 先验证邀请码
+        const validateRes = await fetch("/api/invitation/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: invitationCode.trim() }),
+        });
+
+        const validateData = await validateRes.json();
+
+        if (!validateRes.ok || !validateData.valid) {
+          setMessage(validateData.error || "邀请码无效");
+          setLoading(false);
+          return;
+        }
+
+        // 2. 注册账户
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -52,9 +75,39 @@ export default function LoginPage() {
 
         if (data?.user?.identities?.length === 0) {
           setMessage("该邮箱已注册，请直接登录。");
-        } else {
-          setMessage("注册成功！请切换到登录标签页进行登录。");
-          setTimeout(() => setIsLogin(true), 1500);
+          setLoading(false);
+          return;
+        }
+
+        // 3. 使用邀请码
+        if (data?.user) {
+          const useRes = await fetch("/api/invitation/use", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              code: invitationCode.trim(),
+              userId: data.user.id 
+            }),
+          });
+
+          const useData = await useRes.json();
+
+          if (!useRes.ok) {
+            console.error("使用邀请码失败:", useData.error);
+            // 不阻断注册，但提示用户
+            setMessage(`注册成功，但邀请码使用失败: ${useData.error}。请联系管理员。`);
+            setLoading(false);
+            return;
+          }
+
+          const planName = 
+            useData.planType === "basic" ? "基础会员" :
+            useData.planType === "pro" ? "专业会员" :
+            useData.planType === "enterprise" ? "企业会员" :
+            "体验版";
+
+          setMessage(`注册成功！您已获得${planName}权限。请切换到登录标签页进行登录。`);
+          setTimeout(() => setIsLogin(true), 2000);
         }
       }
     } catch (error: any) {
@@ -131,11 +184,11 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-4">
             {/* 邮箱输入 */}
             <div>
               <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                邮箱地址
+                邮箱
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
@@ -143,7 +196,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
+                  placeholder="请输入邮箱"
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
                   required
                 />
@@ -168,6 +221,29 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+
+            {/* 邀请码输入 - 仅注册时显示 */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                  邀请码 <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                  <input
+                    type="text"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
+                    placeholder="请输入邀请码（如：XS-ABC123）"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-colors uppercase"
+                    required
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  💡 新用户需要邀请码才能注册。请向付费用户或管理员获取邀请码。
+                </p>
+              </div>
+            )}
 
             {/* 消息提示 */}
             {message && (
