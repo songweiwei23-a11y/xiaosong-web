@@ -58,6 +58,29 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
+  // 【安全检查】验证账号状态 - 阻止被封禁/删除用户访问
+  if (session?.user) {
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('account_status')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    // 如果账号被封禁或删除，强制登出
+    if (userProfile?.account_status === 'banned' || userProfile?.account_status === 'deleted') {
+      console.warn(`[Security] Blocked access for ${session.user.id} - status: ${userProfile.account_status}`);
+      
+      // 清除session
+      await supabase.auth.signOut();
+      
+      // 重定向到登录页并显示错误
+      const loginUrl = new URL('/login', req.url);
+      loginUrl.searchParams.set('error', userProfile.account_status === 'banned' ? 'account_banned' : 'account_deleted');
+      loginUrl.searchParams.set('message', userProfile.account_status === 'banned' ? '您的账号已被封禁' : '您的账号已被删除');
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   // 保护 /admin 路径 - 需要登录且是管理员
   if (req.nextUrl.pathname.startsWith('/admin')) {
     if (!session) {

@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Eye } from "lucide-react";
+import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Power, Trash2, Eye } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
 type User = {
@@ -12,6 +12,9 @@ type User = {
   membership_level: string;
   subscription_status: string;
   subscription_end: string | null;
+  account_status: string;
+  banned_at: string | null;
+  banned_reason: string | null;
   quota_details: {
     script: { used: number };
     topic: { used: number };
@@ -142,6 +145,12 @@ export default function UsersPage() {
   };
 
   const handleBanUser = async (userId: string) => {
+    const banReason = prompt('请输入封禁原因：');
+    if (!banReason || banReason.trim() === '') {
+      notify('请输入封禁原因');
+      return;
+    }
+
     const confirmed = await confirmDialog('确定要封禁该用户吗？用户将无法使用任何功能。', {
       tone: 'danger',
       confirmText: '确定封禁',
@@ -156,7 +165,8 @@ export default function UsersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          action: 'ban_user'
+          action: 'ban_user',
+          reason: banReason,
         }),
       });
 
@@ -207,6 +217,70 @@ export default function UsersPage() {
   const openDetailModal = (user: User) => {
     setSelectedUser(user);
     setShowDetailModal(true);
+  };
+
+
+
+  const handleDeleteUser = async (userId: string) => {
+    const deleteReason = prompt('请输入删除原因：');
+    if (!deleteReason || deleteReason.trim() === '') {
+      notify('请输入删除原因');
+      return;
+    }
+    const confirmed = await confirmDialog('确定要删除该用户吗？此操作不可恢复！', { tone: 'danger', confirmText: '确定删除', title: '删除用户' });
+    if (!confirmed) return;
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'delete_user', deleteReason }),
+      });
+      if (response.ok) {
+        notify('用户已删除');
+        fetchUsers();
+      } else {
+        const errorData = await response.json();
+        notify(errorData.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除失败:', error);
+      notify('删除失败');
+    }
+  };
+
+  const handleForceLogout = async (userId: string) => {
+    const confirmed = await confirmDialog('确定要强制该用户登出吗？', { tone: 'warning', confirmText: '确定登出', title: '强制登出' });
+    if (!confirmed) return;
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'force_logout' }),
+      });
+      if (response.ok) {
+        notify('用户已强制登出');
+      } else {
+        const errorData = await response.json();
+        notify(errorData.error || '强制登出失败');
+      }
+    } catch (error) {
+      console.error('强制登出失败:', error);
+      notify('强制登出失败');
+    }
+  };
+
+  const getAccountStatusBadge = (status: string) => {
+    const configs: Record<string, { label: string; color: string }> = {
+      normal: { label: '正常', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
+      banned: { label: '已封禁', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
+      deleted: { label: '已删除', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300' },
+    };
+    const config = configs[status] || configs.normal;
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        {config.label}
+      </span>
+    );
   };
 
   const getLevelBadge = (level: string) => {
@@ -302,7 +376,7 @@ export default function UsersPage() {
                         {getLevelBadge(user.membership_level)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(user.subscription_status)}
+                        {getAccountStatusBadge(user.account_status || 'normal')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-slate-900 dark:text-white">
@@ -337,21 +411,41 @@ export default function UsersPage() {
                           >
                             <RotateCcw className="h-5 w-5" />
                           </button>
-                          {user.subscription_status === 'active' ? (
+                          {(user.account_status === 'normal' || !user.account_status) ? (
                             <button
                               onClick={() => handleBanUser(user.user_id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                              title="封禁用户"
+                              className="text-red-600 hover:text-red-800 dark:text-red-400"
+                              title="封禁"
                             >
-                              <Ban className="h-5 w-5" />
+                              <Ban className="w-4 h-4" />
                             </button>
-                          ) : (
+                          ) : user.account_status === 'banned' ? (
                             <button
                               onClick={() => handleUnbanUser(user.user_id)}
-                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                              title="解封用户"
+                              className="text-green-600 hover:text-green-800 dark:text-green-400"
+                              title="解封"
                             >
-                              <Unlock className="h-5 w-5" />
+                              <Unlock className="w-4 h-4" />
+                            </button>
+                          ) : null}
+
+                          {(user.account_status === 'normal' || !user.account_status) && (
+                            <button
+                              onClick={() => handleForceLogout(user.user_id)}
+                              className="text-purple-600 hover:text-purple-800 dark:text-purple-400"
+                              title="强制登出"
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {user.account_status !== 'deleted' && (
+                            <button
+                              onClick={() => handleDeleteUser(user.user_id)}
+                              className="text-gray-600 hover:text-gray-800 dark:text-gray-400"
+                              title="删除"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>

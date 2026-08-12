@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
-      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+      return NextResponse.json({ error: '闇€瑕佺鐞嗗憳鏉冮檺' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -23,9 +23,9 @@ export async function GET(request: Request) {
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
     const search = searchParams.get('search') || '';
 
-    console.log(`[用户管理] 查询参数: page=${page}, pageSize=${pageSize}, search=${search}`);
+    console.log(`[用户管理] 查询参数: page=${page}, pageSize=${pageSize}, search=${search}`);
 
-    // 从 auth.users 获取所有用户
+    // 浠?auth.users 获取鎵€鏈夌敤鎴?
     const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
       page: page,
       perPage: pageSize
@@ -37,24 +37,24 @@ export async function GET(request: Request) {
     }
 
     const authUsers = authData?.users || [];
-    console.log(`[用户管理] 获取到 ${authUsers.length} 个auth用户`);
+    console.log(`[用户管理] 获取鍒?${authUsers.length} 涓猘uth用户`);
 
-    // 获取所有用户ID
+    // 获取鎵€鏈夌敤鎴稩D
     const userIds = authUsers.map(u => u.id);
 
-    // 批量获取 profiles
+    // 鎵归噺获取 profiles
     const { data: profiles } = await supabase
       .from('user_profiles')
       .select('*')
       .in('user_id', userIds);
 
-    // 批量获取 subscriptions
+    // 鎵归噺获取 subscriptions
     const { data: subscriptions } = await supabase
       .from('subscriptions')
       .select('*')
       .in('user_id', userIds);
 
-    // 批量获取 quotas
+    // 鎵归噺获取 quotas
     const { data: quotas } = await supabase
       .from('user_quotas')
       .select('*')
@@ -62,13 +62,13 @@ export async function GET(request: Request) {
 
     console.log(`[用户管理] profiles: ${profiles?.length || 0}, subscriptions: ${subscriptions?.length || 0}, quotas: ${quotas?.length || 0}`);
 
-    // 合并数据
+    // 鍚堝苟鏁版嵁
     const users = authUsers.map(authUser => {
       const profile = profiles?.find(p => p.user_id === authUser.id);
       const subscription = subscriptions?.find(s => s.user_id === authUser.id);
       const quota = quotas?.find(q => q.user_id === authUser.id);
 
-      // 计算总使用量
+      // 璁＄畻鎬讳娇鐢ㄩ噺
       const totalUsed = quota ? (
         (quota.script_used || 0) +
         (quota.topic_used || 0) +
@@ -88,6 +88,9 @@ export async function GET(request: Request) {
         membership_level: subscription?.plan || 'free',
         subscription_status: subscription?.status || 'inactive',
         subscription_end: subscription?.end_date || null,
+        account_status: profile?.account_status || 'normal',
+        banned_at: profile?.banned_at || null,
+        banned_reason: profile?.banned_reason || null,
         quota_details: {
           script: { used: quota?.script_used || 0 },
           topic: { used: quota?.topic_used || 0 },
@@ -108,7 +111,7 @@ export async function GET(request: Request) {
       };
     });
 
-    console.log(`[用户管理] 返回 ${users.length} 个用户，总数: ${authData.total || users.length}`);
+    console.log(`[用户管理] 返回 ${users.length} 涓敤鎴凤紝总数: ${authData.total || users.length}`);
 
     return NextResponse.json({
       users,
@@ -118,7 +121,7 @@ export async function GET(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('[用户管理] 错误:', error);
+    console.error('[用户管理] 错误:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -128,26 +131,26 @@ export async function POST(request: Request) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
-      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+      return NextResponse.json({ error: '闇€瑕佺鐞嗗憳鏉冮檺' }, { status: 403 });
     }
 
     const body = await request.json();
     const { userId, action, plan, endDate } = body;
 
     if (!userId || !action) {
-      return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
+      return NextResponse.json({ error: '缂哄皯蹇呰参数' }, { status: 400 });
     }
 
-    console.log(`[用户管理] 执行操作: ${action}, 用户: ${userId}`);
+    console.log(`[用户管理] 执行操作: ${action}, 用户: ${userId}`);
 
     switch (action) {
       case 'update_membership':
-        // 更新会员等级
+        // 更新会员绛夌骇
         if (!plan) {
-          return NextResponse.json({ error: '缺少会员套餐参数' }, { status: 400 });
+          return NextResponse.json({ error: '缂哄皯会员濂楅参数' }, { status: 400 });
         }
 
-        // 更新或创建subscription
+        // 更新鎴栧垱寤簊ubscription
         const { error: subError } = await supabase
           .from('subscriptions')
           .upsert({
@@ -165,7 +168,7 @@ export async function POST(request: Request) {
           throw subError;
         }
 
-        // 记录管理员操作
+        // 璁板綍绠＄悊鍛樻搷浣?
         await logAdminAction(admin.userId, AdminActions.UPDATE_USER_MEMBERSHIP, {
           targetUserId: userId,
           plan,
@@ -173,10 +176,10 @@ export async function POST(request: Request) {
         });
 
         console.log(`[用户管理] 会员更新成功: ${userId} -> ${plan}`);
-        return NextResponse.json({ success: true, message: '会员等级更新成功' });
+        return NextResponse.json({ success: true, message: '会员绛夌骇更新成功' });
 
       case 'reset_quota':
-        // 重置配额
+        // 重置配额
         const { error: resetError } = await supabase
           .from('user_quotas')
           .update({
@@ -195,7 +198,7 @@ export async function POST(request: Request) {
           .eq('user_id', userId);
 
         if (resetError) {
-          console.error('[用户管理] 重置配额失败:', resetError);
+          console.error('[用户管理] 重置配额失败:', resetError);
           throw resetError;
         }
 
@@ -203,55 +206,105 @@ export async function POST(request: Request) {
           targetUserId: userId
         });
 
-        console.log(`[用户管理] 配额重置成功: ${userId}`);
-        return NextResponse.json({ success: true, message: '配额重置成功' });
+        console.log(`[用户管理] 配额重置成功: ${userId}`);
+        return NextResponse.json({ success: true, message: '配额重置成功' });
 
       case 'ban_user':
-        // 封禁用户（设置为inactive）
+        const banReason = body.reason;
+        
+        if (!banReason || banReason.trim() === '') {
+          return NextResponse.json({ error: '请提供封禁原因' }, { status: 400 });
+        }
+
+        if (userId === admin.userId) {
+          return NextResponse.json({ error: '不能封禁自己' }, { status: 400 });
+        }
+
         const { error: banError } = await supabase
-          .from('subscriptions')
-          .update({
-            status: 'inactive',
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
+          .rpc('ban_user_account', {
+            p_user_id: userId,
+            p_admin_id: admin.userId,
+            p_reason: banReason
+          });
 
         if (banError) {
-          console.error('[用户管理] 封禁用户失败:', banError);
-          throw banError;
+          console.error('[用户管理] 封禁失败:', banError);
+          return NextResponse.json({ error: banError.message || '封禁失败' }, { status: 500 });
         }
 
         await logAdminAction(admin.userId, AdminActions.BAN_USER, {
-          targetUserId: userId
+          targetUserId: userId,
+          reason: banReason
         });
 
-        console.log(`[用户管理] 用户封禁成功: ${userId}`);
         return NextResponse.json({ success: true, message: '用户已封禁' });
 
       case 'unban_user':
-        // 解封用户
         const { error: unbanError } = await supabase
-          .from('subscriptions')
-          .update({
-            status: 'active',
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
+          .rpc('unban_user_account', {
+            p_user_id: userId
+          });
 
         if (unbanError) {
-          console.error('[用户管理] 解封用户失败:', unbanError);
-          throw unbanError;
+          console.error('[用户管理] 解封失败:', unbanError);
+          return NextResponse.json({ error: unbanError.message || '解封失败' }, { status: 500 });
         }
 
         await logAdminAction(admin.userId, AdminActions.UNBAN_USER, {
           targetUserId: userId
         });
 
-        console.log(`[用户管理] 用户解封成功: ${userId}`);
         return NextResponse.json({ success: true, message: '用户已解封' });
 
+      case 'delete_user':
+        const deleteReason = body.deleteReason;
+        
+        if (!deleteReason || deleteReason.trim() === '') {
+          return NextResponse.json({ error: '请提供删除原因' }, { status: 400 });
+        }
+
+        if (userId === admin.userId) {
+          return NextResponse.json({ error: '不能删除自己' }, { status: 400 });
+        }
+
+        const { error: deleteError } = await supabase
+          .rpc('soft_delete_user', {
+            p_user_id: userId
+          });
+
+        if (deleteError) {
+          console.error('[用户管理] 删除失败:', deleteError);
+          return NextResponse.json({ error: deleteError.message || '删除失败' }, { status: 500 });
+        }
+
+        await logAdminAction(admin.userId, AdminActions.DELETE_USER, {
+          targetUserId: userId,
+          reason: deleteReason
+        });
+
+        return NextResponse.json({ success: true, message: '用户已删除' });
+
+      case 'force_logout':
+        try {
+          const { error: logoutError } = await supabase.auth.admin.signOut(userId);
+          
+          if (logoutError) {
+            console.error('[用户管理] 强制登出失败:', logoutError);
+            return NextResponse.json({ error: logoutError.message || '强制登出失败' }, { status: 500 });
+          }
+
+          await logAdminAction(admin.userId, AdminActions.FORCE_LOGOUT, {
+            targetUserId: userId
+          });
+
+          return NextResponse.json({ success: true, message: '用户已强制登出' });
+        } catch (err: any) {
+          console.error('[用户管理] 强制登出异常:', err);
+          return NextResponse.json({ error: err.message || '强制登出失败' }, { status: 500 });
+        }
+
       default:
-        return NextResponse.json({ error: '未知操作' }, { status: 400 });
+        return NextResponse.json({ error: '鏈煡操作' }, { status: 400 });
     }
 
   } catch (error: any) {
@@ -260,19 +313,19 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH - 更新单个用户的配额（兼容旧代码）
+// PATCH - 更新鍗曚釜用户鐨勯厤棰濓紙鍏煎鏃т唬鐮侊級
 export async function PATCH(request: Request) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
-      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+      return NextResponse.json({ error: '闇€瑕佺鐞嗗憳鏉冮檺' }, { status: 403 });
     }
 
     const body = await request.json();
     const { userId, quota } = body;
 
     if (!userId || quota === undefined) {
-      return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
+      return NextResponse.json({ error: '缂哄皯蹇呰参数' }, { status: 400 });
     }
 
     const { error } = await supabase
@@ -290,10 +343,11 @@ export async function PATCH(request: Request) {
       quota
     });
 
-    return NextResponse.json({ success: true, message: '配额更新成功' });
+    return NextResponse.json({ success: true, message: '配额更新成功' });
 
   } catch (error: any) {
-    console.error('[用户管理] 更新配额失败:', error);
+    console.error('[用户管理] 更新配额失败:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

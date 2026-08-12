@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
-import { Home, ShoppingCart, QrCode, Users, Settings, BarChart } from "lucide-react";
+import { Home, ShoppingCart, QrCode, Users, Settings, BarChart, Ticket } from "lucide-react";
 
 const adminNavigation = [
   { name: "管理概览", href: "/admin", icon: Home },
@@ -11,6 +11,7 @@ const adminNavigation = [
   { name: "收款二维码", href: "/admin/qrcodes", icon: QrCode },
   { name: "用户管理", href: "/admin/users", icon: Users },
   { name: "会员管理", href: "/admin/subscriptions", icon: BarChart },
+  { name: "邀请码管理", href: "/admin/invitations", icon: Ticket },
   { name: "系统设置", href: "/admin/settings", icon: Settings },
 ];
 
