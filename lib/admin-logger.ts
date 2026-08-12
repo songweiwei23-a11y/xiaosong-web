@@ -1,9 +1,11 @@
-export enum AdminActions {
+﻿export enum AdminActions {
   UPDATE_USER_MEMBERSHIP = 'update_user_membership',
   UPDATE_USER_QUOTA = 'update_user_quota',
   RESET_USER_QUOTA = 'reset_user_quota',
   BAN_USER = 'ban_user',
   UNBAN_USER = 'unban_user',
+  DELETE_USER = 'delete_user',
+  FORCE_LOGOUT = 'force_logout',
   DELETE_CONTENT = 'delete_content',
   UPDATE_SYSTEM_SETTINGS = 'update_system_settings',
   UPDATE_SETTINGS = 'update_settings',
