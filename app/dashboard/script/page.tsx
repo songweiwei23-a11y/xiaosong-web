@@ -64,9 +64,9 @@ import { Field, OptionCard } from "@/components/form/Field";
  * ——改版前正是如此，光 rounded 就有三种值。
  */
 const CONTROL_BASE =
-  "w-full rounded-xl border border-border bg-background/50 text-[13px] text-foreground " +
-  "placeholder:text-muted-foreground/70 transition-colors " +
-  "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+"w-full rounded-xl border border-border bg-background/50 text-[13px] text-foreground " +
+"placeholder:text-muted-foreground/70 transition-colors " +
+"focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
 const SELECT_CLS = `${CONTROL_BASE} px-3 py-2.5`;
 const INPUT_CLS = `${CONTROL_BASE} px-3 py-2.5`;

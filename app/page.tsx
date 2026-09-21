@@ -114,11 +114,11 @@ export default function HomePage() {
       period: "永久免费",
       desc: "体验核心功能",
       features: [
-        "知识库无限查询",
-        "账号定位 3次",
-        "选题策划 3次",
-        "脚本生成 20次",
-        "自由对话 20次/月"
+"知识库无限查询",
+"账号定位 3次",
+"选题策划 3次",
+"脚本生成 20次",
+"自由对话 20次/月"
       ],
       highlight: false,
       cta: "立即开始"
@@ -129,11 +129,11 @@ export default function HomePage() {
       period: "月",
       desc: "适合个人创作者",
       features: [
-        "知识库无限查询",
-        "所有功能 150次/月",
-        "优先响应速度",
-        "历史记录保存",
-        "邮件客服支持"
+"知识库无限查询",
+"所有功能 150次/月",
+"优先响应速度",
+"历史记录保存",
+"邮件客服支持"
       ],
       highlight: false,
       cta: "选择基础版"
@@ -144,12 +144,12 @@ export default function HomePage() {
       period: "月",
       desc: "适合专业团队",
       features: [
-        "知识库无限查询",
-        "所有功能 500次/月",
-        "最高优先级",
-        "多版本对比",
-        "专属客服支持",
-        "API接口访问"
+"知识库无限查询",
+"所有功能 500次/月",
+"最高优先级",
+"多版本对比",
+"专属客服支持",
+"API接口访问"
       ],
       highlight: true,
       cta: "选择专业版"
@@ -160,12 +160,12 @@ export default function HomePage() {
       period: "月",
       desc: "适合MCN机构",
       features: [
-        "所有功能无限使用",
-        "知识库无限查询",
-        "专属AI模型",
-        "数据报表分析",
-        "团队协作功能",
-        "1v1专属顾问"
+"所有功能无限使用",
+"知识库无限查询",
+"专属AI模型",
+"数据报表分析",
+"团队协作功能",
+"1v1专属顾问"
       ],
       highlight: false,
       cta: "联系销售"
@@ -244,7 +244,7 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 overflow-hidden brand-gradient dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <section className="relative pt-32 pb-20 px-4 overflow-hidden bg-primary/10">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse" />
           <div className="absolute top-40 right-10 w-96 h-96 bg-accent/100/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'1s'}} />
@@ -323,7 +323,7 @@ export default function HomePage() {
       </section>
 
       {/* 三大核心优势 */}
-      <section id="advantages" className="py-20 px-4 brand-gradient dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <section id="advantages" className="py-20 px-4 bg-primary/10">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/15 dark:bg-purple-900/30 rounded-full mb-4">

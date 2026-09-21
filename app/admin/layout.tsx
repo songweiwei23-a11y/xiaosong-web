@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-full">
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card">
         <div className="flex h-16 items-center gap-2 border-b border-border px-6">

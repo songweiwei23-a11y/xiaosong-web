@@ -91,17 +91,17 @@ export default function TopicPage() {
   const fansLevels = ["0-1000", "1000-1万", "1-5万", "5-10万", "10万+"];
   const platforms = ["抖音", "快手", "视频号", "小红书", "B站"];
   const tracks = [
-    "美食烹饪", "职场技能", "育儿教育", "美妆护肤", "健身减肥",
-    "汽车", "数码科技", "家居收纳", "穿搭时尚", "摄影",
-    "旅行", "宠物", "情感心理", "财经理财", "副业创业",
-    "手工DIY", "读书分享", "游戏电竞", "装修设计", "法律咨询",
-    "医疗健康", "二手交易", "探店测评", "剧情搞笑"
+"美食烹饪", "职场技能", "育儿教育", "美妆护肤", "健身减肥",
+"汽车", "数码科技", "家居收纳", "穿搭时尚", "摄影",
+"旅行", "宠物", "情感心理", "财经理财", "副业创业",
+"手工DIY", "读书分享", "游戏电竞", "装修设计", "法律咨询",
+"医疗健康", "二手交易", "探店测评", "剧情搞笑"
   ];
   const contentTypes = ["教知识型", "晒过程型", "聊观点型", "讲故事型", "测评型", "探店型", "剧情型", "混剪型"];
   const styles = [
-    "专业严谨", "活泼亲和", "犀利直接", "温暖治愈",
-    "幽默搞笑", "高冷范儿", "接地气", "文艺清新",
-    "热血激情", "佛系淡定", "反差萌", "知性优雅"
+"专业严谨", "活泼亲和", "犀利直接", "温暖治愈",
+"幽默搞笑", "高冷范儿", "接地气", "文艺清新",
+"热血激情", "佛系淡定", "反差萌", "知性优雅"
   ];
 
   const explosiveElements = [
@@ -731,7 +731,7 @@ export default function TopicPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+    <div className="flex flex-col md:flex-row h-full">
       
       {/* 左侧输入面板 */}
       <div className="w-[580px] glass-panel shadow-2xl p-6 space-y-5 overflow-y-auto">
@@ -739,12 +739,12 @@ export default function TopicPage() {
         <h1 className="text-2xl font-bold text-orange-500 mb-4">✨ 选题策划工作台</h1>
 
         {/* 模式切换 */}
-        <div className="bg-amber-500 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg p-4 border border-orange-500/50/25">
+        <div className="bg-amber-500 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl p-4 border border-orange-500/50/25">
           <label className="block text-sm font-semibold text-foreground mb-3">选择模式</label>
           <div className="flex gap-3">
             <button
               onClick={() => setMode("quick")}
-              className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
+              className={`flex-1 py-2.5 rounded-xl font-medium transition-all ${
                 mode === "quick"
                   ? "bg-amber-500 text-white shadow-lg"
                   : "bg-card text-muted-foreground hover:bg-muted border border-border"
@@ -754,7 +754,7 @@ export default function TopicPage() {
             </button>
             <button
               onClick={() => setMode("custom")}
-              className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
+              className={`flex-1 py-2.5 rounded-xl font-medium transition-all ${
                 mode === "custom"
                   ? "bg-amber-500 text-white shadow-lg"
                   : "bg-card text-muted-foreground hover:bg-muted border border-border"
@@ -770,13 +770,13 @@ export default function TopicPage() {
 
         {/* 快速模式：档案和定位选择 */}
         {mode === "quick" && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">👤 个人档案</label>
+              <label className="mb-2 block text-[13px] font-medium text-foreground">👤 个人档案</label>
               <select
                 value={selectedProfileId}
                 onChange={(e) => handleProfileSelect(e.target.value)}
-                className="w-full px-4 py-2.5 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="">-- 选择档案 --</option>
                 {profiles.map((profile) => (
@@ -788,11 +788,11 @@ export default function TopicPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">🎯 账号定位</label>
+              <label className="mb-2 block text-[13px] font-medium text-foreground">🎯 账号定位</label>
               <select
                 value={selectedPositioningId}
                 onChange={(e) => handlePositioningSelect(e.target.value)}
-                className="w-full px-4 py-2.5 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="">-- 选择定位 --</option>
                 {positionings.map((positioning) => (
@@ -806,7 +806,7 @@ export default function TopicPage() {
         )}
 
         {/* 基础设置（可折叠） */}
-        <div className="border border-border dark:border-border rounded-lg">
+        <div className="border border-border rounded-xl">
           <button
             onClick={() => setIsBasicOpen(!isBasicOpen)}
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted transition-colors rounded-t-lg"
@@ -816,15 +816,15 @@ export default function TopicPage() {
           </button>
 
           {isBasicOpen && (
-            <div className="px-4 pb-4 space-y-4 border-t">
+            <div className="px-4 pb-4 space-y-5 border-t">
               
               {/* 账号阶段 */}
               <div className="pt-4">
-                <label className="block text-sm font-medium text-foreground mb-2">账号阶段</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">账号阶段</label>
                 <select
                   value={accountStage}
                   onChange={(e) => setAccountStage(e.target.value)}
-                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">-- 选择阶段 --</option>
                   {accountStages.map((stage) => (
@@ -835,11 +835,11 @@ export default function TopicPage() {
 
               {/* 粉丝级别 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">粉丝级别</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">粉丝级别</label>
                 <select
                   value={fansLevel}
                   onChange={(e) => setFansLevel(e.target.value)}
-                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">-- 选择级别 --</option>
                   {fansLevels.map((level) => (
@@ -850,25 +850,25 @@ export default function TopicPage() {
 
               {/* 平均播放量 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">平均播放量</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">平均播放量</label>
                 <input
                   type="text"
                   value={avgViewsInput}
                   onChange={(e) => setAvgViewsInput(e.target.value)}
                   placeholder="例如：5000"
-                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
               {/* 平台选择 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">平台（可多选）</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">平台（可多选）</label>
                 <div className="flex flex-wrap gap-2">
                   {platforms.map((platform) => (
                     <button
                       key={platform}
                       onClick={() => toggleSelection(platform, selectedPlatforms, setSelectedPlatforms)}
-                      className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${
+                      className={`px-3 py-1.5 rounded-xl border text-sm transition-all ${
                         selectedPlatforms.includes(platform)
                           ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
                           : "bg-card border-border text-foreground hover:border-orange-500/40"
@@ -882,13 +882,13 @@ export default function TopicPage() {
 
               {/* 赛道选择 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">赛道（可多选）</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">赛道（可多选）</label>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                   {tracks.map((track) => (
                     <button
                       key={track}
                       onClick={() => toggleSelection(track, selectedTracks, setSelectedTracks)}
-                      className={`px-2.5 py-1 rounded-lg border text-xs transition-all ${
+                      className={`px-2.5 py-1 rounded-xl border text-xs transition-all ${
                         selectedTracks.includes(track)
                           ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
                           : "bg-card border-border text-foreground hover:border-orange-500/40"
@@ -902,13 +902,13 @@ export default function TopicPage() {
 
               {/* 内容类型 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">内容类型（可多选）</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">内容类型（可多选）</label>
                 <div className="flex flex-wrap gap-2">
                   {contentTypes.map((type) => (
                     <button
                       key={type}
                       onClick={() => toggleSelection(type, selectedContentTypes, setSelectedContentTypes)}
-                      className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${
+                      className={`px-3 py-1.5 rounded-xl border text-sm transition-all ${
                         selectedContentTypes.includes(type)
                           ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
                           : "bg-card border-border text-foreground hover:border-orange-500/40"
@@ -936,7 +936,7 @@ export default function TopicPage() {
                     <button
                       key={style}
                       onClick={() => toggleSelection(style, selectedStyles, setSelectedStyles)}
-                      className={`px-2.5 py-1 rounded-lg border text-xs transition-all ${
+                      className={`px-2.5 py-1 rounded-xl border text-xs transition-all ${
                         selectedStyles.includes(style)
                           ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
                           : "bg-card border-border text-foreground hover:border-orange-500/40"
@@ -950,13 +950,13 @@ export default function TopicPage() {
 
               {/* 定位补充 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">定位补充说明</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">定位补充说明</label>
                 <textarea
                   value={positioningExtra}
                   onChange={(e) => setPositioningExtra(e.target.value)}
                   rows={2}
                   placeholder="补充说明账号定位、特色、目标..."
-                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 />
               </div>
 
@@ -975,7 +975,7 @@ export default function TopicPage() {
                 <button
                   key={element.id}
                   onClick={() => toggleSelection(element.id, selectedElements, setSelectedElements)}
-                  className={`p-2 rounded-lg border transition-all text-left ${
+                  className={`p-2 rounded-xl border transition-all text-left ${
                     isSelected
                       ? "bg-amber-500/15 border-orange-500/50"
                       : "bg-card border-border hover:border-orange-500/40"
@@ -1000,7 +1000,7 @@ export default function TopicPage() {
         <div>
           <div className="mb-3">
             <label className="block text-sm font-semibold text-foreground mb-1">🎯 成交理由（可多选）</label>
-            <p className="text-xs text-yellow-500 dark:text-yellow-400 bg-amber-500/10 dark:bg-yellow-900/30 px-2 py-1 rounded border border-yellow-500/50/25">
+            <p className="text-xs text-yellow-500 bg-amber-500/10 px-2 py-1 rounded border border-yellow-500/50/25">
               选择成交理由 = 变现选题 | 不选 = 大流量选题
             </p>
           </div>
@@ -1011,7 +1011,7 @@ export default function TopicPage() {
                 <button
                   key={reason.id}
                   onClick={() => toggleSelection(reason.id, selectedDealReasons, setSelectedDealReasons)}
-                  className={`p-2 rounded-lg border transition-all text-left ${
+                  className={`p-2 rounded-xl border transition-all text-left ${
                     isSelected
                       ? "bg-amber-500/15 border-orange-500/50"
                       : "bg-card border-border hover:border-orange-500/40"
@@ -1033,7 +1033,7 @@ export default function TopicPage() {
         </div>
 
         {/* 高级设置（可折叠） */}
-        <div className="border border-border dark:border-border rounded-lg">
+        <div className="border border-border rounded-xl">
           <button
             onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted transition-colors rounded-t-lg"
@@ -1043,64 +1043,64 @@ export default function TopicPage() {
           </button>
 
           {isAdvancedOpen && (
-            <div className="px-4 pb-4 space-y-4 border-t">
+            <div className="px-4 pb-4 space-y-5 border-t">
               
               {/* 关键词组合 */}
               <div className="pt-4">
-                <label className="block text-sm font-medium text-foreground mb-2">关键词组合</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">关键词组合</label>
                 <div className="grid grid-cols-3 gap-2">
                   <input
                     type="text"
                     value={keyword1}
                     onChange={(e) => setKeyword1(e.target.value)}
                     placeholder="关键词1"
-                    className="px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                    className="px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary text-sm"
                   />
                   <input
                     type="text"
                     value={keyword2}
                     onChange={(e) => setKeyword2(e.target.value)}
                     placeholder="关键词2"
-                    className="px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                    className="px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary text-sm"
                   />
                   <input
                     type="text"
                     value={keyword3}
                     onChange={(e) => setKeyword3(e.target.value)}
                     placeholder="关键词3"
-                    className="px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                    className="px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary text-sm"
                   />
                 </div>
               </div>
 
               {/* 竞品账号 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">竞品账号参考</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">竞品账号参考</label>
                 <textarea
                   value={benchmarkAccounts}
                   onChange={(e) => setBenchmarkAccounts(e.target.value)}
                   rows={2}
                   placeholder="输入竞品账号..."
-                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 />
               </div>
 
               {/* 爆款案例 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">爆款案例参考</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">爆款案例参考</label>
                 <textarea
                   value={viralCases}
                   onChange={(e) => setViralCases(e.target.value)}
                   rows={2}
                   placeholder="输入爆款案例..."
-                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 />
               </div>
 
               {/* 生成数量 */}
                             {/* 个人要求 */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label className="mb-2 block text-[13px] font-medium text-foreground">
                   🎯 个人要求（可选）
                 </label>
                 <textarea
@@ -1108,7 +1108,7 @@ export default function TopicPage() {
                   onChange={(e) => setPersonalRequirement(e.target.value)}
                   rows={3}
                   placeholder="描述您的具体要求，例如：想突出产品的性价比优势、需要针对25-35岁女性群体、希望选题带有情感共鸣..."
-                  className="w-full px-3 py-2 glass-panel border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm text-foreground placeholder:text-muted-foreground/70 dark:placeholder-slate-500"
+                  className="w-full px-3 py-2 glass-panel border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm text-foreground placeholder:text-muted-foreground/70"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   💡 填写后，AI会根据您的要求定制选题方向和内容重点
@@ -1116,13 +1116,13 @@ export default function TopicPage() {
               </div>
 
 <div>
-                <label className="block text-sm font-medium text-foreground mb-2">生成数量</label>
+                <label className="mb-2 block text-[13px] font-medium text-foreground">生成数量</label>
                 <div className="flex gap-2">
                   {[5, 10, 15, 20].map((count) => (
                     <button
                       key={count}
                       onClick={() => setTopicCount(count)}
-                      className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+                      className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${
                         topicCount === count
                           ? "bg-amber-500 text-white border-orange-500/50"
                           : "bg-card text-foreground border-border hover:border-orange-500/40"
@@ -1150,7 +1150,7 @@ export default function TopicPage() {
                     <button
                       key={diff}
                       onClick={() => setDifficulty(diff)}
-                      className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+                      className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${
                         difficulty === diff
                           ? "bg-amber-500 text-white border-orange-500/50"
                           : "bg-card text-foreground border-border hover:border-orange-500/40"
@@ -1169,7 +1169,7 @@ export default function TopicPage() {
                     type="checkbox"
                     checked={withHook}
                     onChange={(e) => setWithHook(e.target.checked)}
-                    className="w-4 h-4 text-orange-500 border-border dark:border-border rounded focus:ring-primary"
+                    className="w-4 h-4 text-orange-500 border-border rounded focus:ring-primary"
                   />
                   <span className="text-sm text-foreground">
                     生成开头钩子（3秒抓住注意力）
@@ -1185,7 +1185,7 @@ export default function TopicPage() {
 
         {/* 配额显示 */}
         {quota !== null && (
-          <div className="mb-4 p-3 bg-muted rounded-lg text-sm text-center">
+          <div className="mb-4 p-3 bg-muted rounded-xl text-sm text-center">
             <span className={quota > 10 ? "text-green-500 font-semibold" : quota > 0 ? "text-orange-500 font-semibold" : "text-destructive font-semibold"}>
               💎 剩余配额：{quota} 次
             </span>
@@ -1195,10 +1195,10 @@ export default function TopicPage() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating || (mode === "custom" && !accountStage) || (mode === "quick" && (!selectedProfileId || !selectedPositioningId))}
-          className={`w-full py-3 rounded-lg font-semibold text-lg transition-all ${
+          className={`w-full py-3 rounded-xl font-semibold text-lg transition-all ${
             isGenerating
               ? "bg-muted text-white cursor-not-allowed"
-              : "bg-amber-500 text-white hover:from-orange-600 hover:to-yellow-600 shadow-lg"
+              : "bg-amber-500 text-white shadow-lg"
           }`}
         >
           {isGenerating ? (
@@ -1220,17 +1220,17 @@ export default function TopicPage() {
         
         {/* 历史记录 */}
         {history.length > 0 && (
-          <div className="glass-panel rounded-lg shadow-lg p-6 mb-6">
+          <div className="glass-panel rounded-xl shadow-lg p-6 mb-6">
             <div className="flex items-center gap-2 mb-4">
               <History className="w-5 h-5 text-orange-500" />
               <h3 className="text-lg font-semibold text-foreground">历史选题记录</h3>
               <span className="text-sm text-muted-foreground">({history.length})</span>
             </div>
-            <div className="space-y-3 max-h-60 overflow-y-auto">
+            <div className="space-y-4 max-h-60 overflow-y-auto">
               {history.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 bg-muted rounded-lg border border-border dark:border-border hover:border-orange-500/40 transition-colors"
+                  className="p-3 bg-muted rounded-xl border border-border hover:border-orange-500/40 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -1244,14 +1244,14 @@ export default function TopicPage() {
                     <div className="flex gap-2 flex-shrink-0">
                       <button
                         onClick={() => openContinuousDialog(item.result || "")}
-                        className="p-1.5 text-accent hover:bg-accent/15 rounded-lg transition-colors"
+                        className="p-1.5 text-accent hover:bg-accent/15 rounded-xl transition-colors"
                         title="继续对话"
                       >
                         <MessageCircle className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => deleteHistory(item.id)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1266,20 +1266,20 @@ export default function TopicPage() {
 
         {/* 生成结果 */}
         {result ? (
-          <div className="glass-panel rounded-lg shadow-lg p-8">
+          <div className="glass-panel rounded-xl shadow-lg p-8">
             <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-orange-500/50/25">
               <h2 className="text-2xl font-bold text-orange-500">📋 生成结果</h2>
               <div className="flex gap-2">
                 <button
                   onClick={() => navigator.clipboard.writeText(result)}
-                  className="px-4 py-2 bg-amber-500/15 dark:bg-orange-900/30 text-orange-500 rounded-lg hover:bg-amber-500/20 dark:hover:bg-orange-900/50 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-amber-500/15 text-orange-500 rounded-xl hover:bg-amber-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
                   复制全部
                 </button>
                 <button
                   onClick={() => downloadAsFile(result, `选题策划-${new Date().toLocaleDateString()}.txt`)}
-                  className="px-4 py-2 bg-amber-500/15 dark:bg-orange-900/30 text-orange-500 rounded-lg hover:bg-amber-500/20 dark:hover:bg-orange-900/50 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-amber-500/15 text-orange-500 rounded-xl hover:bg-amber-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
                   下载文件
@@ -1290,14 +1290,14 @@ export default function TopicPage() {
               <ReactMarkdown 
                 className="text-foreground leading-relaxed"
                 components={{
-                  h2: ({node, ...props}) => <h2 className="text-xl font-bold text-foreground mt-8 mb-4 pb-2 border-b border-border dark:border-border" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-xl font-bold text-foreground mt-8 mb-4 pb-2 border-b border-border" {...props} />,
                   h3: ({node, ...props}) => <h3 className="text-lg font-semibold text-foreground mt-6 mb-3" {...props} />,
                   p: ({node, ...props}) => <p className="mb-3 leading-relaxed" {...props} />,
                   ul: ({node, ...props}) => <ul className="mb-4 space-y-2" {...props} />,
                   ol: ({node, ...props}) => <ol className="mb-4 space-y-2" {...props} />,
                   li: ({node, ...props}) => <li className="ml-4" {...props} />,
                   strong: ({node, ...props}) => <strong className="font-semibold text-orange-500" {...props} />,
-                  hr: ({node, ...props}) => <hr className="my-8 border-t-2 border-border dark:border-border" {...props} />,
+                  hr: ({node, ...props}) => <hr className="my-8 border-t-2 border-border" {...props} />,
                 }}
               >
                 {result}

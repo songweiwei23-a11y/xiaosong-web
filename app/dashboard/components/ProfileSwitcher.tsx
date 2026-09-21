@@ -103,7 +103,7 @@ export default function ProfileSwitcher() {
   if (!activeProfile || profiles.length === 0) {
     return (
       <div className="px-3 py-3">
-        <div className="brand-gradient dark:from-purple-950/40 dark:to-blue-950/40 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50">
+        <div className="bg-primary/10 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50">
           <div className="text-xs text-muted-foreground mb-2">
             📋 还没有档案
           </div>
@@ -128,7 +128,7 @@ export default function ProfileSwitcher() {
       </div>
 
       {/* 当前激活的档案卡片 */}
-      <div className="brand-gradient dark:from-purple-950/40 dark:via-blue-950/40 dark:to-pink-950/30 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50 shadow-sm">
+      <div className="bg-primary/10 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50 shadow-sm">
         <div className="flex items-start gap-2 mb-2">
           <div className="flex-shrink-0 w-8 h-8 brand-gradient rounded-lg flex items-center justify-center shadow-sm">
             <User className="w-4 h-4 text-white" />
@@ -228,7 +228,7 @@ export default function ProfileSwitcher() {
                       onClick={() => switchProfile(profile)}
                       className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all mb-1 ${
                         isActive
-                          ? 'brand-gradient dark:from-purple-950/40 dark:to-blue-950/40 border border-accent/20 dark:border-purple-900/50 shadow-sm'
+                          ? 'bg-primary/10 border border-accent/20 dark:border-purple-900/50 shadow-sm'
                           : 'hover:bg-muted border border-transparent'
                       }`}
                     >

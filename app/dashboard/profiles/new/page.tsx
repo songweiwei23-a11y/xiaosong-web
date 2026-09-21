@@ -58,7 +58,7 @@ export default function NewProfilePage() {
     const selectedValues = (((formData as any)[field]) || []) as string[]
     
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <label className="block text-sm font-medium text-foreground">{label}</label>
         
         <div style={{display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '8px'}}>
@@ -290,10 +290,10 @@ export default function NewProfilePage() {
     <button
       type="button"
       onClick={() => handleArrayToggle(field, value)}
-      className={`px-4 py-2 rounded-lg border-2 transition-all text-sm ${
+      className={`px-4 py-2 rounded-xl border-2 transition-all text-sm ${
         (formData[field as keyof typeof formData] as string[]).includes(value)
           ? 'border-accent/40 bg-accent/10 text-accent'
-          : 'border-border hover:border-border'
+          : 'glass-panel'
       }`}
     >
       {label}
@@ -305,7 +305,7 @@ export default function NewProfilePage() {
       <h2 className="text-2xl font-bold text-foreground mb-6">第1步：账号基础</h2>
       
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           档案名称 <span className="text-destructive">*</span>
         </label>
         <input
@@ -313,7 +313,7 @@ export default function NewProfilePage() {
           value={formData.profile_name}
           onChange={(e) => handleChange('profile_name', e.target.value)}
           placeholder="例如：美食探店账号、知识分享博主"
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
         />
       </div>
 
@@ -322,11 +322,11 @@ export default function NewProfilePage() {
       <MultiSelectWithCustom field="account_track" label="内容赛道（可多选）" options={['美食烹饪', '时尚穿搭', '美妆护肤', '健身运动', '知识教育', '职场成长', '情感生活', '旅游探店', '家居装修', '母婴育儿', '数码科技', '其他']} placeholder="自定义赛道，如：汽车、宠物、三农、财经" />
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">账号阶段</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">账号阶段</label>
         <select
           value={formData.account_stage}
           onChange={(e) => handleChange('account_stage', e.target.value)}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">请选择</option>
           <option value="刚起号，定位未确定">刚起号，定位未确定</option>
@@ -337,11 +337,11 @@ export default function NewProfilePage() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">粉丝量级</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">粉丝量级</label>
         <select
           value={formData.fans_level}
           onChange={(e) => handleChange('fans_level', e.target.value)}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">请选择</option>
           <option value="0-1万">0-1万</option>
@@ -359,15 +359,15 @@ export default function NewProfilePage() {
       <h2 className="text-2xl font-bold text-foreground mb-6">第2步：目标受众</h2>
       
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">主要性别</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">主要性别</label>
         <div className="grid grid-cols-3 gap-3">
           {['男性为主', '女性为主', '不限'].map((gender) => (
             <button
               key={gender}
               type="button"
               onClick={() => handleChange('target_gender', gender)}
-              className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                formData.target_gender === gender ? 'border-accent/40 bg-accent/10 text-accent' : 'border-border hover:border-border'
+              className={`px-4 py-2 rounded-xl border-2 transition-all ${
+                formData.target_gender === gender ? 'border-accent/40 bg-accent/10 text-accent' : 'glass-panel'
               }`}
             >
               {gender}
@@ -383,29 +383,29 @@ export default function NewProfilePage() {
       <MultiSelectWithCustom field="target_occupation" label="职业标签（可多选）" options={['白领', '学生', '宝妈', '自由职业', '企业主', '其他']} placeholder="自定义职业，如：医生、教师、程序员" />
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">核心痛点</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">核心痛点</label>
         <textarea
           value={formData.target_pain_points}
           onChange={(e) => handleChange('target_pain_points', e.target.value)}
           placeholder="受众遇到的主要问题"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">核心需求</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">核心需求</label>
         <textarea
           value={formData.target_needs}
           onChange={(e) => handleChange('target_needs', e.target.value)}
           placeholder="受众想要获得什么"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           粉丝常问问题 <span className="text-xs text-muted-foreground">（新增）</span>
         </label>
         <textarea
@@ -413,7 +413,7 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('fan_common_questions', e.target.value)}
           placeholder="粉丝在评论区经常问什么？帮助AI生成更贴近受众的内容"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -430,11 +430,11 @@ export default function NewProfilePage() {
       <MultiSelectWithCustom field="content_format" label="内容形式（可多选）" options={['口播', '剧情', '教程', 'Vlog', '测评', '采访', '混剪', '图文']} placeholder="自定义形式，如：动画、访谈、直播" columns={4} />
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">语言风格</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">语言风格</label>
         <select
           value={formData.content_tone}
           onChange={(e) => handleChange('content_tone', e.target.value)}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">请选择</option>
           <option value="亲切朋友式">亲切朋友式</option>
@@ -446,40 +446,40 @@ export default function NewProfilePage() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">主要选题方向</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">主要选题方向</label>
         <textarea
           value={formData.content_themes}
           onChange={(e) => handleChange('content_themes', e.target.value)}
           placeholder="例如：平价好物推荐、职场穿搭技巧"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">核心价值主张</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">核心价值主张</label>
         <textarea
           value={formData.content_value}
           onChange={(e) => handleChange('content_value', e.target.value)}
           placeholder="你能为观众提供什么独特价值？"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">差异化卖点</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">差异化卖点</label>
         <textarea
           value={formData.unique_selling_point}
           onChange={(e) => handleChange('unique_selling_point', e.target.value)}
           placeholder="你和同类账号相比有什么不同？"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
-      <div className="bg-amber-500/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-amber-500/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           🔥 爆款基因 <span className="text-xs text-yellow-500">（核心新增）</span>
         </label>
         <textarea
@@ -487,12 +487,12 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('viral_content_pattern', e.target.value)}
           placeholder="历史什么类型的内容容易爆？例如：情绪共鸣类、知识干货类、对比反转类..."
           rows={3}
-          className="w-full px-4 py-2 border border-yellow-500/50/25 rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-yellow-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
-      <div className="bg-destructive/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-destructive/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           ⚠️ 内容禁区 <span className="text-xs text-destructive">（核心新增）</span>
         </label>
         <textarea
@@ -500,7 +500,7 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('content_restrictions', e.target.value)}
           placeholder="不能做什么内容？例如：不能提竞品、不能夸大效果、避免敏感话题..."
           rows={3}
-          className="w-full px-4 py-2 border border-destructive/25 rounded-lg focus:ring-2 focus:ring-red-500"
+          className="w-full px-4 py-2 border border-destructive/25 rounded-xl focus:ring-2 focus:ring-red-500"
         />
       </div>
     </div>
@@ -511,29 +511,29 @@ export default function NewProfilePage() {
       <h2 className="text-2xl font-bold text-foreground mb-6">第4步：竞争策略</h2>
       
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">对标账号</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">对标账号</label>
         <textarea
           value={formData.reference_accounts}
           onChange={(e) => handleChange('reference_accounts', e.target.value)}
           placeholder="列出3-5个对标账号，说明学习点"
           rows={4}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">竞争优势</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">竞争优势</label>
         <textarea
           value={formData.competitive_advantage}
           onChange={(e) => handleChange('competitive_advantage', e.target.value)}
           placeholder="你的核心竞争优势是什么？"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
-      <div className="bg-primary/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-primary/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           竞争劣势 <span className="text-xs text-primary">（新增）</span>
         </label>
         <textarea
@@ -541,12 +541,12 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('competitive_weakness', e.target.value)}
           placeholder="坦诚面对不足，AI才能帮你规避风险"
           rows={3}
-          className="w-full px-4 py-2 border border-primary/20 rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-primary/20 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
-      <div className="bg-emerald-500/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-emerald-500/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           蓝海机会 <span className="text-xs text-green-500">（新增）</span>
         </label>
         <textarea
@@ -554,12 +554,12 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('market_opportunity', e.target.value)}
           placeholder="市场上还有哪些空白机会点？"
           rows={3}
-          className="w-full px-4 py-2 border border-green-500/50/25 rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-green-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
-      <div className="bg-accent/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-accent/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           独家资源 <span className="text-xs text-accent">（核心新增）</span>
         </label>
         <textarea
@@ -567,7 +567,7 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('unique_resources', e.target.value)}
           placeholder="你有哪些独特资源？供应链、人脉、场地、技术、数据等"
           rows={3}
-          className="w-full px-4 py-2 border border-accent/20 rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-accent/20 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
     </div>
@@ -578,13 +578,13 @@ export default function NewProfilePage() {
       <h2 className="text-2xl font-bold text-foreground mb-6">第5步：资源配置</h2>
       
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           团队配置 <span className="text-xs text-muted-foreground">（新增）</span>
         </label>
         <select
           value={formData.team_structure}
           onChange={(e) => handleChange('team_structure', e.target.value)}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">请选择</option>
           <option value="一人全包">一人全包</option>
@@ -599,13 +599,13 @@ export default function NewProfilePage() {
       <MultiSelectWithCustom field="shooting_location" label="拍摄场地（可多选）" options={['家', '工作室', '外景', '店铺', '办公室', '其他']} placeholder="自定义场地，如：摄影棚、咖啡厅、景区" />
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           后期能力 <span className="text-xs text-muted-foreground">（新增）</span>
         </label>
         <select
           value={formData.editing_capability}
           onChange={(e) => handleChange('editing_capability', e.target.value)}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">请选择</option>
           <option value="基础剪辑">基础剪辑</option>
@@ -617,13 +617,13 @@ export default function NewProfilePage() {
       <MultiSelectWithCustom field="video_duration" label="视频时长偏好（可多选）" options={['15-30秒', '30-60秒', '1-3分钟', '3-5分钟', '5分钟以上']} placeholder="自定义时长，如：10-15秒、7-10分钟" />
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           单条预算 <span className="text-xs text-muted-foreground">（新增）</span>
         </label>
         <select
           value={formData.budget_per_video}
           onChange={(e) => handleChange('budget_per_video', e.target.value)}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">请选择</option>
           <option value="0-500元">0-500元</option>
@@ -645,8 +645,8 @@ export default function NewProfilePage() {
 
       <MultiSelectWithCustom field="price_range" label="价格区间（可多选）" options={['50元以下', '50-200元', '200-500元', '500元以上']} placeholder="自定义价格区间，如：100-300元、1000元以上" columns={4} />
 
-      <div className="bg-emerald-500/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-emerald-500/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           完整转化路径 <span className="text-xs text-green-500">（核心新增）</span>
         </label>
         <textarea
@@ -654,12 +654,12 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('conversion_path', e.target.value)}
           placeholder="从观看到成交的每一步是什么？例如：看视频→点链接→进直播间→下单"
           rows={3}
-          className="w-full px-4 py-2 border border-green-500/50/25 rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-green-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
-      <div className="bg-destructive/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-destructive/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           成交障碍点 <span className="text-xs text-destructive">（核心新增）</span>
         </label>
         <textarea
@@ -667,12 +667,12 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('conversion_barriers', e.target.value)}
           placeholder="用户为什么不买？价格、信任、需求不明确？"
           rows={3}
-          className="w-full px-4 py-2 border border-destructive/25 rounded-lg focus:ring-2 focus:ring-red-500"
+          className="w-full px-4 py-2 border border-destructive/25 rounded-xl focus:ring-2 focus:ring-red-500"
         />
       </div>
 
-      <div className="bg-amber-500/10 p-4 rounded-lg">
-        <label className="block text-sm font-medium text-foreground mb-2">
+      <div className="bg-amber-500/10 p-4 rounded-xl">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
           转化话术/钩子 <span className="text-xs text-yellow-500">（核心新增）</span>
         </label>
         <textarea
@@ -680,18 +680,18 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('conversion_hooks', e.target.value)}
           placeholder="什么话术最能促成转化？限时优惠、客户见证、独家福利？"
           rows={3}
-          className="w-full px-4 py-2 border border-yellow-500/50/25 rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-yellow-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">禁忌内容</label>
+        <label className="mb-2 block text-[13px] font-medium text-foreground">禁忌内容</label>
         <textarea
           value={formData.avoid_content}
           onChange={(e) => handleChange('avoid_content', e.target.value)}
           placeholder="不想做或不适合做的内容类型"
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary"
+          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
     </div>
@@ -700,7 +700,7 @@ export default function NewProfilePage() {
   return (
     <div className="min-h-screen bg-muted py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-card rounded-lg shadow-sm p-8">
+        <div className="bg-card rounded-xl shadow-sm p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground">创建用户档案（专业版）</h1>
             <p className="mt-2 text-muted-foreground">
@@ -726,7 +726,7 @@ export default function NewProfilePage() {
             <button
               onClick={() => currentStep > 1 && setCurrentStep(currentStep - 1)}
               disabled={currentStep === 1}
-              className={`px-6 py-2 rounded-lg ${
+              className={`px-6 py-2 rounded-xl ${
                 currentStep === 1
                   ? 'bg-muted text-muted-foreground cursor-not-allowed'
                   : 'bg-muted text-foreground hover:bg-muted'
@@ -738,7 +738,7 @@ export default function NewProfilePage() {
             <div className="flex gap-3">
               <button
                 onClick={() => router.push('/dashboard/profiles')}
-                className="px-6 py-2 border-2 border-border text-foreground rounded-lg hover:bg-muted"
+                className="px-6 py-2 glass-panel text-foreground rounded-xl hover:bg-muted"
               >
                 取消
               </button>
@@ -746,7 +746,7 @@ export default function NewProfilePage() {
               {currentStep < totalSteps ? (
                 <button
                   onClick={() => setCurrentStep(currentStep + 1)}
-                  className="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent"
+                  className="px-6 py-2 bg-accent text-white rounded-xl hover:bg-accent"
                 >
                   下一步
                 </button>
@@ -754,7 +754,7 @@ export default function NewProfilePage() {
                 <button
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="px-8 py-2 bg-emerald-500 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-2 bg-emerald-500 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? '创建中...' : '✓ 完成创建'}
                 </button>
@@ -763,7 +763,7 @@ export default function NewProfilePage() {
           </div>
 
           {currentStep === totalSteps && (
-            <div className="mt-4 p-4 bg-primary/10 rounded-lg text-sm text-primary">
+            <div className="mt-4 p-4 bg-primary/10 rounded-xl text-sm text-primary">
               💡 提示：所有字段都是选填的，可以先创建后续再完善
             </div>
           )}

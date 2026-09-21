@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
@@ -300,7 +300,7 @@ export default function PositioningPage() {
 
   if (loadingProfile) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
           <p className="text-muted-foreground">加载档案中...</p>
@@ -311,7 +311,7 @@ export default function PositioningPage() {
 
   if (!activeProfile) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-full items-center justify-center">
         <div className="text-center max-w-md bg-card rounded-2xl shadow-xl p-8">
           <User className="w-20 h-20 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-foreground mb-2">还没有用户档案</h2>
@@ -321,7 +321,7 @@ export default function PositioningPage() {
           </p>
           <button
             onClick={() => window.location.href = '/dashboard/profiles/new'}
-            className="px-6 py-3 brand-gradient text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all flex items-center gap-2 mx-auto"
+            className="px-6 py-3 brand-gradient text-white rounded-xl font-medium transition-all flex items-center gap-2 mx-auto"
           >
             <Plus className="w-5 h-5" />
             创建用户档案
@@ -332,7 +332,7 @@ export default function PositioningPage() {
   }
 
   return (
-    <div className="flex h-screen bg-muted">
+    <div className="flex h-full">
       {/* 左侧输入区 */}
       <div className="w-[400px] border-r bg-card overflow-y-auto p-6 space-y-6">
         <div>
@@ -348,7 +348,7 @@ export default function PositioningPage() {
         {/* 当前档案卡片 */}
         <div className="brand-gradient rounded-xl p-4 border-2 border-accent/20">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 brand-gradient rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 brand-gradient rounded-xl flex items-center justify-center">
               <User className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
@@ -371,7 +371,7 @@ export default function PositioningPage() {
 
         {/* 补充说明 */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
+          <label className="mb-2 block text-[13px] font-medium text-foreground">
             补充说明 <span className="text-xs text-muted-foreground">(选填)</span>
           </label>
           <textarea
@@ -379,7 +379,7 @@ export default function PositioningPage() {
             onChange={(e) => setAdditionalNotes(e.target.value)}
             placeholder="有其他补充信息可以在这里说明，比如特殊要求、顾虑、期望等..."
             rows={4}
-            className="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
@@ -387,7 +387,7 @@ export default function PositioningPage() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full brand-gradient text-white py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full btn-brand py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-all  flex items-center justify-center gap-2"
         >
           {isGenerating ? (
             <>
@@ -414,10 +414,10 @@ export default function PositioningPage() {
               {positionings.map((pos) => (
                 <div
                   key={pos.id}
-                  className={`p-3 rounded-lg border-2 transition-all ${
+                  className={`p-3 rounded-xl border-2 transition-all ${
                     selectedPositioning?.id === pos.id
-                      ? 'border-accent/50 bg-accent/10'
-                      : 'border-border hover:border-border bg-card'
+                      ? 'glass-selected text-foreground'
+                      : 'glass-panel bg-card'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -436,7 +436,7 @@ export default function PositioningPage() {
                       {/* ✅ 新增：继续对话按钮 */}
                       <button
                         onClick={(e) => openHistoryDialog(pos, e)}
-                        className="p-1.5 text-accent hover:bg-accent/15 rounded-lg transition-colors"
+                        className="p-1.5 text-accent hover:bg-accent/15 rounded-xl transition-colors"
                         title="继续对话"
                       >
                         <MessageCircle className="w-4 h-4" />
@@ -446,7 +446,7 @@ export default function PositioningPage() {
                           e.stopPropagation()
                           deletePositioning(pos.id)
                         }}
-                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />

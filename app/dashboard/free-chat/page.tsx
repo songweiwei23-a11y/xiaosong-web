@@ -48,10 +48,10 @@ const STORAGE_KEY = "xiaosong_free_chat_v1";
 const PENDING_PREFIX = "pending-";
 
 const QUICK_PROMPTS = [
-  "帮我头脑风暴3个适合我账号的爆款选题方向",
-  "我想拍一条实体店探店视频，先跟我聊聊思路",
-  "针对刚才的选题，帮我写一版完整口播脚本",
-  "这个开头钩子不够抓人，帮我换3种更狠的写法",
+"帮我头脑风暴3个适合我账号的爆款选题方向",
+"我想拍一条实体店探店视频，先跟我聊聊思路",
+"针对刚才的选题，帮我写一版完整口播脚本",
+"这个开头钩子不够抓人，帮我换3种更狠的写法",
 ];
 
 function uid() {
@@ -394,14 +394,14 @@ export default function FreeChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-muted">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {/* 左侧：会话列表 */}
       {sidebarOpen && (
         <div className="flex w-64 flex-col border-r bg-card">
           <div className="p-3">
             <button
               onClick={createConversation}
-              className="flex w-full items-center justify-center gap-2 rounded-xl brand-gradient py-3 font-medium text-white shadow-sm transition-all hover:from-purple-700 hover:to-blue-700"
+              className="flex w-full items-center justify-center gap-2 rounded-xl brand-gradient py-3 font-medium text-white shadow-sm transition-all"
             >
               <Plus className="h-4 w-4" />
               新建对话
@@ -415,7 +415,7 @@ export default function FreeChatPage() {
               <div
                 key={c.id}
                 onClick={() => setActiveId(c.id)}
-                className={`group mb-1 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                className={`group mb-1 flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
                   c.id === activeId ? "bg-accent/10 text-accent" : "text-foreground hover:bg-muted"
                 }`}
               >
@@ -446,13 +446,13 @@ export default function FreeChatPage() {
         <div className="flex items-center gap-3 border-b bg-card px-5 py-3">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            className="rounded-xl p-1.5 text-muted-foreground hover:bg-muted"
             title={sidebarOpen ? "收起列表" : "展开列表"}
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl brand-gradient">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div>
@@ -496,7 +496,7 @@ export default function FreeChatPage() {
                 className={`mb-5 flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
               >
                 <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
                     msg.role === "user" ? "bg-primary" : "brand-gradient"
                   }`}
                 >
@@ -553,12 +553,12 @@ export default function FreeChatPage() {
               placeholder="自由输入…（Enter 发送，Shift+Enter 换行）"
               rows={2}
               disabled={isStreaming}
-              className="flex-1 resize-none rounded-xl border-2 border-border px-4 py-3 text-sm focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted"
+              className="flex-1 resize-none rounded-xl glass-panel px-4 py-3 text-sm focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted"
             />
             <button
               onClick={() => handleSend()}
               disabled={!input.trim() || isStreaming}
-              className="flex h-12 items-center gap-2 rounded-xl brand-gradient px-5 font-medium text-white shadow-sm transition-all hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-12 items-center gap-2 rounded-xl brand-gradient px-5 font-medium text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isStreaming ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               发送

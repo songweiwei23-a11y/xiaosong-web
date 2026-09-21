@@ -70,7 +70,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 dark:from-slate-900 via-purple-50 dark:via-slate-900 to-pink-50 dark:to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-accent" />
       </div>
     );
@@ -92,7 +92,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 dark:from-slate-900 via-purple-50 dark:via-slate-900 to-pink-50 dark:to-slate-950">
+    <div className="min-h-screen ">
       <div className="border-b glass-panel shadow-sm">
         <div className="container mx-auto px-8 py-6">
           <div className="flex items-center justify-between">
@@ -136,7 +136,7 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-3 brand-gradient dark:from-blue-900/30 dark:to-blue-800/20 rounded-xl">
+                <div className="p-3 bg-primary/10 rounded-xl">
                   <Users className="h-8 w-8 text-primary" />
                 </div>
                 <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">总用户</span>
@@ -164,7 +164,7 @@ export default function AdminPage() {
 
             <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-3 brand-gradient dark:from-purple-900/30 dark:to-purple-800/20 rounded-xl">
+                <div className="p-3 bg-primary/10 rounded-xl">
                   <TrendingUp className="h-8 w-8 text-accent" />
                 </div>
                 <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">会员</span>
@@ -200,7 +200,7 @@ export default function AdminPage() {
               className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 brand-gradient dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Users className="h-8 w-8 text-primary" />
                 </div>
                 <div className="flex-1">
@@ -217,7 +217,7 @@ export default function AdminPage() {
               className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 brand-gradient dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Settings className="h-8 w-8 text-accent" />
                 </div>
                 <div className="flex-1">

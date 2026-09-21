@@ -21,12 +21,12 @@ const KNOWLEDGE_CATEGORIES = [
 ];
 
 const QUICK_QUESTIONS = [
-  "如何设计开头3秒的强冲突？",
-  "教知识类脚本的基本结构是什么？",
-  "什么是情绪波点？如何设计？",
-  "如何判断一个选题是否值得做？",
-  "新账号如何快速找到定位？",
-  "分镜脚本怎么写才专业？",
+"如何设计开头3秒的强冲突？",
+"教知识类脚本的基本结构是什么？",
+"什么是情绪波点？如何设计？",
+"如何判断一个选题是否值得做？",
+"新账号如何快速找到定位？",
+"分镜脚本怎么写才专业？",
 ];
 
 export default function KnowledgePage() {
@@ -117,7 +117,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-full">
       {/* Left Panel */}
       <div className="w-96 overflow-y-auto border-r bg-muted p-6">
         <div className="mb-6">
@@ -130,14 +130,14 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
         <div className="space-y-6">
           {/* Search Input */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">
+            <label className="mb-2 block text-[13px] font-medium text-foreground">
               输入你的问题
             </label>
             <textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="例如：如何设计开头的强冲突？"
-              className="w-full rounded-lg border border-border p-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-xl border border-border p-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               rows={4}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -153,16 +153,16 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
 
           {/* Category Filter */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">
+            <label className="mb-2 block text-[13px] font-medium text-foreground">
               知识分类（可选）
             </label>
             <div className="space-y-2">
               <button
                 onClick={() => setSelectedCategory("")}
-                className={`w-full rounded-lg border p-2 text-left text-sm transition-all ${
+                className={`w-full rounded-xl border p-2 text-left text-sm transition-all ${
                   selectedCategory === ""
-                    ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-border hover:border-border"
+                    ? "glass-selected text-foreground"
+                    : "glass-panel"
                 }`}
               >
                 全部分类
@@ -171,10 +171,10 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`w-full rounded-lg border p-2 text-left transition-all ${
+                  className={`w-full rounded-xl border p-2 text-left transition-all ${
                     selectedCategory === cat.id
-                      ? "border-primary/50 bg-primary/10"
-                      : "border-border hover:border-border"
+                      ? "glass-selected text-foreground"
+                      : "glass-panel"
                   }`}
                 >
                   <div className="text-sm font-medium text-foreground">
@@ -188,7 +188,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
 
           {/* Quick Questions */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">
+            <label className="mb-2 block text-[13px] font-medium text-foreground">
               常见问题
             </label>
             <div className="space-y-2">
@@ -196,7 +196,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 <button
                   key={index}
                   onClick={() => handleQuickQuestion(question)}
-                  className="w-full rounded-lg border border-border bg-card p-2 text-left text-sm hover:border-primary/30 hover:bg-primary/10 transition-all"
+                  className="w-full rounded-xl border border-border bg-card p-2 text-left text-sm hover:border-primary/30 hover:bg-primary/10 transition-all"
                 >
                   {question}
                 </button>
@@ -209,7 +209,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
             data-search-button
             onClick={handleSearch}
             disabled={isSearching || !query.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-medium text-white hover:opacity-90 disabled:bg-muted"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-medium text-white hover:opacity-90 disabled:bg-muted"
           >
             {isSearching ? (
               <>
@@ -239,7 +239,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 <p className="mt-2 text-sm text-muted-foreground">
                   涵盖脚本结构、爆款元素、拍摄技巧等专业知识
                 </p>
-                <div className="mt-6 rounded-lg border border-purple-100 bg-accent/10 p-4 text-left">
+                <div className="mt-6 rounded-xl border border-purple-100 bg-accent/10 p-4 text-left">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                     <div className="text-sm text-accent">
@@ -280,7 +280,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 <ReactMarkdown>{result}</ReactMarkdown>
               </div>
 
-              <div className="mt-6 rounded-lg border border-border bg-muted p-4">
+              <div className="mt-6 rounded-xl border border-border bg-muted p-4">
                 <div className="text-sm text-muted-foreground">
                   💡 如果答案不够详细，可以：
                   <ul className="mt-2 space-y-1">

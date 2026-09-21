@@ -34,9 +34,9 @@ const ALL_DEAL_REASONS = [
 ];
 
 const STORE_TYPES = [
-  "餐饮美食", "美容美发", "休闲娱乐", "运动健身",
-  "亲子教育", "生活服务", "医疗健康", "宠物服务",
-  "汽车服务", "其他"
+"餐饮美食", "美容美发", "休闲娱乐", "运动健身",
+"亲子教育", "生活服务", "医疗健康", "宠物服务",
+"汽车服务", "其他"
 ];
 
 export default function DealReasonPage() {
@@ -224,14 +224,14 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center brand-gradient">
+      <div className="flex h-full items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-yellow-500" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full brand-gradient">
+    <div className="flex h-full">
       {/* 左侧输入表单 */}
       <div className="w-[420px] border-r border-yellow-500/50/25/50 backdrop-blur-xl bg-card/40 p-6 overflow-y-auto shadow-2xl">
         <div className="mb-8">
@@ -324,7 +324,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing || !storeName.trim() || !storeFeatures.trim()}
-            className="w-full rounded-2xl bg-amber-500 px-6 py-4 font-bold text-white hover:from-yellow-600 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+            className="w-full rounded-2xl bg-amber-500 px-6 py-4 font-bold text-white disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
           >
             {isAnalyzing ? (
               <>
@@ -369,7 +369,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
               <button
                 onClick={handleSave}
                 disabled={selectedReasons.length < 15}
-                className="w-full rounded-2xl bg-emerald-500 px-6 py-4 font-bold text-white hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                className="w-full rounded-2xl bg-emerald-500 px-6 py-4 font-bold text-white disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
               >
                 <Save className="h-5 w-5" />
                 <span>保存到云端 ({selectedReasons.length}/17)</span>

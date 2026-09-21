@@ -156,7 +156,7 @@ export default function EditProfilePage() {
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-card border border-border rounded-lg shadow-sm p-8">
+        <div className="glass-panel rounded-2xl shadow-sm p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground">编辑档案</h1>
             <p className="mt-2 text-muted-foreground">更新您的账号信息</p>
@@ -171,7 +171,7 @@ export default function EditProfilePage() {
           <div className="flex justify-between pt-6 border-t border-border">
             <button
               onClick={() => router.push('/dashboard/profiles')}
-              className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70"
+              className="px-6 py-2 bg-muted text-foreground rounded-xl hover:bg-muted/70"
             >
               返回档案列表
             </button>

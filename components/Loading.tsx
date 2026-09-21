@@ -20,7 +20,7 @@ export default function Loading({ message = "正在加载...", size = 'medium' }
   };
 
   return (
-    <div className="min-h-screen brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         {/* 双层旋转圆圈 */}
         <div className={`relative ${sizeClasses[size]} mx-auto mb-8`}>

@@ -84,13 +84,13 @@ export default function AnalyticsPage() {
       
       if (!analyticsData.error) {
         const iconMap: any = {
-          "脚本生成": { icon: FileText, color: "blue" },
-          "选题策划": { icon: Lightbulb, color: "yellow" },
-          "分镜脚本": { icon: Film, color: "purple" },
-          "审稿优化": { icon: CheckCircle, color: "green" },
-          "标题封面": { icon: Tag, color: "red" },
-          "账号定位": { icon: Target, color: "indigo" },
-          "知识库": { icon: BookOpen, color: "pink" },
+"脚本生成": { icon: FileText, color: "blue" },
+"选题策划": { icon: Lightbulb, color: "yellow" },
+"分镜脚本": { icon: Film, color: "purple" },
+"审稿优化": { icon: CheckCircle, color: "green" },
+"标题封面": { icon: Tag, color: "red" },
+"账号定位": { icon: Target, color: "indigo" },
+"知识库": { icon: BookOpen, color: "pink" },
         };
 
         setFeatureUsage(analyticsData.features.map((f: any) => ({

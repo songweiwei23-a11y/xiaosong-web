@@ -100,9 +100,9 @@ export default function StoryboardPage() {
 
 请以JSON格式返回:
 {
-  "duration": "15秒/30秒/60秒/90秒/3-5分钟",
-  "contentType": "food/vlog/tutorial/product/story/interview",
-  "visualStyle": "cinematic/bright/dark/vintage/minimalist/warm"
+"duration": "15秒/30秒/60秒/90秒/3-5分钟",
+"contentType": "food/vlog/tutorial/product/story/interview",
+"visualStyle": "cinematic/bright/dark/vintage/minimalist/warm"
 }
 
 只返回JSON,不要其他文字。`,
@@ -196,7 +196,7 @@ export default function StoryboardPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen brand-gradient">
+    <div className="flex flex-col md:flex-row h-full">
       {/* 左侧面板 - 简洁版 */}
       <div className="w-[400px] bg-card shadow-2xl p-6 space-y-6 overflow-y-auto">
         
@@ -220,7 +220,7 @@ export default function StoryboardPage() {
             </label>
             <button
               onClick={loadExample}
-              className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-500 bg-emerald-500/10 rounded-lg hover:bg-emerald-500/15 transition-colors"
+              className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-500 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/15 transition-colors"
             >
               <Sparkles className="w-3 h-3" />
               一键示例
@@ -230,13 +230,13 @@ export default function StoryboardPage() {
             value={scriptContent}
             onChange={(e) => setscriptContent(e.target.value)}
             placeholder="例如：我要拍美食探店，先拍店门口招牌，再进店拍环境，然后特写拍菜品，最后拍我吃的反应"
-            className="w-full h-24 rounded-lg border-2 border-border p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none"
+            className="w-full h-24 rounded-xl glass-panel p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none"
           />
           <p className="mt-1 text-xs text-muted-foreground">AI会根据主题自动选择镜头语言</p>
         </div>
 
         {/* AI智能推荐按钮 */}
-        <div className="bg-emerald-500 rounded-lg p-4 border-2 border-green-500/50/25">
+        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/50/25">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-green-500 animate-pulse" />
@@ -248,7 +248,7 @@ export default function StoryboardPage() {
             <button
               onClick={handleAIRecommend}
               disabled={isRecommending || !scriptContent.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-lg hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isRecommending ? (
                 <>
@@ -272,7 +272,7 @@ export default function StoryboardPage() {
             <select
               value={platform}
               onChange={(e) => setPlatform(e.target.value)}
-              className="w-full rounded-lg border-2 border-border p-2 focus:border-green-500/50"
+              className="w-full rounded-xl glass-panel p-2 focus:border-green-500/50"
             >
               {PLATFORMS.map((p) => <option key={p}>{p}</option>)}
             </select>
@@ -282,7 +282,7 @@ export default function StoryboardPage() {
             <select
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              className="w-full rounded-lg border-2 border-border p-2 focus:border-green-500/50"
+              className="w-full rounded-xl glass-panel p-2 focus:border-green-500/50"
             >
               {DURATIONS.map((d) => <option key={d}>{d}</option>)}
             </select>
@@ -299,7 +299,7 @@ export default function StoryboardPage() {
               <button
                 key={type.value}
                 onClick={() => setContentType(type.value)}
-                className={`p-3 rounded-lg border-2 transition-all ${
+                className={`p-3 rounded-xl border-2 transition-all ${
                   contentType === type.value
                     ? "border-green-500/50 bg-emerald-500/10 text-green-500 shadow-md scale-105"
                     : "border-border bg-card hover:border-green-500/40"
@@ -324,9 +324,9 @@ export default function StoryboardPage() {
               <button
                 key={style.value}
                 onClick={() => setVisualStyle(style.value)}
-                className={`p-3 rounded-lg border-2 transition-all ${
+                className={`p-3 rounded-xl border-2 transition-all ${
                   visualStyle === style.value
-                    ? "border-accent/50 bg-accent/10 text-accent shadow-md scale-105"
+                    ? "glass-selected text-foreground shadow-md scale-105"
                     : "border-border bg-card hover:border-accent/30"
                 }`}
                 title={style.desc}
@@ -348,12 +348,12 @@ export default function StoryboardPage() {
             value={additionalInfo}
             onChange={(e) => setAdditionalInfo(e.target.value)}
             placeholder="例如：需要强调产品细节、希望节奏快一点..."
-            className="w-full h-16 rounded-lg border-2 border-border p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
+            className="w-full h-16 rounded-xl glass-panel p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
           />
         </div>
 
         {/* AI提示框 */}
-        <div className="bg-emerald-500 rounded-lg p-4 border-2 border-green-500/50/25">
+        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/50/25">
           <div className="flex items-start gap-2">
             <Wand2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-foreground">
@@ -373,7 +373,7 @@ export default function StoryboardPage() {
 
         {/* 配额显示 */}
         {hookQuota !== null && (
-          <div className="mb-4 p-3 bg-muted rounded-lg text-sm text-center">
+          <div className="mb-4 p-3 bg-muted rounded-xl text-sm text-center">
             <span className={hookQuota > 10 ? "text-green-500 font-semibold" : hookQuota > 0 ? "text-orange-500 font-semibold" : "text-destructive font-semibold"}>
               💎 剩余配额：{hookQuota} 次
             </span>
@@ -384,7 +384,7 @@ export default function StoryboardPage() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
         >
           {isGenerating ? (
             <>
@@ -412,14 +412,14 @@ export default function StoryboardPage() {
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => copyToClipboard(result)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
                   复制脚本
                 </button>
                 <button
                   onClick={() => downloadAsFile(result, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
                   下载脚本
@@ -430,7 +430,7 @@ export default function StoryboardPage() {
                     remarkPlugins={[remarkGfm]}
                     components={{
                       table: ({node, ...props}) => (
-                        <div className="overflow-x-auto my-6 rounded-lg border-2 border-green-500/50/25 shadow-lg">
+                        <div className="overflow-x-auto my-6 rounded-xl border-2 border-green-500/50/25 shadow-lg">
                           <table className="min-w-full" {...props} />
                         </div>
                       ),

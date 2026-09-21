@@ -143,7 +143,7 @@ export default function DashboardPage() {
   // 加载动画组件
   if (loading) {
     return (
-      <div className="min-h-screen brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           {/* 旋转的圆圈动画 */}
           <div className="relative w-24 h-24 mx-auto mb-8">
@@ -288,7 +288,7 @@ export default function DashboardPage() {
               >
                 {feature.badge && (
                   <div className="absolute right-4 top-4">
-                    <span className="rounded-full brand-gradient dark:from-blue-900 dark:to-blue-800 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
                       {feature.badge}
                     </span>
                   </div>

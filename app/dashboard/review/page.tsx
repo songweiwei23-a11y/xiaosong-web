@@ -95,8 +95,8 @@ export default function ReviewPage() {
   ];
 
   const goalOptions = [
-    "提升开头吸引力", "增强情绪共鸣", "优化口播节奏", "加强画面感",
-    "去除营销腔", "增加反转惊喜", "缩短内容", "扩充内容"
+"提升开头吸引力", "增强情绪共鸣", "优化口播节奏", "加强画面感",
+"去除营销腔", "增加反转惊喜", "缩短内容", "扩充内容"
   ];
 
   // 计算字数和预估时长
@@ -213,7 +213,7 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen brand-gradient">
+    <div className="flex flex-col md:flex-row h-full">
       {/* 左侧输入面板 */}
       <div className="w-[600px] bg-card shadow-2xl p-6 space-y-5 overflow-y-auto">
         
@@ -255,7 +255,7 @@ export default function ReviewPage() {
             value={draftContent}
             onChange={(e) => setDraftContent(e.target.value)}
             placeholder="粘贴你的脚本草稿...&#10;&#10;可以是完整脚本，也可以是片段&#10;内容越详细，审稿越精准"
-            className="w-full h-48 rounded-lg border-2 border-border p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
+            className="w-full h-48 rounded-xl glass-panel p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
           />
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
             <span>字数：<span className="font-bold text-foreground">{wordCount}</span> 字</span>
@@ -264,7 +264,7 @@ export default function ReviewPage() {
         </div>
 
         {/* 基础信息 */}
-        <div className="space-y-3 pt-3 border-t-2 border-border">
+        <div className="space-y-4 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Target className="w-4 h-4 text-accent" />
             基础信息
@@ -278,7 +278,7 @@ export default function ReviewPage() {
                 <button
                   key={p}
                   onClick={() => setPlatform(p)}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     platform === p
                       ? "bg-accent text-white shadow-md"
                       : "bg-muted text-muted-foreground hover:bg-muted"
@@ -298,7 +298,7 @@ export default function ReviewPage() {
                 <button
                   key={d}
                   onClick={() => setDuration(d)}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     duration === d
                       ? "bg-primary text-white shadow-md"
                       : "bg-muted text-muted-foreground hover:bg-muted"
@@ -332,14 +332,14 @@ export default function ReviewPage() {
         </div>
 
         {/* 审稿维度 */}
-        <div className="space-y-3 pt-3 border-t-2 border-border">
+        <div className="space-y-4 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Eye className="w-4 h-4 text-orange-500" />
             审稿维度（多选） <span className="text-xs font-normal text-destructive">至少选1项</span>
           </h3>
 
           {/* 开头吸引力 */}
-          <div className="bg-destructive/10 rounded-lg p-3 border-2 border-red-100">
+          <div className="bg-destructive/10 rounded-xl p-3 border-2 border-red-100">
             <p className="text-xs font-bold text-destructive mb-2">📌 开头吸引力</p>
             <div className="space-y-1.5">
               {openingOptions.map((option) => (
@@ -357,7 +357,7 @@ export default function ReviewPage() {
           </div>
 
           {/* 结构完整性 */}
-          <div className="bg-primary/10 rounded-lg p-3 border-2 border-blue-100">
+          <div className="bg-primary/10 rounded-xl p-3 border-2 border-blue-100">
             <p className="text-xs font-bold text-primary mb-2">📌 结构完整性</p>
             <div className="space-y-1.5">
               {structureOptions.map((option) => (
@@ -375,7 +375,7 @@ export default function ReviewPage() {
           </div>
 
           {/* 文案质量 */}
-          <div className="bg-emerald-500/10 rounded-lg p-3 border-2 border-green-100">
+          <div className="bg-emerald-500/10 rounded-xl p-3 border-2 border-green-100">
             <p className="text-xs font-bold text-green-500 mb-2">📌 文案质量</p>
             <div className="space-y-1.5">
               {contentOptions.map((option) => (
@@ -393,7 +393,7 @@ export default function ReviewPage() {
           </div>
 
           {/* 情绪波点 */}
-          <div className="bg-accent/10 rounded-lg p-3 border-2 border-purple-100">
+          <div className="bg-accent/10 rounded-xl p-3 border-2 border-purple-100">
             <p className="text-xs font-bold text-accent mb-2">📌 情绪波点</p>
             <div className="space-y-1.5">
               {emotionOptions.map((option) => (
@@ -411,7 +411,7 @@ export default function ReviewPage() {
           </div>
 
           {/* 行动指引 */}
-          <div className="bg-amber-500/10 rounded-lg p-3 border-2 border-yellow-100">
+          <div className="bg-amber-500/10 rounded-xl p-3 border-2 border-yellow-100">
             <p className="text-xs font-bold text-yellow-500 mb-2">📌 行动指引</p>
             <div className="space-y-1.5">
               {actionOptions.map((option) => (
@@ -430,7 +430,7 @@ export default function ReviewPage() {
         </div>
 
         {/* 优化目标 */}
-        <div className="space-y-3 pt-3 border-t-2 border-border">
+        <div className="space-y-4 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Zap className="w-4 h-4 text-yellow-500" />
             优化目标（多选，可选）
@@ -454,7 +454,7 @@ export default function ReviewPage() {
         </div>
 
         {/* 对标参考 */}
-        <div className="space-y-3 pt-3 border-t-2 border-border">
+        <div className="space-y-4 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-accent" />
             对标参考（可选）
@@ -463,19 +463,19 @@ export default function ReviewPage() {
             value={benchmarkScript}
             onChange={(e) => setBenchmarkScript(e.target.value)}
             placeholder="粘贴一个你想对标的优质脚本...&#10;&#10;AI会参考这个脚本的优点来优化你的草稿"
-            className="w-full h-24 rounded-lg border-2 border-border p-3 focus:border-accent/50 focus:ring-2 focus:ring-primary resize-none text-xs"
+            className="w-full h-24 rounded-xl glass-panel p-3 focus:border-accent/50 focus:ring-2 focus:ring-primary resize-none text-xs"
           />
         </div>
 
         {/* 输出选项 */}
-        <div className="space-y-3 pt-3 border-t-2 border-border">
+        <div className="space-y-4 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
             输出选项
           </h3>
 
           {/* 对比模式 */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
             <div>
               <p className="text-xs font-medium text-foreground">原稿 vs 修改稿对照</p>
               <p className="text-xs text-muted-foreground mt-0.5">对比展示，看得更清楚</p>
@@ -495,7 +495,7 @@ export default function ReviewPage() {
           </div>
 
           {/* 严重度标注 */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
             <div>
               <p className="text-xs font-medium text-foreground">问题严重度标注</p>
               <p className="text-xs text-muted-foreground mt-0.5">标注严重/中等/轻微问题</p>
@@ -518,7 +518,7 @@ export default function ReviewPage() {
 
         {/* 配额显示 */}
         {hookQuota !== null && (
-          <div className="mb-4 p-3 bg-muted rounded-lg text-sm text-center">
+          <div className="mb-4 p-3 bg-muted rounded-xl text-sm text-center">
             <span className={hookQuota > 10 ? "text-green-500 font-semibold" : hookQuota > 0 ? "text-orange-500 font-semibold" : "text-destructive font-semibold"}>
               💎 剩余配额：{hookQuota} 次
             </span>
@@ -529,7 +529,7 @@ export default function ReviewPage() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
         >
           {isGenerating ? (
             <>
@@ -561,14 +561,14 @@ export default function ReviewPage() {
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => copyToClipboard(result)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
                   复制报告
                 </button>
                 <button
                   onClick={() => downloadAsFile(result, `审稿报告-${new Date().toLocaleDateString()}.txt`)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
                   下载报告
@@ -596,7 +596,7 @@ export default function ReviewPage() {
                 支持对标参考学习<br/><br/>
               </p>
               
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border-2 border-primary/20 text-left">
+              <div className="rounded-xl p-4 border-2 border-primary/20 text-left">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div className="text-sm">

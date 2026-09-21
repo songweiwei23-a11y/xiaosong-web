@@ -147,7 +147,7 @@ export default function SubscriptionsManagement() {
   }
 
   return (
-    <div className="min-h-screen brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen">
       <div className="border-b glass-panel shadow-sm">
         <div className="container mx-auto px-8 py-6">
           <div className="flex items-center justify-between">

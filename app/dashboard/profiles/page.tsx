@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -65,14 +65,14 @@ export default function ProfilesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <div className="text-muted-foreground">加载中...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-muted py-8">
+    <div className="py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 头部 */}
         <div className="flex justify-between items-center mb-8">
@@ -84,7 +84,7 @@ export default function ProfilesPage() {
           </div>
           <Link
             href="/dashboard/profiles/new"
-            className="px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent transition-colors font-medium"
+            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent transition-colors font-medium"
           >
             + 创建新档案
           </Link>
@@ -92,7 +92,7 @@ export default function ProfilesPage() {
 
         {/* 档案列表 */}
         {profiles.length === 0 ? (
-          <div className="bg-card rounded-lg shadow-sm p-12 text-center">
+          <div className="bg-card rounded-xl shadow-sm p-12 text-center">
             <div className="text-muted-foreground mb-4">
               <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -102,7 +102,7 @@ export default function ProfilesPage() {
             <p className="text-muted-foreground mb-6">创建您的第一个用户档案，让AI生成更精准的内容</p>
             <Link
               href="/dashboard/profiles/new"
-              className="inline-flex items-center px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent transition-colors"
+              className="inline-flex items-center px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent transition-colors"
             >
               创建第一个档案
             </Link>
@@ -112,7 +112,7 @@ export default function ProfilesPage() {
             {profiles.map((profile) => (
               <div
                 key={profile.id}
-                className="bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow p-6"
+                className="bg-card rounded-xl shadow-sm hover:shadow-md transition-shadow p-6"
               >
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-lg font-semibold text-foreground">
@@ -138,7 +138,7 @@ export default function ProfilesPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
                     <span className="text-sm text-muted-foreground">平台：</span>
                     <div className="flex flex-wrap gap-1 mt-1">

@@ -22,7 +22,7 @@ export function Loading({ size = "md", text, fullScreen = false }: LoadingProps)
 
   if (fullScreen) {
     return (
-      <div className="min-h-screen flex items-center justify-center brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-primary/10">
         {content}
       </div>
     );
