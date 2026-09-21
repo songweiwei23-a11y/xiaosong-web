@@ -1,8 +1,11 @@
 ﻿// app/layout.tsx
 import type { Metadata } from 'next';
 import './globals.css';
+// 备选配色，放在 globals 之后以覆盖其中的色相变量
+import './palettes.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AmbientBackground } from '@/components/theme/AmbientBackground';
+import { PaletteSwitcher } from '@/components/theme/PaletteSwitcher';
 import { FeedbackHost } from '@/components/ui/feedback';
 
 export const metadata: Metadata = {
@@ -20,6 +23,11 @@ const themeInitScript = `
     var theme = (stored === 'light' || stored === 'dark') ? stored : 'dark';
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+    }
+    // 配色方案同样要在首屏前定好，否则会先闪一下默认色再切换
+    var palette = localStorage.getItem('xiaosong-palette');
+    if (palette && palette !== 'default') {
+      document.documentElement.setAttribute('data-palette', palette);
     }
   } catch (e) {
     document.documentElement.classList.add('dark');
@@ -44,6 +52,8 @@ export default function RootLayout({
           <div className="min-h-screen flex flex-col">
             {children}
           </div>
+          {/* 选型用的临时入口，配色定下来后删除 */}
+          <PaletteSwitcher />
           <FeedbackHost />
         </ThemeProvider>
       </body>
