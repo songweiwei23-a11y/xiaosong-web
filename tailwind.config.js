@@ -73,5 +73,11 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // 排版插件。此前未安装，导致所有 prose 类失效：Tailwind 的 preflight 会把
+    // h1/h2/li 的默认样式清零，而恢复排版的插件不在，生成出来的脚本就变成
+    // 标题和正文一样大、列表没有符号、段落之间没有间距的一整坨。
+    require("@tailwindcss/typography"),
+  ],
 }

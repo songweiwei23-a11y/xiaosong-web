@@ -23,8 +23,8 @@ import { readDifyStream } from '@/lib/sse-stream';
 import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } from "@/lib/quality-checker";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sparkles, AlertCircle, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+// 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
+import { Sparkles, AlertCircle, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 
 // 静态配置与折叠组件已抽离
@@ -47,6 +47,8 @@ import {
 } from "./constants";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useScriptHistory } from "./useScriptHistory";
+import { ResultPanel } from "./ResultPanel";
+import { HistoryPanel } from "./HistoryPanel";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
@@ -100,6 +102,10 @@ export default function ScriptPage() {
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult);
+
+  // 当前结果区展示的是哪条历史，用于在列表里高亮。
+  // 新生成时清空——此时结果区的内容还没入库，不属于任何一条历史。
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
 
   // 档案和定位关联
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -273,6 +279,7 @@ export default function ScriptPage() {
 
     setIsGenerating(true);
     setResult("");
+    setActiveHistoryId(null); // 新内容还未入库，不属于任何一条历史
     let fullResult = ""; // 保存历史记录用
 
     try {
@@ -1339,17 +1346,17 @@ ${formatRequirements}
       </div>
 
       {/* Right Panel - Result */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-4xl">
+      <div className="flex-1 overflow-y-auto px-8 py-7">
+        <div className="mx-auto max-w-4xl space-y-5">
 
         {/* 额度用尽提示条 */}
       {quotaExhausted && showQuotaBanner && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 flex items-center justify-between">
+        <div className="glass-panel border-destructive/30 bg-destructive/[0.06] rounded-2xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
             <div>
-              <p className="font-semibold text-red-900 dark:text-red-100">脚本生成额度已用完</p>
-              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+              <p className="font-medium text-foreground">脚本生成额度已用完</p>
+              <p className="text-[13px] text-muted-foreground mt-1">
                 您当前使用的是 <span className="font-semibold">{planName}</span>，升级套餐解锁更多额度
               </p>
             </div>
@@ -1375,106 +1382,44 @@ ${formatRequirements}
         </div>
       )}
 
-      {/* 历史记录 */}
-        {scriptHistory.length > 0 && (
-          <div className="glass-panel rounded-2xl p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <History className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">历史脚本记录</h3>
-              <span className="text-sm text-muted-foreground">({scriptHistory.length})</span>
-            </div>
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {scriptHistory.map((item) => (
-                <div
-                  key={item.id}
-                  className="glass-panel glass-interactive p-3 rounded-xl"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground line-clamp-2">
-                        {item.result.replace(/[#*`>\-|]/g, "").replace(/\s+/g, " ").trim().slice(0, 80)}...
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(item.created_at).toLocaleString('zh-CN')}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button aria-label="继续对话"
-                        onClick={() => openContinuousDialog(item.result)}
-                        className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                        title="继续对话"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button><button aria-label="删除历史记录"
-                        onClick={() => deleteHistory(item.id)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* 结果区在上、历史在下：原先历史卡片占着顶部，每次进页面先看到的
+          是旧记录而不是刚生成的内容 */}
+      <ResultPanel
+        result={result}
+        isGenerating={isGenerating}
+        onCopy={(bodyOnly) => {
+          navigator.clipboard.writeText(bodyOnly);
+          notify("✅ 已复制到剪贴板");
+        }}
+        onDownload={(bodyOnly) => {
+          const blob = new Blob([bodyOnly], { type: "text/plain;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `脚本-${topic || "未命名"}-${new Date().toLocaleDateString()}.txt`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }}
+        onContinue={result ? () => openContinuousDialog(result) : undefined}
+      />
 
-          {!result && !isGenerating && (
-            <div className="flex h-full items-center justify-center text-center">
-              <div>
-                {/* 空状态：图标放进品牌渐变的圆角容器里，比一个灰色线性图标有精神 */}
-                <div className="brand-gradient mx-auto flex h-16 w-16 items-center justify-center rounded-2xl opacity-90 shadow-lg shadow-primary/25">
-                  <Sparkles className="h-8 w-8 text-white" />
-                </div>
-                <p className="mt-6 text-lg font-medium text-foreground/80">
-                  填写左侧需求后点击生成按钮
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  AI将结合编导知识库为你生成专业脚本
-                </p>
-              </div>
-            </div>
-          )}
-
-          {(result || isGenerating) && (
-            <div>
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">生成结果</h2>
-                {result && (
-                  <div className="flex gap-2">
-                    <button aria-label="复制脚本到剪贴板" onClick={() => { navigator.clipboard.writeText(result); notify("✅ 已复制到剪贴板"); }} className="glass-panel glass-interactive flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
-                      <Copy className="h-4 w-4" />
-                      复制
-                    </button>
-                    <button aria-label="下载脚本文件" onClick={() => { const blob = new Blob([result], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `脚本-${topic || "未命名"}-${new Date().toLocaleDateString()}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }} className="glass-panel glass-interactive flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
-                      <Download className="h-4 w-4" />
-                      下载
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {isGenerating && !result && (
-                <div className="flex items-center justify-center py-20">
-                  <div className="text-center">
-                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-                    <p className="mt-4 text-sm text-muted-foreground">AI正在创作中...</p>
-                  </div>
-                </div>
-              )}
-
-              {result && (
-                // 正文收进玻璃卡片：原先直接铺在页面上，长文没有边界，
-                // 读起来像一片散落的文字，也和左侧表单区分不开
-                <div className="glass-panel rounded-2xl p-7">
-                  <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:tracking-tight prose-p:leading-relaxed">
-                    <ReactMarkdown>{result}</ReactMarkdown>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+      <HistoryPanel
+        items={scriptHistory}
+        activeId={activeHistoryId}
+        onLoad={(item) => {
+          // 点历史直接调回结果区查看。原先只能「继续对话」，
+          // 想重看一条旧脚本没有任何入口
+          setResult(item.result);
+          setActiveHistoryId(item.id);
+        }}
+        onContinue={(item) => openContinuousDialog(item.result)}
+        onDelete={(id) => {
+          if (id === activeHistoryId) setActiveHistoryId(null);
+          deleteHistory(id);
+        }}
+      />
         </div>
       </div>
       
