@@ -93,6 +93,40 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Remove-Item $tempPkg -Force -ErrorAction SilentlyContinue
-Write-Host "部署完成！" -ForegroundColor Green
-Write-Host "请访问 http://$serverIP 验证部署结果" -ForegroundColor Cyan
+
+# pm2 restart 返回后服务并未立即可用：Next.js 还要几十秒才起得来，
+# 期间旧进程可能仍在应答。曾因此把请求交给旧进程处理，新增逻辑没执行，
+# 排查了很久才发现只是差了 24 秒。这里必须等到新进程真正接管。
+Write-Host ""
+Write-Host "[4/5] 等待服务就绪..." -ForegroundColor Yellow
+$ready = $false
+for ($i = 1; $i -le 40; $i++) {
+    Start-Sleep -Seconds 3
+    $code = ssh -i "$sshKey" ${serverUser}@${serverIP} "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3000/ || echo 000"
+    $code = ($code | Out-String).Trim()
+    if ($code -match '^(200|30\d)$') {
+        $ready = $true
+        Write-Host "  服务已响应 (HTTP $code)，耗时约 $($i * 3) 秒" -ForegroundColor Green
+        break
+    }
+    Write-Host "  第 $i 次探测: $code" -ForegroundColor DarkGray
+}
+if (-not $ready) {
+    Write-Host "  服务超过 2 分钟仍未响应，请登录服务器查看 pm2 logs" -ForegroundColor Red
+    pause
+    exit 1
+}
+
+Write-Host ""
+Write-Host "[5/5] 校验线上代码是否为本次版本..." -ForegroundColor Yellow
+$verifyCmd = "cd $serverPath; " +
+  "echo search_query=`$(grep -c search_query app/api/dify/stream/route.ts); " +
+  "echo conv=`$(grep -c saveDifyConversationId app/api/dify/stream/route.ts); " +
+  "echo restarts=`$(pm2 jlist | grep -o '\`"restart_time\`":[0-9]*' | head -1 | cut -d: -f2)"
+$verify = ssh -i "$sshKey" ${serverUser}@${serverIP} $verifyCmd
+$verify -split "`n" | Where-Object { $_.Trim() } | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+
+Write-Host ""
+Write-Host "部署完成，服务已就绪！" -ForegroundColor Green
+Write-Host "现在可以访问 http://$serverIP 使用，不会再落到重启窗口里。" -ForegroundColor Cyan
 pause
