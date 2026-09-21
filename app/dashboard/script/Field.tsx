@@ -19,6 +19,7 @@ export function Field({
   required,
   optional,
   hint,
+  stacked,
   children,
 }: {
   label: string;
@@ -28,15 +29,39 @@ export function Field({
   optional?: boolean;
   /** 控件下方的补充说明 */
   hint?: React.ReactNode;
+  /**
+   * 标签置于上方、内容占满整行。
+   *
+   * 用于多列网格这类内容本身就宽的字段：侧栏可用宽度约 430px，
+   * 扣掉 88px 标签列后再分两列，每列只剩 160px，卡片副标题会被挤成三行。
+   * 这类字段让出标签列，观感反而更整齐。
+   */
+  stacked?: boolean;
   children: React.ReactNode;
 }) {
+  const labelNode = (
+    <>
+      <span className="text-[13px] leading-5 text-muted-foreground">{label}</span>
+      {(required || optional) && <Badge kind={required ? "required" : "optional"} />}
+    </>
+  );
+
+  if (stacked) {
+    return (
+      <div>
+        <div className="mb-2 flex items-center gap-1.5">{labelNode}</div>
+        {children}
+        {hint && <div className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{hint}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
       {/* 标签列定宽：不定宽的话每个字段的内容起点都不同，对齐轴就没了。
           88px 足够放下四个汉字加一个徽章，是这批标签里最长的情况 */}
       <div className="flex shrink-0 items-start gap-1.5 pt-2 sm:w-[88px] sm:justify-end">
-        <span className="text-[13px] leading-5 text-muted-foreground">{label}</span>
-        {(required || optional) && <Badge kind={required ? "required" : "optional"} />}
+        {labelNode}
       </div>
 
       <div className="min-w-0 flex-1">

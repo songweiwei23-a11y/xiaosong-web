@@ -177,7 +177,9 @@ export default function FormPreviewPage() {
                   </select>
                 </Field>
 
-                <Field label="脚本类型" required>
+                {/* stacked：让出标签列、内容占满整行。多列网格在 430px 的侧栏里
+                    若再扣掉 88px 标签列，卡片副标题会被挤成三行 */}
+                <Field label="脚本类型" required stacked>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {TYPES.map((t) => (
                       <OptionCard
