@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { extractScriptContext } from "@/lib/positioning-utils";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
 import { enhancePromptWithMCNStandards } from "@/lib/enhance-prompt";
+import { recommendFormula, generateFormulaGuide } from "@/lib/formula-enforcer";
 import { 
   getAudienceProfile, 
   getDifferentiation, 
@@ -17,7 +18,7 @@ import {
   getStepTasks
 } from "@/lib/script-helpers";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
-import { evaluateScriptQualityStrict, formatQualityReport } from "@/lib/quality-checker";
+import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } from "@/lib/quality-checker";
 
 import { useState, useEffect, useCallback } from "react";
 import { Sparkles, AlertCircle, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
@@ -359,6 +360,26 @@ ${scriptContext}
         : getTimeAllocation(structureName, durationForCalc);
       const stepTasks = getStepTasks(structureName);
 
+      // ========== 公式分段蓝图 + MCN 范例 ==========
+      // enhancePromptWithMCNStandards 给出的是原则（要点、禁忌），粒度到不了
+      // 「0-8秒该放什么、必须包含哪些元素」。formula-enforcer 提供四套公式的
+      // 分段蓝图与参考话术，补的正是这一层。
+      //
+      // 另外 enhance-prompt 里两处写着「请参考上下文知识库中的 MCN 级脚本示例」，
+      // 但生成前从未真正注入过范例。getRelevantExample 提供的就是 9.5 分范例。
+      const formulaType = recommendFormula(scriptType, structureName);
+      const formulaSection = `
+${generateFormulaGuide(formulaType)}
+
+## 📎 MCN级参考范例（9.5分标准）
+
+下面是达标脚本的完整范例。**只学它的分段节奏、波点标注位置和台词口语化程度，
+不要照搬其中的行业、案例或具体台词**——照搬会让脚本失去与本次主题的相关性。
+
+${getRelevantExample(scriptType, durationForCalc, scriptStructure)}
+`;
+      // ========== 公式蓝图结束 ==========
+
       const fourStepWorkflow = `
 ## 🧭 生成流程（必须按顺序输出）
 
@@ -450,6 +471,7 @@ ${executionContext}
 ${profileInfo}${positioningInfo}
 
 ${structureGuide}
+${formulaSection}
 ${hookGuide}
 
 ## 产品信息（核心）
@@ -522,6 +544,7 @@ ${executionContext}
 ${profileInfo}${positioningInfo}
 
 ${structureGuide}
+${formulaSection}
 ${hookGuide}
 
 ## 目标定位

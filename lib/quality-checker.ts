@@ -136,6 +136,34 @@ export const REQUIRED_ELEMENTS = {
   ],
 };
 
+/** 开场检测的范围：废话开场按定义出现在开头，超出这一段的命中多半是引用 */
+const OPENING_SCAN_CHARS = 400;
+/** 命中点前方若出现这些标记，说明是在举反例而非真的这么开场 */
+const COUNTER_EXAMPLE_HINT = /[❌✗×]|不会的|不对的|错误|别这样|别再|不要|禁止|反面|千万别|最忌|如果你还在|很多人/;
+
+/**
+ * 查找真正的废话开场。
+ *
+ * 原实现对全文做 includes 匹配，无法区分「这样开场」和「别这样开场」。
+ * 提示词本身就在教模型"禁止用大家好我是"，模型据此在脚本里引用该句作为
+ * 反面教材属于正常写法，却会被判为致命错误直接 0 分——本文件自带的
+ * MCN 范例就因为中段引用了这句话而自评 0 分、不及格。
+ *
+ * 这里改为：只在开头一段内检测，且命中点前方出现否定或反例标记时豁免。
+ */
+export function findForbiddenOpenings(script: string): string[] {
+  const head = script.slice(0, OPENING_SCAN_CHARS);
+  const hits: string[] = [];
+  for (const phrase of FORBIDDEN_PHRASES.level1) {
+    const idx = head.indexOf(phrase);
+    if (idx === -1) continue;
+    const before = head.slice(Math.max(0, idx - 40), idx);
+    if (COUNTER_EXAMPLE_HINT.test(before)) continue;
+    hits.push(phrase);
+  }
+  return hits;
+}
+
 // 4. 质量评分函数（严格版）
 export function evaluateScriptQualityStrict(script: string): {
   score: number;
@@ -148,7 +176,7 @@ export function evaluateScriptQualityStrict(script: string): {
   const issues: string[] = [];
   const suggestions: string[] = [];
   
-  const level1Violations = FORBIDDEN_PHRASES.level1.filter(phrase => script.includes(phrase));
+  const level1Violations = findForbiddenOpenings(script);
   if (level1Violations.length > 0) {
     issues.push(`致命错误：包含废话开场"${level1Violations.join('、')}"`);
     return {
