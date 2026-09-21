@@ -610,7 +610,10 @@ ${formatRequirements}
       const response = await fetch("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        // taskType 必传：后端据此选择知识库检索的主题提示词、按任务隔离
+        // Dify 会话记忆、并计入对应功能的用量。缺失时会兜底成"未知"，
+        // 导致检索质量下降且各功能的记忆混在同一个会话里。
+        body: JSON.stringify({ taskType: "脚本生成", query }),
       });
 
       if (!response.ok) throw new Error("生成失败");

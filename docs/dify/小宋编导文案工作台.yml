@@ -2407,8 +2407,8 @@ workflow:
             keyword_setting:
               keyword_weight: 0.3
             vector_setting:
-              embedding_model_name: text-embedding-3-large
-              embedding_provider_name: langgenius/openai/openai
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
               vector_weight: 0.7
             weight_type: customized
         query_attachment_selector: []
@@ -2444,8 +2444,8 @@ workflow:
             keyword_setting:
               keyword_weight: 0.3
             vector_setting:
-              embedding_model_name: text-embedding-3-large
-              embedding_provider_name: langgenius/openai/openai
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
               vector_weight: 0.7
             weight_type: customized
         query_attachment_selector: []
@@ -2481,8 +2481,8 @@ workflow:
             keyword_setting:
               keyword_weight: 0.3
             vector_setting:
-              embedding_model_name: text-embedding-3-large
-              embedding_provider_name: langgenius/openai/openai
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
               vector_weight: 0.7
             weight_type: customized
         query_attachment_selector: []
@@ -2518,8 +2518,8 @@ workflow:
             keyword_setting:
               keyword_weight: 0.3
             vector_setting:
-              embedding_model_name: text-embedding-3-large
-              embedding_provider_name: langgenius/openai/openai
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
               vector_weight: 0.7
             weight_type: customized
         query_attachment_selector: []
@@ -2555,8 +2555,8 @@ workflow:
             keyword_setting:
               keyword_weight: 0.3
             vector_setting:
-              embedding_model_name: text-embedding-3-large
-              embedding_provider_name: langgenius/openai/openai
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
               vector_weight: 0.7
             weight_type: customized
         query_attachment_selector: []

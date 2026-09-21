@@ -683,6 +683,9 @@ export default function TopicPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // 见 script 页同处说明：taskType 决定检索提示词、会话隔离与用量归属。
+          // 后端检测到已有 query 时会沿用这里拼好的完整提示词，不再自行拼装。
+          taskType: "选题策划",
           query: query,
           inputs: requestData
         })

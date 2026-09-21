@@ -72,7 +72,10 @@ export async function POST(req: NextRequest) {
       'hormone': '🔥 荷尔蒙'
     };
     
-    if (body.taskType === '选题策划') {
+    // 选题页前端已拼好完整提示词（含模式说明、关键词过滤等），此时直接沿用，
+    // 不能用下面这套简化模板覆盖，否则提示词质量大幅退化。
+    // 仅当调用方只给了结构化字段、没给 query 时才走拼装逻辑。
+    if (body.taskType === '选题策划' && !body.query) {
       const parts = ['我需要策划短视频选题'];
       if (body.accountStage) parts.push('账号阶段：' + body.accountStage);
       if (body.fansLevel) parts.push('粉丝量级：' + body.fansLevel);
