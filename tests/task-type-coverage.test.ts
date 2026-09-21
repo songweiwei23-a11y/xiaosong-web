@@ -80,4 +80,27 @@ describe('dify/stream 调用方必须声明 taskType', () => {
       }
     });
   }
+
+  /**
+   * 流式响应必须交给 lib/sse-stream 统一解析，不能各页面手写。
+   *
+   * 手写版本反复出现两个同样的缺陷，且都不会报错、只在长文本里偶发：
+   *   - decode(value) 未传 { stream: true }：中文一个字占 3 字节，被拆到
+   *     两个数据块边界上时会解码成乱码；
+   *   - 没有跨块行缓冲：被截断的半行 JSON 解析失败后整行丢弃，内容缺一截。
+   */
+  describe('流式解析必须复用 readDifyStream', () => {
+    for (const page of callers) {
+      const rel = path.relative(process.cwd(), page);
+      it(`${rel} 不手写 SSE 解析`, () => {
+        const source = fs.readFileSync(page, 'utf8');
+        expect(source, `${rel} 应从 @/lib/sse-stream 引入 readDifyStream`).toMatch(
+          /readDifyStream/
+        );
+        // decode 必须开启 stream 模式；裸 decode(value) 一律视为手写残留
+        const bareDecode = /decoder\.decode\(\s*value\s*\)/.test(source);
+        expect(bareDecode, `${rel} 存在未开 stream 模式的 decode(value)`).toBe(false);
+      });
+    }
+  });
 });

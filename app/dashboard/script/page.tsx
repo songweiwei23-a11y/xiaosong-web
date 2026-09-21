@@ -19,6 +19,7 @@ import {
   getStepTasks
 } from "@/lib/script-helpers";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
+import { readDifyStream } from '@/lib/sse-stream';
 import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } from "@/lib/quality-checker";
 
 import { useState, useEffect, useCallback } from "react";
@@ -613,40 +614,24 @@ ${formatRequirements}
         // taskType 必传：后端据此选择知识库检索的主题提示词、按任务隔离
         // Dify 会话记忆、并计入对应功能的用量。缺失时会兜底成"未知"，
         // 导致检索质量下降且各功能的记忆混在同一个会话里。
-        body: JSON.stringify({ taskType: "脚本生成", query }),
+        // profileId 决定记忆按哪个账号档案隔离：不传则所有档案共用一段
+        // 上下文，代运营多个账号时会把 A 号的内容串到 B 号的生成里。
+        body: JSON.stringify({
+          taskType: "脚本生成",
+          profileId: selectedProfileId || null,
+          query,
+        }),
       });
 
       if (!response.ok) throw new Error("生成失败");
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("无法读取响应");
-
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n").filter(line => line.trim());
-        
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.answer) {
-                accumulated += data.answer;
-                fullResult += data.answer;
-                setResult(accumulated);
-              }
-            } catch (e) {
-              // 忽略解析错误
-            }
-          }
-        }
-      }
+      // 统一走 readDifyStream：此处原本手写解析，decode(value) 未开 stream 模式，
+      // 中文占 3 字节，一旦某个字被拆在两个数据块的边界上就会解码成乱码；
+      // 且没有行缓冲，被截断的半行 JSON 会被整行丢弃，表现为内容偶发缺失。
+      const accumulated = await readDifyStream(response, {
+        onChunk: (_piece, full) => setResult(full),
+      });
+      fullResult += accumulated;
 
       if (fullResult.trim()) {
         const qualityEvaluation = evaluateScriptQualityStrict(fullResult);

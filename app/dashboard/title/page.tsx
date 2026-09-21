@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
+import { readDifyStream } from '@/lib/sse-stream';
 import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCircle, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
@@ -190,32 +191,11 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
 
       if (!response.ok) throw new Error("生成失败");
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.answer) {
-                  fullResult += data.answer;
-                  setResult(fullResult);
-                }
-              } catch (e) {
-                console.error("解析失败:", e);
-              }
-            }
-          }
-        }
-      }
+      // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
+      // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
+      fullResult += await readDifyStream(response, {
+        onChunk: (_piece, full) => setResult(full),
+      });
 
       if (fullResult) {
         await saveGenerationHistory("标题封面", inputData, fullResult);

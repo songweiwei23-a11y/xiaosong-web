@@ -6,6 +6,7 @@ import { extractStrategySummary } from '@/lib/positioning-utils';
 
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
+import { readDifyStream } from '@/lib/sse-stream';
 import { Lightbulb, Loader2, TrendingUp, Users, Target, Sparkles, Grid3x3, Zap, Heart, DollarSign, Eye, Flame, Copy, Download, History, MessageCircle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
@@ -686,6 +687,8 @@ export default function TopicPage() {
           // 见 script 页同处说明：taskType 决定检索提示词、会话隔离与用量归属。
           // 后端检测到已有 query 时会沿用这里拼好的完整提示词，不再自行拼装。
           taskType: "选题策划",
+          // 记忆按档案隔离，避免代运营时多个账号的上下文互相串台。
+          profileId: selectedProfileId || null,
           query: query,
           inputs: requestData
         })
@@ -693,33 +696,11 @@ export default function TopicPage() {
 
       if (!response.ok) throw new Error("生成失败");
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedText = "";
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n").filter(line => line.trim());
-          
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.answer) {
-                  accumulatedText += data.answer;
-                  setResult(accumulatedText);
-                }
-              } catch (e) {
-                console.error("解析错误:", e);
-              }
-            }
-          }
-        }
-      }
+      // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
+      // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
+      const accumulatedText = await readDifyStream(response, {
+        onChunk: (_piece, full) => setResult(full),
+      });
 
       // 保存到历史记录
       if (accumulatedText) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
+import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { extractStrategySummary } from '@/lib/positioning-utils';
@@ -178,6 +179,8 @@ export default function PositioningPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: "账号定位",
+          // 记忆按档案隔离：定位是"这个号该做什么"的判断，绝不能串到别的号上。
+          profileId: activeProfile?.id || null,
           profileInfo: profileSummary,
           additionalNotes: additionalNotes || "无补充说明",
         }),
@@ -187,36 +190,12 @@ export default function PositioningPage() {
         throw new Error("生成失败");
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.answer) {
-                  fullResult += data.answer;
-                  setResult(fullResult);
-                }
-                // 捕获 conversation_id
-                if (data.conversation_id) {
-                  conversationId = data.conversation_id;
-                }
-              } catch (e) {
-                console.error("解析失败:", e);
-              }
-            }
-          }
-        }
-      }
+      // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
+      // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
+      fullResult += await readDifyStream(response, {
+        onChunk: (_piece, full) => setResult(full),
+        onConversationId: (id) => { conversationId = id; },
+      });
 
       // 保存到数据库
       if (fullResult) {
