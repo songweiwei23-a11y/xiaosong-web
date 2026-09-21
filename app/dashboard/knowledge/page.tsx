@@ -1,5 +1,6 @@
 "use client";
 
+import { Field } from "@/components/form/Field";
 import { useState, useEffect } from "react";
 import { BookOpen, Search, Loader2, Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -129,11 +130,8 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
 
         <div className="space-y-6">
           {/* Search Input */}
-          <div>
-            <label className="mb-2 block text-[13px] font-medium text-foreground">
-              输入你的问题
-            </label>
-            <textarea
+          <Field label="你的问题" optional>
+<textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="例如：如何设计开头的强冲突？"
@@ -149,14 +147,11 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
             <div className="mt-1 text-xs text-muted-foreground">
               按 Enter 搜索，Shift+Enter 换行
             </div>
-          </div>
+</Field>
 
           {/* Category Filter */}
-          <div>
-            <label className="mb-2 block text-[13px] font-medium text-foreground">
-              知识分类（可选）
-            </label>
-            <div className="space-y-2">
+          <Field label="知识分类" optional>
+<div className="space-y-2">
               <button
                 onClick={() => setSelectedCategory("")}
                 className={`w-full rounded-xl border p-2 text-left text-sm transition-all ${
@@ -184,14 +179,11 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 </button>
               ))}
             </div>
-          </div>
+</Field>
 
           {/* Quick Questions */}
-          <div>
-            <label className="mb-2 block text-[13px] font-medium text-foreground">
-              常见问题
-            </label>
-            <div className="space-y-2">
+          <Field label="常见问题" optional>
+<div className="space-y-2">
               {QUICK_QUESTIONS.map((question, index) => (
                 <button
                   key={index}
@@ -202,7 +194,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 </button>
               ))}
             </div>
-          </div>
+</Field>
 
           {/* Search Button */}
           <button

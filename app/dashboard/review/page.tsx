@@ -1,5 +1,6 @@
 "use client";
 
+import { Field } from "@/components/form/Field";
 import { useState, useEffect } from "react";
 import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -231,12 +232,8 @@ export default function ReviewPage() {
 
         {/* 草稿输入区 */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-bold text-foreground flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" />
-              草稿内容 <span className="text-destructive">*</span>
-            </label>
-            <div className="flex gap-2">
+          <Field label="草稿内容" required>
+<div className="flex gap-2">
               <button
                 onClick={loadExample}
                 className="text-xs text-primary hover:text-primary font-medium"
@@ -250,7 +247,7 @@ export default function ReviewPage() {
                 清空
               </button>
             </div>
-          </div>
+</Field>
           <textarea
             value={draftContent}
             onChange={(e) => setDraftContent(e.target.value)}
@@ -271,9 +268,8 @@ export default function ReviewPage() {
           </h3>
 
           {/* 平台 */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">平台</label>
-            <div className="grid grid-cols-4 gap-2">
+          <Field label="平台" optional stacked>
+<div className="grid grid-cols-4 gap-2">
               {platforms.map((p) => (
                 <button
                   key={p}
@@ -288,12 +284,11 @@ export default function ReviewPage() {
                 </button>
               ))}
             </div>
-          </div>
+</Field>
 
           {/* 时长 */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">视频时长</label>
-            <div className="grid grid-cols-3 gap-2">
+          <Field label="视频时长" optional stacked>
+<div className="grid grid-cols-3 gap-2">
               {durations.map((d) => (
                 <button
                   key={d}
@@ -308,12 +303,11 @@ export default function ReviewPage() {
                 </button>
               ))}
             </div>
-          </div>
+</Field>
 
           {/* 脚本类型 */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">脚本类型（可选）</label>
-            <div className="flex flex-wrap gap-2">
+          <Field label="脚本类型" optional stacked>
+<div className="flex flex-wrap gap-2">
               {scriptTypes.map((type) => (
                 <button
                   key={type}
@@ -328,7 +322,7 @@ export default function ReviewPage() {
                 </button>
               ))}
             </div>
-          </div>
+</Field>
         </div>
 
         {/* 审稿维度 */}

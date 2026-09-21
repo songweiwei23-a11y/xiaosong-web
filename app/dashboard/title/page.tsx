@@ -1,5 +1,6 @@
 "use client";
 
+import { Field } from "@/components/form/Field";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
@@ -230,25 +231,19 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
         </div>
 
         {/* 视频主题 */}
-        <div>
-          <label className="mb-2 block text-[13px] font-medium text-foreground">
-            视频主题 <span className="text-destructive">*</span>
-          </label>
-          <textarea
+        <Field label="视频主题" required>
+<textarea
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="例如：教你3招拍出电影感视频"
             rows={3}
             className="w-full resize-none rounded-xl border border-border bg-background/50 px-3.5 py-3 text-[13px] leading-relaxed transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-        </div>
+</Field>
 
         {/* 目标平台 */}
-        <div>
-          <label className="mb-2 block text-[13px] font-medium text-foreground">
-            目标平台
-          </label>
-          <div className="flex gap-2">
+        <Field label="目标平台" optional>
+<div className="flex gap-2">
             {['抖音', '小红书', '快手', 'B站', '视频号'].map((p) => (
               <button
                 key={p}
@@ -263,14 +258,11 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
               </button>
             ))}
           </div>
-        </div>
+</Field>
 
         {/* 标题类型 */}
-        <div>
-          <label className="mb-2 block text-[13px] font-medium text-foreground">
-            标题类型
-          </label>
-          <div className="grid grid-cols-3 gap-2">
+        <Field label="标题类型" optional stacked>
+<div className="grid grid-cols-3 gap-2">
             {TITLE_TYPES.slice(0, 6).map((type) => (
               <button
                 key={type.value}
@@ -286,14 +278,11 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
               </button>
             ))}
           </div>
-        </div>
+</Field>
 
         {/* 生成数量 */}
-        <div>
-          <label className="mb-2 block text-[13px] font-medium text-foreground">
-            生成数量：{abTestCount}个
-          </label>
-          <div className="flex gap-2">
+        <Field label="生成数量" optional>
+<div className="flex gap-2">
             {AB_TEST_COUNTS.map((option) => (
               <button
                 key={option.value}
@@ -309,21 +298,18 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
               </button>
             ))}
           </div>
-        </div>
+</Field>
 
         {/* 目标人群（选填） */}
-        <div>
-          <label className="mb-2 block text-[13px] font-medium text-foreground">
-            目标人群 <span className="text-xs text-muted-foreground">(选填)</span>
-          </label>
-          <input
+        <Field label="目标人群" optional>
+<input
             type="text"
             value={targetAudience}
             onChange={(e) => setTargetAudience(e.target.value)}
             placeholder="例如：25-35岁职场女性"
             className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-        </div>
+</Field>
 
         {/* 生成按钮 */}
         <button

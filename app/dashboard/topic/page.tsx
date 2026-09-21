@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import { Field } from "@/components/form/Field";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 
 
@@ -739,9 +740,8 @@ export default function TopicPage() {
         <h1 className="text-2xl font-bold text-foreground mb-4">✨ 选题策划工作台</h1>
 
         {/* 模式切换 */}
-        <div className="bg-amber-500/10 rounded-xl p-4 border border-orange-500/25">
-          <label className="block text-sm font-semibold text-foreground mb-3">选择模式</label>
-          <div className="flex gap-3">
+        <Field label="选择模式" optional>
+<div className="flex gap-3">
             <button
               onClick={() => setMode("quick")}
               className={`flex-1 py-2.5 rounded-xl font-medium transition-all ${
@@ -766,17 +766,16 @@ export default function TopicPage() {
           <p className="text-xs text-muted-foreground mt-2">
             {mode === "quick" ? "快速模式：选择档案和定位快速填充" : "自定义模式：手动填写所有字段"}
           </p>
-        </div>
+</Field>
 
         {/* 快速模式：档案和定位选择 */}
         {mode === "quick" && (
           <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-[13px] font-medium text-foreground">👤 个人档案</label>
-              <select
+            <Field label="个人档案" optional>
+<select
                 value={selectedProfileId}
                 onChange={(e) => handleProfileSelect(e.target.value)}
-                className="w-full px-4 py-2.5 border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full rounded-xl border border-border bg-background/50 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 px-3 py-2.5"
               >
                 <option value="">-- 选择档案 --</option>
                 {profiles.map((profile) => (
@@ -785,14 +784,13 @@ export default function TopicPage() {
                   </option>
                 ))}
               </select>
-            </div>
+</Field>
 
-            <div>
-              <label className="mb-2 block text-[13px] font-medium text-foreground">🎯 账号定位</label>
-              <select
+            <Field label="账号定位" optional>
+<select
                 value={selectedPositioningId}
                 onChange={(e) => handlePositioningSelect(e.target.value)}
-                className="w-full px-4 py-2.5 border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full rounded-xl border border-border bg-background/50 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 px-3 py-2.5"
               >
                 <option value="">-- 选择定位 --</option>
                 {positionings.map((positioning) => (
@@ -801,7 +799,7 @@ export default function TopicPage() {
                   </option>
                 ))}
               </select>
-            </div>
+</Field>
           </div>
         )}
 
@@ -819,9 +817,8 @@ export default function TopicPage() {
             <div className="px-4 pb-4 space-y-5 border-t">
               
               {/* 账号阶段 */}
-              <div className="pt-4">
-                <label className="mb-2 block text-[13px] font-medium text-foreground">账号阶段</label>
-                <select
+              <Field label="账号阶段" optional>
+<select
                   value={accountStage}
                   onChange={(e) => setAccountStage(e.target.value)}
                   className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -831,12 +828,11 @@ export default function TopicPage() {
                     <option key={stage} value={stage}>{stage}</option>
                   ))}
                 </select>
-              </div>
+</Field>
 
               {/* 粉丝级别 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">粉丝级别</label>
-                <select
+              <Field label="粉丝级别" optional>
+<select
                   value={fansLevel}
                   onChange={(e) => setFansLevel(e.target.value)}
                   className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -846,24 +842,22 @@ export default function TopicPage() {
                     <option key={level} value={level}>{level}</option>
                   ))}
                 </select>
-              </div>
+</Field>
 
               {/* 平均播放量 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">平均播放量</label>
-                <input
+              <Field label="平均播放量" optional>
+<input
                   type="text"
                   value={avgViewsInput}
                   onChange={(e) => setAvgViewsInput(e.target.value)}
                   placeholder="例如：5000"
                   className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
-              </div>
+</Field>
 
               {/* 平台选择 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">平台（可多选）</label>
-                <div className="flex flex-wrap gap-2">
+              <Field label="平台" optional stacked>
+<div className="flex flex-wrap gap-2">
                   {platforms.map((platform) => (
                     <button
                       key={platform}
@@ -878,12 +872,11 @@ export default function TopicPage() {
                     </button>
                   ))}
                 </div>
-              </div>
+</Field>
 
               {/* 赛道选择 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">赛道（可多选）</label>
-                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+              <Field label="赛道" optional stacked>
+<div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                   {tracks.map((track) => (
                     <button
                       key={track}
@@ -898,12 +891,11 @@ export default function TopicPage() {
                     </button>
                   ))}
                 </div>
-              </div>
+</Field>
 
               {/* 内容类型 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">内容类型（可多选）</label>
-                <div className="flex flex-wrap gap-2">
+              <Field label="内容类型" optional stacked>
+<div className="flex flex-wrap gap-2">
                   {contentTypes.map((type) => (
                     <button
                       key={type}
@@ -918,19 +910,18 @@ export default function TopicPage() {
                     </button>
                   ))}
                 </div>
-              </div>
+</Field>
 
               {/* 风格选择 */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-foreground">风格（可多选）</label>
-                  <button
+                <Field label="风格" optional>
+<button
                     onClick={recommendStyles}
                     className="text-xs text-accent hover:text-accent font-medium"
                   >
                     ✨ AI推荐
                   </button>
-                </div>
+</Field>
                 <div className="flex flex-wrap gap-2">
                   {styles.map((style) => (
                     <button
@@ -949,25 +940,23 @@ export default function TopicPage() {
               </div>
 
               {/* 定位补充 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">定位补充说明</label>
-                <textarea
+              <Field label="定位补充说明" optional>
+<textarea
                   value={positioningExtra}
                   onChange={(e) => setPositioningExtra(e.target.value)}
                   rows={2}
                   placeholder="补充说明账号定位、特色、目标..."
                   className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 />
-              </div>
+</Field>
 
             </div>
           )}
         </div>
 
         {/* 八大爆款元素 */}
-        <div>
-          <label className="block text-sm font-semibold text-foreground mb-3">✨ 八大爆款元素（可多选）</label>
-          <div className="grid grid-cols-2 gap-2">
+        <Field label="八大爆款元素" optional stacked>
+<div className="grid grid-cols-2 gap-2">
             {explosiveElements.map((element) => {
               const IconComponent = element.icon;
               const isSelected = selectedElements.includes(element.id);
@@ -994,16 +983,15 @@ export default function TopicPage() {
               );
             })}
           </div>
-        </div>
+</Field>
 
         {/* 17个成交理由 */}
         <div>
-          <div className="mb-3">
-            <label className="block text-sm font-semibold text-foreground mb-1">🎯 成交理由（可多选）</label>
-            <p className="text-xs text-yellow-500 bg-amber-500/10 px-2 py-1 rounded border border-yellow-500/25">
+          <Field label="成交理由" optional>
+<p className="text-xs text-yellow-500 bg-amber-500/10 px-2 py-1 rounded border border-yellow-500/25">
               选择成交理由 = 变现选题 | 不选 = 大流量选题
             </p>
-          </div>
+</Field>
           <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
             {ALL_DEAL_REASONS.map((reason) => {
               const isSelected = selectedDealReasons.includes(reason.id);
@@ -1046,9 +1034,8 @@ export default function TopicPage() {
             <div className="px-4 pb-4 space-y-5 border-t">
               
               {/* 关键词组合 */}
-              <div className="pt-4">
-                <label className="mb-2 block text-[13px] font-medium text-foreground">关键词组合</label>
-                <div className="grid grid-cols-3 gap-2">
+              <Field label="关键词组合" optional stacked>
+<div className="grid grid-cols-3 gap-2">
                   <input
                     type="text"
                     value={keyword1}
@@ -1071,39 +1058,34 @@ export default function TopicPage() {
                     className="px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary text-sm"
                   />
                 </div>
-              </div>
+</Field>
 
               {/* 竞品账号 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">竞品账号参考</label>
-                <textarea
+              <Field label="竞品账号参考" optional>
+<textarea
                   value={benchmarkAccounts}
                   onChange={(e) => setBenchmarkAccounts(e.target.value)}
                   rows={2}
                   placeholder="输入竞品账号..."
                   className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 />
-              </div>
+</Field>
 
               {/* 爆款案例 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">爆款案例参考</label>
-                <textarea
+              <Field label="爆款案例参考" optional>
+<textarea
                   value={viralCases}
                   onChange={(e) => setViralCases(e.target.value)}
                   rows={2}
                   placeholder="输入爆款案例..."
                   className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 />
-              </div>
+</Field>
 
               {/* 生成数量 */}
                             {/* 个人要求 */}
-              <div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">
-                  🎯 个人要求（可选）
-                </label>
-                <textarea
+              <Field label="个人要求" optional>
+<textarea
                   value={personalRequirement}
                   onChange={(e) => setPersonalRequirement(e.target.value)}
                   rows={3}
@@ -1113,11 +1095,10 @@ export default function TopicPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   💡 填写后，AI会根据您的要求定制选题方向和内容重点
                 </p>
-              </div>
+</Field>
 
-<div>
-                <label className="mb-2 block text-[13px] font-medium text-foreground">生成数量</label>
-                <div className="flex gap-2">
+<Field label="生成数量" optional>
+<div className="flex gap-2">
                   {[5, 10, 15, 20].map((count) => (
                     <button
                       key={count}
@@ -1132,19 +1113,18 @@ export default function TopicPage() {
                     </button>
                   ))}
                 </div>
-              </div>
+</Field>
 
               {/* 创意难度 */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-foreground">创意难度</label>
-                  <button
+                <Field label="创意难度" optional>
+<button
                     onClick={recommendDifficulty}
                     className="text-xs text-accent hover:text-accent font-medium"
                   >
                     ✨ AI推荐
                   </button>
-                </div>
+</Field>
                 <div className="flex gap-2">
                   {["简单易懂", "中等创意", "高难创新"].map((diff) => (
                     <button

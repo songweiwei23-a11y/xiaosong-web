@@ -1,5 +1,6 @@
 "use client";
 
+import { Field } from "@/components/form/Field";
 import { useState } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Film, Copy, Download, Loader2, Sparkles, Wand2 } from "lucide-react";
@@ -214,18 +215,15 @@ export default function StoryboardPage() {
 
         {/* 脚本内容 */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-bold text-foreground">
-              📝 脚本内容 <span className="text-destructive">*</span>
-            </label>
-            <button
+          <Field label="脚本内容" required>
+<button
               onClick={loadExample}
               className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-500 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/15 transition-colors"
             >
               <Sparkles className="w-3 h-3" />
               一键示例
             </button>
-          </div>
+</Field>
           <textarea
             value={scriptContent}
             onChange={(e) => setscriptContent(e.target.value)}
@@ -267,34 +265,29 @@ export default function StoryboardPage() {
 
         {/* 基础设置 */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-2">平台</label>
-            <select
+          <Field label="平台" optional>
+<select
               value={platform}
               onChange={(e) => setPlatform(e.target.value)}
               className="w-full rounded-xl glass-panel p-2 focus:border-green-500/50"
             >
               {PLATFORMS.map((p) => <option key={p}>{p}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-2">时长</label>
-            <select
+</Field>
+          <Field label="时长" optional>
+<select
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               className="w-full rounded-xl glass-panel p-2 focus:border-green-500/50"
             >
               {DURATIONS.map((d) => <option key={d}>{d}</option>)}
             </select>
-          </div>
+</Field>
         </div>
 
         {/* 内容类型 */}
-        <div>
-          <label className="block text-sm font-bold text-foreground mb-3">
-            🎬 内容类型
-          </label>
-          <div className="grid grid-cols-3 gap-2">
+        <Field label="内容类型" optional stacked>
+<div className="grid grid-cols-3 gap-2">
             {CONTENT_TYPES.map((type) => (
               <button
                 key={type.value}
@@ -312,14 +305,11 @@ export default function StoryboardPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">AI会根据类型选择合适的景别和运镜</p>
-        </div>
+</Field>
 
         {/* 视觉风格 */}
-        <div>
-          <label className="block text-sm font-bold text-foreground mb-3">
-            🎨 视觉风格
-          </label>
-          <div className="grid grid-cols-3 gap-2">
+        <Field label="视觉风格" optional stacked>
+<div className="grid grid-cols-3 gap-2">
             {VISUAL_STYLES.map((style) => (
               <button
                 key={style.value}
@@ -337,20 +327,17 @@ export default function StoryboardPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">AI会根据风格选择色彩和光线</p>
-        </div>
+</Field>
 
         {/* 补充说明 */}
-        <div>
-          <label className="block text-sm font-bold text-foreground mb-2">
-            💡 补充说明（可选）
-          </label>
-          <textarea
+        <Field label="补充说明" optional>
+<textarea
             value={additionalInfo}
             onChange={(e) => setAdditionalInfo(e.target.value)}
             placeholder="例如：需要强调产品细节、希望节奏快一点..."
             className="w-full h-16 rounded-xl glass-panel p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
           />
-        </div>
+</Field>
 
         {/* AI提示框 */}
         <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/25">

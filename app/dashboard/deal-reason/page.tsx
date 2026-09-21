@@ -1,5 +1,6 @@
 "use client";
 
+import { Field } from "@/components/form/Field";
 import { useState, useEffect } from "react";
 import { Award, Loader2, Sparkles, Copy, Save, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -265,23 +266,19 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
         
         <div className="space-y-6">
           {/* 店铺名称 */}
-          <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-500">
-              店铺名称 <span className="text-destructive">*</span>
-            </label>
-            <input
+          <Field label="店铺名称" required>
+<input
               type="text"
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
               placeholder="例如:老李烧烤、美美美容院"
               className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
             />
-          </div>
+</Field>
 
           {/* 店铺类型 */}
-          <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-500">店铺类型</label>
-            <select
+          <Field label="店铺类型" optional>
+<select
               value={storeType}
               onChange={(e) => setStoreType(e.target.value)}
               className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none"
@@ -290,35 +287,29 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
                 <option key={type}>{type}</option>
               ))}
             </select>
-          </div>
+</Field>
 
           {/* 店铺特色 */}
-          <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-500">
-              店铺特色描述 <span className="text-destructive">*</span>
-            </label>
-            <textarea
+          <Field label="店铺特色描述" required>
+<textarea
               value={storeFeatures}
               onChange={(e) => setStoreFeatures(e.target.value)}
               placeholder="描述你的店铺特色,例如:&#10;- 开了10年的老店&#10;- 秘制配方,味道独特&#10;- 环境装修很有特色&#10;- 价格实惠,人均50元"
               rows={6}
               className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-4 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all resize-none shadow-lg"
             />
-          </div>
+</Field>
 
           {/* 目标客户 */}
-          <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-500">
-              目标客户 <span className="text-xs text-yellow-500">(可选)</span>
-            </label>
-            <input
+          <Field label="目标客户" optional>
+<input
               type="text"
               value={targetCustomer}
               onChange={(e) => setTargetCustomer(e.target.value)}
               placeholder="例如:周边3公里上班族"
               className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
             />
-          </div>
+</Field>
 
           {/* 分析按钮 */}
           <button

@@ -1,5 +1,6 @@
 "use client";
 
+import { Field } from "@/components/form/Field";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
@@ -370,18 +371,15 @@ export default function PositioningPage() {
         </div>
 
         {/* 补充说明 */}
-        <div>
-          <label className="mb-2 block text-[13px] font-medium text-foreground">
-            补充说明 <span className="text-xs text-muted-foreground">(选填)</span>
-          </label>
-          <textarea
+        <Field label="补充说明" optional>
+<textarea
             value={additionalNotes}
             onChange={(e) => setAdditionalNotes(e.target.value)}
             placeholder="有其他补充信息可以在这里说明，比如特殊要求、顾虑、期望等..."
             rows={4}
             className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-        </div>
+</Field>
 
         {/* 生成按钮 */}
         <button
