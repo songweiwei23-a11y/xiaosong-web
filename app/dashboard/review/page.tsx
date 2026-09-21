@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
+import { readDifyStream } from '@/lib/sse-stream';
 
 export default function ReviewPage() {
   // 草稿内容
@@ -184,20 +185,11 @@ export default function ReviewPage() {
 
       if (!response.ok) throw new Error("生成失败");
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("无法读取响应");
-
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
-        fullResult += chunk; // 同步累积
-        setResult(accumulated);
-      }
+      // 响应是 SSE（data: {"answer":"..."}），必须解析后取 answer，
+      // 直接累加原始字节会把 data: {...} 一起显示给用户
+      fullResult = await readDifyStream(response, {
+        onChunk: (_piece, full) => setResult(full),
+      });
     } catch (error: any) {
       notify(error.message || "生成失败");
     } finally {

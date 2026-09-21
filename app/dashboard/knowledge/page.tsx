@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { BookOpen, Search, Loader2, Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { notify } from '@/components/ui/feedback';
 
+import { readDifyStream } from '@/lib/sse-stream';
 const KNOWLEDGE_CATEGORIES = [
   { id: "structure", label: "脚本结构", desc: "教知识、晒过程、聊话题、讲故事" },
   { id: "boom", label: "爆款元素", desc: "冲突点、情绪波点、反转设计" },
@@ -64,19 +65,11 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
 
       if (!response.ok) throw new Error("查询失败");
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("无法读取响应");
-
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
-        setResult(accumulated);
-      }
+      // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer，
+      // 否则页面上显示的会是满屏 data: {...} 而不是检索结果正文
+      await readDifyStream(response, {
+        onChunk: (_piece, full) => setResult(full),
+      });
     } catch (error: any) {
       notify(error.message || "查询失败");
     } finally {

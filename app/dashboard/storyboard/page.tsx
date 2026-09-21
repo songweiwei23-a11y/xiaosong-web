@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 
+import { readDifyStream } from '@/lib/sse-stream';
 const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
 const DURATIONS = ["15秒", "30秒", "60秒", "90秒", "3-5分钟"];
 
@@ -105,18 +106,10 @@ export default function StoryboardPage() {
 
       if (!response.ok) throw new Error("推荐失败");
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("无法读取响应");
-
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
-      }
+      // 必须先从 SSE 中解析出 answer 文本。若直接累加原始字节，
+      // 下面提取 JSON 的正则会命中 SSE 自身的 {"answer":...}，
+      // 而不是模型返回的推荐配置。
+      const accumulated = await readDifyStream(response);
 
       // 解析JSON
       try {
@@ -176,19 +169,10 @@ export default function StoryboardPage() {
 
       if (!response.ok) throw new Error("生成失败");
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("无法读取响应");
-
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
-        setResult(accumulated);
-      }
+      // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
+      fullResult = await readDifyStream(response, {
+        onChunk: (_piece, full) => setResult(full),
+      });
     } catch (error: any) {
       notify(error.message || "生成失败");
     } finally {

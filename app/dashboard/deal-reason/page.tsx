@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Award, Loader2, Sparkles, Copy, Save, Check } from "lucide-react";
@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { supabase, dealReasonService } from "@/lib/supabase";
 import { notify } from '@/components/ui/feedback';
 
+import { readDifyStream } from '@/lib/sse-stream';
 // 17个核心成交理由
 const ALL_DEAL_REASONS = [
   { id: "looks", label: "颜值高", icon: "🌟", desc: "好看出片上镜" },
@@ -130,18 +131,10 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
       });
 
       if (!response.ok) throw new Error("分析失败");
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("无法读取响应");
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
-        setAnalysisResult(formatAnalysisResult(accumulated));
-      }
+      // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
+      await readDifyStream(response, {
+        onChunk: (_piece, full) => setAnalysisResult(formatAnalysisResult(full)),
+      });
 
       // 分析完成后,自动选中所有17个成交理由
       setSelectedReasons(ALL_DEAL_REASONS.map(r => r.id));

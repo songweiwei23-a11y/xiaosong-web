@@ -25,11 +25,14 @@ function getFeatureFromTaskType(taskType: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const guard = await requireUserWithQuota();
-    if (!guard.ok) return guard.response!;
-
     const body = await req.json();
     const { sessionId, saveHistory } = body;
+
+    // 必须按具体功能校验额度。requireUserWithQuota() 不传 feature 时只会
+    // 检查 basic/pro 的总量，免费版的分功能限额（脚本 20 次、选题 3 次等）
+    // 完全不生效——用量照常累加却拦不住，等于免费用户可以无限使用。
+    const guard = await requireUserWithQuota(getFeatureFromTaskType(body.taskType));
+    if (!guard.ok) return guard.response!;
     let query = '';
 
     // 原始用户输入必须在任何改写之前固定下来。

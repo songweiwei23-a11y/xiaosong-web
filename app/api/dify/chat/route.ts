@@ -6,11 +6,13 @@ const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1'
 
 export async function POST(request: NextRequest) {
   try {
-    const guard = await requireUserWithQuota();
-    if (!guard.ok) return guard.response!;
-
     const body = await request.json()
     const { query, conversationId, profileData, initialContent } = body
+
+    // 追问走的是自由对话额度。不传 feature 会导致免费版限额失效，
+    // 且下方扣减必须用同一个 key，否则查得到额度却扣不掉。
+    const guard = await requireUserWithQuota('freeChat');
+    if (!guard.ok) return guard.response!;
 
     console.log('📞 持续对话请求（Chatbot API）:', {
       queryLength: query?.length,
@@ -91,7 +93,9 @@ export async function POST(request: NextRequest) {
               console.log('✅ 对话流结束，有内容:', hasContent)
               controller.close()
               if (hasContent && guard.userId) {
-                await incrementUsageServer(guard.userId, 'chat')
+                // key 必须与 api-guard 的 featureMap 完全一致（驼峰 freeChat）。
+                // 此处曾传 'chat'，映射不到列名，扣减被静默跳过，用了不计次。
+                await incrementUsageServer(guard.userId, 'freeChat')
               }
               break
             }

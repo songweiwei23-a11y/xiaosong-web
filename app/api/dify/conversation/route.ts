@@ -6,11 +6,13 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const guard = await requireUserWithQuota();
-    if (!guard.ok) return guard.response!;
-
     const body = await req.json();
     const { query, conversationId, taskType } = body;
+
+    // 持续对话计入自由对话额度。不传 feature 时只会检查 basic/pro 的总量，
+    // 免费版的分功能限额不生效。
+    const guard = await requireUserWithQuota('freeChat');
+    if (!guard.ok) return guard.response!;
 
     if (!query) {
       return new Response(JSON.stringify({ error: '缺少 query 参数' }), { 
@@ -82,7 +84,9 @@ export async function POST(req: NextRequest) {
             if (done) {
               console.log('✅ 对话完成. Total chunks:', totalChunks);
               if (totalChunks > 0 && guard.userId) {
-                await incrementUsageServer(guard.userId, 'free_chat');
+                // featureMap 的 key 是驼峰 freeChat，不是下划线 free_chat。
+                // 传错则映射不到列名，扣减被静默跳过，用了不计次。
+                await incrementUsageServer(guard.userId, 'freeChat');
               }
               break;
             }
