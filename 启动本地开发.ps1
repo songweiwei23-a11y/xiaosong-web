@@ -4,6 +4,8 @@ $projectPath = "E:\小宋\腾讯云生产版同步_20260918"
 $port = 3000
 $url  = "http://localhost:$port"
 
+$Host.UI.RawUI.WindowTitle = "小宋编导工作台 - 本地开发"
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "   小宋编导工作台 - 本地开发环境" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -88,3 +90,9 @@ Write-Host "停止服务: 在本窗口按 Ctrl + C" -ForegroundColor Gray
 Write-Host ""
 
 npm run dev
+
+# 快捷方式直接调用本脚本(不再经过 .bat)，这里必须自己留住窗口，
+# 否则开发服务器异常退出时窗口会瞬间关闭，看不到任何报错。
+Write-Host ""
+Write-Host "开发服务器已停止" -ForegroundColor Yellow
+pause

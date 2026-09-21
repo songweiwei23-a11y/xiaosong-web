@@ -1,22 +1,22 @@
 @echo off
-chcp 65001 >nul
-title åœæ­¢å¼€å‘æœåŠ¡å™¨
+rem ±¾ÎÄ¼þ±ØÐë±£´æÎª GBK(ANSI) ±àÂë£¬Ô­Òò¼û Æô¶¯¿ª·¢»·¾³.bat µÄËµÃ÷¡£
+title Í£Ö¹¿ª·¢·þÎñÆ÷
 echo ========================================
-echo    åœæ­¢å°å®‹ç¼–å¯¼å·¥ä½œå°å¼€å‘æœåŠ¡å™¨
+echo    Í£Ö¹Ð¡ËÎ±àµ¼¹¤×÷Ì¨¿ª·¢·þÎñÆ÷
 echo ========================================
 echo.
-echo æ­£åœ¨æŸ¥æ‰¾ Node.js è¿›ç¨‹...
+echo ÕýÔÚ²éÕÒ Node.js ½ø³Ì...
 echo.
 
 tasklist /FI "IMAGENAME eq node.exe" 2>NUL | find /I /N "node.exe">NUL
 if "%ERRORLEVEL%"=="0" (
-    echo æ‰¾åˆ° Node.js è¿›ç¨‹ï¼Œæ­£åœ¨åœæ­¢...
+    echo ÕÒµ½ Node.js ½ø³Ì£¬ÕýÔÚÍ£Ö¹...
     taskkill /F /IM node.exe /T >NUL 2>&1
-    echo âœ“ Node.js è¿›ç¨‹å·²åœæ­¢
+    echo [OK] Node.js ½ø³ÌÒÑÍ£Ö¹
 ) else (
-    echo â„¹ æ²¡æœ‰è¿è¡Œä¸­çš„ Node.js è¿›ç¨‹
+    echo [--] Ã»ÓÐÔËÐÐÖÐµÄ Node.js ½ø³Ì
 )
 
 echo.
-echo å®Œæˆï¼
+echo Íê³É£¡
 timeout /t 3 >nul

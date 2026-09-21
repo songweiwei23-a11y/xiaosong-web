@@ -1,6 +1,8 @@
 @echo off
-chcp 65001 >nul
-title å°å®‹ç¼–å¯¼å·¥ä½œå° - æœ¬åœ°å¼€å‘
-cd /d E:\å°å®‹\è…¾è®¯äº‘ç”Ÿäº§ç‰ˆåŒæ­¥_20260918
-powershell -ExecutionPolicy Bypass -File "å¯åŠ¨æœ¬åœ°å¼€å‘.ps1"
-pause
+rem ±¾ÎÄ¼þ±ØÐë±£´æÎª GBK(ANSI) ±àÂë¡£
+rem ÔçÆÚ°æ±¾ÊÇ UTF-8 ÎÞ BOM ²¢ÔÚµÚ¶þÐÐ chcp 65001£¬cmd ÖðÐÐ¶ÁÈ¡Ê±
+rem ÇÐ»»´úÂëÒ³»áµ¼ÖÂºóÐøÐÐµÄ×Ö½ÚÆ«ÒÆ´íÂÒ£¬ÖÐÎÄÂ·¾¶±»ËºËé£¬cd Óë
+rem powershell µ÷ÓÃÈ«²¿Ê§°Ü(±¨ '?? is not recognized as ...')¡£
+title Ð¡ËÎ±àµ¼¹¤×÷Ì¨ - ±¾µØ¿ª·¢
+cd /d "%~dp0"
+powershell -ExecutionPolicy Bypass -NoProfile -File "%~dp0Æô¶¯±¾µØ¿ª·¢.ps1"
