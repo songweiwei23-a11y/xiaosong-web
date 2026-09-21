@@ -301,6 +301,54 @@ async function cmdStatus() {
 }
 
 /**
+ * 把知识库实际使用的 embedding 模型同步写回工作流 DSL。
+ *
+ * 检索节点里的 embedding 配置必须与建库时完全一致，否则向量维度对不上，
+ * 检索会失效（bge-large-zh-v1.5 是 1024 维，text-embedding-3-large 是 3072 维）。
+ * 手工改 5 处极易遗漏，这里直接以线上知识库的真实配置为准覆盖。
+ */
+async function cmdSyncYml() {
+  if (!fs.existsSync(MAPPING_FILE)) die('缺少映射文件，请先运行 init');
+  const map = JSON.parse(fs.readFileSync(MAPPING_FILE, 'utf8'));
+  const ids = Object.values(map).filter((v) => v && !String(v).startsWith('<'));
+  if (!ids.length) die('映射表里没有有效的 dataset_id');
+
+  const r = await api('GET', '/datasets?page=1&limit=100');
+  const mine = (r.data || []).filter((d) => ids.includes(d.id));
+  if (!mine.length) die('未找到映射表中的知识库，可能已被删除');
+
+  const combos = new Set(mine.map((d) => `${d.embedding_model}|${d.embedding_model_provider}`));
+  if (combos.size > 1) {
+    console.log('\n[警告] 5 个库的 embedding 配置不一致：');
+    for (const c of combos) console.log('  ' + c.replace('|', '  <-  '));
+    die('请先让它们统一（reset 后重新 init），否则检索行为不可预期');
+  }
+  const model = mine[0].embedding_model;
+  const provider = mine[0].embedding_model_provider;
+  console.log(`\n线上知识库实际使用: ${model}  (${provider})`);
+
+  const targets = [
+    path.resolve(__dirname, '..', 'docs', 'dify', '小宋编导文案工作台.yml'),
+    path.join(process.env.USERPROFILE || '', 'Desktop', '小宋编导文案工作台.yml'),
+  ];
+  for (const f of targets) {
+    if (!fs.existsSync(f)) { console.log(`  跳过(不存在): ${f}`); continue; }
+    const before = fs.readFileSync(f, 'utf8');
+    const after = before
+      .replace(/embedding_model_name: .*/g, `embedding_model_name: ${model}`)
+      .replace(/embedding_provider_name: .*/g, `embedding_provider_name: ${provider}`);
+    const n = (before.match(/embedding_model_name: /g) || []).length;
+    if (before === after) {
+      console.log(`  已是最新(${n} 处): ${f}`);
+    } else {
+      fs.writeFileSync(f, after, 'utf8');
+      console.log(`  已更新(${n} 处): ${f}`);
+    }
+  }
+  console.log('\n改完记得重新导入 yml 到 Dify，并在工作流里确认检索节点绑定的是新库。\n');
+}
+
+/**
  * 重置：删除本次创建的 5 个目标库并清空上传进度，用于换 embedding 模型后重来。
  * 只动 _mapping.json 里记录的库，旧库不受影响。
  */
@@ -625,6 +673,7 @@ try {
   else if (cmd === 'upload') await cmdUpload(rest);
   else if (cmd === 'status') await cmdStatus();
   else if (cmd === 'reset') await cmdReset();
+  else if (cmd === 'sync-yml') await cmdSyncYml();
   else if (cmd === 'audit') await cmdAudit();
   else if (cmd === 'export') await cmdExport();
   else if (cmd === 'prune') await cmdPrune(rest);
@@ -642,6 +691,7 @@ Dify 知识库批量上传
 清理旧库：
   status              诊断 5 个目标库的索引进度与失败原因（只读）
   reset               删除本次创建的 5 个库并清空进度，用于换模型重来
+  sync-yml            把线上知识库的 embedding 配置同步写回工作流 DSL
   audit               列出所有库及其文档清单，标记新旧（只读）
   export              把非目标库的内容导出到本地备份
   prune               预览将删除的库
