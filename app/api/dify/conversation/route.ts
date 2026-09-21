@@ -27,8 +27,13 @@ export async function POST(req: NextRequest) {
     });
 
     // 调用 Dify API
+    // 工作流的 5 个知识检索节点以 start.search_query 作为检索查询，
+    // 此处 query 本身就是用户的原始提问，截断后直接用即可。
+    // 若不传，检索节点会拿到空查询导致召回失效。
     const difyBody: any = {
-      inputs: {},
+      inputs: {
+        search_query: String(query).replace(/\s+/g, ' ').trim().slice(0, 200)
+      },
       query: query,
       response_mode: 'streaming',
       user: 'user-' + Date.now()

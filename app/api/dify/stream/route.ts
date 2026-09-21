@@ -1,6 +1,7 @@
 ﻿import { NextRequest } from 'next/server';
 import { saveConversationMessage, getConversationHistory, formatConversationHistory } from '@/lib/conversation';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
+import { buildSearchQuery } from '@/lib/search-query';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -397,11 +398,16 @@ export async function POST(req: NextRequest) {
     console.log('Calling Dify API...');
     console.log('Query:', query);
 
+    // 知识库检索用的短查询，与发给模型的长指令分离，
+    // 由 Dify 工作流的 5 个知识检索节点消费（start.search_query）
+    const searchQuery = buildSearchQuery(body.taskType, body, originalQuery);
+
     // 【方案6：工作流 + 手动记忆】
     // 构建 Dify 请求体：query 在顶层，conversation_history 在 inputs
     const difyRequestBody: any = {
       inputs: {
         query: query, // 工作流变量
+        search_query: searchQuery, // 知识库检索专用（短查询）
         conversation_history: body.conversationHistory || '', // 传递对话历史
         dealReasons: body.dealReasons || '' // 成交理由（如果有的话）
       },
@@ -412,6 +418,8 @@ export async function POST(req: NextRequest) {
 
     console.log('📤 发送给 Dify (方案6):', {
       query_length: query.length,
+      search_query: searchQuery,
+      search_query_length: searchQuery.length,
       has_history: !!body.conversationHistory,
       history_length: body.conversationHistory?.length || 0
     });

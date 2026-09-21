@@ -315,6 +315,14 @@ workflow:
         type: start
         variables:
         - default: ''
+          hint: 知识库检索专用短查询，由应用侧从任务类型与用户输入提炼，避免用完整长指令检索
+          label: search_query
+          options: []
+          placeholder: ''
+          required: false
+          type: text-input
+          variable: search_query
+        - default: ''
           hint: ''
           label: dealReasons
           options: []
@@ -2406,7 +2414,7 @@ workflow:
         query_attachment_selector: []
         query_variable_selector:
         - start
-        - sys.query
+        - search_query
         retrieval_mode: multiple
         selected: false
         title: 知识检索
@@ -2443,7 +2451,7 @@ workflow:
         query_attachment_selector: []
         query_variable_selector:
         - start
-        - sys.query
+        - search_query
         retrieval_mode: multiple
         selected: false
         title: 知识检索 2
@@ -2480,7 +2488,7 @@ workflow:
         query_attachment_selector: []
         query_variable_selector:
         - start
-        - sys.query
+        - search_query
         retrieval_mode: multiple
         selected: false
         title: 知识检索 3
@@ -2517,7 +2525,7 @@ workflow:
         query_attachment_selector: []
         query_variable_selector:
         - start
-        - sys.query
+        - search_query
         retrieval_mode: multiple
         selected: false
         title: 知识检索 4
@@ -2554,7 +2562,7 @@ workflow:
         query_attachment_selector: []
         query_variable_selector:
         - start
-        - sys.query
+        - search_query
         retrieval_mode: multiple
         selected: false
         title: 知识检索 5
