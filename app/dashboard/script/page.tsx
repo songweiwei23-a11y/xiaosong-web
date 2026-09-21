@@ -6,6 +6,7 @@ import { extractScriptContext } from "@/lib/positioning-utils";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
 import { enhancePromptWithMCNStandards } from "@/lib/enhance-prompt";
 import { recommendFormula, generateFormulaGuide } from "@/lib/formula-enforcer";
+import { getStructureNarrative } from "@/lib/script-structure-details";
 import { 
   getAudienceProfile, 
   getDifferentiation, 
@@ -368,7 +369,19 @@ ${scriptContext}
       // 另外 enhance-prompt 里两处写着「请参考上下文知识库中的 MCN 级脚本示例」，
       // 但生成前从未真正注入过范例。getRelevantExample 提供的就是 9.5 分范例。
       const formulaType = recommendFormula(scriptType, structureName);
+      // coreLogic / emotionCurve 是 script-details 没有的两个字段：
+      // 前者点明该结构适用于什么用户处境，后者给出情绪推进路径——
+      // 波点该落在哪里由它决定，而不是让模型凭感觉撒 emoji。
+      const narrative = getStructureNarrative(scriptStructure);
       const formulaSection = `
+${narrative ? `## 🧠 本结构的设计意图
+
+- **核心逻辑**：${narrative.coreLogic}
+- **情绪曲线**：${narrative.emotionCurve}
+
+情绪曲线里的每个箭头都是一次情绪转折，波点必须落在转折处。
+台词、画面、语速都要服务于这条推进路径，不要在平缓段强行标波点。
+` : ''}
 ${generateFormulaGuide(formulaType)}
 
 ## 📎 MCN级参考范例（9.5分标准）

@@ -1,5 +1,12 @@
-﻿// 19种脚本结构的详细定义和质量标准
-const SCRIPT_STRUCTURE_DETAILS = {
+// 19种脚本结构的详细定义和质量标准
+//
+// 本文件原先没有任何 export，343 行内容无法被引用，等同死代码。
+// 它与 script-details 的结构条目一一对应，但多出 coreLogic 与
+// emotionCurve 两个字段——前者说明该结构适用的用户处境，后者给出
+// 情绪推进路径，正是提示词里反复强调的"情绪波点"的上位设计。
+// 这里补上 export，并提供只取增量字段的函数，避免与 script-details
+// 形成两套互相覆盖的结构数据。
+export const SCRIPT_STRUCTURE_DETAILS = {
   problem: {
     name: "解题型",
     formula: "难题呈现 → 危机升级 → 解决方案 → 执行步骤",
@@ -341,3 +348,23 @@ const SCRIPT_STRUCTURE_DETAILS = {
     ]
   }
 };
+
+export interface StructureNarrative {
+  /** 该结构适用于什么样的用户处境 */
+  coreLogic: string;
+  /** 情绪推进路径，用于指导波点设计 */
+  emotionCurve: string;
+}
+
+/**
+ * 取某个结构的核心逻辑与情绪曲线。
+ *
+ * 只返回 script-details 没有的两个字段：name/formula/keyPoints/avoidMistakes
+ * 仍以 script-details 为准，避免两份数据各说各话。
+ * 未知结构返回 null，由调用方决定是否省略这一段。
+ */
+export function getStructureNarrative(structureId: string): StructureNarrative | null {
+  const d = (SCRIPT_STRUCTURE_DETAILS as Record<string, any>)[structureId];
+  if (!d || !d.coreLogic || !d.emotionCurve) return null;
+  return { coreLogic: d.coreLogic, emotionCurve: d.emotionCurve };
+}

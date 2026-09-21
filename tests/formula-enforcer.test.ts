@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { recommendFormula, generateFormulaGuide, getFormulaStructure } from '@/lib/formula-enforcer';
 import { getRelevantExample, evaluateScriptQualityStrict } from '@/lib/quality-checker';
+import { getStructureNarrative, SCRIPT_STRUCTURE_DETAILS } from '@/lib/script-structure-details';
 
 describe('脚本公式选择', () => {
   it('按脚本类型推荐默认公式', () => {
@@ -61,5 +62,28 @@ describe('MCN 参考范例', () => {
     const r = evaluateScriptQualityStrict(ex);
     expect(r.passCheck).toBe(true);
     expect(r.score).toBeGreaterThanOrEqual(8);
+  });
+});
+
+describe('结构设计意图（coreLogic / emotionCurve）', () => {
+  it('已知结构返回两个字段', () => {
+    const n = getStructureNarrative('problem');
+    expect(n).not.toBeNull();
+    expect(n!.coreLogic).toBeTruthy();
+    expect(n!.emotionCurve).toContain('→');
+  });
+
+  it('未知结构返回 null，由调用方决定省略该段', () => {
+    expect(getStructureNarrative('不存在的结构')).toBeNull();
+    expect(getStructureNarrative('')).toBeNull();
+  });
+
+  it('全部结构条目都具备这两个字段', () => {
+    const ids = Object.keys(SCRIPT_STRUCTURE_DETAILS);
+    expect(ids.length).toBeGreaterThanOrEqual(20);
+    for (const id of ids) {
+      const n = getStructureNarrative(id);
+      expect(n, `结构 ${id} 缺少 coreLogic 或 emotionCurve`).not.toBeNull();
+    }
   });
 });
