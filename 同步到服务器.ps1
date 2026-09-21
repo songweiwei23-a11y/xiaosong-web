@@ -66,6 +66,19 @@ if ($pm2Cwd -ne $serverPath) {
     exit 1
 }
 Write-Host "服务器连接正常，运行目录与部署目录一致" -ForegroundColor Green
+
+# 构建对内存敏感，这台机器物理内存只有 2G。没有 swap 时一旦吃紧，
+# 内核既杀不掉也换不出，表现为 SSH 与网站同时失联，只能去控制台强制重启。
+$swap = (ssh -i "$sshKey" ${serverUser}@${serverIP} "free -m | awk '/Swap:/ {print \$2}'" | Out-String).Trim()
+if ($swap -eq "0") {
+    Write-Host ""
+    Write-Host "服务器没有 swap，构建可能把机器压死。建议先执行：" -ForegroundColor Red
+    Write-Host "  sudo fallocate -l 2G /swapfile; sudo chmod 600 /swapfile; sudo mkswap /swapfile; sudo swapon /swapfile" -ForegroundColor Gray
+    $go = Read-Host "仍要继续吗? (y/n)"
+    if ($go -ne "y") { exit 0 }
+} else {
+    Write-Host "  swap: ${swap}MB" -ForegroundColor Gray
+}
 Write-Host ""
 
 Write-Host "[3/3] 同步文件..." -ForegroundColor Yellow
@@ -118,13 +131,57 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "服务器端部署..." -ForegroundColor Yellow
-# set -e 保证任一步失败立即中止，不会带着半截代码 restart。
-# npm run build 不可省略：next start 跑的是 .next 构建产物，
-# 只解压源码而不重新构建，线上跑的仍然是旧版本。
-$remoteCmd = "set -e; cd $serverPath; tar -xzf /tmp/$pkgName; npm install; npm run build; pm2 restart xiaosong-web; rm -f /tmp/$pkgName"
-ssh -i "$sshKey" ${serverUser}@${serverIP} $remoteCmd
+# 解压与依赖安装。这一步很快，放在前台执行。
+# 注意：绝不要在这里 rm -rf .next。服务器只有 2G 内存，删掉缓存会触发全量
+# 构建，内存峰值直接把机器压死——SSH 和网站一起失联，只能去控制台强制重启。
+# 保留缓存做增量构建，内存占用低得多。
+$prepCmd = "set -e; cd $serverPath; tar -xzf /tmp/$pkgName; npm install --silent; rm -f /tmp/$pkgName; echo PREP_OK"
+$prep = ssh -i "$sshKey" ${serverUser}@${serverIP} $prepCmd
+if ($LASTEXITCODE -ne 0 -or ($prep | Out-String) -notmatch "PREP_OK") {
+    Write-Host "解压或依赖安装失败，线上服务未变更" -ForegroundColor Red
+    Remove-Item $tempPkg -Force -ErrorAction SilentlyContinue
+    pause
+    exit 1
+}
+
+# 构建放后台跑，不随 SSH 会话生死。
+# 曾经因为构建期间 SSH 断开，构建半途而废并在 .next 里留下锁，
+# 之后每次构建都被"Another next build process is already running"挡住。
+# NODE_OPTIONS 限制 V8 堆上限，给系统留出余量。
+Write-Host "  在服务器上构建（后台执行，不受连接中断影响）..." -ForegroundColor Gray
+$buildCmd = "cd $serverPath; rm -f /tmp/build.log; NODE_OPTIONS=--max-old-space-size=1400 nohup npm run build > /tmp/build.log 2>&1 & echo BUILD_STARTED"
+ssh -i "$sshKey" ${serverUser}@${serverIP} $buildCmd | Out-Null
+
+$built = $false
+for ($b = 1; $b -le 40; $b++) {
+    Start-Sleep -Seconds 15
+    $log = (ssh -i "$sshKey" ${serverUser}@${serverIP} "tail -25 /tmp/build.log 2>/dev/null" | Out-String)
+
+    if ($log -match "Failed to compile|error TS\d+|Another next build process") {
+        Write-Host "  构建失败：" -ForegroundColor Red
+        $log -split "`n" | Select-Object -Last 12 | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+        Write-Host "  线上仍在跑旧版本，未受影响" -ForegroundColor Yellow
+        pause
+        exit 1
+    }
+    # 构建结束会输出路由表，用它作为完成标志
+    if ($log -match "Route \(app\)|\(Static\)\s+prerendered") {
+        $built = $true
+        Write-Host "  构建完成（约 $($b * 15) 秒）" -ForegroundColor Green
+        break
+    }
+    if ($b % 4 -eq 0) { Write-Host "    构建中… 已等待 $($b * 15) 秒" -ForegroundColor DarkGray }
+}
+
+if (-not $built) {
+    Write-Host "  构建超过 10 分钟仍未结束，请登录服务器查看 /tmp/build.log" -ForegroundColor Red
+    pause
+    exit 1
+}
+
+ssh -i "$sshKey" ${serverUser}@${serverIP} "pm2 restart xiaosong-web"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "服务器端部署失败，线上服务未变更，请登录服务器检查" -ForegroundColor Red
+    Write-Host "重启失败，请登录服务器检查" -ForegroundColor Red
     Remove-Item $tempPkg -Force -ErrorAction SilentlyContinue
     pause
     exit 1
