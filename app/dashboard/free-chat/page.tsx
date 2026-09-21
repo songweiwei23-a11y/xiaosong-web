@@ -6,15 +6,23 @@ import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
   Menu, X, Copy, Check, Bot, User as UserIcon,
 } from "lucide-react";
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: number;
-}
+import {
+  listConversations,
+  createConversation as createRemoteConversation,
+  updateConversation as updateRemoteConversation,
+  deleteConversation as deleteRemoteConversation,
+  type ChatMessage,
+} from "@/lib/chat-store";
 
 interface Conversation {
+  /** 本地标识，用作列表 key 与选中态；新建时为 pending- 前缀 */
   id: string;
+  /**
+   * 数据库里的主键。未落库时为空。
+   * 单独留一个字段而不是直接改写 id，是为了让已经挂在界面上的
+   * patchConv(id) 调用在落库前后都指向同一个会话。
+   */
+  remoteId?: string;
   title: string;
   difyConversationId: string;
   messages: ChatMessage[];
@@ -31,7 +39,13 @@ interface ActiveProfile {
   target_audience?: string[];
 }
 
+// 旧版本把整个会话列表存在这里。现在改存云端，此键仅用于一次性迁移，
+// 迁移成功后清掉，避免换设备时看到两份不同步的历史。
 const STORAGE_KEY = "xiaosong_free_chat_v1";
+
+// 尚未落库的新会话用此前缀标记：点「新建对话」只在本地开一个空壳，
+// 等用户真正发出第一条消息时才写数据库，否则反复点击会攒下一堆空记录。
+const PENDING_PREFIX = "pending-";
 
 const QUICK_PROMPTS = [
   "帮我头脑风暴3个适合我账号的爆款选题方向",
@@ -41,7 +55,62 @@ const QUICK_PROMPTS = [
 ];
 
 function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return PENDING_PREFIX + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+/**
+ * 把旧版存在浏览器里的会话搬到云端，成功后清掉本地副本。
+ *
+ * 只要有一条没搬成功就保留本地数据不删——宁可下次重试（云端为空才会触发，
+ * 不会重复上传），也不能让用户的历史对话在迁移途中丢掉。
+ */
+async function migrateLocalConversations(): Promise<Conversation[]> {
+  let local: Conversation[] = [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
+    local = parsed;
+  } catch (e) {
+    console.warn("读取本地会话失败", e);
+    return [];
+  }
+
+  const uploaded: Conversation[] = [];
+  let allOk = true;
+
+  for (const conv of local) {
+    const created = await createRemoteConversation({
+      kind: "free_chat",
+      title: conv.title || "新对话",
+      difyConversationId: conv.difyConversationId || "",
+      messages: conv.messages || [],
+    });
+    if (created) {
+      uploaded.push({
+        id: created.id,
+        remoteId: created.id,
+        title: created.title,
+        difyConversationId: created.difyConversationId,
+        messages: created.messages,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      });
+    } else {
+      allOk = false;
+    }
+  }
+
+  if (allOk) {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // 清理失败无妨，云端已有数据，下次不会再触发迁移
+    }
+  }
+
+  return uploaded;
 }
 export default function FreeChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -58,21 +127,34 @@ export default function FreeChatPage() {
 
   const activeConv = conversations.find((c) => c.id === activeId) || null;
 
-  // 载入本地会话
+  // 载入云端会话；首次打开时把旧的浏览器本地会话一次性搬上去
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: Conversation[] = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setConversations(parsed);
-          setActiveId(parsed[0].id);
-        }
+    const load = async () => {
+      const remote = await listConversations("free_chat");
+
+      // 仅在云端确实为空时才迁移，避免把已经搬过的旧数据重复上传
+      let migrated: Conversation[] = [];
+      if (remote.length === 0) {
+        migrated = await migrateLocalConversations();
       }
-    } catch (e) {
-      console.warn("载入会话失败", e);
-    }
-    setLoaded(true);
+
+      const all: Conversation[] = [
+        ...migrated,
+        ...remote.map((c) => ({
+          id: c.id,
+          remoteId: c.id,
+          title: c.title,
+          difyConversationId: c.difyConversationId,
+          messages: c.messages,
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt,
+        })),
+      ];
+      setConversations(all);
+      setActiveId(all[0]?.id || "");
+      setLoaded(true);
+    };
+    load();
   }, []);
 
   // 载入当前账号档案（作为对话背景）
@@ -93,15 +175,9 @@ export default function FreeChatPage() {
     loadProfile();
   }, []);
 
-  // 持久化
-  useEffect(() => {
-    if (!loaded) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
-    } catch (e) {
-      console.warn("保存会话失败", e);
-    }
-  }, [conversations, loaded]);
+  // 会话内容改为在 handleSend 里按轮次写云端（见下方），
+  // 这里不再镜像一份到 localStorage：两份数据一旦不同步，
+  // 用户在另一台设备上看到的就会是过期内容。
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -135,13 +211,19 @@ export default function FreeChatPage() {
   }, []);
 
   const deleteConversation = useCallback((id: string) => {
+    let remoteId: string | undefined;
     setConversations((prev) => {
+      remoteId = prev.find((c) => c.id === id)?.remoteId;
       const next = prev.filter((c) => c.id !== id);
       if (id === activeId) {
         setActiveId(next[0]?.id || "");
       }
       return next;
     });
+    // 界面先删，云端随后删：删除失败也不该把已经消失的条目再弹回来
+    if (remoteId) {
+      void deleteRemoteConversation(remoteId);
+    }
   }, [activeId]);
 
   const patchConv = useCallback((id: string, updater: (c: Conversation) => Conversation) => {
@@ -161,14 +243,41 @@ export default function FreeChatPage() {
     const isFirstMessage = conv.messages.length === 0;
 
     const userMsg: ChatMessage = { role: "user", content, timestamp: Date.now() };
+    const title = isFirstMessage ? content.slice(0, 18) : conv.title;
+    // 发送前的消息快照。保存时以它为基准拼出完整记录，
+    // 避免从 state 闭包里读到上一轮的旧数组。
+    const baseMessages = conv.messages;
+
     patchConv(convId, (c) => ({
       ...c,
-      title: isFirstMessage ? content.slice(0, 18) : c.title,
+      title,
       messages: [...c.messages, userMsg, { role: "assistant", content: "", timestamp: Date.now() }],
       updatedAt: Date.now(),
     }));
     setInput("");
     setIsStreaming(true);
+
+    // 用户的问题先落库：万一回答中途断网或刷新，至少问题不会丢。
+    // 新会话到这一步才真正创建，点了「新建对话」却没说话不会留下空记录。
+    let remoteId = conv.remoteId;
+    if (!remoteId) {
+      const created = await createRemoteConversation({
+        kind: "free_chat",
+        profileId: profile?.id || null,
+        title,
+        difyConversationId: conv.difyConversationId || "",
+        messages: [...baseMessages, userMsg],
+      });
+      if (created) {
+        remoteId = created.id;
+        patchConv(convId, (c) => ({ ...c, remoteId: created.id }));
+      }
+    } else {
+      void updateRemoteConversation(remoteId, {
+        title,
+        messages: [...baseMessages, userMsg],
+      });
+    }
 
     // 首次对话把账号档案作为背景带上
     const difyConvId = conv.difyConversationId;
@@ -179,6 +288,10 @@ export default function FreeChatPage() {
         query = "【我的账号背景】" + ctx + "\n\n【我的问题】" + content;
       }
     }
+
+    // 在 try 外声明：finally 要用它们拼出完整记录写回云端
+    let assistantText = "";
+    let capturedDifyId = difyConvId || "";
 
     try {
       const res = await fetch("/api/dify/chat", {
@@ -196,7 +309,6 @@ export default function FreeChatPage() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let assistant = "";
       let buffer = "";
 
       while (true) {
@@ -211,15 +323,16 @@ export default function FreeChatPage() {
           try {
             const data = JSON.parse(trimmed.slice(6));
             if (data.event === "conversation_id" && data.conversation_id) {
+              capturedDifyId = data.conversation_id;
               patchConv(convId, (c) => ({ ...c, difyConversationId: data.conversation_id }));
               continue;
             }
             if (data.answer) {
-              assistant += data.answer;
+              assistantText += data.answer;
               patchConv(convId, (c) => {
                 const msgs = [...c.messages];
                 const last = msgs[msgs.length - 1];
-                if (last && last.role === "assistant") last.content = assistant;
+                if (last && last.role === "assistant") last.content = assistantText;
                 return { ...c, messages: msgs, updatedAt: Date.now() };
               });
             }
@@ -229,26 +342,43 @@ export default function FreeChatPage() {
         }
       }
 
-      if (!assistant.trim()) {
+      if (!assistantText.trim()) {
+        assistantText = "（没有返回内容，请重试或换个问法）";
         patchConv(convId, (c) => {
           const msgs = [...c.messages];
           const last = msgs[msgs.length - 1];
-          if (last && last.role === "assistant") last.content = "（没有返回内容，请重试或换个问法）";
+          if (last && last.role === "assistant") last.content = assistantText;
           return { ...c, messages: msgs };
         });
       }
     } catch (e) {
+      assistantText = "⚠️ 生成失败：" + String(e);
       patchConv(convId, (c) => {
         const msgs = [...c.messages];
         const last = msgs[msgs.length - 1];
-        if (last && last.role === "assistant") last.content = "⚠️ 生成失败：" + String(e);
+        if (last && last.role === "assistant") last.content = assistantText;
         return { ...c, messages: msgs };
       });
     } finally {
       setIsStreaming(false);
+
+      // 本轮结束后把完整记录写回云端。以发送前的快照为基准拼接，
+      // 而不是从 state 里取，后者在闭包中可能仍是上一轮的数组。
+      if (remoteId) {
+        void updateRemoteConversation(remoteId, {
+          title,
+          difyConversationId: capturedDifyId,
+          messages: [
+            ...baseMessages,
+            userMsg,
+            { role: "assistant", content: assistantText, timestamp: Date.now() },
+          ],
+        });
+      }
+
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [input, isStreaming, activeConv, createConversation, patchConv, buildProfileContext]);
+  }, [input, isStreaming, activeConv, createConversation, patchConv, buildProfileContext, profile]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -435,7 +565,7 @@ export default function FreeChatPage() {
             </button>
           </div>
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-            💡 对话有记忆，可连续追问；换个话题建议点“新建对话”。内容仅保存在本浏览器。
+            💡 对话有记忆，可连续追问；换个话题建议点“新建对话”。内容已同步云端，换设备也能接着聊。
           </p>
         </div>
       </div>

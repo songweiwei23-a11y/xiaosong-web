@@ -3,12 +3,39 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Loader2, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import { readDifyStream } from '@/lib/sse-stream'
+import {
+  listConversations,
+  createConversation,
+  updateConversation,
+  matchesGeneration,
+  type ChatMessage,
+} from '@/lib/chat-store'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
 }
+
+/** 云端结构（timestamp 为数字）→ 组件内结构（timestamp 为 Date） */
+function toLocalMessages(messages: ChatMessage[]): Message[] {
+  return messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+    timestamp: new Date(m.timestamp),
+  }))
+}
+
+/** 组件内结构 → 云端结构 */
+function toStoredMessages(messages: Message[]): ChatMessage[] {
+  return messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+    timestamp: m.timestamp.getTime(),
+  }))
+}
+
 
 interface ContinuousDialogProps {
   isOpen: boolean
@@ -32,20 +59,43 @@ export default function ContinuousDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [conversationId, setConversationId] = useState<string>('')
   const [isMinimized, setIsMinimized] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  /** 本次追问对话在 chat_conversations 里的主键，未落库时为空 */
+  const remoteIdRef = useRef<string>('')
 
+  // 打开弹窗时先去云端找这次生成是否已经聊过。
+  // 以前这里只是把 messages 重置成生成结果，刷新页面后之前的追问全部消失。
   useEffect(() => {
-    if (isOpen && initialContent) {
-      setMessages([{
-        role: 'assistant',
-        content: initialContent,
-        timestamp: new Date()
-      }])
+    if (!isOpen || !initialContent) return
+
+    let cancelled = false
+    const restore = async () => {
+      setIsRestoring(true)
+      // 先摆上生成结果，网络慢时也不至于是一片空白
+      setMessages([{ role: 'assistant', content: initialContent, timestamp: new Date() }])
       setConversationId('')
+      remoteIdRef.current = ''
+
+      const history = await listConversations('continuous', { taskType, limit: 20 })
+      if (cancelled) return
+
+      const hit = history.find((c) => matchesGeneration(c.messages[0], initialContent))
+      if (hit) {
+        remoteIdRef.current = hit.id
+        setConversationId(hit.difyConversationId || '')
+        if (hit.messages.length > 0) {
+          setMessages(toLocalMessages(hit.messages))
+        }
+      }
+      setIsRestoring(false)
     }
-  }, [isOpen, initialContent])
+
+    restore()
+    return () => { cancelled = true }
+  }, [isOpen, initialContent, taskType])
 
   useEffect(() => {
     // requestAnimationFrame 确保 DOM 已更新，避免 Strict Mode removeChild 竞态
@@ -88,10 +138,35 @@ export default function ContinuousDialog({
       timestamp: new Date()
     }
 
+    // 发送前的快照，落库时以它为基准拼接，避免从闭包里读到旧数组
+    const baseMessages = messages
+
     setMessages(prev => [...prev, userMessage])
     const userInput = inputValue
     setInputValue('')
     setIsLoading(true)
+
+    // 用户的问题先落库：回答中途断网或刷新时，问题不会白打一遍。
+    // 首轮在这里创建记录，把生成结果原文一并存进去，作为日后认回这次对话的依据。
+    if (!remoteIdRef.current) {
+      const created = await createConversation({
+        kind: 'continuous',
+        taskType,
+        title: initialContent.slice(0, 18) || taskType,
+        difyConversationId: conversationId || '',
+        messages: toStoredMessages([...baseMessages, userMessage]),
+      })
+      if (created) remoteIdRef.current = created.id
+    } else {
+      void updateConversation(remoteIdRef.current, {
+        messages: toStoredMessages([...baseMessages, userMessage]),
+      })
+    }
+
+    // 在 try 外声明：finally 要用它们把完整记录写回云端
+    let assistantText = ''
+    let capturedDifyId = conversationId || ''
+    let shouldSave = true
 
     try {
       console.log('📞 持续对话 - 方案B（Chatbot原生记忆）:', {
@@ -133,87 +208,73 @@ export default function ContinuousDialog({
 
       clearTimeout(timeoutId)
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let assistantMessage = ''
+      // 统一走 readDifyStream：原先手写的 decode(value) 未开 stream 模式，
+      // 中文被拆在数据块边界上会解码成乱码，且半行 JSON 会被整行丢弃。
+      assistantText = await readDifyStream(response, {
+        onConversationId: (id) => {
+          capturedDifyId = id
+          setConversationId(id)
+        },
+        onChunk: (_piece, full) => {
+          setMessages(prev => {
+            const newMessages = [...prev]
+            const lastMsg = newMessages[newMessages.length - 1]
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          const chunk = decoder.decode(value)
-          const lines = chunk.split('\n')
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6))
-                
-                // 处理自定义的 conversation_id 事件
-                if (data.event === 'conversation_id' && data.conversation_id) {
-                  setConversationId(data.conversation_id)
-                  console.log('💾 收到 conversation_id:', data.conversation_id)
-                  continue
-                }
-                
-                // 处理消息内容
-                if (data.answer) {
-                  assistantMessage += data.answer
-                  
-                  setMessages(prev => {
-                    const newMessages = [...prev]
-                    const lastMsg = newMessages[newMessages.length - 1]
-                    
-                    if (lastMsg && lastMsg.role === 'assistant') {
-                      lastMsg.content = assistantMessage
-                    } else {
-                      newMessages.push({
-                        role: 'assistant',
-                        content: assistantMessage,
-                        timestamp: new Date()
-                      })
-                    }
-                    
-                    return newMessages
-                  })
-                }
-
-                if (data.event === 'message_end') {
-                  console.log('✅ 对话完成')
-                }
-              } catch (e) {
-                console.warn('解析 SSE 失败:', e)
-              }
+            if (lastMsg && lastMsg.role === 'assistant') {
+              lastMsg.content = full
+            } else {
+              newMessages.push({
+                role: 'assistant',
+                content: full,
+                timestamp: new Date()
+              })
             }
-          }
-        }
-      }
 
-      if (assistantMessage && messages[messages.length - 1]?.role !== 'assistant') {
+            return newMessages
+          })
+        },
+      })
+
+      if (assistantText && messages[messages.length - 1]?.role !== 'assistant') {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: assistantMessage,
+          content: assistantText,
           timestamp: new Date()
         }])
       }
 
     } catch (error) {
       const isAbort = error instanceof DOMException && error.name === 'AbortError'
-      if (isAbort && !isOpen) return // 用户主动关闭，无需提示
+      if (isAbort && !isOpen) {
+        // 用户主动关掉了弹窗：不提示，也不要把半截回答写进云端
+        shouldSave = false
+        return
+      }
 
       console.error('发送失败:', error)
-      const content = isAbort
+      assistantText = isAbort
         ? '⏱️ 请求超时（超过90秒无响应），请检查网络后重试'
         : `❌ 发送失败：${error instanceof Error ? error.message : '未知错误'}`
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content,
+        content: assistantText,
         timestamp: new Date()
       }])
     } finally {
       abortRef.current = null
       setIsLoading(false)
+
+      // 本轮结束后写回完整记录，刷新页面再打开时即可原样恢复
+      if (shouldSave && remoteIdRef.current) {
+        void updateConversation(remoteIdRef.current, {
+          difyConversationId: capturedDifyId,
+          messages: toStoredMessages([
+            ...baseMessages,
+            userMessage,
+            { role: 'assistant', content: assistantText, timestamp: new Date() },
+          ]),
+        })
+      }
     }
   }
 
@@ -239,7 +300,11 @@ export default function ContinuousDialog({
             <div>
               <h3 className="font-bold text-foreground">持续对话</h3>
               <p className="text-xs text-muted-foreground">
-                {conversationId ? '✅ Dify原生记忆' : '🆕 新对话'} • {taskType}
+                {isRestoring
+                  ? '⏳ 正在载入历史…'
+                  : conversationId
+                    ? '✅ 记忆已开启 · 已同步云端'
+                    : '🆕 新对话'} • {taskType}
               </p>
             </div>
           </div>
@@ -334,7 +399,7 @@ export default function ContinuousDialog({
               </div>
               
               <p className="text-xs text-muted-foreground mt-2">
-                💡 Dify原生记忆 + 知识库 • 可以持续追问、展开、优化
+                💡 记忆 + 知识库 • 可以持续追问、展开、优化 • 内容已存云端，刷新后再打开还在
               </p>
             </div>
           </>
