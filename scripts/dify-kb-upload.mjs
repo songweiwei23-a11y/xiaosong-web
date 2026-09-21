@@ -48,6 +48,15 @@ const KB_SPEC = [
   { dir: '库5_成交理由与实战', name: '成交理由知识库', desc: '17个核心成交理由、实体商家选题SOP、本地推爆款素材、15天变现实操' },
 ];
 
+/**
+ * Embedding 模型。必须作为建库请求的顶层参数传递——写在 retrieval_model
+ * 里会被忽略，Dify 将回落到工作区默认模型。曾因此落到 gemini-embedding-2
+ * （免费档每分钟仅 100 次请求），153 篇中 140 篇索引报 429 失败。
+ * 默认沿用原有知识库所用的 OpenAI 模型，可用环境变量覆盖。
+ */
+const EMBED_MODEL = process.env.DIFY_EMBED_MODEL || 'text-embedding-3-large';
+const EMBED_PROVIDER = process.env.DIFY_EMBED_PROVIDER || 'langgenius/openai/openai';
+
 /** 与现有工作流中知识检索节点一致的检索配置 */
 const RETRIEVAL_MODEL = {
   search_method: 'hybrid_search',
@@ -205,26 +214,133 @@ async function cmdInit() {
       description: spec.desc,
       indexing_technique: 'high_quality',
       permission: 'only_me',
+      embedding_model: EMBED_MODEL,
+      embedding_model_provider: EMBED_PROVIDER,
       retrieval_model: RETRIEVAL_MODEL,
     };
     let res;
     try {
       res = await api('POST', '/datasets', payload);
     } catch (e) {
-      // 某些 Dify 版本不接受 retrieval_model，降级为基础参数重试，
-      // 检索配置改由界面调整
-      console.log(`  (带检索配置创建失败，降级重试: ${e.message})`);
-      delete payload.retrieval_model;
-      res = await api('POST', '/datasets', payload);
+      // 不再静默降级：embedding 模型配不上就必须让使用者知道，
+      // 否则会回落到工作区默认模型，索引到一半才因限流大面积失败。
+      die(
+        `创建知识库「${spec.name}」失败: ${e.message}\n` +
+        `       当前指定的 embedding 模型: ${EMBED_MODEL} (${EMBED_PROVIDER})\n` +
+        `       若该模型在你的 Dify 工作区不可用，请改用其他模型后重试，例如：\n` +
+        `         $env:DIFY_EMBED_MODEL="text-embedding-3-small"\n` +
+        `         $env:DIFY_EMBED_PROVIDER="langgenius/openai/openai"`
+      );
     }
     map[spec.dir] = res.id;
-    console.log(`已创建      ${spec.name}  -> ${res.id}`);
+    console.log(`已创建      ${spec.name}  -> ${res.id}   [embedding: ${EMBED_MODEL}]`);
     await sleep(DELAY_MS);
   }
 
   fs.writeFileSync(MAPPING_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
   console.log(`\n映射已写入 ${MAPPING_FILE}`);
   console.log('\n下一步：node scripts/dify-kb-upload.mjs upload --all\n');
+}
+
+/**
+ * 索引状态诊断：统计 5 个目标库中每篇文档的索引进度与启用状态。
+ * Dify 界面上的「不可用」有多种成因——仍在排队/解析中、索引报错、
+ * 或被显式禁用，处理方式完全不同，需要先区分清楚。
+ */
+async function cmdStatus() {
+  if (!fs.existsSync(MAPPING_FILE)) die('缺少映射文件，请先运行 init');
+  const map = JSON.parse(fs.readFileSync(MAPPING_FILE, 'utf8'));
+  const STATUS_CN = {
+    waiting: '排队中', parsing: '解析中', cleaning: '清洗中', splitting: '分段中',
+    indexing: '索引中', completed: '已完成', error: '失败', paused: '已暂停',
+  };
+  let totalDocs = 0, totalDone = 0, totalErr = 0, totalPending = 0, totalDisabled = 0;
+  const errorSamples = [];
+
+  for (const [dir, id] of Object.entries(map)) {
+    if (!id || String(id).startsWith('<')) continue;
+    let docs = [];
+    try { docs = await fetchDocs(id); } catch (e) { console.log(`${dir}: 读取失败 ${e.message}`); continue; }
+    const byStatus = {};
+    let disabled = 0;
+    for (const d of docs) {
+      const s = d.indexing_status || 'unknown';
+      byStatus[s] = (byStatus[s] || 0) + 1;
+      if (d.enabled === false) disabled++;
+      if (s === 'error') {
+        totalErr++;
+        if (errorSamples.length < 10) {
+          errorSamples.push(`[${dir}] ${d.name}: ${d.error || '(接口未返回错误详情)'}`);
+        }
+      } else if (s === 'completed') totalDone++;
+      else totalPending++;
+    }
+    totalDocs += docs.length;
+    totalDisabled += disabled;
+    const parts = Object.entries(byStatus)
+      .map(([k, v]) => `${STATUS_CN[k] || k} ${v}`)
+      .join('  ');
+    console.log(`${dir.padEnd(22)} ${String(docs.length).padStart(3)} 篇   ${parts}${disabled ? `   已禁用 ${disabled}` : ''}`);
+    await sleep(200);
+  }
+
+  console.log('\n' + '-'.repeat(60));
+  console.log(`合计 ${totalDocs} 篇：已完成 ${totalDone}，处理中 ${totalPending}，失败 ${totalErr}，被禁用 ${totalDisabled}`);
+  if (errorSamples.length) {
+    console.log('\n失败样例：');
+    for (const s of errorSamples) console.log('  ' + s);
+  }
+  if (totalPending > 0) {
+    console.log('\n仍有文档在排队或索引中，属正常现象，稍后重跑本命令即可。');
+  }
+  if (totalErr > 0) {
+    console.log('\n存在索引失败的文档。常见原因：embedding 模型额度用尽、');
+    console.log('模型配置缺失、或单篇内容过大。请在 Dify 界面点开失败文档查看详情。');
+  }
+  console.log('');
+}
+
+/**
+ * 重置：删除本次创建的 5 个目标库并清空上传进度，用于换 embedding 模型后重来。
+ * 只动 _mapping.json 里记录的库，旧库不受影响。
+ */
+async function cmdReset() {
+  if (!fs.existsSync(MAPPING_FILE)) die('没有映射文件，无需重置');
+  const map = JSON.parse(fs.readFileSync(MAPPING_FILE, 'utf8'));
+  const jobs = Object.entries(map).filter(([, v]) => v && !String(v).startsWith('<'));
+  if (!jobs.length) die('映射表里没有有效的 dataset_id，无需重置');
+
+  console.log('\n将删除以下本次创建的知识库（账号内其他知识库不受影响）：\n');
+  for (const [dir, id] of jobs) console.log(`    ${dir.padEnd(22)} ${id}`);
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ans = await rl.question('\n确认请完整输入 RESET 后回车（其他任何输入均取消）: ');
+  rl.close();
+  if (ans.trim() !== 'RESET') {
+    console.log('\n已取消，未删除任何内容。\n');
+    return;
+  }
+
+  let ok = 0;
+  for (const [dir, id] of jobs) {
+    try {
+      await api('DELETE', `/datasets/${id}`);
+      ok++;
+      console.log(`  已删除  ${dir}`);
+    } catch (e) {
+      console.log(`  失败    ${dir}: ${e.message}`);
+    }
+    await sleep(DELAY_MS);
+  }
+
+  // 映射表复位为模板，上传进度清空，以便 init/upload 重新来过
+  const tpl = {};
+  for (const s of KB_SPEC) tpl[s.dir] = '<运行 init 后自动填入>';
+  fs.writeFileSync(MAPPING_FILE, JSON.stringify(tpl, null, 2) + '\n', 'utf8');
+  if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
+
+  console.log(`\n已删除 ${ok} 个库，映射表与上传进度已清空。`);
+  console.log('下一步：确认 embedding 模型后重新 init 并 upload --all\n');
 }
 
 /** 递归统计备份目录下的 markdown 篇数 */
@@ -507,6 +623,8 @@ try {
   else if (cmd === 'init') await cmdInit();
   else if (cmd === 'plan') cmdPlan();
   else if (cmd === 'upload') await cmdUpload(rest);
+  else if (cmd === 'status') await cmdStatus();
+  else if (cmd === 'reset') await cmdReset();
   else if (cmd === 'audit') await cmdAudit();
   else if (cmd === 'export') await cmdExport();
   else if (cmd === 'prune') await cmdPrune(rest);
@@ -522,6 +640,8 @@ Dify 知识库批量上传
   upload <目录> <id>  上传单个目录
 
 清理旧库：
+  status              诊断 5 个目标库的索引进度与失败原因（只读）
+  reset               删除本次创建的 5 个库并清空进度，用于换模型重来
   audit               列出所有库及其文档清单，标记新旧（只读）
   export              把非目标库的内容导出到本地备份
   prune               预览将删除的库
