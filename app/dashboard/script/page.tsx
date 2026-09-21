@@ -24,7 +24,10 @@ import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } 
 
 import { useState, useEffect, useCallback } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
-import { Sparkles, AlertCircle, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText } from "lucide-react";
+import {
+  Sparkles, AlertCircle, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText,
+  BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package,
+} from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 
 // 静态配置与折叠组件已抽离
@@ -53,7 +56,7 @@ import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
 import { supabase } from "@/lib/supabase/client";
-import { Field, FieldGroup } from "./Field";
+import { Field, OptionCard } from "./Field";
 
 /*
  * 表单控件的共用样式。抽成常量而不是每处写一遍长串类名：
@@ -75,6 +78,28 @@ function chipCls(selected: boolean) {
     selected ? "glass-selected text-foreground" : "glass-panel text-muted-foreground"
   }`;
 }
+
+/**
+ * 脚本类型的图标与身份色。
+ *
+ * 四个纯文字卡片并排时几乎分辨不出差异，得逐个读标题才知道点哪个；
+ * 给每类配一个固定的图标与颜色后，用熟了扫一眼就能定位。
+ * 颜色按语义选：教学偏理性用蓝，过程展示用暖橙，观点表达用紫，
+ * 故事用绿；广告四类统一走主题色，避免与内容类混淆。
+ */
+const SCRIPT_TYPE_STYLE: Record<
+  string,
+  { icon: React.ComponentType<{ className?: string }>; accent: "sky" | "amber" | "violet" | "emerald" | "primary" }
+> = {
+  teach: { icon: BookOpen, accent: "sky" },
+  show: { icon: Clapperboard, accent: "amber" },
+  discuss: { icon: MessageSquare, accent: "violet" },
+  story: { icon: Feather, accent: "emerald" },
+  ad_lead: { icon: UserPlus, accent: "primary" },
+  ad_group: { icon: Ticket, accent: "primary" },
+  ad_offline: { icon: Store, accent: "primary" },
+  ad_product: { icon: Package, accent: "primary" },
+};
 
 export default function ScriptPage() {
   const [scriptType, setScriptType] = useState("teach");
@@ -733,7 +758,7 @@ ${formatRequirements}
       {/* Left Panel - Form */}
       {/* 加宽到 470：标签左置后要留出 88px 的标签列，按原先 420 的宽度，
           剩给控件的空间不足，两列的选项卡片会被挤扁 */}
-      <div className="w-[470px] shrink-0 overflow-y-auto border-r border-border/60 px-5 py-6">
+      <div className="w-[470px] shrink-0 overflow-y-auto border-r border-border/60 px-6 py-7">
         <div className="mb-6">
           <h1 className="text-[22px] font-semibold tracking-tight text-foreground">脚本生成</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -815,26 +840,23 @@ ${formatRequirements}
           {/* 基础设置 */}
           <CollapsibleSection title="基础设置" icon={Settings} defaultOpen={true}>
             <Field label="脚本类型" required stacked>
-              {/* 选中态用主题变量：原先写死 from-blue-50 / text-blue-700，
-                  那是亮色专用值，深色模式下会糊出一块刺眼的浅蓝 */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {Object.entries(SCRIPT_TYPES)
                   .filter(([key]) => activeTab === "content" ? !key.startsWith("ad_") : key.startsWith("ad_"))
-                  .map(([key, value]) => (
-                  <button
-                    key={key}
-                    onClick={() => setScriptType(key)}
-                    aria-pressed={scriptType === key}
-                    className={`glass-interactive rounded-xl border p-3 text-left ${
-                      scriptType === key
-                        ? "glass-selected text-foreground"
-                        : "glass-panel text-foreground/90"
-                    }`}
-                  >
-                    <div className="text-[13px] font-medium leading-5">{value.label}</div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{value.desc}</div>
-                  </button>
-                ))}
+                  .map(([key, value]) => {
+                    const style = SCRIPT_TYPE_STYLE[key] ?? { icon: FileText, accent: "primary" as const };
+                    return (
+                      <OptionCard
+                        key={key}
+                        icon={style.icon}
+                        accent={style.accent}
+                        title={value.label}
+                        desc={value.desc}
+                        selected={scriptType === key}
+                        onClick={() => setScriptType(key)}
+                      />
+                    );
+                  })}
               </div>
             </Field>
 

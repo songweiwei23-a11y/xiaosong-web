@@ -12,6 +12,8 @@
 import { useState } from "react";
 import { FileText, Lightbulb, Film, MessageSquare } from "lucide-react";
 import { Field, OptionCard, FieldGroup } from "../dashboard/script/Field";
+// 真实页面用的折叠分组，放进来一起看，确认两者观感一致
+import { CollapsibleSection } from "../dashboard/script/CollapsibleSection";
 
 const TYPES = [
   { key: "teach", label: "教知识型", desc: "分享有价值的专业知识", icon: FileText, accent: "sky" as const },
@@ -204,7 +206,8 @@ export default function FormPreviewPage() {
                 </Field>
               </FieldGroup>
 
-              <FieldGroup title="发布设置">
+              {/* 这一组用真实页面的折叠分组，与上下两组的 FieldGroup 对比观感 */}
+              <CollapsibleSection title="发布设置" defaultOpen>
                 <Field label="发布平台" required>
                   {/* 分段控件：四选一用一个整体的槽，比四个独立描边按钮干净 */}
                   <div className="glass-panel inline-flex gap-0.5 rounded-xl p-1">
@@ -241,7 +244,7 @@ export default function FormPreviewPage() {
                     ))}
                   </div>
                 </Field>
-              </FieldGroup>
+              </CollapsibleSection>
 
               <FieldGroup title="创作风格">
                 <Field
