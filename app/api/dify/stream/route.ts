@@ -566,6 +566,10 @@ export async function POST(req: NextRequest) {
               capturedConversationId,
               profileId
             );
+          } else if (totalChunks > 0 && !capturedConversationId) {
+            // 有内容产出却没拿到会话 id，说明 SSE 事件里始终不含 conversation_id。
+            // 不记下来的话，表为空时无法判断是没执行还是执行了没拿到值。
+            console.warn('[dify-conversation] 本轮未捕获到 conversation_id，会话不会被延续');
           }
           
           // 保存对话历史

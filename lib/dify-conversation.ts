@@ -64,7 +64,15 @@ export async function saveDifyConversationId(
       },
       { onConflict: 'user_id,scope_key' }
     );
-    if (error) console.error('[dify-conversation] 保存失败:', error.message);
+    if (error) {
+      console.error('[dify-conversation] 保存失败:', error.message);
+    } else {
+      // 成功也要留痕：只在失败时打日志，会导致"没执行"与"执行成功"
+      // 在日志里无法区分，排查时只能靠推理。
+      console.log(
+        `[dify-conversation] 已保存会话 scope=${buildScopeKey(taskType, profileId)} id=${conversationId}`
+      );
+    }
   } catch (e: any) {
     console.error('[dify-conversation] 保存异常:', e?.message);
   }
