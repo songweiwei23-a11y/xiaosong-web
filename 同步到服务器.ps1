@@ -1,5 +1,22 @@
 ﻿# 同步到服务器脚本
-$ErrorActionPreference = "Stop"
+# 外部命令(tar/scp/ssh/git/npx)向 stderr 写入时，PowerShell 5.1 会把它包成
+# ErrorRecord。若 ErrorActionPreference 为 Stop，这会直接终止脚本，连后面的
+# pause 都执行不到，表现就是"窗口闪退、看不到任何错误"。
+# 这些命令的成败一律以 $LASTEXITCODE 判断，因此这里不能用 Stop。
+$ErrorActionPreference = "Continue"
+
+# 兜底：任何未预期的终止错误都先打出来再停住，不让窗口直接消失。
+trap {
+    Write-Host ""
+    Write-Host "脚本异常终止：" -ForegroundColor Red
+    Write-Host "  $($_.Exception.Message)" -ForegroundColor Red
+    if ($_.InvocationInfo) {
+        Write-Host "  位置: 第 $($_.InvocationInfo.ScriptLineNumber) 行 -> $($_.InvocationInfo.Line.Trim())" -ForegroundColor DarkGray
+    }
+    Write-Host ""
+    pause
+    exit 1
+}
 $projectPath = "E:\小宋\腾讯云生产版同步_20260918"
 $serverIP = "122.51.234.155"
 $serverUser = "ubuntu"

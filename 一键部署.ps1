@@ -2,7 +2,24 @@
 #
 # 把「git push」和「同步到服务器」串起来，避免两步之间遗漏。
 # 之前出现过代码已推送但没同步、以及同步后立刻访问撞上重启窗口的情况。
-$ErrorActionPreference = "Stop"
+# 外部命令(tar/scp/ssh/git/npx)向 stderr 写入时，PowerShell 5.1 会把它包成
+# ErrorRecord。若 ErrorActionPreference 为 Stop，这会直接终止脚本，连后面的
+# pause 都执行不到，表现就是"窗口闪退、看不到任何错误"。
+# 这些命令的成败一律以 $LASTEXITCODE 判断，因此这里不能用 Stop。
+$ErrorActionPreference = "Continue"
+
+# 兜底：任何未预期的终止错误都先打出来再停住，不让窗口直接消失。
+trap {
+    Write-Host ""
+    Write-Host "脚本异常终止：" -ForegroundColor Red
+    Write-Host "  $($_.Exception.Message)" -ForegroundColor Red
+    if ($_.InvocationInfo) {
+        Write-Host "  位置: 第 $($_.InvocationInfo.ScriptLineNumber) 行 -> $($_.InvocationInfo.Line.Trim())" -ForegroundColor DarkGray
+    }
+    Write-Host ""
+    pause
+    exit 1
+}
 $projectPath = "E:\小宋\腾讯云生产版同步_20260918"
 
 $Host.UI.RawUI.WindowTitle = "小宋工作台 - 一键部署"
@@ -70,3 +87,6 @@ Write-Host ""
 Write-Host "[4/4] 同步到服务器（含构建、重启、就绪等待）..." -ForegroundColor Yellow
 Write-Host ""
 & "$projectPath\同步到服务器.ps1"
+
+Write-Host ""
+pause
