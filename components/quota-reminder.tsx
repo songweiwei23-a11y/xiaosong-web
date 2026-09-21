@@ -45,7 +45,7 @@ export default function QuotaReminder({ open, onClose, warnings, planName }: Quo
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm">{warning.featureName}</span>
                 <span className={`text-sm font-semibold ${
-                  warning.remaining === 0 ? 'text-red-500' : 'text-yellow-600'
+                  warning.remaining === 0 ? 'text-destructive' : 'text-yellow-500'
                 }`}>
                   {warning.remaining === 0 ? '已用尽' : `剩余 ${warning.remaining} 次`}
                 </span>
@@ -56,14 +56,14 @@ export default function QuotaReminder({ open, onClose, warnings, planName }: Quo
                   <span>已使用 {warning.used}/{warning.total}</span>
                   <span>{warning.percentage}%</span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-muted dark:bg-muted rounded-full h-2 overflow-hidden">
                   <div
                     className={`h-full transition-all ${
                       warning.remaining === 0 
-                        ? 'bg-red-500' 
+                        ? 'bg-destructive/100' 
                         : warning.percentage >= 90 
-                          ? 'bg-orange-500' 
-                          : 'bg-yellow-500'
+                          ? 'bg-amber-500' 
+                          : 'bg-amber-500'
                     }`}
                     style={{ width: `${Math.min(warning.percentage, 100)}%` }}
                   />

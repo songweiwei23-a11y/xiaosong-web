@@ -126,14 +126,14 @@ export default function AnalyticsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-muted dark:bg-muted">
       {/* 顶部导航 */}
-      <div className="bg-white dark:bg-slate-800 border-b">
+      <div className="glass-panel border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">数据统计</h1>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+              <h1 className="text-2xl font-bold text-foreground dark:text-foreground">数据统计</h1>
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground mt-1">
                 查看平台数据和用户行为分析
               </p>
             </div>
@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
               <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-border dark:border-border dark:bg-muted dark:text-foreground rounded-lg focus:ring-2 focus:ring-primary"
               >
                 <option value="7d">最近 7 天</option>
                 <option value="30d">最近 30 天</option>
@@ -149,7 +149,7 @@ export default function AnalyticsPage() {
               </select>
               <a
                 href="/admin"
-                className="text-sm text-blue-600 hover:text-blue-700"
+                className="text-sm text-primary hover:text-primary"
               >
                 ← 返回后台首页
               </a>
@@ -161,84 +161,84 @@ export default function AnalyticsPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* 核心指标 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
+          <div className="glass-panel rounded-xl border p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-green-100">
-                <DollarSign className="w-6 h-6 text-green-600" />
+              <div className="p-3 rounded-lg bg-emerald-500/15">
+                <DollarSign className="w-6 h-6 text-green-500" />
               </div>
-              <span className="text-sm font-medium text-green-600">+0%</span>
+              <span className="text-sm font-medium text-green-500">+0%</span>
             </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-1">
+            <div className="text-2xl font-bold text-foreground dark:text-foreground mb-1">
               ¥{stats.monthlyRevenue}
             </div>
-            <div className="text-sm text-gray-500 dark:text-slate-400">本月收入</div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground">本月收入</div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
+          <div className="glass-panel rounded-xl border p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-blue-100">
-                <Users className="w-6 h-6 text-blue-600" />
+              <div className="p-3 rounded-lg bg-primary/15">
+                <Users className="w-6 h-6 text-primary" />
               </div>
-              <span className="text-sm font-medium text-blue-600">+100%</span>
+              <span className="text-sm font-medium text-primary">+100%</span>
             </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-1">
+            <div className="text-2xl font-bold text-foreground dark:text-foreground mb-1">
               {stats.totalUsers}
             </div>
-            <div className="text-sm text-gray-500 dark:text-slate-400">总用户数</div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground">总用户数</div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
+          <div className="glass-panel rounded-xl border p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-purple-100">
-                <Activity className="w-6 h-6 text-purple-600" />
+              <div className="p-3 rounded-lg bg-accent/15">
+                <Activity className="w-6 h-6 text-accent" />
               </div>
-              <span className="text-sm font-medium text-purple-600">+100%</span>
+              <span className="text-sm font-medium text-accent">+100%</span>
             </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-1">
+            <div className="text-2xl font-bold text-foreground dark:text-foreground mb-1">
               {stats.activeUsers}
             </div>
-            <div className="text-sm text-gray-500 dark:text-slate-400">活跃用户</div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground">活跃用户</div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* 用户增长趋势 */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">
+          <div className="glass-panel rounded-xl border p-6">
+            <h2 className="text-lg font-semibold text-foreground dark:text-foreground mb-4">
               用户增长趋势
             </h2>
             <div className="h-64 flex items-end justify-between gap-2">
               {userGrowth.map((day, index) => (
                 <div key={index} className="flex-1 flex flex-col items-center">
                   <div
-                    className="w-full bg-blue-500 rounded-t-lg transition-all hover:bg-blue-600"
+                    className="w-full bg-primary rounded-t-lg transition-all hover:bg-primary"
                     style={{
                       height: `${Math.max(day.users * 100, 5)}%`,
                     }}
                   />
-                  <div className="text-xs text-gray-500 dark:text-slate-400 mt-2">{day.date}</div>
+                  <div className="text-xs text-muted-foreground dark:text-muted-foreground mt-2">{day.date}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* 会员分布 */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">
+          <div className="glass-panel rounded-xl border p-6">
+            <h2 className="text-lg font-semibold text-foreground dark:text-foreground mb-4">
               会员套餐分布
             </h2>
             <div className="space-y-4">
               {planDistribution.map((item) => (
                 <div key={item.plan}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                    <span className="text-sm font-medium text-foreground/80 dark:text-foreground">
                       {item.plan}
                     </span>
-                    <span className="text-sm text-gray-500 dark:text-slate-400">
+                    <span className="text-sm text-muted-foreground dark:text-muted-foreground">
                       {item.count} 人 ({item.percentage}%)
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
+                  <div className="w-full bg-muted dark:bg-muted rounded-full h-2">
                     <div
                       className={`bg-${item.color}-500 h-2 rounded-full transition-all`}
                       style={{ width: `${item.percentage}%` }}
@@ -251,8 +251,8 @@ export default function AnalyticsPage() {
         </div>
 
         {/* 功能使用排行 */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">
+        <div className="glass-panel rounded-xl border p-6 mb-8">
+          <h2 className="text-lg font-semibold text-foreground dark:text-foreground mb-4">
             功能使用排行
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
                     className="relative p-4 rounded-lg border hover:shadow-md transition-shadow"
                   >
                     <div className="absolute top-2 right-2">
-                      <span className="text-xs font-semibold text-gray-400 dark:text-slate-500">
+                      <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">
                         #{index + 1}
                       </span>
                     </div>
@@ -275,13 +275,13 @@ export default function AnalyticsPage() {
                     >
                       <Icon className={`w-5 h-5 text-${feature.color}-600`} />
                     </div>
-                    <div className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                    <div className="text-sm font-medium text-foreground/80 dark:text-foreground mb-1">
                       {feature.name}
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                    <div className="text-2xl font-bold text-foreground dark:text-foreground">
                       {feature.count}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400">次使用</div>
+                    <div className="text-xs text-muted-foreground dark:text-muted-foreground">次使用</div>
                   </div>
                 );
               })}
@@ -290,38 +290,38 @@ export default function AnalyticsPage() {
 
         {/* 关键指标 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-2">
+          <div className="glass-panel rounded-xl border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground dark:text-muted-foreground mb-2">
               付费转化率
             </h3>
-            <div className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-1">
+            <div className="text-3xl font-bold text-foreground dark:text-foreground mb-1">
               {stats.conversionRate}%
             </div>
-            <div className="text-sm text-gray-500 dark:text-slate-400">
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground">
               {stats.totalUsers > 0
                 ? `${stats.totalUsers - 1} 用户未付费`
                 : "暂无数据"}
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-2">
+          <div className="glass-panel rounded-xl border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground dark:text-muted-foreground mb-2">
               人均使用次数
             </h3>
-            <div className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-1">
+            <div className="text-3xl font-bold text-foreground dark:text-foreground mb-1">
               {stats.avgUsagePerUser}
             </div>
-            <div className="text-sm text-gray-500 dark:text-slate-400">次/用户</div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground">次/用户</div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl border p-6">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-2">
+          <div className="glass-panel rounded-xl border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground dark:text-muted-foreground mb-2">
               累计收入
             </h3>
-            <div className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-1">
+            <div className="text-3xl font-bold text-foreground dark:text-foreground mb-1">
               ¥{stats.totalRevenue}
             </div>
-            <div className="text-sm text-gray-500 dark:text-slate-400">自平台上线以来</div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground">自平台上线以来</div>
           </div>
         </div>
       </div>

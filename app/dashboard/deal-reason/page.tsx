@@ -224,37 +224,37 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50">
+      <div className="flex h-full items-center justify-center brand-gradient">
         <Loader2 className="h-12 w-12 animate-spin text-yellow-500" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50">
+    <div className="flex h-full brand-gradient">
       {/* 左侧输入表单 */}
-      <div className="w-[420px] border-r border-yellow-200/50 backdrop-blur-xl bg-card/40 p-6 overflow-y-auto shadow-2xl">
+      <div className="w-[420px] border-r border-yellow-500/50/25/50 backdrop-blur-xl bg-card/40 p-6 overflow-y-auto shadow-2xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl shadow-lg">
+            <div className="p-3 bg-amber-500 rounded-2xl shadow-lg">
               <Award className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-amber-500 bg-clip-text text-transparent">
                 成交理由分析
               </h1>
-              <p className="text-sm text-yellow-600/70 mt-1">AI分析17个成交理由</p>
+              <p className="text-sm text-yellow-500/70 mt-1">AI分析17个成交理由</p>
             </div>
           </div>
         </div>
 
         {/* 已保存的成交理由提示 */}
         {savedData && (
-          <div className="mb-6 p-4 rounded-xl bg-green-50 border-2 border-green-200">
-            <div className="text-sm font-semibold text-green-700 mb-2">
+          <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border-2 border-green-500/50/25">
+            <div className="text-sm font-semibold text-green-500 mb-2">
               ✅ 已保存 {savedData.selected_reasons?.length || 0} 个成交理由
             </div>
-            <div className="text-xs text-green-600 mb-2">
+            <div className="text-xs text-green-500 mb-2">
               店铺: {savedData.store_name} ({savedData.store_type})
             </div>
             <div className="text-xs text-green-500">
@@ -266,25 +266,25 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
         <div className="space-y-6">
           {/* 店铺名称 */}
           <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-700">
-              店铺名称 <span className="text-red-500">*</span>
+            <label className="mb-3 block text-sm font-semibold text-yellow-500">
+              店铺名称 <span className="text-destructive">*</span>
             </label>
             <input
               type="text"
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
               placeholder="例如:老李烧烤、美美美容院"
-              className="w-full rounded-2xl border-2 border-yellow-200/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-400 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
+              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
             />
           </div>
 
           {/* 店铺类型 */}
           <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-700">店铺类型</label>
+            <label className="mb-3 block text-sm font-semibold text-yellow-500">店铺类型</label>
             <select
               value={storeType}
               onChange={(e) => setStoreType(e.target.value)}
-              className="w-full rounded-2xl border-2 border-yellow-200/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-400 focus:outline-none"
+              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none"
             >
               {STORE_TYPES.map(type => (
                 <option key={type}>{type}</option>
@@ -294,21 +294,21 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
           {/* 店铺特色 */}
           <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-700">
-              店铺特色描述 <span className="text-red-500">*</span>
+            <label className="mb-3 block text-sm font-semibold text-yellow-500">
+              店铺特色描述 <span className="text-destructive">*</span>
             </label>
             <textarea
               value={storeFeatures}
               onChange={(e) => setStoreFeatures(e.target.value)}
               placeholder="描述你的店铺特色,例如:&#10;- 开了10年的老店&#10;- 秘制配方,味道独特&#10;- 环境装修很有特色&#10;- 价格实惠,人均50元"
               rows={6}
-              className="w-full rounded-2xl border-2 border-yellow-200/50 backdrop-blur-xl bg-card/80 px-5 py-4 focus:border-yellow-400 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all resize-none shadow-lg"
+              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-4 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all resize-none shadow-lg"
             />
           </div>
 
           {/* 目标客户 */}
           <div>
-            <label className="mb-3 block text-sm font-semibold text-yellow-700">
+            <label className="mb-3 block text-sm font-semibold text-yellow-500">
               目标客户 <span className="text-xs text-yellow-500">(可选)</span>
             </label>
             <input
@@ -316,7 +316,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
               value={targetCustomer}
               onChange={(e) => setTargetCustomer(e.target.value)}
               placeholder="例如:周边3公里上班族"
-              className="w-full rounded-2xl border-2 border-yellow-200/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-400 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
+              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
             />
           </div>
 
@@ -324,7 +324,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing || !storeName.trim() || !storeFeatures.trim()}
-            className="w-full rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 px-6 py-4 font-bold text-white hover:from-yellow-600 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+            className="w-full rounded-2xl bg-amber-500 px-6 py-4 font-bold text-white hover:from-yellow-600 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
           >
             {isAnalyzing ? (
               <>
@@ -341,8 +341,8 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
           {/* 手动选择成交理由 */}
           {selectedReasons.length > 0 && (
-            <div className="pt-6 border-t-2 border-yellow-200">
-              <label className="mb-3 block text-sm font-semibold text-yellow-700">
+            <div className="pt-6 border-t-2 border-yellow-500/50/25">
+              <label className="mb-3 block text-sm font-semibold text-yellow-500">
                 选择成交理由 (至少15个，当前: {selectedReasons.length}/17)
               </label>
               <div className="grid grid-cols-3 gap-2 mb-4 max-h-80 overflow-y-auto pr-2">
@@ -352,14 +352,14 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
                     onClick={() => toggleReason(reason.id)}
                     className={`rounded-xl border-2 p-2.5 text-center transition-all duration-300 hover:shadow-md ${
                       selectedReasons.includes(reason.id)
-                        ? 'border-yellow-500 bg-gradient-to-br from-yellow-100 to-orange-100 shadow-md scale-105'
+                        ? 'border-yellow-500/50 bg-amber-500 shadow-md scale-105'
                         : 'border-border bg-muted opacity-40'
                     }`}
                   >
                     <div className="text-xl mb-1">{reason.icon}</div>
-                    <div className="text-[10px] font-bold text-yellow-900">{reason.label}</div>
+                    <div className="text-[10px] font-bold text-yellow-500">{reason.label}</div>
                     {selectedReasons.includes(reason.id) && (
-                      <Check className="w-3 h-3 text-yellow-600 mx-auto mt-1" />
+                      <Check className="w-3 h-3 text-yellow-500 mx-auto mt-1" />
                     )}
                   </button>
                 ))}
@@ -369,13 +369,13 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
               <button
                 onClick={handleSave}
                 disabled={selectedReasons.length < 15}
-                className="w-full rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4 font-bold text-white hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                className="w-full rounded-2xl bg-emerald-500 px-6 py-4 font-bold text-white hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
               >
                 <Save className="h-5 w-5" />
                 <span>保存到云端 ({selectedReasons.length}/17)</span>
               </button>
               {selectedReasons.length < 15 && (
-                <p className="text-xs text-red-500 text-center mt-2">还需选择 {15 - selectedReasons.length} 个</p>
+                <p className="text-xs text-destructive text-center mt-2">还需选择 {15 - selectedReasons.length} 个</p>
               )}
             </div>
           )}
@@ -387,13 +387,13 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
         {!analysisResult && !isAnalyzing && (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
-              <div className="mb-6 inline-flex p-8 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-3xl shadow-2xl">
-                <Award className="w-20 h-20 text-yellow-600" />
+              <div className="mb-6 inline-flex p-8 bg-amber-500 rounded-3xl shadow-2xl">
+                <Award className="w-20 h-20 text-yellow-500" />
               </div>
-              <h3 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mb-3">
+              <h3 className="text-3xl font-bold bg-amber-500 bg-clip-text text-transparent mb-3">
                 成交理由全面分析
               </h3>
-              <p className="text-yellow-600/70 text-lg mb-2">
+              <p className="text-yellow-500/70 text-lg mb-2">
                 AI分析17个成交理由并打分
               </p>
               <p className="text-sm text-yellow-500/60 mb-4">
@@ -405,16 +405,16 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
         {(analysisResult || isAnalyzing) && (
           <div className="max-w-4xl mx-auto">
-            <div className="backdrop-blur-xl bg-card/60 rounded-3xl shadow-2xl p-8 border-2 border-yellow-200/50">
+            <div className="backdrop-blur-xl bg-card/60 rounded-3xl shadow-2xl p-8 border-2 border-yellow-500/50/25/50">
               <div className="mb-6 flex items-center justify-between pb-6 border-b-2 border-yellow-100">
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent flex items-center gap-3">
+                <h2 className="text-3xl font-bold bg-amber-500 bg-clip-text text-transparent flex items-center gap-3">
                   <Sparkles className="w-7 h-7 text-yellow-500" />
                   分析结果
                 </h2>
                 {analysisResult && !isAnalyzing && (
                   <button
                     onClick={handleCopy}
-                    className="flex items-center gap-2 rounded-xl backdrop-blur-xl bg-card/80 border-2 border-yellow-300 px-5 py-2.5 text-sm font-semibold text-yellow-700 hover:border-yellow-500 hover:bg-yellow-50 transition-all shadow-lg hover:shadow-xl"
+                    className="flex items-center gap-2 rounded-xl backdrop-blur-xl bg-card/80 border-2 border-yellow-500/40 px-5 py-2.5 text-sm font-semibold text-yellow-500 hover:border-yellow-500/50 hover:bg-amber-500/10 transition-all shadow-lg hover:shadow-xl"
                   >
                     <Copy className="h-4 w-4" />
                     复制
@@ -425,20 +425,20 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
               {isAnalyzing && !analysisResult && (
                 <div className="flex flex-col items-center justify-center py-20">
                   <Loader2 className="h-16 w-16 animate-spin text-yellow-500 mb-6" />
-                  <p className="text-yellow-600 font-semibold text-lg">AI正在全面分析17个成交理由...</p>
+                  <p className="text-yellow-500 font-semibold text-lg">AI正在全面分析17个成交理由...</p>
                   <p className="text-yellow-500/60 text-sm mt-2">请稍候</p>
                 </div>
               )}
 
               {analysisResult && (
-                  <div className="max-w-none bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-8 shadow-inner">'
+                  <div className="max-w-none bg-amber-500 rounded-2xl p-8 shadow-inner">'
                   <ReactMarkdown
                       components={{
-                        h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-yellow-800 mb-4 mt-6" {...props} />,
-                        h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-yellow-700 mb-3 mt-5" {...props} />,
-                        h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-yellow-600 mb-2 mt-4" {...props} />,
+                        h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-yellow-500 mb-4 mt-6" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-yellow-500 mb-3 mt-5" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-yellow-500 mb-2 mt-4" {...props} />,
                         p: ({node, ...props}) => <p className="text-foreground leading-relaxed mb-4" {...props} />,
-                        strong: ({node, ...props}) => <strong className="text-yellow-700 font-bold" {...props} />,
+                        strong: ({node, ...props}) => <strong className="text-yellow-500 font-bold" {...props} />,
                         ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2" {...props} />,
                         ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2" {...props} />,
                         li: ({node, ...props}) => <li className="text-foreground" {...props} />,

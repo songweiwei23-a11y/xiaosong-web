@@ -211,10 +211,10 @@ export default function UsersPage() {
 
   const getLevelBadge = (level: string) => {
     const configs: any = {
-      free: { label: '免费版', color: 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-300' },
-      basic: { label: '基础版', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' },
-      pro: { label: '专业版', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300' },
-      enterprise: { label: '企业版', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' },
+      free: { label: '免费版', color: 'bg-muted text-foreground dark:bg-muted dark:text-foreground' },
+      basic: { label: '基础版', color: 'bg-primary/15 text-primary dark:bg-blue-900 dark:text-primary' },
+      pro: { label: '专业版', color: 'bg-accent/15 text-accent dark:bg-purple-900 dark:text-accent' },
+      enterprise: { label: '企业版', color: 'bg-amber-500/15 text-yellow-500 dark:bg-yellow-900 dark:text-yellow-300' },
     };
     const config = configs[level] || configs.free;
     return (
@@ -226,8 +226,8 @@ export default function UsersPage() {
 
   const getStatusBadge = (status: string) => {
     const configs: any = {
-      active: { label: '正常', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
-      inactive: { label: '已封禁', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
+      active: { label: '正常', color: 'bg-emerald-500/15 text-green-500 dark:bg-green-900 dark:text-green-300' },
+      inactive: { label: '已封禁', color: 'bg-destructive/15 text-destructive dark:bg-red-900 dark:text-destructive' },
     };
     const config = configs[status] || configs.inactive;
     return (
@@ -250,20 +250,20 @@ export default function UsersPage() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="p-8 bg-slate-50 dark:bg-slate-950 min-h-screen">
+    <div className="p-8 bg-muted dark:bg-muted min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">用户管理</h1>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <h1 className="text-3xl font-bold text-foreground">用户管理</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
               管理所有注册用户、会员等级和配额（共 {total} 个用户）
             </p>
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? '刷新中...' : '刷新数据'}
@@ -271,31 +271,31 @@ export default function UsersPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div className="glass-panel rounded-xl shadow-lg overflow-hidden border border-border">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                <thead className="bg-slate-50 dark:bg-slate-800">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">用户信息</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">会员等级</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">状态</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">配额使用</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">周期结束</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">操作</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">用户信息</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">会员等级</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">状态</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">配额使用</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">周期结束</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">操作</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="glass-panel divide-y divide-slate-200 dark:divide-slate-800">
                   {users.map((user) => (
-                    <tr key={user.user_id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    <tr key={user.user_id} className="hover:bg-foreground/[0.06] dark:hover:bg-muted transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-slate-900 dark:text-white">{user.full_name}</div>
-                          <div className="text-sm text-slate-500 dark:text-slate-400">{user.email}</div>
+                          <div className="text-sm font-medium text-foreground">{user.full_name}</div>
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -305,12 +305,12 @@ export default function UsersPage() {
                         {getStatusBadge(user.subscription_status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-900 dark:text-white">
+                        <div className="text-sm text-foreground">
                           {user.total_used} 次
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                        <div className="text-sm text-muted-foreground">
                           {user.period_end ? new Date(user.period_end).toLocaleDateString('zh-CN') : '无限期'}
                         </div>
                       </td>
@@ -318,21 +318,21 @@ export default function UsersPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openDetailModal(user)}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                            className="text-primary hover:text-primary dark:text-primary dark:hover:text-primary"
                             title="查看详情"
                           >
                             <Eye className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => openEditModal(user)}
-                            className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                            className="text-accent hover:text-accent dark:text-accent dark:hover:text-accent"
                             title="修改会员"
                           >
                             <Crown className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => handleResetQuota(user.user_id)}
-                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                            className="text-green-500 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
                             title="重置配额"
                           >
                             <RotateCcw className="h-5 w-5" />
@@ -340,7 +340,7 @@ export default function UsersPage() {
                           {user.subscription_status === 'active' ? (
                             <button
                               onClick={() => handleBanUser(user.user_id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              className="text-destructive hover:text-destructive dark:text-red-400 dark:hover:text-destructive"
                               title="封禁用户"
                             >
                               <Ban className="h-5 w-5" />
@@ -348,7 +348,7 @@ export default function UsersPage() {
                           ) : (
                             <button
                               onClick={() => handleUnbanUser(user.user_id)}
-                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                              className="text-green-500 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
                               title="解封用户"
                             >
                               <Unlock className="h-5 w-5" />
@@ -365,26 +365,26 @@ export default function UsersPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
+            <div className="glass-panel px-4 py-3 flex items-center justify-between border-t border-border">
               <div className="flex-1 flex justify-between sm:hidden">
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-700 text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-border dark:border-border text-sm font-medium rounded-md text-foreground/80 glass-panel hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
                 >
                   上一页
                 </button>
                 <button
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-700 text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-border dark:border-border text-sm font-medium rounded-md text-foreground/80 glass-panel hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
                 >
                   下一页
                 </button>
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <p className="text-sm text-foreground/80">
                     显示 <span className="font-medium">{(page - 1) * pageSize + 1}</span> 到{' '}
                     <span className="font-medium">{Math.min(page * pageSize, total)}</span> 共{' '}
                     <span className="font-medium">{total}</span> 个用户
@@ -395,17 +395,17 @@ export default function UsersPage() {
                     <button
                       onClick={() => setPage(Math.max(1, page - 1))}
                       disabled={page === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border dark:border-border glass-panel text-sm font-medium text-muted-foreground hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <span className="relative inline-flex items-center px-4 py-2 border border-border dark:border-border glass-panel text-sm font-medium text-foreground/80">
                       {page} / {totalPages}
                     </span>
                     <button
                       onClick={() => setPage(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border dark:border-border glass-panel text-sm font-medium text-muted-foreground hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
@@ -419,22 +419,22 @@ export default function UsersPage() {
         {/* Edit Modal */}
         {showEditModal && selectedUser && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">修改会员等级</h3>
+            <div className="glass-panel rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+              <h3 className="text-xl font-bold text-foreground mb-4">修改会员等级</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
                     用户: {selectedUser.email}
                   </label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
                     会员套餐
                   </label>
                   <select
                     value={editPlan}
                     onChange={(e) => setEditPlan(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border dark:border-border rounded-lg glass-panel text-foreground focus:ring-2 focus:ring-primary"
                   >
                     <option value="free">免费版（定位1次 + 选题3次 + 脚本20次）</option>
                     <option value="basic">基础版 30元/月（所有功能150次）</option>
@@ -443,26 +443,26 @@ export default function UsersPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
                     到期时间（可选）
                   </label>
                   <input
                     type="date"
                     value={editEndDate}
                     onChange={(e) => setEditEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border dark:border-border rounded-lg glass-panel text-foreground focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => handleUpdateMembership(selectedUser.user_id, editPlan, editEndDate)}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-colors"
                   >
                     确定修改
                   </button>
                   <button
                     onClick={() => setShowEditModal(false)}
-                    className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                    className="flex-1 px-4 py-2 bg-muted dark:bg-muted text-foreground rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors"
                   >
                     取消
                   </button>
@@ -475,62 +475,62 @@ export default function UsersPage() {
         {/* Detail Modal */}
         {showDetailModal && selectedUser && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">用户详细信息</h3>
+            <div className="glass-panel rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl">
+              <h3 className="text-xl font-bold text-foreground mb-4">用户详细信息</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">邮箱</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedUser.email}</p>
+                    <p className="text-sm text-muted-foreground">邮箱</p>
+                    <p className="text-sm font-medium text-foreground">{selectedUser.email}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">姓名</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedUser.full_name}</p>
+                    <p className="text-sm text-muted-foreground">姓名</p>
+                    <p className="text-sm font-medium text-foreground">{selectedUser.full_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">会员等级</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{getLevelBadge(selectedUser.membership_level)}</p>
+                    <p className="text-sm text-muted-foreground">会员等级</p>
+                    <p className="text-sm font-medium text-foreground">{getLevelBadge(selectedUser.membership_level)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">账号状态</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{getStatusBadge(selectedUser.subscription_status)}</p>
+                    <p className="text-sm text-muted-foreground">账号状态</p>
+                    <p className="text-sm font-medium text-foreground">{getStatusBadge(selectedUser.subscription_status)}</p>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white mb-3">功能使用情况</p>
+                <div className="border-t border-border pt-4">
+                  <p className="text-sm font-medium text-foreground mb-3">功能使用情况</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">脚本生成</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.script.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">脚本生成</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.script.used}</p>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">选题策划</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.topic.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">选题策划</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.topic.used}</p>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">账号定位</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.positioning.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">账号定位</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.positioning.used}</p>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">自由对话</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.freeChat.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">自由对话</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.freeChat.used}</p>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">分镜脚本</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.storyboard.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">分镜脚本</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.storyboard.used}</p>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">审稿优化</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.review.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">审稿优化</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.review.used}</p>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">标题封面</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.title.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">标题封面</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.title.used}</p>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">成交理由</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedUser.quota_details.dealReason.used}</p>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">成交理由</p>
+                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.dealReason.used}</p>
                     </div>
                   </div>
                 </div>
@@ -538,7 +538,7 @@ export default function UsersPage() {
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => setShowDetailModal(false)}
-                    className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                    className="flex-1 px-4 py-2 bg-muted dark:bg-muted text-foreground rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors"
                   >
                     关闭
                   </button>

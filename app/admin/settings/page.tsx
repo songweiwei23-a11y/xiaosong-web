@@ -95,7 +95,7 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
           <p className="text-muted-foreground">加载配置中...</p>
         </div>
       </div>
@@ -103,20 +103,20 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-muted dark:bg-muted">
       {/* 顶部导航 */}
-      <div className="bg-white dark:bg-slate-800 border-b">
+      <div className="glass-panel border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">系统设置</h1>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+              <h1 className="text-2xl font-bold text-foreground dark:text-foreground">系统设置</h1>
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground mt-1">
                 配置系统参数和功能选项
               </p>
             </div>
             <a
               href="/admin"
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-primary hover:text-primary"
             >
               ← 返回后台首页
             </a>
@@ -128,13 +128,13 @@ export default function SettingsPage() {
         <div className="flex gap-6">
           {/* 左侧导航 */}
           <div className="w-64 flex-shrink-0">
-            <div className="bg-white dark:bg-slate-800 rounded-lg border p-2 space-y-1">
+            <div className="glass-panel rounded-lg border p-2 space-y-1">
               <button
                 onClick={() => setActiveTab("pricing")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
                   activeTab === "pricing"
-                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30"
-                    : "hover:bg-gray-50 dark:hover:bg-slate-700"
+                    ? "bg-accent/10 text-accent dark:bg-purple-900/30"
+                    : "hover:bg-foreground/[0.06] dark:hover:bg-muted"
                 }`}
               >
                 <DollarSign className="w-5 h-5" />
@@ -144,8 +144,8 @@ export default function SettingsPage() {
                 onClick={() => setActiveTab("features")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
                   activeTab === "features"
-                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30"
-                    : "hover:bg-gray-50 dark:hover:bg-slate-700"
+                    ? "bg-accent/10 text-accent dark:bg-purple-900/30"
+                    : "hover:bg-foreground/[0.06] dark:hover:bg-muted"
                 }`}
               >
                 <Zap className="w-5 h-5" />
@@ -155,8 +155,8 @@ export default function SettingsPage() {
                 onClick={() => setActiveTab("system")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
                   activeTab === "system"
-                    ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30"
-                    : "hover:bg-gray-50 dark:hover:bg-slate-700"
+                    ? "bg-accent/10 text-accent dark:bg-purple-900/30"
+                    : "hover:bg-foreground/[0.06] dark:hover:bg-muted"
                 }`}
               >
                 <Shield className="w-5 h-5" />
@@ -167,7 +167,7 @@ export default function SettingsPage() {
 
           {/* 右侧内容 */}
           <div className="flex-1">
-            <div className="bg-white dark:bg-slate-800 rounded-lg border p-6">
+            <div className="glass-panel rounded-lg border p-6">
               {/* 价格配置 */}
               {activeTab === "pricing" && (
                 <div className="space-y-6">
@@ -178,7 +178,7 @@ export default function SettingsPage() {
                     <h3 className="font-semibold mb-3">基础会员</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">月付价格（¥）</label>
+                        <label className="block text-sm text-muted-foreground mb-1">月付价格（¥）</label>
                         <input
                           type="number"
                           value={pricing.basic.monthly}
@@ -192,7 +192,7 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">年付价格（¥）</label>
+                        <label className="block text-sm text-muted-foreground mb-1">年付价格（¥）</label>
                         <input
                           type="number"
                           value={pricing.basic.yearly}
@@ -213,7 +213,7 @@ export default function SettingsPage() {
                     <h3 className="font-semibold mb-3">专业会员</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">月付价格（¥）</label>
+                        <label className="block text-sm text-muted-foreground mb-1">月付价格（¥）</label>
                         <input
                           type="number"
                           value={pricing.pro.monthly}
@@ -227,7 +227,7 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">年付价格（¥）</label>
+                        <label className="block text-sm text-muted-foreground mb-1">年付价格（¥）</label>
                         <input
                           type="number"
                           value={pricing.pro.yearly}
@@ -248,7 +248,7 @@ export default function SettingsPage() {
                     <h3 className="font-semibold mb-3">企业版</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">月付价格（¥）</label>
+                        <label className="block text-sm text-muted-foreground mb-1">月付价格（¥）</label>
                         <input
                           type="number"
                           value={pricing.enterprise.monthly}
@@ -262,7 +262,7 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">年付价格（¥）</label>
+                        <label className="block text-sm text-muted-foreground mb-1">年付价格（¥）</label>
                         <input
                           type="number"
                           value={pricing.enterprise.yearly}
@@ -300,7 +300,7 @@ export default function SettingsPage() {
                           className="w-full px-3 py-2 border rounded-lg"
                           placeholder={quota === -1 ? "无限（输入-1）" : ""}
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {quota === -1 ? '无限额度' : `每月 ${quota} 次`}
                         </p>
                       </div>
@@ -311,7 +311,7 @@ export default function SettingsPage() {
 
                   <div className="space-y-3">
                     {Object.entries(features).map(([key, enabled]) => (
-                      <label key={key} className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                      <label key={key} className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-foreground/[0.06]">
                         <span className="font-medium capitalize">
                           {key === 'registration' ? '用户注册' : 
                            key === 'payment' ? '支付功能' :
@@ -355,7 +355,7 @@ export default function SettingsPage() {
                         disabled
                       />
                     </div>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       更多系统配置功能开发中...
                     </p>
                   </div>
@@ -367,7 +367,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleSaveSettings}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent disabled:opacity-50"
                 >
                   {saving ? (
                     <>

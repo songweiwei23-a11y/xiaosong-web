@@ -103,13 +103,13 @@ export default function ProfileSwitcher() {
   if (!activeProfile || profiles.length === 0) {
     return (
       <div className="px-3 py-3">
-        <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/40 dark:to-blue-950/40 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50">
+        <div className="brand-gradient dark:from-purple-950/40 dark:to-blue-950/40 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50">
           <div className="text-xs text-muted-foreground mb-2">
             📋 还没有档案
           </div>
           <button
             onClick={() => router.push('/dashboard/profiles/new')}
-            className="w-full px-3 py-2 text-sm bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all flex items-center justify-center gap-2 font-medium shadow-sm"
+            className="w-full px-3 py-2 text-sm brand-gradient text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all flex items-center justify-center gap-2 font-medium shadow-sm"
           >
             <Plus className="w-4 h-4" />
             创建第一个档案
@@ -128,9 +128,9 @@ export default function ProfileSwitcher() {
       </div>
 
       {/* 当前激活的档案卡片 */}
-      <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-purple-950/40 dark:via-blue-950/40 dark:to-pink-950/30 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50 shadow-sm">
+      <div className="brand-gradient dark:from-purple-950/40 dark:via-blue-950/40 dark:to-pink-950/30 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50 shadow-sm">
         <div className="flex items-start gap-2 mb-2">
-          <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
+          <div className="flex-shrink-0 w-8 h-8 brand-gradient rounded-lg flex items-center justify-center shadow-sm">
             <User className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -155,9 +155,9 @@ export default function ProfileSwitcher() {
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-muted-foreground text-[10px]">档案完整度</span>
             <span className={`font-bold text-xs ${
-              completeness >= 80 ? 'text-green-600' :
-              completeness >= 50 ? 'text-yellow-600' :
-              'text-red-600'
+              completeness >= 80 ? 'text-green-500' :
+              completeness >= 50 ? 'text-yellow-500' :
+              'text-destructive'
             }`}>
               {completeness}%
             </span>
@@ -165,8 +165,8 @@ export default function ProfileSwitcher() {
           <div className="h-1.5 bg-white/50 dark:bg-white/10 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all duration-700 ${
-                completeness >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                completeness >= 50 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                completeness >= 80 ? 'bg-emerald-500' :
+                completeness >= 50 ? 'bg-amber-500' :
                 'bg-gradient-to-r from-red-500 to-pink-500'
               }`}
               style={{ width: `${completeness}%` }}
@@ -194,7 +194,7 @@ export default function ProfileSwitcher() {
             切换档案
           </span>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded font-medium">
+            <span className="bg-accent/10 dark:bg-purple-950/50 text-accent px-1.5 py-0.5 rounded font-medium">
               {profiles.length}
             </span>
             <ChevronDown
@@ -228,7 +228,7 @@ export default function ProfileSwitcher() {
                       onClick={() => switchProfile(profile)}
                       className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all mb-1 ${
                         isActive
-                          ? 'bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/40 dark:to-blue-950/40 border border-purple-200 dark:border-purple-900/50 shadow-sm'
+                          ? 'brand-gradient dark:from-purple-950/40 dark:to-blue-950/40 border border-accent/20 dark:border-purple-900/50 shadow-sm'
                           : 'hover:bg-muted border border-transparent'
                       }`}
                     >
@@ -236,7 +236,7 @@ export default function ProfileSwitcher() {
                         {isActive && <span className="text-base">🎯</span>}
                         <div className="flex-1 min-w-0">
                           <div className={`font-medium truncate ${
-                            isActive ? 'text-purple-700 dark:text-purple-400' : 'text-foreground'
+                            isActive ? 'text-accent dark:text-accent' : 'text-foreground'
                           }`}>
                             {profile.profile_name}
                           </div>
@@ -244,9 +244,9 @@ export default function ProfileSwitcher() {
                             <span>{profile.account_platform?.[0] || '未设置'}</span>
                             <span>•</span>
                             <span className={`font-medium ${
-                              completion >= 80 ? 'text-green-600' :
-                              completion >= 50 ? 'text-yellow-600' :
-                              'text-red-600'
+                              completion >= 80 ? 'text-green-500' :
+                              completion >= 50 ? 'text-yellow-500' :
+                              'text-destructive'
                             }`}>
                               {completion}%
                             </span>
@@ -275,7 +275,7 @@ export default function ProfileSwitcher() {
                     setIsOpen(false)
                     router.push('/dashboard/profiles/new')
                   }}
-                  className="w-full px-3 py-2 text-sm bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 rounded-lg text-left font-medium flex items-center gap-2 transition-all shadow-sm"
+                  className="w-full px-3 py-2 text-sm brand-gradient text-white hover:from-purple-700 hover:to-blue-700 rounded-lg text-left font-medium flex items-center gap-2 transition-all shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   创建新档案

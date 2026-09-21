@@ -143,28 +143,28 @@ export default function DashboardPage() {
   // 加载动画组件
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center">
         <div className="text-center">
           {/* 旋转的圆圈动画 */}
           <div className="relative w-24 h-24 mx-auto mb-8">
-            <div className="absolute inset-0 rounded-full border-4 border-blue-200 dark:border-slate-700"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-primary/20 dark:border-border"></div>
             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 dark:border-t-blue-400 animate-spin"></div>
             <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-600 dark:border-t-purple-400 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
           </div>
 
           {/* 加载文字 */}
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          <h2 className="text-2xl font-bold brand-gradient bg-clip-text text-transparent mb-2">
             小宋编导工作台
           </h2>
-          <p className="text-slate-600 dark:text-slate-400 animate-pulse">
+          <p className="text-muted-foreground animate-pulse">
             正在加载您的工作台...
           </p>
 
           {/* 加载进度点 */}
           <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 rounded-full bg-pink-600 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
       </div>
@@ -179,14 +179,14 @@ export default function DashboardPage() {
       <div className="border-b border-border bg-card px-8 py-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">工作台</h1>
+            <h1 className="text-3xl font-extrabold brand-gradient bg-clip-text text-transparent">工作台</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               选择功能开始创作，让AI成为你的专业编导助手
             </p>
           </div>
           <Link 
             href="/dashboard/membership"
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
+            className="inline-flex items-center gap-2 rounded-lg brand-gradient px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
           >
             <Crown className="h-4 w-4" />
             升级会员
@@ -198,7 +198,7 @@ export default function DashboardPage() {
       <div className="space-y-8 px-8 py-8">
         {/* Membership Banner */}
         {!loading && userSettings && userSettings.subscription_tier === 'free' && (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 p-8 text-white shadow-2xl">
+          <div className="relative overflow-hidden rounded-2xl brand-gradient p-8 text-white shadow-2xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
             <div className="relative flex items-center justify-between">
               <div>
@@ -206,12 +206,12 @@ export default function DashboardPage() {
                   <Crown className="w-6 h-6" />
                   <h3 className="text-2xl font-bold">升级会员，解锁全部功能</h3>
                 </div>
-                <p className="text-purple-100 mb-4">
+                <p className="text-accent mb-4">
                   专业版每月仅需 ¥99，享受无限生成次数 + 高级功能 + 优先支持
                 </p>
                 <Link 
                   href="/dashboard/membership"
-                  className="inline-flex items-center gap-2 rounded-lg bg-white text-purple-600 px-6 py-3 text-sm font-semibold shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                  className="inline-flex items-center gap-2 rounded-lg bg-white text-accent px-6 py-3 text-sm font-semibold shadow-lg transition-all hover:shadow-xl hover:scale-105"
                 >
                   立即升级
                   <ArrowRight className="h-4 w-4" />
@@ -221,11 +221,11 @@ export default function DashboardPage() {
                 <div className="flex gap-4">
                   <div className="rounded-xl bg-white/10 backdrop-blur-sm px-6 py-4 text-center">
                     <div className="text-3xl font-bold">无限</div>
-                    <div className="text-sm text-purple-100">生成次数</div>
+                    <div className="text-sm text-accent">生成次数</div>
                   </div>
                   <div className="rounded-xl bg-white/10 backdrop-blur-sm px-6 py-4 text-center">
                     <div className="text-3xl font-bold">7x24</div>
-                    <div className="text-sm text-purple-100">优先支持</div>
+                    <div className="text-sm text-accent">优先支持</div>
                   </div>
                 </div>
               </div>
@@ -239,7 +239,7 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="text-sm font-medium text-muted-foreground uppercase tracking-wide">本月已用</div>
               <div className="mt-4 flex items-baseline gap-2">
-                <div className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                <div className="text-4xl font-extrabold text-transparent bg-clip-text brand-gradient">
                   {userSettings.quota_used}
                 </div>
                 <div className="text-lg text-muted-foreground">/ {userSettings.quota_limit}</div>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
               <div className="text-sm font-medium text-muted-foreground uppercase tracking-wide">会员等级</div>
               <div className="mt-4 flex items-baseline gap-2">
                 <div className={`text-2xl font-bold ${
-                  userSettings.subscription_tier === 'pro' ? 'text-purple-500' :
+                  userSettings.subscription_tier === 'pro' ? 'text-accent' :
                   userSettings.subscription_tier === 'premium' ? 'text-yellow-500' :
                   'text-foreground'
                 }`}>
@@ -263,7 +263,7 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="text-sm font-medium text-muted-foreground uppercase tracking-wide">使用率</div>
               <div className="mt-4 flex items-baseline gap-2">
-                <div className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                <div className="text-4xl font-extrabold text-transparent bg-clip-text brand-gradient">
                   {userSettings.quota_limit > 0 
                     ? Math.round((userSettings.quota_used / userSettings.quota_limit) * 100) 
                     : 0}
@@ -288,30 +288,30 @@ export default function DashboardPage() {
               >
                 {feature.badge && (
                   <div className="absolute right-4 top-4">
-                    <span className="rounded-full bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 shadow-sm">
+                    <span className="rounded-full brand-gradient dark:from-blue-900 dark:to-blue-800 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
                       {feature.badge}
                     </span>
                   </div>
                 )}
                 <div
                   className={`inline-flex h-16 w-16 items-center justify-center rounded-2xl group-hover:scale-110 transition-transform duration-300 ${
-                    feature.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                    feature.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                    feature.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
-                    feature.color === 'green' ? 'bg-green-100 dark:bg-green-900/30' :
-                    feature.color === 'red' ? 'bg-red-100 dark:bg-red-900/30' :
-                    feature.color === 'indigo' ? 'bg-indigo-100 dark:bg-indigo-900/30' :
+                    feature.color === 'blue' ? 'bg-primary/15 dark:bg-blue-900/30' :
+                    feature.color === 'yellow' ? 'bg-amber-500/15 dark:bg-yellow-900/30' :
+                    feature.color === 'purple' ? 'bg-accent/15 dark:bg-purple-900/30' :
+                    feature.color === 'green' ? 'bg-emerald-500/15 dark:bg-green-900/30' :
+                    feature.color === 'red' ? 'bg-destructive/15 dark:bg-red-900/30' :
+                    feature.color === 'indigo' ? 'bg-primary/15 dark:bg-indigo-900/30' :
                     'bg-muted'
                   }`}
                 >
                   <feature.icon
                     className={`h-6 w-6 ${
-                      feature.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                      feature.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
-                      feature.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
-                      feature.color === 'green' ? 'text-green-600 dark:text-green-400' :
-                      feature.color === 'red' ? 'text-red-600 dark:text-red-400' :
-                      feature.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
+                      feature.color === 'blue' ? 'text-primary' :
+                      feature.color === 'yellow' ? 'text-yellow-500' :
+                      feature.color === 'purple' ? 'text-accent' :
+                      feature.color === 'green' ? 'text-green-500' :
+                      feature.color === 'red' ? 'text-destructive' :
+                      feature.color === 'indigo' ? 'text-primary' :
                       'text-muted-foreground'
                     }`}
                   />
@@ -322,7 +322,7 @@ export default function DashboardPage() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   {feature.description}
                 </p>
-                <div className="mt-4 flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:gap-2 transition-all">
+                <div className="mt-4 flex items-center text-sm font-medium text-primary group-hover:gap-2 transition-all">
                   {feature.name === "生成历史" ? "查看记录" : "开始使用"}
                   <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>

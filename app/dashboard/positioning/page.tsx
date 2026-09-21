@@ -302,7 +302,7 @@ export default function PositioningPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
           <p className="text-muted-foreground">加载档案中...</p>
         </div>
       </div>
@@ -321,7 +321,7 @@ export default function PositioningPage() {
           </p>
           <button
             onClick={() => window.location.href = '/dashboard/profiles/new'}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all flex items-center gap-2 mx-auto"
+            className="px-6 py-3 brand-gradient text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all flex items-center gap-2 mx-auto"
           >
             <Plus className="w-5 h-5" />
             创建用户档案
@@ -337,7 +337,7 @@ export default function PositioningPage() {
       <div className="w-[400px] border-r bg-card overflow-y-auto p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Target className="w-7 h-7 text-blue-600" />
+            <Target className="w-7 h-7 text-primary" />
             账号定位
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -346,9 +346,9 @@ export default function PositioningPage() {
         </div>
 
         {/* 当前档案卡片 */}
-        <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-4 border-2 border-purple-200">
+        <div className="brand-gradient rounded-xl p-4 border-2 border-accent/20">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 brand-gradient rounded-lg flex items-center justify-center">
               <User className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
@@ -357,7 +357,7 @@ export default function PositioningPage() {
                 {activeProfile.account_platform?.[0]} • {activeProfile.fans_level}
               </div>
             </div>
-            <CheckCircle className="w-5 h-5 text-green-600" />
+            <CheckCircle className="w-5 h-5 text-green-500" />
           </div>
           <div className="text-xs text-muted-foreground space-y-1">
             {activeProfile.account_track && activeProfile.account_track.length > 0 && (
@@ -379,7 +379,7 @@ export default function PositioningPage() {
             onChange={(e) => setAdditionalNotes(e.target.value)}
             placeholder="有其他补充信息可以在这里说明，比如特殊要求、顾虑、期望等..."
             rows={4}
-            className="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 
@@ -387,7 +387,7 @@ export default function PositioningPage() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full brand-gradient text-white py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
         >
           {isGenerating ? (
             <>
@@ -416,7 +416,7 @@ export default function PositioningPage() {
                   key={pos.id}
                   className={`p-3 rounded-lg border-2 transition-all ${
                     selectedPositioning?.id === pos.id
-                      ? 'border-purple-500 bg-purple-50'
+                      ? 'border-accent/50 bg-accent/10'
                       : 'border-border hover:border-border bg-card'
                   }`}
                 >
@@ -436,7 +436,7 @@ export default function PositioningPage() {
                       {/* ✅ 新增：继续对话按钮 */}
                       <button
                         onClick={(e) => openHistoryDialog(pos, e)}
-                        className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                        className="p-1.5 text-accent hover:bg-accent/15 rounded-lg transition-colors"
                         title="继续对话"
                       >
                         <MessageCircle className="w-4 h-4" />
@@ -446,7 +446,7 @@ export default function PositioningPage() {
                           e.stopPropagation()
                           deletePositioning(pos.id)
                         }}
-                        className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -454,7 +454,7 @@ export default function PositioningPage() {
                     </div>
                   </div>
                   {pos.is_active && (
-                    <span className="inline-block mt-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                    <span className="inline-block mt-2 px-2 py-0.5 bg-emerald-500/15 text-green-500 text-xs rounded-full">
                       当前激活
                     </span>
                   )}
@@ -465,9 +465,9 @@ export default function PositioningPage() {
         )}
 
         {/* AI说明 */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border-2 border-blue-200">
+        <div className="brand-gradient rounded-xl p-4 border-2 border-primary/20">
           <div className="flex items-start gap-2">
-            <Wand2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <Wand2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div className="text-xs text-foreground">
               <p className="font-bold mb-1.5">AI会基于您的档案智能分析</p>
               <ul className="space-y-1 text-muted-foreground">
@@ -486,10 +486,10 @@ export default function PositioningPage() {
       <div className="flex-1 overflow-y-auto p-8">
         {result ? (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-blue-500/30">
+            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-primary/50/30">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                  <Target className="w-6 h-6 text-blue-600" />
+                  <Target className="w-6 h-6 text-primary" />
                   {selectedPositioning ? selectedPositioning.positioning_name : '定位方案'}
                 </h2>
                 {selectedPositioning && (
@@ -508,7 +508,7 @@ export default function PositioningPage() {
             <div className="text-center max-w-lg">
               <div className="relative mb-6">
                 <Target className="w-28 h-28 mx-auto text-muted-foreground" />
-                <Sparkles className="w-12 h-12 absolute top-0 right-1/3 text-purple-400 animate-pulse" />
+                <Sparkles className="w-12 h-12 absolute top-0 right-1/3 text-accent animate-pulse" />
               </div>
               <p className="text-2xl font-bold text-foreground mb-3">
                 基于档案的智能定位

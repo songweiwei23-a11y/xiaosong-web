@@ -213,14 +213,14 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50">
+    <div className="flex flex-col md:flex-row h-screen brand-gradient">
       {/* 左侧输入面板 */}
       <div className="w-[600px] bg-card shadow-2xl p-6 space-y-5 overflow-y-auto">
         
         {/* 标题 */}
         <div className="text-center pb-4 border-b-2 border-green-100">
           <h1 className="text-2xl font-bold text-foreground flex items-center justify-center gap-2">
-            <CheckCircle className="w-7 h-7 text-green-600" />
+            <CheckCircle className="w-7 h-7 text-green-500" />
             审稿优化
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -233,13 +233,13 @@ export default function ReviewPage() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-bold text-foreground flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-600" />
-              草稿内容 <span className="text-red-500">*</span>
+              <FileText className="w-4 h-4 text-primary" />
+              草稿内容 <span className="text-destructive">*</span>
             </label>
             <div className="flex gap-2">
               <button
                 onClick={loadExample}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                className="text-xs text-primary hover:text-primary font-medium"
               >
                 加载示例
               </button>
@@ -255,7 +255,7 @@ export default function ReviewPage() {
             value={draftContent}
             onChange={(e) => setDraftContent(e.target.value)}
             placeholder="粘贴你的脚本草稿...&#10;&#10;可以是完整脚本，也可以是片段&#10;内容越详细，审稿越精准"
-            className="w-full h-48 rounded-lg border-2 border-border p-3 focus:border-green-500 focus:ring-2 focus:ring-green-200 resize-none text-sm"
+            className="w-full h-48 rounded-lg border-2 border-border p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
           />
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
             <span>字数：<span className="font-bold text-foreground">{wordCount}</span> 字</span>
@@ -266,7 +266,7 @@ export default function ReviewPage() {
         {/* 基础信息 */}
         <div className="space-y-3 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Target className="w-4 h-4 text-purple-600" />
+            <Target className="w-4 h-4 text-accent" />
             基础信息
           </h3>
 
@@ -280,7 +280,7 @@ export default function ReviewPage() {
                   onClick={() => setPlatform(p)}
                   className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     platform === p
-                      ? "bg-purple-600 text-white shadow-md"
+                      ? "bg-accent text-white shadow-md"
                       : "bg-muted text-muted-foreground hover:bg-muted"
                   }`}
                 >
@@ -300,7 +300,7 @@ export default function ReviewPage() {
                   onClick={() => setDuration(d)}
                   className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     duration === d
-                      ? "bg-blue-600 text-white shadow-md"
+                      ? "bg-primary text-white shadow-md"
                       : "bg-muted text-muted-foreground hover:bg-muted"
                   }`}
                 >
@@ -320,8 +320,8 @@ export default function ReviewPage() {
                   onClick={() => setScriptType(scriptType === type ? "" : type)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                     scriptType === type
-                      ? "bg-green-600 text-white shadow-md"
-                      : "bg-card text-muted-foreground border border-border hover:border-green-500"
+                      ? "bg-emerald-500 text-white shadow-md"
+                      : "bg-card text-muted-foreground border border-border hover:border-green-500/50"
                   }`}
                 >
                   {type}
@@ -334,13 +334,13 @@ export default function ReviewPage() {
         {/* 审稿维度 */}
         <div className="space-y-3 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Eye className="w-4 h-4 text-orange-600" />
-            审稿维度（多选） <span className="text-xs font-normal text-red-500">至少选1项</span>
+            <Eye className="w-4 h-4 text-orange-500" />
+            审稿维度（多选） <span className="text-xs font-normal text-destructive">至少选1项</span>
           </h3>
 
           {/* 开头吸引力 */}
-          <div className="bg-red-50 rounded-lg p-3 border-2 border-red-100">
-            <p className="text-xs font-bold text-red-700 mb-2">📌 开头吸引力</p>
+          <div className="bg-destructive/10 rounded-lg p-3 border-2 border-red-100">
+            <p className="text-xs font-bold text-destructive mb-2">📌 开头吸引力</p>
             <div className="space-y-1.5">
               {openingOptions.map((option) => (
                 <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
@@ -357,8 +357,8 @@ export default function ReviewPage() {
           </div>
 
           {/* 结构完整性 */}
-          <div className="bg-blue-50 rounded-lg p-3 border-2 border-blue-100">
-            <p className="text-xs font-bold text-blue-700 mb-2">📌 结构完整性</p>
+          <div className="bg-primary/10 rounded-lg p-3 border-2 border-blue-100">
+            <p className="text-xs font-bold text-primary mb-2">📌 结构完整性</p>
             <div className="space-y-1.5">
               {structureOptions.map((option) => (
                 <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
@@ -375,8 +375,8 @@ export default function ReviewPage() {
           </div>
 
           {/* 文案质量 */}
-          <div className="bg-green-50 rounded-lg p-3 border-2 border-green-100">
-            <p className="text-xs font-bold text-green-700 mb-2">📌 文案质量</p>
+          <div className="bg-emerald-500/10 rounded-lg p-3 border-2 border-green-100">
+            <p className="text-xs font-bold text-green-500 mb-2">📌 文案质量</p>
             <div className="space-y-1.5">
               {contentOptions.map((option) => (
                 <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
@@ -393,8 +393,8 @@ export default function ReviewPage() {
           </div>
 
           {/* 情绪波点 */}
-          <div className="bg-purple-50 rounded-lg p-3 border-2 border-purple-100">
-            <p className="text-xs font-bold text-purple-700 mb-2">📌 情绪波点</p>
+          <div className="bg-accent/10 rounded-lg p-3 border-2 border-purple-100">
+            <p className="text-xs font-bold text-accent mb-2">📌 情绪波点</p>
             <div className="space-y-1.5">
               {emotionOptions.map((option) => (
                 <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
@@ -411,8 +411,8 @@ export default function ReviewPage() {
           </div>
 
           {/* 行动指引 */}
-          <div className="bg-yellow-50 rounded-lg p-3 border-2 border-yellow-100">
-            <p className="text-xs font-bold text-yellow-700 mb-2">📌 行动指引</p>
+          <div className="bg-amber-500/10 rounded-lg p-3 border-2 border-yellow-100">
+            <p className="text-xs font-bold text-yellow-500 mb-2">📌 行动指引</p>
             <div className="space-y-1.5">
               {actionOptions.map((option) => (
                 <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
@@ -432,7 +432,7 @@ export default function ReviewPage() {
         {/* 优化目标 */}
         <div className="space-y-3 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Zap className="w-4 h-4 text-yellow-600" />
+            <Zap className="w-4 h-4 text-yellow-500" />
             优化目标（多选，可选）
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -442,8 +442,8 @@ export default function ReviewPage() {
                 onClick={() => toggleSelection(goal, optimizationGoals, setOptimizationGoals)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   optimizationGoals.includes(goal)
-                    ? "bg-yellow-600 text-white shadow-md"
-                    : "bg-card text-muted-foreground border border-border hover:border-yellow-500"
+                    ? "bg-amber-500 text-white shadow-md"
+                    : "bg-card text-muted-foreground border border-border hover:border-yellow-500/50"
                 }`}
               >
                 {goal}
@@ -456,21 +456,21 @@ export default function ReviewPage() {
         {/* 对标参考 */}
         <div className="space-y-3 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-pink-600" />
+            <MessageSquare className="w-4 h-4 text-accent" />
             对标参考（可选）
           </h3>
           <textarea
             value={benchmarkScript}
             onChange={(e) => setBenchmarkScript(e.target.value)}
             placeholder="粘贴一个你想对标的优质脚本...&#10;&#10;AI会参考这个脚本的优点来优化你的草稿"
-            className="w-full h-24 rounded-lg border-2 border-border p-3 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 resize-none text-xs"
+            className="w-full h-24 rounded-lg border-2 border-border p-3 focus:border-accent/50 focus:ring-2 focus:ring-primary resize-none text-xs"
           />
         </div>
 
         {/* 输出选项 */}
         <div className="space-y-3 pt-3 border-t-2 border-border">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <Sparkles className="w-4 h-4 text-primary" />
             输出选项
           </h3>
 
@@ -483,7 +483,7 @@ export default function ReviewPage() {
             <button
               onClick={() => setCompareMode(!compareMode)}
               className={`relative w-12 h-6 rounded-full transition-all ${
-                compareMode ? "bg-green-600" : "bg-muted"
+                compareMode ? "bg-emerald-500" : "bg-muted"
               }`}
             >
               <span
@@ -503,7 +503,7 @@ export default function ReviewPage() {
             <button
               onClick={() => setSeverityLabels(!severityLabels)}
               className={`relative w-12 h-6 rounded-full transition-all ${
-                severityLabels ? "bg-green-600" : "bg-muted"
+                severityLabels ? "bg-emerald-500" : "bg-muted"
               }`}
             >
               <span
@@ -519,7 +519,7 @@ export default function ReviewPage() {
         {/* 配额显示 */}
         {hookQuota !== null && (
           <div className="mb-4 p-3 bg-muted rounded-lg text-sm text-center">
-            <span className={hookQuota > 10 ? "text-green-600 font-semibold" : hookQuota > 0 ? "text-orange-600 font-semibold" : "text-red-600 font-semibold"}>
+            <span className={hookQuota > 10 ? "text-green-500 font-semibold" : hookQuota > 0 ? "text-orange-500 font-semibold" : "text-destructive font-semibold"}>
               💎 剩余配额：{hookQuota} 次
             </span>
           </div>
@@ -529,7 +529,7 @@ export default function ReviewPage() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
         >
           {isGenerating ? (
             <>
@@ -553,22 +553,22 @@ export default function ReviewPage() {
       <div className="flex-1 overflow-y-auto p-8">
         {result ? (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/30">
+            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/50/30">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <CheckCircle className="w-6 h-6 text-green-500" />
                 审稿报告
               </h2>
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => copyToClipboard(result)}
-                  className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
                   复制报告
                 </button>
                 <button
                   onClick={() => downloadAsFile(result, `审稿报告-${new Date().toLocaleDateString()}.txt`)}
-                  className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
                   下载报告
@@ -596,12 +596,12 @@ export default function ReviewPage() {
                 支持对标参考学习<br/><br/>
               </p>
               
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border-2 border-blue-200 text-left">
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border-2 border-primary/20 text-left">
                 <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div className="text-sm">
-                    <p className="font-bold text-blue-900 mb-2">💡 使用技巧</p>
-                    <ul className="space-y-1 text-xs text-blue-700">
+                    <p className="font-bold text-primary mb-2">💡 使用技巧</p>
+                    <ul className="space-y-1 text-xs text-primary">
                       <li>• 草稿越详细，审稿越精准</li>
                       <li>• 根据你的担心选择审稿维度</li>
                       <li>• 粘贴对标脚本，AI会参考优化</li>

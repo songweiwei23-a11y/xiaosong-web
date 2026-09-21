@@ -11,9 +11,9 @@
 
 import { useState } from "react";
 import { FileText, Lightbulb, Film, MessageSquare } from "lucide-react";
-import { Field, OptionCard, FieldGroup } from "../dashboard/script/Field";
+import { Field, OptionCard, FieldGroup } from "@/components/form/Field";
 // 真实页面用的折叠分组，放进来一起看，确认两者观感一致
-import { CollapsibleSection } from "../dashboard/script/CollapsibleSection";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 
 const TYPES = [
   { key: "teach", label: "教知识型", desc: "分享有价值的专业知识", icon: FileText, accent: "sky" as const },
@@ -87,7 +87,7 @@ export default function FormPreviewPage() {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-foreground">
-                  视频主题 <span className="text-red-500">*</span>
+                  视频主题 <span className="text-destructive">*</span>
                 </label>
                 <textarea
                   rows={2}

@@ -137,7 +137,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="例如：如何设计开头的强冲突？"
-              className="w-full rounded-lg border border-border p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-border p-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               rows={4}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -161,7 +161,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 onClick={() => setSelectedCategory("")}
                 className={`w-full rounded-lg border p-2 text-left text-sm transition-all ${
                   selectedCategory === ""
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-primary/50 bg-primary/10 text-primary"
                     : "border-border hover:border-border"
                 }`}
               >
@@ -173,7 +173,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`w-full rounded-lg border p-2 text-left transition-all ${
                     selectedCategory === cat.id
-                      ? "border-blue-500 bg-blue-50"
+                      ? "border-primary/50 bg-primary/10"
                       : "border-border hover:border-border"
                   }`}
                 >
@@ -196,7 +196,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 <button
                   key={index}
                   onClick={() => handleQuickQuestion(question)}
-                  className="w-full rounded-lg border border-border bg-card p-2 text-left text-sm hover:border-blue-300 hover:bg-blue-50 transition-all"
+                  className="w-full rounded-lg border border-border bg-card p-2 text-left text-sm hover:border-primary/30 hover:bg-primary/10 transition-all"
                 >
                   {question}
                 </button>
@@ -209,7 +209,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
             data-search-button
             onClick={handleSearch}
             disabled={isSearching || !query.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 font-medium text-white hover:bg-blue-700 disabled:bg-muted"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-medium text-white hover:opacity-90 disabled:bg-muted"
           >
             {isSearching ? (
               <>
@@ -239,12 +239,12 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
                 <p className="mt-2 text-sm text-muted-foreground">
                   涵盖脚本结构、爆款元素、拍摄技巧等专业知识
                 </p>
-                <div className="mt-6 rounded-lg border border-purple-100 bg-purple-50 p-4 text-left">
+                <div className="mt-6 rounded-lg border border-purple-100 bg-accent/10 p-4 text-left">
                   <div className="flex items-start gap-2">
-                    <Lightbulb className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-purple-900">
+                    <Lightbulb className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-accent">
                       <div className="font-medium mb-1">💡 使用技巧</div>
-                      <ul className="space-y-1 text-purple-700">
+                      <ul className="space-y-1 text-accent">
                         <li>• 问题越具体，答案越精准</li>
                         <li>• 可以选择分类缩小范围</li>
                         <li>• 试试常见问题快速入门</li>
@@ -259,7 +259,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
           {isSearching && !result && (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                 <p className="mt-4 text-sm text-muted-foreground">
                   正在搜索知识库...
                 </p>

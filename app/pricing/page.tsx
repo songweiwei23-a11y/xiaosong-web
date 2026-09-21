@@ -13,11 +13,11 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 py-12 px-4">
+    <div className="min-h-screen brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-5xl font-extrabold brand-gradient bg-clip-text text-transparent mb-4">
             选择适合你的套餐
           </h1>
           <p className="text-xl text-muted-foreground">
@@ -35,11 +35,11 @@ export default function PricingPage() {
               <div
                 key={plan.id}
                 className={`relative rounded-2xl border-2 p-8 bg-card shadow-lg transition-all hover:shadow-2xl hover:-translate-y-2 ${
-                  isPopular ? "border-purple-500 scale-105" : "border-border"
+                  isPopular ? "border-accent/50 scale-105" : "border-border"
                 }`}
               >
                 {isPopular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-accent/100 text-white px-4 py-1 rounded-full text-sm font-semibold">
                     最受欢迎
                   </div>
                 )}
@@ -81,7 +81,7 @@ export default function PricingPage() {
                     href={`/payment?plan=${plan.id}&cycle=monthly`}
                     className={`block w-full text-center py-3 rounded-lg font-semibold transition-colors ${
                       isPopular
-                        ? "bg-purple-600 text-white hover:bg-purple-700"
+                        ? "bg-accent text-white hover:bg-accent"
                         : "bg-primary text-primary-foreground hover:bg-primary/90"
                     }`}
                   >
@@ -146,28 +146,28 @@ export default function PricingPage() {
                 </tr>
                 <tr className="border-b border-border hover:bg-muted/50">
                   <td className="py-4 px-4">分镜脚本</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
                   <td className="text-center py-4 px-4">150次/月</td>
                   <td className="text-center py-4 px-4">500次/月</td>
                   <td className="text-center py-4 px-4">无限</td>
                 </tr>
                 <tr className="border-b border-border hover:bg-muted/50">
                   <td className="py-4 px-4">审稿优化</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
                   <td className="text-center py-4 px-4">150次/月</td>
                   <td className="text-center py-4 px-4">500次/月</td>
                   <td className="text-center py-4 px-4">无限</td>
                 </tr>
                 <tr className="border-b border-border hover:bg-muted/50">
                   <td className="py-4 px-4">标题封面</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
                   <td className="text-center py-4 px-4">150次/月</td>
                   <td className="text-center py-4 px-4">500次/月</td>
                   <td className="text-center py-4 px-4">无限</td>
                 </tr>
                 <tr className="border-b border-border hover:bg-muted/50">
                   <td className="py-4 px-4">成交理由</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
                   <td className="text-center py-4 px-4">150次/月</td>
                   <td className="text-center py-4 px-4">500次/月</td>
                   <td className="text-center py-4 px-4">无限</td>
@@ -181,9 +181,9 @@ export default function PricingPage() {
                 </tr>
                 <tr className="hover:bg-muted/50">
                   <td className="py-4 px-4">API接口</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
+                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
+                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
                   <td className="text-center py-4 px-4"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
                 </tr>
               </tbody>
@@ -218,7 +218,7 @@ export default function PricingPage() {
         <div className="mt-16 text-center">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition-all"
+            className="inline-flex items-center gap-2 brand-gradient text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition-all"
           >
             立即免费开始
           </Link>

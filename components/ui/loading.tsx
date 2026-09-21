@@ -15,14 +15,14 @@ export function Loading({ size = "md", text, fullScreen = false }: LoadingProps)
 
   const content = (
     <div className="flex flex-col items-center justify-center gap-3">
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-purple-600`} />
+      <Loader2 className={`${sizeClasses[size]} animate-spin text-accent`} />
       {text && <p className="text-sm text-muted-foreground">{text}</p>}
     </div>
   );
 
   if (fullScreen) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+      <div className="min-h-screen flex items-center justify-center brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
         {content}
       </div>
     );

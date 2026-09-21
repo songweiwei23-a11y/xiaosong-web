@@ -59,7 +59,7 @@ function PaymentContent() {
         {/* 返回按钮 */}
         <Link
           href="/dashboard/membership"
-          className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 mb-6"
+          className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           返回套餐选择
@@ -89,8 +89,8 @@ function PaymentContent() {
               </div>
               {selectedPlan.cycle === "yearly" && (
                 <div className="flex justify-between">
-                  <span className="text-green-600">年付优惠</span>
-                  <span className="text-green-600 font-semibold">
+                  <span className="text-green-500">年付优惠</span>
+                  <span className="text-green-500 font-semibold">
                     -¥{selectedPlan.price * 12 - selectedPlan.finalPrice}
                   </span>
                 </div>
@@ -100,14 +100,14 @@ function PaymentContent() {
             <div className="border-t pt-4 mb-6">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-foreground">实付金额</span>
-                <span className="text-3xl font-bold text-blue-600">
+                <span className="text-3xl font-bold text-primary">
                   ¥{selectedPlan.finalPrice}
                 </span>
               </div>
             </div>
 
             {/* 权益说明 */}
-            <div className="bg-blue-50 rounded-lg p-4">
+            <div className="bg-primary/10 rounded-lg p-4">
               <h3 className="font-semibold text-foreground mb-3">购买后您将获得：</h3>
               <ul className="space-y-2">
                 <li className="flex items-start gap-2 text-sm text-foreground">
@@ -146,19 +146,19 @@ function PaymentContent() {
                     onClick={() => setPaymentMethod("alipay")}
                     className={`w-full flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
                       paymentMethod === "alipay"
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-primary/50 bg-primary/10"
                         : "border-border hover:border-border"
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 rounded-lg bg-primary/15 flex items-center justify-center">
+                      <Smartphone className="w-6 h-6 text-primary" />
                     </div>
                     <div className="flex-1 text-left">
                       <div className="font-semibold text-foreground">支付宝支付</div>
                       <div className="text-sm text-muted-foreground">推荐使用，安全快捷</div>
                     </div>
                     {paymentMethod === "alipay" && (
-                      <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                         <Check className="w-4 h-4 text-white" />
                       </div>
                     )}
@@ -168,19 +168,19 @@ function PaymentContent() {
                     onClick={() => setPaymentMethod("wechat")}
                     className={`w-full flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
                       paymentMethod === "wechat"
-                        ? "border-green-500 bg-green-50"
+                        ? "border-green-500/50 bg-emerald-500/10"
                         : "border-border hover:border-border"
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                      <CreditCard className="w-6 h-6 text-green-600" />
+                    <div className="w-12 h-12 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                      <CreditCard className="w-6 h-6 text-green-500" />
                     </div>
                     <div className="flex-1 text-left">
                       <div className="font-semibold text-foreground">微信支付</div>
                       <div className="text-sm text-muted-foreground">使用微信扫码支付</div>
                     </div>
                     {paymentMethod === "wechat" && (
-                      <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
                         <Check className="w-4 h-4 text-white" />
                       </div>
                     )}
@@ -190,7 +190,7 @@ function PaymentContent() {
                 <button
                   onClick={handlePayment}
                   disabled={loading}
-                  className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-muted disabled:cursor-not-allowed transition-colors"
+                  className="w-full bg-primary text-white py-4 rounded-lg font-semibold hover:opacity-90 disabled:bg-muted disabled:cursor-not-allowed transition-colors"
                 >
                   {loading ? "生成支付码..." : `立即支付 ¥${selectedPlan.finalPrice}`}
                 </button>
@@ -205,7 +205,7 @@ function PaymentContent() {
                   <p className="text-lg font-semibold text-foreground mb-2">
                     请使用{paymentMethod === "alipay" ? "支付宝" : "微信"}扫码支付
                   </p>
-                  <p className="text-3xl font-bold text-blue-600 mb-4">
+                  <p className="text-3xl font-bold text-primary mb-4">
                     ¥{selectedPlan.finalPrice}
                   </p>
                   <p className="text-sm text-muted-foreground mb-6">
@@ -216,7 +216,7 @@ function PaymentContent() {
                   <div className="space-y-3">
                     <button
                       onClick={confirmPayment}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                      className="w-full bg-emerald-500 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                     >
                       ✓ 我已完成支付
                     </button>

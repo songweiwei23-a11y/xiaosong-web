@@ -10,31 +10,31 @@ interface AlertProps {
 export function Alert({ type, title, message, onClose }: AlertProps) {
   const styles = {
     success: {
-      container: 'bg-green-50 border-green-200',
-      icon: 'text-green-600',
-      title: 'text-green-900',
-      message: 'text-green-700',
+      container: 'bg-emerald-500/10 border-green-500/50/25',
+      icon: 'text-green-500',
+      title: 'text-green-500',
+      message: 'text-green-500',
       Icon: CheckCircle,
     },
     error: {
-      container: 'bg-red-50 border-red-200',
-      icon: 'text-red-600',
-      title: 'text-red-900',
-      message: 'text-red-700',
+      container: 'bg-destructive/10 border-destructive/25',
+      icon: 'text-destructive',
+      title: 'text-destructive',
+      message: 'text-destructive',
       Icon: XCircle,
     },
     warning: {
-      container: 'bg-yellow-50 border-yellow-200',
-      icon: 'text-yellow-600',
-      title: 'text-yellow-900',
-      message: 'text-yellow-700',
+      container: 'bg-amber-500/10 border-yellow-500/50/25',
+      icon: 'text-yellow-500',
+      title: 'text-yellow-500',
+      message: 'text-yellow-500',
       Icon: AlertCircle,
     },
     info: {
-      container: 'bg-blue-50 border-blue-200',
-      icon: 'text-blue-600',
-      title: 'text-blue-900',
-      message: 'text-blue-700',
+      container: 'bg-primary/10 border-primary/20',
+      icon: 'text-primary',
+      title: 'text-primary',
+      message: 'text-primary',
       Icon: Info,
     },
   }
@@ -55,7 +55,7 @@ export function Alert({ type, title, message, onClose }: AlertProps) {
         {onClose && (
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-muted-foreground hover:text-muted-foreground transition-colors"
           >
             <XCircle className="w-5 h-5" />
           </button>

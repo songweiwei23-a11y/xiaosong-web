@@ -48,7 +48,7 @@ import {
   DEVICES,
   BUDGETS
 } from "./constants";
-import { CollapsibleSection } from "./CollapsibleSection";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { useScriptHistory } from "./useScriptHistory";
 import { ResultPanel } from "./ResultPanel";
 import { HistoryPanel } from "./HistoryPanel";
@@ -56,7 +56,7 @@ import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
 import { supabase } from "@/lib/supabase/client";
-import { Field, OptionCard } from "./Field";
+import { Field, OptionCard } from "@/components/form/Field";
 
 /*
  * 表单控件的共用样式。抽成常量而不是每处写一遍长串类名：
@@ -1073,7 +1073,7 @@ ${formatRequirements}
                     }`}
                   >
                     <div className="mb-0.5 text-[15px] leading-none">{hook.label.split(' ')[0]}</div>
-                    {/* 选中文字原先写死 text-purple-700，深色下几乎看不见 */}
+                    {/* 选中文字原先写死 text-accent，深色下几乎看不见 */}
                     <div className={`text-[11px] font-medium leading-snug ${
                       hookType === hook.id ? "text-primary" : "text-muted-foreground"
                     }`}>
@@ -1096,7 +1096,7 @@ ${formatRequirements}
                     }`}
                   >
                     <div className="mb-0.5 text-[15px] leading-none">{structure.label.split(' ')[0]}</div>
-                    {/* 原先写死 text-orange-700，深色下几乎看不见 */}
+                    {/* 原先写死 text-orange-500，深色下几乎看不见 */}
                     <div className={`text-[11px] font-medium leading-snug ${
                       scriptStructure === structure.id ? "text-primary" : "text-muted-foreground"
                     }`}>
@@ -1328,7 +1328,7 @@ ${formatRequirements}
           </div>
           <div className="flex items-center gap-2">
             <Link href="/dashboard/membership">
-              <Button size="sm" className="bg-red-600 hover:bg-red-700">
+              <Button size="sm" className="bg-destructive hover:opacity-90">
                 立即升级
               </Button>
             </Link>

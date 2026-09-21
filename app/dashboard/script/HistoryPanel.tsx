@@ -164,7 +164,7 @@ function HistoryRow({
                     ? "text-emerald-500"
                     : quality.score >= 8
                       ? "text-amber-500"
-                      : "text-rose-500"
+                      : "text-destructive"
                 }
               >
                 {quality.score.toFixed(1)} 分

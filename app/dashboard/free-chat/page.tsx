@@ -401,7 +401,7 @@ export default function FreeChatPage() {
           <div className="p-3">
             <button
               onClick={createConversation}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-3 font-medium text-white shadow-sm transition-all hover:from-purple-700 hover:to-blue-700"
+              className="flex w-full items-center justify-center gap-2 rounded-xl brand-gradient py-3 font-medium text-white shadow-sm transition-all hover:from-purple-700 hover:to-blue-700"
             >
               <Plus className="h-4 w-4" />
               新建对话
@@ -416,7 +416,7 @@ export default function FreeChatPage() {
                 key={c.id}
                 onClick={() => setActiveId(c.id)}
                 className={`group mb-1 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  c.id === activeId ? "bg-purple-50 text-purple-700" : "text-foreground hover:bg-muted"
+                  c.id === activeId ? "bg-accent/10 text-accent" : "text-foreground hover:bg-muted"
                 }`}
               >
                 <MessageSquare className="h-4 w-4 shrink-0" />
@@ -426,7 +426,7 @@ export default function FreeChatPage() {
                   className="opacity-0 transition-opacity group-hover:opacity-100"
                   title="删除对话"
                 >
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
+                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                 </button>
               </div>
             ))}
@@ -452,7 +452,7 @@ export default function FreeChatPage() {
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-blue-500">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div>
@@ -469,7 +469,7 @@ export default function FreeChatPage() {
           <div className="mx-auto max-w-3xl">
             {(!activeConv || activeConv.messages.length === 0) && (
               <div className="mt-10 flex flex-col items-center text-center">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl brand-gradient">
                   <Sparkles className="h-7 w-7 text-white" />
                 </div>
                 <h2 className="mb-2 text-xl font-bold text-foreground">想聊点什么？</h2>
@@ -481,7 +481,7 @@ export default function FreeChatPage() {
                     <button
                       key={q}
                       onClick={() => handleSend(q)}
-                      className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-purple-50"
+                      className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-foreground shadow-sm transition-all hover:border-accent/30 hover:bg-accent/10"
                     >
                       {q}
                     </button>
@@ -497,7 +497,7 @@ export default function FreeChatPage() {
               >
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                    msg.role === "user" ? "bg-blue-600" : "bg-gradient-to-br from-purple-500 to-blue-500"
+                    msg.role === "user" ? "bg-primary" : "brand-gradient"
                   }`}
                 >
                   {msg.role === "user" ? (
@@ -510,7 +510,7 @@ export default function FreeChatPage() {
                   <div
                     className={`inline-block rounded-2xl px-4 py-3 text-left ${
                       msg.role === "user"
-                        ? "bg-blue-600 text-white"
+                        ? "bg-primary text-white"
                         : "border border-border bg-card text-foreground"
                     }`}
                   >
@@ -520,7 +520,7 @@ export default function FreeChatPage() {
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
                         </div>
                       ) : (
-                        <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                        <Loader2 className="h-4 w-4 animate-spin text-accent" />
                       )
                     ) : (
                       <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
@@ -553,12 +553,12 @@ export default function FreeChatPage() {
               placeholder="自由输入…（Enter 发送，Shift+Enter 换行）"
               rows={2}
               disabled={isStreaming}
-              className="flex-1 resize-none rounded-xl border-2 border-border px-4 py-3 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100 disabled:bg-muted"
+              className="flex-1 resize-none rounded-xl border-2 border-border px-4 py-3 text-sm focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted"
             />
             <button
               onClick={() => handleSend()}
               disabled={!input.trim() || isStreaming}
-              className="flex h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-5 font-medium text-white shadow-sm transition-all hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-12 items-center gap-2 rounded-xl brand-gradient px-5 font-medium text-white shadow-sm transition-all hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isStreaming ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               发送

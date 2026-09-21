@@ -84,7 +84,7 @@ export default function ProfilesPage() {
           </div>
           <Link
             href="/dashboard/profiles/new"
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+            className="px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent transition-colors font-medium"
           >
             + 创建新档案
           </Link>
@@ -102,7 +102,7 @@ export default function ProfilesPage() {
             <p className="text-muted-foreground mb-6">创建您的第一个用户档案，让AI生成更精准的内容</p>
             <Link
               href="/dashboard/profiles/new"
-              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="inline-flex items-center px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent transition-colors"
             >
               创建第一个档案
             </Link>
@@ -121,7 +121,7 @@ export default function ProfilesPage() {
                   <div className="flex gap-2">
                     <Link
                       href={`/dashboard/profiles/${profile.id}/edit`}
-                      className="text-blue-600 hover:text-blue-700"
+                      className="text-primary hover:text-primary"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -129,7 +129,7 @@ export default function ProfilesPage() {
                     </Link>
                     <button
                       onClick={() => handleDelete(profile.id)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-destructive hover:text-destructive"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -145,7 +145,7 @@ export default function ProfilesPage() {
                       {profile.account_platform?.map((platform) => (
                         <span
                           key={platform}
-                          className="inline-block px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded"
+                          className="inline-block px-2 py-1 text-xs bg-primary/10 text-primary rounded"
                         >
                           {platform}
                         </span>
@@ -159,7 +159,7 @@ export default function ProfilesPage() {
                       {profile.account_track?.map((track) => (
                         <span
                           key={track}
-                          className="inline-block px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded"
+                          className="inline-block px-2 py-1 text-xs bg-accent/10 text-accent rounded"
                         >
                           {track}
                         </span>

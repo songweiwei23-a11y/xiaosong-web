@@ -208,33 +208,33 @@ export default function HomePage() {
   ];
 
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600",
-    yellow: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600",
-    green: "bg-green-100 dark:bg-green-900/30 text-green-600",
-    purple: "bg-purple-100 dark:bg-purple-900/30 text-purple-600",
-    pink: "bg-pink-100 dark:bg-pink-900/30 text-pink-600",
-    orange: "bg-orange-100 dark:bg-orange-900/30 text-orange-600",
-    red: "bg-red-100 dark:bg-red-900/30 text-red-600",
-    indigo: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600"
+    blue: "bg-primary/15 dark:bg-blue-900/30 text-primary",
+    yellow: "bg-amber-500/15 dark:bg-yellow-900/30 text-yellow-500",
+    green: "bg-emerald-500/15 dark:bg-green-900/30 text-green-500",
+    purple: "bg-accent/15 dark:bg-purple-900/30 text-accent",
+    pink: "bg-accent/15 dark:bg-pink-900/30 text-accent",
+    orange: "bg-amber-500/15 dark:bg-orange-900/30 text-orange-500",
+    red: "bg-destructive/15 dark:bg-red-900/30 text-destructive",
+    indigo: "bg-primary/15 dark:bg-indigo-900/30 text-primary"
   };
 
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}
-      <header className="fixed top-0 w-full border-b border-border bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl z-50">
+      <header className="fixed top-0 w-full border-b border-border bg-white/80 dark:bg-muted/80 backdrop-blur-xl z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl hover:scale-105 transition-transform">
-            <Sparkles className="w-6 h-6 text-blue-600 animate-pulse" />
-            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+            <span className="brand-gradient bg-clip-text text-transparent">
               小宋编导工作台
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium hover:text-blue-600 transition-colors">核心功能</a>
-            <a href="#advantages" className="text-sm font-medium hover:text-blue-600 transition-colors">核心优势</a>
-            <a href="#cases" className="text-sm font-medium hover:text-blue-600 transition-colors">成功案例</a>
-            <a href="#pricing" className="text-sm font-medium hover:text-blue-600 transition-colors">价格方案</a>
+            <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">核心功能</a>
+            <a href="#advantages" className="text-sm font-medium hover:text-primary transition-colors">核心优势</a>
+            <a href="#cases" className="text-sm font-medium hover:text-primary transition-colors">成功案例</a>
+            <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">价格方案</a>
           </nav>
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -244,29 +244,29 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <section className="relative pt-32 pb-20 px-4 overflow-hidden brand-gradient dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute top-40 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'1s'}} />
-          <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'2s'}} />
+          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-40 right-10 w-96 h-96 bg-accent/100/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'1s'}} />
+          <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-accent/100/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'2s'}} />
         </div>
 
         <div className="container mx-auto relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-6">
-              <Rocket className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-600">Claude AI驱动 · 专业编导知识库 · 10秒生成爆款脚本</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-6">
+              <Rocket className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Claude AI驱动 · 专业编导知识库 · 10秒生成爆款脚本</span>
             </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
-              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <span className="brand-gradient bg-clip-text text-transparent">
                 AI编导助手
               </span>
               <br />
-              <span className="text-slate-900 dark:text-white">让短视频创作</span>
+              <span className="text-foreground">让短视频创作</span>
               <br />
               <span className="relative inline-block">
-                <span className="text-slate-900 dark:text-white">更专业、更高效</span>
+                <span className="text-foreground">更专业、更高效</span>
                 <svg className="absolute -bottom-2 left-0 w-full" height="12" viewBox="0 0 300 12" fill="none">
                   <path d="M2 10C50 5,100 2,150 3C200 4,250 7,298 10" stroke="url(#g)" strokeWidth="4" strokeLinecap="round"/>
                   <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -276,78 +276,78 @@ export default function HomePage() {
               </span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
-              基于<span className="font-semibold text-blue-600">专业编导知识库</span>，
-              结合<span className="font-semibold text-purple-600">Claude AI</span>大模型，
-              为您提供<span className="font-semibold text-pink-600">智能化</span>的短视频创作解决方案
+            <p className="text-xl md:text-2xl text-muted-foreground dark:text-foreground mb-8 max-w-3xl mx-auto">
+              基于<span className="font-semibold text-primary">专业编导知识库</span>，
+              结合<span className="font-semibold text-accent">Claude AI</span>大模型，
+              为您提供<span className="font-semibold text-accent">智能化</span>的短视频创作解决方案
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <Link href="/dashboard" className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-2xl hover:shadow-blue-500/50 transition-all hover:scale-105">
+              <Link href="/dashboard" className="group relative px-8 py-4 brand-gradient text-white rounded-xl font-semibold text-lg shadow-2xl hover:shadow-blue-500/50 transition-all hover:scale-105">
                 <span className="relative z-10 flex items-center gap-2">
                   立即免费体验 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Link>
-              <a href="#demo" className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl font-semibold text-lg border-2 border-slate-200 dark:border-slate-700 hover:border-blue-600 transition-all hover:scale-105 flex items-center gap-2">
-                <Play className="w-5 h-5 text-blue-600" /> 观看演示
+              <a href="#demo" className="px-8 py-4 glass-panel text-foreground rounded-xl font-semibold text-lg border-2 border-border hover:border-primary/40 transition-all hover:scale-105 flex items-center gap-2">
+                <Play className="w-5 h-5 text-primary" /> 观看演示
               </a>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-slate-600 dark:text-slate-300">免费试用·无需信用卡</span></div>
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-slate-600 dark:text-slate-300">10秒生成专业脚本</span></div>
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-slate-600 dark:text-slate-300">98%用户好评</span></div>
+              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">免费试用·无需信用卡</span></div>
+              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">10秒生成专业脚本</span></div>
+              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">98%用户好评</span></div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Stats */}
-      <section className="py-16 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border-y border-border/40">
+      <section className="py-16 bg-white/50 dark:bg-muted/50 backdrop-blur-xl border-y border-border/40">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="text-center group hover:scale-105 transition-transform">
-              <div className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">{stats.users.toLocaleString()}+</div>
-              <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">创作者正在使用</div>
+              <div className="text-5xl md:text-6xl font-extrabold brand-gradient bg-clip-text text-transparent mb-2">{stats.users.toLocaleString()}+</div>
+              <div className="text-sm text-muted-foreground font-medium">创作者正在使用</div>
             </div>
             <div className="text-center group hover:scale-105 transition-transform">
-              <div className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">{stats.scripts.toLocaleString()}+</div>
-              <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">脚本生成数量</div>
+              <div className="text-5xl md:text-6xl font-extrabold brand-gradient bg-clip-text text-transparent mb-2">{stats.scripts.toLocaleString()}+</div>
+              <div className="text-sm text-muted-foreground font-medium">脚本生成数量</div>
             </div>
             <div className="text-center group hover:scale-105 transition-transform">
               <div className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent mb-2">{stats.satisfaction}%</div>
-              <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">用户满意度</div>
+              <div className="text-sm text-muted-foreground font-medium">用户满意度</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* 三大核心优势 */}
-      <section id="advantages" className="py-20 px-4 bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <section id="advantages" className="py-20 px-4 brand-gradient dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 dark:bg-purple-900/30 rounded-full mb-4">
-              <Crown className="w-4 h-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-600">为什么选择我们</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/15 dark:bg-purple-900/30 rounded-full mb-4">
+              <Crown className="w-4 h-4 text-accent" />
+              <span className="text-sm font-medium text-accent">为什么选择我们</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">三大核心优势</span>
+              <span className="brand-gradient bg-clip-text text-transparent">三大核心优势</span>
             </h2>
-            <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">专业编导知识 + AI技术 + 持续迭代，让您的创作始终领先一步</p>
+            <p className="text-xl text-muted-foreground dark:text-foreground max-w-2xl mx-auto">专业编导知识 + AI技术 + 持续迭代，让您的创作始终领先一步</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             <div className="group relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity" />
-              <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-8 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-600 transition-all hover:shadow-2xl h-full">
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-8 h-8 text-blue-600" />
+              <div className="relative glass-panel rounded-2xl p-8 border-2 border-border hover:border-primary/40 transition-all hover:shadow-2xl h-full">
+                <div className="w-16 h-16 bg-primary/15 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <BookOpen className="w-8 h-8 text-primary" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">专业编导知识库</h3>
-                <p className="text-slate-600 dark:text-slate-300 mb-6">
-                  整合<span className="font-semibold text-blue-600">10000+</span>专业编导技巧、
-                  <span className="font-semibold text-blue-600">500+</span>爆款案例分析、
-                  <span className="font-semibold text-blue-600">100+</span>行业洞察
+                <p className="text-muted-foreground dark:text-foreground mb-6">
+                  整合<span className="font-semibold text-primary">10000+</span>专业编导技巧、
+                  <span className="font-semibold text-primary">500+</span>爆款案例分析、
+                  <span className="font-semibold text-primary">100+</span>行业洞察
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">涵盖情感、剧情、知识、搞笑等12大类目</span></li>
@@ -358,14 +358,14 @@ export default function HomePage() {
             </div>
 
             <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity" />
-              <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-8 border-2 border-slate-200 dark:border-slate-700 hover:border-purple-600 transition-all hover:shadow-2xl h-full">
-                <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Brain className="w-8 h-8 text-purple-600" />
+              <div className="absolute inset-0 brand-gradient rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity" />
+              <div className="relative glass-panel rounded-2xl p-8 border-2 border-border hover:border-accent/40 transition-all hover:shadow-2xl h-full">
+                <div className="w-16 h-16 bg-accent/15 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Brain className="w-8 h-8 text-accent" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Claude AI 智能引擎</h3>
-                <p className="text-slate-600 dark:text-slate-300 mb-6">
-                  基于<span className="font-semibold text-purple-600">Anthropic Claude</span>最新模型，
+                <p className="text-muted-foreground dark:text-foreground mb-6">
+                  基于<span className="font-semibold text-accent">Anthropic Claude</span>最新模型，
                   结合编导知识库，智能理解您的需求，生成专业级脚本
                 </p>
                 <ul className="space-y-3">
@@ -378,13 +378,13 @@ export default function HomePage() {
 
             <div className="group relative">
               <div className="absolute inset-0 bg-gradient-to-r from-pink-600 to-orange-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity" />
-              <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-8 border-2 border-slate-200 dark:border-slate-700 hover:border-pink-600 transition-all hover:shadow-2xl h-full">
-                <div className="w-16 h-16 bg-pink-100 dark:bg-pink-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Layers className="w-8 h-8 text-pink-600" />
+              <div className="relative glass-panel rounded-2xl p-8 border-2 border-border hover:border-accent/40 transition-all hover:shadow-2xl h-full">
+                <div className="w-16 h-16 bg-accent/15 dark:bg-pink-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Layers className="w-8 h-8 text-accent" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">全流程创作支持</h3>
-                <p className="text-slate-600 dark:text-slate-300 mb-6">
-                  从账号定位到成交转化，覆盖短视频创作的<span className="font-semibold text-pink-600">每一个环节</span>
+                <p className="text-muted-foreground dark:text-foreground mb-6">
+                  从账号定位到成交转化，覆盖短视频创作的<span className="font-semibold text-accent">每一个环节</span>
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">账号定位 → 选题策划 → 脚本生成</span></li>
@@ -399,19 +399,19 @@ export default function HomePage() {
 
 
       {/* 8大核心功能 */}
-      <section id="features" className="py-20 px-4 bg-white dark:bg-slate-900">
+      <section id="features" className="py-20 px-4 glass-panel">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
-              <Star className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-600">8大核心功能</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
+              <Star className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">8大核心功能</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="brand-gradient bg-clip-text text-transparent">
                 全流程AI创作支持
               </span>
             </h2>
-            <p className="text-xl text-slate-600 dark:text-slate-400">
+            <p className="text-xl text-muted-foreground">
               从定位到变现，8大功能覆盖短视频创作每一个环节
             </p>
           </div>
@@ -422,17 +422,17 @@ export default function HomePage() {
               return (
                 <div key={idx} className="group relative">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-6 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-all hover:shadow-xl h-full">
+                  <div className="relative glass-panel rounded-2xl p-6 border-2 border-border hover:border-primary/50 transition-all hover:shadow-xl h-full">
                     <div className={`w-14 h-14 ${colorClasses[feature.color]} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                       <Icon className="w-7 h-7" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">{feature.title}</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+                    <h3 className="text-xl font-bold mb-3 text-foreground">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                       {feature.desc}
                     </p>
                     <ul className="space-y-2">
                       {feature.benefits.map((benefit, bidx) => (
-                        <li key={bidx} className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400">
+                        <li key={bidx} className="flex items-start gap-2 text-xs text-muted-foreground">
                           <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                           <span>{benefit}</span>
                         </li>
@@ -447,7 +447,7 @@ export default function HomePage() {
           <div className="text-center mt-12">
             <Link 
               href="/dashboard" 
-              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg"
+              className="inline-flex items-center gap-2 px-8 py-4 brand-gradient text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg"
             >
               立即体验全部功能
               <ArrowRight className="w-5 h-5" />
@@ -457,55 +457,55 @@ export default function HomePage() {
       </section>
 
       {/* 价格对比 */}
-      <section id="pricing" className="py-20 px-4 bg-slate-50 dark:bg-slate-950">
+      <section id="pricing" className="py-20 px-4 bg-muted dark:bg-muted">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 dark:bg-purple-900/30 rounded-full mb-4">
-              <Crown className="w-4 h-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-600">价格方案</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/15 dark:bg-purple-900/30 rounded-full mb-4">
+              <Crown className="w-4 h-4 text-accent" />
+              <span className="text-sm font-medium text-accent">价格方案</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <span className="brand-gradient bg-clip-text text-transparent">
                 选择适合您的方案
               </span>
             </h2>
-            <p className="text-xl text-slate-600 dark:text-slate-400">
+            <p className="text-xl text-muted-foreground">
               从免费体验到企业定制，总有一款适合您
             </p>
           </div>
 
           {/* 传统方式 vs 小宋工作台对比 */}
           <div className="max-w-5xl mx-auto mb-16 overflow-x-auto">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden shadow-xl">
-              <div className="grid grid-cols-4 gap-px bg-slate-200 dark:bg-slate-700">
-                <div className="bg-slate-100 dark:bg-slate-900 p-4 font-bold text-center">对比项</div>
-                <div className="bg-slate-100 dark:bg-slate-900 p-4 font-bold text-center">传统方式</div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 font-bold text-center text-blue-600">小宋工作台</div>
-                <div className="bg-green-50 dark:bg-green-900/20 p-4 font-bold text-center text-green-600">提升幅度</div>
+            <div className="glass-panel rounded-2xl border-2 border-border overflow-hidden shadow-xl">
+              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
+                <div className="bg-muted dark:bg-muted p-4 font-bold text-center">对比项</div>
+                <div className="bg-muted dark:bg-muted p-4 font-bold text-center">传统方式</div>
+                <div className="bg-primary/10 p-4 font-bold text-center text-primary">小宋工作台</div>
+                <div className="bg-emerald-500/10 p-4 font-bold text-center text-green-500">提升幅度</div>
               </div>
-              <div className="grid grid-cols-4 gap-px bg-slate-200 dark:bg-slate-700">
-                <div className="bg-white dark:bg-slate-800 p-4">脚本创作时间</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center text-slate-600 dark:text-slate-400">2-4小时</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-semibold text-blue-600">10秒</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-bold text-green-600">↑99%</div>
+              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
+                <div className="glass-panel p-4">脚本创作时间</div>
+                <div className="glass-panel p-4 text-center text-muted-foreground">2-4小时</div>
+                <div className="glass-panel p-4 text-center font-semibold text-primary">10秒</div>
+                <div className="glass-panel p-4 text-center font-bold text-green-500">↑99%</div>
               </div>
-              <div className="grid grid-cols-4 gap-px bg-slate-200 dark:bg-slate-700">
-                <div className="bg-white dark:bg-slate-800 p-4">学习门槛</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center text-slate-600 dark:text-slate-400">3-6个月</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-semibold text-blue-600">即用即会</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-bold text-green-600">零门槛</div>
+              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
+                <div className="glass-panel p-4">学习门槛</div>
+                <div className="glass-panel p-4 text-center text-muted-foreground">3-6个月</div>
+                <div className="glass-panel p-4 text-center font-semibold text-primary">即用即会</div>
+                <div className="glass-panel p-4 text-center font-bold text-green-500">零门槛</div>
               </div>
-              <div className="grid grid-cols-4 gap-px bg-slate-200 dark:bg-slate-700">
-                <div className="bg-white dark:bg-slate-800 p-4">月度成本</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center text-slate-600 dark:text-slate-400">¥8000+</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-semibold text-blue-600">¥30-199</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-bold text-green-600">省95%</div>
+              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
+                <div className="glass-panel p-4">月度成本</div>
+                <div className="glass-panel p-4 text-center text-muted-foreground">¥8000+</div>
+                <div className="glass-panel p-4 text-center font-semibold text-primary">¥30-199</div>
+                <div className="glass-panel p-4 text-center font-bold text-green-500">省95%</div>
               </div>
-              <div className="grid grid-cols-4 gap-px bg-slate-200 dark:bg-slate-700">
-                <div className="bg-white dark:bg-slate-800 p-4">爆款命中率</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center text-slate-600 dark:text-slate-400">10-15%</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-semibold text-blue-600">30-40%</div>
-                <div className="bg-white dark:bg-slate-800 p-4 text-center font-bold text-green-600">↑3倍</div>
+              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
+                <div className="glass-panel p-4">爆款命中率</div>
+                <div className="glass-panel p-4 text-center text-muted-foreground">10-15%</div>
+                <div className="glass-panel p-4 text-center font-semibold text-primary">30-40%</div>
+                <div className="glass-panel p-4 text-center font-bold text-green-500">↑3倍</div>
               </div>
             </div>
           </div>
@@ -515,23 +515,23 @@ export default function HomePage() {
             {pricingPlans.map((plan, idx) => (
               <div key={idx} className={`relative ${plan.highlight ? 'md:scale-105' : ''}`}>
                 {plan.highlight && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-full shadow-lg">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 brand-gradient text-white text-sm font-semibold rounded-full shadow-lg">
                     最受欢迎
                   </div>
                 )}
-                <div className={`bg-white dark:bg-slate-800 rounded-2xl p-6 border-2 ${plan.highlight ? 'border-purple-500 shadow-2xl' : 'border-slate-200 dark:border-slate-700'} hover:shadow-xl transition-all h-full flex flex-col`}>
+                <div className={`glass-panel rounded-2xl p-6 border-2 ${plan.highlight ? 'border-accent/50 shadow-2xl' : 'border-border'} hover:shadow-xl transition-all h-full flex flex-col`}>
                   <div className="text-center mb-6">
-                    <h3 className="text-2xl font-bold mb-2 text-slate-900 dark:text-white">{plan.name}</h3>
+                    <h3 className="text-2xl font-bold mb-2 text-foreground">{plan.name}</h3>
                     <div className="mb-2">
-                      <span className="text-4xl font-extrabold text-blue-600">¥{plan.price}</span>
-                      <span className="text-slate-600 dark:text-slate-400">/{plan.period}</span>
+                      <span className="text-4xl font-extrabold text-primary">¥{plan.price}</span>
+                      <span className="text-muted-foreground">/{plan.period}</span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{plan.desc}</p>
+                    <p className="text-sm text-muted-foreground">{plan.desc}</p>
                   </div>
                   
                   <ul className="space-y-3 mb-6 flex-1">
                     {plan.features.map((feature, fidx) => (
-                      <li key={fidx} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                      <li key={fidx} className="flex items-start gap-2 text-sm text-muted-foreground">
                         <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
                         <span>{feature}</span>
                       </li>
@@ -542,8 +542,8 @@ export default function HomePage() {
                     href="/dashboard"
                     className={`w-full py-3 rounded-xl font-semibold text-center transition-all ${
                       plan.highlight
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:scale-105 shadow-lg'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600'
+                        ? 'brand-gradient text-white hover:scale-105 shadow-lg'
+                        : 'bg-muted dark:bg-muted text-foreground hover:bg-muted dark:hover:bg-muted'
                     }`}
                   >
                     {plan.cta}
@@ -553,42 +553,42 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="text-center mt-12 text-sm text-slate-600 dark:text-slate-400">
+          <div className="text-center mt-12 text-sm text-muted-foreground">
             <p>所有方案均支持7天无理由退款 · 随时取消订阅 · 数据完全保密</p>
           </div>
         </div>
       </section>
 
       {/* FAQ常见问题 */}
-      <section id="faq" className="py-20 px-4 bg-white dark:bg-slate-900">
+      <section id="faq" className="py-20 px-4 glass-panel">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
-              <MessageCircle className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium text-green-600">常见问题</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/15 dark:bg-green-900/30 rounded-full mb-4">
+              <MessageCircle className="w-4 h-4 text-green-500" />
+              <span className="text-sm font-medium text-green-500">常见问题</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
                 您可能关心的问题
               </span>
             </h2>
-            <p className="text-xl text-slate-600 dark:text-slate-400">
+            <p className="text-xl text-muted-foreground">
               解答您的疑惑，让您放心使用
             </p>
           </div>
 
           <div className="space-y-4">
             {faqs.map((faq, idx) => (
-              <div key={idx} className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div key={idx} className="bg-muted rounded-xl border border-border overflow-hidden">
                 <button
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors"
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-foreground/[0.06] dark:hover:bg-slate-750 transition-colors"
                 >
-                  <span className="font-semibold text-slate-900 dark:text-white pr-4">{faq.q}</span>
-                  <ChevronDown className={`w-5 h-5 text-slate-600 dark:text-slate-400 transition-transform ${openFaq === idx ? 'rotate-180' : ''}`} />
+                  <span className="font-semibold text-foreground pr-4">{faq.q}</span>
+                  <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${openFaq === idx ? 'rotate-180' : ''}`} />
                 </button>
                 {openFaq === idx && (
-                  <div className="px-6 pb-4 text-slate-600 dark:text-slate-400 leading-relaxed">
+                  <div className="px-6 pb-4 text-muted-foreground leading-relaxed">
                     {faq.a}
                   </div>
                 )}
@@ -597,12 +597,12 @@ export default function HomePage() {
           </div>
 
           <div className="mt-12 text-center">
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
+            <p className="text-muted-foreground mb-4">
               还有其他问题？
             </p>
             <a 
               href="mailto:support@xiaosong.ai" 
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary/15 dark:bg-blue-900/30 text-primary rounded-lg hover:bg-primary/20 dark:hover:bg-blue-900/50 transition-colors font-medium"
             >
               <MessageCircle className="w-5 h-5" />
               联系客服咨询
@@ -612,7 +612,7 @@ export default function HomePage() {
       </section>
 
       {/* 最终CTA */}
-      <section className="py-20 px-4 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white relative overflow-hidden">
+      <section className="py-20 px-4 brand-gradient text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-80 h-80 bg-white rounded-full blur-3xl" />
@@ -628,7 +628,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
               href="/dashboard" 
-              className="group px-10 py-5 bg-white text-blue-600 rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-2xl flex items-center gap-2"
+              className="group px-10 py-5 bg-white text-primary rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-2xl flex items-center gap-2"
             >
               立即免费开始
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -647,12 +647,12 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-12 px-4">
+      <footer className="bg-muted text-muted-foreground py-12 px-4">
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-6 h-6 text-blue-500" />
+                <Sparkles className="w-6 h-6 text-primary" />
                 <span className="font-bold text-white text-lg">小宋编导工作台</span>
               </div>
               <p className="text-sm leading-relaxed">
@@ -688,7 +688,7 @@ export default function HomePage() {
             </div>
           </div>
           
-          <div className="border-t border-slate-800 pt-8 text-center text-sm">
+          <div className="border-t border-border pt-8 text-center text-sm">
             <p>&copy; 2024 小宋编导工作台. All rights reserved. Powered by Claude AI</p>
           </div>
         </div>

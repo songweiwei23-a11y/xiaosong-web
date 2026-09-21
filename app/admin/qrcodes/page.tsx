@@ -154,7 +154,7 @@ export default function AdminQRCodesPage() {
                 </div>
 
                 {qr.is_active && qr.qrcode_url && !qr.qrcode_url.includes("placeholder") && (
-                  <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                  <div className="flex items-center text-sm text-green-500">
                     <Check className="w-4 h-4 mr-2" />
                     该收款码已生效，用户可见
                   </div>
@@ -165,16 +165,16 @@ export default function AdminQRCodesPage() {
         </div>
       )}
 
-      <Card className="mt-6 border-blue-200 dark:border-blue-800">
+      <Card className="mt-6 border-primary/20">
         <CardHeader>
-          <CardTitle className="text-blue-600 dark:text-blue-400">💡 使用说明</CardTitle>
+          <CardTitle className="text-primary">💡 使用说明</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>1. 从支付宝和微信分别导出您的收款二维码图片</p>
           <p>2. 点击上方"上传二维码"按钮，选择对应的图片</p>
           <p>3. 上传成功后，用户在支付页面就能看到您的收款码</p>
           <p>4. 用户扫码支付后会上传支付凭证，您可以在"订单审核"页面进行审核</p>
-          <p className="text-orange-600 dark:text-orange-400 font-semibold">
+          <p className="text-orange-500 font-semibold">
             ⚠️ 请确保二维码清晰可见，否则用户无法成功支付
           </p>
         </CardContent>

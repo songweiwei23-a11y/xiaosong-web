@@ -89,12 +89,12 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
       {/* 历史记录按钮 */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed right-8 bottom-8 p-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 z-50"
+        className="fixed right-8 bottom-8 p-4 brand-gradient text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 z-50"
         title="查看历史记录"
       >
         <History className="w-6 h-6" />
         {total > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-destructive/100 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
             {total > 99 ? '99+' : total}
           </span>
         )}
@@ -107,23 +107,23 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
             {/* 头部 */}
             <div className="flex items-center justify-between p-6 border-b">
               <div className="flex items-center gap-3">
-                <History className="w-6 h-6 text-blue-600" />
-                <h2 className="text-2xl font-bold text-gray-900">历史记录</h2>
-                <span className="text-sm text-gray-500">({total}条)</span>
+                <History className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-foreground">历史记录</h2>
+                <span className="text-sm text-muted-foreground">({total}条)</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={loadHistory}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-foreground/[0.06] rounded-lg transition-colors"
                   title="刷新"
                 >
-                  <RefreshCw className="w-5 h-5 text-gray-600" />
+                  <RefreshCw className="w-5 h-5 text-muted-foreground" />
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-foreground/[0.06] rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-600" />
+                  <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
             </div>
@@ -134,10 +134,10 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
               <div className="w-1/3 border-r overflow-y-auto">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+                    <RefreshCw className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : records.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <History className="w-16 h-16 mb-4" />
                     <p>暂无历史记录</p>
                   </div>
@@ -149,12 +149,12 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                         onClick={() => setSelectedRecord(record)}
                         className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
                           selectedRecord?.id === record.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-primary/50 bg-primary/10'
+                            : 'border-border hover:border-primary/30'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Clock className="w-4 h-4" />
                             {formatDate(record.created_at)}
                           </div>
@@ -163,13 +163,13 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                               e.stopPropagation();
                               handleDelete(record.id);
                             }}
-                            className="p-1 hover:bg-red-100 rounded transition-colors"
+                            className="p-1 hover:bg-destructive/15 rounded transition-colors"
                             title="删除"
                           >
-                            <Trash2 className="w-4 h-4 text-red-500" />
+                            <Trash2 className="w-4 h-4 text-destructive" />
                           </button>
                         </div>
-                        <p className="text-sm text-gray-700 line-clamp-2">
+                        <p className="text-sm text-foreground/80 line-clamp-2">
                           {record.result.substring(0, 100)}...
                         </p>
                       </div>
@@ -183,14 +183,14 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                 {selectedRecord ? (
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         生成于 {formatDate(selectedRecord.created_at)}
                       </div>
                       <div className="flex gap-2">
                         {onReuse && (
                           <button
                             onClick={() => handleReuse(selectedRecord)}
-                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm flex items-center gap-2"
+                            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-500 transition-colors text-sm flex items-center gap-2"
                           >
                             <RefreshCw className="w-4 h-4" />
                             重新使用
@@ -198,7 +198,7 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                         )}
                         <button
                           onClick={() => handleCopy(selectedRecord.result)}
-                          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center gap-2"
+                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary transition-colors text-sm flex items-center gap-2"
                         >
                           <Copy className="w-4 h-4" />
                           复制
@@ -210,7 +210,7 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
                     <p>选择一条记录查看详情</p>
                   </div>
                 )}

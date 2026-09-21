@@ -32,8 +32,8 @@ const membershipPlans = [
     price: 29,
     period: "月",
     icon: Star,
-    color: "text-blue-600",
-    bgColor: "bg-blue-100",
+    color: "text-primary",
+    bgColor: "bg-primary/15",
     popular: false,
     features: [
       "每月 50 次使用额度",
@@ -52,8 +52,8 @@ const membershipPlans = [
     price: 99,
     period: "月",
     icon: Crown,
-    color: "text-purple-600",
-    bgColor: "bg-purple-100",
+    color: "text-accent",
+    bgColor: "bg-accent/15",
     popular: true,
     features: [
       "每月 200 次使用额度",
@@ -73,8 +73,8 @@ const membershipPlans = [
     price: 599,
     period: "月",
     icon: Zap,
-    color: "text-orange-600",
-    bgColor: "bg-orange-100",
+    color: "text-orange-500",
+    bgColor: "bg-amber-500/15",
     popular: false,
     features: [
       "无限次使用额度",
@@ -117,7 +117,7 @@ export default function MembershipPage() {
             onClick={() => setBillingCycle("monthly")}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               billingCycle === "monthly"
-                ? "bg-blue-600 text-white"
+                ? "bg-primary text-white"
                 : "bg-muted text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -127,12 +127,12 @@ export default function MembershipPage() {
             onClick={() => setBillingCycle("yearly")}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               billingCycle === "yearly"
-                ? "bg-blue-600 text-white"
+                ? "bg-primary text-white"
                 : "bg-muted text-muted-foreground hover:bg-muted"
             }`}
           >
             年付
-            <span className="ml-2 text-xs bg-green-500 text-white px-2 py-1 rounded">
+            <span className="ml-2 text-xs bg-emerald-500 text-white px-2 py-1 rounded">
               省 20%
             </span>
           </button>
@@ -150,14 +150,14 @@ export default function MembershipPage() {
               key={plan.id}
               className={`relative rounded-2xl border-2 p-6 transition-all hover:shadow-xl ${
                 plan.popular
-                  ? "border-purple-500 shadow-lg scale-105"
-                  : "border-border hover:border-blue-300"
-              } ${currentPlan === plan.id ? "ring-4 ring-green-400" : ""}`}
+                  ? "border-accent/50 shadow-lg scale-105"
+                  : "border-border hover:border-primary/30"
+              } ${currentPlan === plan.id ? "ring-4 ring-primary" : ""}`}
             >
               {/* 推荐标签 */}
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1 rounded-full text-sm font-medium">
+                  <span className="brand-gradient text-white px-4 py-1 rounded-full text-sm font-medium">
                     🔥 最受欢迎
                   </span>
                 </div>
@@ -166,7 +166,7 @@ export default function MembershipPage() {
               {/* 当前套餐标签 */}
               {currentPlan === plan.id && (
                 <div className="absolute -top-4 right-4">
-                  <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-medium">
                     当前套餐
                   </span>
                 </div>
@@ -229,8 +229,8 @@ export default function MembershipPage() {
                   currentPlan === plan.id
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
                     : plan.popular
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
+                    ? "brand-gradient text-white hover:from-purple-700 hover:to-pink-700"
+                    : "bg-primary text-white hover:opacity-90"
                 }`}
               >
                 {currentPlan === plan.id ? "当前套餐" : plan.price === 0 ? "免费使用" : "立即升级"}

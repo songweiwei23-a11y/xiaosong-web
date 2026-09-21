@@ -125,9 +125,9 @@ export default function EditProfilePage() {
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${
               step === currentStep
-                ? 'bg-purple-600 text-white'
+                ? 'bg-accent text-white'
                 : step < currentStep
-                ? 'bg-green-500 text-white'
+                ? 'bg-emerald-500 text-white'
                 : 'bg-muted text-muted-foreground'
             }`}
           >
@@ -136,7 +136,7 @@ export default function EditProfilePage() {
           {step < 5 && (
             <div
               className={`w-16 h-1 ${
-                step < currentStep ? 'bg-green-500' : 'bg-muted'
+                step < currentStep ? 'bg-emerald-500' : 'bg-muted'
               }`}
             />
           )}

@@ -184,13 +184,13 @@ function QualityCard({
     muted: "bg-foreground/30",
     emerald: "bg-emerald-500",
     amber: "bg-amber-500",
-    rose: "bg-rose-500",
+    rose: "bg-destructive/100",
   }[tone];
   const text = {
     muted: "text-muted-foreground",
     emerald: "text-emerald-500",
     amber: "text-amber-500",
-    rose: "text-rose-500",
+    rose: "text-destructive",
   }[tone];
 
   return (
@@ -213,7 +213,7 @@ function QualityCard({
               className={`rounded-full px-2 py-0.5 text-[11px] ${
                 quality.passed
                   ? "bg-emerald-500/15 text-emerald-500"
-                  : "bg-rose-500/15 text-rose-500"
+                  : "bg-destructive/100/15 text-destructive"
               }`}
             >
               {quality.passed ? "达标" : "需改进"}

@@ -64,10 +64,10 @@ export default function ProfileDashboard() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-purple-950/40 dark:via-blue-950/40 dark:to-pink-950/30 rounded-2xl p-6 shadow-lg mb-8">
+    <div className="brand-gradient dark:from-purple-950/40 dark:via-blue-950/40 dark:to-pink-950/30 rounded-2xl p-6 shadow-lg mb-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 brand-gradient rounded-xl flex items-center justify-center">
             <span className="text-2xl">📋</span>
           </div>
           <div>
@@ -84,7 +84,7 @@ export default function ProfileDashboard() {
           </button>
           <button
             onClick={() => router.push('/dashboard/profiles/new')}
-            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium"
+            className="px-4 py-2 brand-gradient text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium"
           >
             + 新建档案
           </button>
@@ -96,7 +96,7 @@ export default function ProfileDashboard() {
           <p className="text-muted-foreground mb-4">还没有档案</p>
           <button
             onClick={() => router.push('/dashboard/profiles/new')}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg"
+            className="px-6 py-3 brand-gradient text-white rounded-lg"
           >
             创建第一个档案
           </button>
@@ -111,13 +111,13 @@ export default function ProfileDashboard() {
               <div
                 key={profile.id}
                 className={`bg-card border border-border rounded-xl p-5 cursor-pointer transition-all hover:shadow-xl ${
-                  isActive ? 'ring-2 ring-purple-600 shadow-lg' : ''
+                  isActive ? 'ring-2 ring-primary shadow-lg' : ''
                 }`}
                 onClick={() => setActiveProfile(profile.id)}
               >
                 {isActive && (
                   <div className="flex items-center gap-1 mb-2">
-                    <span className="text-xs font-bold text-purple-600">🎯 激活中</span>
+                    <span className="text-xs font-bold text-accent">🎯 激活中</span>
                   </div>
                 )}
                 <h3 className="font-bold text-foreground mb-2 truncate">{profile.profile_name}</h3>
@@ -126,10 +126,10 @@ export default function ProfileDashboard() {
                 <div className="mb-3">
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-muted-foreground">完整度</span>
-                    <span className="font-bold text-purple-600">{completeness}%</span>
+                    <span className="font-bold text-accent">{completeness}%</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-purple-600 to-blue-600" style={{ width: `${completeness}%` }} />
+                    <div className="h-full brand-gradient" style={{ width: `${completeness}%` }} />
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground mb-3">📝 生成内容: 0条</div>
@@ -139,7 +139,7 @@ export default function ProfileDashboard() {
                     setActiveProfile(profile.id)
                   }}
                   className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${
-                    isActive ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'bg-muted text-foreground hover:bg-muted/70'
+                    isActive ? 'brand-gradient text-white' : 'bg-muted text-foreground hover:bg-muted/70'
                   }`}
                 >
                   {isActive ? '生成内容' : '切换激活'}

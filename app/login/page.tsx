@@ -170,8 +170,8 @@ export default function LoginPage() {
             {message && (
               <div className={`p-3 rounded-lg text-sm font-medium ${
                 message.includes("成功")
-                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800"
-                  : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
+                  ? "bg-emerald-500/15 dark:bg-green-900/30 text-green-500 dark:text-green-400 border border-green-500/50/25"
+                  : "bg-destructive/15 dark:bg-red-900/30 text-destructive dark:text-red-400 border border-destructive/25"
               }`}>
                 {message}
               </div>

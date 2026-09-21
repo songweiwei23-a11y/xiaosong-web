@@ -147,20 +147,20 @@ export default function SubscriptionsManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
-      <div className="border-b bg-white dark:bg-slate-800 shadow-sm">
+    <div className="min-h-screen brand-gradient dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+      <div className="border-b glass-panel shadow-sm">
         <div className="container mx-auto px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
-                <Crown className="w-8 h-8 text-purple-600" />
+              <h1 className="text-3xl font-bold brand-gradient bg-clip-text text-transparent flex items-center gap-2">
+                <Crown className="w-8 h-8 text-accent" />
                 会员管理
               </h1>
               <p className="text-sm text-muted-foreground mt-1">管理用户会员权限和额度</p>
             </div>
             <button
               onClick={loadSubscriptions}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent"
             >
               <RefreshCw className="w-4 h-4" />
               刷新
@@ -176,21 +176,21 @@ export default function SubscriptionsManagement() {
             <div className="text-sm text-muted-foreground">总会员</div>
             <div className="text-2xl font-bold">{stats.total}</div>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <div className="text-sm text-gray-600">免费版</div>
-            <div className="text-2xl font-bold text-gray-700">{stats.free}</div>
+          <div className="bg-muted border border-border rounded-lg p-4">
+            <div className="text-sm text-muted-foreground">免费版</div>
+            <div className="text-2xl font-bold text-foreground/80">{stats.free}</div>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="text-sm text-blue-600">基础会员</div>
-            <div className="text-2xl font-bold text-blue-700">{stats.basic}</div>
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+            <div className="text-sm text-primary">基础会员</div>
+            <div className="text-2xl font-bold text-primary">{stats.basic}</div>
           </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="text-sm text-purple-600">专业会员</div>
-            <div className="text-2xl font-bold text-purple-700">{stats.pro}</div>
+          <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
+            <div className="text-sm text-accent">专业会员</div>
+            <div className="text-2xl font-bold text-accent">{stats.pro}</div>
           </div>
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="text-sm text-orange-600">企业版</div>
-            <div className="text-2xl font-bold text-orange-700">{stats.enterprise}</div>
+          <div className="bg-amber-500/10 border border-orange-500/50/25 rounded-lg p-4">
+            <div className="text-sm text-orange-500">企业版</div>
+            <div className="text-2xl font-bold text-orange-500">{stats.enterprise}</div>
           </div>
         </div>
 
@@ -271,7 +271,7 @@ export default function SubscriptionsManagement() {
                         {user.quota.total !== -1 && (
                           <div className="flex-1 bg-muted rounded-full h-2 max-w-[100px]">
                             <div
-                              className="bg-purple-600 h-2 rounded-full"
+                              className="bg-accent h-2 rounded-full"
                               style={{
                                 width: `${Math.min((user.quota.used / user.quota.total) * 100, 100)}%`,
                               }}
@@ -299,13 +299,13 @@ export default function SubscriptionsManagement() {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleSave(user.user_id)}
-                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            className="p-1 text-green-500 hover:bg-emerald-500/10 rounded"
                           >
                             <Save className="w-4 h-4" />
                           </button>
                           <button
                             onClick={handleCancel}
-                            className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+                            className="p-1 text-muted-foreground hover:bg-foreground/[0.06] rounded"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -314,13 +314,13 @@ export default function SubscriptionsManagement() {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleEdit(user)}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            className="p-1 text-primary hover:bg-primary/10 rounded"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleResetQuota(user.user_id)}
-                            className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                            className="p-1 text-accent hover:bg-accent/10 rounded"
                             title="重置额度"
                           >
                             <Zap className="w-4 h-4" />

@@ -292,9 +292,9 @@ export default function ContinuousDialog({
       <div className={`bg-card rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ${
         isMinimized ? 'w-96 h-16' : 'w-[90vw] max-w-4xl h-[80vh]'
       }`}>
-        <div className="flex items-center justify-between p-4 border-b-2 border-border bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/40 dark:to-blue-950/40">
+        <div className="flex items-center justify-between p-4 border-b-2 border-border brand-gradient dark:from-purple-950/40 dark:to-blue-950/40">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 brand-gradient rounded-lg flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -341,7 +341,7 @@ export default function ContinuousDialog({
                   <div
                     className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                       msg.role === 'user'
-                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+                        ? 'brand-gradient text-white'
                         : 'bg-card border-2 border-border text-foreground'
                     }`}
                   >
@@ -353,7 +353,7 @@ export default function ContinuousDialog({
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     )}
                     <div className={`text-xs mt-2 ${
-                      msg.role === 'user' ? 'text-purple-100' : 'text-muted-foreground'
+                      msg.role === 'user' ? 'text-accent' : 'text-muted-foreground'
                     }`}>
                       {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -364,7 +364,7 @@ export default function ContinuousDialog({
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-card border-2 border-border rounded-2xl px-4 py-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                    <Loader2 className="w-5 h-5 animate-spin text-accent" />
                   </div>
                 </div>
               )}
@@ -381,13 +381,13 @@ export default function ContinuousDialog({
                   onKeyDown={handleKeyDown}
                   placeholder="继续对话... (Enter发送，Shift+Enter换行)"
                   rows={2}
-                  className="flex-1 px-4 py-3 border-2 border-border bg-background text-foreground rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 focus:outline-none resize-none"
+                  className="flex-1 px-4 py-3 border-2 border-border bg-background text-foreground rounded-xl focus:border-accent/50 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:outline-none resize-none"
                   disabled={isLoading}
                 />
                 <button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isLoading}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-medium shadow-lg"
+                  className="px-6 py-3 brand-gradient text-white rounded-xl hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-medium shadow-lg"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />

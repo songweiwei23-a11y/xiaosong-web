@@ -93,23 +93,23 @@ function resolveConfirm(id: number, value: boolean) {
 
 const toastStyles: Record<ToastType, { wrap: string; icon: string; Icon: typeof CheckCircle }> = {
   success: {
-    wrap: "border-green-200 bg-green-50 dark:border-green-500/30 dark:bg-green-500/10",
-    icon: "text-green-600 dark:text-green-400",
+    wrap: "border-green-500/50/25 bg-emerald-500/10 dark:border-green-500/50/30 dark:bg-emerald-500/10",
+    icon: "text-green-500",
     Icon: CheckCircle,
   },
   error: {
-    wrap: "border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10",
-    icon: "text-red-600 dark:text-red-400",
+    wrap: "border-destructive/25 bg-destructive/10 dark:border-destructive/40/30 dark:bg-destructive/100/10",
+    icon: "text-destructive",
     Icon: XCircle,
   },
   warning: {
-    wrap: "border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10",
-    icon: "text-amber-600 dark:text-amber-400",
+    wrap: "border-amber-500/50/25 bg-amber-500/10 dark:border-amber-500/50/30 dark:bg-amber-500/10",
+    icon: "text-amber-500",
     Icon: AlertTriangle,
   },
   info: {
-    wrap: "border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10",
-    icon: "text-blue-600 dark:text-blue-400",
+    wrap: "border-primary/20 bg-primary/10 dark:border-primary/50/30 dark:bg-primary/10",
+    icon: "text-primary",
     Icon: Info,
   },
 };
@@ -145,12 +145,12 @@ export function FeedbackHost() {
               role="status"
             >
               <Icon className={`mt-0.5 h-5 w-5 flex-shrink-0 ${s.icon}`} />
-              <p className="flex-1 whitespace-pre-line text-sm font-medium text-slate-800 dark:text-slate-100">
+              <p className="flex-1 whitespace-pre-line text-sm font-medium text-foreground dark:text-foreground">
                 {t.message}
               </p>
               <button
                 onClick={() => dismissToast(t.id)}
-                className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-muted-foreground transition-colors hover:text-muted-foreground dark:hover:text-foreground"
                 aria-label="关闭"
               >
                 <X className="h-4 w-4" />
@@ -163,25 +163,25 @@ export function FeedbackHost() {
       {activeConfirm && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in"
+            className="absolute inset-0 bg-muted/50 backdrop-blur-sm animate-in fade-in"
             onClick={() => resolveConfirm(activeConfirm.id, false)}
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 fade-in dark:border-slate-700 dark:bg-slate-800">
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl animate-in zoom-in-95 fade-in dark:border-border dark:bg-muted">
             <div className="flex items-start gap-4">
               <div
                 className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${
                   activeConfirm.tone === "danger"
-                    ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"
-                    : "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
+                    ? "bg-destructive/15 text-destructive dark:bg-destructive/100/15 dark:text-red-400"
+                    : "bg-primary/15 text-primary dark:bg-primary/15 dark:text-primary"
                 }`}
               >
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <h3 className="text-lg font-semibold text-foreground">
                   {activeConfirm.title ?? "确认操作"}
                 </h3>
-                <p className="mt-1 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
+                <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground dark:text-foreground">
                   {activeConfirm.message}
                 </p>
               </div>
@@ -189,7 +189,7 @@ export function FeedbackHost() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => resolveConfirm(activeConfirm.id, false)}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-foreground/[0.06] dark:text-foreground dark:hover:bg-muted"
               >
                 {activeConfirm.cancelText ?? "取消"}
               </button>
@@ -197,8 +197,8 @@ export function FeedbackHost() {
                 onClick={() => resolveConfirm(activeConfirm.id, true)}
                 className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors ${
                   activeConfirm.tone === "danger"
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    ? "bg-destructive hover:opacity-90"
+                    : "bg-primary hover:opacity-90"
                 }`}
               >
                 {activeConfirm.confirmText ?? "确定"}

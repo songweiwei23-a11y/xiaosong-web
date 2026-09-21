@@ -145,7 +145,7 @@ export default function AdminOrdersPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent/40 mx-auto mb-4"></div>
           <p className="text-muted-foreground">加载订单中...</p>
         </div>
       </div>
@@ -165,13 +165,13 @@ export default function AdminOrdersPage() {
             placeholder="搜索订单（用户邮箱、套餐、金额、订单号）"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="all">全部状态</option>
           <option value="reviewing">待审核</option>
@@ -195,22 +195,22 @@ export default function AdminOrdersPage() {
             <div className="text-3xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card className="bg-yellow-50 border-yellow-200">
+        <Card className="bg-amber-500/10 border-yellow-500/50/25">
           <CardContent className="pt-6">
-            <div className="text-sm text-yellow-700 mb-1">待审核</div>
-            <div className="text-3xl font-bold text-yellow-600">{stats.pending}</div>
+            <div className="text-sm text-yellow-500 mb-1">待审核</div>
+            <div className="text-3xl font-bold text-yellow-500">{stats.pending}</div>
           </CardContent>
         </Card>
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-emerald-500/10 border-green-500/50/25">
           <CardContent className="pt-6">
-            <div className="text-sm text-green-700 mb-1">已通过</div>
-            <div className="text-3xl font-bold text-green-600">{stats.approved}</div>
+            <div className="text-sm text-green-500 mb-1">已通过</div>
+            <div className="text-3xl font-bold text-green-500">{stats.approved}</div>
           </CardContent>
         </Card>
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-destructive/10 border-destructive/25">
           <CardContent className="pt-6">
-            <div className="text-sm text-red-700 mb-1">已拒绝</div>
-            <div className="text-3xl font-bold text-red-600">{stats.rejected}</div>
+            <div className="text-sm text-destructive mb-1">已拒绝</div>
+            <div className="text-3xl font-bold text-destructive">{stats.rejected}</div>
           </CardContent>
         </Card>
       </div>
@@ -270,7 +270,7 @@ export default function AdminOrdersPage() {
                           size="sm"
                           onClick={() => handleReview(order.id, true)}
                           disabled={reviewing}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-emerald-500 hover:bg-green-700"
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
                           通过
@@ -317,7 +317,7 @@ export default function AdminOrdersPage() {
                 <Button
                   onClick={() => handleReview(selectedOrder.id, true)}
                   disabled={reviewing}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-emerald-500 hover:bg-green-700"
                 >
                   <CheckCircle className="w-4 h-4 mr-1" />
                   通过审核

@@ -216,36 +216,36 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
   };
 
   return (
-    <div className="flex h-screen bg-muted dark:bg-slate-900">
+    <div className="flex h-screen bg-muted dark:bg-muted">
       {/* 左侧输入区域 */}
       <div className="w-[400px] border-r bg-card overflow-y-auto p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground dark:text-slate-100 flex items-center gap-2">
-            <TrendingUp className="w-7 h-7 text-purple-600" />
+          <h1 className="text-2xl font-bold text-foreground dark:text-foreground flex items-center gap-2">
+            <TrendingUp className="w-7 h-7 text-accent" />
             标题封面
           </h1>
-          <p className="text-sm text-muted-foreground dark:text-slate-400 mt-1">
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground mt-1">
             AI生成高点击率的爆款标题
           </p>
         </div>
 
         {/* 视频主题 */}
         <div>
-          <label className="block text-sm font-medium text-foreground dark:text-slate-100 mb-2">
-            视频主题 <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">
+            视频主题 <span className="text-destructive">*</span>
           </label>
           <textarea
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="例如：教你3招拍出电影感视频"
             rows={3}
-            className="w-full px-4 py-3 border border-border dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
           />
         </div>
 
         {/* 目标平台 */}
         <div>
-          <label className="block text-sm font-medium text-foreground dark:text-slate-100 mb-2">
+          <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">
             目标平台
           </label>
           <div className="flex gap-2">
@@ -255,7 +255,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
                 onClick={() => setPlatform(p)}
                 className={`flex-1 py-2 rounded-lg border-2 text-sm transition-all ${
                   platform === p
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                    ? 'border-accent/50 bg-accent/10 dark:bg-purple-900/20 text-accent dark:text-accent'
                     : 'border-border hover:border-border'
                 }`}
               >
@@ -267,7 +267,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
 
         {/* 标题类型 */}
         <div>
-          <label className="block text-sm font-medium text-foreground dark:text-slate-100 mb-2">
+          <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">
             标题类型
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -277,7 +277,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
                 onClick={() => setTitleType(type.value)}
                 className={`p-2 rounded-lg border-2 text-left transition-all ${
                   titleType === type.value
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                    ? 'border-accent/50 bg-accent/10 dark:bg-purple-900/20'
                     : 'border-border hover:border-border'
                 }`}
               >
@@ -290,7 +290,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
 
         {/* 生成数量 */}
         <div>
-          <label className="block text-sm font-medium text-foreground dark:text-slate-100 mb-2">
+          <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">
             生成数量：{abTestCount}个
           </label>
           <div className="flex gap-2">
@@ -300,12 +300,12 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
                 onClick={() => setAbTestCount(option.value)}
                 className={`flex-1 py-2 rounded-lg border-2 transition-all ${
                   abTestCount === option.value
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                    ? 'border-accent/50 bg-accent/10 dark:bg-purple-900/20 text-accent dark:text-accent'
                     : 'border-border hover:border-border'
                 }`}
               >
                 <div className="font-bold">{option.label}</div>
-                <div className="text-xs text-muted-foreground dark:text-slate-400">{option.desc}</div>
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground">{option.desc}</div>
               </button>
             ))}
           </div>
@@ -313,15 +313,15 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
 
         {/* 目标人群（选填） */}
         <div>
-          <label className="block text-sm font-medium text-foreground dark:text-slate-100 mb-2">
-            目标人群 <span className="text-xs text-muted-foreground dark:text-slate-400">(选填)</span>
+          <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">
+            目标人群 <span className="text-xs text-muted-foreground dark:text-muted-foreground">(选填)</span>
           </label>
           <input
             type="text"
             value={targetAudience}
             onChange={(e) => setTargetAudience(e.target.value)}
             placeholder="例如：25-35岁职场女性"
-            className="w-full px-4 py-2 border border-border dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-2 border border-border dark:border-border rounded-lg focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -329,7 +329,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full brand-gradient text-white py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
         >
           {isGenerating ? (
             <>
@@ -348,9 +348,9 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
         {titleHistory.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <History className="w-4 h-4 text-muted-foreground dark:text-slate-400" />
-              <h3 className="text-sm font-semibold text-foreground dark:text-slate-100">历史标题</h3>
-              <span className="text-xs text-muted-foreground dark:text-slate-400">({titleHistory.length})</span>
+              <History className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-foreground dark:text-foreground">历史标题</h3>
+              <span className="text-xs text-muted-foreground dark:text-muted-foreground">({titleHistory.length})</span>
             </div>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {titleHistory.map((item) => (
@@ -358,7 +358,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
                   key={item.id}
                   className={`p-3 rounded-lg border-2 transition-all ${
                     selectedHistory?.id === item.id
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                      ? 'border-accent/50 bg-accent/10 dark:bg-purple-900/20'
                       : 'border-border hover:border-border bg-card'
                   }`}
                 >
@@ -367,17 +367,17 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => viewTitle(item)}
                     >
-                      <div className="font-medium text-sm text-foreground dark:text-slate-100 truncate">
+                      <div className="font-medium text-sm text-foreground dark:text-foreground truncate">
                         {item.input_data?.topic || '标题生成'}
                       </div>
-                      <div className="text-xs text-muted-foreground dark:text-slate-400 mt-1">
+                      <div className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
                         {new Date(item.created_at).toLocaleDateString('zh-CN')}
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={(e) => openHistoryDialog(item, e)}
-                        className="p-1.5 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                        className="p-1.5 text-accent hover:bg-accent/15 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
                         title="继续对话"
                       >
                         <MessageCircle className="w-4 h-4" />
@@ -387,7 +387,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
                           e.stopPropagation()
                           deleteTitle(item.id)
                         }}
-                        className="p-1.5 text-muted-foreground dark:text-slate-400 hover:text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                        className="p-1.5 text-muted-foreground dark:text-muted-foreground hover:text-destructive hover:bg-destructive/10 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -413,7 +413,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
           </div>
         ) : (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center text-muted-foreground dark:text-slate-400">
+            <div className="text-center text-muted-foreground dark:text-muted-foreground">
               <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg">输入主题后，点击生成标题</p>
               <p className="text-sm mt-2">AI将生成{abTestCount}个爆款标题供你选择</p>

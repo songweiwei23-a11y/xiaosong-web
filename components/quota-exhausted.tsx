@@ -14,8 +14,8 @@ export default function QuotaExhausted({ planName, feature }: QuotaExhaustedProp
     <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
       <div className="mb-6">
         <div className="relative">
-          <div className="absolute inset-0 bg-red-100 dark:bg-red-900/20 rounded-full blur-xl" />
-          <AlertCircle className="relative h-20 w-20 text-red-500 mx-auto" />
+          <div className="absolute inset-0 bg-destructive/15 dark:bg-red-900/20 rounded-full blur-xl" />
+          <AlertCircle className="relative h-20 w-20 text-destructive mx-auto" />
         </div>
       </div>
 
