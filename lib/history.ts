@@ -6,19 +6,23 @@ import { getPlan } from '@/lib/config/plans';
  * @param taskType - 任务类型（脚本生成、选题策划等）
  * @param inputData - 输入参数
  * @param result - 生成结果
+ * @param workId - 所属作品。传了才会把这条记录挂到那条内容下，
+ *                 不传就是一条零散记录——两种都合法，用户可能只是
+ *                 拿别处的稿子来审一下，不必为此建作品。
  * @returns 是否保存成功
  */
 export async function saveGenerationHistory(
   taskType: string,
   inputData: any,
-  result: string
+  result: string,
+  workId?: string | null
 ): Promise<boolean> {
   try {
     console.log("💾 保存生成历史记录...");
-    
+
     // 获取当前用户
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session) {
       console.warn("⚠️ 未登录，无法保存历史记录");
       return false;
@@ -34,6 +38,7 @@ export async function saveGenerationHistory(
         task_type: taskType,
         input_data: inputData,
         result: result,
+        work_id: workId || null,
       });
 
     if (error) {

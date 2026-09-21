@@ -67,10 +67,14 @@ export default function ReviewPage() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
+  // 所属作品：由脚本页带过来，保存时挂到同一条内容下
+  const [workId, setWorkId] = useState<string | null>(null);
+
 
   // 接收从脚本页带来的正文作为待审稿件
   useEffect(() => {
     const data = takeHandoff();
+    if (data?.workId) setWorkId(data.workId);
     if (data?.scriptContent) setDraftContent(data.scriptContent);
   }, []);
 
@@ -222,7 +226,7 @@ export default function ReviewPage() {
       if (fullResult && fullResult.length > 50) {
         setTimeout(async () => {
           try {            const inputData = { draftContent, scriptType, platform, duration };
-            await saveGenerationHistory("审稿优化", inputData, fullResult);          } catch (err) {
+            await saveGenerationHistory("审稿优化", inputData, fullResult, workId);          } catch (err) {
             console.error("⚠️ 保存失败:", err);
           }
         }, 500);

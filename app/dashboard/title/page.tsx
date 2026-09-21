@@ -88,10 +88,14 @@ export default function TitlePage() {
   const [titleHistory, setTitleHistory] = useState<any[]>([]);
   const [selectedHistory, setSelectedHistory] = useState<any>(null);
   const [showDialog, setShowDialog] = useState(false);
+  // 所属作品：由脚本页带过来，保存时挂到同一条内容下
+  const [workId, setWorkId] = useState<string | null>(null);
+
 
   // 接收从脚本页带来的主题
   useEffect(() => {
     const data = takeHandoff();
+    if (data?.workId) setWorkId(data.workId);
     if (data?.topic) setTopic(data.topic);
   }, []);
 
@@ -217,7 +221,7 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
       });
 
       if (fullResult) {
-        await saveGenerationHistory("标题封面", inputData, fullResult);
+        await saveGenerationHistory("标题封面", inputData, fullResult, workId);
         await loadTitleHistory();
         setShowDialog(true);
       }

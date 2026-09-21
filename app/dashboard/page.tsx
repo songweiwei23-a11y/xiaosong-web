@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
+import { listWorks, type Work } from "@/lib/works";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, Loader2, History,
@@ -76,6 +77,21 @@ function greeting() {
   return "晚上好";
 }
 
+/** 作品该接着做哪一步：第一个没完成的环节 */
+function nextStage(w: Work) {
+  return w.stages.find((s) => !s.done);
+}
+
+function nextStageHref(w: Work) {
+  const s = nextStage(w);
+  return s ? TASK_ROUTES[s.name] ?? "/history" : "/history";
+}
+
+function nextStageLabel(w: Work) {
+  const s = nextStage(w);
+  return s ? `下一步：${s.name}` : "各环节已完成";
+}
+
 interface RecentItem {
   id: string;
   title: string;
@@ -88,6 +104,7 @@ export default function DashboardPage() {
   const [quota, setQuota] = useState<{ used: number; limit: number; plan: string } | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [recent, setRecent] = useState<RecentItem[]>([]);
+  const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -96,12 +113,16 @@ export default function DashboardPage() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // 三个请求互不依赖，并行发出；首页不该为此串行等待
-        const [quotaRes, profileRes, historyRes] = await Promise.all([
+        // 四个请求互不依赖，并行发出；首页不该为此串行等待
+        const [quotaRes, profileRes, historyRes, workList] = await Promise.all([
           fetch(`/api/quota/check?userId=${session.user.id}`).catch(() => null),
           fetch("/api/profiles").catch(() => null),
           fetch("/api/script-history?taskType=all&limit=6").catch(() => null),
+          listWorks(5),
         ]);
+
+        // 只展示还没做完的：做完的作品留在「全部」里，不占首页
+        setWorks(workList.filter((w) => !w.is_done).slice(0, 4));
 
         if (quotaRes?.ok) {
           const d = await quotaRes.json();
@@ -227,6 +248,8 @@ export default function DashboardPage() {
 
           {/* 右：最近在做什么 + 用量 */}
           <aside className="space-y-5">
+            {/* 进行中的作品：一条内容的各个环节串在一起，
+                比一堆零散记录更接近「我做到哪了」这个真实问题 */}
             <section className="glass-panel rounded-2xl p-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
@@ -238,7 +261,42 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              {recent.length > 0 ? (
+              {works.length > 0 ? (
+                <div className="space-y-0.5">
+                  {works.map((w) => (
+                    <Link
+                      key={w.id}
+                      href={nextStageHref(w)}
+                      className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.05]"
+                    >
+                      <p className="truncate text-[13px] text-foreground">{w.title}</p>
+
+                      {/* 环节进度用小圆点表示：做完的填实，没做的空心。
+                          比写一行「已完成 2/5」更快读懂卡在哪一步 */}
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <span className="flex items-center gap-1">
+                          {w.stages.map((s) => (
+                            <span
+                              key={s.name}
+                              title={`${s.name}${s.done ? "：已完成" : "：未开始"}`}
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                s.done ? "bg-primary" : "bg-foreground/15"
+                              }`}
+                            />
+                          ))}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {nextStageLabel(w)}
+                          <span className="mx-1">·</span>
+                          <span suppressHydrationWarning>{formatRelativeTime(w.updated_at)}</span>
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : recent.length > 0 ? (
+                // 还没有作品但有旧记录时，先显示旧记录——
+                // 作品是新引入的概念，改造前的几百条记录不该凭空消失
                 <div className="space-y-0.5">
                   {recent.map((r) => (
                     <Link

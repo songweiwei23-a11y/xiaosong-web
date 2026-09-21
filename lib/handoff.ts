@@ -26,6 +26,11 @@ export interface HandoffPayload {
   topicOptions?: string[];
   /** 补充说明 */
   note?: string;
+  /**
+   * 所属作品。带着它，下一个环节生成出来的内容才会挂到同一条内容下，
+   * 而不是变成又一条互不相干的零散记录。
+   */
+  workId?: string;
 }
 
 /** 存下要交接的内容。调用方随后自行跳转 */

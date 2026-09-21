@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { putHandoff, parseTopicOptions } from "@/lib/handoff";
+import { createWork } from "@/lib/works";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -1099,13 +1100,21 @@ export default function TopicPage() {
           {
             label: "写成脚本",
             icon: FileText,
-            onClick: (body) => {
+            onClick: async (body) => {
               const options = parseTopicOptions(body);
+              // 只有一条候选时，用户其实已经选定了，这里就把作品建出来；
+              // 多条时留到脚本页挑完再建——此刻还不知道要做哪条，
+              // 提前建只会得到一个名字不对的作品。
+              const workId =
+                options.length === 1
+                  ? (await createWork(options[0], selectedProfileId || null)) ?? undefined
+                  : undefined;
+
               putHandoff({
                 from: "选题策划",
                 topicOptions: options,
-                // 只解析出一条时直接填好，省掉一次选择
                 topic: options.length === 1 ? options[0] : undefined,
+                workId,
               });
               router.push("/dashboard/script");
             },

@@ -55,6 +55,7 @@ import { useScriptHistory } from "./useScriptHistory";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { putHandoff, takeHandoff } from "@/lib/handoff";
+import { createWork, touchWork } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
@@ -169,6 +170,13 @@ export default function ScriptPage() {
   const [handoffTopics, setHandoffTopics] = useState<string[]>([]);
   const [handoffFrom, setHandoffFrom] = useState("");
 
+  /**
+   * 当前脚本属于哪个作品。
+   * 从选题页带过来时已经有了；直接进本页生成时，生成完才建（见 handleGenerate）——
+   * 进页面就建会攒下一堆用户其实没生成任何东西的空作品。
+   */
+  const [workId, setWorkId] = useState<string | null>(null);
+
   useEffect(() => {
     const data = takeHandoff();
     if (!data) return;
@@ -176,6 +184,7 @@ export default function ScriptPage() {
     if (data.topic) setTopic(data.topic);
     if (data.topicOptions?.length) setHandoffTopics(data.topicOptions);
     if (data.note) setAdditionalInfo(data.note);
+    if (data.workId) setWorkId(data.workId);
   }, []);
 
   // 档案和定位关联
@@ -738,7 +747,18 @@ ${formatRequirements}
                   ? `${customDuration}秒`
                   : duration
             };
-            await saveGenerationHistory("脚本生成", inputData, fullResult);            
+            // 归到作品下。从选题带过来时已有作品，直接进本页的则在这里建——
+            // 等生成完再建，才不会攒下一堆用户其实没写出东西的空作品。
+            let currentWork = workId;
+            if (!currentWork) {
+              currentWork = await createWork(topic || "未命名脚本", selectedProfileId || null);
+              if (currentWork) setWorkId(currentWork);
+            } else {
+              // 已有作品：刷新时间，让它在「进行中」列表里回到最前
+              await touchWork(currentWork);
+            }
+
+            await saveGenerationHistory("脚本生成", inputData, fullResult, currentWork);
             // 重新加载历史记录
             await loadScriptHistory();
 
@@ -1423,12 +1443,13 @@ ${formatRequirements}
         }}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
         // 脚本写完通常还要走三步，内容直接带过去，不用复制粘贴
+        // workId 一并带走，下一个环节生成出来才会挂到同一条内容下
         nextActions={[
           {
             label: "拆分镜",
             icon: Film,
             onClick: (body) => {
-              putHandoff({ from: "脚本生成", scriptContent: body });
+              putHandoff({ from: "脚本生成", scriptContent: body, workId: workId ?? undefined });
               router.push("/dashboard/storyboard");
             },
           },
@@ -1436,7 +1457,7 @@ ${formatRequirements}
             label: "审一遍",
             icon: CheckCircle,
             onClick: (body) => {
-              putHandoff({ from: "脚本生成", scriptContent: body });
+              putHandoff({ from: "脚本生成", scriptContent: body, workId: workId ?? undefined });
               router.push("/dashboard/review");
             },
           },
@@ -1444,7 +1465,7 @@ ${formatRequirements}
             label: "起标题",
             icon: Tag,
             onClick: () => {
-              putHandoff({ from: "脚本生成", topic });
+              putHandoff({ from: "脚本生成", topic, workId: workId ?? undefined });
               router.push("/dashboard/title");
             },
           },
