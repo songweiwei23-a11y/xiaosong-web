@@ -133,8 +133,15 @@ async function api(method, endpoint, body) {
 function buildProcessRule(text) {
   const h3 = (text.match(/^### /gm) || []).length;
   const h2 = (text.match(/^## /gm) || []).length;
-  let separator = '\n\n';
-  let reason = '无标题层级，按空行切分';
+  // 正文中不会出现的标记：用它当 separator 等同于"整篇不切分"，
+  // 仅当整篇超过 max_tokens 时 Dify 才会按长度兜底切分。
+  //
+  // 不能用 "\n\n"：转换出的 markdown 段落之间均有空行，按它切会让
+  // 每一行变成独立分块，实测召回出的分段只有 7~47 字（全是标题和短语），
+  // 完全没有实质内容。max_tokens 是上限而非下限，Dify 不会把小块合并回去。
+  const NO_SPLIT = '\n<<<NEVER_SPLIT_HERE>>>\n';
+  let separator = NO_SPLIT;
+  let reason = '无标题层级，整篇作为一个分段';
   if (h3 >= 10) {
     separator = '\n###';
     reason = `含 ${h3} 个三级标题，按标题切分`;
@@ -346,6 +353,60 @@ async function cmdSyncYml() {
     }
   }
   console.log('\n改完记得重新导入 yml 到 Dify，并在工作流里确认检索节点绑定的是新库。\n');
+}
+
+/**
+ * 重建索引：清空 5 个库里的全部文档后重新上传，但保留知识库本身。
+ *
+ * 相比 reset，它不删库，因此 dataset_id 不变——工作流里 5 个检索节点
+ * 已绑定的知识库无需重新选择。调整分段规则后应当用它，而不是 reset。
+ */
+async function cmdReindex() {
+  if (!fs.existsSync(MAPPING_FILE)) die('缺少映射文件，请先运行 init');
+  const map = JSON.parse(fs.readFileSync(MAPPING_FILE, 'utf8'));
+  const jobs = Object.entries(map).filter(([, v]) => v && !String(v).startsWith('<'));
+  if (!jobs.length) die('映射表里没有有效的 dataset_id');
+
+  let total = 0;
+  const plan = [];
+  for (const [dir, id] of jobs) {
+    const docs = await fetchDocs(id);
+    plan.push({ dir, id, docs });
+    total += docs.length;
+    await sleep(200);
+  }
+
+  console.log(`\n将清空以下知识库中的文档后重新上传（知识库本身保留，ID 不变）：\n`);
+  for (const p of plan) console.log(`    ${p.dir.padEnd(22)} ${String(p.docs.length).padStart(3)} 篇`);
+  console.log(`\n合计删除 ${total} 篇，随后重新上传 153 篇。`);
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ans = await rl.question('\n确认请完整输入 REINDEX 后回车（其他任何输入均取消）: ');
+  rl.close();
+  if (ans.trim() !== 'REINDEX') {
+    console.log('\n已取消，未改动任何内容。\n');
+    return;
+  }
+
+  let del = 0, fail = 0;
+  for (const p of plan) {
+    console.log(`\n>>> 清空 ${p.dir}`);
+    for (const d of p.docs) {
+      try {
+        await api('DELETE', `/datasets/${p.id}/documents/${d.id}`);
+        del++;
+      } catch (e) {
+        fail++;
+        console.log(`  删除失败 ${d.name}: ${e.message}`);
+      }
+      await sleep(250);
+    }
+    console.log(`  已删除 ${p.docs.length} 篇`);
+  }
+  console.log(`\n共删除 ${del} 篇，失败 ${fail} 篇。`);
+
+  if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
+  console.log('上传进度已清空。\n下一步：node scripts/dify-kb-upload.mjs upload --all\n');
 }
 
 /**
@@ -672,6 +733,7 @@ try {
   else if (cmd === 'plan') cmdPlan();
   else if (cmd === 'upload') await cmdUpload(rest);
   else if (cmd === 'status') await cmdStatus();
+  else if (cmd === 'reindex') await cmdReindex();
   else if (cmd === 'reset') await cmdReset();
   else if (cmd === 'sync-yml') await cmdSyncYml();
   else if (cmd === 'audit') await cmdAudit();
@@ -690,6 +752,7 @@ Dify 知识库批量上传
 
 清理旧库：
   status              诊断 5 个目标库的索引进度与失败原因（只读）
+  reindex             清空库内文档后重传（保留库与ID，绑定无需重做）
   reset               删除本次创建的 5 个库并清空进度，用于换模型重来
   sync-yml            把线上知识库的 embedding 配置同步写回工作流 DSL
   audit               列出所有库及其文档清单，标记新旧（只读）
