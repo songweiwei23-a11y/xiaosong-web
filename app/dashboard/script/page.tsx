@@ -1,5 +1,7 @@
 ﻿"use client";
 import ContinuousDialog from "@/components/ContinuousDialog";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { extractScriptContext } from "@/lib/positioning-utils";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
 import { enhancePromptWithMCNStandards } from "@/lib/enhance-prompt";
@@ -18,7 +20,7 @@ import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { evaluateScriptQualityStrict, formatQualityReport } from "@/lib/quality-checker";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sparkles, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
+import { Sparkles, AlertCircle, Copy, Download, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText, History, MessageCircle, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { notify } from '@/components/ui/feedback';
 
@@ -101,6 +103,7 @@ export default function ScriptPage() {
   const [quotaWarnings, setQuotaWarnings] = useState<any[]>([]);
   const [showQuotaReminder, setShowQuotaReminder] = useState(false);
   const [quotaExhausted, setQuotaExhausted] = useState(false);
+  const [showQuotaBanner, setShowQuotaBanner] = useState(false);
   const [planName, setPlanName] = useState("免费版");
 
 
@@ -124,6 +127,18 @@ export default function ScriptPage() {
 
   const checkQuotaStatus = useCallback(async () => {
     console.log("🔍 开始检查用户额度...");
+    
+    // 检查是否在24小时内已经提醒过
+    const lastReminderTime = localStorage.getItem('quota_reminder_time');
+    if (lastReminderTime) {
+      const timeDiff = Date.now() - parseInt(lastReminderTime);
+      const hours = timeDiff / (1000 * 60 * 60);
+      if (hours < 24) {
+        console.log(`✓ ${hours.toFixed(1)}小时内已提醒过，跳过额度检查`);
+        return;
+      }
+    }
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -146,7 +161,21 @@ export default function ScriptPage() {
       }
       
       if (data.exhausted) {
-        setQuotaExhausted(true);
+        // 检查本次会话是否已经看过额度用尽提示
+        const lastExhaustedTime = localStorage.getItem('quota_exhausted_time');
+        let shouldShow = true;
+        if (lastExhaustedTime) {
+          const timeDiff = Date.now() - parseInt(lastExhaustedTime);
+          const hours = timeDiff / (1000 * 60 * 60);
+          shouldShow = hours >= 24;
+          console.log(`⏰ 距离上次提示已过 ${hours.toFixed(1)} 小时`);
+        }
+        if (shouldShow) {
+          setQuotaExhausted(true);
+          console.log("⚠️ 额度已用尽，显示提示页面");
+        } else {
+          console.log("✓ 24小时内已看过额度用尽提示，允许继续浏览");
+        }
       } else if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
         setQuotaWarnings(data.warnings);
         setShowQuotaReminder(true);
@@ -158,11 +187,12 @@ export default function ScriptPage() {
   }, []);
 
   const loadProfiles = async () => {
+    console.log("🔍 开始加载档案...");
     try {
       const res = await fetch("/api/profiles");
       if (res.ok) {
         const data = await res.json();
-        setProfiles(data);
+        console.log("✅ 档案加载成功:", data.length, "条"); setProfiles(data);
       }
     } catch (error) {
       console.error("加载档案失败:", error);
@@ -170,11 +200,12 @@ export default function ScriptPage() {
   };
 
   const loadPositionings = async () => {
+    console.log("🔍 开始加载定位...");
     try {
       const res = await fetch("/api/positioning");
       if (res.ok) {
         const data = await res.json();
-        setPositionings(data);
+        console.log("✅ 定位加载成功:", data.length, "条"); setPositionings(data);
       }
     } catch (error) {
       console.error("加载定位失败:", error);
@@ -1278,7 +1309,40 @@ ${formatRequirements}
       <div className="flex-1 overflow-y-auto p-8 bg-card">
         <div className="mx-auto max-w-4xl">
 
-        {/* 历史记录 */}
+        {/* 额度用尽提示条 */}
+      {quotaExhausted && showQuotaBanner && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-red-900 dark:text-red-100">脚本生成额度已用完</p>
+              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                您当前使用的是 <span className="font-semibold">{planName}</span>，升级套餐解锁更多额度
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/membership">
+              <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                立即升级
+              </Button>
+            </Link>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => {
+                setShowQuotaBanner(false);
+                localStorage.setItem('quota_banner_closed_time', Date.now().toString());
+                console.log("✓ 用户关闭提示条，24小时内不再显示");
+              }}
+            >
+              我知道了
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 历史记录 */}
         {scriptHistory.length > 0 && (
           <div className="bg-card rounded-lg shadow-lg p-6 mb-6 border border-border">
             <div className="flex items-center gap-2 mb-4">
@@ -1383,41 +1447,21 @@ ${formatRequirements}
       />
 
       {/* 额度提醒弹窗 */}
-      {showQuotaReminder && (
+      {showQuotaReminder && quotaWarnings.length > 0 && (
         <QuotaReminder
           open={showQuotaReminder}
-          onClose={() => setShowQuotaReminder(false)}
+          onClose={() => {
+            setShowQuotaReminder(false);
+            // 记录本次会话已提醒过
+            localStorage.setItem('quota_reminder_time', Date.now().toString());
+            console.log("✓ 已记录提醒时间，24小时内不再提醒");
+          }}
           warnings={quotaWarnings}
           planName={planName}
         />
       )}
 
-      {/* 额度用尽页面覆盖层 */}
-      {quotaExhausted && (
-        <div className="fixed inset-0 bg-background z-50 overflow-auto">
-          <QuotaExhausted planName={planName} feature="脚本生成" />
-        </div>
-      )}
+
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
