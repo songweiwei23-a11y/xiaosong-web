@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
+import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 
 import { readDifyStream } from '@/lib/sse-stream';
 const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
@@ -56,6 +57,7 @@ export default function StoryboardPage() {
     quota: hookQuota,
     copyToClipboard,
     downloadAsFile,
+    lastResult,
   } = useGenerationPage({ taskType: '分镜脚本', historyApiPath: '/api/storyboards' });
 
   const [scriptContent, setscriptContent] = useState("");
@@ -68,6 +70,9 @@ export default function StoryboardPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecommending, setIsRecommending] = useState(false);
   const [result, setResult] = useState("");
+
+  // 切换页面或刷新后，把云端最近一条生成结果取回来显示
+  useRestoreLastResult(lastResult, setResult);
 
   // 加载示例脚本
   const loadExample = () => {

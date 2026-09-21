@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, Search, Loader2, Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { notify } from '@/components/ui/feedback';
+import { saveGenerationHistory } from '@/lib/history';
 
 import { readDifyStream } from '@/lib/sse-stream';
+
+// 历史里用它区分本页记录。与发给 Dify 的 taskType 无关——成交理由页发的
+// 也是「知识库查询」，两页若共用同一个 task_type，历史会互相串。
+const HISTORY_TASK_TYPE = "知识库查询";
 const KNOWLEDGE_CATEGORIES = [
   { id: "structure", label: "脚本结构", desc: "教知识、晒过程、聊话题、讲故事" },
   { id: "boom", label: "爆款元素", desc: "冲突点、情绪波点、反转设计" },
@@ -29,6 +34,26 @@ export default function KnowledgePage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState("");
+
+  // 切换页面或刷新后，把云端最近一条查询结果取回来显示。
+  // 本页原先既不保存也不恢复，结果只活在组件 state 里，一离开就没了。
+  useEffect(() => {
+    let cancelled = false;
+    const restore = async () => {
+      try {
+        const res = await fetch('/api/script-history');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data)) return;
+        const latest = data.find((x: any) => x.task_type === HISTORY_TASK_TYPE);
+        if (latest?.result) setResult((current) => current || latest.result);
+      } catch (error) {
+        console.error('恢复上次查询失败:', error);
+      }
+    };
+    restore();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSearch = async () => {
     if (!query.trim()) {
@@ -67,9 +92,14 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
 
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer，
       // 否则页面上显示的会是满屏 data: {...} 而不是检索结果正文
-      await readDifyStream(response, {
-        onChunk: (_piece, full) => setResult(full),
+      const full = await readDifyStream(response, {
+        onChunk: (_piece, text) => setResult(text),
       });
+
+      // 存一份到云端，换页面或刷新后才能取回来
+      if (full.trim()) {
+        await saveGenerationHistory(HISTORY_TASK_TYPE, { query, category: selectedCategory }, full);
+      }
     } catch (error: any) {
       notify(error.message || "查询失败");
     } finally {

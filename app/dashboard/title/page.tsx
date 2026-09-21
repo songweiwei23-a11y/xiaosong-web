@@ -93,6 +93,11 @@ export default function TitlePage() {
         const data = await res.json();
         setTitleHistory(data);
         console.log(`✅ 加载了 ${data.length} 个标题`);
+
+        // 切换页面或刷新后把最近一条取回来显示。只在结果区为空时回填，
+        // 且生成结束后的刷新不会覆盖用户刚拿到的内容。
+        const latest = data[0]?.result || data[0]?.content || '';
+        if (latest) setResult((current) => current || latest);
       }
     } catch (error) {
       console.error('❌ 加载标题历史失败:', error);

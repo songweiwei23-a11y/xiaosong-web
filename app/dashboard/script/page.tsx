@@ -47,6 +47,7 @@ import {
 } from "./constants";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useScriptHistory } from "./useScriptHistory";
+import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
 import { supabase } from "@/lib/supabase/client";
@@ -94,8 +95,12 @@ export default function ScriptPage() {
     dialogInitialContent,
     openContinuousDialog,
     closeContinuousDialog,
+    lastResult,
   } = useScriptHistory();
-  
+
+  // 切换页面或刷新后，把云端最近一条生成结果取回来显示
+  useRestoreLastResult(lastResult, setResult);
+
   // 档案和定位关联
   const [profiles, setProfiles] = useState<any[]>([]);
   const [positionings, setPositionings] = useState<any[]>([]);

@@ -16,6 +16,7 @@ import { notify, confirmDialog } from '@/components/ui/feedback';
 import { ALL_DEAL_REASONS } from './constants';
 import type { TopicHistory, Profile, Positioning } from './types';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
+import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 
 export default function TopicPage() {
   // 模式控制
@@ -32,6 +33,7 @@ export default function TopicPage() {
     quota,
     copyToClipboard,
     downloadAsFile,
+    lastResult,
   } = useGenerationPage({ taskType: '选题策划', historyApiPath: '/api/topics' });
 
   const [mode, setMode] = useState("custom"); // "quick" 或 "custom"
@@ -76,6 +78,9 @@ export default function TopicPage() {
   // 生成状态
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
+
+  // 切换页面或刷新后，把云端最近一条生成结果取回来显示
+  useRestoreLastResult(lastResult, setResult);
 
   // 折叠状态
   const [isBasicOpen, setIsBasicOpen] = useState(true);

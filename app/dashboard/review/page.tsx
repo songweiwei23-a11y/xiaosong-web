@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
+import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { readDifyStream } from '@/lib/sse-stream';
 
 export default function ReviewPage() {
@@ -23,6 +24,7 @@ export default function ReviewPage() {
     quota: hookQuota,
     copyToClipboard,
     downloadAsFile,
+    lastResult,
   } = useGenerationPage({ taskType: '审稿优化', historyApiPath: '/api/reviews' });
 
   const [draftContent, setDraftContent] = useState("");
@@ -53,6 +55,9 @@ export default function ReviewPage() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
+
+  // 切换页面或刷新后，把云端最近一条生成结果取回来显示
+  useRestoreLastResult(lastResult, setResult);
 
   // 选项数据
   const platforms = ["抖音", "快手", "视频号", "小红书"];

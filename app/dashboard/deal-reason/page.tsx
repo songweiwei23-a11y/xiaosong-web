@@ -5,8 +5,13 @@ import { Award, Loader2, Sparkles, Copy, Save, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase, dealReasonService } from "@/lib/supabase";
 import { notify } from '@/components/ui/feedback';
+import { saveGenerationHistory } from '@/lib/history';
 
 import { readDifyStream } from '@/lib/sse-stream';
+
+// 历史里用它区分本页记录。发给 Dify 的 taskType 是「知识库查询」，
+// 与知识库页相同，若历史也共用同一个值，两页的记录会互相串。
+const HISTORY_TASK_TYPE = "成交理由";
 // 17个核心成交理由
 const ALL_DEAL_REASONS = [
   { id: "looks", label: "颜值高", icon: "🌟", desc: "好看出片上镜" },
@@ -47,6 +52,26 @@ export default function DealReasonPage() {
   // AI分析结果
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
+
+  // 切换页面或刷新后，把云端最近一条分析结果取回来显示。
+  // 本页原先既不保存也不恢复，结果只活在组件 state 里，一离开就没了。
+  useEffect(() => {
+    let cancelled = false;
+    const restore = async () => {
+      try {
+        const res = await fetch('/api/script-history');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data)) return;
+        const latest = data.find((x: any) => x.task_type === HISTORY_TASK_TYPE);
+        if (latest?.result) setAnalysisResult((current) => current || latest.result);
+      } catch (error) {
+        console.error('恢复上次分析失败:', error);
+      }
+    };
+    restore();
+    return () => { cancelled = true; };
+  }, []);
 
   // 格式化分析结果，将<br>转换为换行
   const formatAnalysisResult = (text: string) => {
@@ -132,9 +157,18 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
       if (!response.ok) throw new Error("分析失败");
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
-      await readDifyStream(response, {
-        onChunk: (_piece, full) => setAnalysisResult(formatAnalysisResult(full)),
+      const full = await readDifyStream(response, {
+        onChunk: (_piece, text) => setAnalysisResult(formatAnalysisResult(text)),
       });
+
+      // 存一份到云端，换页面或刷新后才能取回来
+      if (full.trim()) {
+        await saveGenerationHistory(
+          HISTORY_TASK_TYPE,
+          { storeName, storeType, storeFeatures, targetCustomer },
+          formatAnalysisResult(full)
+        );
+      }
 
       // 分析完成后,自动选中所有17个成交理由
       setSelectedReasons(ALL_DEAL_REASONS.map(r => r.id));

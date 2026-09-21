@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 
 /**
@@ -13,6 +13,17 @@ export function useScriptHistory() {
   const [dialogInitialContent, setDialogInitialContent] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
+  /**
+   * 进入页面时最近一条历史的正文，供页面回填到结果区。
+   *
+   * 生成结果原本只存在组件 state 里，切到别的页面再回来就空了——内容其实
+   * 一直在云端历史里，只是界面没把它取回来。
+   */
+  const [lastResult, setLastResult] = useState("");
+  // 只在首次加载时回填。生成结束、删除记录后也会调 loadScriptHistory，
+  // 那时若再回填，就会用旧内容盖掉用户当前正在看的东西。
+  const restoredRef = useRef(false);
+
   const loadScriptHistory = useCallback(async () => {
     try {
       const response = await fetch("/api/script-history");
@@ -22,6 +33,12 @@ export function useScriptHistory() {
         requestAnimationFrame(() => {
           setScriptHistory(data);
         });
+
+        if (!restoredRef.current) {
+          restoredRef.current = true;
+          const latest = data[0]?.result || data[0]?.script_content || "";
+          if (latest) setLastResult(latest);
+        }
       }
     } catch (error) {
       console.error("加载历史记录失败:", error);
@@ -93,5 +110,6 @@ export function useScriptHistory() {
     openContinuousDialog,
     closeContinuousDialog,
     isDeleting,
+    lastResult,
   };
 }
