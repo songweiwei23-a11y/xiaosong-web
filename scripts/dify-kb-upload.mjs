@@ -69,8 +69,37 @@ function die(msg) {
   process.exit(1);
 }
 
+/**
+ * 密钥格式自检。
+ * 直接把非 ASCII 字符塞进 Authorization 头会抛出 ByteString 转换错误，
+ * 信息晦涩难以定位，这里提前给出可操作的提示。
+ */
+function validateKey() {
+  if (!KEY) {
+    die(
+      '未设置环境变量 DIFY_DATASET_API_KEY。\n' +
+      '       PowerShell:  $env:DIFY_DATASET_API_KEY="dataset-实际密钥"'
+    );
+  }
+  if (/[^\x20-\x7E]/.test(KEY)) {
+    die(
+      '密钥里含有中文或不可见字符，多半是把示例中的占位文字原样粘贴了。\n' +
+      `       当前值: ${KEY}\n` +
+      '       请到 Dify -> 知识库 -> 右上角「服务 API」-> 「API 密钥」创建，\n' +
+      '       复制到的是一串英文数字，形如 dataset-AbC123XyZ...'
+    );
+  }
+  if (!KEY.startsWith('dataset-')) {
+    die(
+      '密钥应以 dataset- 开头，当前为: ' + KEY.slice(0, 12) + '...\n' +
+      '       注意区分：应用的 API Key 是 app- 开头（.env.local 里那两个），\n' +
+      '       知识库的是 dataset- 开头，两者不通用。'
+    );
+  }
+}
+
 async function api(method, endpoint, body) {
-  if (!KEY) die('未设置环境变量 DIFY_DATASET_API_KEY');
+  validateKey();
   const res = await fetch(BASE + endpoint, {
     method,
     headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
