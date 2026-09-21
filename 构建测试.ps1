@@ -1,4 +1,4 @@
-# 项目构建测试脚本
+﻿# 项目构建测试脚本
 $ErrorActionPreference = "Stop"
 $projectPath = "E:\小宋\腾讯云生产版同步_20260918"
 

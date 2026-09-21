@@ -1,4 +1,4 @@
-# 小宋编导工作台 - 本地开发启动脚本
+﻿# 小宋编导工作台 - 本地开发启动脚本
 $ErrorActionPreference = "Stop"
 $projectPath = "E:\小宋\腾讯云生产版同步_20260918"
 
