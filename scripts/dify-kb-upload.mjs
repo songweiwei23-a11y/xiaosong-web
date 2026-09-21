@@ -34,6 +34,36 @@ const KEY = process.env.DIFY_DATASET_API_KEY || '';
 const DELAY_MS = 600;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * 5 个目标知识库的规格。
+ * 名称与工作流系统提示词中的称谓保持一致（定位与选题库 / 脚本与文案库 /
+ * 拍摄与执行库 / 综合知识手册 / 成交理由知识库），便于对照排查。
+ */
+const KB_SPEC = [
+  { dir: '库1_定位与选题', name: '定位与选题库', desc: '账号定位、IP定位、赛道与人群、选题方法、八大爆款元素、起号36计与79节打法' },
+  { dir: '库2_脚本与文案', name: '脚本与文案库', desc: '开篇36计、四类脚本公式（教知识/晒过程/聊观点/讲故事）、文案写作、情绪波点' },
+  { dir: '库3_拍摄与执行', name: '拍摄与执行库', desc: '拆片技巧、镜头表现力、场景选择、拍摄呈现基础与进阶' },
+  { dir: '库4_综合知识手册', name: '综合知识手册', desc: '底层逻辑、平台变现方式、编导完整知识手册、先导课' },
+  { dir: '库5_成交理由与实战', name: '成交理由知识库', desc: '17个核心成交理由、实体商家选题SOP、本地推爆款素材、15天变现实操' },
+];
+
+/** 与现有工作流中知识检索节点一致的检索配置 */
+const RETRIEVAL_MODEL = {
+  search_method: 'hybrid_search',
+  reranking_enable: false,
+  top_k: 4,
+  score_threshold_enabled: false,
+  weights: {
+    weight_type: 'customized',
+    vector_setting: {
+      vector_weight: 0.7,
+      embedding_model_name: 'text-embedding-3-large',
+      embedding_provider_name: 'langgenius/openai/openai',
+    },
+    keyword_setting: { keyword_weight: 0.3 },
+  },
+};
+
 function die(msg) {
   console.error('\n[错误] ' + msg + '\n');
   process.exit(1);
@@ -124,6 +154,49 @@ async function cmdList() {
   console.log('格式： { "库1_定位与选题": "<dataset_id>", ... }\n');
 }
 
+/**
+ * 创建 5 个目标知识库并写入映射表。
+ * 同名库已存在时直接复用，不重复创建，因此可以安全重跑。
+ */
+async function cmdInit() {
+  const existing = await api('GET', '/datasets?page=1&limit=100');
+  const byName = new Map((existing.data || []).map((d) => [d.name, d.id]));
+  console.log(`\n账号下现有 ${byName.size} 个知识库。\n`);
+
+  const map = {};
+  for (const spec of KB_SPEC) {
+    if (byName.has(spec.name)) {
+      map[spec.dir] = byName.get(spec.name);
+      console.log(`复用已存在  ${spec.name}  -> ${map[spec.dir]}`);
+      continue;
+    }
+    const payload = {
+      name: spec.name,
+      description: spec.desc,
+      indexing_technique: 'high_quality',
+      permission: 'only_me',
+      retrieval_model: RETRIEVAL_MODEL,
+    };
+    let res;
+    try {
+      res = await api('POST', '/datasets', payload);
+    } catch (e) {
+      // 某些 Dify 版本不接受 retrieval_model，降级为基础参数重试，
+      // 检索配置改由界面调整
+      console.log(`  (带检索配置创建失败，降级重试: ${e.message})`);
+      delete payload.retrieval_model;
+      res = await api('POST', '/datasets', payload);
+    }
+    map[spec.dir] = res.id;
+    console.log(`已创建      ${spec.name}  -> ${res.id}`);
+    await sleep(DELAY_MS);
+  }
+
+  fs.writeFileSync(MAPPING_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
+  console.log(`\n映射已写入 ${MAPPING_FILE}`);
+  console.log('\n下一步：node scripts/dify-kb-upload.mjs upload --all\n');
+}
+
 function cmdPlan() {
   console.log('\n上传计划（不发送任何请求）\n');
   let total = 0;
@@ -205,18 +278,25 @@ async function cmdUpload(args) {
 const [cmd, ...rest] = process.argv.slice(2);
 try {
   if (cmd === 'list') await cmdList();
+  else if (cmd === 'init') await cmdInit();
   else if (cmd === 'plan') cmdPlan();
   else if (cmd === 'upload') await cmdUpload(rest);
   else {
     console.log(`
 Dify 知识库批量上传
 
-  node scripts/dify-kb-upload.mjs list      列出知识库及 id
+  node scripts/dify-kb-upload.mjs list      列出账号下所有知识库及 id（只读）
+  node scripts/dify-kb-upload.mjs init      创建 5 个目标知识库并写入映射表
   node scripts/dify-kb-upload.mjs plan      预览上传计划（不发请求）
+  node scripts/dify-kb-upload.mjs upload --all      按映射表全量上传
   node scripts/dify-kb-upload.mjs upload <库目录名> <dataset_id>
-  node scripts/dify-kb-upload.mjs upload --all
 
-先设置环境变量 DIFY_DATASET_API_KEY（Dify 知识库页面的 API 访问处获取）。
+典型流程：
+  1) $env:DIFY_DATASET_API_KEY="dataset-xxxx"
+  2) node scripts/dify-kb-upload.mjs init
+  3) node scripts/dify-kb-upload.mjs upload --all
+
+密钥在 Dify「知识库 → 服务 API → API 密钥」处创建，只从环境变量读取。
 `);
   }
 } catch (e) {
