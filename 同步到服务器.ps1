@@ -44,7 +44,28 @@ if (-not (Test-Path $sshKey)) {
     pause
     exit 1
 }
-Write-Host "服务器连接正常" -ForegroundColor Green
+
+# 部署目录必须与 PM2 进程的工作目录一致，否则文件传上去了、构建也成功了，
+# 但 next start 用的是另一个目录里的旧产物。曾因此出现"grep 文件是新代码、
+# 实际请求却是旧行为"的假象，排查了很久。
+$pm2Cwd = ssh -i "$sshKey" ${serverUser}@${serverIP} "pm2 describe xiaosong-web 2>/dev/null | grep -i 'exec cwd' | sed 's/.*│ *//' | tr -d ' '"
+$pm2Cwd = ($pm2Cwd | Out-String).Trim()
+if (-not $pm2Cwd) {
+    Write-Host "无法读取 PM2 工作目录，请确认进程 xiaosong-web 存在" -ForegroundColor Red
+    pause
+    exit 1
+}
+Write-Host "  PM2 运行目录: $pm2Cwd" -ForegroundColor Gray
+Write-Host "  部署目标目录: $serverPath" -ForegroundColor Gray
+if ($pm2Cwd -ne $serverPath) {
+    Write-Host ""
+    Write-Host "两者不一致，部署不会生效，已中止。" -ForegroundColor Red
+    Write-Host "修复方式（让 PM2 指向部署目录）：" -ForegroundColor Yellow
+    Write-Host "  pm2 delete xiaosong-web; cd $serverPath && pm2 start npm --name xiaosong-web -- start && pm2 save" -ForegroundColor Gray
+    pause
+    exit 1
+}
+Write-Host "服务器连接正常，运行目录与部署目录一致" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "[3/3] 同步文件..." -ForegroundColor Yellow
