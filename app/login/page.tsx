@@ -66,19 +66,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'1s'}} />
-      </div>
+    // 背景交给全站的 AmbientBackground。这里原本自带一层写死的渐变和光斑，
+    // 会盖住氛围层，且颜色不跟随配色方案切换。
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
 
       {/* 顶部导航 */}
       <div className="absolute top-0 left-0 right-0 z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link 
             href="/" 
-            className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="flex items-center gap-2 text-foreground/80 hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">返回首页</span>
@@ -91,16 +88,16 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4 hover:scale-105 transition-transform">
-            <Sparkles className="w-10 h-10 text-blue-600 animate-pulse" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <Sparkles className="w-10 h-10 text-primary animate-pulse" />
+            <h1 className="text-3xl font-bold brand-text">
               小宋编导工作台
             </h1>
           </Link>
-          <p className="text-slate-600 dark:text-slate-400">AI驱动的短视频脚本创作工具</p>
+          <p className="text-muted-foreground">AI驱动的短视频脚本创作工具</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
+        <div className="glass-panel rounded-2xl p-8 shadow-xl">
           {/* 登录/注册切换 */}
           <div className="flex gap-2 mb-6">
             <button
@@ -110,8 +107,8 @@ export default function LoginPage() {
               }}
               className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
                 isLogin
-                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  ? "brand-gradient text-white shadow-lg"
+                  : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
               }`}
             >
               登录
@@ -123,8 +120,8 @@ export default function LoginPage() {
               }}
               className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
                 !isLogin
-                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  ? "brand-gradient text-white shadow-lg"
+                  : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
               }`}
             >
               注册
@@ -134,17 +131,17 @@ export default function LoginPage() {
           <form onSubmit={handleAuth} className="space-y-5">
             {/* 邮箱输入 */}
             <div>
-              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 邮箱地址
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-3 bg-background/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/25 focus:border-primary text-foreground placeholder:text-muted-foreground transition-colors"
                   required
                 />
               </div>
@@ -152,17 +149,17 @@ export default function LoginPage() {
 
             {/* 密码输入 */}
             <div>
-              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 密码
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="至少6位密码"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-3 bg-background/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/25 focus:border-primary text-foreground placeholder:text-muted-foreground transition-colors"
                   required
                   minLength={6}
                 />
@@ -184,7 +181,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:from-slate-400 disabled:to-slate-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 btn-brand py-3.5 rounded-xl font-semibold disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -201,14 +198,14 @@ export default function LoginPage() {
           </form>
 
           {/* 切换提示 */}
-          <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
+          <div className="mt-6 text-center text-sm text-muted-foreground">
             {isLogin ? "还没有账号？" : "已有账号？"}
             <button
               onClick={() => {
                 setIsLogin(!isLogin);
                 setMessage("");
               }}
-              className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"
+              className="ml-1 text-primary hover:opacity-80 font-semibold transition-opacity"
             >
               {isLogin ? "立即注册" : "立即登录"}
             </button>
@@ -217,17 +214,17 @@ export default function LoginPage() {
 
         {/* 功能亮点 */}
         <div className="mt-8 grid grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-800">
-            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">8</div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">核心功能</div>
+          <div className="glass-panel text-center p-4 rounded-xl">
+            <div className="text-3xl font-bold brand-text">8</div>
+            <div className="text-xs text-muted-foreground mt-1">核心功能</div>
           </div>
-          <div className="text-center p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-800">
-            <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">10000+</div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">知识库</div>
+          <div className="glass-panel text-center p-4 rounded-xl">
+            <div className="text-3xl font-bold brand-text">10000+</div>
+            <div className="text-xs text-muted-foreground mt-1">知识库</div>
           </div>
-          <div className="text-center p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-800">
-            <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">10秒</div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">生成脚本</div>
+          <div className="glass-panel text-center p-4 rounded-xl">
+            <div className="text-3xl font-bold brand-text">10秒</div>
+            <div className="text-xs text-muted-foreground mt-1">生成脚本</div>
           </div>
         </div>
 
@@ -235,7 +232,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <Link 
             href="/"
-            className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             <Home className="w-4 h-4" />
             返回首页了解更多

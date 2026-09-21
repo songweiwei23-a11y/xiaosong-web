@@ -5,7 +5,6 @@ import './globals.css';
 import './palettes.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AmbientBackground } from '@/components/theme/AmbientBackground';
-import { PaletteSwitcher } from '@/components/theme/PaletteSwitcher';
 import { FeedbackHost } from '@/components/ui/feedback';
 
 export const metadata: Metadata = {
@@ -24,13 +23,15 @@ const themeInitScript = `
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     }
-    // 配色方案同样要在首屏前定好，否则会先闪一下默认色再切换
-    var palette = localStorage.getItem('xiaosong-palette');
-    if (palette && palette !== 'default') {
+    // 配色方案同样要在首屏前定好，否则会先闪一下默认色再切换。
+    // 默认值需与 components/theme/palettes.ts 的 DEFAULT_PALETTE 一致。
+    var palette = localStorage.getItem('xiaosong-palette') || 'graphite';
+    if (palette !== 'default') {
       document.documentElement.setAttribute('data-palette', palette);
     }
   } catch (e) {
     document.documentElement.classList.add('dark');
+    document.documentElement.setAttribute('data-palette', 'graphite');
   }
 })();
 `;
@@ -52,8 +53,6 @@ export default function RootLayout({
           <div className="min-h-screen flex flex-col">
             {children}
           </div>
-          {/* 选型用的临时入口，配色定下来后删除 */}
-          <PaletteSwitcher />
           <FeedbackHost />
         </ThemeProvider>
       </body>
