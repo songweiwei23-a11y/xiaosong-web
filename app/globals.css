@@ -1,68 +1,109 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * 设计基调：深色为主的紫粉调，玻璃质感。
+ *
+ * 关于毛玻璃的两条硬规则，改配色时请一并遵守，否则质感会塌：
+ * 1. 玻璃要有东西可透。页面必须垫一层带光晕的背景（AmbientBackground），
+ *    否则半透明卡片只会是一块灰板。
+ * 2. 背景不能用纯黑/纯白。深色底带一点紫（而不是 0 0% 8%），
+ *    玻璃压上去才有色彩流动；纯黑会让所有层级糊成一片。
+ */
+
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    /* 亮色：极淡的紫白，不是纯白，留一点色温给玻璃 */
+    --background: 260 40% 98%;
+    --foreground: 265 45% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 265 45% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 265 45% 12%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 270 75% 56%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 265 30% 95%;
+    --secondary-foreground: 265 45% 12%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 265 30% 96%;
+    --muted-foreground: 260 12% 45%;
 
-    --accent: 262 83% 58%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 330 80% 58%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 265 25% 90%;
+    --input: 265 25% 90%;
+    --ring: 270 75% 56%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
+
+    /* —— 玻璃 —— */
+    /* 亮色下玻璃容易发灰：底色用纯白并提高不透明度，靠阴影而非暗边框划分层次 */
+    --glass-bg: 0 0% 100%;
+    --glass-opacity: 0.72;
+    --glass-border: 265 45% 12%;
+    --glass-border-opacity: 0.08;
+
+    /* —— 背景光晕 —— */
+    --glow-primary: 270 85% 60%;
+    --glow-accent: 330 85% 62%;
+    --glow-opacity: 0.1;
+
+    /* —— 品牌渐变，按钮与图标底色共用 —— */
+    --brand-from: 270 80% 60%;
+    --brand-to: 330 80% 60%;
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 210 40% 96%;
+    /* 深色：带紫调的深底，不用纯黑 */
+    --background: 265 35% 7%;
+    --foreground: 260 25% 94%;
 
-    --card: 222 40% 12%;
-    --card-foreground: 210 40% 96%;
+    --card: 265 28% 12%;
+    --card-foreground: 260 25% 94%;
 
-    --popover: 222 40% 12%;
-    --popover-foreground: 210 40% 96%;
+    --popover: 265 30% 11%;
+    --popover-foreground: 260 25% 94%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 8%;
+    --primary: 270 85% 68%;
+    --primary-foreground: 265 45% 10%;
 
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 96%;
+    --secondary: 265 22% 18%;
+    --secondary-foreground: 260 25% 94%;
 
-    --muted: 217 33% 18%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 265 20% 17%;
+    --muted-foreground: 260 15% 65%;
 
-    --accent: 263 70% 66%;
-    --accent-foreground: 222 47% 8%;
+    --accent: 330 85% 68%;
+    --accent-foreground: 265 45% 10%;
 
-    --destructive: 0 63% 45%;
-    --destructive-foreground: 210 40% 96%;
+    --destructive: 0 65% 52%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 22%;
-    --ring: 224 76% 60%;
+    /* 边框极淡：深色下靠亮度差分层，重边框会让界面显得"格子化" */
+    --border: 265 20% 22%;
+    --input: 265 20% 24%;
+    --ring: 270 85% 68%;
+
+    --glass-bg: 265 28% 14%;
+    --glass-opacity: 0.55;
+    --glass-border: 0 0% 100%;
+    --glass-border-opacity: 0.08;
+
+    --glow-primary: 270 90% 62%;
+    --glow-accent: 330 90% 62%;
+    --glow-opacity: 0.16;
+
+    --brand-from: 270 85% 65%;
+    --brand-to: 330 85% 65%;
   }
 }
 
@@ -73,6 +114,8 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    /* 中文在深色背景上默认偏粗，关掉合成加粗更干净 */
+    -webkit-font-smoothing: antialiased;
   }
   html {
     color-scheme: light;
@@ -80,11 +123,115 @@
   html.dark {
     color-scheme: dark;
   }
+
+  /* 滚动条跟随主题，默认的白色滚动条在深色界面上非常突兀 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer components {
+  /*
+   * .glass —— 真玻璃，带背景模糊。
+   * 模糊很吃 GPU，只用在常驻且面积可控的元素上：侧边栏、顶栏、弹窗。
+   */
+  .glass {
+    background-color: hsl(var(--glass-bg) / var(--glass-opacity));
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
+  }
+
+  /*
+   * .glass-panel —— 伪玻璃，不开模糊。
+   * 正文卡片数量多、面积大，全开模糊会让中低端设备明显掉帧；
+   * 半透明 + 极淡边框在有光晕背景的前提下，观感与真玻璃几乎一致。
+   */
+  .glass-panel {
+    background-color: hsl(var(--card) / 0.7);
+    border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
+  }
+
+  /* 可点击的玻璃卡片：悬停时微微提亮并浮起 */
+  .glass-interactive {
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  }
+  .glass-interactive:hover {
+    background-color: hsl(var(--card) / 0.9);
+    border-color: hsl(var(--primary) / 0.35);
+    transform: translateY(-1px);
+  }
+
+  /* 选中态：品牌色描边 + 内发光，不靠填充大色块 */
+  .glass-selected {
+    border-color: hsl(var(--primary) / 0.6);
+    background-color: hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25), 0 8px 24px -12px hsl(var(--primary) / 0.5);
+  }
+
+  /* 品牌渐变，主按钮与图标底座共用 */
+  .brand-gradient {
+    background-image: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
+  }
+  .brand-text {
+    background-image: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* 主按钮：渐变 + 柔光投影，投影用品牌色而非黑色，才有"发光"感 */
+  .btn-brand {
+    background-image: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
+    color: #fff;
+    box-shadow: 0 8px 24px -8px hsl(var(--brand-from) / 0.6);
+    transition: box-shadow 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+  }
+  .btn-brand:hover:not(:disabled) {
+    box-shadow: 0 12px 32px -8px hsl(var(--brand-from) / 0.75);
+    filter: brightness(1.08);
+  }
+  .btn-brand:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn-brand:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+  }
 }
 
 @layer utilities {
   .theme-transition,
   .theme-transition * {
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* 无障碍：用户开启"减少动态效果"时关掉位移与过渡 */
+  @media (prefers-reduced-motion: reduce) {
+    .theme-transition,
+    .theme-transition *,
+    .glass-interactive,
+    .btn-brand {
+      transition: none !important;
+    }
+    .glass-interactive:hover,
+    .btn-brand:active:not(:disabled) {
+      transform: none;
+    }
   }
 }

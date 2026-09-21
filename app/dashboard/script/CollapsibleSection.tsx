@@ -1,39 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
-export function CollapsibleSection({ 
-  title, 
-  icon: Icon, 
-  defaultOpen = true, 
-  children 
-}: { 
-  title: string; 
-  icon: any; 
-  defaultOpen?: boolean; 
-  children: React.ReactNode 
+export function CollapsibleSection({
+  title,
+  icon: Icon,
+  defaultOpen = true,
+  children
+}: {
+  title: string;
+  icon: any;
+  defaultOpen?: boolean;
+  children: React.ReactNode
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  
+
   return (
-    <div className="rounded-xl border-2 border-border bg-card shadow-sm overflow-hidden">
+    // 玻璃卡片 + 大圆角。原先是 border-2 的实心卡片，多个叠在一起时
+    // 满屏都是粗边框，视觉上像表格而不像面板
+    <div className="glass-panel overflow-hidden rounded-2xl">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between p-4 hover:bg-muted transition-colors"
+        className="flex w-full items-center justify-between p-4 transition-colors hover:bg-foreground/[0.04]"
       >
         <div className="flex items-center gap-3">
-          <Icon className="h-5 w-5 text-blue-600" />
-          <span className="font-bold text-foreground">{title}</span>
+          {/* 图标放进品牌色底座，替代原来孤零零的蓝色线性图标 */}
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/12">
+            <Icon className="h-4 w-4 text-primary" />
+          </span>
+          <span className="text-[15px] font-medium text-foreground">{title}</span>
         </div>
-        {isOpen ? (
-          <ChevronUp className="h-5 w-5 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-5 w-5 text-muted-foreground" />
-        )}
+        {/* 单个图标旋转，比上下两个图标来回切换更连贯 */}
+        <ChevronDown
+          className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
       </button>
       {isOpen && (
-        <div className="p-4 pt-0 space-y-4 border-t border-border">
+        <div className="space-y-4 border-t border-border/60 p-4">
           {children}
         </div>
       )}

@@ -24,17 +24,17 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  // 产品基调是深色：玻璃质感与光晕在深色下才立得住，
+  // 因此新用户默认进深色，而不是跟随系统。用户手动切换后以其选择为准。
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    let initial: Theme = "light";
+    let initial: Theme = "dark";
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
       if (stored === "light" || stored === "dark") {
         initial = stored;
-      } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        initial = "dark";
       }
     } catch {
       // ignore

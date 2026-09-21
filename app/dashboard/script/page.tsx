@@ -698,27 +698,29 @@ ${formatRequirements}
 
 
   return (
-    <div className="flex h-screen">
+    // 容器透明，让全站的背景光晕透上来；面板各自用玻璃质感分层
+    <div className="flex h-full">
       {/* Left Panel - Form */}
-      <div className="w-[420px] overflow-y-auto border-r bg-muted/40 p-6">
+      <div className="w-[420px] shrink-0 overflow-y-auto border-r border-border/60 px-5 py-6">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-foreground">脚本生成</h1>
+          <h1 className="text-[22px] font-semibold tracking-tight text-foreground">脚本生成</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             专业级短视频脚本创作工具
           </p>
         </div>
 
-        {/* Tab切换 */}
-        <div className="mb-6 flex gap-2">
+        {/* Tab切换：分段控件。外层一个玻璃槽，选中项才有实体感，
+            比两个按钮各自描边更干净，也不会出现双边框 */}
+        <div className="glass-panel mb-6 flex gap-1 rounded-2xl p-1">
           <button
             onClick={() => {
               setActiveTab("content");
               setScriptType("teach");
             }}
-            className={`flex-1 rounded-lg py-3 px-4 text-sm font-bold transition-all ${
+            className={`flex-1 rounded-xl py-2.5 px-4 text-sm font-medium transition-all ${
               activeTab === "content"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                : "bg-card border-2 border-border text-muted-foreground hover:border-blue-300"
+                ? "btn-brand"
+                : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
             }`}
           >
             📝 内容创作
@@ -728,10 +730,10 @@ ${formatRequirements}
               setActiveTab("ad");
               setScriptType("ad_lead");
             }}
-            className={`flex-1 rounded-lg py-3 px-4 text-sm font-bold transition-all ${
+            className={`flex-1 rounded-xl py-2.5 px-4 text-sm font-medium transition-all ${
               activeTab === "ad"
-                ? "bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg"
-                : "bg-card border-2 border-border text-muted-foreground hover:border-red-300"
+                ? "btn-brand"
+                : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
             }`}
           >
             💰 广告引流
@@ -751,7 +753,7 @@ ${formatRequirements}
                 <select
                   value={selectedProfileId}
                   onChange={(e) => setSelectedProfileId(e.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/25"
                 >
                   <option value="">不使用档案</option>
                   {profiles.map((profile) => (
@@ -770,7 +772,7 @@ ${formatRequirements}
                 <select
                   value={selectedPositioningId}
                   onChange={(e) => setSelectedPositioningId(e.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/25"
                 >
                   <option value="">不使用定位</option>
                   {positionings.map((pos) => (
@@ -782,7 +784,7 @@ ${formatRequirements}
               </div>
 
               {(selectedProfileId || selectedPositioningId) && (
-                <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-700">
+                <div className="rounded-xl bg-primary/10 p-3 text-xs text-primary">
                   ✨ AI将结合您选择的信息生成更精准的脚本
                 </div>
               )}
@@ -802,10 +804,12 @@ ${formatRequirements}
                   <button
                     key={key}
                     onClick={() => setScriptType(key)}
-                    className={`rounded-lg border p-3 text-left text-sm transition-all ${
+                    // 选中态改用主题变量：原先写死 from-blue-50 / text-blue-700，
+                    // 那是亮色专用值，深色模式下会糊出一块刺眼的浅蓝
+                    className={`glass-interactive rounded-xl border p-3 text-left text-sm ${
                       scriptType === key
-                        ? "border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-700 shadow-md"
-                        : "border-border bg-card hover:border-border hover:shadow-sm"
+                        ? "glass-selected text-foreground"
+                        : "glass-panel text-foreground/90"
                     }`}
                   >
                     <div className="font-medium">{value.label}</div>
@@ -824,7 +828,7 @@ ${formatRequirements}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="例如：普通人做短视频最容易踩的3个坑"
-                className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
                 rows={3}
               />
             </div>
@@ -838,7 +842,7 @@ ${formatRequirements}
                 <select
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
-                  className="w-full rounded-lg border border-border p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-border p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                 >
                   {PLATFORMS.map((p) => (
                     <option key={p} value={p}>{p}</option>
@@ -862,8 +866,8 @@ ${formatRequirements}
                       onClick={() => setDurationMode(m.id)}
                       className={`flex-1 py-1.5 font-medium transition-colors ${
                         durationMode === m.id
-                          ? "bg-blue-500 text-white"
-                          : "bg-background text-muted-foreground hover:bg-muted"
+                          ? "brand-gradient text-white"
+                          : "glass-panel text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {m.label}
@@ -876,7 +880,7 @@ ${formatRequirements}
                   <select
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-background p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                   >
                     {DURATIONS.map((d) => (
                       <option key={d} value={d}>{d}</option>
@@ -894,7 +898,7 @@ ${formatRequirements}
                       value={customDuration}
                       onChange={(e) => setCustomDuration(e.target.value)}
                       placeholder="输入秒数"
-                      className="w-full rounded-lg border border-border bg-background p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                      className="w-full rounded-lg border border-border bg-background p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                     />
                     <span className="text-sm text-muted-foreground whitespace-nowrap">秒</span>
                   </div>
@@ -902,7 +906,7 @@ ${formatRequirements}
 
                 {/* AI推荐提示 */}
                 {durationMode === "ai" && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-2 text-xs text-blue-700 dark:text-blue-300">
+                  <div className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-xs text-primary">
                     ✨ AI 将根据主题、平台和内容复杂度自动判断最佳时长，并在脚本开头标注建议时长
                   </div>
                 )}
@@ -912,7 +916,7 @@ ${formatRequirements}
             {/* Smart Recommend Button */}
             <button
               onClick={handleSmartRecommend}
-              className="w-full rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 p-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+              className="w-full rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
             >
               ✨ 根据平台智能推荐
             </button>
@@ -929,7 +933,7 @@ ${formatRequirements}
                     setIndustry(e.target.value);
                     setCustomIndustry("");
                   }}
-                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                 >
                   <option value="">选择行业...</option>
                   {(activeTab === "content" ? CONTENT_INDUSTRIES : AD_INDUSTRIES).map((ind) => (
@@ -944,11 +948,11 @@ ${formatRequirements}
                     setIndustry("");
                   }}
                   placeholder="或自定义..."
-                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                 />
               </div>
               {(industry || customIndustry) && (
-                <p className="mt-1 text-xs text-blue-600">✅ 当前：{industry || customIndustry}</p>
+                <p className="mt-1 text-xs text-primary">✅ 当前：{industry || customIndustry}</p>
               )}
             </div>
           </CollapsibleSection>
@@ -967,7 +971,7 @@ ${formatRequirements}
                     setTargetGroup(e.target.value);
                     setCustomTargetGroup("");
                   }}
-                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                 >
                   <option value="">选择目标人群...</option>
                   {TARGET_GROUPS.map((g) => (
@@ -982,11 +986,11 @@ ${formatRequirements}
                     setTargetGroup("");
                   }}
                   placeholder="或自定义..."
-                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                  className="flex-1 rounded-lg border border-border p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                 />
               </div>
               {(targetGroup || customTargetGroup) && (
-                <p className="mt-1 text-xs text-blue-600">✅ 当前：{targetGroup || customTargetGroup}</p>
+                <p className="mt-1 text-xs text-primary">✅ 当前：{targetGroup || customTargetGroup}</p>
               )}
             </div>
 
@@ -1002,7 +1006,7 @@ ${formatRequirements}
                     onClick={() => setStyle(s)}
                     className={`rounded-full border px-3 py-1 text-xs transition-all ${
                       style === s
-                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
+                        ? "glass-selected text-foreground"
                         : "border-border hover:border-border"
                     }`}
                   >
@@ -1026,7 +1030,7 @@ ${formatRequirements}
                     value={productInfo}
                     onChange={(e) => setProductInfo(e.target.value)}
                     placeholder="例如：店铺名称、主打产品、核心卖点、特色服务等..."
-                    className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
                     rows={3}
                   />
                 </div>
@@ -1039,7 +1043,7 @@ ${formatRequirements}
                     value={priceInfo}
                     onChange={(e) => setPriceInfo(e.target.value)}
                     placeholder="例如：人均50元、活动价99元、原价199现价99..."
-                    className="w-full rounded-lg border border-border p-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-border p-2 text-sm shadow-sm focus:border-primary focus:outline-none"
                   />
                 </div>
               </>
@@ -1057,8 +1061,8 @@ ${formatRequirements}
                     onClick={() => setHookType(hook.id)}
                     className={`rounded-lg border-2 p-2 text-left transition-all ${
                       hookType === hook.id
-                        ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-sm"
-                        : "border-border bg-card hover:border-purple-300"
+                        ? "glass-selected"
+                        : "glass-panel"
                     }`}
                   >
                     <div className="text-base mb-0.5">{hook.label.split(' ')[0]}</div>
@@ -1084,8 +1088,8 @@ ${formatRequirements}
                     onClick={() => setScriptStructure(structure.id)}
                     className={`rounded-lg border-2 p-2 text-left transition-all ${
                       scriptStructure === structure.id
-                        ? "border-orange-500 bg-gradient-to-br from-orange-50 to-yellow-50 shadow-sm"
-                        : "border-border bg-card hover:border-orange-300"
+                        ? "glass-selected"
+                        : "glass-panel"
                     }`}
                   >
                     <div className="text-base mb-0.5">{structure.label.split(' ')[0]}</div>
@@ -1111,13 +1115,13 @@ ${formatRequirements}
                     onClick={() => toggleBoomElement(elem.id)}
                     className={`rounded-lg border-2 p-2 text-center transition-all ${
                       boomElements.includes(elem.id)
-                        ? "border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm scale-105"
-                        : "border-border bg-card hover:border-blue-300"
+                        ? "glass-selected scale-[1.03]"
+                        : "glass-panel"
                     }`}
                   >
                     <div className="text-xl">{elem.label.split(' ')[0]}</div>
                     <div className={`text-xs font-bold mt-1 ${
-                      boomElements.includes(elem.id) ? "text-blue-700" : "text-muted-foreground"
+                      boomElements.includes(elem.id) ? "text-primary" : "text-muted-foreground"
                     }`}>
                       {elem.label.split(' ')[1]}
                     </div>
@@ -1125,7 +1129,7 @@ ${formatRequirements}
                 ))}
               </div>
               {boomElements.length > 0 && (
-                <p className="mt-2 text-xs text-blue-600">
+                <p className="mt-2 text-xs text-primary">
                   ✅ 已选择 {boomElements.length} 个元素
                 </p>
               )}
@@ -1145,8 +1149,8 @@ ${formatRequirements}
                     key={thought.id}
                     className={`flex cursor-pointer items-start gap-2 rounded-lg border-2 p-2 transition-all ${
                       directorThoughts.includes(thought.id)
-                        ? "border-green-500 bg-gradient-to-br from-green-50 to-emerald-50"
-                        : "border-border bg-card hover:border-green-300"
+                        ? "glass-selected"
+                        : "glass-panel"
                     }`}
                   >
                     <input
@@ -1223,7 +1227,7 @@ ${formatRequirements}
                       onClick={() => setPersonnel(p)}
                       className={`flex-1 rounded border py-1 text-xs ${
                         personnel === p
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          ? "glass-selected text-foreground"
                           : "border-border"
                       }`}
                     >
@@ -1248,8 +1252,8 @@ ${formatRequirements}
                     onClick={() => toggleDealReason(reason.id)}
                     className={`rounded-lg border-2 p-2 text-left text-xs transition-all ${
                       dealReasons.includes(reason.id)
-                        ? "border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-sm scale-105"
-                        : "border-border bg-card hover:border-green-300"
+                        ? "glass-selected scale-[1.03]"
+                        : "glass-panel"
                     }`}
                     title={reason.desc}
                   >
@@ -1277,16 +1281,16 @@ ${formatRequirements}
                 value={accountPositioning}
                 onChange={(e) => setAccountPositioning(e.target.value)}
                 placeholder="例如：我是一个专注于美食探店的账号，主打性价比高的平价美食，目标人群是18-35岁的年轻白领..."
-                className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
                 rows={4}
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
                 💡 填写后，生成的脚本会更符合你的账号调性和目标受众
               </p>
-            <div className="mb-3 rounded-lg bg-blue-50 border border-blue-200 p-3">
+            <div className="mb-3 rounded-xl bg-primary/10 border border-primary/20 p-3">
               <div className="flex items-start gap-2">
-                <span className="text-blue-600 mt-0.5">💡</span>
-                <div className="flex-1 text-sm text-blue-800">
+                <span className="text-primary mt-0.5">💡</span>
+                <div className="flex-1 text-sm text-foreground/80">
                   <p className="font-medium mb-1">智能提示：</p>
                   <ul className="space-y-1 text-xs">
                     <li>• <strong>写得越详细</strong>（100字以上），AI越会按你的思路生成</li>
@@ -1305,17 +1309,17 @@ ${formatRequirements}
               value={additionalInfo}
               onChange={(e) => setAdditionalInfo(e.target.value)}
               placeholder="其他要求或特殊需求..."
-              className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-border p-3 text-sm shadow-sm focus:border-primary focus:outline-none"
               rows={3}
             />
           </CollapsibleSection>
 
           {/* Generate Button - 移动端固定在底部 */}
-          <div className="md:static md:mt-0 sticky bottom-0 left-0 right-0 bg-card border-t border-border md:border-0 p-4 md:p-0 -mx-8 md:mx-0 z-10">
+          <div className="md:static md:mt-0 sticky bottom-0 left-0 right-0 glass border-x-0 border-b-0 md:border-0 md:bg-transparent md:backdrop-blur-none p-4 md:p-0 -mx-5 md:mx-0 z-10">
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !topic.trim()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 font-bold text-white shadow-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:shadow-none transition-all"
+              className="flex w-full items-center justify-center gap-2 btn-brand rounded-2xl py-4 font-semibold"
             >
               {isGenerating ? (
                 <>
@@ -1335,7 +1339,7 @@ ${formatRequirements}
       </div>
 
       {/* Right Panel - Result */}
-      <div className="flex-1 overflow-y-auto p-8 bg-card">
+      <div className="flex-1 overflow-y-auto p-8">
         <div className="mx-auto max-w-4xl">
 
         {/* 额度用尽提示条 */}
@@ -1373,9 +1377,9 @@ ${formatRequirements}
 
       {/* 历史记录 */}
         {scriptHistory.length > 0 && (
-          <div className="bg-card rounded-lg shadow-lg p-6 mb-6 border border-border">
+          <div className="glass-panel rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-2 mb-4">
-              <History className="w-5 h-5 text-blue-600" />
+              <History className="w-5 h-5 text-primary" />
               <h3 className="text-lg font-semibold text-foreground">历史脚本记录</h3>
               <span className="text-sm text-muted-foreground">({scriptHistory.length})</span>
             </div>
@@ -1383,7 +1387,7 @@ ${formatRequirements}
               {scriptHistory.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 bg-muted rounded-lg border border-border hover:border-blue-300 transition-colors"
+                  className="glass-panel glass-interactive p-3 rounded-xl"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -1397,13 +1401,13 @@ ${formatRequirements}
                     <div className="flex gap-2 flex-shrink-0">
                       <button aria-label="继续对话"
                         onClick={() => openContinuousDialog(item.result)}
-                        className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                        className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="继续对话"
                       >
                         <MessageCircle className="w-4 h-4" />
                       </button><button aria-label="删除历史记录"
                         onClick={() => deleteHistory(item.id)}
-                        className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1419,8 +1423,11 @@ ${formatRequirements}
           {!result && !isGenerating && (
             <div className="flex h-full items-center justify-center text-center">
               <div>
-                <Sparkles className="mx-auto h-16 w-16 text-muted-foreground" />
-                <p className="mt-6 text-lg font-medium text-muted-foreground">
+                {/* 空状态：图标放进品牌渐变的圆角容器里，比一个灰色线性图标有精神 */}
+                <div className="brand-gradient mx-auto flex h-16 w-16 items-center justify-center rounded-2xl opacity-90 shadow-lg shadow-primary/25">
+                  <Sparkles className="h-8 w-8 text-white" />
+                </div>
+                <p className="mt-6 text-lg font-medium text-foreground/80">
                   填写左侧需求后点击生成按钮
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -1432,15 +1439,15 @@ ${formatRequirements}
 
           {(result || isGenerating) && (
             <div>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-foreground">生成结果</h2>
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">生成结果</h2>
                 {result && (
                   <div className="flex gap-2">
-                    <button aria-label="复制脚本到剪贴板" onClick={() => { navigator.clipboard.writeText(result); notify("✅ 已复制到剪贴板"); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm transition-colors">
+                    <button aria-label="复制脚本到剪贴板" onClick={() => { navigator.clipboard.writeText(result); notify("✅ 已复制到剪贴板"); }} className="glass-panel glass-interactive flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
                       <Copy className="h-4 w-4" />
                       复制
                     </button>
-                    <button aria-label="下载脚本文件" onClick={() => { const blob = new Blob([result], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `脚本-${topic || "未命名"}-${new Date().toLocaleDateString()}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted shadow-sm transition-colors">
+                    <button aria-label="下载脚本文件" onClick={() => { const blob = new Blob([result], { type: "text/plain;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `脚本-${topic || "未命名"}-${new Date().toLocaleDateString()}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }} className="glass-panel glass-interactive flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium">
                       <Download className="h-4 w-4" />
                       下载
                     </button>
@@ -1451,15 +1458,19 @@ ${formatRequirements}
               {isGenerating && !result && (
                 <div className="flex items-center justify-center py-20">
                   <div className="text-center">
-                    <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                     <p className="mt-4 text-sm text-muted-foreground">AI正在创作中...</p>
                   </div>
                 </div>
               )}
 
               {result && (
-                <div className="prose prose-slate dark:prose-invert prose-lg max-w-none">
-                  <ReactMarkdown>{result}</ReactMarkdown>
+                // 正文收进玻璃卡片：原先直接铺在页面上，长文没有边界，
+                // 读起来像一片散落的文字，也和左侧表单区分不开
+                <div className="glass-panel rounded-2xl p-7">
+                  <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:tracking-tight prose-p:leading-relaxed">
+                    <ReactMarkdown>{result}</ReactMarkdown>
+                  </div>
                 </div>
               )}
             </div>

@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { AmbientBackground } from '@/components/theme/AmbientBackground';
 import { FeedbackHost } from '@/components/ui/feedback';
 
 export const metadata: Metadata = {
@@ -9,19 +10,20 @@ export const metadata: Metadata = {
   description: '3秒生成专业级短视频脚本，达到MCN团队水平（25/35分）',
 };
 
+// 在 React 接管前就把主题类名打上，否则首屏会先渲染成另一套配色再跳变。
+// 默认值必须与 ThemeProvider 保持一致（深色），两处不同步就会闪一下。
 const themeInitScript = `
 (function() {
   try {
     var key = 'xiaosong-theme';
     var stored = localStorage.getItem(key);
-    var theme = stored;
-    if (theme !== 'light' && theme !== 'dark') {
-      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
+    var theme = (stored === 'light' || stored === 'dark') ? stored : 'dark';
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     }
-  } catch (e) {}
+  } catch (e) {
+    document.documentElement.classList.add('dark');
+  }
 })();
 `;
 
@@ -37,6 +39,8 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
         <ThemeProvider>
+          {/* 全站背景氛围层。玻璃组件需要它垫在下面才透得出色彩 */}
+          <AmbientBackground />
           <div className="min-h-screen flex flex-col">
             {children}
           </div>
