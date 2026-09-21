@@ -79,11 +79,26 @@ export async function GET(request: Request) {
       { key: 'dealReason', name: '成交理由', usedField: 'deal_reason_used' },
     ];
 
+    // 全部功能的合计。首页要显示「本月已用多少次」，此前接口只给
+    // 接近上限的那几项警告，拿不到总数，页面上只能显示 0。
+    // 无限额度的功能计入已用但不计入上限，否则总额会变成 -1 的累加。
+    let totalUsed = 0;
+    let totalLimit = 0;
+    let unlimited = false;
+
     for (const feature of features) {
       const quotaKey = feature.key as keyof typeof plan.quotas;
       const allowedQuota = plan.quotas[quotaKey];
-      
-      // -1 表示无限制，跳过
+      const usedCount = Number(quota[feature.usedField as keyof typeof quota] || 0);
+      totalUsed += usedCount;
+
+      if (allowedQuota === -1) {
+        unlimited = true;
+      } else {
+        totalLimit += allowedQuota;
+      }
+
+      // -1 表示无限制，不参与额度警告
       if (allowedQuota === -1) continue;
 
       const used = quota[feature.usedField as keyof typeof quota] || 0;
@@ -120,7 +135,10 @@ export async function GET(request: Request) {
       exhausted: hasExhausted,
       plan: planId,
       planName: plan.name,
-      periodEnd: quota.current_period_end
+      periodEnd: quota.current_period_end,
+      totalUsed,
+      // 有任一功能不限量时，总上限没有意义，返回 0 让前端只显示用量
+      totalLimit: unlimited ? 0 : totalLimit
     });
 
   } catch (error: any) {
