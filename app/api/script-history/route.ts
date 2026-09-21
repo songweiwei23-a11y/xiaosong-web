@@ -33,12 +33,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    // 默认只返回脚本生成，保持各生成页原有行为不变。
+    // 首页要展示「最近在做什么」，需要跨功能的记录，用 taskType=all 取全部。
+    const { searchParams } = new URL(request.url)
+    const taskType = searchParams.get('taskType') ?? '脚本生成'
+    const limitRaw = Number(searchParams.get('limit'))
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : undefined
+
+    let query = supabase
       .from('script_history')
       .select('*')
       .eq('user_id', user.id)
-      .eq('task_type', '脚本生成')
       .order('created_at', { ascending: false })
+
+    if (taskType !== 'all') query = query.eq('task_type', taskType)
+    if (limit) query = query.limit(limit)
+
+    const { data, error } = await query
 
     if (error) throw error
 
