@@ -553,7 +553,7 @@ export default function ReviewPage() {
       <div className="flex-1 overflow-y-auto p-8">
         {result ? (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/50/30">
+            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/30">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                 <CheckCircle className="w-6 h-6 text-green-500" />
                 审稿报告

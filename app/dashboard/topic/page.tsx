@@ -736,17 +736,17 @@ export default function TopicPage() {
       {/* 左侧输入面板 */}
       <div className="w-[580px] glass-panel shadow-2xl p-6 space-y-5 overflow-y-auto">
         
-        <h1 className="text-2xl font-bold text-orange-500 mb-4">✨ 选题策划工作台</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-4">✨ 选题策划工作台</h1>
 
         {/* 模式切换 */}
-        <div className="bg-amber-500 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl p-4 border border-orange-500/50/25">
+        <div className="bg-amber-500/10 rounded-xl p-4 border border-orange-500/25">
           <label className="block text-sm font-semibold text-foreground mb-3">选择模式</label>
           <div className="flex gap-3">
             <button
               onClick={() => setMode("quick")}
               className={`flex-1 py-2.5 rounded-xl font-medium transition-all ${
                 mode === "quick"
-                  ? "bg-amber-500 text-white shadow-lg"
+                  ? "btn-brand"
                   : "bg-card text-muted-foreground hover:bg-muted border border-border"
               }`}
             >
@@ -756,7 +756,7 @@ export default function TopicPage() {
               onClick={() => setMode("custom")}
               className={`flex-1 py-2.5 rounded-xl font-medium transition-all ${
                 mode === "custom"
-                  ? "bg-amber-500 text-white shadow-lg"
+                  ? "btn-brand"
                   : "bg-card text-muted-foreground hover:bg-muted border border-border"
               }`}
             >
@@ -1000,7 +1000,7 @@ export default function TopicPage() {
         <div>
           <div className="mb-3">
             <label className="block text-sm font-semibold text-foreground mb-1">🎯 成交理由（可多选）</label>
-            <p className="text-xs text-yellow-500 bg-amber-500/10 px-2 py-1 rounded border border-yellow-500/50/25">
+            <p className="text-xs text-yellow-500 bg-amber-500/10 px-2 py-1 rounded border border-yellow-500/25">
               选择成交理由 = 变现选题 | 不选 = 大流量选题
             </p>
           </div>
@@ -1198,7 +1198,7 @@ export default function TopicPage() {
           className={`w-full py-3 rounded-xl font-semibold text-lg transition-all ${
             isGenerating
               ? "bg-muted text-white cursor-not-allowed"
-              : "bg-amber-500 text-white shadow-lg"
+              : "btn-brand"
           }`}
         >
           {isGenerating ? (
@@ -1267,8 +1267,8 @@ export default function TopicPage() {
         {/* 生成结果 */}
         {result ? (
           <div className="glass-panel rounded-xl shadow-lg p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-orange-500/50/25">
-              <h2 className="text-2xl font-bold text-orange-500">📋 生成结果</h2>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-orange-500/25">
+              <h2 className="text-2xl font-bold text-foreground">📋 生成结果</h2>
               <div className="flex gap-2">
                 <button
                   onClick={() => navigator.clipboard.writeText(result)}

@@ -233,7 +233,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
   return (
     <div className="flex h-full">
       {/* 左侧输入表单 */}
-      <div className="w-[420px] border-r border-yellow-500/50/25/50 backdrop-blur-xl bg-card/40 p-6 overflow-y-auto shadow-2xl">
+      <div className="w-[420px] border-r border-yellow-500/25/50 backdrop-blur-xl bg-card/40 p-6 overflow-y-auto shadow-2xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-3 bg-amber-500 rounded-2xl shadow-lg">
@@ -250,7 +250,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
         {/* 已保存的成交理由提示 */}
         {savedData && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border-2 border-green-500/50/25">
+          <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border-2 border-green-500/25">
             <div className="text-sm font-semibold text-green-500 mb-2">
               ✅ 已保存 {savedData.selected_reasons?.length || 0} 个成交理由
             </div>
@@ -274,7 +274,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
               placeholder="例如:老李烧烤、美美美容院"
-              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
+              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
             />
           </div>
 
@@ -284,7 +284,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
             <select
               value={storeType}
               onChange={(e) => setStoreType(e.target.value)}
-              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none"
+              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none"
             >
               {STORE_TYPES.map(type => (
                 <option key={type}>{type}</option>
@@ -302,7 +302,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
               onChange={(e) => setStoreFeatures(e.target.value)}
               placeholder="描述你的店铺特色,例如:&#10;- 开了10年的老店&#10;- 秘制配方,味道独特&#10;- 环境装修很有特色&#10;- 价格实惠,人均50元"
               rows={6}
-              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-4 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all resize-none shadow-lg"
+              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-4 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all resize-none shadow-lg"
             />
           </div>
 
@@ -316,7 +316,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
               value={targetCustomer}
               onChange={(e) => setTargetCustomer(e.target.value)}
               placeholder="例如:周边3公里上班族"
-              className="w-full rounded-2xl border-2 border-yellow-500/50/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
+              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
             />
           </div>
 
@@ -341,7 +341,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
           {/* 手动选择成交理由 */}
           {selectedReasons.length > 0 && (
-            <div className="pt-6 border-t-2 border-yellow-500/50/25">
+            <div className="pt-6 border-t-2 border-yellow-500/25">
               <label className="mb-3 block text-sm font-semibold text-yellow-500">
                 选择成交理由 (至少15个，当前: {selectedReasons.length}/17)
               </label>
@@ -405,7 +405,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
 
         {(analysisResult || isAnalyzing) && (
           <div className="max-w-4xl mx-auto">
-            <div className="backdrop-blur-xl bg-card/60 rounded-3xl shadow-2xl p-8 border-2 border-yellow-500/50/25/50">
+            <div className="backdrop-blur-xl bg-card/60 rounded-3xl shadow-2xl p-8 border-2 border-yellow-500/25/50">
               <div className="mb-6 flex items-center justify-between pb-6 border-b-2 border-yellow-100">
                 <h2 className="text-3xl font-bold bg-amber-500 bg-clip-text text-transparent flex items-center gap-3">
                   <Sparkles className="w-7 h-7 text-yellow-500" />
@@ -434,8 +434,8 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
                   <div className="max-w-none bg-amber-500 rounded-2xl p-8 shadow-inner">'
                   <ReactMarkdown
                       components={{
-                        h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-yellow-500 mb-4 mt-6" {...props} />,
-                        h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-yellow-500 mb-3 mt-5" {...props} />,
+                        h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-foreground mb-4 mt-6" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-foreground mb-3 mt-5" {...props} />,
                         h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-yellow-500 mb-2 mt-4" {...props} />,
                         p: ({node, ...props}) => <p className="text-foreground leading-relaxed mb-4" {...props} />,
                         strong: ({node, ...props}) => <strong className="text-yellow-500 font-bold" {...props} />,

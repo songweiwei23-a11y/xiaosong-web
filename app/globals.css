@@ -13,53 +13,64 @@
  */
 
 @layer base {
+  /*
+   * 浅色：单独设计的一套，不参与配色方案切换。
+   *
+   * 深浅两套的分层机制根本不同：深色靠亮度差（卡片比背景亮就"浮"起来），
+   * 浅色的背景已接近白，卡片没法更亮，只能靠阴影。因此浅色这套的要点是
+   * ——背景用极浅冷灰而非纯白，卡片才有地方"白"出来；层次靠柔和阴影，
+   * 不靠加深边框；玻璃在这里关掉（白色半透明压浅底只会发灰）。
+   *
+   * 主色定为沉稳的靛蓝：浅色界面本身明亮，强调色再鲜艳就会吵。
+   */
   :root {
-    /* 亮色：极淡的紫白，不是纯白，留一点色温给玻璃 */
-    --background: 260 40% 98%;
-    --foreground: 265 45% 12%;
+    --background: 225 25% 97%;
+    --foreground: 225 20% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 265 45% 12%;
+    --card-foreground: 225 20% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 265 45% 12%;
+    --popover-foreground: 225 20% 14%;
 
-    --primary: 270 75% 56%;
+    --primary: 224 70% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 265 30% 95%;
-    --secondary-foreground: 265 45% 12%;
+    --secondary: 225 20% 94%;
+    --secondary-foreground: 225 20% 14%;
 
-    --muted: 265 30% 96%;
-    --muted-foreground: 260 12% 45%;
+    --muted: 225 20% 95%;
+    --muted-foreground: 225 10% 45%;
 
-    --accent: 330 80% 58%;
+    --accent: 224 70% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 265 25% 90%;
-    --input: 265 25% 90%;
-    --ring: 270 75% 56%;
+    --border: 225 18% 89%;
+    --input: 225 18% 89%;
+    --ring: 224 70% 50%;
 
     --radius: 1rem;
 
-    /* —— 玻璃 —— */
-    /* 亮色下玻璃容易发灰：底色用纯白并提高不透明度，靠阴影而非暗边框划分层次 */
+    /* 浅色不开玻璃：卡片用纯白、完全不透明，层次交给阴影 */
     --glass-bg: 0 0% 100%;
-    --glass-opacity: 0.72;
-    --glass-border: 265 45% 12%;
-    --glass-border-opacity: 0.08;
+    --glass-opacity: 1;
+    --glass-blur: 0px;
+    --glass-border: 225 20% 14%;
+    --glass-border-opacity: 0.07;
+    /* 阴影是浅色模式唯一的分层手段，必须足够柔和才不显脏 */
+    --panel-shadow: 0 1px 2px hsl(225 20% 14% / 0.04), 0 4px 16px -6px hsl(225 20% 14% / 0.08);
+    --panel-shadow-hover: 0 2px 4px hsl(225 20% 14% / 0.05), 0 8px 24px -8px hsl(225 20% 14% / 0.1);
 
-    /* —— 背景光晕 —— */
-    --glow-primary: 270 85% 60%;
-    --glow-accent: 330 85% 62%;
-    --glow-opacity: 0.1;
+    /* 浅底上的光晕要极淡，否则整片背景会显脏 */
+    --glow-primary: 224 70% 55%;
+    --glow-accent: 224 60% 60%;
+    --glow-opacity: 0.05;
 
-    /* —— 品牌渐变，按钮与图标底色共用 —— */
-    --brand-from: 270 80% 60%;
-    --brand-to: 330 80% 60%;
+    --brand-from: 224 72% 52%;
+    --brand-to: 232 70% 46%;
   }
 
   .dark {
@@ -93,10 +104,15 @@
     --input: 265 20% 24%;
     --ring: 270 85% 68%;
 
+    /* 深色才开玻璃：暗底 + 半透明亮面才有透光感 */
     --glass-bg: 265 28% 14%;
     --glass-opacity: 0.55;
+    --glass-blur: 20px;
     --glass-border: 0 0% 100%;
     --glass-border-opacity: 0.08;
+    /* 深色下投影几乎不可见，分层靠亮度差，投影只留一点点用于托起浮层 */
+    --panel-shadow: none;
+    --panel-shadow-hover: none;
 
     --glow-primary: 270 90% 62%;
     --glow-accent: 330 90% 62%;
@@ -152,9 +168,12 @@
    */
   .glass {
     background-color: hsl(var(--glass-bg) / var(--glass-opacity));
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    /* 模糊半径由变量控制：浅色下是 0，因为白色半透明压在浅底上只会发灰，
+       模糊再多也出不来质感，白实底配阴影反而干净 */
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
+    box-shadow: var(--panel-shadow);
   }
 
   /*
@@ -163,17 +182,21 @@
    * 半透明 + 极淡边框在有光晕背景的前提下，观感与真玻璃几乎一致。
    */
   .glass-panel {
-    background-color: hsl(var(--card) / 0.7);
+    background-color: hsl(var(--card) / var(--glass-opacity));
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
+    /* 浅色靠这层阴影分层，深色下该变量为 none */
+    box-shadow: var(--panel-shadow);
   }
 
   /* 可点击的玻璃卡片：悬停时微微提亮并浮起 */
   .glass-interactive {
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease,
+      box-shadow 0.2s ease;
   }
   .glass-interactive:hover {
-    background-color: hsl(var(--card) / 0.9);
+    background-color: hsl(var(--card) / 1);
     border-color: hsl(var(--primary) / 0.35);
+    box-shadow: var(--panel-shadow-hover);
     transform: translateY(-1px);
   }
 

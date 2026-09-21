@@ -247,8 +247,8 @@ export default function HomePage() {
       <section className="relative pt-32 pb-20 px-4 overflow-hidden bg-primary/10">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute top-40 right-10 w-96 h-96 bg-accent/100/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'1s'}} />
-          <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-accent/100/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'2s'}} />
+          <div className="absolute top-40 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'1s'}} />
+          <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'2s'}} />
         </div>
 
         <div className="container mx-auto relative z-10">

@@ -487,7 +487,7 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('viral_content_pattern', e.target.value)}
           placeholder="历史什么类型的内容容易爆？例如：情绪共鸣类、知识干货类、对比反转类..."
           rows={3}
-          className="w-full px-4 py-2 border border-yellow-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-yellow-500/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
@@ -554,7 +554,7 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('market_opportunity', e.target.value)}
           placeholder="市场上还有哪些空白机会点？"
           rows={3}
-          className="w-full px-4 py-2 border border-green-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-green-500/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
@@ -654,7 +654,7 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('conversion_path', e.target.value)}
           placeholder="从观看到成交的每一步是什么？例如：看视频→点链接→进直播间→下单"
           rows={3}
-          className="w-full px-4 py-2 border border-green-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-green-500/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 
@@ -680,7 +680,7 @@ export default function NewProfilePage() {
           onChange={(e) => handleChange('conversion_hooks', e.target.value)}
           placeholder="什么话术最能促成转化？限时优惠、客户见证、独家福利？"
           rows={3}
-          className="w-full px-4 py-2 border border-yellow-500/50/25 rounded-xl focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border border-yellow-500/25 rounded-xl focus:ring-2 focus:ring-primary"
         />
       </div>
 

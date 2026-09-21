@@ -10,7 +10,7 @@ interface AlertProps {
 export function Alert({ type, title, message, onClose }: AlertProps) {
   const styles = {
     success: {
-      container: 'bg-emerald-500/10 border-green-500/50/25',
+      container: 'bg-emerald-500/10 border-green-500/25',
       icon: 'text-green-500',
       title: 'text-green-500',
       message: 'text-green-500',
@@ -24,7 +24,7 @@ export function Alert({ type, title, message, onClose }: AlertProps) {
       Icon: XCircle,
     },
     warning: {
-      container: 'bg-amber-500/10 border-yellow-500/50/25',
+      container: 'bg-amber-500/10 border-yellow-500/25',
       icon: 'text-yellow-500',
       title: 'text-yellow-500',
       message: 'text-yellow-500',

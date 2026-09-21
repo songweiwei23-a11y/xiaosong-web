@@ -213,7 +213,7 @@ function QualityCard({
               className={`rounded-full px-2 py-0.5 text-[11px] ${
                 quality.passed
                   ? "bg-emerald-500/15 text-emerald-500"
-                  : "bg-destructive/100/15 text-destructive"
+                  : "bg-destructive/15 text-destructive"
               }`}
             >
               {quality.passed ? "达标" : "需改进"}

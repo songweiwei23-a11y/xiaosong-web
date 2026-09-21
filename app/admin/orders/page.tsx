@@ -195,13 +195,13 @@ export default function AdminOrdersPage() {
             <div className="text-3xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card className="bg-amber-500/10 border-yellow-500/50/25">
+        <Card className="bg-amber-500/10 border-yellow-500/25">
           <CardContent className="pt-6">
             <div className="text-sm text-yellow-500 mb-1">待审核</div>
             <div className="text-3xl font-bold text-yellow-500">{stats.pending}</div>
           </CardContent>
         </Card>
-        <Card className="bg-emerald-500/10 border-green-500/50/25">
+        <Card className="bg-emerald-500/10 border-green-500/25">
           <CardContent className="pt-6">
             <div className="text-sm text-green-500 mb-1">已通过</div>
             <div className="text-3xl font-bold text-green-500">{stats.approved}</div>

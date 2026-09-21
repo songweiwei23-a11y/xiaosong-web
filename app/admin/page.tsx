@@ -151,7 +151,7 @@ export default function AdminPage() {
 
             <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-emerald-500 dark:from-green-900/30 dark:to-green-800/20 rounded-xl">
+                <div className="p-3 bg-emerald-500/10 rounded-xl">
                   <Activity className="h-8 w-8 text-green-500" />
                 </div>
                 <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">API调用</span>
@@ -179,7 +179,7 @@ export default function AdminPage() {
 
             <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-amber-500 dark:from-orange-900/30 dark:to-orange-800/20 rounded-xl">
+                <div className="p-3 bg-amber-500/10 rounded-xl">
                   <Activity className="h-8 w-8 text-orange-500" />
                 </div>
                 <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">系统状态</span>
@@ -234,7 +234,7 @@ export default function AdminPage() {
               className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 bg-emerald-500 dark:from-green-900/30 dark:to-green-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                <div className="p-4 bg-emerald-500/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Database className="h-8 w-8 text-green-500" />
                 </div>
                 <div className="flex-1">
@@ -251,7 +251,7 @@ export default function AdminPage() {
               className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
-                <div className="p-4 bg-amber-500 dark:from-orange-900/30 dark:to-orange-800/20 rounded-2xl group-hover:scale-110 transition-transform">
+                <div className="p-4 bg-amber-500/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <FileText className="h-8 w-8 text-orange-500" />
                 </div>
                 <div className="flex-1">

@@ -93,22 +93,22 @@ function resolveConfirm(id: number, value: boolean) {
 
 const toastStyles: Record<ToastType, { wrap: string; icon: string; Icon: typeof CheckCircle }> = {
   success: {
-    wrap: "border-green-500/50/25 bg-emerald-500/10 dark:border-green-500/50/30 dark:bg-emerald-500/10",
+    wrap: "border-green-500/25 bg-emerald-500/10 dark:border-green-500/30 dark:bg-emerald-500/10",
     icon: "text-green-500",
     Icon: CheckCircle,
   },
   error: {
-    wrap: "border-destructive/25 bg-destructive/10 dark:border-destructive/40/30 dark:bg-destructive/100/10",
+    wrap: "border-destructive/25 bg-destructive/10 dark:border-destructive/30 dark:bg-destructive/10",
     icon: "text-destructive",
     Icon: XCircle,
   },
   warning: {
-    wrap: "border-amber-500/50/25 bg-amber-500/10 dark:border-amber-500/50/30 dark:bg-amber-500/10",
+    wrap: "border-amber-500/25 bg-amber-500/10 dark:border-amber-500/30 dark:bg-amber-500/10",
     icon: "text-amber-500",
     Icon: AlertTriangle,
   },
   info: {
-    wrap: "border-primary/20 bg-primary/10 dark:border-primary/50/30 dark:bg-primary/10",
+    wrap: "border-primary/20 bg-primary/10 dark:border-primary/30 dark:bg-primary/10",
     icon: "text-primary",
     Icon: Info,
   },
@@ -171,7 +171,7 @@ export function FeedbackHost() {
               <div
                 className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${
                   activeConfirm.tone === "danger"
-                    ? "bg-destructive/15 text-destructive dark:bg-destructive/100/15 dark:text-red-400"
+                    ? "bg-destructive/15 text-destructive dark:bg-destructive/15 dark:text-red-400"
                     : "bg-primary/15 text-primary dark:bg-primary/15 dark:text-primary"
                 }`}
               >

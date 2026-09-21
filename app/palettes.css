@@ -1,45 +1,19 @@
 /*
- * 备选配色方案。通过 <html data-palette="xxx"> 切换，只覆盖色相相关的变量，
- * 玻璃、圆角、阴影等质感规则留在 globals.css 里，四套方案共用。
+ * 备选配色方案，只作用于深色模式（通过 <html class="dark" data-palette="x">）。
  *
- * 取向说明：这几套都在刻意压低饱和度。界面的「高级感」主要来自克制——
- * 低饱和、少色相、层次靠明暗而非彩色；饱和度一高，整个界面都在喊，
- * 反而显得廉价。因此每套都只保留一个强调色，且只在极少数位置出现。
+ * 浅色不参与配色切换，它是单独设计的一套，定义在 globals.css 的 :root 里。
+ * 原因：浅色下分层靠阴影、玻璃会发灰，每换一个色相都要重新调阴影与对比度
+ * 才不显脏，成本高收益低；深色则天然适合这种质感，换色相几乎不影响可读性。
+ *
+ * 每套只改色相相关的变量，玻璃、圆角、阴影等质感规则共用 globals.css 中的定义。
+ * 取向上统一压低饱和度——界面的高级感来自克制：低饱和、少色相、
+ * 层次靠明暗而非彩色；饱和度一高，整个界面都在喊，反而显得廉价。
  */
 
 /* ============================================================
    石墨 Graphite —— 近中性冷灰 + 电蓝点缀
    参照 Linear / Vercel。几乎不带彩色，最克制的一套。
    ============================================================ */
-:root[data-palette="graphite"] {
-  --background: 240 20% 98%;
-  --foreground: 240 10% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 10%;
-  --primary: 222 85% 55%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 10% 95%;
-  --secondary-foreground: 240 10% 10%;
-  --muted: 240 10% 96%;
-  --muted-foreground: 240 5% 45%;
-  --accent: 222 85% 55%;
-  --accent-foreground: 0 0% 100%;
-  --border: 240 10% 90%;
-  --input: 240 10% 90%;
-  --ring: 222 85% 55%;
-  --glass-bg: 0 0% 100%;
-  --glass-opacity: 0.72;
-  --glass-border: 240 10% 10%;
-  --glass-border-opacity: 0.08;
-  --glow-primary: 222 80% 60%;
-  --glow-accent: 240 20% 60%;
-  --glow-opacity: 0.07;
-  --brand-from: 222 85% 58%;
-  --brand-to: 226 80% 50%;
-}
-
 .dark[data-palette="graphite"] {
   /* 微冷的极深灰，不是纯黑：纯黑会让所有层级糊成一片 */
   --background: 240 8% 7%;
@@ -74,35 +48,6 @@
    墨蓝 Midnight —— 深蓝夜色 + 天青
    沉稳、专业，适合长时间工作的界面。
    ============================================================ */
-:root[data-palette="midnight"] {
-  --background: 215 35% 97%;
-  --foreground: 220 45% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 220 45% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 220 45% 12%;
-  --primary: 212 85% 48%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 215 30% 94%;
-  --secondary-foreground: 220 45% 12%;
-  --muted: 215 30% 95%;
-  --muted-foreground: 215 15% 45%;
-  --accent: 195 80% 45%;
-  --accent-foreground: 0 0% 100%;
-  --border: 215 25% 89%;
-  --input: 215 25% 89%;
-  --ring: 212 85% 48%;
-  --glass-bg: 0 0% 100%;
-  --glass-opacity: 0.72;
-  --glass-border: 220 45% 12%;
-  --glass-border-opacity: 0.08;
-  --glow-primary: 212 85% 55%;
-  --glow-accent: 195 80% 55%;
-  --glow-opacity: 0.08;
-  --brand-from: 212 85% 52%;
-  --brand-to: 196 85% 45%;
-}
-
 .dark[data-palette="midnight"] {
   --background: 220 40% 7%;
   --foreground: 213 25% 93%;
@@ -137,35 +82,6 @@
    最不常见的一套。暖色底在长时间注视下更舒服，
    金色强调让界面偏"器物感"而非"科技感"。
    ============================================================ */
-:root[data-palette="ember"] {
-  --background: 40 30% 97%;
-  --foreground: 30 15% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 30 15% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 30 15% 12%;
-  --primary: 35 75% 45%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 40 20% 94%;
-  --secondary-foreground: 30 15% 12%;
-  --muted: 40 20% 95%;
-  --muted-foreground: 35 10% 45%;
-  --accent: 25 70% 50%;
-  --accent-foreground: 0 0% 100%;
-  --border: 38 18% 88%;
-  --input: 38 18% 88%;
-  --ring: 35 75% 45%;
-  --glass-bg: 0 0% 100%;
-  --glass-opacity: 0.74;
-  --glass-border: 30 15% 12%;
-  --glass-border-opacity: 0.08;
-  --glow-primary: 38 80% 55%;
-  --glow-accent: 25 75% 55%;
-  --glow-opacity: 0.08;
-  --brand-from: 38 80% 52%;
-  --brand-to: 28 75% 48%;
-}
-
 .dark[data-palette="ember"] {
   /* 暖调深灰：色相偏 30，比中性灰更"有温度" */
   --background: 30 10% 7%;
@@ -200,35 +116,6 @@
    松石 Teal —— 深青底 + 翡翠
    参照 Supabase。冷静、有科技感但不刺眼。
    ============================================================ */
-:root[data-palette="teal"] {
-  --background: 180 25% 97%;
-  --foreground: 190 35% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 190 35% 11%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 190 35% 11%;
-  --primary: 168 75% 36%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 180 20% 94%;
-  --secondary-foreground: 190 35% 11%;
-  --muted: 180 20% 95%;
-  --muted-foreground: 190 12% 42%;
-  --accent: 190 70% 42%;
-  --accent-foreground: 0 0% 100%;
-  --border: 180 18% 88%;
-  --input: 180 18% 88%;
-  --ring: 168 75% 36%;
-  --glass-bg: 0 0% 100%;
-  --glass-opacity: 0.72;
-  --glass-border: 190 35% 11%;
-  --glass-border-opacity: 0.08;
-  --glow-primary: 168 70% 45%;
-  --glow-accent: 190 70% 50%;
-  --glow-opacity: 0.08;
-  --brand-from: 168 72% 40%;
-  --brand-to: 190 70% 42%;
-}
-
 .dark[data-palette="teal"] {
   --background: 195 30% 6%;
   --foreground: 175 15% 92%;

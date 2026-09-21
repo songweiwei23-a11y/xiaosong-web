@@ -118,7 +118,7 @@ export function OptionCard({
   const accents: Record<string, string> = {
     primary: "bg-primary/15 text-primary",
     amber: "bg-amber-500/15 text-amber-500",
-    rose: "bg-destructive/100/15 text-destructive",
+    rose: "bg-destructive/15 text-destructive",
     emerald: "bg-emerald-500/15 text-emerald-500",
     violet: "bg-primary/15 text-primary",
     sky: "bg-sky-500/15 text-sky-500",

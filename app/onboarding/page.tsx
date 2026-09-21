@@ -37,7 +37,7 @@ export default function OnboardingPage() {
         <div className="space-y-6">
           <p className="text-lg text-muted-foreground text-center">我们将帮助你快速生成专业的短视频内容</p>
           <div className="grid gap-4">
-            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-accent/50/30 hover:border-accent/50/50 transition-all">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-accent/30 hover:border-accent/50 transition-all">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full brand-gradient flex items-center justify-center flex-shrink-0">
                   <Target className="w-5 h-5 text-white" />
@@ -45,7 +45,7 @@ export default function OnboardingPage() {
                 <div><h3 className="font-semibold text-white mb-1">账号定位</h3><p className="text-sm text-muted-foreground">明确你的账号方向和目标受众</p></div>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-accent/50/30 hover:border-accent/50/50 transition-all">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-accent/30 hover:border-accent/50 transition-all">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
                   <FileText className="w-5 h-5 text-white" />
@@ -53,7 +53,7 @@ export default function OnboardingPage() {
                 <div><h3 className="font-semibold text-white mb-1">选题策划</h3><p className="text-sm text-muted-foreground">为你提供热门选题灵感</p></div>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-accent/50/30 hover:border-accent/50/50 transition-all">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-accent/30 hover:border-accent/50 transition-all">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full brand-gradient flex items-center justify-center flex-shrink-0">
                   <MessageSquare className="w-5 h-5 text-white" />
@@ -71,17 +71,17 @@ export default function OnboardingPage() {
       icon: Zap,
       content: (
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-900/50 to-blue-900/50 border border-accent/50/50 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-900/50 to-blue-900/50 border border-accent/50 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
             <div className="flex items-center gap-2 mb-6">
-              <span className="px-3 py-1 rounded-full bg-accent/100/20 text-accent text-sm font-medium border border-accent/50/30">免费版</span>
+              <span className="px-3 py-1 rounded-full bg-accent/20 text-accent text-sm font-medium border border-accent/30">免费版</span>
               <span className="text-sm text-muted-foreground">已为你开通</span>
             </div>
             <div className="space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">账号定位</span><span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium border border-primary/50/30">1 次（永久）</span></div>
-              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">选题策划</span><span className="px-3 py-1 rounded-full bg-emerald-500/20 text-green-300 text-sm font-medium border border-green-500/50/30">3 次/月</span></div>
-              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">脚本生成</span><span className="px-3 py-1 rounded-full bg-accent/100/20 text-accent text-sm font-medium border border-accent/50/30">20 次/月</span></div>
-              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">自由对话</span><span className="px-3 py-1 rounded-full bg-amber-500/20 text-orange-300 text-sm font-medium border border-orange-500/50/30">20 次/月</span></div>
-              <div className="flex justify-between items-center"><span className="text-foreground">知识库</span><span className="px-3 py-1 rounded-full bg-accent/100/20 text-accent text-sm font-medium border border-accent/50/30">无限使用</span></div>
+              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">账号定位</span><span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium border border-primary/30">1 次（永久）</span></div>
+              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">选题策划</span><span className="px-3 py-1 rounded-full bg-emerald-500/20 text-green-300 text-sm font-medium border border-green-500/30">3 次/月</span></div>
+              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">脚本生成</span><span className="px-3 py-1 rounded-full bg-accent/20 text-accent text-sm font-medium border border-accent/30">20 次/月</span></div>
+              <div className="flex justify-between items-center pb-3 border-b border-border/50"><span className="text-foreground">自由对话</span><span className="px-3 py-1 rounded-full bg-amber-500/20 text-orange-300 text-sm font-medium border border-orange-500/30">20 次/月</span></div>
+              <div className="flex justify-between items-center"><span className="text-foreground">知识库</span><span className="px-3 py-1 rounded-full bg-accent/20 text-accent text-sm font-medium border border-accent/30">无限使用</span></div>
             </div>
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0e27] flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full p-8 rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-accent/50/30 shadow-[0_0_50px_rgba(168,85,247,0.2)]">
+      <div className="max-w-2xl w-full p-8 rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-accent/30 shadow-[0_0_50px_rgba(168,85,247,0.2)]">
         <div className="flex justify-center mb-10">
           {steps.map((_, index) => (
             <div key={index} className="flex items-center">

@@ -188,7 +188,7 @@ export default function SubscriptionsManagement() {
             <div className="text-sm text-accent">专业会员</div>
             <div className="text-2xl font-bold text-accent">{stats.pro}</div>
           </div>
-          <div className="bg-amber-500/10 border border-orange-500/50/25 rounded-lg p-4">
+          <div className="bg-amber-500/10 border border-orange-500/25 rounded-lg p-4">
             <div className="text-sm text-orange-500">企业版</div>
             <div className="text-2xl font-bold text-orange-500">{stats.enterprise}</div>
           </div>

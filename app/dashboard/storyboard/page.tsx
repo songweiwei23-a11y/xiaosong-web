@@ -236,7 +236,7 @@ export default function StoryboardPage() {
         </div>
 
         {/* AI智能推荐按钮 */}
-        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/50/25">
+        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/25">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-green-500 animate-pulse" />
@@ -353,7 +353,7 @@ export default function StoryboardPage() {
         </div>
 
         {/* AI提示框 */}
-        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/50/25">
+        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/25">
           <div className="flex items-start gap-2">
             <Wand2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-foreground">
@@ -404,7 +404,7 @@ export default function StoryboardPage() {
       <div className="flex-1 overflow-y-auto p-8 bg-card">
         {result ? (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/50/30">
+            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/30">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                 <Film className="w-6 h-6 text-green-500" />
                 AI生成的分镜脚本
@@ -430,7 +430,7 @@ export default function StoryboardPage() {
                     remarkPlugins={[remarkGfm]}
                     components={{
                       table: ({node, ...props}) => (
-                        <div className="overflow-x-auto my-6 rounded-xl border-2 border-green-500/50/25 shadow-lg">
+                        <div className="overflow-x-auto my-6 rounded-xl border-2 border-green-500/25 shadow-lg">
                           <table className="min-w-full" {...props} />
                         </div>
                       ),
@@ -450,10 +450,10 @@ export default function StoryboardPage() {
                         <td className="py-4 px-6 text-foreground text-sm border-r border-border last:border-r-0" {...props} />
                       ),
                       h1: ({node, ...props}) => (
-                        <h1 className="text-2xl font-bold mb-6 pb-3 border-b-2 border-green-500/40 text-green-500" {...props} />
+                        <h1 className="text-2xl font-bold mb-6 pb-3 border-b-2 border-green-500/40 text-foreground" {...props} />
                       ),
                       h2: ({node, ...props}) => (
-                        <h2 className="text-xl font-bold mt-8 mb-4 text-green-500" {...props} />
+                        <h2 className="text-xl font-bold mt-8 mb-4 text-foreground" {...props} />
                       ),
                       ul: ({node, ...props}) => (
                         <ul className="space-y-2 my-4 list-disc list-inside" {...props} />

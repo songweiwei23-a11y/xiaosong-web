@@ -486,7 +486,7 @@ export default function PositioningPage() {
       <div className="flex-1 overflow-y-auto p-8">
         {result ? (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-primary/50/30">
+            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-primary/30">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
                   <Target className="w-6 h-6 text-primary" />

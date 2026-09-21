@@ -96,12 +96,22 @@ export function ThemeToggle() {
             })}
           </div>
 
-          {/* 配色 */}
+          {/* 配色：仅深色可用 */}
           <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
             <Palette className="h-3 w-3" />
             配色
+            {!isDark && <span className="normal-case tracking-normal">· 仅深色可选</span>}
           </div>
-          <div className="space-y-0.5">
+
+          {!isDark && (
+            <p className="mb-2 rounded-lg bg-foreground/[0.05] px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
+              浅色是单独设计的一套：它靠阴影分层，每换一个色相都要重新调阴影与对比度才不显脏。
+              想换配色请先切到深色。
+            </p>
+          )}
+
+          {/* 浅色下整组置灰并屏蔽点击，而不是直接隐藏——隐藏会让人以为功能没了 */}
+          <div className={`space-y-0.5 ${isDark ? "" : "pointer-events-none opacity-40"}`} aria-disabled={!isDark}>
             {PALETTES.map((p) => {
               const active = palette === p.id;
               return (
