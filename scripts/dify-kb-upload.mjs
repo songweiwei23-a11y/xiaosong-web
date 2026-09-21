@@ -21,6 +21,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import readline from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -226,6 +227,18 @@ async function cmdInit() {
   console.log('\n下一步：node scripts/dify-kb-upload.mjs upload --all\n');
 }
 
+/** 递归统计备份目录下的 markdown 篇数 */
+function countBackupFiles(dir) {
+  if (!fs.existsSync(dir)) return 0;
+  let n = 0;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) n += countBackupFiles(p);
+    else if (e.name.endsWith('.md')) n++;
+  }
+  return n;
+}
+
 /** 取某个知识库下的文档列表 */
 async function fetchDocs(datasetId) {
   const out = [];
@@ -293,32 +306,57 @@ async function cmdExport() {
   fs.mkdirSync(outDir, { recursive: true });
 
   let files = 0;
+  let skipped = 0;
+  const failed = [];
   for (const kb of others) {
-    const safeKb = kb.name.replace(/[\\/:*?"<>|]/g, '_');
+    // 知识库名常以 ".md..." 结尾。Windows 会截掉路径尾部的点，
+    // 造成资源管理器与 PowerShell 无法进入该目录（Node 却能读写），
+    // 因此建目录前必须去掉尾部的点和空格。
+    const safeKb = kb.name.replace(/[\\/:*?"<>|]/g, '_').replace(/[.\s]+$/, '') || 'unnamed';
     const dir = path.join(outDir, safeKb);
     fs.mkdirSync(dir, { recursive: true });
     let docs = [];
     try { docs = await fetchDocs(kb.id); } catch (e) { console.log(`  读取失败 ${kb.name}: ${e.message}`); continue; }
     for (const doc of docs) {
+      const safe = String(doc.name).replace(/[\\/:*?"<>|]/g, '_').slice(0, 120);
+      const outPath = path.join(dir, safe.endsWith('.md') ? safe : safe + '.md');
+      // 断点续传：已导出且非空的直接跳过，中断后重跑只补缺失部分
+      if (fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
+        skipped++;
+        continue;
+      }
       try {
         const seg = await api('GET', `/datasets/${kb.id}/documents/${doc.id}/segments`);
         const body = (seg.data || []).map((s) => s.content).join('\n\n');
-        const safe = String(doc.name).replace(/[\\/:*?"<>|]/g, '_').slice(0, 120);
         fs.writeFileSync(
-          path.join(dir, safe.endsWith('.md') ? safe : safe + '.md'),
+          outPath,
           `---\n来源知识库: ${kb.name}\n原文档名: ${doc.name}\n---\n\n${body}\n`,
           'utf8'
         );
         files++;
         console.log(`  已导出 [${kb.name}] ${doc.name}  (${body.length} 字)`);
       } catch (e) {
+        failed.push(`${kb.name} / ${doc.name}  ->  ${e.message}`);
         console.log(`  导出失败 [${kb.name}] ${doc.name}: ${e.message}`);
       }
       await sleep(300);
     }
   }
-  console.log(`\n共导出 ${files} 篇到 ${outDir}`);
-  console.log('确认备份无误后再执行 prune。\n');
+
+  const expected = others.reduce((s, o) => s + (o.count || 0), 0);
+  const have = countBackupFiles(outDir);
+  console.log(`\n本次导出 ${files} 篇，跳过已存在 ${skipped} 篇，失败 ${failed.length} 篇`);
+  console.log(`备份目录现有 ${have} 篇 / 应有 ${expected} 篇`);
+  if (failed.length) {
+    console.log('\n失败明细：');
+    for (const f of failed.slice(0, 20)) console.log('  ' + f);
+    if (failed.length > 20) console.log(`  ... 另有 ${failed.length - 20} 条`);
+  }
+  if (have < expected) {
+    console.log(`\n仍缺 ${expected - have} 篇。重跑本命令可继续补齐，补齐前 prune 会拒绝执行。\n`);
+  } else {
+    console.log(`\n备份完整，可以执行 prune 预览。\n`);
+  }
 }
 
 /**
@@ -341,6 +379,32 @@ async function cmdPrune(args) {
 
   if (!fs.existsSync(backupDir)) {
     die(`未找到备份目录 ${backupDir}，请先运行 export 备份，避免误删无法恢复的内容`);
+  }
+
+  // 仅检查目录是否存在并不足以保证安全：export 中途失败时目录已建好、
+  // 内容却几乎是空的。这里按文档篇数核对，数量对不上就拒绝删除。
+  const backupCount = countBackupFiles(backupDir);
+  const expected = others.reduce((s, o) => s + (o.count || 0), 0);
+  if (backupCount < expected) {
+    die(
+      `备份不完整，拒绝删除。\n` +
+      `       应备份 ${expected} 篇，实际只有 ${backupCount} 篇，缺 ${expected - backupCount} 篇。\n` +
+      `       请重新运行 export 补齐（已导出的会自动跳过）：\n` +
+      `         node scripts/dify-kb-upload.mjs export`
+    );
+  }
+  console.log(`\n备份核对通过：${backupCount} 篇 >= 应备份 ${expected} 篇`);
+
+  // 交互式二次确认。仅靠一个命令行标志就能触发 31 次不可逆删除太危险，
+  // 误加参数、翻历史命令重跑都可能造成无法挽回的后果。
+  console.log(`\n即将永久删除以下 ${others.length} 个知识库：`);
+  for (const o of others) console.log(`    ${String(o.count).padStart(3)} 篇  ${o.name}`);
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await rl.question(`\n此操作不可恢复。确认请完整输入 DELETE 后回车（其他任何输入均取消）: `);
+  rl.close();
+  if (answer.trim() !== 'DELETE') {
+    console.log('\n已取消，未删除任何内容。\n');
+    return;
   }
 
   console.log(`\n开始删除 ${others.length} 个知识库...\n`);
