@@ -226,6 +226,139 @@ async function cmdInit() {
   console.log('\n下一步：node scripts/dify-kb-upload.mjs upload --all\n');
 }
 
+/** 取某个知识库下的文档列表 */
+async function fetchDocs(datasetId) {
+  const out = [];
+  for (let page = 1; page <= 20; page++) {
+    const r = await api('GET', `/datasets/${datasetId}/documents?page=${page}&limit=100`);
+    const items = r.data || [];
+    out.push(...items);
+    if (items.length < 100) break;
+    await sleep(200);
+  }
+  return out;
+}
+
+/**
+ * 审计：列出所有知识库及其文档，标记哪些是本次新建的 5 个。
+ * 只读，不做任何修改。删除前务必先看这份清单——旧库里可能存有
+ * 本地素材中没有的内容，删掉无法恢复。
+ */
+async function cmdAudit() {
+  const r = await api('GET', '/datasets?page=1&limit=100');
+  const all = r.data || [];
+  const targetNames = new Set(KB_SPEC.map((s) => s.name));
+  const keep = [];
+  const others = [];
+
+  console.log(`\n账号下共 ${all.length} 个知识库，逐个读取文档清单...\n`);
+  for (const d of all) {
+    let docs = [];
+    try { docs = await fetchDocs(d.id); } catch (e) { docs = []; }
+    const row = { id: d.id, name: d.name, count: docs.length, docs: docs.map((x) => x.name) };
+    (targetNames.has(d.name) ? keep : others).push(row);
+    await sleep(200);
+  }
+
+  console.log('='.repeat(72));
+  console.log(`本次新建，需保留 (${keep.length} 个)`);
+  console.log('='.repeat(72));
+  for (const k of keep) console.log(`  ${String(k.count).padStart(3)} 篇  ${k.name}`);
+
+  console.log('\n' + '='.repeat(72));
+  console.log(`其余知识库 (${others.length} 个) —— 删除前请逐行确认`);
+  console.log('='.repeat(72));
+  for (const o of others) {
+    console.log(`\n  [${o.id}]  ${o.name}   (${o.count} 篇)`);
+    for (const n of o.docs.slice(0, 5)) console.log(`      - ${n}`);
+    if (o.docs.length > 5) console.log(`      ... 另有 ${o.docs.length - 5} 篇`);
+  }
+
+  const listFile = path.join(KB_ROOT, '_audit.json');
+  fs.writeFileSync(listFile, JSON.stringify({ keep, others }, null, 2), 'utf8');
+  console.log(`\n完整清单已写入 ${listFile}`);
+  console.log(`\n下一步：`);
+  console.log(`  备份旧库内容:  node scripts/dify-kb-upload.mjs export`);
+  console.log(`  备份后再删除:  node scripts/dify-kb-upload.mjs prune --confirm\n`);
+}
+
+/**
+ * 导出：把非目标知识库的全部内容抓回本地 markdown，作为删除前的备份。
+ */
+async function cmdExport() {
+  const auditFile = path.join(KB_ROOT, '_audit.json');
+  if (!fs.existsSync(auditFile)) die('请先运行 audit 命令生成清单');
+  const { others } = JSON.parse(fs.readFileSync(auditFile, 'utf8'));
+  const outDir = path.resolve(KB_ROOT, '..', '_旧知识库备份');
+  fs.mkdirSync(outDir, { recursive: true });
+
+  let files = 0;
+  for (const kb of others) {
+    const safeKb = kb.name.replace(/[\\/:*?"<>|]/g, '_');
+    const dir = path.join(outDir, safeKb);
+    fs.mkdirSync(dir, { recursive: true });
+    let docs = [];
+    try { docs = await fetchDocs(kb.id); } catch (e) { console.log(`  读取失败 ${kb.name}: ${e.message}`); continue; }
+    for (const doc of docs) {
+      try {
+        const seg = await api('GET', `/datasets/${kb.id}/documents/${doc.id}/segments`);
+        const body = (seg.data || []).map((s) => s.content).join('\n\n');
+        const safe = String(doc.name).replace(/[\\/:*?"<>|]/g, '_').slice(0, 120);
+        fs.writeFileSync(
+          path.join(dir, safe.endsWith('.md') ? safe : safe + '.md'),
+          `---\n来源知识库: ${kb.name}\n原文档名: ${doc.name}\n---\n\n${body}\n`,
+          'utf8'
+        );
+        files++;
+        console.log(`  已导出 [${kb.name}] ${doc.name}  (${body.length} 字)`);
+      } catch (e) {
+        console.log(`  导出失败 [${kb.name}] ${doc.name}: ${e.message}`);
+      }
+      await sleep(300);
+    }
+  }
+  console.log(`\n共导出 ${files} 篇到 ${outDir}`);
+  console.log('确认备份无误后再执行 prune。\n');
+}
+
+/**
+ * 删除非目标知识库。不可恢复，默认只预览，必须显式加 --confirm 才真正执行。
+ */
+async function cmdPrune(args) {
+  const auditFile = path.join(KB_ROOT, '_audit.json');
+  if (!fs.existsSync(auditFile)) die('请先运行 audit 命令生成清单');
+  const { others } = JSON.parse(fs.readFileSync(auditFile, 'utf8'));
+  const confirmed = args.includes('--confirm');
+  const backupDir = path.resolve(KB_ROOT, '..', '_旧知识库备份');
+
+  if (!confirmed) {
+    console.log(`\n将要删除以下 ${others.length} 个知识库（当前为预览，未执行）：\n`);
+    for (const o of others) console.log(`  ${String(o.count).padStart(3)} 篇  ${o.name}`);
+    console.log(`\n删除不可恢复。确认无误后加 --confirm 执行：`);
+    console.log(`  node scripts/dify-kb-upload.mjs prune --confirm\n`);
+    return;
+  }
+
+  if (!fs.existsSync(backupDir)) {
+    die(`未找到备份目录 ${backupDir}，请先运行 export 备份，避免误删无法恢复的内容`);
+  }
+
+  console.log(`\n开始删除 ${others.length} 个知识库...\n`);
+  let ok = 0, fail = 0;
+  for (const o of others) {
+    try {
+      await api('DELETE', `/datasets/${o.id}`);
+      ok++;
+      console.log(`  已删除  ${o.name}  (${o.count} 篇)`);
+    } catch (e) {
+      fail++;
+      console.log(`  失败    ${o.name}: ${e.message}`);
+    }
+    await sleep(DELAY_MS);
+  }
+  console.log(`\n完成：删除 ${ok} 个，失败 ${fail} 个。备份保留在 ${backupDir}\n`);
+}
+
 function cmdPlan() {
   console.log('\n上传计划（不发送任何请求）\n');
   let total = 0;
@@ -310,15 +443,25 @@ try {
   else if (cmd === 'init') await cmdInit();
   else if (cmd === 'plan') cmdPlan();
   else if (cmd === 'upload') await cmdUpload(rest);
+  else if (cmd === 'audit') await cmdAudit();
+  else if (cmd === 'export') await cmdExport();
+  else if (cmd === 'prune') await cmdPrune(rest);
   else {
     console.log(`
 Dify 知识库批量上传
 
-  node scripts/dify-kb-upload.mjs list      列出账号下所有知识库及 id（只读）
-  node scripts/dify-kb-upload.mjs init      创建 5 个目标知识库并写入映射表
-  node scripts/dify-kb-upload.mjs plan      预览上传计划（不发请求）
-  node scripts/dify-kb-upload.mjs upload --all      按映射表全量上传
-  node scripts/dify-kb-upload.mjs upload <库目录名> <dataset_id>
+上传：
+  list                列出账号下所有知识库及 id（只读）
+  init                创建 5 个目标知识库并写入映射表
+  plan                预览上传计划（不发请求）
+  upload --all        按映射表全量上传
+  upload <目录> <id>  上传单个目录
+
+清理旧库：
+  audit               列出所有库及其文档清单，标记新旧（只读）
+  export              把非目标库的内容导出到本地备份
+  prune               预览将删除的库
+  prune --confirm     执行删除（不可恢复，要求已完成 export）
 
 典型流程：
   1) $env:DIFY_DATASET_API_KEY="dataset-xxxx"
