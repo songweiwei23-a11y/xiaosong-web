@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
-import { Copy, Download, Loader2, MessageCircle, Clock, Type, type LucideIcon } from "lucide-react";
+import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, type LucideIcon } from "lucide-react";
 import {
   splitQualityReport,
   parseQualitySummary,
@@ -21,6 +21,14 @@ import { EmptyState } from "./EmptyState";
  * 质量评分是脚本页独有的，做成可选：其余页面传 showQuality={false} 即可，
  * 组件内部照样会把误拼进正文的报告段落剥掉，避免复制时带出来。
  */
+/** 生成完之后可以直接去的下一步 */
+export interface NextAction {
+  label: string;
+  icon: LucideIcon;
+  /** 拿到的是正文（不含质量报告），由调用方决定带去哪里 */
+  onClick: (bodyOnly: string) => void;
+}
+
 export function ResultPanel({
   result,
   isGenerating,
@@ -35,6 +43,7 @@ export function ResultPanel({
   onCopy,
   onDownload,
   onContinue,
+  nextActions,
 }: {
   result: string;
   isGenerating: boolean;
@@ -50,6 +59,11 @@ export function ResultPanel({
   onCopy?: (bodyOnly: string) => void;
   onDownload?: (bodyOnly: string) => void;
   onContinue?: () => void;
+  /**
+   * 「接下来」的去处。内容会自动带过去，不用复制粘贴——
+   * 这是九个功能之间最缺的一环：同一条内容原先要手动粘贴四五次。
+   */
+  nextActions?: NextAction[];
 }) {
   // 拆分与统计只依赖 result，用 memo 避免流式输出时逐字符重算
   const { body, report, stats, quality } = useMemo(() => {
@@ -126,6 +140,31 @@ export function ResultPanel({
       )}
 
       {showQuality && report && !isGenerating && <QualityCard report={report} quality={quality} />}
+
+      {/* 接下来：放在正文之后，因为它是「读完再决定」的动作，
+          摆在顶部会和复制下载抢位置，也不符合阅读顺序 */}
+      {body && !isGenerating && nextActions && nextActions.length > 0 && (
+        <div className="glass-panel rounded-2xl p-5">
+          <p className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            接下来
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {nextActions.map((a) => (
+              <button
+                key={a.label}
+                type="button"
+                onClick={() => a.onClick(body)}
+                className="glass-panel glass-interactive group flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium text-foreground"
+              >
+                <a.icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                {a.label}
+                <ArrowRight className="h-3.5 w-3.5 -translate-x-1 text-primary opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+              </button>
+            ))}
+          </div>
+          <p className="mt-2.5 text-[11px] text-muted-foreground">内容会自动带过去，不用复制</p>
+        </div>
+      )}
     </div>
   );
 }

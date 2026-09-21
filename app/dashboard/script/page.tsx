@@ -1,6 +1,7 @@
 "use client";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { extractScriptContext } from "@/lib/positioning-utils";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
@@ -26,7 +27,7 @@ import { useState, useEffect, useCallback } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
 import {
   Sparkles, AlertCircle, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText,
-  BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package,
+  BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package, CheckCircle, Tag,
 } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 
@@ -50,8 +51,10 @@ import {
 } from "./constants";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { useScriptHistory } from "./useScriptHistory";
-import { ResultPanel } from "./ResultPanel";
-import { HistoryPanel } from "./HistoryPanel";
+// 统一走通用组件，脚本页原先那份已删除
+import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { HistoryPanel } from "@/components/workspace/HistoryPanel";
+import { putHandoff, takeHandoff } from "@/lib/handoff";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
@@ -154,6 +157,26 @@ export default function ScriptPage() {
   // 当前结果区展示的是哪条历史，用于在列表里高亮。
   // 新生成时清空——此时结果区的内容还没入库，不属于任何一条历史。
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+
+  const router = useRouter();
+
+  /**
+   * 接收从别的功能带过来的内容。
+   *
+   * 选题页会把解析出来的选题列表一并带来，这里存下供用户挑一条；
+   * 只带了单个主题时直接填进主题框。
+   */
+  const [handoffTopics, setHandoffTopics] = useState<string[]>([]);
+  const [handoffFrom, setHandoffFrom] = useState("");
+
+  useEffect(() => {
+    const data = takeHandoff();
+    if (!data) return;
+    setHandoffFrom(data.from || "");
+    if (data.topic) setTopic(data.topic);
+    if (data.topicOptions?.length) setHandoffTopics(data.topicOptions);
+    if (data.note) setAdditionalInfo(data.note);
+  }, []);
 
   // 档案和定位关联
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -860,6 +883,28 @@ ${formatRequirements}
               </div>
             </Field>
 
+            {/* 从选题页带来的候选：点一条即填进主题框。
+                选完就收起——它只是个过渡入口，留着会一直占地方 */}
+            {handoffTopics.length > 0 && !topic && (
+              <div className="rounded-xl border border-primary/20 bg-primary/[0.07] p-3">
+                <p className="mb-2 text-[12px] text-primary">
+                  来自{handoffFrom || "选题策划"}的 {handoffTopics.length} 条选题，挑一条
+                </p>
+                <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                  {handoffTopics.map((t, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setTopic(t)}
+                      className="glass-panel glass-interactive w-full rounded-lg px-3 py-2 text-left text-[12px] leading-relaxed text-foreground"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Field label="视频主题" required>
               <textarea
                 value={topic}
@@ -1352,6 +1397,15 @@ ${formatRequirements}
       <ResultPanel
         result={result}
         isGenerating={isGenerating}
+        showQuality
+        emptyIcon={Sparkles}
+        emptyTitle="填写左侧需求后点击生成"
+        emptyHint="AI 会结合编导知识库为你生成专业脚本"
+        emptyTips={[
+          "主题写得越具体，脚本越贴合",
+          "选上账号档案，语气会更像你",
+          "生成后可以直接拆分镜、审稿、起标题",
+        ]}
         onCopy={(bodyOnly) => {
           navigator.clipboard.writeText(bodyOnly);
           notify("✅ 已复制到剪贴板");
@@ -1368,10 +1422,39 @@ ${formatRequirements}
           URL.revokeObjectURL(url);
         }}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
+        // 脚本写完通常还要走三步，内容直接带过去，不用复制粘贴
+        nextActions={[
+          {
+            label: "拆分镜",
+            icon: Film,
+            onClick: (body) => {
+              putHandoff({ from: "脚本生成", scriptContent: body });
+              router.push("/dashboard/storyboard");
+            },
+          },
+          {
+            label: "审一遍",
+            icon: CheckCircle,
+            onClick: (body) => {
+              putHandoff({ from: "脚本生成", scriptContent: body });
+              router.push("/dashboard/review");
+            },
+          },
+          {
+            label: "起标题",
+            icon: Tag,
+            onClick: () => {
+              putHandoff({ from: "脚本生成", topic });
+              router.push("/dashboard/title");
+            },
+          },
+        ]}
       />
 
       <HistoryPanel
         items={scriptHistory}
+        title="历史脚本"
+        showQuality
         activeId={activeHistoryId}
         onLoad={(item) => {
           // 点历史直接调回结果区查看。原先只能「继续对话」，

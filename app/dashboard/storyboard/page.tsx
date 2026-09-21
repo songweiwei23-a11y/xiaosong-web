@@ -1,5 +1,6 @@
 "use client";
 
+import { takeHandoff } from "@/lib/handoff";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -8,7 +9,7 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Film, Copy, Download, Loader2, Sparkles, Wand2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -78,6 +79,12 @@ export default function StoryboardPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecommending, setIsRecommending] = useState(false);
   const [result, setResult] = useState("");
+
+  // 接收从脚本页带来的正文，省掉一次复制粘贴
+  useEffect(() => {
+    const data = takeHandoff();
+    if (data?.scriptContent) setscriptContent(data.scriptContent);
+  }, []);
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult);

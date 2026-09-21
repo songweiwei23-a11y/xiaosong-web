@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { putHandoff, parseTopicOptions } from "@/lib/handoff";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -14,7 +16,7 @@ import { extractStrategySummary } from '@/lib/positioning-utils';
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
-import { Lightbulb, Loader2, TrendingUp, Users, Target, Sparkles, Grid3x3, Zap, Heart, DollarSign, Eye, Flame, Copy, Download, History, MessageCircle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Lightbulb, Loader2, TrendingUp, Users, Target, Sparkles, Grid3x3, Zap, Heart, DollarSign, Eye, Flame, Copy, Download, History, MessageCircle, Trash2, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
@@ -42,6 +44,8 @@ export default function TopicPage() {
     downloadAsFile,
     lastResult,
   } = useGenerationPage({ taskType: '选题策划', historyApiPath: '/api/topics' });
+
+  const router = useRouter();
 
   const [mode, setMode] = useState("custom"); // "quick" 或 "custom"
 
@@ -1089,6 +1093,24 @@ export default function TopicPage() {
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `选题方案-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
+        // 选题的下一步必然是写脚本。把解析出的选题标题一并带过去，
+        // 到脚本页挑一条即可，不用回来复制
+        nextActions={[
+          {
+            label: "写成脚本",
+            icon: FileText,
+            onClick: (body) => {
+              const options = parseTopicOptions(body);
+              putHandoff({
+                from: "选题策划",
+                topicOptions: options,
+                // 只解析出一条时直接填好，省掉一次选择
+                topic: options.length === 1 ? options[0] : undefined,
+              });
+              router.push("/dashboard/script");
+            },
+          },
+        ]}
       />
 
       <HistoryPanel

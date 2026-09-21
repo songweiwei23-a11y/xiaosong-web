@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { takeHandoff, putHandoff } from "@/lib/handoff";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -9,7 +11,7 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
-import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare } from "lucide-react";
+import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare, Film } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
@@ -34,6 +36,8 @@ export default function ReviewPage() {
     downloadAsFile,
     lastResult,
   } = useGenerationPage({ taskType: '审稿优化', historyApiPath: '/api/reviews' });
+
+  const router = useRouter();
 
   const [draftContent, setDraftContent] = useState("");
   const [wordCount, setWordCount] = useState(0);
@@ -63,6 +67,12 @@ export default function ReviewPage() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
+
+  // 接收从脚本页带来的正文作为待审稿件
+  useEffect(() => {
+    const data = takeHandoff();
+    if (data?.scriptContent) setDraftContent(data.scriptContent);
+  }, []);
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult);
@@ -392,6 +402,17 @@ export default function ReviewPage() {
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `审稿意见-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
+        // 审完通常要拿改好的版本重新拆分镜
+        nextActions={[
+          {
+            label: "拿改好的版本拆分镜",
+            icon: Film,
+            onClick: (body) => {
+              putHandoff({ from: "审稿优化", scriptContent: body });
+              router.push("/dashboard/storyboard");
+            },
+          },
+        ]}
       />
 
       <HistoryPanel

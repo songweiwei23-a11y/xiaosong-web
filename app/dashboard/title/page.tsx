@@ -1,5 +1,6 @@
 "use client";
 
+import { takeHandoff } from "@/lib/handoff";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -87,6 +88,12 @@ export default function TitlePage() {
   const [titleHistory, setTitleHistory] = useState<any[]>([]);
   const [selectedHistory, setSelectedHistory] = useState<any>(null);
   const [showDialog, setShowDialog] = useState(false);
+
+  // 接收从脚本页带来的主题
+  useEffect(() => {
+    const data = takeHandoff();
+    if (data?.topic) setTopic(data.topic);
+  }, []);
 
   // 加载历史记录
   useEffect(() => {
