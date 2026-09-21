@@ -1,7 +1,13 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { saveConversationMessage, getConversationHistory, formatConversationHistory } from '@/lib/conversation';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { buildSearchQuery } from '@/lib/search-query';
+import {
+  getDifyConversationId,
+  saveDifyConversationId,
+  clearDifyConversationId,
+  isInvalidConversationError,
+} from '@/lib/dify-conversation';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -432,14 +438,43 @@ export async function POST(req: NextRequest) {
     
     console.log('📦 完整请求体:', JSON.stringify(difyRequestBody, null, 2));
 
-    const response = await fetch('https://api.dify.ai/v1/chat-messages', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + process.env.DIFY_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(difyRequestBody)
-    });
+    // 带上该作用域的历史会话，让 Dify 把多次生成串成一轮对话。
+    // 作用域 = 用户 + 账号档案 + 功能，见 lib/dify-conversation.ts。
+    const profileId = body.profileId || body.profile_id || null;
+    const existingConversationId = await getDifyConversationId(
+      guard.userId!,
+      body.taskType || '未知',
+      profileId
+    );
+    if (existingConversationId) {
+      difyRequestBody.conversation_id = existingConversationId;
+      console.log('🔗 延续已有会话:', existingConversationId);
+    }
+
+    const callDify = () =>
+      fetch('https://api.dify.ai/v1/chat-messages', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + process.env.DIFY_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(difyRequestBody)
+      });
+
+    let response = await callDify();
+
+    // 会话可能因过期、被删或应用重建而失效。若不处理，本地存着的旧 id
+    // 会让该作用域的生成永久报错。此时清除记录并以新会话重试一次，
+    // 代价是丢失上下文，但功能可以自愈。
+    if (!response.ok && existingConversationId) {
+      const errText = await response.clone().text();
+      if (isInvalidConversationError(response.status, errText)) {
+        console.warn('⚠️ 会话已失效，清除后以新会话重试:', errText.slice(0, 160));
+        await clearDifyConversationId(guard.userId!, body.taskType || '未知', profileId);
+        delete difyRequestBody.conversation_id;
+        response = await callDify();
+      }
+    }
 
     console.log('Dify response status:', response.status);
 
@@ -457,6 +492,7 @@ export async function POST(req: NextRequest) {
 
     let totalChunks = 0;
     let fullResponse = ''; // 收集完整回复用于保存
+    let capturedConversationId = '';
     const stream = new ReadableStream({
       async start(controller) {
         const decoder = new TextDecoder();
@@ -475,7 +511,13 @@ export async function POST(req: NextRequest) {
               if (!line.trim() || !line.startsWith('data: ')) continue;
               try {
                 const data = JSON.parse(line.slice(6));
-                
+
+                // 记下本轮的会话 id，下次同作用域的请求带上它以延续对话。
+                // 新会话时 Dify 在首个事件里就会返回，这里只取一次。
+                if (data.conversation_id && !capturedConversationId) {
+                  capturedConversationId = data.conversation_id;
+                }
+
                 // 调试：打印 Dify 返回的数据结构
                 if (totalChunks === 0) {
                   console.log('📥 Dify 首个响应:', JSON.stringify(data, null, 2));
@@ -513,6 +555,17 @@ export async function POST(req: NextRequest) {
           // 生成成功（有内容）后，服务端扣减一次配额
           if (totalChunks > 0 && guard.userId) {
             await incrementUsageServer(guard.userId, getFeatureFromTaskType(body.taskType));
+          }
+
+          // 持久化会话 id，使下一次同作用域的生成延续本轮对话。
+          // 仅在确有内容产出时保存，避免把失败的空会话记下来。
+          if (totalChunks > 0 && guard.userId && capturedConversationId) {
+            await saveDifyConversationId(
+              guard.userId,
+              body.taskType || '未知',
+              capturedConversationId,
+              profileId
+            );
           }
           
           // 保存对话历史
