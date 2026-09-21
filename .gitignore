@@ -69,3 +69,9 @@ tsconfig.tsbuildinfo
 # npm cache (不应追踪)
 .npm-cache/
 .npm/
+
+# 编导知识素材库（约 176MB：docx/pdf/pptx/png 原始课件）
+# 原始素材不入版本库，但保留 _导入Dify 下由 docx 转换出的 markdown 成果，
+# 它体积小、是纯文本、且是知识库上传的直接依据，值得追踪变更。
+/编导知识大全/*
+!/编导知识大全/_导入Dify/
