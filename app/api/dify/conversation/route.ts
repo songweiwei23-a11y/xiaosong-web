@@ -38,7 +38,9 @@ export async function POST(req: NextRequest) {
       },
       query: query,
       response_mode: 'streaming',
-      user: 'user-' + Date.now()
+      // 传真实用户 id。此前用 Date.now() 拼接，等于每次请求都是新用户，
+      // Dify 无法把同一个人的多轮对话关联起来。
+      user: guard.userId!
     };
 
     // 如果有 conversation_id，传递它以保持对话记忆

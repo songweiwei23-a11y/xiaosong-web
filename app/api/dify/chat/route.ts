@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
       inputs: {},
       query: fullQuery,
       response_mode: 'streaming',
-      user: 'webapp-user-fixed'
+      // 传真实用户 id：Dify 以此隔离会话与统计用量。
+      // 此前写死为固定值，所有用户在 Dify 侧是同一个人。
+      user: guard.userId!
     }
 
     // 如果有 conversationId，则传入以启用记忆

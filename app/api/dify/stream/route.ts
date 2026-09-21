@@ -416,7 +416,10 @@ export async function POST(req: NextRequest) {
       },
       query: query, // API 必需的顶层字段
       response_mode: 'streaming',
-      user: 'webapp-user-fixed'
+      // 传真实用户 id：Dify 以此隔离会话与统计用量。
+      // 此前写死为固定值，所有用户在 Dify 侧是同一个人，
+      // 会话历史与用量全部混在一起，多账号场景下无法区分。
+      user: guard.userId!
     };
 
     console.log('📤 发送给 Dify (方案6):', {
