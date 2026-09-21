@@ -1,6 +1,13 @@
 "use client";
 
+import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { PageHeader } from "@/components/workspace/PageHeader";
+import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -214,401 +221,193 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
-      {/* 左侧输入面板 */}
-      <div className="w-[600px] bg-card shadow-2xl p-6 space-y-5 overflow-y-auto">
-        
-        {/* 标题 */}
-        <div className="text-center pb-4 border-b-2 border-green-100">
-          <h1 className="text-2xl font-bold text-foreground flex items-center justify-center gap-2">
-            <CheckCircle className="w-7 h-7 text-green-500" />
-            审稿优化
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            <Sparkles className="w-4 h-4 inline mr-1" />
-            AI诊断问题 + 专业修改建议 + 完整优化版
-          </p>
-        </div>
+    <WorkspaceLayout
+      sidebar={
+        <>
+          <PageHeader title="审稿优化" subtitle="逐条指出问题并给出改写建议，可对照标杆脚本做差距分析" />
 
-        {/* 草稿输入区 */}
-        <div>
-          <Field label="草稿内容" required>
-<div className="flex gap-2">
-              <button
-                onClick={loadExample}
-                className="text-xs text-primary hover:text-primary font-medium"
-              >
-                加载示例
-              </button>
-              <button
-                onClick={clearDraft}
-                className="text-xs text-muted-foreground hover:text-foreground font-medium"
-              >
-                清空
-              </button>
-            </div>
-</Field>
-          <textarea
-            value={draftContent}
-            onChange={(e) => setDraftContent(e.target.value)}
-            placeholder="粘贴你的脚本草稿...&#10;&#10;可以是完整脚本，也可以是片段&#10;内容越详细，审稿越精准"
-            className="w-full h-48 rounded-xl glass-panel p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
-          />
-          <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-            <span>字数：<span className="font-bold text-foreground">{wordCount}</span> 字</span>
-            <span>预估时长：<span className="font-bold text-foreground">{estimatedDuration}</span> 秒</span>
-          </div>
-        </div>
-
-        {/* 基础信息 */}
-        <div className="space-y-4 pt-3 border-t-2 border-border">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Target className="w-4 h-4 text-accent" />
-            基础信息
-          </h3>
-
-          {/* 平台 */}
-          <Field label="平台" optional stacked>
-<div className="grid grid-cols-4 gap-2">
-              {platforms.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPlatform(p)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    platform === p
-                      ? "bg-accent text-white shadow-md"
-                      : "bg-muted text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-</Field>
-
-          {/* 时长 */}
-          <Field label="视频时长" optional stacked>
-<div className="grid grid-cols-3 gap-2">
-              {durations.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDuration(d)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    duration === d
-                      ? "bg-primary text-white shadow-md"
-                      : "bg-muted text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-</Field>
-
-          {/* 脚本类型 */}
-          <Field label="脚本类型" optional stacked>
-<div className="flex flex-wrap gap-2">
-              {scriptTypes.map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setScriptType(scriptType === type ? "" : type)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    scriptType === type
-                      ? "bg-emerald-500 text-white shadow-md"
-                      : "bg-card text-muted-foreground border border-border hover:border-green-500/50"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-</Field>
-        </div>
-
-        {/* 审稿维度 */}
-        <div className="space-y-4 pt-3 border-t-2 border-border">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Eye className="w-4 h-4 text-orange-500" />
-            审稿维度（多选） <span className="text-xs font-normal text-destructive">至少选1项</span>
-          </h3>
-
-          {/* 开头吸引力 */}
-          <div className="bg-destructive/10 rounded-xl p-3 border-2 border-red-100">
-            <p className="text-xs font-bold text-destructive mb-2">📌 开头吸引力</p>
-            <div className="space-y-1.5">
-              {openingOptions.map((option) => (
-                <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={openingChecks.includes(option.id)}
-                    onChange={() => toggleSelection(option.id, openingChecks, setOpeningChecks)}
-                    className="rounded"
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* 结构完整性 */}
-          <div className="bg-primary/10 rounded-xl p-3 border-2 border-blue-100">
-            <p className="text-xs font-bold text-primary mb-2">📌 结构完整性</p>
-            <div className="space-y-1.5">
-              {structureOptions.map((option) => (
-                <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={structureChecks.includes(option.id)}
-                    onChange={() => toggleSelection(option.id, structureChecks, setStructureChecks)}
-                    className="rounded"
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* 文案质量 */}
-          <div className="bg-emerald-500/10 rounded-xl p-3 border-2 border-green-100">
-            <p className="text-xs font-bold text-green-500 mb-2">📌 文案质量</p>
-            <div className="space-y-1.5">
-              {contentOptions.map((option) => (
-                <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={contentChecks.includes(option.id)}
-                    onChange={() => toggleSelection(option.id, contentChecks, setContentChecks)}
-                    className="rounded"
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* 情绪波点 */}
-          <div className="bg-accent/10 rounded-xl p-3 border-2 border-purple-100">
-            <p className="text-xs font-bold text-accent mb-2">📌 情绪波点</p>
-            <div className="space-y-1.5">
-              {emotionOptions.map((option) => (
-                <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={emotionChecks.includes(option.id)}
-                    onChange={() => toggleSelection(option.id, emotionChecks, setEmotionChecks)}
-                    className="rounded"
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* 行动指引 */}
-          <div className="bg-amber-500/10 rounded-xl p-3 border-2 border-yellow-100">
-            <p className="text-xs font-bold text-yellow-500 mb-2">📌 行动指引</p>
-            <div className="space-y-1.5">
-              {actionOptions.map((option) => (
-                <label key={option.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={actionChecks.includes(option.id)}
-                    onChange={() => toggleSelection(option.id, actionChecks, setActionChecks)}
-                    className="rounded"
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 优化目标 */}
-        <div className="space-y-4 pt-3 border-t-2 border-border">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Zap className="w-4 h-4 text-yellow-500" />
-            优化目标（多选，可选）
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {goalOptions.map((goal) => (
-              <button
-                key={goal}
-                onClick={() => toggleSelection(goal, optimizationGoals, setOptimizationGoals)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  optimizationGoals.includes(goal)
-                    ? "bg-amber-500 text-white shadow-md"
-                    : "bg-card text-muted-foreground border border-border hover:border-yellow-500/50"
-                }`}
-              >
-                {goal}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">已选择 {optimizationGoals.length} 项</p>
-        </div>
-
-        {/* 对标参考 */}
-        <div className="space-y-4 pt-3 border-t-2 border-border">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-accent" />
-            对标参考（可选）
-          </h3>
-          <textarea
-            value={benchmarkScript}
-            onChange={(e) => setBenchmarkScript(e.target.value)}
-            placeholder="粘贴一个你想对标的优质脚本...&#10;&#10;AI会参考这个脚本的优点来优化你的草稿"
-            className="w-full h-24 rounded-xl glass-panel p-3 focus:border-accent/50 focus:ring-2 focus:ring-primary resize-none text-xs"
-          />
-        </div>
-
-        {/* 输出选项 */}
-        <div className="space-y-4 pt-3 border-t-2 border-border">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            输出选项
-          </h3>
-
-          {/* 对比模式 */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
-            <div>
-              <p className="text-xs font-medium text-foreground">原稿 vs 修改稿对照</p>
-              <p className="text-xs text-muted-foreground mt-0.5">对比展示，看得更清楚</p>
-            </div>
-            <button
-              onClick={() => setCompareMode(!compareMode)}
-              className={`relative w-12 h-6 rounded-full transition-all ${
-                compareMode ? "bg-emerald-500" : "bg-muted"
-              }`}
+          <CollapsibleSection title="待审脚本" defaultOpen>
+            <Field
+              label="草稿内容"
+              required
+              stacked
+              hint={
+                wordCount > 0
+                  ? `${wordCount} 字 · 口播约 ${estimatedDuration} 秒`
+                  : "粘贴要审的口播稿，字数与时长会自动估算"
+              }
             >
-              <span
-                className={`absolute top-1 left-1 w-4 h-4 bg-card rounded-full transition-transform ${
-                  compareMode ? "transform translate-x-6" : ""
-                }`}
+              <textarea
+                value={draftContent}
+                onChange={(e) => setDraftContent(e.target.value)}
+                placeholder="把要审的脚本粘贴进来…"
+                rows={8}
+                className={TEXTAREA_CLS}
               />
-            </button>
-          </div>
+            </Field>
+          </CollapsibleSection>
 
-          {/* 严重度标注 */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
-            <div>
-              <p className="text-xs font-medium text-foreground">问题严重度标注</p>
-              <p className="text-xs text-muted-foreground mt-0.5">标注严重/中等/轻微问题</p>
-            </div>
-            <button
-              onClick={() => setSeverityLabels(!severityLabels)}
-              className={`relative w-12 h-6 rounded-full transition-all ${
-                severityLabels ? "bg-emerald-500" : "bg-muted"
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-4 h-4 bg-card rounded-full transition-transform ${
-                  severityLabels ? "transform translate-x-6" : ""
-                }`}
-              />
-            </button>
-          </div>
-        </div>
+          <CollapsibleSection title="基础信息" defaultOpen>
+            <Field label="发布平台" optional>
+              <select value={platform} onChange={(e) => setPlatform(e.target.value)} className={SELECT_CLS}>
+                {platforms.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </Field>
 
+            <Field label="视频时长" optional>
+              <select value={duration} onChange={(e) => setDuration(e.target.value)} className={SELECT_CLS}>
+                {durations.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </Field>
 
-        {/* 配额显示 */}
-        {hookQuota !== null && (
-          <div className="mb-4 p-3 bg-muted rounded-xl text-sm text-center">
-            <span className={hookQuota > 10 ? "text-green-500 font-semibold" : hookQuota > 0 ? "text-orange-500 font-semibold" : "text-destructive font-semibold"}>
-              💎 剩余配额：{hookQuota} 次
-            </span>
-          </div>
-        )}
-
-        {/* 生成按钮 */}
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-6 h-6 animate-spin" />
-              AI审稿中...
-            </>
-          ) : (
-            <>
-              <CheckCircle className="w-6 h-6" />
-              开始审稿优化
-            </>
-          )}
-        </button>
-
-        <p className="text-center text-xs text-muted-foreground">
-          💡 填写草稿并选择至少1个审稿维度即可生成
-        </p>
-      </div>
-
-      {/* 右侧结果展示 */}
-      <div className="flex-1 overflow-y-auto p-8">
-        {result ? (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/30">
-              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                <CheckCircle className="w-6 h-6 text-green-500" />
-                审稿报告
-              </h2>
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => copyToClipboard(result)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  复制报告
-                </button>
-                <button
-                  onClick={() => downloadAsFile(result, `审稿报告-${new Date().toLocaleDateString()}.txt`)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  下载报告
-                </button>
+            <Field label="脚本类型" optional stacked>
+              <div className="flex flex-wrap gap-1.5">
+                {scriptTypes.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setScriptType(scriptType === t ? "" : t)}
+                    aria-pressed={scriptType === t}
+                    className={chipCls(scriptType === t)}
+                  >
+                    {t}
+                  </button>
+                ))}
               </div>
-              <div className="prose prose-slate max-w-none">
-                <ReactMarkdown>{result}</ReactMarkdown>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-lg">
-              <div className="relative mb-6">
-                <CheckCircle className="w-28 h-28 mx-auto text-muted-foreground" />
-                <Sparkles className="w-12 h-12 absolute top-0 right-1/3 text-green-400 animate-pulse" />
-              </div>
-              <p className="text-2xl font-bold text-foreground mb-3">
-                专业审稿优化系统
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                多维度诊断脚本问题<br/>
-                给出具体修改建议<br/>
-                生成完整优化版本<br/>
-                支持对标参考学习<br/><br/>
-              </p>
-              
-              <div className="rounded-xl p-4 border-2 border-primary/20 text-left">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-bold text-primary mb-2">💡 使用技巧</p>
-                    <ul className="space-y-1 text-xs text-primary">
-                      <li>• 草稿越详细，审稿越精准</li>
-                      <li>• 根据你的担心选择审稿维度</li>
-                      <li>• 粘贴对标脚本，AI会参考优化</li>
-                      <li>• 开启对比模式，修改一目了然</li>
-                    </ul>
-                  </div>
+            </Field>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="审稿维度" defaultOpen={false}>
+            {[
+              { label: "开篇", options: openingOptions, value: openingChecks, setter: setOpeningChecks },
+              { label: "结构", options: structureOptions, value: structureChecks, setter: setStructureChecks },
+              { label: "内容", options: contentOptions, value: contentChecks, setter: setContentChecks },
+              { label: "情绪", options: emotionOptions, value: emotionChecks, setter: setEmotionChecks },
+              { label: "转化", options: actionOptions, value: actionChecks, setter: setActionChecks },
+            ].map((group) => (
+              <Field key={group.label} label={group.label} optional stacked>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.options.map((opt: any) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => toggleSelection(opt.label, group.value, group.setter)}
+                      aria-pressed={group.value.includes(opt.label)}
+                      className={chipCls(group.value.includes(opt.label))}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
+              </Field>
+            ))}
+          </CollapsibleSection>
+
+          <CollapsibleSection title="优化目标" defaultOpen={false}>
+            <Field
+              label="优化目标"
+              optional
+              stacked
+              hint={optimizationGoals.length > 0 ? `已选 ${optimizationGoals.length} 项` : "不选则全面优化"}
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {goalOptions.map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => toggleSelection(g, optimizationGoals, setOptimizationGoals)}
+                    aria-pressed={optimizationGoals.includes(g)}
+                    className={chipCls(optimizationGoals.includes(g))}
+                  >
+                    {g}
+                  </button>
+                ))}
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+            </Field>
+
+            <Field label="标杆脚本" optional stacked hint="填了会做对照分析，指出差距在哪">
+              <textarea
+                value={benchmarkScript}
+                onChange={(e) => setBenchmarkScript(e.target.value)}
+                placeholder="粘贴一条同赛道的爆款脚本…"
+                rows={4}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+
+            <Field label="输出选项" optional stacked>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => setCompareMode(!compareMode)}
+                  aria-pressed={compareMode}
+                  className={chipCls(compareMode)}
+                >
+                  原文改写对照
+                </button>
+                <button
+                  onClick={() => setSeverityLabels(!severityLabels)}
+                  aria-pressed={severityLabels}
+                  className={chipCls(severityLabels)}
+                >
+                  标注问题严重度
+                </button>
+              </div>
+            </Field>
+          </CollapsibleSection>
+
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !draftContent.trim()}
+            className={PRIMARY_BTN}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                审稿中…
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4" />
+                开始审稿优化
+              </>
+            )}
+          </button>
+        </>
+      }
+    >
+      <ResultPanel
+        result={result}
+        isGenerating={isGenerating}
+        title="审稿意见"
+        emptyIcon={CheckCircle}
+        emptyTitle="粘贴脚本后开始审稿"
+        emptyHint="逐条指出问题，并给出可直接替换的改写"
+        emptyTips={[
+          "填上标杆脚本会做对照，差距更清楚",
+          "不选维度就是全面审一遍",
+          "审完可继续追问某一条怎么改",
+        ]}
+        generatingHint="正在逐句审阅…"
+        onCopy={(text) => copyToClipboard(text)}
+        onDownload={(text) => downloadAsFile(text, `审稿意见-${new Date().toLocaleDateString()}.txt`)}
+        onContinue={result ? () => openContinuousDialog(result) : undefined}
+      />
+
+      <HistoryPanel
+        items={history}
+        title="历史审稿"
+        onLoad={(item) => setResult(item.result)}
+        onContinue={(item) => openContinuousDialog(item.result)}
+        onDelete={(id) => deleteHistory(id)}
+      />
+
+      <ContinuousDialog
+        isOpen={showDialog}
+        onClose={closeContinuousDialog}
+        initialContent={dialogInitialContent}
+        taskType="审稿优化"
+      />
+    </WorkspaceLayout>
   );
 }
-

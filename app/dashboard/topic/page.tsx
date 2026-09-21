@@ -1,6 +1,12 @@
 "use client";
 
 import { Field } from "@/components/form/Field";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { PageHeader } from "@/components/workspace/PageHeader";
+import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 
 
@@ -732,636 +738,374 @@ export default function TopicPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
-      
-      {/* 左侧输入面板 */}
-      <div className="w-[580px] glass-panel shadow-2xl p-6 space-y-5 overflow-y-auto">
-        
-        <h1 className="text-2xl font-bold text-foreground mb-4">✨ 选题策划工作台</h1>
+    <WorkspaceLayout
+      sidebar={
+        <>
+          <PageHeader title="选题策划" subtitle="结合账号定位与爆款元素，一次给出多条可直接拍的选题" />
 
-        {/* 模式切换 */}
-        <Field label="选择模式" optional>
-<div className="flex gap-3">
-            <button
-              onClick={() => setMode("quick")}
-              className={`flex-1 py-2.5 rounded-xl font-medium transition-all ${
-                mode === "quick"
-                  ? "btn-brand"
-                  : "bg-card text-muted-foreground hover:bg-muted border border-border"
-              }`}
-            >
-              ⚡ 快速模式
-            </button>
-            <button
-              onClick={() => setMode("custom")}
-              className={`flex-1 py-2.5 rounded-xl font-medium transition-all ${
-                mode === "custom"
-                  ? "btn-brand"
-                  : "bg-card text-muted-foreground hover:bg-muted border border-border"
-              }`}
-            >
-              🎨 自定义模式
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            {mode === "quick" ? "快速模式：选择档案和定位快速填充" : "自定义模式：手动填写所有字段"}
-          </p>
-</Field>
-
-        {/* 快速模式：档案和定位选择 */}
-        {mode === "quick" && (
-          <div className="space-y-5">
-            <Field label="个人档案" optional>
-<select
-                value={selectedProfileId}
-                onChange={(e) => handleProfileSelect(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background/50 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 px-3 py-2.5"
+          {/* 模式切换：分段控件比两个并排按钮干净，选中的那个才有实体感 */}
+          <div className="glass-panel flex gap-1 rounded-2xl p-1">
+            {([
+              { id: "quick", label: "⚡ 快速模式", hint: "用已存的档案和定位" },
+              { id: "custom", label: "🎨 自定义", hint: "手动填写所有字段" },
+            ] as const).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                title={m.hint}
+                aria-pressed={mode === m.id}
+                className={`flex-1 rounded-xl py-2.5 text-[13px] font-medium transition-all ${
+                  mode === m.id
+                    ? "btn-brand"
+                    : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
+                }`}
               >
-                <option value="">-- 选择档案 --</option>
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.profile_name || `${profile.account_track?.[0] || '未命名'} - ${profile.account_stage || '新档案'}`}
-                  </option>
-                ))}
-              </select>
-</Field>
-
-            <Field label="账号定位" optional>
-<select
-                value={selectedPositioningId}
-                onChange={(e) => handlePositioningSelect(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background/50 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 px-3 py-2.5"
-              >
-                <option value="">-- 选择定位 --</option>
-                {positionings.map((positioning) => (
-                  <option key={positioning.id} value={positioning.id}>
-                    {positioning.positioning_name || '未命名定位'}
-                  </option>
-                ))}
-              </select>
-</Field>
+                {m.label}
+              </button>
+            ))}
           </div>
-        )}
 
-        {/* 基础设置（可折叠） */}
-        <div className="border border-border rounded-xl">
-          <button
-            onClick={() => setIsBasicOpen(!isBasicOpen)}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted transition-colors rounded-t-lg"
-          >
-            <span className="font-semibold text-foreground">📝 基础设置</span>
-            {isBasicOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
-          </button>
-
-          {isBasicOpen && (
-            <div className="px-4 pb-4 space-y-5 border-t">
-              
-              {/* 账号阶段 */}
-              <Field label="账号阶段" optional>
-<select
-                  value={accountStage}
-                  onChange={(e) => setAccountStage(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          {mode === "quick" && (
+            <CollapsibleSection title="选择档案" defaultOpen>
+              <Field label="个人档案" required>
+                <select
+                  value={selectedProfileId}
+                  onChange={(e) => handleProfileSelect(e.target.value)}
+                  className={SELECT_CLS}
                 >
-                  <option value="">-- 选择阶段 --</option>
-                  {accountStages.map((stage) => (
-                    <option key={stage} value={stage}>{stage}</option>
+                  <option value="">选择档案</option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.profile_name || "未命名档案"}
+                    </option>
                   ))}
                 </select>
-</Field>
+              </Field>
 
-              {/* 粉丝级别 */}
-              <Field label="粉丝级别" optional>
-<select
-                  value={fansLevel}
-                  onChange={(e) => setFansLevel(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              <Field label="账号定位" required>
+                <select
+                  value={selectedPositioningId}
+                  onChange={(e) => handlePositioningSelect(e.target.value)}
+                  className={SELECT_CLS}
                 >
-                  <option value="">-- 选择级别 --</option>
-                  {fansLevels.map((level) => (
-                    <option key={level} value={level}>{level}</option>
+                  <option value="">选择定位</option>
+                  {positionings.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.positioning_name || "未命名定位"}
+                    </option>
                   ))}
                 </select>
-</Field>
-
-              {/* 平均播放量 */}
-              <Field label="平均播放量" optional>
-<input
-                  type="text"
-                  value={avgViewsInput}
-                  onChange={(e) => setAvgViewsInput(e.target.value)}
-                  placeholder="例如：5000"
-                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-</Field>
-
-              {/* 平台选择 */}
-              <Field label="平台" optional stacked>
-<div className="flex flex-wrap gap-2">
-                  {platforms.map((platform) => (
-                    <button
-                      key={platform}
-                      onClick={() => toggleSelection(platform, selectedPlatforms, setSelectedPlatforms)}
-                      className={`px-3 py-1.5 rounded-xl border text-sm transition-all ${
-                        selectedPlatforms.includes(platform)
-                          ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
-                          : "bg-card border-border text-foreground hover:border-orange-500/40"
-                      }`}
-                    >
-                      {platform}
-                    </button>
-                  ))}
-                </div>
-</Field>
-
-              {/* 赛道选择 */}
-              <Field label="赛道" optional stacked>
-<div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                  {tracks.map((track) => (
-                    <button
-                      key={track}
-                      onClick={() => toggleSelection(track, selectedTracks, setSelectedTracks)}
-                      className={`px-2.5 py-1 rounded-xl border text-xs transition-all ${
-                        selectedTracks.includes(track)
-                          ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
-                          : "bg-card border-border text-foreground hover:border-orange-500/40"
-                      }`}
-                    >
-                      {track}
-                    </button>
-                  ))}
-                </div>
-</Field>
-
-              {/* 内容类型 */}
-              <Field label="内容类型" optional stacked>
-<div className="flex flex-wrap gap-2">
-                  {contentTypes.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => toggleSelection(type, selectedContentTypes, setSelectedContentTypes)}
-                      className={`px-3 py-1.5 rounded-xl border text-sm transition-all ${
-                        selectedContentTypes.includes(type)
-                          ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
-                          : "bg-card border-border text-foreground hover:border-orange-500/40"
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-</Field>
-
-              {/* 风格选择 */}
-              <div>
-                <Field label="风格" optional>
-<button
-                    onClick={recommendStyles}
-                    className="text-xs text-accent hover:text-accent font-medium"
-                  >
-                    ✨ AI推荐
-                  </button>
-</Field>
-                <div className="flex flex-wrap gap-2">
-                  {styles.map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => toggleSelection(style, selectedStyles, setSelectedStyles)}
-                      className={`px-2.5 py-1 rounded-xl border text-xs transition-all ${
-                        selectedStyles.includes(style)
-                          ? "bg-amber-500/15 border-orange-500/50 text-orange-500"
-                          : "bg-card border-border text-foreground hover:border-orange-500/40"
-                      }`}
-                    >
-                      {style}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 定位补充 */}
-              <Field label="定位补充说明" optional>
-<textarea
-                  value={positioningExtra}
-                  onChange={(e) => setPositioningExtra(e.target.value)}
-                  rows={2}
-                  placeholder="补充说明账号定位、特色、目标..."
-                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
-                />
-</Field>
-
-            </div>
+              </Field>
+            </CollapsibleSection>
           )}
-        </div>
 
-        {/* 八大爆款元素 */}
-        <Field label="八大爆款元素" optional stacked>
-<div className="grid grid-cols-2 gap-2">
-            {explosiveElements.map((element) => {
-              const IconComponent = element.icon;
-              const isSelected = selectedElements.includes(element.id);
-              return (
-                <button
-                  key={element.id}
-                  onClick={() => toggleSelection(element.id, selectedElements, setSelectedElements)}
-                  className={`p-2 rounded-xl border transition-all text-left ${
-                    isSelected
-                      ? "bg-amber-500/15 border-orange-500/50"
-                      : "bg-card border-border hover:border-orange-500/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <IconComponent className={`w-4 h-4 ${isSelected ? "text-orange-500" : "text-muted-foreground"}`} />
-                    <span className={`font-medium text-xs ${isSelected ? "text-orange-500" : "text-foreground"}`}>
-                      {element.label}
-                    </span>
+          {mode === "custom" && (
+            <>
+              <CollapsibleSection title="账号情况" defaultOpen>
+                <Field label="账号阶段" optional>
+                  <select value={accountStage} onChange={(e) => setAccountStage(e.target.value)} className={SELECT_CLS}>
+                    <option value="">选择阶段</option>
+                    {["刚起号", "有基础", "稳定更新", "寻求突破"].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="粉丝量级" optional>
+                  <select value={fansLevel} onChange={(e) => setFansLevel(e.target.value)} className={SELECT_CLS}>
+                    <option value="">选择级别</option>
+                    {["0-1万", "1-10万", "10-50万", "50万以上"].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="平均播放" optional>
+                  <input
+                    type="text"
+                    value={avgViewsInput}
+                    onChange={(e) => setAvgViewsInput(e.target.value)}
+                    placeholder="例如：5000"
+                    className={INPUT_CLS}
+                  />
+                </Field>
+              </CollapsibleSection>
+
+              <CollapsibleSection title="内容方向" defaultOpen>
+                <Field label="发布平台" optional stacked>
+                  <div className="flex flex-wrap gap-1.5">
+                    {platforms.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => toggleSelection(p, selectedPlatforms, setSelectedPlatforms)}
+                        aria-pressed={selectedPlatforms.includes(p)}
+                        className={chipCls(selectedPlatforms.includes(p))}
+                      >
+                        {p}
+                      </button>
+                    ))}
                   </div>
-                  <p className={`text-xs ${isSelected ? "text-orange-500" : "text-muted-foreground"}`}>
-                    {element.desc}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-</Field>
+                </Field>
 
-        {/* 17个成交理由 */}
-        <div>
-          <Field label="成交理由" optional>
-<p className="text-xs text-yellow-500 bg-amber-500/10 px-2 py-1 rounded border border-yellow-500/25">
-              选择成交理由 = 变现选题 | 不选 = 大流量选题
-            </p>
-</Field>
-          <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-            {ALL_DEAL_REASONS.map((reason) => {
-              const isSelected = selectedDealReasons.includes(reason.id);
-              return (
-                <button
-                  key={reason.id}
-                  onClick={() => toggleSelection(reason.id, selectedDealReasons, setSelectedDealReasons)}
-                  className={`p-2 rounded-xl border transition-all text-left ${
-                    isSelected
-                      ? "bg-amber-500/15 border-orange-500/50"
-                      : "bg-card border-border hover:border-orange-500/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <span className="text-sm">{reason.icon}</span>
-                    <span className={`font-medium text-xs ${isSelected ? "text-orange-500" : "text-foreground"}`}>
-                      {reason.label}
-                    </span>
+                <Field label="赛道" optional stacked>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tracks.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => toggleSelection(t, selectedTracks, setSelectedTracks)}
+                        aria-pressed={selectedTracks.includes(t)}
+                        className={chipCls(selectedTracks.includes(t))}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
-                  <p className={`text-xs ${isSelected ? "text-orange-500" : "text-muted-foreground"}`}>
-                    {reason.desc}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                </Field>
 
-        {/* 高级设置（可折叠） */}
-        <div className="border border-border rounded-xl">
-          <button
-            onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted transition-colors rounded-t-lg"
-          >
-            <span className="font-semibold text-foreground">⚙️ 高级设置</span>
-            {isAdvancedOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+                <Field label="内容类型" optional stacked>
+                  <div className="flex flex-wrap gap-1.5">
+                    {contentTypes.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => toggleSelection(t, selectedContentTypes, setSelectedContentTypes)}
+                        aria-pressed={selectedContentTypes.includes(t)}
+                        className={chipCls(selectedContentTypes.includes(t))}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field label="风格" optional stacked>
+                  <div className="flex flex-wrap gap-1.5">
+                    {styles.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => toggleSelection(s, selectedStyles, setSelectedStyles)}
+                        aria-pressed={selectedStyles.includes(s)}
+                        className={chipCls(selectedStyles.includes(s))}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              </CollapsibleSection>
+            </>
+          )}
+
+          <CollapsibleSection title="爆款元素" defaultOpen>
+            <Field
+              label="爆款元素"
+              optional
+              stacked
+              hint={
+                selectedElements.length > 0
+                  ? `已选 ${selectedElements.length} 个，每条选题会标注用到哪些`
+                  : "建议选 2–3 个，AI 会在选题里明确标注"
+              }
+            >
+              <div className="grid grid-cols-4 gap-1.5">
+                {explosiveElements.map((elem) => {
+                  const picked = selectedElements.includes(elem.id);
+                  return (
+                    <button
+                      key={elem.id}
+                      onClick={() => toggleSelection(elem.id, selectedElements, setSelectedElements)}
+                      aria-pressed={picked}
+                      title={elem.desc}
+                      className={`glass-interactive rounded-xl border p-2 text-center ${
+                        picked ? "glass-selected" : "glass-panel"
+                      }`}
+                    >
+                      <elem.icon
+                        className={`mx-auto h-4 w-4 ${picked ? "text-primary" : "text-muted-foreground"}`}
+                      />
+                      <div
+                        className={`mt-1 text-[11px] font-medium leading-none ${
+                          picked ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      >
+                        {elem.zhName}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <Field
+              label="成交理由"
+              optional
+              stacked
+              hint={
+                selectedDealReasons.length > 0
+                  ? `已选 ${selectedDealReasons.length} 个，选题标题会体现这些点`
+                  : "不选就是纯流量选题，不涉及变现"
+              }
+            >
+              <div className="grid grid-cols-3 gap-1.5">
+                {ALL_DEAL_REASONS.map((r) => {
+                  const picked = selectedDealReasons.includes(r.id);
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => toggleSelection(r.id, selectedDealReasons, setSelectedDealReasons)}
+                      aria-pressed={picked}
+                      title={r.desc}
+                      className={`glass-interactive rounded-xl border px-2 py-1.5 text-center text-[11px] ${
+                        picked ? "glass-selected text-primary" : "glass-panel text-muted-foreground"
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="进阶设置" defaultOpen={false}>
+            <Field label="关键词" optional stacked hint="想让选题围绕的具体词">
+              <div className="grid grid-cols-3 gap-1.5">
+                <input value={keyword1} onChange={(e) => setKeyword1(e.target.value)} placeholder="关键词 1" className={INPUT_CLS} />
+                <input value={keyword2} onChange={(e) => setKeyword2(e.target.value)} placeholder="关键词 2" className={INPUT_CLS} />
+                <input value={keyword3} onChange={(e) => setKeyword3(e.target.value)} placeholder="关键词 3" className={INPUT_CLS} />
+              </div>
+            </Field>
+
+            <Field label="对标账号" optional stacked>
+              <textarea
+                value={benchmarkAccounts}
+                onChange={(e) => setBenchmarkAccounts(e.target.value)}
+                placeholder="想参考的同赛道账号…"
+                rows={2}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+
+            <Field label="爆款案例" optional stacked>
+              <textarea
+                value={viralCases}
+                onChange={(e) => setViralCases(e.target.value)}
+                placeholder="见过的爆款选题，AI 会参考套路…"
+                rows={2}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+
+            <Field label="定位补充" optional stacked hint="生成的选题必须符合这里写的定位">
+              <textarea
+                value={positioningExtra}
+                onChange={(e) => setPositioningExtra(e.target.value)}
+                placeholder="账号特色、目标、禁忌…"
+                rows={3}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+
+            <Field label="个人要求" optional stacked>
+              <textarea
+                value={personalRequirement}
+                onChange={(e) => setPersonalRequirement(e.target.value)}
+                placeholder="其他特殊要求…"
+                rows={2}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="输出设置" defaultOpen>
+            <Field label="生成数量" optional>
+              <div className="glass-panel inline-flex gap-0.5 rounded-xl p-1">
+                {[5, 10, 15, 20].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setTopicCount(n)}
+                    aria-pressed={topicCount === n}
+                    className={`rounded-lg px-3 py-1.5 text-[12px] transition-colors ${
+                      topicCount === n
+                        ? "bg-primary/20 font-medium text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {n} 条
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            <Field label="创意难度" optional>
+              <div className="glass-panel inline-flex gap-0.5 rounded-xl p-1">
+                {["容易执行", "中等创意", "高创意"].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDifficulty(d)}
+                    aria-pressed={difficulty === d}
+                    className={`rounded-lg px-3 py-1.5 text-[12px] transition-colors ${
+                      difficulty === d
+                        ? "bg-primary/20 font-medium text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          </CollapsibleSection>
+
+          <button onClick={handleGenerate} disabled={isGenerating} className={PRIMARY_BTN}>
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                策划中…
+              </>
+            ) : (
+              <>
+                <Lightbulb className="h-4 w-4" />
+                生成 {topicCount} 条选题
+              </>
+            )}
           </button>
+        </>
+      }
+    >
+      <ResultPanel
+        result={result}
+        isGenerating={isGenerating}
+        title="选题方案"
+        showStats={false}
+        emptyIcon={Lightbulb}
+        emptyTitle="填好条件就能出选题"
+        emptyHint="每条会给出标题、内容方向和拍摄思路"
+        emptyTips={[
+          "快速模式直接套用已存的档案与定位",
+          "爆款元素建议选 2–3 个，多了会散",
+          "填了成交理由，选题会往变现上靠",
+        ]}
+        generatingHint="正在策划选题…"
+        onCopy={(text) => copyToClipboard(text)}
+        onDownload={(text) => downloadAsFile(text, `选题方案-${new Date().toLocaleDateString()}.txt`)}
+        onContinue={result ? () => openContinuousDialog(result) : undefined}
+      />
 
-          {isAdvancedOpen && (
-            <div className="px-4 pb-4 space-y-5 border-t">
-              
-              {/* 关键词组合 */}
-              <Field label="关键词组合" optional stacked>
-<div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    value={keyword1}
-                    onChange={(e) => setKeyword1(e.target.value)}
-                    placeholder="关键词1"
-                    className="px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={keyword2}
-                    onChange={(e) => setKeyword2(e.target.value)}
-                    placeholder="关键词2"
-                    className="px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={keyword3}
-                    onChange={(e) => setKeyword3(e.target.value)}
-                    placeholder="关键词3"
-                    className="px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary text-sm"
-                  />
-                </div>
-</Field>
+      <HistoryPanel
+        items={history}
+        title="历史选题"
+        showStats={false}
+        onLoad={(item) => setResult(item.result)}
+        onContinue={(item) => openContinuousDialog(item.result)}
+        onDelete={(id) => deleteHistory(id)}
+      />
 
-              {/* 竞品账号 */}
-              <Field label="竞品账号参考" optional>
-<textarea
-                  value={benchmarkAccounts}
-                  onChange={(e) => setBenchmarkAccounts(e.target.value)}
-                  rows={2}
-                  placeholder="输入竞品账号..."
-                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
-                />
-</Field>
-
-              {/* 爆款案例 */}
-              <Field label="爆款案例参考" optional>
-<textarea
-                  value={viralCases}
-                  onChange={(e) => setViralCases(e.target.value)}
-                  rows={2}
-                  placeholder="输入爆款案例..."
-                  className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
-                />
-</Field>
-
-              {/* 生成数量 */}
-                            {/* 个人要求 */}
-              <Field label="个人要求" optional>
-<textarea
-                  value={personalRequirement}
-                  onChange={(e) => setPersonalRequirement(e.target.value)}
-                  rows={3}
-                  placeholder="描述您的具体要求，例如：想突出产品的性价比优势、需要针对25-35岁女性群体、希望选题带有情感共鸣..."
-                  className="w-full px-3 py-2 glass-panel border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm text-foreground placeholder:text-muted-foreground/70"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  💡 填写后，AI会根据您的要求定制选题方向和内容重点
-                </p>
-</Field>
-
-<Field label="生成数量" optional>
-<div className="flex gap-2">
-                  {[5, 10, 15, 20].map((count) => (
-                    <button
-                      key={count}
-                      onClick={() => setTopicCount(count)}
-                      className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${
-                        topicCount === count
-                          ? "bg-amber-500 text-white border-orange-500/50"
-                          : "bg-card text-foreground border-border hover:border-orange-500/40"
-                      }`}
-                    >
-                      {count}条
-                    </button>
-                  ))}
-                </div>
-</Field>
-
-              {/* 创意难度 */}
-              <div>
-                <Field label="创意难度" optional>
-<button
-                    onClick={recommendDifficulty}
-                    className="text-xs text-accent hover:text-accent font-medium"
-                  >
-                    ✨ AI推荐
-                  </button>
-</Field>
-                <div className="flex gap-2">
-                  {["简单易懂", "中等创意", "高难创新"].map((diff) => (
-                    <button
-                      key={diff}
-                      onClick={() => setDifficulty(diff)}
-                      className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${
-                        difficulty === diff
-                          ? "bg-amber-500 text-white border-orange-500/50"
-                          : "bg-card text-foreground border-border hover:border-orange-500/40"
-                      }`}
-                    >
-                      {diff}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 开头钩子 */}
-              <div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={withHook}
-                    onChange={(e) => setWithHook(e.target.checked)}
-                    className="w-4 h-4 text-orange-500 border-border rounded focus:ring-primary"
-                  />
-                  <span className="text-sm text-foreground">
-                    生成开头钩子（3秒抓住注意力）
-                  </span>
-                </label>
-              </div>
-
-            </div>
-          )}
-        </div>
-
-        {/* 生成按钮 */}
-
-        {/* 配额显示 */}
-        {quota !== null && (
-          <div className="mb-4 p-3 bg-muted rounded-xl text-sm text-center">
-            <span className={quota > 10 ? "text-green-500 font-semibold" : quota > 0 ? "text-orange-500 font-semibold" : "text-destructive font-semibold"}>
-              💎 剩余配额：{quota} 次
-            </span>
-          </div>
-        )}
-
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating || (mode === "custom" && !accountStage) || (mode === "quick" && (!selectedProfileId || !selectedPositioningId))}
-          className={`w-full py-3 rounded-xl font-semibold text-lg transition-all ${
-            isGenerating
-              ? "bg-muted text-white cursor-not-allowed"
-              : "btn-brand"
-          }`}
-        >
-          {isGenerating ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              正在生成...
-            </span>
-          ) : (
-            <span>
-              {selectedDealReasons.length > 0 ? "🎯 生成变现选题" : "🚀 生成大流量选题"}
-            </span>
-          )}
-        </button>
-
-      </div>
-
-      {/* 右侧结果展示 */}
-      <div className="flex-1 overflow-y-auto p-8">
-        
-        {/* 历史记录 */}
-        {history.length > 0 && (
-          <div className="glass-panel rounded-xl shadow-lg p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <History className="w-5 h-5 text-orange-500" />
-              <h3 className="text-lg font-semibold text-foreground">历史选题记录</h3>
-              <span className="text-sm text-muted-foreground">({history.length})</span>
-            </div>
-            <div className="space-y-4 max-h-60 overflow-y-auto">
-              {history.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 bg-muted rounded-xl border border-border hover:border-orange-500/40 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground line-clamp-2">
-                        {(item.result || "").substring(0, 100)}...
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(item.created_at).toLocaleString('zh-CN')}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => openContinuousDialog(item.result || "")}
-                        className="p-1.5 text-accent hover:bg-accent/15 rounded-xl transition-colors"
-                        title="继续对话"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteHistory(item.id)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 生成结果 */}
-        {result ? (
-          <div className="glass-panel rounded-xl shadow-lg p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-orange-500/25">
-              <h2 className="text-2xl font-bold text-foreground">📋 生成结果</h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => navigator.clipboard.writeText(result)}
-                  className="px-4 py-2 bg-amber-500/15 text-orange-500 rounded-xl hover:bg-amber-500/20 transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  复制全部
-                </button>
-                <button
-                  onClick={() => downloadAsFile(result, `选题策划-${new Date().toLocaleDateString()}.txt`)}
-                  className="px-4 py-2 bg-amber-500/15 text-orange-500 rounded-xl hover:bg-amber-500/20 transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  下载文件
-                </button>
-              </div>
-            </div>
-            <div className="prose prose-orange max-w-none">
-              <ReactMarkdown 
-                className="text-foreground leading-relaxed"
-                components={{
-                  h2: ({node, ...props}) => <h2 className="text-xl font-bold text-foreground mt-8 mb-4 pb-2 border-b border-border" {...props} />,
-                  h3: ({node, ...props}) => <h3 className="text-lg font-semibold text-foreground mt-6 mb-3" {...props} />,
-                  p: ({node, ...props}) => <p className="mb-3 leading-relaxed" {...props} />,
-                  ul: ({node, ...props}) => <ul className="mb-4 space-y-2" {...props} />,
-                  ol: ({node, ...props}) => <ol className="mb-4 space-y-2" {...props} />,
-                  li: ({node, ...props}) => <li className="ml-4" {...props} />,
-                  strong: ({node, ...props}) => <strong className="font-semibold text-orange-500" {...props} />,
-                  hr: ({node, ...props}) => <hr className="my-8 border-t-2 border-border" {...props} />,
-                }}
-              >
-                {result}
-              </ReactMarkdown>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-muted-foreground">
-              <Lightbulb className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg">填写左侧信息，开始生成选题</p>
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {/* 持续对话弹窗 */}
       <ContinuousDialog
-        taskType="选题策划"
         isOpen={showDialog}
         onClose={closeContinuousDialog}
         initialContent={dialogInitialContent}
+        taskType="选题策划"
       />
-
-    </div>
+    </WorkspaceLayout>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

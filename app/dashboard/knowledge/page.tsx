@@ -1,6 +1,12 @@
 "use client";
 
 import { Field } from "@/components/form/Field";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { PageHeader } from "@/components/workspace/PageHeader";
+import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { BookOpen, Search, Loader2, Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -118,174 +124,111 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
   };
 
   return (
-    <div className="flex h-full">
-      {/* Left Panel */}
-      <div className="w-96 overflow-y-auto border-r bg-muted p-6">
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-foreground">知识库</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            查询编导专业知识和方法
-          </p>
-        </div>
+    <WorkspaceLayout
+      sidebar={
+        <>
+          <PageHeader title="知识库" subtitle="查询编导专业知识与方法" />
 
-        <div className="space-y-6">
-          {/* Search Input */}
-          <Field label="你的问题" optional>
-<textarea
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="例如：如何设计开头的强冲突？"
-              className="w-full rounded-xl border border-border p-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              rows={4}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSearch();
-                }
-              }}
-            />
-            <div className="mt-1 text-xs text-muted-foreground">
-              按 Enter 搜索，Shift+Enter 换行
-            </div>
-</Field>
+          <CollapsibleSection title="提问" defaultOpen>
+            <Field label="你的问题" required stacked hint="按 Enter 搜索，Shift + Enter 换行">
+              <textarea
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="例如：如何设计开头的强冲突？"
+                className={TEXTAREA_CLS}
+                rows={4}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSearch();
+                  }
+                }}
+              />
+            </Field>
 
-          {/* Category Filter */}
-          <Field label="知识分类" optional>
-<div className="space-y-2">
-              <button
-                onClick={() => setSelectedCategory("")}
-                className={`w-full rounded-xl border p-2 text-left text-sm transition-all ${
-                  selectedCategory === ""
-                    ? "glass-selected text-foreground"
-                    : "glass-panel"
-                }`}
-              >
-                全部分类
-              </button>
-              {KNOWLEDGE_CATEGORIES.map((cat) => (
+            <button
+              onClick={handleSearch}
+              disabled={isSearching || !query.trim()}
+              className={PRIMARY_BTN}
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  查询中…
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+                  查询知识库
+                </>
+              )}
+            </button>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="缩小范围" defaultOpen>
+            <Field label="知识分类" optional stacked>
+              <div className="grid grid-cols-2 gap-1.5">
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`w-full rounded-xl border p-2 text-left transition-all ${
-                    selectedCategory === cat.id
-                      ? "glass-selected text-foreground"
-                      : "glass-panel"
+                  onClick={() => setSelectedCategory("")}
+                  aria-pressed={selectedCategory === ""}
+                  className={`glass-interactive rounded-xl border px-3 py-2 text-left text-[12px] ${
+                    selectedCategory === "" ? "glass-selected text-foreground" : "glass-panel text-muted-foreground"
                   }`}
                 >
-                  <div className="text-sm font-medium text-foreground">
-                    {cat.label}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{cat.desc}</div>
+                  全部分类
                 </button>
-              ))}
-            </div>
-</Field>
+                {KNOWLEDGE_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    aria-pressed={selectedCategory === cat.id}
+                    className={`glass-interactive rounded-xl border px-3 py-2 text-left ${
+                      selectedCategory === cat.id ? "glass-selected" : "glass-panel"
+                    }`}
+                  >
+                    <div className="text-[12px] font-medium leading-5 text-foreground">{cat.label}</div>
+                    <div className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{cat.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </Field>
+          </CollapsibleSection>
 
-          {/* Quick Questions */}
-          <Field label="常见问题" optional>
-<div className="space-y-2">
+          <CollapsibleSection title="常见问题" defaultOpen={false}>
+            <div className="space-y-1.5">
               {QUICK_QUESTIONS.map((question, index) => (
                 <button
                   key={index}
                   onClick={() => handleQuickQuestion(question)}
-                  className="w-full rounded-xl border border-border bg-card p-2 text-left text-sm hover:border-primary/30 hover:bg-primary/10 transition-all"
+                  className="glass-panel glass-interactive w-full rounded-xl px-3 py-2.5 text-left text-[12px] leading-relaxed text-muted-foreground"
                 >
                   {question}
                 </button>
               ))}
             </div>
-</Field>
-
-          {/* Search Button */}
-          <button
-            data-search-button
-            onClick={handleSearch}
-            disabled={isSearching || !query.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-medium text-white hover:opacity-90 disabled:bg-muted"
-          >
-            {isSearching ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                搜索中...
-              </>
-            ) : (
-              <>
-                <Search className="h-5 w-5" />
-                搜索知识库
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Right Panel - Result */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-4xl">
-          {!result && !isSearching && (
-            <div className="flex h-full items-center justify-center text-center">
-              <div>
-                <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  输入问题查询编导知识库
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  涵盖脚本结构、爆款元素、拍摄技巧等专业知识
-                </p>
-                <div className="mt-6 rounded-xl border border-purple-100 bg-accent/10 p-4 text-left">
-                  <div className="flex items-start gap-2">
-                    <Lightbulb className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-accent">
-                      <div className="font-medium mb-1">💡 使用技巧</div>
-                      <ul className="space-y-1 text-accent">
-                        <li>• 问题越具体，答案越精准</li>
-                        <li>• 可以选择分类缩小范围</li>
-                        <li>• 试试常见问题快速入门</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isSearching && !result && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-                <p className="mt-4 text-sm text-muted-foreground">
-                  正在搜索知识库...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {result && (
-            <div>
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-foreground">搜索结果</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  来自编导知识库的专业解答
-                </p>
-              </div>
-
-              <div className="prose prose-slate max-w-none">
-                <ReactMarkdown>{result}</ReactMarkdown>
-              </div>
-
-              <div className="mt-6 rounded-xl border border-border bg-muted p-4">
-                <div className="text-sm text-muted-foreground">
-                  💡 如果答案不够详细，可以：
-                  <ul className="mt-2 space-y-1">
-                    <li>• 换一个更具体的问法</li>
-                    <li>• 选择相关的知识分类</li>
-                    <li>• 在脚本生成等功能中实践应用</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </CollapsibleSection>
+        </>
+      }
+    >
+      <ResultPanel
+        result={result}
+        isGenerating={isSearching}
+        title="查询结果"
+        showStats={false}
+        emptyIcon={BookOpen}
+        emptyTitle="输入问题，查询编导知识库"
+        emptyHint="涵盖脚本结构、爆款元素、拍摄技巧等专业知识"
+        emptyTips={[
+          "问题越具体，答案越精准",
+          "可以先选分类缩小范围",
+          "试试左侧的常见问题快速入门",
+        ]}
+        generatingHint="正在检索知识库…"
+        onCopy={(text) => {
+          navigator.clipboard.writeText(text);
+          notify("已复制到剪贴板");
+        }}
+      />
+    </WorkspaceLayout>
   );
 }

@@ -1,9 +1,13 @@
 "use client";
 
 import { Field } from "@/components/form/Field";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN } from "@/components/form/controls";
+import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { PageHeader } from "@/components/workspace/PageHeader";
+import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { useState, useEffect } from "react";
-import { Award, Loader2, Sparkles, Copy, Save, Check } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { Award, Loader2, Sparkles, Save, Check } from "lucide-react";
 import { supabase, dealReasonService } from "@/lib/supabase";
 import { notify } from '@/components/ui/feedback';
 import { saveGenerationHistory } from '@/lib/history';
@@ -232,218 +236,156 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
   }
 
   return (
-    <div className="flex h-full">
-      {/* 左侧输入表单 */}
-      <div className="w-[420px] border-r border-yellow-500/25/50 backdrop-blur-xl bg-card/40 p-6 overflow-y-auto shadow-2xl">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-amber-500 rounded-2xl shadow-lg">
-              <Award className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-amber-500 bg-clip-text text-transparent">
-                成交理由分析
-              </h1>
-              <p className="text-sm text-yellow-500/70 mt-1">AI分析17个成交理由</p>
-            </div>
-          </div>
-        </div>
+    <WorkspaceLayout
+      sidebar={
+        <>
+          <PageHeader
+            title="成交理由"
+            subtitle="AI 逐条分析 17 个成交理由并打分，保存后可在脚本与选题里直接调用"
+          />
 
-        {/* 已保存的成交理由提示 */}
-        {savedData && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border-2 border-green-500/25">
-            <div className="text-sm font-semibold text-green-500 mb-2">
-              ✅ 已保存 {savedData.selected_reasons?.length || 0} 个成交理由
+          {savedData && (
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
+              <p className="text-[13px] font-medium text-emerald-500">
+                已保存 {savedData.selected_reasons?.length || 0} 个成交理由
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                {savedData.store_name}（{savedData.store_type}）· 在脚本或选题中挑 2–3 个重点使用
+              </p>
             </div>
-            <div className="text-xs text-green-500 mb-2">
-              店铺: {savedData.store_name} ({savedData.store_type})
-            </div>
-            <div className="text-xs text-green-500">
-              在脚本/选题中可选2-3个重点使用
-            </div>
-          </div>
-        )}
-        
-        <div className="space-y-6">
-          {/* 店铺名称 */}
-          <Field label="店铺名称" required>
-<input
-              type="text"
-              value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
-              placeholder="例如:老李烧烤、美美美容院"
-              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
-            />
-</Field>
+          )}
 
-          {/* 店铺类型 */}
-          <Field label="店铺类型" optional>
-<select
-              value={storeType}
-              onChange={(e) => setStoreType(e.target.value)}
-              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none"
-            >
-              {STORE_TYPES.map(type => (
-                <option key={type}>{type}</option>
-              ))}
-            </select>
-</Field>
+          <CollapsibleSection title="店铺信息" defaultOpen>
+            <Field label="店铺名称" required>
+              <input
+                type="text"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                placeholder="例如：老李烧烤、美美美容院"
+                className={INPUT_CLS}
+              />
+            </Field>
 
-          {/* 店铺特色 */}
-          <Field label="店铺特色描述" required>
-<textarea
-              value={storeFeatures}
-              onChange={(e) => setStoreFeatures(e.target.value)}
-              placeholder="描述你的店铺特色,例如:&#10;- 开了10年的老店&#10;- 秘制配方,味道独特&#10;- 环境装修很有特色&#10;- 价格实惠,人均50元"
-              rows={6}
-              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-4 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all resize-none shadow-lg"
-            />
-</Field>
+            <Field label="店铺类型" optional>
+              <select
+                value={storeType}
+                onChange={(e) => setStoreType(e.target.value)}
+                className={SELECT_CLS}
+              >
+                {STORE_TYPES.map((type) => (
+                  <option key={type}>{type}</option>
+                ))}
+              </select>
+            </Field>
 
-          {/* 目标客户 */}
-          <Field label="目标客户" optional>
-<input
-              type="text"
-              value={targetCustomer}
-              onChange={(e) => setTargetCustomer(e.target.value)}
-              placeholder="例如:周边3公里上班族"
-              className="w-full rounded-2xl border-2 border-yellow-500/25/50 backdrop-blur-xl bg-card/80 px-5 py-3 focus:border-yellow-500/40 focus:outline-none focus:ring-4 focus:ring-yellow-100 transition-all shadow-lg"
-            />
-</Field>
+            <Field label="店铺特色" required hint="写得越具体，分析越准" stacked>
+              <textarea
+                value={storeFeatures}
+                onChange={(e) => setStoreFeatures(e.target.value)}
+                placeholder={"开了 10 年的老店\n秘制配方，味道独特\n环境装修有特色\n人均 50 元"}
+                rows={5}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
 
-          {/* 分析按钮 */}
+            <Field label="目标客户" optional>
+              <input
+                type="text"
+                value={targetCustomer}
+                onChange={(e) => setTargetCustomer(e.target.value)}
+                placeholder="例如：周边 3 公里上班族"
+                className={INPUT_CLS}
+              />
+            </Field>
+          </CollapsibleSection>
+
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing || !storeName.trim() || !storeFeatures.trim()}
-            className="w-full rounded-2xl bg-amber-500 px-6 py-4 font-bold text-white disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+            className={PRIMARY_BTN}
           >
             {isAnalyzing ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>AI分析中...</span>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                分析中…
               </>
             ) : (
               <>
-                <Sparkles className="h-5 w-5" />
-                <span>AI全面分析17个成交理由</span>
+                <Sparkles className="h-4 w-4" />
+                分析 17 个成交理由
               </>
             )}
           </button>
 
-          {/* 手动选择成交理由 */}
           {selectedReasons.length > 0 && (
-            <div className="pt-6 border-t-2 border-yellow-500/25">
-              <label className="mb-3 block text-sm font-semibold text-yellow-500">
-                选择成交理由 (至少15个，当前: {selectedReasons.length}/17)
-              </label>
-              <div className="grid grid-cols-3 gap-2 mb-4 max-h-80 overflow-y-auto pr-2">
-                {ALL_DEAL_REASONS.map((reason) => (
-                  <button
-                    key={reason.id}
-                    onClick={() => toggleReason(reason.id)}
-                    className={`rounded-xl border-2 p-2.5 text-center transition-all duration-300 hover:shadow-md ${
-                      selectedReasons.includes(reason.id)
-                        ? 'border-yellow-500/50 bg-amber-500 shadow-md scale-105'
-                        : 'border-border bg-muted opacity-40'
-                    }`}
-                  >
-                    <div className="text-xl mb-1">{reason.icon}</div>
-                    <div className="text-[10px] font-bold text-yellow-500">{reason.label}</div>
-                    {selectedReasons.includes(reason.id) && (
-                      <Check className="w-3 h-3 text-yellow-500 mx-auto mt-1" />
-                    )}
-                  </button>
-                ))}
-              </div>
+            <CollapsibleSection title="选择成交理由" defaultOpen>
+              <Field
+                label="成交理由"
+                stacked
+                hint={
+                  selectedReasons.length < 15
+                    ? `已选 ${selectedReasons.length}/17，还需 ${15 - selectedReasons.length} 个才能保存`
+                    : `已选 ${selectedReasons.length}/17，可以保存了`
+                }
+              >
+                <div className="grid max-h-80 grid-cols-3 gap-1.5 overflow-y-auto pr-1">
+                  {ALL_DEAL_REASONS.map((reason) => {
+                    const picked = selectedReasons.includes(reason.id);
+                    return (
+                      <button
+                        key={reason.id}
+                        onClick={() => toggleReason(reason.id)}
+                        aria-pressed={picked}
+                        className={`glass-interactive relative rounded-xl border p-2 text-center ${
+                          picked ? "glass-selected" : "glass-panel"
+                        }`}
+                      >
+                        <div className="text-base leading-none">{reason.icon}</div>
+                        <div
+                          className={`mt-1 text-[11px] font-medium leading-none ${
+                            picked ? "text-primary" : "text-muted-foreground"
+                          }`}
+                        >
+                          {reason.label}
+                        </div>
+                        {picked && (
+                          <Check className="absolute right-1 top-1 h-3 w-3 text-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
 
-              {/* 保存按钮 */}
               <button
                 onClick={handleSave}
                 disabled={selectedReasons.length < 15}
-                className="w-full rounded-2xl bg-emerald-500 px-6 py-4 font-bold text-white disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                className={`${SECONDARY_BTN} w-full disabled:cursor-not-allowed disabled:opacity-50`}
               >
-                <Save className="h-5 w-5" />
-                <span>保存到云端 ({selectedReasons.length}/17)</span>
+                <Save className="h-4 w-4" />
+                保存到云端（{selectedReasons.length}/17）
               </button>
-              {selectedReasons.length < 15 && (
-                <p className="text-xs text-destructive text-center mt-2">还需选择 {15 - selectedReasons.length} 个</p>
-              )}
-            </div>
+            </CollapsibleSection>
           )}
-        </div>
-      </div>
-
-      {/* 右侧分析结果 */}
-      <div className="flex-1 overflow-y-auto p-8">
-        {!analysisResult && !isAnalyzing && (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <div className="mb-6 inline-flex p-8 bg-amber-500 rounded-3xl shadow-2xl">
-                <Award className="w-20 h-20 text-yellow-500" />
-              </div>
-              <h3 className="text-3xl font-bold bg-amber-500 bg-clip-text text-transparent mb-3">
-                成交理由全面分析
-              </h3>
-              <p className="text-yellow-500/70 text-lg mb-2">
-                AI分析17个成交理由并打分
-              </p>
-              <p className="text-sm text-yellow-500/60 mb-4">
-                保存后可在脚本/选题中灵活选择2-3个重点使用
-              </p>
-            </div>
-          </div>
-        )}
-
-        {(analysisResult || isAnalyzing) && (
-          <div className="max-w-4xl mx-auto">
-            <div className="backdrop-blur-xl bg-card/60 rounded-3xl shadow-2xl p-8 border-2 border-yellow-500/25/50">
-              <div className="mb-6 flex items-center justify-between pb-6 border-b-2 border-yellow-100">
-                <h2 className="text-3xl font-bold bg-amber-500 bg-clip-text text-transparent flex items-center gap-3">
-                  <Sparkles className="w-7 h-7 text-yellow-500" />
-                  分析结果
-                </h2>
-                {analysisResult && !isAnalyzing && (
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 rounded-xl backdrop-blur-xl bg-card/80 border-2 border-yellow-500/40 px-5 py-2.5 text-sm font-semibold text-yellow-500 hover:border-yellow-500/50 hover:bg-amber-500/10 transition-all shadow-lg hover:shadow-xl"
-                  >
-                    <Copy className="h-4 w-4" />
-                    复制
-                  </button>
-                )}
-              </div>
-
-              {isAnalyzing && !analysisResult && (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-16 w-16 animate-spin text-yellow-500 mb-6" />
-                  <p className="text-yellow-500 font-semibold text-lg">AI正在全面分析17个成交理由...</p>
-                  <p className="text-yellow-500/60 text-sm mt-2">请稍候</p>
-                </div>
-              )}
-
-              {analysisResult && (
-                  <div className="max-w-none bg-amber-500 rounded-2xl p-8 shadow-inner">'
-                  <ReactMarkdown
-                      components={{
-                        h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-foreground mb-4 mt-6" {...props} />,
-                        h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-foreground mb-3 mt-5" {...props} />,
-                        h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-yellow-500 mb-2 mt-4" {...props} />,
-                        p: ({node, ...props}) => <p className="text-foreground leading-relaxed mb-4" {...props} />,
-                        strong: ({node, ...props}) => <strong className="text-yellow-500 font-bold" {...props} />,
-                        ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2" {...props} />,
-                        li: ({node, ...props}) => <li className="text-foreground" {...props} />,
-                        br: () => <br className="my-1" />,
-                      }}
-                    >{analysisResult}</ReactMarkdown>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        </>
+      }
+    >
+      <ResultPanel
+        result={analysisResult}
+        isGenerating={isAnalyzing}
+        title="分析结果"
+        showStats={false}
+        emptyIcon={Award}
+        emptyTitle="填好店铺信息就能开始"
+        emptyHint="AI 会逐条分析 17 个成交理由并打分"
+        emptyTips={[
+          "特色写得越具体，打分越贴合实际",
+          "分析完可以手动调整选中的理由",
+          "保存后在脚本、选题里都能直接调用",
+        ]}
+        generatingHint="正在逐条分析 17 个成交理由…"
+        onCopy={handleCopy}
+      />
+    </WorkspaceLayout>
   );
 }
-
-

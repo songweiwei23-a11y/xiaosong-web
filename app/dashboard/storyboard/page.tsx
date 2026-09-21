@@ -1,6 +1,13 @@
 "use client";
 
+import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { PageHeader } from "@/components/workspace/PageHeader";
+import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { Film, Copy, Download, Loader2, Sparkles, Wand2 } from "lucide-react";
@@ -197,287 +204,183 @@ export default function StoryboardPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
-      {/* 左侧面板 - 简洁版 */}
-      <div className="w-[400px] bg-card shadow-2xl p-6 space-y-6 overflow-y-auto">
-        
-        {/* 标题 */}
-        <div className="text-center pb-4 border-b-2 border-green-100">
-          <h1 className="text-2xl font-bold text-foreground flex items-center justify-center gap-2">
-            <Film className="w-7 h-7 text-green-500" />
-            分镜脚本生成
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            <Wand2 className="w-4 h-4 inline mr-1" />
-            AI智能配置专业参数
-          </p>
-        </div>
-
-        {/* 脚本内容 */}
-        <div>
-          <Field label="脚本内容" required>
-<button
-              onClick={loadExample}
-              className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-500 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/15 transition-colors"
-            >
-              <Sparkles className="w-3 h-3" />
-              一键示例
-            </button>
-</Field>
-          <textarea
-            value={scriptContent}
-            onChange={(e) => setscriptContent(e.target.value)}
-            placeholder="例如：我要拍美食探店，先拍店门口招牌，再进店拍环境，然后特写拍菜品，最后拍我吃的反应"
-            className="w-full h-24 rounded-xl glass-panel p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none"
+    <WorkspaceLayout
+      sidebar={
+        <>
+          <PageHeader
+            title="分镜脚本"
+            subtitle="把口播脚本拆成可执行的分镜：景别、运镜、画面与时长"
+            action={
+              <button onClick={loadExample} className="text-[12px] text-primary hover:opacity-80">
+                填入示例
+              </button>
+            }
           />
-          <p className="mt-1 text-xs text-muted-foreground">AI会根据主题自动选择镜头语言</p>
-        </div>
 
-        {/* AI智能推荐按钮 */}
-        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/25">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-green-500 animate-pulse" />
-              <div>
-                <p className="text-sm font-bold text-foreground">AI智能推荐</p>
-                <p className="text-xs text-muted-foreground">根据脚本自动推荐最佳配置</p>
-              </div>
-            </div>
+          <CollapsibleSection title="脚本内容" defaultOpen>
+            <Field label="脚本内容" required stacked hint="AI 会根据内容自动选择镜头语言">
+              <textarea
+                value={scriptContent}
+                onChange={(e) => setscriptContent(e.target.value)}
+                placeholder="例如：我要拍美食探店，先拍店门口招牌，再进店拍环境，然后特写拍菜品，最后拍我吃的反应"
+                rows={5}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+
             <button
               onClick={handleAIRecommend}
               disabled={isRecommending || !scriptContent.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className={`${SECONDARY_BTN} w-full disabled:cursor-not-allowed disabled:opacity-50`}
             >
               {isRecommending ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  推荐中...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  分析中…
                 </>
               ) : (
                 <>
-                  <Wand2 className="w-4 h-4" />
-                  一键推荐
+                  <Wand2 className="h-4 w-4" />
+                  让 AI 推荐参数
                 </>
               )}
             </button>
-          </div>
-        </div>
+          </CollapsibleSection>
 
-        {/* 基础设置 */}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="平台" optional>
-<select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-              className="w-full rounded-xl glass-panel p-2 focus:border-green-500/50"
-            >
-              {PLATFORMS.map((p) => <option key={p}>{p}</option>)}
-            </select>
-</Field>
-          <Field label="时长" optional>
-<select
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="w-full rounded-xl glass-panel p-2 focus:border-green-500/50"
-            >
-              {DURATIONS.map((d) => <option key={d}>{d}</option>)}
-            </select>
-</Field>
-        </div>
+          <CollapsibleSection title="拍摄设置" defaultOpen>
+            <Field label="发布平台" optional>
+              <select value={platform} onChange={(e) => setPlatform(e.target.value)} className={SELECT_CLS}>
+                {["抖音", "快手", "视频号", "小红书", "B站"].map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </Field>
 
-        {/* 内容类型 */}
-        <Field label="内容类型" optional stacked>
-<div className="grid grid-cols-3 gap-2">
-            {CONTENT_TYPES.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => setContentType(type.value)}
-                className={`p-3 rounded-xl border-2 transition-all ${
-                  contentType === type.value
-                    ? "border-green-500/50 bg-emerald-500/10 text-green-500 shadow-md scale-105"
-                    : "border-border bg-card hover:border-green-500/40"
-                }`}
-                title={type.desc}
-              >
-                <div className="text-2xl mb-1">{type.icon}</div>
-                <div className="text-xs font-medium">{type.label}</div>
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">AI会根据类型选择合适的景别和运镜</p>
-</Field>
+            <Field label="视频时长" optional>
+              <select value={duration} onChange={(e) => setDuration(e.target.value)} className={SELECT_CLS}>
+                {["15秒", "30秒", "60秒", "90秒", "3-5分钟"].map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </Field>
 
-        {/* 视觉风格 */}
-        <Field label="视觉风格" optional stacked>
-<div className="grid grid-cols-3 gap-2">
-            {VISUAL_STYLES.map((style) => (
-              <button
-                key={style.value}
-                onClick={() => setVisualStyle(style.value)}
-                className={`p-3 rounded-xl border-2 transition-all ${
-                  visualStyle === style.value
-                    ? "glass-selected text-foreground shadow-md scale-105"
-                    : "border-border bg-card hover:border-accent/30"
-                }`}
-                title={style.desc}
-              >
-                <div className="text-2xl mb-1">{style.icon}</div>
-                <div className="text-xs font-medium">{style.label}</div>
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">AI会根据风格选择色彩和光线</p>
-</Field>
-
-        {/* 补充说明 */}
-        <Field label="补充说明" optional>
-<textarea
-            value={additionalInfo}
-            onChange={(e) => setAdditionalInfo(e.target.value)}
-            placeholder="例如：需要强调产品细节、希望节奏快一点..."
-            className="w-full h-16 rounded-xl glass-panel p-3 focus:border-green-500/50 focus:ring-2 focus:ring-green-200 resize-none text-sm"
-          />
-</Field>
-
-        {/* AI提示框 */}
-        <div className="bg-emerald-500 rounded-xl p-4 border-2 border-green-500/25">
-          <div className="flex items-start gap-2">
-            <Wand2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-foreground">
-              <p className="font-bold mb-1">AI自动配置</p>
-              <p>根据你的选择，AI会智能匹配：</p>
-              <ul className="mt-1 space-y-0.5 text-muted-foreground">
-                <li>• 景别（远景/中景/特写等）</li>
-                <li>• 运镜方式（推拉摇移跟等）</li>
-                <li>• 画面构图（九宫格/对称等）</li>
-                <li>• 光线类型（自然光/侧光等）</li>
-                <li>• 色彩方案和转场效果</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-
-        {/* 配额显示 */}
-        {hookQuota !== null && (
-          <div className="mb-4 p-3 bg-muted rounded-xl text-sm text-center">
-            <span className={hookQuota > 10 ? "text-green-500 font-semibold" : hookQuota > 0 ? "text-orange-500 font-semibold" : "text-destructive font-semibold"}>
-              💎 剩余配额：{hookQuota} 次
-            </span>
-          </div>
-        )}
-
-        {/* 生成按钮 */}
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-6 h-6 animate-spin" />
-              AI生成中...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-6 h-6" />
-              AI智能生成
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* 右侧结果 */}
-      <div className="flex-1 overflow-y-auto p-8 bg-card">
-        {result ? (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-green-500/30">
-              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                <Film className="w-6 h-6 text-green-500" />
-                AI生成的分镜脚本
-              </h2>
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => copyToClipboard(result)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  复制脚本
-                </button>
-                <button
-                  onClick={() => downloadAsFile(result, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
-                  className="px-4 py-2 bg-emerald-500/15 text-green-500 rounded-xl hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  下载脚本
-                </button>
-              </div>
-              <div className="prose prose-slate max-w-none">
-                <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      table: ({node, ...props}) => (
-                        <div className="overflow-x-auto my-6 rounded-xl border-2 border-green-500/25 shadow-lg">
-                          <table className="min-w-full" {...props} />
-                        </div>
-                      ),
-                      thead: ({node, ...props}) => (
-                        <thead className="bg-emerald-500" {...props} />
-                      ),
-                      th: ({node, ...props}) => (
-                        <th className="text-white font-bold text-sm py-4 px-6 text-left border-r border-green-500/50 last:border-r-0" {...props} />
-                      ),
-                      tbody: ({node, ...props}) => (
-                        <tbody className="bg-card" {...props} />
-                      ),
-                      tr: ({node, ...props}) => (
-                        <tr className="hover:bg-emerald-500/10 transition-colors border-b border-border last:border-b-0" {...props} />
-                      ),
-                      td: ({node, ...props}) => (
-                        <td className="py-4 px-6 text-foreground text-sm border-r border-border last:border-r-0" {...props} />
-                      ),
-                      h1: ({node, ...props}) => (
-                        <h1 className="text-2xl font-bold mb-6 pb-3 border-b-2 border-green-500/40 text-foreground" {...props} />
-                      ),
-                      h2: ({node, ...props}) => (
-                        <h2 className="text-xl font-bold mt-8 mb-4 text-foreground" {...props} />
-                      ),
-                      ul: ({node, ...props}) => (
-                        <ul className="space-y-2 my-4 list-disc list-inside" {...props} />
-                      ),
-                      li: ({node, ...props}) => (
-                        <li className="text-foreground" {...props} />
-                      ),
-                      strong: ({node, ...props}) => (
-                        <strong className="font-bold text-green-500" {...props} />
-                      ),
-                    }}
+            <Field label="内容类型" optional stacked hint="AI 会据此选择合适的景别与运镜">
+              <div className="grid grid-cols-3 gap-1.5">
+                {CONTENT_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    onClick={() => setContentType(type.value)}
+                    aria-pressed={contentType === type.value}
+                    title={type.desc}
+                    className={`glass-interactive rounded-xl border p-2 text-center ${
+                      contentType === type.value ? "glass-selected" : "glass-panel"
+                    }`}
                   >
-                    {result}
-                  </ReactMarkdown>
+                    <div className="text-base leading-none">{type.icon}</div>
+                    <div
+                      className={`mt-1 text-[11px] font-medium leading-none ${
+                        contentType === type.value ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      {type.label}
+                    </div>
+                  </button>
+                ))}
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="relative">
-                <Film className="w-24 h-24 mx-auto mb-4 text-muted-foreground" />
-                <Wand2 className="w-10 h-10 absolute top-0 right-1/3 text-green-400 animate-pulse" />
+            </Field>
+
+            <Field label="视觉风格" optional stacked>
+              <div className="grid grid-cols-3 gap-1.5">
+                {VISUAL_STYLES.map((style) => (
+                  <button
+                    key={style.value}
+                    onClick={() => setVisualStyle(style.value)}
+                    aria-pressed={visualStyle === style.value}
+                    title={style.desc}
+                    className={`glass-interactive rounded-xl border p-2 text-center ${
+                      visualStyle === style.value ? "glass-selected" : "glass-panel"
+                    }`}
+                  >
+                    <div className="text-base leading-none">{style.icon}</div>
+                    <div
+                      className={`mt-1 text-[11px] font-medium leading-none ${
+                        visualStyle === style.value ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      {style.label}
+                    </div>
+                  </button>
+                ))}
               </div>
-              <p className="text-xl font-medium text-muted-foreground">填写信息后，AI自动生成专业分镜</p>
-              <p className="text-sm mt-2 text-muted-foreground">无需手动选择参数，AI会智能配置</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+            </Field>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="补充说明" defaultOpen={false}>
+            <Field label="其他要求" optional stacked>
+              <textarea
+                value={additionalInfo}
+                onChange={(e) => setAdditionalInfo(e.target.value)}
+                placeholder="例如：需要航拍镜头、避免快速剪辑…"
+                rows={3}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+          </CollapsibleSection>
+
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !scriptContent.trim()}
+            className={PRIMARY_BTN}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                生成中…
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                生成分镜脚本
+              </>
+            )}
+          </button>
+        </>
+      }
+    >
+      <ResultPanel
+        result={result}
+        isGenerating={isGenerating}
+        title="分镜脚本"
+        showStats={false}
+        emptyIcon={Film}
+        emptyTitle="填入脚本内容后生成分镜"
+        emptyHint="AI 会自动配置景别、运镜与时长，无需手动选择参数"
+        emptyTips={[
+          "脚本写得越细，分镜越贴合实拍",
+          "拿不准参数就点「让 AI 推荐参数」",
+          "生成后可继续追问调整某个镜头",
+        ]}
+        generatingHint="正在拆解镜头…"
+        onCopy={(text) => copyToClipboard(text)}
+        onDownload={(text) => downloadAsFile(text, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
+        onContinue={result ? () => openContinuousDialog(result) : undefined}
+      />
+
+      <HistoryPanel
+        items={history}
+        title="历史分镜"
+        showStats={false}
+        onLoad={(item) => setResult(item.result)}
+        onContinue={(item) => openContinuousDialog(item.result)}
+        onDelete={(id) => deleteHistory(id)}
+      />
+
+      <ContinuousDialog
+        isOpen={showDialog}
+        onClose={closeContinuousDialog}
+        initialContent={dialogInitialContent}
+        taskType="分镜脚本"
+      />
+    </WorkspaceLayout>
   );
 }
-
-
-
-
-
-
-

@@ -1,10 +1,16 @@
 "use client";
 
 import { Field } from "@/components/form/Field";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { PageHeader } from "@/components/workspace/PageHeader";
+import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
-import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCircle, Trash2 } from "lucide-react";
+import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCircle, Trash2, Tag } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
@@ -217,205 +223,153 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
   };
 
   return (
-    <div className="flex h-full">
-      {/* 左侧输入区域 */}
-      <div className="w-[400px] border-r bg-card overflow-y-auto p-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <TrendingUp className="w-7 h-7 text-accent" />
-            标题封面
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            AI生成高点击率的爆款标题
-          </p>
-        </div>
+    <WorkspaceLayout
+      sidebar={
+        <>
+          <PageHeader title="标题封面" subtitle="生成高点击率的爆款标题，一次给出多个方案做对比" />
 
-        {/* 视频主题 */}
-        <Field label="视频主题" required>
-<textarea
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="例如：教你3招拍出电影感视频"
-            rows={3}
-            className="w-full resize-none rounded-xl border border-border bg-background/50 px-3.5 py-3 text-[13px] leading-relaxed transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-</Field>
+          <CollapsibleSection title="基础信息" defaultOpen>
+            <Field label="视频主题" required stacked>
+              <textarea
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="例如：教你3招拍出电影感视频"
+                rows={3}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
 
-        {/* 目标平台 */}
-        <Field label="目标平台" optional>
-<div className="flex gap-2">
-            {['抖音', '小红书', '快手', 'B站', '视频号'].map((p) => (
-              <button
-                key={p}
-                onClick={() => setPlatform(p)}
-                className={`flex-1 py-2 rounded-xl border-2 text-sm transition-all ${
-                  platform === p
-                    ? 'glass-selected text-foreground'
-                    : 'glass-panel'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-</Field>
-
-        {/* 标题类型 */}
-        <Field label="标题类型" optional stacked>
-<div className="grid grid-cols-3 gap-2">
-            {TITLE_TYPES.slice(0, 6).map((type) => (
-              <button
-                key={type.value}
-                onClick={() => setTitleType(type.value)}
-                className={`p-2 rounded-xl border-2 text-left transition-all ${
-                  titleType === type.value
-                    ? 'glass-selected text-foreground'
-                    : 'glass-panel'
-                }`}
-              >
-                <div className="text-xl mb-1">{type.icon}</div>
-                <div className="text-xs font-medium">{type.label}</div>
-              </button>
-            ))}
-          </div>
-</Field>
-
-        {/* 生成数量 */}
-        <Field label="生成数量" optional>
-<div className="flex gap-2">
-            {AB_TEST_COUNTS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setAbTestCount(option.value)}
-                className={`flex-1 py-2 rounded-xl border-2 transition-all ${
-                  abTestCount === option.value
-                    ? 'glass-selected text-foreground'
-                    : 'glass-panel'
-                }`}
-              >
-                <div className="font-bold">{option.label}</div>
-                <div className="text-xs text-muted-foreground">{option.desc}</div>
-              </button>
-            ))}
-          </div>
-</Field>
-
-        {/* 目标人群（选填） */}
-        <Field label="目标人群" optional>
-<input
-            type="text"
-            value={targetAudience}
-            onChange={(e) => setTargetAudience(e.target.value)}
-            placeholder="例如：25-35岁职场女性"
-            className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-</Field>
-
-        {/* 生成按钮 */}
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="w-full btn-brand py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-all  flex items-center justify-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              AI生成中...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              生成标题
-            </>
-          )}
-        </button>
-
-        {/* 历史记录 */}
-        {titleHistory.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <History className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-foreground">历史标题</h3>
-              <span className="text-xs text-muted-foreground">({titleHistory.length})</span>
-            </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {titleHistory.map((item) => (
-                <div
-                  key={item.id}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    selectedHistory?.id === item.id
-                      ? 'glass-selected text-foreground'
-                      : 'glass-panel bg-card'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div 
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => viewTitle(item)}
-                    >
-                      <div className="font-medium text-sm text-foreground truncate">
-                        {item.input_data?.topic || '标题生成'}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(item.created_at).toLocaleDateString('zh-CN')}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => openHistoryDialog(item, e)}
-                        className="p-1.5 text-accent hover:bg-accent/15 rounded-xl transition-colors"
-                        title="继续对话"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteTitle(item.id)
-                        }}
-                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 右侧结果区域 */}
-      <div className="flex-1 overflow-y-auto p-8">
-        {result ? (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-xl shadow-sm p-8">
-              <div className="prose prose-slate max-w-none">
-                <ReactMarkdown>{result}</ReactMarkdown>
+            <Field label="目标平台" required>
+              <div className="glass-panel inline-flex flex-wrap gap-0.5 rounded-xl p-1">
+                {["抖音", "小红书", "快手", "B站", "视频号"].map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPlatform(p)}
+                    aria-pressed={platform === p}
+                    className={`rounded-lg px-3 py-1.5 text-[12px] transition-colors ${
+                      platform === p
+                        ? "bg-primary/20 font-medium text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-muted-foreground">
-              <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg">输入主题后，点击生成标题</p>
-              <p className="text-sm mt-2">AI将生成{abTestCount}个爆款标题供你选择</p>
-            </div>
-          </div>
-        )}
-      </div>
+            </Field>
 
-      {/* 持续对话 */}
-      <ContinuousDialog
-        isOpen={showDialog}
-        onClose={() => setShowDialog(false)}
-        initialContent={result}
-        taskType="标题封面"
-        contextData={{}}
+            <Field label="目标人群" optional>
+              <input
+                type="text"
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+                placeholder="例如：25-35 岁职场女性"
+                className={INPUT_CLS}
+              />
+            </Field>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="标题风格" defaultOpen>
+            <Field label="标题类型" optional stacked>
+              <div className="grid grid-cols-3 gap-1.5">
+                {TITLE_TYPES.slice(0, 6).map((type) => (
+                  <button
+                    key={type.value}
+                    onClick={() => setTitleType(type.value)}
+                    aria-pressed={titleType === type.value}
+                    title={type.example}
+                    className={`glass-interactive rounded-xl border p-2 text-center ${
+                      titleType === type.value ? "glass-selected" : "glass-panel"
+                    }`}
+                  >
+                    <div className="text-base leading-none">{type.icon}</div>
+                    <div
+                      className={`mt-1 text-[11px] font-medium leading-none ${
+                        titleType === type.value ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      {type.label}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            <Field label="生成数量" optional stacked>
+              <div className="grid grid-cols-4 gap-1.5">
+                {AB_TEST_COUNTS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setAbTestCount(option.value)}
+                    aria-pressed={abTestCount === option.value}
+                    className={`glass-interactive rounded-xl border px-2 py-2 text-center ${
+                      abTestCount === option.value ? "glass-selected" : "glass-panel"
+                    }`}
+                  >
+                    <div
+                      className={`text-[13px] font-medium leading-none ${
+                        abTestCount === option.value ? "text-primary" : "text-foreground"
+                      }`}
+                    >
+                      {option.label}
+                    </div>
+                    <div className="mt-0.5 text-[10px] leading-none text-muted-foreground">
+                      {option.desc}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </Field>
+          </CollapsibleSection>
+
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !topic.trim()}
+            className={PRIMARY_BTN}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                生成中…
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                生成标题
+              </>
+            )}
+          </button>
+        </>
+      }
+    >
+      <ResultPanel
+        result={result}
+        isGenerating={isGenerating}
+        title="标题方案"
+        showStats={false}
+        emptyIcon={Tag}
+        emptyTitle="填写主题后生成标题"
+        emptyHint="一次给出多个方案，方便横向对比挑选"
+        emptyTips={[
+          "主题写得越具体，标题越有针对性",
+          "同一主题可以换不同类型多试几轮",
+          "生成数量选多一些便于 A/B 对比",
+        ]}
+        generatingHint="正在构思标题…"
+        onCopy={(text) => {
+          navigator.clipboard.writeText(text);
+          notify("已复制到剪贴板");
+        }}
       />
-    </div>
+
+      <HistoryPanel
+        items={titleHistory}
+        title="历史标题"
+        showStats={false}
+        activeId={selectedHistory?.id ?? null}
+        onLoad={(item) => viewTitle(item)}
+        onDelete={(id) => deleteTitle(id)}
+      />
+    </WorkspaceLayout>
   );
 }

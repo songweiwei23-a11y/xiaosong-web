@@ -1,10 +1,17 @@
 "use client";
 
+import { formatRelativeTime } from "@/lib/script-result-utils";
 import { Field } from "@/components/form/Field";
+import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { PageHeader } from "@/components/workspace/PageHeader";
+import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
-import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle } from "lucide-react";
+import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import ContinuousDialog from '@/components/ContinuousDialog';
@@ -333,207 +340,166 @@ export default function PositioningPage() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* 左侧输入区 */}
-      <div className="w-[400px] border-r bg-card overflow-y-auto p-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Target className="w-7 h-7 text-primary" />
-            账号定位
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            基于档案智能生成专业定位方案
-          </p>
-        </div>
+    <WorkspaceLayout
+      sidebar={
+        <>
+          <PageHeader title="账号定位" subtitle="基于账号档案，生成一份可执行的定位方案" />
 
-        {/* 当前档案卡片 */}
-        <div className="brand-gradient rounded-xl p-4 border-2 border-accent/20">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 brand-gradient rounded-xl flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-foreground">{activeProfile.profile_name}</div>
-              <div className="text-xs text-muted-foreground">
-                {activeProfile.account_platform?.[0]} • {activeProfile.fans_level}
+          {activeProfile ? (
+            <div className="glass-panel rounded-2xl p-4">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/12">
+                  <User className="h-4 w-4 text-primary" />
+                </span>
+                <span className="truncate text-[13px] font-medium text-foreground">
+                  {activeProfile.profile_name || "未命名档案"}
+                </span>
               </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {[activeProfile.account_platform, activeProfile.fans_level]
+                  .filter(Boolean)
+                  .join(" · ") || "档案信息不完整，补全后定位会更准"}
+              </p>
             </div>
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          </div>
-          <div className="text-xs text-muted-foreground space-y-1">
-            {activeProfile.account_track && activeProfile.account_track.length > 0 && (
-              <div>🎯 {activeProfile.account_track.join('、')}</div>
-            )}
-            {activeProfile.monetization_model && activeProfile.monetization_model.length > 0 && (
-              <div>💰 {activeProfile.monetization_model.join('、')}</div>
-            )}
-          </div>
-        </div>
-
-        {/* 补充说明 */}
-        <Field label="补充说明" optional>
-<textarea
-            value={additionalNotes}
-            onChange={(e) => setAdditionalNotes(e.target.value)}
-            placeholder="有其他补充信息可以在这里说明，比如特殊要求、顾虑、期望等..."
-            rows={4}
-            className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-</Field>
-
-        {/* 生成按钮 */}
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="w-full btn-brand py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-all  flex items-center justify-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-6 h-6 animate-spin" />
-              AI智能分析中...
-            </>
           ) : (
-            <>
-              <Sparkles className="w-6 h-6" />
-              基于档案生成定位
-            </>
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
+              <p className="text-[13px] font-medium text-amber-500">还没有激活的账号档案</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                先去「个人档案」建一个并激活，定位会基于档案信息生成
+              </p>
+            </div>
           )}
-        </button>
 
-        {/* 历史定位列表 */}
-        {positionings.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <History className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-foreground">历史定位方案</h3>
-              <span className="text-xs text-muted-foreground">({positionings.length})</span>
-            </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {positionings.map((pos) => (
-                <div
-                  key={pos.id}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    selectedPositioning?.id === pos.id
-                      ? 'glass-selected text-foreground'
-                      : 'glass-panel bg-card'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div 
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => viewPositioning(pos)}
+          <CollapsibleSection title="补充信息" defaultOpen>
+            <Field label="补充说明" optional stacked hint="特殊要求、顾虑或期望，写了会一并纳入分析">
+              <textarea
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                placeholder="例如：希望突出本地属性，不想做泛流量…"
+                rows={4}
+                className={TEXTAREA_CLS}
+              />
+            </Field>
+          </CollapsibleSection>
+
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !activeProfile}
+            className={PRIMARY_BTN}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                生成中…
+              </>
+            ) : (
+              <>
+                <Target className="h-4 w-4" />
+                基于档案生成定位
+              </>
+            )}
+          </button>
+
+          {positionings.length > 0 && (
+            <CollapsibleSection title="历史定位" defaultOpen>
+              <div className="space-y-1.5">
+                {positionings.map((item) => {
+                  const active = selectedPositioning?.id === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => viewPositioning(item)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          viewPositioning(item);
+                        }
+                      }}
+                      className={`group cursor-pointer rounded-xl border p-3 transition-colors ${
+                        active
+                          ? "border-primary/50 bg-primary/[0.08]"
+                          : "border-transparent hover:border-border hover:bg-foreground/[0.04]"
+                      }`}
                     >
-                      <div className="font-medium text-sm text-foreground truncate">
-                        {pos.positioning_name}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(pos.created_at).toLocaleDateString('zh-CN')}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-medium text-foreground">
+                            {item.positioning_name || "未命名定位"}
+                          </p>
+                          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <span suppressHydrationWarning>
+                              {formatRelativeTime(item.created_at)}
+                            </span>
+                            {item.is_active && (
+                              <span className="rounded-full bg-emerald-500/15 px-1.5 py-px text-[10px] text-emerald-500">
+                                当前激活
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                          <button
+                            type="button"
+                            aria-label="查看选题摘要"
+                            title="查看选题摘要"
+                            onClick={(e) => viewSummary(item, e)}
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="删除"
+                            title="删除"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deletePositioning(item.id);
+                            }}
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {/* ✅ 新增：继续对话按钮 */}
-                      <button
-                        onClick={(e) => openHistoryDialog(pos, e)}
-                        className="p-1.5 text-accent hover:bg-accent/15 rounded-xl transition-colors"
-                        title="继续对话"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deletePositioning(pos.id)
-                        }}
-                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  {pos.is_active && (
-                    <span className="inline-block mt-2 px-2 py-0.5 bg-emerald-500/15 text-green-500 text-xs rounded-full">
-                      当前激活
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* AI说明 */}
-        <div className="brand-gradient rounded-xl p-4 border-2 border-primary/20">
-          <div className="flex items-start gap-2">
-            <Wand2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-foreground">
-              <p className="font-bold mb-1.5">AI会基于您的档案智能分析</p>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>✅ 最适合的账号定位和人设方向</li>
-                <li>✅ 差异化标签和内容策略</li>
-                <li>✅ 变现路径和时间节点规划</li>
-                <li>✅ 7天冷启动执行计划</li>
-                <li>✅ 判断标准和优化建议</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 右侧结果展示 */}
-      <div className="flex-1 overflow-y-auto p-8">
-        {result ? (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-card rounded-2xl shadow-xl p-8 border-2 border-primary/30">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                  <Target className="w-6 h-6 text-primary" />
-                  {selectedPositioning ? selectedPositioning.positioning_name : '定位方案'}
-                </h2>
-                {selectedPositioning && (
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(selectedPositioning.created_at).toLocaleString('zh-CN')}
-                  </div>
-                )}
+                  );
+                })}
               </div>
-              <div className="prose prose-slate max-w-none">
-                <ReactMarkdown>{result}</ReactMarkdown>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-lg">
-              <div className="relative mb-6">
-                <Target className="w-28 h-28 mx-auto text-muted-foreground" />
-                <Sparkles className="w-12 h-12 absolute top-0 right-1/3 text-accent animate-pulse" />
-              </div>
-              <p className="text-2xl font-bold text-foreground mb-3">
-                基于档案的智能定位
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                AI会读取您的档案信息<br/>
-                包括平台、赛道、目标用户、资源配置等<br/>
-                智能生成最适合您的账号定位方案<br/><br/>
-                <span className="text-xs text-muted-foreground">点击左侧"生成"按钮开始</span>
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+            </CollapsibleSection>
+          )}
+        </>
+      }
+    >
+      <ResultPanel
+        result={result}
+        isGenerating={isGenerating}
+        title={viewMode === "summary" ? "选题摘要" : "定位方案"}
+        showStats={false}
+        emptyIcon={Target}
+        emptyTitle="基于档案生成定位方案"
+        emptyHint="AI 会分析赛道、人群、差异化与变现路径"
+        emptyTips={[
+          "档案填得越全，定位越贴合实际",
+          "生成后可继续追问某一部分",
+          "定位会被脚本与选题自动引用",
+        ]}
+        generatingHint="正在分析账号定位…"
+        onCopy={(text) => {
+          navigator.clipboard.writeText(text);
+          notify("已复制到剪贴板");
+        }}
+        onContinue={result ? () => setShowDialog(true) : undefined}
+      />
 
-      {/* 持续对话 */}
       <ContinuousDialog
         isOpen={showDialog}
         onClose={() => setShowDialog(false)}
         initialContent={result}
         conversationId={dialogConversationId}
         taskType="账号定位"
-        contextData={{
-          profileInfo: activeProfile ? `档案：${activeProfile.profile_name}` : undefined
-        }}
       />
-    </div>
+    </WorkspaceLayout>
   );
 }
-
