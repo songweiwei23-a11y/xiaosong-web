@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   SECTIONS,
   SECTION_SPECS,
@@ -209,6 +211,40 @@ describe('只动这一节——这是单节重生成的全部意义', () => {
   it('标题行本身保留下来', () => {
     const next = replaceSection(DOC, 'oneline', '新定位');
     expect(next).toContain('## 一句话定位');
+  });
+});
+
+/**
+ * 功能做了、入口出不来，是白做。
+ *
+ * 第一版的渲染条件是 `result && selectedPositioning &&…`，
+ * 而生成完只刷新了列表、没设选中——于是生成完看不到「逐节调整」，
+ * 得先去左边历史里点一下才出现。用户直接问"页面上没有单独修改的地方"。
+ */
+describe('页面上的入口确实会出现', () => {
+  const src = fs.readFileSync(
+    path.join(process.cwd(), 'app/dashboard/positioning/page.tsx'),
+    'utf8'
+  );
+
+  it('生成完把新定位设为当前选中', () => {
+    // 不设的话逐节修改不知道要 PATCH 哪一行，入口也出不来
+    expect(src).toMatch(/setSelectedPositioning\(newPositioning\)/);
+  });
+
+  it('刷新页面后也有兜底：按内容匹配库里的行', () => {
+    expect(src).toMatch(/const editTarget\s*=/);
+    expect(src, '必须内容对得上才认，否则会 PATCH 到不相干的定位上').toMatch(
+      /full_content\?\.trim\(\) === result\.trim\(\)/
+    );
+  });
+
+  it('渲染条件用 editTarget，不再只看 selectedPositioning', () => {
+    expect(src).toMatch(/\{result && editTarget && viewMode !== 'summary'/);
+  });
+
+  it('对不上任何一行时给出说明，而不是静默不显示', () => {
+    expect(src).toContain('和已保存的定位对不上');
   });
 });
 

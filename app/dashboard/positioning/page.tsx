@@ -148,6 +148,18 @@ export default function PositioningPage() {
     }
   }
 
+  /**
+   * 逐节修改要改的是哪一行。
+   *
+   * 选中了就用选中的；没选中（刷新页面后、或结果是恢复来的）
+   * 就在列表里找内容对得上的那一行。
+   * **必须内容对得上才认**——否则会把改动 PATCH 到不相干的另一份定位上，
+   * 那是静默改坏数据，比不给改严重得多。
+   */
+  const editTarget =
+    selectedPositioning ??
+    (result ? positionings.find((p) => p.full_content?.trim() === result.trim()) ?? null : null)
+
   /** 档案摘要。整份生成和单节重生成都用它，不要各拼一份 */
   const buildProfileSummary = () => {
     if (!activeProfile) return ''
@@ -296,7 +308,14 @@ export default function PositioningPage() {
 
       if (res.ok) {
         const newPositioning = await res.json()
-        // 重新加载定位列表
+        /*
+         * 把刚生成的这份设为当前选中。
+         *
+         * 原来只刷新了列表没设选中，结果「逐节调整」那块被条件挡住——
+         * 生成完看不到修改入口，得先去左边历史里点一下才出来。
+         * 逐节修改要 PATCH 到具体某一行，所以必须知道是哪一行。
+         */
+        setSelectedPositioning(newPositioning)
         loadPositionings()
       }
     } catch (error) {
@@ -542,7 +561,7 @@ export default function PositioningPage() {
         逐节调整。原来只有"整份重生成"一条路——为改一句话要等 5 分钟，
         而且其他九成对的内容也会跟着变，结果是用户不敢点重新生成。
       */}
-      {result && selectedPositioning && viewMode !== 'summary' && (
+      {result && editTarget && viewMode !== 'summary' && (
         <SectionEditor
           content={result}
           profileId={activeProfile?.id ?? null}
@@ -552,19 +571,28 @@ export default function PositioningPage() {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                id: selectedPositioning.id,
+                id: editTarget.id,
                 full_content: next,
                 strategy_summary: extractStrategySummary(next),
               }),
             })
             if (!res.ok) return false
             setResult(next)
+            setSelectedPositioning((cur) => (cur ? { ...cur, full_content: next } : cur))
             // 简报和各板块缓存的上下文要作废，否则接着生成用的还是旧的
             invalidateCreatorContext()
             loadPositionings()
             return true
           }}
         />
+      )}
+
+      {/* 结果是从历史文本恢复来的、对不上库里任何一行时，说清楚为什么不能逐节改 */}
+      {result && !editTarget && viewMode !== 'summary' && positionings.length > 0 && (
+        <p className="mt-4 text-[12px] text-muted-foreground">
+          这段内容和已保存的定位对不上（多半是从历史记录恢复的）。
+          从左边「历史定位」里点开一份，就能逐节修改。
+        </p>
       )}
 
       <ContinuousDialog
