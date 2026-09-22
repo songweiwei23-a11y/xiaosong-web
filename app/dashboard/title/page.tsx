@@ -1,6 +1,7 @@
 "use client";
 
 import { takeHandoff } from "@/lib/handoff";
+import { throwApiError } from "@/lib/api-error";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -162,9 +163,11 @@ export default function TitlePage() {
       return;
     }
 
-    const remainingQuota = await checkQuota();
+    // 必须传功能名。不传的话 checkQuota 一律回答「脚本生成还剩几次」，
+    // 于是本页额度明明是 0 也会放行，等服务端拒绝后用户只看到一句失败。
+    const remainingQuota = await checkQuota("title");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("❌ 您的配额已用完，请联系管理员或升级会员");
+      notify("标题封面的额度已用完，请升级会员或等待下月重置");
       return;
     }
 
@@ -212,7 +215,9 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
         }),
       });
 
-      if (!response.ok) throw new Error("生成失败");
+      // 把服务端的话带出来。额度用完时它说的是「额度已用完，请升级会员」，
+      // 统一写成「生成失败」会让用户以为是故障，于是一直重试。
+      if (!response.ok) await throwApiError(response);
 
       // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
       // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
@@ -225,9 +230,9 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
         await loadTitleHistory();
         setShowDialog(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ 生成失败:", error);
-      notify("生成失败，请重试");
+      notify(error?.message || "生成失败，请重试");
     } finally {
       setIsGenerating(false);
     }

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { TASK_TYPE_TO_FEATURE } from '@/lib/task-type';
+import { SEARCH_TOPIC_HINT } from '@/lib/search-query';
 
 /**
  * 回归防线：任何调用 /api/dify/stream 的页面都必须显式传 taskType。
@@ -80,6 +82,44 @@ describe('dify/stream 调用方必须声明 taskType', () => {
       }
     });
   }
+
+  /**
+   * 光有 taskType 不够——值还得是计费表认识的。
+   *
+   * 这一条正是之前漏网的地方：知识库页和成交理由页发的是 '知识库查询'，
+   * 表里写的是 '知识库'；分镜页的推荐按钮发 'AI推荐'，表里没有。
+   * 三者都通过了「有没有传」的检查，却全部兜底成 script，
+   * 于是知识库查询去扣脚本额度，一扣就是几十次没人发现。
+   */
+  describe('taskType 的值必须在计费表里', () => {
+    for (const page of callers) {
+      const rel = path.relative(process.cwd(), page);
+      const source = fs.readFileSync(page, 'utf8');
+      const values = extractStreamCalls(source)
+        .map((call) => call.match(/taskType\s*:\s*["'](.+?)["']/)?.[1])
+        .filter((v): v is string => !!v);
+
+      for (const value of values) {
+        it(`${rel} 的「${value}」已登记`, () => {
+          expect(
+            TASK_TYPE_TO_FEATURE[value],
+            `「${value}」不在 lib/task-type.ts 的映射表里，用量会被错记到脚本生成名下`
+          ).toBeTruthy();
+        });
+      }
+    }
+  });
+
+  /**
+   * 计费表里的每个任务类型也都该有检索主题词的条目。
+   * 缺了不会报错，只会让知识库召回失去锚点——属于典型的静默劣化。
+   */
+  it('计费表里的任务类型都在检索主题词表中有条目', () => {
+    const missing = Object.keys(TASK_TYPE_TO_FEATURE).filter(
+      (t) => !(t in SEARCH_TOPIC_HINT)
+    );
+    expect(missing, `这些任务类型缺少检索主题词条目：${missing.join('、')}`).toEqual([]);
+  });
 
   /**
    * 流式响应必须交给 lib/sse-stream 统一解析，不能各页面手写。

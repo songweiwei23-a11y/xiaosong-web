@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { saveConversationMessage, getConversationHistory, formatConversationHistory } from '@/lib/conversation';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { buildSearchQuery } from '@/lib/search-query';
+import { getFeatureFromTaskType } from '@/lib/task-type';
 import {
   getDifyConversationId,
   saveDifyConversationId,
@@ -11,22 +12,6 @@ import {
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
-
-// 将任务类型映射到功能代码
-function getFeatureFromTaskType(taskType: string): string {
-  const mapping: Record<string, string> = {
-    '脚本生成': 'script',
-    '选题策划': 'topic',
-    '分镜脚本': 'storyboard',
-    '审稿优化': 'review',
-    '标题封面': 'title',
-    '账号定位': 'positioning',
-    '成交理由': 'dealReason',
-    '自由对话': 'freeChat',
-    '知识库': 'knowledge'
-  };
-  return mapping[taskType] || 'script'; // 默认为script
-}
 
 
 export async function POST(req: NextRequest) {
@@ -162,8 +147,10 @@ export async function POST(req: NextRequest) {
       parts.push('3. 如有对标脚本,进行对比分析');
       
       query = parts.join('\n');
-    } else if (body.taskType === '知识库查询') {
-      // 知识库查询逻辑 - 前端已构建完整query
+    } else if (body.taskType === '知识库查询' || body.taskType === '成交理由') {
+      // 这两个页面都在前端拼好了完整提示词，放在 topic 字段里。
+      // 成交理由此前也发 '知识库查询'，导致它的用量被记成知识库（无限额度），
+      // 等于这个功能从不计费；现在按自己的名字发，计费才落到 dealReason 上。
       query = body.topic || body.query || '请提供具体问题';
     } else if (body.taskType === '分镜脚本') {
       // 分镜脚本生成逻辑

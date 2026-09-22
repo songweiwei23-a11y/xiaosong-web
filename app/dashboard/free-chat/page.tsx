@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { throwApiError } from "@/lib/api-error";
 import ReactMarkdown from "react-markdown";
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
@@ -303,9 +304,10 @@ export default function FreeChatPage() {
         }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error("请求失败：" + res.status);
-      }
+      // 额度用完时服务端会说明原因，直接显示给用户；
+      // 只报状态码等于让用户去猜
+      if (!res.ok) await throwApiError(res, "请求失败");
+      if (!res.body) throw new Error("服务端没有返回内容，请重试");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -352,7 +354,7 @@ export default function FreeChatPage() {
         });
       }
     } catch (e) {
-      assistantText = "⚠️ 生成失败：" + String(e);
+      assistantText = "⚠️ " + ((e as Error)?.message || "生成失败，请重试");
       patchConv(convId, (c) => {
         const msgs = [...c.messages];
         const last = msgs[msgs.length - 1];

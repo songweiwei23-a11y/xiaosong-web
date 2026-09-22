@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
+import { throwApiError } from "@/lib/api-error";
 import { BookOpen, Search, Loader2, Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { notify } from '@/components/ui/feedback';
@@ -95,7 +96,7 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
         }),
       });
 
-      if (!response.ok) throw new Error("查询失败");
+      if (!response.ok) await throwApiError(response, "查询失败");
 
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer，
       // 否则页面上显示的会是满屏 data: {...} 而不是检索结果正文

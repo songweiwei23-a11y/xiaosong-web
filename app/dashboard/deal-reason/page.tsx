@@ -7,6 +7,7 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { useState, useEffect } from "react";
+import { throwApiError } from "@/lib/api-error";
 import { Award, Loader2, Sparkles, Save, Check } from "lucide-react";
 import { supabase, dealReasonService } from "@/lib/supabase";
 import { notify } from '@/components/ui/feedback';
@@ -154,13 +155,15 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          taskType: "知识库查询",
+          // 按自己的名字发。此前发 '知识库查询'，用量被记进「知识库」
+          // （无限额度），这个功能等于从来没计过费。
+          taskType: "成交理由",
           category: "成交理由",
           topic: query
         }),
       });
 
-      if (!response.ok) throw new Error("分析失败");
+      if (!response.ok) await throwApiError(response, "分析失败");
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
       const full = await readDifyStream(response, {
         onChunk: (_piece, text) => setAnalysisResult(formatAnalysisResult(text)),

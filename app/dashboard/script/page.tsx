@@ -55,6 +55,7 @@ import { useScriptHistory } from "./useScriptHistory";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { putHandoff, takeHandoff } from "@/lib/handoff";
+import { throwApiError } from "@/lib/api-error";
 import { createWork, touchWork } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
@@ -345,9 +346,9 @@ export default function ScriptPage() {
 
   const handleGenerate = async () => {
     // 0. 检查配额
-    const remainingQuota = await checkQuota();
+    const remainingQuota = await checkQuota("script");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("❌ 您的配额已用完，请联系管理员或升级会员");
+      notify("脚本生成的额度已用完，请升级会员或等待下月重置");
       return;
     }
 
@@ -715,7 +716,8 @@ ${formatRequirements}
         }),
       });
 
-      if (!response.ok) throw new Error("生成失败");
+      // 带出服务端文案，额度类错误才不会被显示成「生成失败」
+      if (!response.ok) await throwApiError(response);
 
       // 统一走 readDifyStream：此处原本手写解析，decode(value) 未开 stream 模式，
       // 中文占 3 字节，一旦某个字被拆在两个数据块的边界上就会解码成乱码；

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { putHandoff, parseTopicOptions } from "@/lib/handoff";
+import { throwApiError } from "@/lib/api-error";
 import { createWork } from "@/lib/works";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -711,7 +712,8 @@ export default function TopicPage() {
         })
       });
 
-      if (!response.ok) throw new Error("生成失败");
+      // 带出服务端文案，额度类错误才不会被显示成「生成失败」
+      if (!response.ok) await throwApiError(response);
 
       // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
       // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
@@ -734,9 +736,9 @@ export default function TopicPage() {
         }
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("生成失败:", error);
-      notify("生成失败，请重试");
+      notify(error?.message || "生成失败，请重试");
     } finally {
       setIsGenerating(false);
     }

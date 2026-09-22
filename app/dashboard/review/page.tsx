@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { takeHandoff, putHandoff } from "@/lib/handoff";
+import { throwApiError } from "@/lib/api-error";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -153,9 +154,9 @@ export default function ReviewPage() {
 
   const handleGenerate = async () => {
     // 检查配额
-    const remainingQuota = await checkQuota();
+    const remainingQuota = await checkQuota("review");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("❌ 您的配额已用完，请联系管理员或升级会员");
+      notify("审稿优化的额度已用完，请升级会员或等待下月重置");
       return;
     }
 
@@ -210,7 +211,8 @@ export default function ReviewPage() {
         }),
       });
 
-      if (!response.ok) throw new Error("生成失败");
+      // 带出服务端文案，额度类错误才不会被显示成「生成失败」
+      if (!response.ok) await throwApiError(response);
 
       // 响应是 SSE（data: {"answer":"..."}），必须解析后取 answer，
       // 直接累加原始字节会把 data: {...} 一起显示给用户
