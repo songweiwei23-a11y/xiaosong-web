@@ -68,4 +68,20 @@ describe('毛玻璃的 backdrop-filter 写法', () => {
     expect(css).toMatch(/--glass-blur\s*:/);
     expect(css).toMatch(/--panel-blur\s*:/);
   });
+
+  /**
+   * 参与 box-shadow 列表组合的变量不能取值 `none`。
+   *
+   * 踩过的坑：深色下 --panel-shadow 是 none，而卡片写的是
+   * `box-shadow: var(--panel-shadow), var(--panel-highlight)`。
+   * CSS 不允许 none 出现在阴影列表里，整条声明被判非法丢弃，
+   * 顶边高光于是一条都没生效——而模糊是好的，所以问题很难看出来。
+   * 要「没有阴影」就用零尺寸全透明阴影。
+   */
+  it('阴影类变量不取 none，否则组合进列表会让整条声明失效', () => {
+    const css = fs.readFileSync(path.join(process.cwd(), 'app/globals.css'), 'utf8');
+    const bad = [...css.matchAll(/--(panel-shadow|panel-shadow-hover|panel-highlight)\s*:\s*none\s*;/g)]
+      .map((m) => m[1]);
+    expect(bad, `这些变量取了 none，会让 box-shadow 的列表组合整条失效：${bad.join('、')}`).toEqual([]);
+  });
 });

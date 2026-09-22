@@ -62,8 +62,10 @@
        模糊再多也出不来质感，白实底配阴影反而干净 */
     --panel-blur: 0px;
     /* 边缘高光。玻璃之所以看着像玻璃，很大程度来自顶边那道亮线——
-       浅色下不需要，白底上再加白线看不见 */
-    --panel-highlight: 0 0 0 0 transparent;
+       浅色下不需要，白底上再加白线看不见。
+       写成零尺寸透明阴影而不是 none：它要参与 box-shadow 的列表组合，
+       none 出现在列表里会让整条声明非法 */
+    --panel-highlight: 0 0 #0000;
     --glass-border: 225 20% 14%;
     --glass-border-opacity: 0.07;
     /* 阴影是浅色模式唯一的分层手段，必须足够柔和才不显脏 */
@@ -123,9 +125,19 @@
     --panel-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.07);
     --glass-border: 0 0% 100%;
     --glass-border-opacity: 0.08;
-    /* 深色下投影几乎不可见，分层靠亮度差，投影只留一点点用于托起浮层 */
-    --panel-shadow: none;
-    --panel-shadow-hover: none;
+    /*
+     * 深色下不要投影，分层靠亮度差。
+     *
+     * 但值不能写 `none`：这个变量会被组合进阴影列表
+     * （box-shadow: var(--panel-shadow), var(--panel-highlight)），
+     * 而 `none` 不允许出现在列表里——整条声明会被判为非法然后丢弃，
+     * 连带顶边高光一起失效。实测就是这么回事：模糊生效了，
+     * 高光却一条都没有。
+     *
+     * 用零尺寸的全透明阴影代替：视觉上等同于没有，但可以参与组合。
+     */
+    --panel-shadow: 0 0 #0000;
+    --panel-shadow-hover: 0 0 #0000;
 
     --glow-primary: 270 90% 62%;
     --glow-accent: 330 90% 62%;
