@@ -229,8 +229,14 @@ export async function POST(req: NextRequest) {
       parts.push('- 必须直接输出表格,不要任何前言');
       
       query = parts.join('\n');
-    } else if (body.taskType === '账号定位') {
-      // 账号定位逻辑 - 支持两种模式
+    } else if (body.taskType === '账号定位' && !body.query) {
+      /*
+       * 定位页现在自己用 buildPositioningPrompt() 拼完整提示词（六维地基
+       * 那套方法论），走上面 body.query 已有的分支。这里只剩旧版兜底。
+       *
+       * 少了 `&& !body.query` 这个条件，页面辛苦拼好的提示词会被下面这段
+       * 无条件覆盖掉——和选题页当年踩的是同一个坑。
+       */
       const parts = ['请帮我进行短视频账号定位分析'];
       
       // 模式1: 基于用户档案（新版）

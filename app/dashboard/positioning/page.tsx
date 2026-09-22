@@ -13,6 +13,7 @@ import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
 import { extractStrategySummary } from '@/lib/positioning-utils';
+import { buildPositioningPrompt } from '@/lib/positioning-standards';
 import { throwApiError } from "@/lib/api-error";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
@@ -32,6 +33,8 @@ interface Profile {
   equipment: string[]
   team_structure: string
   unique_selling_point: string
+  /** 「绝对不能说」。是硬约束，显式声明出来，别靠下面那行索引签名蒙混过去 */
+  content_restrictions?: string
   [key: string]: any
 }
 
@@ -187,6 +190,18 @@ export default function PositioningPage() {
 - 竞争劣势：${activeProfile.competitive_weakness || '未设置'}
 `.trim()
 
+    // 提示词在这里拼完整的。旧版只把档案丢给服务端，服务端那套只规定
+    // 「输出哪些小节」、没给任何判断依据，产出自然是格式对但不专业。
+    const query = buildPositioningPrompt({
+      profileSummary,
+      additionalNotes,
+      platform: Array.isArray(activeProfile.account_platform)
+        ? activeProfile.account_platform[0]
+        : activeProfile.account_platform || undefined,
+      restrictions: activeProfile.content_restrictions || undefined,
+      focus: "full",
+    });
+
     try {
       const response = await fetch("/api/dify/stream", {
         method: "POST",
@@ -195,6 +210,8 @@ export default function PositioningPage() {
           taskType: "账号定位",
           // 记忆按档案隔离：定位是"这个号该做什么"的判断，绝不能串到别的号上。
           profileId: activeProfile?.id || null,
+          query,
+          // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           profileInfo: profileSummary,
           additionalNotes: additionalNotes || "无补充说明",
         }),
