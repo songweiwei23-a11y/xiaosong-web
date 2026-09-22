@@ -58,6 +58,12 @@
     --glass-bg: 0 0% 100%;
     --glass-opacity: 1;
     --glass-blur: 0px;
+    /* 卡片的模糊半径。浅色下为 0：白色半透明压在浅底上只会发灰，
+       模糊再多也出不来质感，白实底配阴影反而干净 */
+    --panel-blur: 0px;
+    /* 边缘高光。玻璃之所以看着像玻璃，很大程度来自顶边那道亮线——
+       浅色下不需要，白底上再加白线看不见 */
+    --panel-highlight: 0 0 0 0 transparent;
     --glass-border: 225 20% 14%;
     --glass-border-opacity: 0.07;
     /* 阴影是浅色模式唯一的分层手段，必须足够柔和才不显脏 */
@@ -108,6 +114,13 @@
     --glass-bg: 265 28% 14%;
     --glass-opacity: 0.55;
     --glass-blur: 20px;
+    /* 卡片也开模糊。原先卡片是「伪玻璃」——半透明但不模糊，
+       背后的东西原样透出来，看着是浑浊而不是磨砂。
+       14px 比侧边栏的 20px 轻，卡片数量多，够出效果就行 */
+    --panel-blur: 14px;
+    /* 顶边那道极淡的白线。玻璃的「边」是它区别于半透明色块的关键，
+       少了这一道，卡片只是一块透色的方形 */
+    --panel-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.07);
     --glass-border: 0 0% 100%;
     --glass-border-opacity: 0.08;
     /* 深色下投影几乎不可见，分层靠亮度差，投影只留一点点用于托起浮层 */
@@ -170,22 +183,30 @@
     background-color: hsl(var(--glass-bg) / var(--glass-opacity));
     /* 模糊半径由变量控制：浅色下是 0，因为白色半透明压在浅底上只会发灰，
        模糊再多也出不来质感，白实底配阴影反而干净 */
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
     box-shadow: var(--panel-shadow);
   }
 
   /*
-   * .glass-panel —— 伪玻璃，不开模糊。
-   * 正文卡片数量多、面积大，全开模糊会让中低端设备明显掉帧；
-   * 半透明 + 极淡边框在有光晕背景的前提下，观感与真玻璃几乎一致。
+   * .glass-panel —— 卡片用的玻璃。
+   *
+   * 这里原本是「伪玻璃」：半透明但不开模糊，理由是卡片多、怕掉帧。
+   * 实际效果是背后的东西原样透出来，看着浑浊，像一块透色的方形，
+   * 而不是磨砂玻璃——用户的原话是「差图二那种质感」。
+   *
+   * 改成开模糊，但半径比侧边栏小（14px vs 20px）。backdrop-filter
+   * 在现代浏览器里走 GPU 合成，一屏几十个卡片的量级没有问题；
+   * 当初那份担心过于保守。浅色下仍为 0——白色半透明压在浅底上只会发灰。
    */
   .glass-panel {
     background-color: hsl(var(--card) / var(--glass-opacity));
+    -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
+    backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
-    /* 浅色靠这层阴影分层，深色下该变量为 none */
-    box-shadow: var(--panel-shadow);
+    /* 浅色靠阴影分层（深色下为 none），深色靠顶边高光勾出玻璃的边 */
+    box-shadow: var(--panel-shadow), var(--panel-highlight);
   }
 
   /* 可点击的玻璃卡片：悬停时微微提亮并浮起 */
@@ -194,9 +215,11 @@
       box-shadow 0.2s ease;
   }
   .glass-interactive:hover {
-    background-color: hsl(var(--card) / 1);
+    /* 悬停不再把卡片压成实色。实色会让模糊突然消失，
+       指针扫过一排选项时像在闪，反而比不做效果更差 */
+    background-color: hsl(var(--card) / calc(var(--glass-opacity) + 0.25));
     border-color: hsl(var(--primary) / 0.35);
-    box-shadow: var(--panel-shadow-hover);
+    box-shadow: var(--panel-shadow-hover), var(--panel-highlight);
     transform: translateY(-1px);
   }
 
@@ -204,7 +227,17 @@
   .glass-selected {
     border-color: hsl(var(--primary) / 0.6);
     background-color: hsl(var(--primary) / 0.1);
-    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25), 0 8px 24px -12px hsl(var(--primary) / 0.5);
+    /* 选中的卡片也保留模糊与顶边高光，否则一选中质感就掉了一截 */
+    -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
+    backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25), 0 8px 24px -12px hsl(var(--primary) / 0.5),
+      var(--panel-highlight);
+  }
+  .glass-selected:hover {
+    /* 已选中的不要再被 glass-interactive 的悬停色盖掉，
+       否则鼠标一放上去看起来像取消了选中 */
+    background-color: hsl(var(--primary) / 0.14);
+    border-color: hsl(var(--primary) / 0.7);
   }
 
   /* 品牌渐变，主按钮与图标底座共用 */

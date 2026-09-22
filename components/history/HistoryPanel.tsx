@@ -205,7 +205,11 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                         </button>
                       </div>
                     </div>
-                    <div className="prose max-w-none">
+                    {/* dark:prose-invert 不能少：prose 会把正文写死成深灰，
+                        深色主题下正文会淹没在背景里 */}
+                    <div className="prose prose-sm dark:prose-invert max-w-none
+                      prose-p:text-[14px] prose-p:leading-[1.8]
+                      prose-strong:text-foreground prose-headings:text-foreground">
                       <ReactMarkdown>{selectedRecord.result}</ReactMarkdown>
                     </div>
                   </div>

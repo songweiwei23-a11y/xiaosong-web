@@ -1,5 +1,7 @@
 "use client";
 
+import { Check } from "lucide-react";
+
 /**
  * 表单字段：标签左置、内容右置。
  *
@@ -129,10 +131,21 @@ export function OptionCard({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`glass-interactive flex items-start gap-3 rounded-xl border p-3.5 text-left ${
+      className={`glass-interactive relative flex items-start gap-3 overflow-hidden rounded-xl border p-3.5 text-left ${
         selected ? "glass-selected" : "glass-panel"
       }`}
     >
+      {/*
+        选中打勾。原先只靠描边和淡淡的底色表示选中，一排卡片扫过去
+        并不好认——尤其在深色下，描边本身就很淡。加一个角标之后
+        「选了哪个」是一眼的事，不用对比边框深浅。
+      */}
+      {selected && (
+        <span className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-bl-lg bg-primary">
+          <Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} />
+        </span>
+      )}
+
       <span
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${accents[accent]}`}
       >

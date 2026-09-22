@@ -537,9 +537,21 @@ export default function FreeChatPage() {
                         : "border border-border bg-card text-foreground"
                     }`}
                   >
+                    {/*
+                      下面那段 prose 必须带 dark:prose-invert。
+                      typography 插件的 prose 会把正文颜色写死成深灰
+                      （#374151），深色主题下就是深灰字配深灰底——
+                      消息正文几乎看不见，只有加粗和引用还能勉强辨认。
+                      ResultPanel 和 ContinuousDialog 早就带了，
+                      唯独自由对话和历史面板漏掉，所以只有这两处发灰。
+                    */}
                     {msg.role === "assistant" ? (
                       msg.content ? (
-                        <div className="prose prose-sm max-w-none">
+                        <div className="prose prose-sm dark:prose-invert max-w-none
+                          prose-p:text-[14px] prose-p:leading-[1.8]
+                          prose-li:text-[14px] prose-strong:text-foreground
+                          prose-headings:text-foreground prose-headings:font-semibold
+                          prose-hr:border-border/60">
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
                         </div>
                       ) : (
