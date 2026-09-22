@@ -134,9 +134,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '不能移除自己的管理员权限' }, { status: 400 });
       }
 
-      // 撤销时两个来源都要清，否则旧的 user_settings.is_admin 还会让他进得来
+      /*
+       * 两个来源都要清：requireAdmin 是「admin_roles 有记录，或
+       * user_settings.is_admin 为真」，只清一个他照样进得来。
+       *
+       * user_settings 那条用 update 是合适的——没有这行就没什么可清的，
+       * 影响 0 行是正确结果，不像封禁那种「本该生效却静默失败」。
+       * 但撤权是安全动作，不能只看有没有报错：下面回读一次，
+       * 确认这个人真的不再是管理员了。
+       */
       await supabase.from('admin_roles').delete().eq('user_id', user.id);
       await supabase.from('user_settings').update({ is_admin: false }).eq('user_id', user.id);
+
+      const { ids: stillAdmins } = await listAdminIds(supabase);
+      if (stillAdmins.has(user.id)) {
+        console.error('[admin/permissions] 撤权后该用户仍是管理员:', user.id);
+        return NextResponse.json(
+          { error: '撤权未完全生效，请重试或联系技术处理' },
+          { status: 500 }
+        );
+      }
 
       await logAdminAction({
         admin_id: admin.userId,

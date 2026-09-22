@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
+import { COUNTED_FEATURES } from '@/lib/config/plans';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -175,28 +176,32 @@ export async function POST(request: Request) {
         console.log(`[用户管理] 会员更新成功: ${userId} -> ${plan}`);
         return NextResponse.json({ success: true, message: '会员等级更新成功' });
 
-      case 'reset_quota':
-        // 重置配额
-        const { error: resetError } = await supabase
+      case 'reset_quota': {
+        /*
+         * 用 upsert 而不是 update：没有配额行的用户会被静默影响 0 行，
+         * 接口照样返回「配额重置成功」——封禁那边就是栽在这个写法上。
+         * 字段名从 COUNTED_FEATURES 派生，以后加功能不会漏掉一个。
+         */
+        const reset: Record<string, unknown> = {
+          user_id: userId,
+          knowledge_used: 0,
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        for (const f of COUNTED_FEATURES) reset[f.column] = 0;
+
+        const { data: resetRows, error: resetError } = await supabase
           .from('user_quotas')
-          .update({
-            script_used: 0,
-            topic_used: 0,
-            positioning_used: 0,
-            free_chat_used: 0,
-            storyboard_used: 0,
-            review_used: 0,
-            title_used: 0,
-            deal_reason_used: 0,
-            current_period_start: new Date().toISOString(),
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
+          .upsert(reset, { onConflict: 'user_id' })
+          .select('user_id');
 
         if (resetError) {
           console.error('[用户管理] 重置配额失败:', resetError);
           throw resetError;
+        }
+        if (!resetRows || resetRows.length === 0) {
+          return NextResponse.json({ error: '重置失败：没有匹配到这个用户' }, { status: 404 });
         }
 
         await logAdminAction(admin.userId, AdminActions.RESET_USER_QUOTA, {
@@ -205,6 +210,7 @@ export async function POST(request: Request) {
 
         console.log(`[用户管理] 配额重置成功: ${userId}`);
         return NextResponse.json({ success: true, message: '配额重置成功' });
+      }
 
       case 'ban_user': {
         /*
@@ -300,40 +306,13 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH - 更新单个用户的配额（兼容旧代码）
-export async function PATCH(request: Request) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { userId, quota } = body;
-
-    if (!userId || quota === undefined) {
-      return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
-    }
-
-    const { error } = await supabase
-      .from('user_quotas')
-      .update({ 
-        max_quota: quota, 
-        updated_at: new Date().toISOString() 
-      })
-      .eq('user_id', userId);
-
-    if (error) throw error;
-
-    await logAdminAction(admin.userId, AdminActions.UPDATE_USER_QUOTA, {
-      targetUserId: userId,
-      quota
-    });
-
-    return NextResponse.json({ success: true, message: '配额更新成功' });
-
-  } catch (error: any) {
-    console.error('[用户管理] 更新配额失败:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+/*
+ * 这里原本还有一个 PATCH，注释写着「更新单个用户的配额（兼容旧代码）」。
+ * 两个问题：
+ *   1. 它改的是 user_quotas.max_quota，而这张表上根本没有这一列
+ *      （列是 knowledge_used / script_used … 这些），调用必然报错；
+ *   2. 没有任何页面调用它——用户管理页只用 GET 和 POST。
+ *
+ * 一个必然失败、又没人用的接口，留着只会让下一个人以为「配额上限
+ * 可以按用户单独设」。额度上限由套餐决定，见 lib/config/plans.ts。
+ */
