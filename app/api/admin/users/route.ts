@@ -206,49 +206,89 @@ export async function POST(request: Request) {
         console.log(`[用户管理] 配额重置成功: ${userId}`);
         return NextResponse.json({ success: true, message: '配额重置成功' });
 
-      case 'ban_user':
-        // 封禁用户（设置为inactive）
-        const { error: banError } = await supabase
-          .from('subscriptions')
-          .update({
+      case 'ban_user': {
+        /*
+         * 封禁此前只做一件事：把 subscriptions.status 改成 inactive。
+         * 有两个问题，合起来让这个按钮基本是摆设：
+         *
+         * 1. 用的是 .update()。十个用户里有七个根本没有 subscriptions 行，
+         *    更新影响 0 行，接口照样返回「用户已封禁」——点了等于没点，
+         *    而且管理员完全看不出来。
+         * 2. 就算有那行，它只挡得住走 requireUserWithQuota 的三个生成接口。
+         *    被封的人照样能登录、能读自己的全部作品和历史，
+         *    /api/works、/api/script-history、/api/profiles 都不查封禁状态。
+         *
+         * 现在改成在认证层封：Supabase 的 ban_duration 会让这个账号
+         * 无法登录、无法续期令牌，getUser() 直接失败——所有接口一并挡住，
+         * 不需要每个路由各加一次判断。
+         */
+        const { error: authBanError } = await supabase.auth.admin.updateUserById(userId, {
+          // 100 年，等同于永久。Supabase 没有「无限期」的写法
+          ban_duration: '876000h',
+        });
+
+        if (authBanError) {
+          console.error('[用户管理] 封禁失败:', authBanError);
+          return NextResponse.json(
+            { error: '封禁失败：' + authBanError.message },
+            { status: 500 }
+          );
+        }
+
+        // 订阅状态一并置为 inactive，作为第二道判断（额度守卫会读它）。
+        // 必须用 upsert：没有订阅行的用户用 update 会静默影响 0 行
+        const { error: banSubError } = await supabase.from('subscriptions').upsert(
+          {
+            user_id: userId,
+            plan: 'free',
             status: 'inactive',
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+        if (banSubError) console.error('[用户管理] 订阅状态置 inactive 失败:', banSubError);
 
-        if (banError) {
-          console.error('[用户管理] 封禁用户失败:', banError);
-          throw banError;
-        }
+        await logAdminAction(admin.userId, AdminActions.BAN_USER, { targetUserId: userId });
 
-        await logAdminAction(admin.userId, AdminActions.BAN_USER, {
-          targetUserId: userId
+        return NextResponse.json({
+          success: true,
+          // 已签发的访问令牌要等它自己过期（通常一小时内），
+          // 这一点要如实告诉管理员，否则他会以为封禁没生效
+          message: '用户已封禁，无法再登录（已登录的会话最多一小时内失效）',
+        });
+      }
+
+      case 'unban_user': {
+        // 先解认证层的封禁，这一步失败就别往下走——
+        // 订阅状态改回 active 却仍然登不进来，只会更让人困惑
+        const { error: authUnbanError } = await supabase.auth.admin.updateUserById(userId, {
+          ban_duration: 'none',
         });
 
-        console.log(`[用户管理] 用户封禁成功: ${userId}`);
-        return NextResponse.json({ success: true, message: '用户已封禁' });
+        if (authUnbanError) {
+          console.error('[用户管理] 解封失败:', authUnbanError);
+          return NextResponse.json(
+            { error: '解封失败：' + authUnbanError.message },
+            { status: 500 }
+          );
+        }
 
-      case 'unban_user':
-        // 解封用户
-        const { error: unbanError } = await supabase
-          .from('subscriptions')
-          .update({
+        // 同样用 upsert：没有订阅行的用户用 update 会静默影响 0 行
+        const { error: unbanSubError } = await supabase.from('subscriptions').upsert(
+          {
+            user_id: userId,
+            plan: 'free',
             status: 'active',
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+        if (unbanSubError) console.error('[用户管理] 订阅状态置 active 失败:', unbanSubError);
 
-        if (unbanError) {
-          console.error('[用户管理] 解封用户失败:', unbanError);
-          throw unbanError;
-        }
+        await logAdminAction(admin.userId, AdminActions.UNBAN_USER, { targetUserId: userId });
 
-        await logAdminAction(admin.userId, AdminActions.UNBAN_USER, {
-          targetUserId: userId
-        });
-
-        console.log(`[用户管理] 用户解封成功: ${userId}`);
-        return NextResponse.json({ success: true, message: '用户已解封' });
+        return NextResponse.json({ success: true, message: '用户已解封，可以重新登录' });
+      }
 
       default:
         return NextResponse.json({ error: '未知操作' }, { status: 400 });

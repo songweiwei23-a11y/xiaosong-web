@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
+import { SUBSCRIPTION_PLANS, COUNTED_FEATURES } from '@/lib/config/plans';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,24 +119,32 @@ export async function PATCH(request: Request) {
 
     // 重置额度
     if (action === 'reset_quota') {
-      const { error } = await supabase
+      /*
+       * 必须 upsert。用 .update() 时，没有配额行的用户会被静默影响 0 行，
+       * 接口照样返回「额度已重置」——管理员点了等于没点，且看不出来。
+       * 封禁那边就是栽在这上面：十个用户里七个没有订阅行。
+       *
+       * 各功能的列名从 COUNTED_FEATURES 取，不再手写八个字段名，
+       * 以后加功能不会漏掉一个。
+       */
+      const reset: Record<string, unknown> = {
+        user_id: userId,
+        knowledge_used: 0,
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      for (const f of COUNTED_FEATURES) reset[f.column] = 0;
+
+      const { data: resetRows, error } = await supabase
         .from('user_quotas')
-        .update({
-          script_used: 0,
-          topic_used: 0,
-          positioning_used: 0,
-          free_chat_used: 0,
-          storyboard_used: 0,
-          review_used: 0,
-          title_used: 0,
-          deal_reason_used: 0,
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId);
+        .upsert(reset, { onConflict: 'user_id' })
+        .select('user_id');
 
       if (error) throw error;
+      if (!resetRows || resetRows.length === 0) {
+        return NextResponse.json({ error: '重置失败：没有匹配到这个用户' }, { status: 404 });
+      }
 
       await logAdminAction({
         admin_id: admin.userId,
@@ -151,25 +160,41 @@ export async function PATCH(request: Request) {
       });
     }
 
-    // 更新套餐或到期时间
-    const updateData: any = {
+    /*
+     * 更新套餐或到期时间。
+     *
+     * 两处修正：
+     * 1. 到期时间写的是 current_period_end，而 subscriptions 表上根本没有
+     *    这一列（是 end_date）。设到期时间会直接报列不存在，
+     *    也就是说这个功能从来没成功过。订单审核那边犯过同一个错。
+     * 2. 改用 upsert。.update() 对没有订阅行的用户影响 0 行却返回成功——
+     *    而十个用户里有七个没有这一行，等于改套餐对他们完全无效。
+     */
+    const payload: Record<string, unknown> = {
+      user_id: userId,
       updated_at: new Date().toISOString(),
     };
 
     if (plan) {
-      updateData.plan = plan;
+      if (!(plan in SUBSCRIPTION_PLANS)) {
+        return NextResponse.json({ error: `不认识的套餐：${plan}` }, { status: 400 });
+      }
+      payload.plan = plan;
+      // 新建行时必须给 status，否则默认值可能让这个订阅不生效
+      payload.status = 'active';
     }
 
-    if (endDate) {
-      updateData.current_period_end = new Date(endDate).toISOString();
-    }
+    if (endDate) payload.end_date = new Date(endDate).toISOString();
 
-    const { error } = await supabase
+    const { data: subRows, error } = await supabase
       .from('subscriptions')
-      .update(updateData)
-      .eq('user_id', userId);
+      .upsert(payload, { onConflict: 'user_id' })
+      .select('user_id');
 
     if (error) throw error;
+    if (!subRows || subRows.length === 0) {
+      return NextResponse.json({ error: '更新失败：没有匹配到这个用户' }, { status: 404 });
+    }
 
     await logAdminAction({
       admin_id: admin.userId,
