@@ -109,21 +109,30 @@ export async function POST(request: Request) {
 
   /*
    * 建立配额记录，并标记这个账号是凭邀请码进来的。
-   * registered_with_invitation 这个列表里本来就有，一直没人写过。
+   * registered_with_invitation 这一列表里本来就有，一直没人写过。
+   *
+   * 必须用 upsert 而不是 insert：数据库里有触发器，建号时就已经
+   * 自动插了一行 user_quotas（默认 registered_with_invitation = false）。
+   * 用 insert 会撞唯一键失败，而失败只是记条日志——于是配额行有了、
+   * 标记却一直是 false。自检里就是这么暴露出来的：
+   * 「配额记录已建 ✓」但「registered_with_invitation ✗」。
    */
   const now = new Date();
   const periodEnd = new Date(now.getTime() + 30 * 86400_000);
 
-  const { error: quotaError } = await supabase.from('user_quotas').insert({
-    user_id: userId,
-    current_period_start: now.toISOString(),
-    current_period_end: periodEnd.toISOString(),
-    registered_with_invitation: true,
-    is_legacy_user: false,
-  });
+  const { error: quotaError } = await supabase.from('user_quotas').upsert(
+    {
+      user_id: userId,
+      current_period_start: now.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      registered_with_invitation: true,
+      is_legacy_user: false,
+    },
+    { onConflict: 'user_id' }
+  );
   if (quotaError) {
-    // 配额行建不出来不该让注册失败：api-guard 在首次调用时会补建
-    console.error('[auth/register] 建配额记录失败:', quotaError.message);
+    // 配额行写不进去不该让注册失败：api-guard 在首次调用时会补建
+    console.error('[auth/register] 写配额记录失败:', quotaError.message);
   }
 
   /*
