@@ -92,6 +92,8 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
   const [loadingCtx, setLoadingCtx] = useState(true)
   const [notes, setNotes] = useState('')
   const [result, setResult] = useState('')
+  /** 上次生成的时间，界面上标一句，让用户知道看到的是存档不是刚跑的 */
+  const [savedAt, setSavedAt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [conversationId, setConversationId] = useState<string | undefined>()
@@ -123,14 +125,30 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
       setProfile(p)
 
       if (p) {
-        // 取这个档案已确定的六维地基当基础
-        const res = await fetch(
-          `/api/positioning?profileId=${p.id}&type=${encodeURIComponent('账号定位')}`
-        )
-        const rows = res.ok ? await res.json() : []
-        setBaseline(Array.isArray(rows) && rows[0]?.full_content ? rows[0].full_content : '')
+        const get = (t: string) =>
+          fetch(`/api/positioning?profileId=${p.id}&type=${encodeURIComponent(t)}`)
+        /*
+         * 两件事一起取：
+         *   1. 六维地基，当这次深挖的基础
+         *   2. **上次生成的结果**——原来没取，切走再回来内容就空了，
+         *      用户以为丢了，其实一直在库里躺着。别的生成页都有恢复，
+         *      只有这两个深挖页漏了。
+         */
+        const [baseRes, mineRes] = await Promise.all([get('账号定位'), get(title)])
+        const first = async (r: Response) => {
+          if (!r.ok) return null
+          const j = await r.json().catch(() => null)
+          return Array.isArray(j) && j[0] ? j[0] : null
+        }
+        setBaseline((await first(baseRes))?.full_content || '')
+
+        const mine = await first(mineRes)
+        setSavedAt(mine?.created_at || '')
+        // 只在当前为空时回填，别把用户正在看或刚生成的内容盖掉
+        if (mine?.full_content) setResult((cur) => cur || mine.full_content)
       } else {
         setBaseline('')
+        setSavedAt('')
       }
     } catch (e) {
       console.error('加载上下文失败:', e)
@@ -211,7 +229,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
     if (!profile) return
     try {
       const firstLine = content.split('\n').find((l) => l.trim())?.replace(/^#+\s*/, '').trim() || ''
-      await fetch('/api/positioning', {
+      const res = await fetch('/api/positioning', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,6 +241,10 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
           is_active: false,
         }),
       })
+      if (res.ok) {
+        const row = await res.json().catch(() => null)
+        setSavedAt(row?.created_at || new Date().toISOString())
+      }
     } catch (e) {
       console.error('保存失败:', e)
     }
@@ -318,7 +340,21 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
         {(result || isGenerating) && (
           <div className="glass-panel rounded-2xl px-7 py-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-foreground">{title}方案</h2>
+              <h2 className="text-[15px] font-semibold text-foreground">
+                {title}方案
+                {/* 标明这是存档，否则用户分不清看到的是刚跑的还是上次的 */}
+                {savedAt && !isGenerating && (
+                  <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                    {new Date(savedAt).toLocaleString('zh-CN', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                    生成
+                  </span>
+                )}
+              </h2>
               {result && !isGenerating && (
                 <div className="flex gap-2">
                   <button
