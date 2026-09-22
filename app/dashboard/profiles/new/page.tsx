@@ -5,6 +5,8 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback';
 import { setActiveProfileId } from '@/lib/active-profile'
+import { OptionPicker } from '@/components/form/OptionPicker'
+import { OPTION_GROUPS } from '@/lib/profile-options'
 
 export default function NewProfilePage() {
   const router = useRouter()
@@ -53,6 +55,30 @@ export default function NewProfilePage() {
   })
 
   const totalSteps = 6
+
+  /*
+   * 把一个填空题渲染成勾选题。
+   *
+   * 生产库 17 份档案的填写率：选择题一律 47%，填空题 6%-41%
+   * （成交钩子那栏只有 1 个人填过）。账号定位再会判断，也判断不了空白——
+   * 所以这些字段统统从文本框改成勾选，存储格式不变（顿号分隔存回 text 列）。
+   */
+  const pick = (field: string, columns: 1 | 2 | 3 = 2) => {
+    const g = OPTION_GROUPS.find((x) => x.field === field)
+    if (!g) return null
+    return (
+      <OptionPicker
+        label={g.label}
+        why={g.why}
+        options={g.options}
+        value={(formData as any)[field]}
+        onChange={(v) => handleChange(field, v)}
+        allowOther={g.allowOther}
+        maxHint={g.maxHint}
+        columns={columns}
+      />
+    )
+  }
 
   const MultiSelectWithCustom = ({ field, label, options, placeholder, columns = 3 }: { field: string; label: string; options: string[]; placeholder?: string; columns?: number }) => {
     const [customInput, setCustomInput] = React.useState('')
@@ -384,40 +410,9 @@ export default function NewProfilePage() {
 
       <MultiSelectWithCustom field="target_occupation" label="职业标签（可多选）" options={['白领', '学生', '宝妈', '自由职业', '企业主', '其他']} placeholder="自定义职业，如：医生、教师、程序员" />
 
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-foreground">核心痛点</label>
-        <textarea
-          value={formData.target_pain_points}
-          onChange={(e) => handleChange('target_pain_points', e.target.value)}
-          placeholder="受众遇到的主要问题"
-          rows={3}
-          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
-
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-foreground">核心需求</label>
-        <textarea
-          value={formData.target_needs}
-          onChange={(e) => handleChange('target_needs', e.target.value)}
-          placeholder="受众想要获得什么"
-          rows={3}
-          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
-
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          粉丝常问问题 <span className="text-xs text-muted-foreground">（新增）</span>
-        </label>
-        <textarea
-          value={formData.fan_common_questions}
-          onChange={(e) => handleChange('fan_common_questions', e.target.value)}
-          placeholder="粉丝在评论区经常问什么？帮助AI生成更贴近受众的内容"
-          rows={3}
-          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
+      {pick('target_pain_points')}
+      {pick('target_needs')}
+      {pick('fan_common_questions')}
 
       <MultiSelectWithCustom field="target_interests" label="兴趣爱好（可多选）" options={['美食', '旅游', '健身', '阅读', '购物', '娱乐']} placeholder="自定义兴趣，如：摄影、音乐、游戏" />
     </div>
@@ -458,52 +453,13 @@ export default function NewProfilePage() {
         />
       </div>
 
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-foreground">核心价值主张</label>
-        <textarea
-          value={formData.content_value}
-          onChange={(e) => handleChange('content_value', e.target.value)}
-          placeholder="你能为观众提供什么独特价值？"
-          rows={3}
-          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
+      {pick('content_value', 1)}
+      {pick('unique_selling_point', 3)}
+      {pick('viral_content_pattern')}
 
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-foreground">差异化卖点</label>
-        <textarea
-          value={formData.unique_selling_point}
-          onChange={(e) => handleChange('unique_selling_point', e.target.value)}
-          placeholder="你和同类账号相比有什么不同？"
-          rows={3}
-          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
-
-      <div className="bg-amber-500/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          🔥 爆款基因 <span className="text-xs text-yellow-500">（核心新增）</span>
-        </label>
-        <textarea
-          value={formData.viral_content_pattern}
-          onChange={(e) => handleChange('viral_content_pattern', e.target.value)}
-          placeholder="历史什么类型的内容容易爆？例如：情绪共鸣类、知识干货类、对比反转类..."
-          rows={3}
-          className="w-full px-4 py-2 border border-yellow-500/25 rounded-xl focus:ring-2 focus:ring-primary"
-        />
-      </div>
-
-      <div className="bg-destructive/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          ⚠️ 内容禁区 <span className="text-xs text-destructive">（核心新增）</span>
-        </label>
-        <textarea
-          value={formData.content_restrictions}
-          onChange={(e) => handleChange('content_restrictions', e.target.value)}
-          placeholder="不能做什么内容？例如：不能提竞品、不能夸大效果、避免敏感话题..."
-          rows={3}
-          className="w-full px-4 py-2 border border-destructive/25 rounded-xl focus:ring-2 focus:ring-red-500"
-        />
+      {/* 禁忌是硬约束，漏掉可能直接产出违规文案，所以单独框出来提醒 */}
+      <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4">
+        {pick('content_restrictions', 1)}
       </div>
     </div>
   )
@@ -523,55 +479,15 @@ export default function NewProfilePage() {
         />
       </div>
 
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-foreground">竞争优势</label>
-        <textarea
-          value={formData.competitive_advantage}
-          onChange={(e) => handleChange('competitive_advantage', e.target.value)}
-          placeholder="你的核心竞争优势是什么？"
-          rows={3}
-          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
+      {pick('competitive_weakness')}
 
-      <div className="bg-primary/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          竞争劣势 <span className="text-xs text-primary">（新增）</span>
-        </label>
-        <textarea
-          value={formData.competitive_weakness}
-          onChange={(e) => handleChange('competitive_weakness', e.target.value)}
-          placeholder="坦诚面对不足，AI才能帮你规避风险"
-          rows={3}
-          className="w-full px-4 py-2 border border-primary/20 rounded-xl focus:ring-2 focus:ring-primary"
-        />
-      </div>
+      {/*
+        原来这里还有「蓝海机会：市场上还有哪些空白机会点？」。
+        那是让用户替 AI 做分析——他要是答得上来，也就不需要我们了。
+        字段留在库里（老数据不动），但不再问；机会点由账号定位自己推导。
+      */}
 
-      <div className="bg-emerald-500/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          蓝海机会 <span className="text-xs text-green-500">（新增）</span>
-        </label>
-        <textarea
-          value={formData.market_opportunity}
-          onChange={(e) => handleChange('market_opportunity', e.target.value)}
-          placeholder="市场上还有哪些空白机会点？"
-          rows={3}
-          className="w-full px-4 py-2 border border-green-500/25 rounded-xl focus:ring-2 focus:ring-primary"
-        />
-      </div>
-
-      <div className="bg-accent/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          独家资源 <span className="text-xs text-accent">（核心新增）</span>
-        </label>
-        <textarea
-          value={formData.unique_resources}
-          onChange={(e) => handleChange('unique_resources', e.target.value)}
-          placeholder="你有哪些独特资源？供应链、人脉、场地、技术、数据等"
-          rows={3}
-          className="w-full px-4 py-2 border border-accent/20 rounded-xl focus:ring-2 focus:ring-primary"
-        />
-      </div>
+      {pick('unique_resources')}
     </div>
   )
 
@@ -647,55 +563,15 @@ export default function NewProfilePage() {
 
       <MultiSelectWithCustom field="price_range" label="价格区间（可多选）" options={['50元以下', '50-200元', '200-500元', '500元以上']} placeholder="自定义价格区间，如：100-300元、1000元以上" columns={4} />
 
-      <div className="bg-emerald-500/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          完整转化路径 <span className="text-xs text-green-500">（核心新增）</span>
-        </label>
-        <textarea
-          value={formData.conversion_path}
-          onChange={(e) => handleChange('conversion_path', e.target.value)}
-          placeholder="从观看到成交的每一步是什么？例如：看视频→点链接→进直播间→下单"
-          rows={3}
-          className="w-full px-4 py-2 border border-green-500/25 rounded-xl focus:ring-2 focus:ring-primary"
-        />
-      </div>
+      {pick('conversion_path', 1)}
+      {pick('conversion_barriers')}
 
-      <div className="bg-destructive/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          成交障碍点 <span className="text-xs text-destructive">（核心新增）</span>
-        </label>
-        <textarea
-          value={formData.conversion_barriers}
-          onChange={(e) => handleChange('conversion_barriers', e.target.value)}
-          placeholder="用户为什么不买？价格、信任、需求不明确？"
-          rows={3}
-          className="w-full px-4 py-2 border border-destructive/25 rounded-xl focus:ring-2 focus:ring-red-500"
-        />
-      </div>
-
-      <div className="bg-amber-500/10 p-4 rounded-xl">
-        <label className="mb-2 block text-[13px] font-medium text-foreground">
-          转化话术/钩子 <span className="text-xs text-yellow-500">（核心新增）</span>
-        </label>
-        <textarea
-          value={formData.conversion_hooks}
-          onChange={(e) => handleChange('conversion_hooks', e.target.value)}
-          placeholder="什么话术最能促成转化？限时优惠、客户见证、独家福利？"
-          rows={3}
-          className="w-full px-4 py-2 border border-yellow-500/25 rounded-xl focus:ring-2 focus:ring-primary"
-        />
-      </div>
-
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-foreground">禁忌内容</label>
-        <textarea
-          value={formData.avoid_content}
-          onChange={(e) => handleChange('avoid_content', e.target.value)}
-          placeholder="不想做或不适合做的内容类型"
-          rows={3}
-          className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
+      {/*
+        原来这里还有「转化话术/钩子：什么话术最能促成转化？」。
+        17 份档案里只有 1 个人填过——因为这是在让用户自己写钩子文案，
+        而写钩子正是这个产品要替他做的事。字段留着（老数据不动），
+        但不再在表单里问；脚本和标题板块会基于痛点、卖点、成交障碍自己生成。
+      */}
     </div>
   )
 
