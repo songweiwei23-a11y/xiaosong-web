@@ -47,6 +47,37 @@ export async function POST(request: Request) {
   const supabase = getServiceSupabase();
 
   /*
+   * 先发一张「注册授权」。
+   *
+   * auth.users 上装了插入前触发器（见 20260922_invite_only_enforce.sql），
+   * 没有这张券就拒绝建号。这道门是数据库层的，不依赖 Supabase 控制台里
+   * 「Allow new users to sign up」那个开关——实测那个开关关掉之后，
+   * 直接调 /auth/v1/signup 仍然能建出账号来，靠不住。
+   *
+   * 券 15 分钟有效，建号成功时被触发器消费掉；建号失败要手动清掉，
+   * 否则它会在那儿当 15 分钟的后门。
+   */
+  const { error: authError } = await supabase
+    .from('registration_authorizations')
+    .upsert({ email, invitation_code: code, created_at: new Date().toISOString() }, { onConflict: 'email' });
+
+  if (authError) {
+    console.error('[auth/register] 写注册授权失败:', authError.message);
+    const missing = /schema cache|does not exist/i.test(authError.message);
+    return NextResponse.json(
+      {
+        error: missing
+          ? '注册功能尚未启用，请先执行 supabase/migrations/20260922_invite_only_enforce.sql'
+          : '注册失败，请稍后重试',
+      },
+      { status: missing ? 503 : 500 }
+    );
+  }
+
+  const releaseAuthorization = () =>
+    supabase.from('registration_authorizations').delete().eq('email', email).then(() => {});
+
+  /*
    * 顺序很讲究：先建号，再兑换码。
    *
    * 反过来的话——先占码再建号——一旦建号失败（邮箱已注册、密码太弱），
@@ -64,6 +95,9 @@ export async function POST(request: Request) {
   });
 
   if (createError || !created?.user) {
+    // 券没被消费掉，立刻收回——留着它就是 15 分钟的后门
+    await releaseAuthorization();
+
     const msg = createError?.message || '';
     if (/already been registered|already exists|duplicate/i.test(msg)) {
       return NextResponse.json({ error: '这个邮箱已经注册过了，直接登录即可' }, { status: 409 });
