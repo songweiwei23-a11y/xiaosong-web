@@ -24,38 +24,17 @@ import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 
 import { readDifyStream } from '@/lib/sse-stream';
 import { getActiveProfileId } from '@/lib/active-profile';
+import {
+  CONTENT_TYPES,
+  CONTENT_TYPE_GROUPS,
+  CONTENT_TYPE_VALUES,
+  VISUAL_STYLES,
+  VISUAL_STYLE_VALUES,
+  contentTypeExample,
+} from '@/lib/content-types';
+
 const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
 const DURATIONS = ["15秒", "30秒", "60秒", "90秒", "3-5分钟"];
-
-// 内容类型（帮助AI理解场景）
-const CONTENT_TYPES = [
-  { value: "food", label: "美食", icon: "🍜", desc: "美食探店、制作教程" },
-  { value: "vlog", label: "VLOG", icon: "📹", desc: "日常记录、生活分享" },
-  { value: "tutorial", label: "教程", icon: "📚", desc: "技能教学、知识讲解" },
-  { value: "product", label: "产品", icon: "📦", desc: "开箱评测、产品展示" },
-  { value: "story", label: "故事", icon: "🎬", desc: "剧情短片、情景剧" },
-  { value: "interview", label: "访谈", icon: "🎤", desc: "人物采访、对话" },
-];
-
-// 示例脚本
-const EXAMPLE_SCRIPTS: Record<string, string> = {
-  food: "我要拍美食探店。开场先拍店门口招牌特写3秒，然后推镜进店拍环境全景5秒，接着拍后厨制作过程的中近景10秒，特写拍成品菜肴的细节5秒，最后拍我品尝的反应和点评15秒。",
-  vlog: "记录我的一天。早上起床后拍窗外阳光，然后拍我做早餐的过程，出门时拍街景，中午拍工作场景，傍晚拍回家路上的夕阳，晚上拍和家人聊天的温馨画面。",
-  tutorial: "教大家做手工。开场先展示成品吸引注意，然后逐步展示需要的材料和工具，接着分步骤演示制作过程，每个关键步骤用特写强调，最后展示完成品并总结要点。",
-  product: "开箱评测新手机。先拍包装盒外观，然后慢镜头拆封，展示配件全家福，接着特写拍手机外观细节，演示几个核心功能，最后给出使用感受和购买建议。",
-  story: "拍一个感人小故事。开场用远景建立场景氛围，然后用中近景展示人物关系，冲突时用特写捕捉表情细节，转折用运动镜头增强节奏，结尾回到远景留白。",
-  interview: "采访创业者。开场拍被采访者工作场景建立身份，然后切到访谈双机位，主机位对准被采访者，副机位拍我提问，关键观点用字幕强调，结尾拍握手告别。"
-};
-
-// 视觉风格（帮助AI选择色彩和光线）
-const VISUAL_STYLES = [
-  { value: "cinematic", label: "电影感", icon: "🎥", desc: "专业、高级" },
-  { value: "bright", label: "明亮清新", icon: "☀️", desc: "活力、阳光" },
-  { value: "warm", label: "温暖治愈", icon: "🌅", desc: "温馨、柔和" },
-  { value: "cool", label: "冷酷科技", icon: "🌃", desc: "现代、酷炫" },
-  { value: "vintage", label: "复古怀旧", icon: "📷", desc: "经典、回忆" },
-  { value: "minimal", label: "简约高级", icon: "⬜", desc: "干净、留白" },
-];
 
 export default function StoryboardPage() {
 
@@ -120,7 +99,7 @@ export default function StoryboardPage() {
 
   // 加载示例脚本
   const loadExample = () => {
-    const exampleScript = EXAMPLE_SCRIPTS[contentType] || EXAMPLE_SCRIPTS.food;
+    const exampleScript = contentTypeExample(contentType);
     setscriptContent(exampleScript);
   };
 
@@ -144,12 +123,15 @@ export default function StoryboardPage() {
 
 请以JSON格式返回:
 {
-"duration": "15秒/30秒/60秒/90秒/3-5分钟",
-"contentType": "food/vlog/tutorial/product/story/interview",
-"visualStyle": "cinematic/bright/dark/vintage/minimalist/warm"
+"duration": "${DURATIONS.join("/")}",
+"contentType": "${CONTENT_TYPE_VALUES.join("/")}",
+"visualStyle": "${VISUAL_STYLE_VALUES.join("/")}"
 }
 
-只返回JSON,不要其他文字。`,
+contentType 各值的含义：
+${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
+
+只返回JSON,不要其他文字。三个字段都必须从上面给出的取值里选，不要自造。`,
         }),
       });
 
@@ -166,11 +148,26 @@ export default function StoryboardPage() {
         if (jsonMatch) {
           const recommendations = JSON.parse(jsonMatch[0]);
           
-          if (recommendations.duration) setDuration(recommendations.duration);
-          if (recommendations.contentType) setContentType(recommendations.contentType);
-          if (recommendations.visualStyle) setVisualStyle(recommendations.visualStyle);
-          
-          notify("✅ AI推荐已应用!");
+          // 只接受合法取值。模型偶尔会返回列表外的词（之前提示词里写的
+          // dark / minimalist 就根本不存在），直接 set 进去的后果是：
+          // 卡片一个都不高亮，提示词里对应那段也静默消失，还不报错。
+          // 宁可保持用户原来的选择。
+          const applied: string[] = [];
+          if (DURATIONS.includes(recommendations.duration)) {
+            setDuration(recommendations.duration);
+            applied.push("时长");
+          }
+          if (CONTENT_TYPE_VALUES.includes(recommendations.contentType)) {
+            setContentType(recommendations.contentType);
+            applied.push("内容类型");
+          }
+          if (VISUAL_STYLE_VALUES.includes(recommendations.visualStyle)) {
+            setVisualStyle(recommendations.visualStyle);
+            applied.push("视觉风格");
+          }
+
+          if (applied.length === 0) notify("AI 返回的参数都不在可选范围内，已保持原设置");
+          else notify(`✅ 已应用 AI 推荐：${applied.join("、")}`);
         } else {
           notify("AI推荐解析失败");
         }
@@ -323,26 +320,36 @@ export default function StoryboardPage() {
             </Field>
 
             <Field label="内容类型" optional stacked hint="AI 会据此选择合适的景别与运镜">
-              <div className="grid grid-cols-3 gap-1.5">
-                {CONTENT_TYPES.map((type) => (
-                  <button
-                    key={type.value}
-                    onClick={() => setContentType(type.value)}
-                    aria-pressed={contentType === type.value}
-                    title={type.desc}
-                    className={`glass-interactive rounded-xl border p-2 text-center ${
-                      contentType === type.value ? "glass-selected" : "glass-panel"
-                    }`}
-                  >
-                    <div className="text-base leading-none">{type.icon}</div>
-                    <div
-                      className={`mt-1 text-[11px] font-medium leading-none ${
-                        contentType === type.value ? "text-primary" : "text-muted-foreground"
-                      }`}
-                    >
-                      {type.label}
+              {/* 十三个类型平铺开不好找，按「怎么拍」分四组：
+                  口播类（对镜讲）、展示类（镜头对着东西）、
+                  场景类（人在环境里走）、叙事类（有情节有他人） */}
+              <div className="space-y-2.5">
+                {CONTENT_TYPE_GROUPS.map((group) => (
+                  <div key={group}>
+                    <div className="mb-1.5 text-[11px] font-medium text-muted-foreground/80">{group}</div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {CONTENT_TYPES.filter((t) => t.group === group).map((type) => (
+                        <button
+                          key={type.value}
+                          onClick={() => setContentType(type.value)}
+                          aria-pressed={contentType === type.value}
+                          title={type.desc}
+                          className={`glass-interactive rounded-xl border p-2 text-center ${
+                            contentType === type.value ? "glass-selected" : "glass-panel"
+                          }`}
+                        >
+                          <div className="text-base leading-none">{type.icon}</div>
+                          <div
+                            className={`mt-1 text-[11px] font-medium leading-none ${
+                              contentType === type.value ? "text-primary" : "text-muted-foreground"
+                            }`}
+                          >
+                            {type.label}
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </Field>

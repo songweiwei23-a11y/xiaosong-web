@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 分镜脚本的专业标准。
  *
  * 改造前，分镜的提示词只有格式约束：表格必须有哪几列、景别要用哪个 emoji、
@@ -120,54 +120,7 @@ const EDITING_GUIDE = `### 镜头之间靠什么接上
 跨到另一侧，观众会觉得人物突然"调了个头"，方向感瞬间混乱。
 一个人的口播不涉及轴线，但只要出现两个人或"人看物"的关系，就必须守住。`;
 
-/** 各内容类型的分镜设计要点。泛泛的方法论到这里才落地 */
-const CONTENT_TYPE_GUIDE: Record<string, string> = {
-  food: `**美食类的分镜重点**：
-- 必须有至少 2 个特写：食材细节、成品的热气/拉丝/切开的瞬间
-- "声音画面"很关键：下锅的滋啦、切开的脆响，分镜里要标出收音点
-- 顺序遵循"诱惑 → 过程 → 兑现"：先给成品最勾人的那一口，再回到制作
-- 人物出镜的镜头不要多，观众想看的是食物`,
-
-  vlog: `**VLOG 类的分镜重点**：
-- 景别可以更松，但必须有明确的"时间推进感"：光线变化、地点转换、动作节点
-- 空镜（不含人的环境镜头）是 VLOG 的呼吸口，每 3-4 个镜头插一个
-- 第一人称视角镜头（手持向前走、低头看手里的东西）能大幅提升代入感
-- 避免流水账：每一段都要有一个小的"发生了什么"，没事发生的段落直接砍`,
-
-  tutorial: `**教程类的分镜重点**：
-- 开场先给**成品**，让观众知道学完能得到什么，再回到第一步
-- 每个操作步骤至少两个景别：中景看整体姿势，特写看手上细节
-- 关键手部动作必须用特写 + 放慢，这是教程能不能"学会"的分水岭
-- 步骤之间用统一的转场（如同一机位的切换），让结构感清晰`,
-
-  product: `**产品类的分镜重点**：
-- 开箱/揭示的瞬间必须是特写 + 略慢速，这是唯一的"哇"点
-- 产品的质感靠光走：侧光打出纹理，分镜里要标明光位
-- 功能演示要"before / after"成对出现，观众信的是对比不是形容词
-- 手持产品的镜头，手要干净、动作要慢，快了显廉价`,
-
-  story: `**故事类的分镜重点**：
-- 严守轴线。剧情类一旦跨轴，观众会立刻出戏
-- 冲突点用特写捕捉微表情，这是故事类唯一不能省的镜头
-- 对话戏用"正反打"：A 的过肩镜头 + B 的过肩镜头，两个机位交替
-- 开场用一个能立刻建立处境的画面，不要用字幕交代背景`,
-
-  interview: `**访谈类的分镜重点**：
-- 主机位固定中景（受访者），副机位近景（捕捉表情），交替剪辑
-- 提问者的镜头只在必要时给，观众来听的是受访者
-- 关键观点出现时切近景，这是访谈类制造重音的唯一手段
-- 必须准备 B-roll（受访者工作/生活的空镜）覆盖剪辑点，否则跳剪会很硬`,
-};
-
-/** 视觉风格落到可执行的光线与色彩 */
-const VISUAL_STYLE_GUIDE: Record<string, string> = {
-  cinematic: '低饱和、暗部保留细节、侧逆光勾边；镜头少而稳，宁可长一点',
-  bright: '顺光或大面积柔光、高饱和、白平衡偏冷一点点；镜头切换可以更快',
-  warm: '暖色调、黄昏或暖灯光、柔焦；运镜缓慢，多用固定和轻推',
-  cool: '冷白光、高对比、硬光影；可用快切和硬转场',
-  vintage: '降低对比、加轻微颗粒、色偏黄绿；固定镜头为主，少运镜',
-  minimal: '大面积留白、单一光源、构图居中或三分；镜头数少，每个镜头都干净',
-};
+import { contentTypeGuide, visualStyleGuide } from './content-types';
 
 /** 各平台的画幅与安全区——分镜阶段就要定，拍完再发现被遮就晚了 */
 const PLATFORM_FRAME: Record<string, string> = {
@@ -397,7 +350,7 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push(EDITING_GUIDE);
   parts.push('');
 
-  const typeGuide = CONTENT_TYPE_GUIDE[p.contentType];
+  const typeGuide = contentTypeGuide(p.contentType);
   if (typeGuide) {
     parts.push('## 🎯 本类内容的特殊要求');
     parts.push('');
@@ -406,7 +359,7 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   }
 
   const frame = PLATFORM_FRAME[p.platform];
-  const style = VISUAL_STYLE_GUIDE[p.visualStyle];
+  const style = visualStyleGuide(p.visualStyle);
   if (frame || style) {
     parts.push('## 🖼 画幅与影调');
     parts.push('');
