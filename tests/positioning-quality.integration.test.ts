@@ -163,9 +163,26 @@ describe('账号定位：新提示词是否真的产出更专业', () => {
     console.log('\n=== 用上真实资源条件 ===');
     console.log(`  新：${(a.match(res) || []).length} 处 / 旧：${(b.match(res) || []).length} 处`);
 
+    // ⑥ 用户第二轮反馈的核心：要说出档案里没有的行业认知，
+    //    而不是把填过的字段翻译一遍。这里数的是"懂行"的痕迹。
+    const trade = /毛利|复购|获客成本|决策|淡旺季|旺季|同行|客单|翻台|坪效|到店率/g;
+    const tNew = (a.match(trade) || []).length;
+    const tOld = (b.match(trade) || []).length;
+    console.log('\n=== 行业认知（档案里没有的东西）===');
+    console.log(`  新：${tNew} 处 / 旧：${tOld} 处`);
+
+    // 人群要落到八大词根，不是"25-35岁女性"
+    const seg = /小镇青年|精致妈妈|资深中产|Z世代|新锐白领|都市蓝领|银发族|小镇中老年/g;
+    console.log(`\n=== 人群词根 ===`);
+    console.log(`  新：${(a.match(seg) || []).length} 处 / 旧：${(b.match(seg) || []).length} 处`);
+    const ageRange = /\d{2}\s*-\s*\d{2}\s*岁(?!.*小镇|.*妈妈)/g;
+    console.log(`  仍在写年龄段：新 ${(a.match(ageRange) || []).length} 处 / 旧 ${(b.match(ageRange) || []).length} 处`);
+
     // ⑤ 用户反馈第一版「太片面、不够全」，补进去的就是下面这几块。
     //    光看字数涨了没用，要确认这几节真的出现在产出里。
     const sections: Array<[string, RegExp]> = [
+      ['先说这一行（行业洞察）', /先说这一行|这一行|归口/],
+      ['前采问题 + 推测', /我会先问|待确认|推测/],
       ['一句话定位', /一句话定位/],
       ['六维地基', /六维/],
       ['记忆点', /记忆点/],
@@ -199,5 +216,7 @@ describe('账号定位：新提示词是否真的产出更专业', () => {
     expect(hitNew.length, '新版六维应当明显多于旧版').toBeGreaterThan(hitOld.length);
     expect(moneyNew, '新版应当给出变现路径，这是旧版被砍掉的一块').toBeGreaterThan(moneyOld);
     expect(vNew, '新版应当能看到论证/验证的痕迹，而不是只抛结论').toBeGreaterThan(vOld);
-  }, 300000);
+    expect(tNew, '新版应当带出档案里没有的行业认知，而不是复述字段').toBeGreaterThan(tOld);
+      // 实测单次 5 分 13 秒（提示词 11127 字 / 产出 13471 字），两条并行要留足余量
+  }, 600000);
 });

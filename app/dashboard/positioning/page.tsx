@@ -60,7 +60,12 @@ export default function PositioningPage() {
   // 表单字段
   const [additionalNotes, setAdditionalNotes] = useState("");
   
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false)
+  /*
+   * 已经跑了多少秒。提示词一万多字、产出也上万字，Dify 还要先跑 5 个检索节点，
+   * 首字返回前有很长一段静默——按钮不动，用户会以为"点击没反应"再点一次
+   */
+  const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'full' | 'summary'>('full'); // 查看模式：完整版或选题摘要
@@ -84,6 +89,14 @@ export default function PositioningPage() {
       loadPositionings()
     }
   }, [activeProfile])
+
+  // 生成计时，让用户看得见进度
+  useEffect(() => {
+    if (!isGenerating) return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [isGenerating])
 
   const loadActiveProfile = async () => {
     setLoadingProfile(true)
@@ -415,7 +428,7 @@ export default function PositioningPage() {
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                生成中…
+                生成中 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}
               </>
             ) : (
               <>

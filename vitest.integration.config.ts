@@ -18,7 +18,10 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.integration.test.ts'],
     globals: true,
-    testTimeout: 240000,
+    // 账号定位那条提示词一万多字、产出一万三，实测跑满 5 分 13 秒。
+    // 原来设 4 分钟，一改长就超时——超时报的是 test timeout，
+    // 很容易被当成功能挂了，其实只是等得不够久
+    testTimeout: 600000,
   },
   resolve: {
     alias: {

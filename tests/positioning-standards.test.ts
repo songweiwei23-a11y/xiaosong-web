@@ -141,6 +141,90 @@ describe('缺的那几块都补上了', () => {
   });
 });
 
+/**
+ * 用户第二轮反馈：方案读起来像把档案字段翻译了一遍，
+ * 没有「你真的懂我这行」的感觉。要的是代运营的视角——
+ * 档案只是粗描，真正让人信服的是那些**用户没写、但一看就会点头**的东西。
+ *
+ * 内容取自我们自己的《代运营从0到1创作SOP》和《实体店通用选题创作SOP手册》。
+ */
+describe('代运营的立场，不是顾问写报告', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('身份是"下周就要接手这个号"，不是交报告', () => {
+    expect(p).toContain('要接手这个号');
+    expect(p).toContain('不要为了方案好看开空头支票');
+  });
+
+  it('带上前采问题清单，并要求先给推测', () => {
+    expect(p).toContain('我会先问老板的几个问题');
+    expect(p).toContain('待确认');
+  });
+
+  it('抓住最关键那条：顾客感受到的差异化，不是老板以为的', () => {
+    // 这是代运营 SOP 里原话，也是"懂行"与否的分水岭
+    expect(p).toContain('顾客感受到的，不是老板以为的');
+  });
+
+  it('明确要求扩散而不是复述档案', () => {
+    expect(p).toContain('要扩散，不要复述');
+    expect(p).toContain('全篇复述档案');
+    // 宁可说错被纠正，也不能什么都不敢说
+    expect(p).toContain('不敢说才是真没用');
+  });
+});
+
+describe('行业视角', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('给了实体店 12 大类型，先认准行业', () => {
+    expect(p).toContain('餐饮食品');
+    expect(p).toContain('汽车服务');
+    expect(p).toContain('母婴亲子');
+  });
+
+  it('要求说出档案里没有的行业常识', () => {
+    for (const k of ['毛利', '决策链路', '淡旺季', '普遍会犯的错', '同行']) {
+      expect(p, `缺少行业认知要求：${k}`).toContain(k);
+    }
+  });
+
+  it('人群落到八大词根，不许写年龄段', () => {
+    for (const g of ['小镇青年', '精致妈妈', '资深中产', 'Z世代', '新锐白领', '都市蓝领', '银发族', '小镇中老年']) {
+      expect(p, `缺少人群词根：${g}`).toContain(g);
+    }
+    expect(p).toContain('比写"25-35岁女性"有用一百倍');
+  });
+
+  it('输出里「先说这一行」排在账号定位之前', () => {
+    // 顺序反了，模型会先进入"介绍账号"的腔调，行业洞察就变成补充说明了
+    expect(p.indexOf('先说这一行')).toBeLessThan(p.indexOf('一句话定位'));
+  });
+
+  it('实体店用 50/20/30 配比，个人 IP 用另一套', () => {
+    expect(p).toContain('变现50% / 人设20% / 流量30%');
+    expect(p).toContain('门店等的是客人，不是粉丝');
+  });
+
+  it('给出能直接抄走的账号五件套', () => {
+    expect(p).toContain('账号五件套');
+    expect(p).toContain('不要写"建议优化头像"这种废话');
+  });
+});
+
+describe('深挖板块同样要带行业视角', () => {
+  it('商业定位先讲这门生意的逻辑', () => {
+    const p = buildPositioningPrompt({ ...base, focus: 'business' });
+    expect(p).toContain('先说这一行的生意逻辑');
+    expect(p).toContain('餐饮食品'); // 12 类表也要带上
+  });
+
+  it('内容定位也带行业锚点，不退回泛泛而谈', () => {
+    const p = buildPositioningPrompt({ ...base, focus: 'content' });
+    expect(p).toContain('小镇青年');
+  });
+});
+
 describe('不再写死抖音', () => {
   it('按档案里的平台给对应特性', () => {
     const xhs = buildPositioningPrompt({ ...base, platform: '小红书' });

@@ -95,6 +95,21 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
   const [isGenerating, setIsGenerating] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [conversationId, setConversationId] = useState<string | undefined>()
+  /*
+   * 已经跑了多少秒。
+   *
+   * 这条提示词一万多字、产出也上万字，Dify 还要先跑 5 个知识库检索节点，
+   * 首个字返回之前有很长一段静默——用户看到的是一个不动的按钮，
+   * 会以为"点击没反应"又点一次。所以把时间显式摆出来。
+   */
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (!isGenerating) return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [isGenerating])
 
   const load = async () => {
     setLoadingCtx(true)
@@ -286,8 +301,18 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
             disabled={isGenerating || loadingCtx}
             className="mt-4 w-full rounded-xl bg-primary py-2.5 text-[13.5px] font-medium text-primary-foreground disabled:opacity-50"
           >
-            {isGenerating ? generatingHint : `生成${title}方案`}
+            {isGenerating
+              ? `${generatingHint} 已用 ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`
+              : `生成${title}方案`}
           </button>
+
+          {isGenerating && (
+            <p className="mt-2 text-center text-[12px] text-muted-foreground">
+              {/* 实测：首字约 16 秒，全文约 5 分钟。数字别拍脑袋写，之前写成 40 秒是错的 */}
+              这份方案要过一遍知识库再逐段写，全文大约 5 分钟。
+              {elapsed < 20 ? '开头十几秒在检索知识库，屏幕上还不出字，是正常的。' : '已经在逐段写了，可以边看边等。'}
+            </p>
+          )}
         </div>
 
         {(result || isGenerating) && (
