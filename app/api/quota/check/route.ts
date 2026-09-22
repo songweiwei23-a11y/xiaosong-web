@@ -1,131 +1,131 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { getPlan } from '@/lib/config/plans';
+import { requireUser } from '@/lib/api-guard';
+import { getServiceSupabase } from '@/lib/admin-auth';
+import { getPlan, COUNTED_FEATURES, sumCountedUsage, judgeQuota } from '@/lib/config/plans';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+/**
+ * 当前登录用户的额度概况：已用多少、还剩多少、哪些功能快见底了。
+ *
+ * 用户身份从登录会话取，不再从 URL 参数取。
+ * 此前是 `?userId=<任意uuid>` + service_role，等于任何人（含未登录的）
+ * 都能查到别人的套餐和全部用量。参数保留但忽略，老页面不会因此报错。
+ */
+export async function GET() {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response!;
 
-export async function GET(request: Request) {
+  const userId = guard.userId!;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    // 身份已确认，用 service_role 读自己的两张表，不受 RLS 配置差异影响
+    const supabase = getServiceSupabase();
 
-    if (!userId) {
-      return NextResponse.json({ error: '缺少用户ID' }, { status: 400 });
-    }
-
-    // 获取用户订阅信息
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('plan, status')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     const planId = subscription?.status === 'active' ? subscription.plan : 'free';
     const plan = getPlan(planId);
 
-    // 获取用户配额使用情况
     const { data: quota } = await supabase
       .from('user_quotas')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (!quota) {
-      return NextResponse.json({
-        warnings: [],
-        exhausted: false,
-        plan: planId,
-        planName: plan.name
-      });
+    const empty = {
+      warnings: [] as unknown[],
+      exhausted: false,
+      plan: planId,
+      planName: plan.name,
+      totalUsed: 0,
+      totalLimit: plan.totalQuota === -1 ? 0 : plan.totalQuota ?? 0,
+    };
+
+    if (!quota) return NextResponse.json(empty);
+
+    // 周期已结束 = 额度即将在下次请求时重置，此刻不该报警
+    if (quota.current_period_end && new Date() > new Date(quota.current_period_end)) {
+      return NextResponse.json({ ...empty, periodEnd: quota.current_period_end });
     }
 
-    // 检查是否需要重置配额（周期已结束）
-    const now = new Date();
-    const periodEnd = new Date(quota.current_period_end || now);
-    
-    if (now > periodEnd) {
-      // 周期已结束，额度已重置，无需警告
-      return NextResponse.json({
-        warnings: [],
-        exhausted: false,
-        plan: planId,
-        planName: plan.name
-      });
-    }
+    const totalUsed = sumCountedUsage(quota);
 
-    // 检查各功能额度并生成警告
-    const warnings: Array<{
-      feature: string;
-      featureName: string;
-      used: number;
-      total: number;
-      remaining: number;
-      percentage: number;
-    }> = [];
-
-    let hasExhausted = false;
-
-    const features = [
-      { key: 'script', name: '脚本生成', usedField: 'script_used' },
-      { key: 'topic', name: '选题策划', usedField: 'topic_used' },
-      { key: 'positioning', name: '账号定位', usedField: 'positioning_used' },
-      { key: 'freeChat', name: '自由对话', usedField: 'free_chat_used' },
-      { key: 'storyboard', name: '分镜脚本', usedField: 'storyboard_used' },
-      { key: 'review', name: '脚本评审', usedField: 'review_used' },
-      { key: 'title', name: '标题生成', usedField: 'title_used' },
-      { key: 'dealReason', name: '成交理由', usedField: 'deal_reason_used' },
-    ];
-
-    // 全部功能的合计。首页要显示「本月已用多少次」，此前接口只给
-    // 接近上限的那几项警告，拿不到总数，页面上只能显示 0。
-    // 无限额度的功能计入已用但不计入上限，否则总额会变成 -1 的累加。
-    let totalUsed = 0;
-    let totalLimit = 0;
-    let unlimited = false;
-
-    for (const feature of features) {
-      const quotaKey = feature.key as keyof typeof plan.quotas;
-      const allowedQuota = plan.quotas[quotaKey];
-      const usedCount = Number(quota[feature.usedField as keyof typeof quota] || 0);
-      totalUsed += usedCount;
-
-      if (allowedQuota === -1) {
-        unlimited = true;
-      } else {
-        totalLimit += allowedQuota;
+    // ---- 总量制（基础/专业/企业）----
+    // 这些套餐只有一个池子，逐功能报警没有意义，用户关心的是总数还剩多少
+    if (plan.totalQuota !== null) {
+      if (plan.totalQuota === -1) {
+        return NextResponse.json({
+          warnings: [],
+          exhausted: false,
+          plan: planId,
+          planName: plan.name,
+          periodEnd: quota.current_period_end,
+          totalUsed,
+          totalLimit: 0, // 0 表示不限量，前端只显示用量
+        });
       }
 
-      // -1 表示无限制，不参与额度警告
-      if (allowedQuota === -1) continue;
+      const remaining = Math.max(0, plan.totalQuota - totalUsed);
+      const percentage = Math.round((totalUsed / plan.totalQuota) * 100);
+      const warnings =
+        percentage >= 80
+          ? [{
+              feature: 'total',
+              featureName: '全部功能',
+              used: totalUsed,
+              total: plan.totalQuota,
+              remaining,
+              percentage: Math.min(100, percentage),
+            }]
+          : [];
 
-      const used = quota[feature.usedField as keyof typeof quota] || 0;
-      const remaining = Math.max(0, allowedQuota - used);
-      const percentage = allowedQuota > 0 ? (used / allowedQuota) * 100 : 0;
+      return NextResponse.json({
+        warnings,
+        exhausted: remaining === 0,
+        plan: planId,
+        planName: plan.name,
+        periodEnd: quota.current_period_end,
+        totalUsed,
+        totalLimit: plan.totalQuota,
+      });
+    }
 
-      // 额度用尽
-      if (remaining === 0) {
+    // ---- 分功能制（免费版）----
+    const warnings = [];
+    let hasExhausted = false;
+    let totalLimit = 0;
+
+    for (const feature of COUNTED_FEATURES) {
+      const verdict = judgeQuota(planId, feature.key, quota);
+      if (verdict.limit === -1) continue; // 无限的不参与警告
+      totalLimit += verdict.limit;
+
+      // 上限本来就是 0 的功能（免费版的分镜/审稿/标题等）不报警：
+      // 它不是「用完了」，而是这个档位没有，天天提醒只会变成噪音
+      if (verdict.limit === 0) continue;
+
+      const percentage = Math.round((verdict.used / verdict.limit) * 100);
+      if (verdict.remaining === 0) {
         hasExhausted = true;
         warnings.push({
           feature: feature.key,
           featureName: feature.name,
-          used,
-          total: allowedQuota,
+          used: verdict.used,
+          total: verdict.limit,
           remaining: 0,
-          percentage: 100
+          percentage: 100,
         });
-      }
-      // 额度不足20%
-      else if (percentage >= 80) {
+      } else if (percentage >= 80) {
         warnings.push({
           feature: feature.key,
           featureName: feature.name,
-          used,
-          total: allowedQuota,
-          remaining,
-          percentage: Math.round(percentage)
+          used: verdict.used,
+          total: verdict.limit,
+          remaining: verdict.remaining,
+          percentage,
         });
       }
     }
@@ -137,12 +137,10 @@ export async function GET(request: Request) {
       planName: plan.name,
       periodEnd: quota.current_period_end,
       totalUsed,
-      // 有任一功能不限量时，总上限没有意义，返回 0 让前端只显示用量
-      totalLimit: unlimited ? 0 : totalLimit
+      totalLimit,
     });
-
   } catch (error: any) {
-    console.error('Quota check error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[quota/check] 查询失败:', error);
+    return NextResponse.json({ error: '额度查询失败' }, { status: 500 });
   }
 }

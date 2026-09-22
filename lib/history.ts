@@ -1,5 +1,5 @@
 ﻿import { supabase } from "@/lib/supabase/client";
-import { getPlan } from '@/lib/config/plans';
+import { getPlan, judgeQuota, sumCountedUsage } from '@/lib/config/plans';
 
 /**
  * 保存生成历史记录到数据库
@@ -56,7 +56,11 @@ export async function saveGenerationHistory(
 
 /**
  * 检查用户配额（新系统：使用 user_quotas + subscriptions 表）
- * @returns 剩余配额数量，null表示未登录，Infinity表示无限制
+ *
+ * @param feature 功能代码。**必须传**——不传的话按「脚本生成」回答，
+ *   各页面就会拿脚本的剩余次数去判断自己能不能用：免费版在分镜/审稿/
+ *   标题页明明是 0 次却被放行，付费版则会被提前误报额度用完。
+ * @returns 剩余配额数量，null 表示未登录，Infinity 表示无限制
  */
 export async function checkQuota(feature?: string): Promise<number | null> {
   try {
@@ -95,118 +99,33 @@ export async function checkQuota(feature?: string): Promise<number | null> {
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (!quota) {
-      // 新用户，返回对应套餐的初始配额
-      if (feature) {
-        const featureMap: Record<string, keyof typeof plan.quotas> = {
-          knowledge: 'knowledge',
-          positioning: 'positioning',
-          topic: 'topic',
-          script: 'script',
-          freeChat: 'freeChat',
-          storyboard: 'storyboard',
-          review: 'review',
-          title: 'title',
-          dealReason: 'dealReason'
-        };
-        const quotaKey = featureMap[feature];
-        if (quotaKey) {
-          const allowedQuota = plan.quotas[quotaKey];
-          return allowedQuota === -1 ? Number.POSITIVE_INFINITY : allowedQuota;
-        }
-      }
-      // 返回基础套餐的总配额
-      const totalLimit = plan.quotas.script;
-      return totalLimit === -1 ? Number.POSITIVE_INFINITY : totalLimit;
-    }
+    // 周期已过的话前端按满额显示，实际重置由服务端在下次请求时完成
+    const periodOver = quota?.current_period_end
+      ? new Date() > new Date(quota.current_period_end)
+      : false;
 
-    // 检查是否需要重置配额（周期已结束）
-    const now = new Date();
-    const periodEnd = new Date(quota.current_period_end || now);
-    
-    if (now > periodEnd) {
-      // 周期结束，返回满额配额（前端显示用，实际重置由后端处理）
-      if (feature) {
-        const featureMap: Record<string, keyof typeof plan.quotas> = {
-          knowledge: 'knowledge',
-          positioning: 'positioning',
-          topic: 'topic',
-          script: 'script',
-          freeChat: 'freeChat',
-          storyboard: 'storyboard',
-          review: 'review',
-          title: 'title',
-          dealReason: 'dealReason'
-        };
-        const quotaKey = featureMap[feature];
-        if (quotaKey) {
-          const allowedQuota = plan.quotas[quotaKey];
-          return allowedQuota === -1 ? Number.POSITIVE_INFINITY : allowedQuota;
-        }
-      }
-      const totalLimit = plan.quotas.script;
-      return totalLimit === -1 ? Number.POSITIVE_INFINITY : totalLimit;
-    }
-
-    // 检查具体功能的配额
+    // 与服务端 requireUserWithQuota 用的是同一个判定函数，
+    // 此前两边各写一套（前端按总量、服务端按单功能），结论会互相矛盾
     if (feature) {
-      const featureMap: Record<string, keyof typeof plan.quotas> = {
-        knowledge: 'knowledge',
-        positioning: 'positioning',
-        topic: 'topic',
-        script: 'script',
-        freeChat: 'freeChat',
-        storyboard: 'storyboard',
-        review: 'review',
-        title: 'title',
-        dealReason: 'dealReason'
-      };
-
-      const quotaKey = featureMap[feature];
-      if (quotaKey) {
-        const allowedQuota = plan.quotas[quotaKey];
-        const usedKey = `${feature.replace(/([A-Z])/g, '_$1').toLowerCase()}_used`;
-        const currentUsed = quota[usedKey as keyof typeof quota] || 0;
-
-        if (allowedQuota === -1) {
-          return Number.POSITIVE_INFINITY;
-        }
-
-        return Math.max(0, allowedQuota - currentUsed);
-      }
+      const verdict = judgeQuota(planId, feature, periodOver ? null : quota);
+      return verdict.remaining === -1 ? Number.POSITIVE_INFINITY : verdict.remaining;
     }
 
-    // 如果没有指定功能，返回总配额剩余（用于basic/pro套餐）
-    if (planId === 'basic' || planId === 'pro') {
-      const totalUsed = (
-        (quota.script_used || 0) +
-        (quota.topic_used || 0) +
-        (quota.positioning_used || 0) +
-        (quota.free_chat_used || 0) +
-        (quota.storyboard_used || 0) +
-        (quota.review_used || 0) +
-        (quota.title_used || 0) +
-        (quota.deal_reason_used || 0)
-      );
+    // 兜底：没传功能名时按总量算（付费版）或按脚本算（免费版）。
+    // 这条路径不该被走到——走到了说明有调用方忘了传功能名，
+    // 它给出的数字对别的功能没有参考意义。
+    console.warn('[checkQuota] 未传功能名，返回的剩余次数可能不适用于当前功能');
 
-      const totalLimit = plan.quotas.script; // basic=150, pro=500
-      
-      if (totalLimit === -1) {
-        return Number.POSITIVE_INFINITY;
-      }
-
-      return Math.max(0, totalLimit - totalUsed);
+    if (plan.totalQuota !== null) {
+      if (plan.totalQuota === -1) return Number.POSITIVE_INFINITY;
+      if (periodOver || !quota) return plan.totalQuota;
+      return Math.max(0, plan.totalQuota - sumCountedUsage(quota));
     }
 
-    // 免费版：返回脚本生成的剩余配额作为默认值
-    const scriptUsed = quota.script_used || 0;
     const scriptLimit = plan.quotas.script;
-    
-    if (scriptLimit === -1) {
-      return Number.POSITIVE_INFINITY;
-    }
-
-    return Math.max(0, scriptLimit - scriptUsed);
+    if (scriptLimit === -1) return Number.POSITIVE_INFINITY;
+    if (periodOver || !quota) return scriptLimit;
+    return Math.max(0, scriptLimit - (Number(quota.script_used) || 0));
 
   } catch (error) {
     console.error("检查配额异常:", error);

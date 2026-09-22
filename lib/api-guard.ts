@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
-import { getPlan } from '@/lib/config/plans';
+import { getPlan, judgeQuota, usedColumnOf } from '@/lib/config/plans';
 
 export interface GuardResult {
   ok: boolean;
@@ -128,70 +128,24 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     return { ok: true, userId: user.id };
   }
 
-  // 检查具体功能的配额（如果指定了feature）
+  // 判定交给 lib/config/plans.ts 的 judgeQuota：
+  // 免费版按功能分别限额，付费版按总量。此前这里只有分功能分支，
+  // 而调用方每次都传了 feature，付费版的总量校验从未执行过，
+  // 结果 150 次的套餐实际能用 8 个功能各 150 次。
   if (feature) {
-    const featureMap: Record<string, keyof typeof plan.quotas> = {
-      knowledge: 'knowledge',
-      positioning: 'positioning',
-      topic: 'topic',
-      script: 'script',
-      freeChat: 'freeChat',
-      storyboard: 'storyboard',
-      review: 'review',
-      title: 'title',
-      dealReason: 'dealReason'
-    };
-
-    const quotaKey = featureMap[feature];
-    if (quotaKey) {
-      const allowedQuota = plan.quotas[quotaKey];
-      const usedKey = `${feature.replace(/([A-Z])/g, '_$1').toLowerCase()}_used`;
-      const currentUsed = quota[usedKey as keyof typeof quota] || 0;
-
-      // 检查是否超额
-      if (allowedQuota !== -1 && currentUsed >= allowedQuota) {
-        return {
-          ok: false,
-          response: NextResponse.json(
-            { 
-              error: `${plan.name}额度已用完（${allowedQuota}次/月），请升级会员或等待下月重置`,
-              used: currentUsed,
-              limit: allowedQuota
-            },
-            { status: 402 }
-          ),
-        };
-      }
-    }
-  } else {
-    // 如果没有指定功能，检查总使用量（用于basic/pro套餐）
-    if (planId === 'basic' || planId === 'pro') {
-      const totalUsed = (
-        (quota.script_used || 0) +
-        (quota.topic_used || 0) +
-        (quota.positioning_used || 0) +
-        (quota.free_chat_used || 0) +
-        (quota.storyboard_used || 0) +
-        (quota.review_used || 0) +
-        (quota.title_used || 0) +
-        (quota.deal_reason_used || 0)
-      );
-
-      const totalLimit = plan.quotas.script; // basic=150, pro=500
-      
-      if (totalLimit !== -1 && totalUsed >= totalLimit) {
-        return {
-          ok: false,
-          response: NextResponse.json(
-            { 
-              error: `${plan.name}总额度已用完（${totalLimit}次/月），请升级会员或等待下月重置`,
-              used: totalUsed,
-              limit: totalLimit
-            },
-            { status: 402 }
-          ),
-        };
-      }
+    const verdict = judgeQuota(planId, feature, quota);
+    if (!verdict.allowed) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          {
+            error: verdict.message,
+            used: verdict.used,
+            limit: verdict.limit,
+          },
+          { status: 402 }
+        ),
+      };
     }
   }
 
@@ -207,19 +161,7 @@ export async function incrementUsageServer(userId: string, feature: string): Pro
   try {
     const supabase = getServiceSupabase();
 
-    const featureMap: Record<string, string> = {
-      knowledge: 'knowledge_used',
-      positioning: 'positioning_used',
-      topic: 'topic_used',
-      script: 'script_used',
-      freeChat: 'free_chat_used',
-      storyboard: 'storyboard_used',
-      review: 'review_used',
-      title: 'title_used',
-      dealReason: 'deal_reason_used'
-    };
-
-    const usedColumn = featureMap[feature];
+    const usedColumn = usedColumnOf(feature);
     if (!usedColumn) {
       console.error('[api-guard] 未知的功能类型:', feature);
       return;
