@@ -37,6 +37,10 @@ export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   审稿优化: 'review',
   标题封面: 'title',
   账号定位: 'positioning',
+  // 商业定位和内容定位是账号定位里两维的深挖，算同一份额度：
+  // 它们同属定位这一族，单开配额列还要改库表，不值当
+  商业定位: 'positioning',
+  内容定位: 'positioning',
   成交理由: 'dealReason',
   自由对话: 'freeChat',
   知识库查询: 'knowledge',

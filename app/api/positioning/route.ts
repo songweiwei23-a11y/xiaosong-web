@@ -37,6 +37,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const profileId = searchParams.get('profileId')
+    const type = searchParams.get('type')
 
     let query = supabase
       .from('account_positioning')
@@ -47,6 +48,15 @@ export async function GET(request: Request) {
     // 如果指定了档案ID，只返回该档案的定位
     if (profileId) {
       query = query.eq('profile_id', profileId)
+    }
+
+    /*
+     * 按类型筛选。三种定位（账号定位/商业定位/内容定位）同表存放，
+     * 不筛的话调用方拿到的最新一条可能是商业定位——
+     * 而各创作板块要的是六维地基，拿错了方向就全歪了，还看不出来。
+     */
+    if (type) {
+      query = query.eq('positioning_type', type)
     }
 
     const { data: positionings, error } = await query

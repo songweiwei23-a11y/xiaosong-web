@@ -111,6 +111,49 @@ describe('dify/stream 调用方必须声明 taskType', () => {
   });
 
   /**
+   * 上面那组只扫 app/dashboard 下的 page.tsx，**盖不住把请求委托给组件的页面**。
+   *
+   * 商业定位和内容定位就是这样：页面本身只写
+   * `<DeepDivePage taskType="商业定位" …/>`，真正的 fetch 在组件里，
+   * 组件拿到的是变量而不是字面量。两边都躲过了检查——
+   * 而漏登记的后果是静默扣到「脚本生成」的额度，正是这条防线要防的事。
+   *
+   * 所以再扫一遍全仓库的 taskType 字面量，两种写法都认：
+   * 对象属性 `taskType: "X"` 和 JSX 属性 `taskType="X"`。
+   */
+  it('全仓库出现的 taskType 字面量都已登记', () => {
+    const roots = ['app', 'components', 'lib'].map((d) => path.join(process.cwd(), d));
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      if (!fs.existsSync(dir)) return;
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) walk(full);
+        else if (/\.tsx?$/.test(e.name)) files.push(full);
+      }
+    };
+    roots.forEach(walk);
+
+    const seen = new Map<string, string>(); // 任务类型 -> 首次出现的文件
+    for (const f of files) {
+      const rel = path.relative(process.cwd(), f).replace(/\\/g, '/');
+      // task-type.ts 自己就是那张表，跳过
+      if (rel === 'lib/task-type.ts') continue;
+      const src = fs.readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/taskType\s*[:=]\s*["']([^"']+)["']/g)) {
+        if (!seen.has(m[1])) seen.set(m[1], rel);
+      }
+    }
+
+    expect(seen.size, '一个 taskType 字面量都没扫到，说明扫描写错了').toBeGreaterThan(5);
+
+    const bad = [...seen.entries()]
+      .filter(([v]) => !TASK_TYPE_TO_FEATURE[v])
+      .map(([v, f]) => `${v}（${f}）`);
+    expect(bad, `这些 taskType 没在计费表里，用量会被错记到脚本生成名下：\n${bad.join('\n')}`).toEqual([]);
+  });
+
+  /**
    * 计费表里的每个任务类型也都该有检索主题词的条目。
    * 缺了不会报错，只会让知识库召回失去锚点——属于典型的静默劣化。
    */

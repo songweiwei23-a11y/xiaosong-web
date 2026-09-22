@@ -34,7 +34,8 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     // 有档案没定位，照样比什么都没有强
     const [profileRes, posRes, dealRes] = await Promise.all([
       fetch("/api/profiles").catch(() => null),
-      fetch("/api/positioning").catch(() => null),
+      // 只要六维地基。商业定位和内容定位是它的深挖，拿来当"账号方向"会跑偏
+      fetch("/api/positioning?type=" + encodeURIComponent("账号定位")).catch(() => null),
       fetch("/api/deal-reasons").catch(() => null),
     ]);
 

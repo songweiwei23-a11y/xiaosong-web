@@ -8,6 +8,7 @@ import { listWorks, type Work } from "@/lib/works";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Sparkles, Award, MessagesSquare, X, ChevronDown,
+  Wallet, LayoutList,
 } from "lucide-react";
 
 /*
@@ -43,7 +44,10 @@ const navGroups: {
     id: "operate",
     label: "账号运营",
     items: [
+      // 先定地基（六维），再按需深挖变现和内容两维
       { name: "账号定位", href: "/dashboard/positioning", icon: Target },
+      { name: "商业定位", href: "/dashboard/business-positioning", icon: Wallet },
+      { name: "内容定位", href: "/dashboard/content-positioning", icon: LayoutList },
       { name: "成交理由", href: "/dashboard/deal-reason", icon: Award },
       { name: "个人档案", href: "/dashboard/profiles", icon: User },
     ],

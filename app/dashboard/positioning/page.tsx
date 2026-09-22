@@ -114,7 +114,10 @@ export default function PositioningPage() {
     if (!activeProfile) return
     
     try {
-      const res = await fetch(`/api/positioning?profileId=${activeProfile.id}`)
+      // 只列六维地基。商业定位和内容定位有各自的页面，混在这里会让人以为生成重复了
+      const res = await fetch(
+        `/api/positioning?profileId=${activeProfile.id}&type=${encodeURIComponent('账号定位')}`
+      )
       if (res.ok) {
         const data = await res.json()
         setPositionings(data)
@@ -261,6 +264,9 @@ export default function PositioningPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           profile_id: activeProfile.id,
+          // 显式写明类型。三种定位同表存放，不写就得靠列默认值兜着，
+          // 哪天默认值改了这里会静默归错类
+          positioning_type: '账号定位',
           positioning_name: positioningName,
           full_content: content,
           strategy_summary: extractStrategySummary(content),  // 自动生成选题摘要
