@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { extractStrategySummary } from '@/lib/positioning-utils';
+import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { buildContextBlock, describeExecutionConstraints, describeRestrictions, type CreatorProfile } from '@/lib/creator-context';
 import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 
@@ -49,6 +50,10 @@ export default function TopicPage() {
   } = useGenerationPage({ taskType: '选题策划', historyApiPath: '/api/topics' });
 
   const router = useRouter();
+
+  // 创作简报从这里来。之前这一页自己手拼 ctx，漏了 brief，
+  // 结果注入字数最多、有用的最少
+  const { context: creatorContext } = useCreatorContext();
 
   const [mode, setMode] = useState("custom"); // "quick" 或 "custom"
 
@@ -469,10 +474,22 @@ export default function TopicPage() {
           }
         : null;
 
-      // 成交理由这里不传：选题页的成交理由是用户从固定清单里勾的，
-      // 下面已经单独拼进 query，再塞一遍等于重复付费
+      /*
+       * 成交理由这里不传：选题页的成交理由是用户从固定清单里勾的，
+       * 下面已经单独拼进 query，再塞一遍等于重复付费。
+       *
+       * brief 必须带上。之前这里漏了它，实测的后果很讽刺：
+       * 选题注入 2251 字（全站最多），有用的却最少——塞的是截断的定位原文，
+       * 而简报里的「一句话定位」「说给谁听」「内容方向」一个都没到。
+       * 接上之后是 399 字，更短但全是有用的。
+       */
       const topicContext = buildContextBlock(
-        { profile: selectedProfile ?? null, positioning: positioningForCtx, dealReasons: [] },
+        {
+          profile: selectedProfile ?? null,
+          positioning: positioningForCtx,
+          dealReasons: [],
+          brief: creatorContext.brief,
+        },
         'topic'
       );
       const customModeContext = selectedProfile

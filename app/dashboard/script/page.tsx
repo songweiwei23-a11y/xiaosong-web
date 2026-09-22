@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { extractScriptContext } from "@/lib/positioning-utils";
+import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { buildContextBlock, type CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
@@ -189,6 +190,10 @@ export default function ScriptPage() {
     if (data.note) setAdditionalInfo(data.note);
     if (data.workId) setWorkId(data.workId);
   }, []);
+
+  // 创作简报从这里来。之前这一页漏了 brief，脚本最吃的
+  // 「人设与口吻」「凭什么信你」「记忆点」一个都没进提示词
+  const { context: creatorContext } = useCreatorContext();
 
   // 档案和定位关联
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -402,11 +407,16 @@ export default function ScriptPage() {
       // 写脚本真正要的东西一个都没在里面——说话语气、核心卖点、用户痛点、
       // 已验证的开场钩子，以及「绝对不能说：最好、第一、全网最便宜」。
       // 最后一条是硬禁忌，漏掉它模型就会照常写出违规文案。
+      /*
+       * brief 必须带上。之前这里漏了它，实测脚本注入 2299 字却只有
+       * 1/7 的简报字段到位——「人设与口吻」「凭什么信你」「记忆点」
+       * 这些脚本最吃的东西全都没进来，塞的反而是截断的定位原文。
+       */
       if (selectedProfileId) {
         const profile = profiles.find(p => p.id === selectedProfileId);
         if (profile) {
           profileInfo = "\n\n" + buildContextBlock(
-            { profile: profile, positioning: null, dealReasons: [] },
+            { profile: profile, positioning: null, dealReasons: [], brief: creatorContext.brief },
             'script'
           );
         }

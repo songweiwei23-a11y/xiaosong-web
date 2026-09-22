@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { useState, useEffect } from "react";
 import { throwApiError } from "@/lib/api-error";
+import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { buildContextBlock } from '@/lib/creator-context';
 import { Award, Loader2, Sparkles, Save, Check } from "lucide-react";
 import { supabase, dealReasonService } from "@/lib/supabase";
 import { notify } from '@/components/ui/feedback';
@@ -46,6 +48,9 @@ const STORE_TYPES = [
 ];
 
 export default function DealReasonPage() {
+  // 账号上下文。这一页之前完全没接，分析成交理由却不知道这个号的人群和卖点
+  const { context: creatorContext } = useCreatorContext();
+
   // 用户ID
   const [userId, setUserId] = useState<string | null>(null);
   
@@ -134,8 +139,14 @@ export default function DealReasonPage() {
     setSelectedReasons([]);
 
     try {
-      const query = `请作为短视频编导专家，全面分析以下店铺的成交理由：
+      /*
+       * 账号上下文。这一页之前完全没接——审计时发现它对账号一无所知，
+       * 分析成交理由却不知道这个号的人群、卖点和禁忌，等于隔空猜。
+       */
+      const accountContext = buildContextBlock(creatorContext, 'dealReason');
 
+      const query = `请作为短视频编导专家，全面分析以下店铺的成交理由：
+${accountContext ? `\n${accountContext}\n` : ''}
 店铺名称：${storeName}
 店铺类型：${storeType}
 店铺特色：${storeFeatures}

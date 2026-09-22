@@ -7,6 +7,7 @@ import {
   briefBlockFor,
   briefCompleteness,
 } from '@/lib/creative-brief';
+import { BOARD_MANIFESTS, boardsUsingBriefField } from '@/lib/context-manifest';
 
 /**
  * 创作简报要解决的问题，是量出来的：
@@ -71,7 +72,8 @@ describe('字段定义', () => {
       expect(f.label, `${f.key} 缺标题`).toBeTruthy();
       expect(f.spec, `${f.key} 缺产出要求`).toBeTruthy();
       expect(f.hint, `${f.key} 缺界面提示`).toBeTruthy();
-      expect(f.modules.length, `${f.key} 没有任何板块会读它`).toBeGreaterThan(0);
+      // "谁读这段"统一由 lib/context-manifest 决定，不在字段里各记一份
+      expect(boardsUsingBriefField(f.key).length, `${f.key} 没有任何板块会读它`).toBeGreaterThan(0);
     }
   });
 
@@ -83,18 +85,26 @@ describe('字段定义', () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 
-  it('五个板块都至少能读到一段', () => {
-    for (const m of ['topic', 'script', 'storyboard', 'review', 'title'] as const) {
-      const n = BRIEF_FIELDS.filter((f) => f.modules.includes(m)).length;
-      expect(n, `${m} 一段都读不到`).toBeGreaterThan(0);
+  it('每个板块都至少能读到一段', () => {
+    for (const m of BOARD_MANIFESTS) {
+      expect(m.brief.length, `${m.label} 一段都读不到`).toBeGreaterThan(0);
     }
   });
 
   it('一句话定位和禁忌是所有板块都要的', () => {
     for (const key of ['oneline', 'forbidden']) {
-      const f = BRIEF_FIELDS.find((x) => x.key === key)!;
-      for (const m of ['topic', 'script', 'storyboard', 'review', 'title'] as const) {
-        expect(f.modules, `${key} 漏了 ${m}`).toContain(m);
+      const boards = boardsUsingBriefField(key);
+      for (const m of BOARD_MANIFESTS) {
+        expect(boards, `${key} 漏了 ${m.label}`).toContain(m.board);
+      }
+    }
+  });
+
+  it('清单里引用的简报字段都真实存在', () => {
+    const keys = new Set(BRIEF_FIELDS.map((f) => f.key));
+    for (const m of BOARD_MANIFESTS) {
+      for (const k of m.brief) {
+        expect(keys, `${m.label} 要的 ${k} 在简报里不存在`).toContain(k);
       }
     }
   });
@@ -119,6 +129,29 @@ describe('生成提示词', () => {
 
   it('限制篇幅，这是每次生成都要带的', () => {
     expect(p).toContain('1500 字以内');
+  });
+
+  /**
+   * 商业定位和内容定位生成完原本躺在库里——没有任何地方读取，
+   * 它们的结论进不了任何创作环节。简报是唯一的下传通道。
+   */
+  it('把商业定位和内容定位的结论吸收进来', () => {
+    const p = buildBriefPrompt({
+      positioningFull: '定位',
+      businessPositioning: '【商业定位结论】月费1500-3000',
+      contentPositioning: '【内容定位结论】晒过程系列',
+    });
+    expect(p).toContain('【商业定位结论】月费1500-3000');
+    expect(p).toContain('【内容定位结论】晒过程系列');
+    // 要指明吸收到哪个字段里去，不然模型会另起一段
+    expect(p).toContain('吸收进「凭什么信你」');
+    expect(p).toContain('吸收进「内容方向」');
+  });
+
+  it('没做过深挖就不留空段', () => {
+    const p = buildBriefPrompt({ positioningFull: '定位' });
+    expect(p).not.toContain('已做过的商业定位');
+    expect(p).not.toContain('已做过的内容定位');
   });
 
   it('额外要求和档案是可选的，不传就不留空段', () => {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 创作上下文：账号档案 + 账号定位 + 成交理由。
  *
  * 【要解决什么】这三样东西用户已经填过了，而且填得很细——库里最完整的
@@ -22,8 +22,8 @@
  * 标题要知道目标人群，不需要知道剪辑能力。各取所需。
  */
 
-// creative-brief 只从这里 import 类型（编译后擦除），运行时不构成循环依赖
 import { briefBlockFor } from './creative-brief';
+import { manifestOf, type Board, type ProfileSlice } from './context-manifest';
 
 export interface CreatorProfile {
   id: string;
@@ -94,7 +94,11 @@ export interface CreatorContext {
   brief?: string | null;
 }
 
-export type ContextModule = 'topic' | 'script' | 'storyboard' | 'review' | 'title';
+/**
+ * 板块类型统一由 lib/context-manifest 定义。
+ * 这里保留别名只是为了不改所有调用方的写法。
+ */
+export type ContextModule = Board;
 
 /** 数组字段和文本字段混用，统一成一行可读的文字 */
 function text(v: unknown, maxLen = 300): string {
@@ -208,68 +212,55 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
   const parts: string[] = [];
   const title = p?.profile_name ? `## 📇 账号背景：${p.profile_name}` : '## 📇 账号背景';
 
+  // 按清单切片，不再用 switch。加板块只需在 lib/context-manifest 里加一行
   if (p) {
-    switch (module) {
-      case 'topic':
-        // 选题要的是「往哪个方向找」：赛道、阶段、人群痛点、爆款模式、禁忌
-        parts.push(title, '', join([
-          line('平台', p.account_platform),
-          line('赛道', p.account_track),
-          line('账号阶段', [text(p.account_stage), text(p.fans_level)].filter(Boolean).join(' · ')),
-          line('内容价值', p.content_value, 300),
-        ]), '', describeAudience(p, 'full'), '', join([
-          line('已有的内容方向', p.content_themes, 600),
-          line('这个号的爆款基因', p.viral_content_pattern, 400),
-          line('差异化优势', p.competitive_advantage, 400),
-        ]), '', describeRestrictions(p));
-        break;
+    const want = new Set<ProfileSlice>(manifestOf(module)?.profile ?? []);
+    parts.push(title, '');
 
-      case 'script':
-        // 脚本要的是「怎么说」：语气、风格、卖点、人群痛点、转化钩子
-        parts.push(title, '', join([
-          line('平台', p.account_platform),
-          line('赛道', p.account_track),
-          line('说话语气', p.content_tone),
-          line('内容风格', p.content_style),
-        ]), '', describeAudience(p, 'full'), '', join([
-          line('核心卖点', p.unique_selling_point, 500),
-          line('已验证的开场钩子', p.conversion_hooks, 500),
-          line('成交障碍', p.conversion_barriers, 400),
-        ]), '', describeRestrictions(p));
-        break;
+    if (want.has('account')) {
+      parts.push(join([
+        line('平台', p.account_platform),
+        line('赛道', p.account_track),
+        line('账号阶段', [text(p.account_stage), text(p.fans_level)].filter(Boolean).join(' · ')),
+        line('内容形式', p.content_format),
+      ]), '');
+    }
+    if (want.has('audience')) parts.push(describeAudience(p, 'full'), '');
+    if (want.has('tone')) {
+      parts.push(join([
+        line('说话语气', p.content_tone),
+        line('内容风格', p.content_style),
+      ]), '');
+    }
+    if (want.has('selling')) {
+      parts.push(join([
+        line('核心卖点', p.unique_selling_point, 500),
+        line('内容价值', p.content_value, 300),
+        line('已验证的开场钩子', p.conversion_hooks, 500),
+      ]), '');
+    }
+    if (want.has('shooting')) parts.push(describeShootingSetup(p), '');
+    if (want.has('monetize')) {
+      parts.push(join([
+        line('变现方式', p.monetization_model),
+        line('价格区间', p.price_range),
+        line('成交路径', p.conversion_path, 400),
+        line('成交障碍', p.conversion_barriers, 400),
+      ]), '');
+    }
+    if (want.has('viral')) {
+      parts.push(join([
+        line('已有的内容方向', p.content_themes, 600),
+        line('这个号的爆款基因', p.viral_content_pattern, 400),
+        line('差异化优势', p.competitive_advantage, 400),
+      ]), '');
+    }
+    if (want.has('restrictions')) parts.push(describeRestrictions(p), '');
 
-      case 'storyboard':
-        // 分镜要的是「怎么拍」：设备、团队、场地、剪辑能力
-        parts.push(title, '', join([
-          line('平台', p.account_platform),
-          line('内容形式', p.content_format),
-          line('视觉风格取向', p.content_style),
-        ]), '', describeShootingSetup(p));
-        break;
-
-      case 'review':
-        // 审稿要的是「判据」：说给谁听、语气对不对、有没有踩禁忌
-        parts.push(title, '', join([
-          line('平台', p.account_platform),
-          line('应有的语气', p.content_tone),
-          line('内容风格', p.content_style),
-        ]), '', describeAudience(p, 'full'), '', describeRestrictions(p), '',
-        '**审稿时按这个账号的标准判**：语气对不对得上、说的是不是这群人关心的、有没有踩到上面的禁忌。');
-        break;
-
-      case 'title':
-        // 标题要的是「给谁看、凭什么点」
-        parts.push(title, '', join([
-          line('平台', p.account_platform),
-          line('赛道', p.account_track),
-        ]), '', describeAudience(p, 'brief'), '', join([
-          line('用户痛点', p.target_pain_points, 400),
-          line('核心卖点', p.unique_selling_point, 400),
-        ]), '', describeRestrictions(p));
-        break;
+    if (module === 'review') {
+      parts.push('**审稿时按这个账号的标准判**：语气对不对得上、说的是不是这群人关心的、有没有踩到上面的禁忌。', '');
     }
   }
-
   /*
    * 账号方向。优先用创作简报，没有才退回截断定位原文。
    *

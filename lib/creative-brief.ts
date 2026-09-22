@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 创作简报：把账号定位转译成各板块能直接用的创作指令。
  *
  * 【为什么需要它】账号定位是给人看的——有论证、有推导，一份 12466 字。
@@ -20,33 +20,37 @@
  * 比现在截断 2000 字更短，但全是有用的。
  */
 
-import type { ContextModule } from './creator-context';
+import { manifestOf, boardsUsingBriefField, BOARD_LABEL, type Board } from './context-manifest';
 
 /** 简报的字段定义。顺序即生成和展示的顺序 */
 export interface BriefField {
   key: string;
   /** 小节标题，生成和解析都靠它，改了会解析不出来 */
   label: string;
-  /** 哪些板块要读这一段 */
-  modules: ContextModule[];
   /** 写给模型看的产出要求 */
   spec: string;
   /** 界面上的编辑提示 */
   hint: string;
 }
 
+/**
+ * 哪个板块读哪几段，统一由 lib/context-manifest 那张表决定，
+ * 不在这里各记一份——两处记就会对不上。
+ */
+export function modulesOf(key: string): Board[] {
+  return boardsUsingBriefField(key);
+}
+
 export const BRIEF_FIELDS: BriefField[] = [
   {
     key: 'oneline',
     label: '一句话定位',
-    modules: ['topic', 'script', 'storyboard', 'review', 'title'],
     spec: '不超过30字。[身份]+[特点]+[价值]，要能让陌生人立刻知道这个号是干什么的。',
     hint: '所有板块都会读到这句，写得越准，产出越不跑偏',
   },
   {
     key: 'persona',
     label: '人设与口吻',
-    modules: ['script', 'review'],
     spec: `分四行写，每行都要能直接指导写文案：
 - **我是谁**：一句能被观众复述的人设标签
 - **说话什么调**：具体到语气词和句式习惯，不要写"亲切专业"这种
@@ -57,7 +61,6 @@ export const BRIEF_FIELDS: BriefField[] = [
   {
     key: 'audience',
     label: '说给谁听',
-    modules: ['topic', 'script', 'title', 'review'],
     spec: `分四行：
 - **画像**：一句话，要具体到能想起某个真实的人
 - **他最怕什么**：3条，每条都能直接拍成内容
@@ -68,7 +71,6 @@ export const BRIEF_FIELDS: BriefField[] = [
   {
     key: 'direction',
     label: '内容方向',
-    modules: ['topic', 'script'],
     spec: `分三行：
 - **主打类型与配比**：比如"晒过程50% + 讲故事30% + 教知识20%"
 - **能长期挖的选题来源**：4-5个，每个举一个具体例子
@@ -78,7 +80,6 @@ export const BRIEF_FIELDS: BriefField[] = [
   {
     key: 'trust',
     label: '凭什么信你',
-    modules: ['script', 'title'],
     spec: `分两行：
 - **核心卖点**：2-3条，每条一句话
 - **可以拍成画面的证据**：4-6条，必须是能真实拍到的东西，不是形容词`,
@@ -87,7 +88,6 @@ export const BRIEF_FIELDS: BriefField[] = [
   {
     key: 'shooting',
     label: '怎么拍',
-    modules: ['storyboard'],
     spec: `分三行：
 - **呈现形式**：口播/探店/Vlog/情景剧等，一句话说明为什么是它
 - **真实条件**：设备、场地、一个人还是有帮手、一周能出几条
@@ -97,14 +97,12 @@ export const BRIEF_FIELDS: BriefField[] = [
   {
     key: 'memory',
     label: '记忆点',
-    modules: ['script', 'storyboard'],
     spec: '2-3条。语言/动作/道具/服装/场景声音里挑，每条说明怎么重复。标明哪些还待验证。',
     hint: '固定的口头禅、手势、道具——让观众能复述你',
   },
   {
     key: 'forbidden',
     label: '绝对不能说',
-    modules: ['topic', 'script', 'storyboard', 'review', 'title'],
     spec: '逐条列出。包含账号自己的禁忌和通用红线（绝对化用语、承诺疗效等）。',
     hint: '硬约束，所有板块都会带上。漏一条可能直接违规',
   },
@@ -118,6 +116,15 @@ export function buildBriefPrompt(params: {
   profileSummary?: string;
   /** 用户对这次生成的额外要求 */
   notes?: string;
+  /**
+   * 商业定位 / 内容定位的产出。
+   *
+   * 这两个板块生成完原本就躺在库里——没有任何地方读取，
+   * 它们的结论进不了任何创作环节。简报是唯一下传的通道，
+   * 所以有就吸收进来，让那两次生成真的落地。
+   */
+  businessPositioning?: string;
+  contentPositioning?: string;
 }): string {
   const fields = BRIEF_FIELDS.map(
     (f, i) => `### ${i + 1}. ${f.label}\n${f.spec}`
@@ -141,7 +148,15 @@ export function buildBriefPrompt(params: {
 ## 📄 已确定的账号定位
 
 ${params.positioningFull.trim()}
-${params.profileSummary?.trim() ? `\n## 📇 账号档案（补充参照）\n\n${params.profileSummary.trim()}\n` : ''}${
+${
+    params.businessPositioning?.trim()
+      ? `\n## 💰 已做过的商业定位（深挖，结论要吸收进「凭什么信你」）\n\n${params.businessPositioning.trim()}\n`
+      : ''
+  }${
+    params.contentPositioning?.trim()
+      ? `\n## 💎 已做过的内容定位（深挖，结论要吸收进「内容方向」）\n\n${params.contentPositioning.trim()}\n`
+      : ''
+  }${params.profileSummary?.trim() ? `\n## 📇 账号档案（补充参照）\n\n${params.profileSummary.trim()}\n` : ''}${
     params.notes?.trim() ? `\n## 💡 这次的额外要求\n\n${params.notes.trim()}\n` : ''
   }
 ## 📤 输出格式
@@ -207,10 +222,11 @@ export function serializeBrief(values: Record<string, string>): string {
  */
 export function briefBlockFor(
   markdown: string | null | undefined,
-  module: ContextModule
+  board: Board
 ): string {
+  const want = manifestOf(board)?.brief ?? [];
   const values = parseBrief(markdown);
-  const picked = BRIEF_FIELDS.filter((f) => f.modules.includes(module) && values[f.key]?.trim());
+  const picked = BRIEF_FIELDS.filter((f) => want.includes(f.key) && values[f.key]?.trim());
   if (picked.length === 0) return '';
 
   const body = picked.map((f) => `### ${f.label}\n\n${values[f.key].trim()}`).join('\n\n');
@@ -219,6 +235,13 @@ export function briefBlockFor(
 ${body}
 
 ⚠️ 以上是这个账号确定下来的创作方向，产出必须与它一致，不要另起炉灶。`;
+}
+
+/** 界面上标"这段谁会读"，读的是同一张清单 */
+export function readerLabels(key: string): string {
+  const boards = boardsUsingBriefField(key);
+  if (boards.length === BRIEF_FIELDS.length) return '所有板块';
+  return boards.map((b) => BOARD_LABEL[b]).join('、');
 }
 
 /** 简报填了几个字段，用于界面上提示完整度 */

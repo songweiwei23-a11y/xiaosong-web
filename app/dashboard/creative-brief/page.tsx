@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,6 +15,7 @@ import {
   parseBrief,
   serializeBrief,
   briefCompleteness,
+  readerLabels,
 } from '@/lib/creative-brief'
 
 /**
@@ -43,6 +44,8 @@ export default function CreativeBriefPage() {
   const [profileSummary, setProfileSummary] = useState('')
   const [positioning, setPositioning] = useState<Row | null>(null)
   const [brief, setBrief] = useState<Row | null>(null)
+  const [business, setBusiness] = useState<Row | null>(null)
+  const [contentPos, setContentPos] = useState<Row | null>(null)
   const [values, setValues] = useState<Record<string, string>>({})
   const [dirty, setDirty] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -70,14 +73,25 @@ export default function CreativeBriefPage() {
       )
 
       if (p) {
-        const [posRes, briefRes] = await Promise.all([
-          fetch(`/api/positioning?profileId=${p.id}&type=${encodeURIComponent('账号定位')}`),
-          fetch(`/api/positioning?profileId=${p.id}&type=${encodeURIComponent(BRIEF_TYPE)}`),
+        // 商业定位和内容定位也取回来。它们生成完原本躺在库里没人读，
+        // 简报是唯一能把结论下传到创作环节的通道
+        const get = (t: string) =>
+          fetch(`/api/positioning?profileId=${p.id}&type=${encodeURIComponent(t)}`)
+        const [posRes, briefRes, bizRes, conRes] = await Promise.all([
+          get('账号定位'),
+          get(BRIEF_TYPE),
+          get('商业定位'),
+          get('内容定位'),
         ])
-        const pos = posRes.ok ? await posRes.json() : []
-        const br = briefRes.ok ? await briefRes.json() : []
-        setPositioning(Array.isArray(pos) && pos[0] ? pos[0] : null)
-        const b = Array.isArray(br) && br[0] ? br[0] : null
+        const first = async (r: Response) => {
+          if (!r.ok) return null
+          const j = await r.json().catch(() => null)
+          return Array.isArray(j) && j[0] ? j[0] : null
+        }
+        setPositioning(await first(posRes))
+        setBusiness(await first(bizRes))
+        setContentPos(await first(conRes))
+        const b = await first(briefRes)
         setBrief(b)
         setValues(parseBrief(b?.full_content))
         setDirty(false)
@@ -119,6 +133,8 @@ export default function CreativeBriefPage() {
           profileId,
           query: buildBriefPrompt({
             positioningFull: positioning.full_content,
+            businessPositioning: business?.full_content,
+            contentPositioning: contentPos?.full_content,
             profileSummary,
             notes,
           }),
@@ -230,6 +246,20 @@ export default function CreativeBriefPage() {
                   已读到账号定位（{new Date(positioning.created_at).toLocaleDateString()}），
                   简报会基于它转译 ✓
                 </p>
+                {/* 让用户看见简报吸收了哪几份东西——
+                    商业定位和内容定位以前生成完就躺在库里没人读 */}
+                {(business || contentPos) && (
+                  <p className="text-emerald-500">
+                    同时会吸收{business ? '商业定位' : ''}
+                    {business && contentPos ? '和' : ''}
+                    {contentPos ? '内容定位' : ''}的结论 ✓
+                  </p>
+                )}
+                {!business && !contentPos && (
+                  <p className="text-muted-foreground">
+                    还没做过商业定位/内容定位。做了的话，简报会把它们的结论一起吸收进来。
+                  </p>
+                )}
                 {stale && (
                   <p className="text-amber-500">
                     ⚠️ 账号定位在这份简报之后更新过。旧简报仍在生效，建议重新生成一份。
@@ -283,8 +313,10 @@ export default function CreativeBriefPage() {
                     <div key={f.key}>
                       <div className="mb-1.5 flex items-baseline justify-between gap-3">
                         <label className="text-[13px] font-medium text-foreground">{f.label}</label>
+                        {/* 谁会读这一段，读的是 lib/context-manifest 那张清单——
+                            界面和分发逻辑用同一个来源，不会对不上 */}
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {f.modules.length === 5 ? '所有板块' : f.modules.map(moduleName).join('、')}
+                          {readerLabels(f.key)}
                         </span>
                       </div>
                       <p className="mb-1.5 text-[11px] leading-relaxed text-muted-foreground">{f.hint}</p>
@@ -323,8 +355,3 @@ export default function CreativeBriefPage() {
   )
 }
 
-function moduleName(m: string) {
-  return (
-    { topic: '选题', script: '脚本', storyboard: '分镜', review: '审稿', title: '标题' } as Record<string, string>
-  )[m] ?? m
-}

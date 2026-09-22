@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { throwApiError } from "@/lib/api-error";
 import { Markdown } from "@/components/markdown";
 import { getActiveProfileId } from '@/lib/active-profile';
+import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { buildContextBlock } from '@/lib/creator-context';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
   Menu, X, Copy, Check, Bot, User as UserIcon,
@@ -121,6 +123,9 @@ async function migrateLocalConversations(): Promise<Conversation[]> {
   return uploaded;
 }
 export default function FreeChatPage() {
+  // 账号背景走统一清单，不再手拼那 5 个字段
+  const { context: creatorContext } = useCreatorContext();
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [input, setInput] = useState("");
@@ -191,16 +196,19 @@ export default function FreeChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages.length, isStreaming]);
 
-  const buildProfileContext = useCallback(() => {
-    if (!profile) return "";
-    const parts: string[] = [];
-    if (profile.profile_name) parts.push("账号：" + profile.profile_name);
-    if (profile.account_platform?.length) parts.push("平台：" + profile.account_platform.join("、"));
-    if (profile.fans_level) parts.push("粉丝量级：" + profile.fans_level);
-    if (profile.content_category?.length) parts.push("内容方向：" + profile.content_category.join("、"));
-    if (profile.target_audience?.length) parts.push("目标人群：" + profile.target_audience.join("、"));
-    return parts.join("；");
-  }, [profile]);
+  /**
+   * 账号背景。
+   *
+   * 原来这里是手拼的 5 个字段（账号名、平台、粉丝量级、内容方向、目标人群），
+   * 连成一行。问题是自由对话什么都可能问——"帮我改改这段文案"
+   * 却不知道这个号的口吻，"这个选题行不行"却不知道禁忌是什么。
+   * 改成走 lib/context-manifest 的清单，拿到的是简报里那七段，
+   * 包括人设与口吻、凭什么信你、绝对不能说。
+   */
+  const buildProfileContext = useCallback(
+    () => buildContextBlock(creatorContext, 'freeChat'),
+    [creatorContext]
+  );
 
   /**
    * @param fresh true = 用户主动点「新建对话」，要一个干净的窗口；
@@ -299,7 +307,7 @@ export default function FreeChatPage() {
     if (!difyConvId) {
       const ctx = buildProfileContext();
       if (ctx) {
-        query = "【我的账号背景】" + ctx + "\n\n【我的问题】" + content;
+        query = ctx + "\n\n【我的问题】" + content;
       }
     }
 
