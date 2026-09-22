@@ -161,6 +161,12 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('');
   parts.push(rubricTable());
   parts.push('');
+  // 实测中模型把「2.5/100」直接写成了「2.5 分」，差了一个数量级。
+  // 换算规则必须写死，否则它会按自己的直觉给一个看起来合理的数。
+  parts.push('**换算规则**：把各维度得分相加得到百分制总分，再 **除以 10** 得到最终分数。');
+  parts.push('例：各维度合计 82 分 → 最终 8.2 分；合计 25 分 → 最终 2.5 分。');
+  parts.push('总评里的分数和逐维度表格的合计必须对得上，不要各写各的。');
+  parts.push('');
   parts.push('**等级线**：9.0 以上为 MCN 级，8.5 以上优秀，8.0 以上良好，');
   parts.push('7.0-8.0 及格但不建议直接拍，7.0 以下不合格必须重写。');
   parts.push('这套标准与本产品的脚本生成模块完全一致——同一篇稿子在两边应当得到同一个分数。');
