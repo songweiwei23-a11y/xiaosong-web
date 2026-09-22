@@ -8,7 +8,7 @@ import { listWorks, type Work } from "@/lib/works";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Sparkles, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList,
+  Wallet, LayoutList, ClipboardList,
 } from "lucide-react";
 
 /*
@@ -48,6 +48,8 @@ const navGroups: {
       { name: "账号定位", href: "/dashboard/positioning", icon: Target },
       { name: "商业定位", href: "/dashboard/business-positioning", icon: Wallet },
       { name: "内容定位", href: "/dashboard/content-positioning", icon: LayoutList },
+      // 简报是把定位转译成各板块直接能用的指令，所以紧跟在定位后面
+      { name: "创作简报", href: "/dashboard/creative-brief", icon: ClipboardList },
       { name: "成交理由", href: "/dashboard/deal-reason", icon: Award },
       { name: "个人档案", href: "/dashboard/profiles", icon: User },
     ],

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { CreatorContext, CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
+import { BRIEF_TYPE } from "@/lib/creative-brief";
 
 /**
  * 取当前账号的创作上下文：档案 + 定位 + 成交理由。
@@ -32,11 +33,13 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
   const task = (async (): Promise<CreatorContext> => {
     // 三个来源互不依赖，并行拉。任何一个失败都不该让整块上下文消失——
     // 有档案没定位，照样比什么都没有强
-    const [profileRes, posRes, dealRes] = await Promise.all([
+    const [profileRes, posRes, dealRes, briefRes] = await Promise.all([
       fetch("/api/profiles").catch(() => null),
       // 只要六维地基。商业定位和内容定位是它的深挖，拿来当"账号方向"会跑偏
       fetch("/api/positioning?type=" + encodeURIComponent("账号定位")).catch(() => null),
       fetch("/api/deal-reasons").catch(() => null),
+      // 创作简报：有它就优先用它，它是按板块切好片的，比截断定位原文有用得多
+      fetch("/api/positioning?type=" + encodeURIComponent(BRIEF_TYPE)).catch(() => null),
     ]);
 
     let profile: CreatorProfile | null = null;
@@ -71,7 +74,17 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       if (Array.isArray(d?.reasons)) dealReasons = d.reasons.filter(Boolean);
     }
 
-    const ctx: CreatorContext = { profile, positioning, dealReasons };
+    let brief: string | null = null;
+    if (briefRes?.ok) {
+      const list = await briefRes.json().catch(() => null);
+      if (Array.isArray(list) && list.length > 0) {
+        // 取这个档案自己的那份；接口已按 created_at 倒序，[0] 就是最新的
+        const own = profile ? list.find((x: any) => x.profile_id === profile!.id) : null;
+        brief = (own || list[0])?.full_content || null;
+      }
+    }
+
+    const ctx: CreatorContext = { profile, positioning, dealReasons, brief };
     cache.set(key, ctx);
     return ctx;
   })();

@@ -41,6 +41,7 @@ export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   // 它们同属定位这一族，单开配额列还要改库表，不值当
   商业定位: 'positioning',
   内容定位: 'positioning',
+  创作简报: 'positioning',
   成交理由: 'dealReason',
   自由对话: 'freeChat',
   知识库查询: 'knowledge',

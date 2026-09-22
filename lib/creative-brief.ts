@@ -1,0 +1,236 @@
+/**
+ * 创作简报：把账号定位转译成各板块能直接用的创作指令。
+ *
+ * 【为什么需要它】账号定位是给人看的——有论证、有推导，一份 12466 字。
+ * 而各板块注入提示词时按 2000 字截断，实测只有前 16% 进得去，而且进去的是：
+ *   ✓ 核心结论、行业分析（其他板块用不上）、半截前采问题（更用不上）
+ *   ✗ 一句话定位、六维地基全部、记忆点、差异化 —— 全被截掉
+ * 断点还落在句子中间。**人设标签、用户画像、语气、禁忌一个都没到达**，
+ * 各板块其实一直在靠档案字段硬撑，定位基本白生成。
+ *
+ * 根子上这是两种东西：定位给人看，简报给机器用。不该是同一份文档截断。
+ *
+ * 【所以它不是摘要，是转译】把"分析结论"翻译成"创作指令"：
+ *   定位里：同行人设分布：大师型/数据型/案例型 → 你是熟人型，县域信任壁垒最高
+ *   简报里：人设与口吻——南乐本地、接单先看人的熟人型编导。
+ *           写文案用唠嗑的口气，不用专业术语，不摆专家架子
+ * 前者在论证，后者能直接指导生成。
+ *
+ * 【结构按消费方切片】每个板块只取自己那几段，单板块注入 400-800 字——
+ * 比现在截断 2000 字更短，但全是有用的。
+ */
+
+import type { ContextModule } from './creator-context';
+
+/** 简报的字段定义。顺序即生成和展示的顺序 */
+export interface BriefField {
+  key: string;
+  /** 小节标题，生成和解析都靠它，改了会解析不出来 */
+  label: string;
+  /** 哪些板块要读这一段 */
+  modules: ContextModule[];
+  /** 写给模型看的产出要求 */
+  spec: string;
+  /** 界面上的编辑提示 */
+  hint: string;
+}
+
+export const BRIEF_FIELDS: BriefField[] = [
+  {
+    key: 'oneline',
+    label: '一句话定位',
+    modules: ['topic', 'script', 'storyboard', 'review', 'title'],
+    spec: '不超过30字。[身份]+[特点]+[价值]，要能让陌生人立刻知道这个号是干什么的。',
+    hint: '所有板块都会读到这句，写得越准，产出越不跑偏',
+  },
+  {
+    key: 'persona',
+    label: '人设与口吻',
+    modules: ['script', 'review'],
+    spec: `分四行写，每行都要能直接指导写文案：
+- **我是谁**：一句能被观众复述的人设标签
+- **说话什么调**：具体到语气词和句式习惯，不要写"亲切专业"这种
+- **会说的一句话**：举一个真实例子
+- **不会说的一句话**：举一个真实例子（这条比上一条更有用）`,
+    hint: '脚本和审稿靠这段定口吻。"会说/不会说"各举一例，比形容词管用得多',
+  },
+  {
+    key: 'audience',
+    label: '说给谁听',
+    modules: ['topic', 'script', 'title', 'review'],
+    spec: `分四行：
+- **画像**：一句话，要具体到能想起某个真实的人
+- **他最怕什么**：3条，每条都能直接拍成内容
+- **他最想要什么**：3条
+- **他会搜什么词**：写出他真会打出来的那几个词`,
+    hint: '选题、脚本、标题、审稿都读这段。痛点写得越具体，选题越好出',
+  },
+  {
+    key: 'direction',
+    label: '内容方向',
+    modules: ['topic', 'script'],
+    spec: `分三行：
+- **主打类型与配比**：比如"晒过程50% + 讲故事30% + 教知识20%"
+- **能长期挖的选题来源**：4-5个，每个举一个具体例子
+- **明确不做的方向**：3条，说明为什么不做`,
+    hint: '"不做什么"和"做什么"一样重要——它能挡住跑偏的选题',
+  },
+  {
+    key: 'trust',
+    label: '凭什么信你',
+    modules: ['script', 'title'],
+    spec: `分两行：
+- **核心卖点**：2-3条，每条一句话
+- **可以拍成画面的证据**：4-6条，必须是能真实拍到的东西，不是形容词`,
+    hint: '脚本和标题靠这段找说服点。证据要能拍出来，不能是"品质好"这种',
+  },
+  {
+    key: 'shooting',
+    label: '怎么拍',
+    modules: ['storyboard'],
+    spec: `分三行：
+- **呈现形式**：口播/探店/Vlog/情景剧等，一句话说明为什么是它
+- **真实条件**：设备、场地、一个人还是有帮手、一周能出几条
+- **视觉调性**：光线、色彩、镜头稳不稳，一句话`,
+    hint: '分镜只读这一段。写准了，分镜就不会给出拍不出来的方案',
+  },
+  {
+    key: 'memory',
+    label: '记忆点',
+    modules: ['script', 'storyboard'],
+    spec: '2-3条。语言/动作/道具/服装/场景声音里挑，每条说明怎么重复。标明哪些还待验证。',
+    hint: '固定的口头禅、手势、道具——让观众能复述你',
+  },
+  {
+    key: 'forbidden',
+    label: '绝对不能说',
+    modules: ['topic', 'script', 'storyboard', 'review', 'title'],
+    spec: '逐条列出。包含账号自己的禁忌和通用红线（绝对化用语、承诺疗效等）。',
+    hint: '硬约束，所有板块都会带上。漏一条可能直接违规',
+  },
+];
+
+const BY_KEY = new Map(BRIEF_FIELDS.map((f) => [f.key, f]));
+
+/** 生成简报的提示词。输入是已确定的账号定位全文 */
+export function buildBriefPrompt(params: {
+  positioningFull: string;
+  profileSummary?: string;
+  /** 用户对这次生成的额外要求 */
+  notes?: string;
+}): string {
+  const fields = BRIEF_FIELDS.map(
+    (f, i) => `### ${i + 1}. ${f.label}\n${f.spec}`
+  ).join('\n\n');
+
+  return `你是一位短视频代运营的主编。下面有一份已经定好的账号定位方案，
+现在要把它**转译**成一份「创作简报」——供选题、脚本、分镜、审稿、标题各个环节直接使用。
+
+## ⚠️ 这不是摘要，是转译
+
+定位方案是给人看的：有论证、有推导、有取舍过程。
+简报是给创作环节用的：**每一句都要能直接指导生成，不要论证过程**。
+
+举个例子：
+- 定位里写的是：「同行人设分布：大师型/数据型/案例型 → 你是熟人型，在县域信任壁垒最高」
+- 简报里应该是：「**人设**：南乐本地、接单先看人的熟人型编导。写文案用唠嗑的口气，
+  不用专业术语，不摆专家架子」
+
+前者在分析，后者能照着写。**你要产出的是后者。**
+
+## 📄 已确定的账号定位
+
+${params.positioningFull.trim()}
+${params.profileSummary?.trim() ? `\n## 📇 账号档案（补充参照）\n\n${params.profileSummary.trim()}\n` : ''}${
+    params.notes?.trim() ? `\n## 💡 这次的额外要求\n\n${params.notes.trim()}\n` : ''
+  }
+## 📤 输出格式
+
+严格按下面的小节标题和顺序输出，**标题一个字都不要改**——
+各板块靠标题把简报切开，改了就读不到了。
+
+${fields}
+
+## ✍️ 写作要求
+
+- **每句都是指令**：能直接拿去指导写文案、起标题、排镜头。不要写"要注重…"这类空话
+- **具体到能执行**：不要形容词，要具体的词、句、动作、画面
+- **忠于定位**：结论必须来自上面那份定位，不要自己另起一套
+- **全篇控制在 1500 字以内**：这是要塞进每一次生成的，长了就是给所有板块加负担
+- 不要写前言、不要复述定位、不要解释你在做什么，直接从"### 1. 一句话定位"开始`;
+}
+
+/**
+ * 把简报 markdown 解析成字段。
+ * 按 `### N. 标题` 切，标题必须和 BRIEF_FIELDS 里的 label 对得上。
+ */
+export function parseBrief(markdown: string | null | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!markdown?.trim()) return out;
+
+  // 允许标题前有序号、允许 ## 或 ###，标题后允许有多余空白
+  const lines = markdown.split('\n');
+  let current: string | null = null;
+  let buf: string[] = [];
+
+  const flush = () => {
+    if (current) out[current] = buf.join('\n').trim();
+    buf = [];
+  };
+
+  for (const line of lines) {
+    const m = line.match(/^#{2,4}\s*(?:\d+[.、]\s*)?(.+?)\s*$/);
+    if (m) {
+      const hit = BRIEF_FIELDS.find((f) => m[1].includes(f.label));
+      if (hit) {
+        flush();
+        current = hit.key;
+        continue;
+      }
+    }
+    if (current) buf.push(line);
+  }
+  flush();
+  return out;
+}
+
+/** 字段拼回 markdown，编辑后保存用 */
+export function serializeBrief(values: Record<string, string>): string {
+  return BRIEF_FIELDS.filter((f) => values[f.key]?.trim())
+    .map((f, i) => `### ${i + 1}. ${f.label}\n\n${values[f.key].trim()}`)
+    .join('\n\n');
+}
+
+/**
+ * 取某个板块要读的那几段。
+ * 这是简报存在的全部意义——各板块只拿自己需要的，而不是截断 2000 字。
+ */
+export function briefBlockFor(
+  markdown: string | null | undefined,
+  module: ContextModule
+): string {
+  const values = parseBrief(markdown);
+  const picked = BRIEF_FIELDS.filter((f) => f.modules.includes(module) && values[f.key]?.trim());
+  if (picked.length === 0) return '';
+
+  const body = picked.map((f) => `### ${f.label}\n\n${values[f.key].trim()}`).join('\n\n');
+  return `## 🧭 创作简报（这个号已经定好的方向）
+
+${body}
+
+⚠️ 以上是这个账号确定下来的创作方向，产出必须与它一致，不要另起炉灶。`;
+}
+
+/** 简报填了几个字段，用于界面上提示完整度 */
+export function briefCompleteness(markdown: string | null | undefined): number {
+  const values = parseBrief(markdown);
+  const filled = BRIEF_FIELDS.filter((f) => values[f.key]?.trim()).length;
+  return Math.round((filled / BRIEF_FIELDS.length) * 100);
+}
+
+export function fieldOf(key: string): BriefField | undefined {
+  return BY_KEY.get(key);
+}
+
+/** 存进 account_positioning 时用的类型值 */
+export const BRIEF_TYPE = '创作简报';

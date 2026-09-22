@@ -22,6 +22,9 @@
  * 标题要知道目标人群，不需要知道剪辑能力。各取所需。
  */
 
+// creative-brief 只从这里 import 类型（编译后擦除），运行时不构成循环依赖
+import { briefBlockFor } from './creative-brief';
+
 export interface CreatorProfile {
   id: string;
   /** 各页面的档案类型里它是可选的（有未命名档案），这里跟着放宽，
@@ -87,6 +90,8 @@ export interface CreatorContext {
   profile: CreatorProfile | null;
   positioning: CreatorPositioning | null;
   dealReasons: string[];
+  /** 创作简报的 markdown 原文。有它就优先用它，没有才退回截断定位 */
+  brief?: string | null;
 }
 
 export type ContextModule = 'topic' | 'script' | 'storyboard' | 'review' | 'title';
@@ -265,12 +270,25 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
     }
   }
 
-  // 账号定位：选题用摘要（已滤掉执行细节），脚本用完整版里的人设部分
-  if (ctx.positioning) {
+  /*
+   * 账号方向。优先用创作简报，没有才退回截断定位原文。
+   *
+   * 为什么优先用简报：实测账号定位有 12466 字，这里按 2000 字截断，
+   * 只有前 16% 进得去——而且进去的是核心结论、行业分析（其他板块用不上）
+   * 和半截前采问题（更用不上）；一句话定位、六维地基、记忆点全被截掉，
+   * 断点还落在句子中间。**人设、人群、语气、禁忌一个都没到达。**
+   *
+   * 简报是按消费方切好片的，各板块只拿自己那几段，400-800 字，全是有用的。
+   */
+  const brief = briefBlockFor(ctx.brief, module);
+  if (brief) {
+    parts.push('', brief);
+  } else if (ctx.positioning) {
     const body = module === 'topic' ? ctx.positioning.summary : ctx.positioning.full;
     if (body) {
       parts.push('', `## 🎯 已确定的账号定位`, '', text(body, 2000), '',
-        '⚠️ 以上是这个号已经定好的方向，产出必须与它一致，不要另起炉灶。');
+        '⚠️ 以上是这个号已经定好的方向，产出必须与它一致，不要另起炉灶。',
+        '（这一段是从定位原文截断来的。生成一份「创作简报」可以让各板块拿到完整方向。）');
     }
   }
 
