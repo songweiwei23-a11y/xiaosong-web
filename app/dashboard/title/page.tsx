@@ -12,6 +12,7 @@ import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCl
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { ContextBadge } from '@/components/workspace/ContextBadge';
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
@@ -256,6 +257,9 @@ export default function TitlePage() {
       sidebar={
         <>
           <PageHeader title="标题封面" subtitle="生成高点击率的爆款标题，一次给出多个方案做对比" />
+
+          {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
+          <ContextBadge board="title" className="mb-4" />
 
           <CollapsibleSection title="基础信息" defaultOpen>
             <Field label="视频主题" required stacked>

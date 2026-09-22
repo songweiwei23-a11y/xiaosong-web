@@ -13,6 +13,7 @@ import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCl
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { ContextBadge } from '@/components/workspace/ContextBadge';
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect, useMemo } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
@@ -271,6 +272,9 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
               </button>
             }
           />
+
+          {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
+          <ContextBadge board="storyboard" className="mb-4" />
 
           <CollapsibleSection title="脚本内容" defaultOpen>
             <Field label="脚本内容" required stacked hint="AI 会根据内容自动选择镜头语言">

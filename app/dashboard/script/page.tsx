@@ -57,6 +57,7 @@ import { useScriptHistory } from "./useScriptHistory";
 // 统一走通用组件，脚本页原先那份已删除
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
+import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { putHandoff, takeHandoff } from "@/lib/handoff";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, recordStage } from "@/lib/works";
@@ -867,50 +868,13 @@ ${formatRequirements}
 
 
         <div className="space-y-4">
-          {/* 智能关联 */}
-          <CollapsibleSection title="智能关联" icon={Target} defaultOpen={true}>
-            <Field label="账号档案" optional>
-              <select
-                value={selectedProfileId}
-                onChange={(e) => {
-                  setSelectedProfileId(e.target.value);
-                  // 在这儿换了档案，侧边栏和其他板块也要跟着换
-                  if (e.target.value) {
-                    setActiveProfileId(e.target.value, profiles.find((p: any) => p.id === e.target.value));
-                  }
-                }}
-                className={SELECT_CLS}
-              >
-                <option value="">不使用档案</option>
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.profile_name || `${profile.account_track?.[0] || '未命名'} - ${profile.account_stage || '新档案'}`}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="账号定位" optional>
-              <select
-                value={selectedPositioningId}
-                onChange={(e) => setSelectedPositioningId(e.target.value)}
-                className={SELECT_CLS}
-              >
-                <option value="">不使用定位</option>
-                {positionings.map((pos) => (
-                  <option key={pos.id} value={pos.id}>
-                    {pos.positioning_name || "未命名定位"}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            {(selectedProfileId || selectedPositioningId) && (
-              <div className="rounded-xl bg-primary/10 px-3 py-2.5 text-[12px] text-primary">
-                ✨ AI 将结合所选信息生成更精准的脚本
-              </div>
-            )}
-          </CollapsibleSection>
+          {/*
+            原来这里是「账号档案 / 账号定位」两个下拉框，每次生成前要再选一次。
+            现在档案跟侧边栏走、方向由创作简报下发，这两个框既冗余又会打架——
+            在这儿选了 A 号、侧边栏还是 B 号，而简报读的是侧边栏那个。
+            换成状态条：自动带上，但明确告诉用户带了什么。
+          */}
+          <ContextBadge board="script" />
           {/* 基础设置 */}
           <CollapsibleSection title="基础设置" icon={Settings} defaultOpen={true}>
             <Field label="脚本类型" required stacked>

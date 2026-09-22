@@ -11,6 +11,7 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
+import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { buildContextBlock, describeExecutionConstraints, describeRestrictions, type CreatorProfile } from '@/lib/creator-context';
@@ -797,39 +798,12 @@ export default function TopicPage() {
             ))}
           </div>
 
-          {mode === "quick" && (
-            <CollapsibleSection title="选择档案" defaultOpen>
-              <Field label="个人档案" required>
-                <select
-                  value={selectedProfileId}
-                  onChange={(e) => handleProfileSelect(e.target.value)}
-                  className={SELECT_CLS}
-                >
-                  <option value="">选择档案</option>
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.profile_name || "未命名档案"}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="账号定位" required>
-                <select
-                  value={selectedPositioningId}
-                  onChange={(e) => handlePositioningSelect(e.target.value)}
-                  className={SELECT_CLS}
-                >
-                  <option value="">选择定位</option>
-                  {positionings.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.positioning_name || "未命名定位"}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </CollapsibleSection>
-          )}
+          {/*
+            原来快速模式下有「个人档案 / 账号定位」两个必选下拉框。
+            现在档案跟侧边栏走、方向由创作简报下发，两种模式都自动带上，
+            不必再选——留着反而会和侧边栏选的那个打架。
+          */}
+          <ContextBadge board="topic" />
 
           {mode === "custom" && (
             <>

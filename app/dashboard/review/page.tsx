@@ -14,6 +14,7 @@ import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCl
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { ContextBadge } from '@/components/workspace/ContextBadge';
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare, Film, Tag } from "lucide-react";
@@ -269,6 +270,9 @@ export default function ReviewPage() {
       sidebar={
         <>
           <PageHeader title="审稿优化" subtitle="逐条指出问题并给出改写建议，可对照标杆脚本做差距分析" />
+
+          {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
+          <ContextBadge board="review" className="mb-4" />
 
           <CollapsibleSection title="待审脚本" defaultOpen>
             <Field
