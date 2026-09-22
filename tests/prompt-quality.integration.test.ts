@@ -9,7 +9,10 @@ import { getRelevantExample, evaluateScriptQualityStrict, formatQualityReport } 
 import { getStructureNarrative } from '@/lib/script-structure-details';
 import { buildSearchQuery } from '@/lib/search-query';
 
-const KEY = 'app-GNoqBbJQjVLiGBrgMGUcpbhz';
+// 从环境变量取，不写进仓库。此前这里硬编码着主应用的 API key，
+// 任何能看到这个仓库的人都能拿它调用并消耗接口额度。
+// 跑法：先设 DIFY_API_KEY，再 npx vitest run -c vitest.integration.config.ts
+const KEY = process.env.DIFY_API_KEY || '';
 
 function buildPrompt() {
   const scriptType = 'teach';
