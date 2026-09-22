@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { takeHandoff, putHandoff } from "@/lib/handoff";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
 import { buildReviewPrompt } from "@/lib/review-standards";
+import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { buildContextBlock } from "@/lib/creator-context";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -22,6 +24,7 @@ import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { readDifyStream } from '@/lib/sse-stream';
 
+import { getActiveProfileId } from '@/lib/active-profile';
 export default function ReviewPage() {
   // 草稿内容
 
@@ -41,6 +44,10 @@ export default function ReviewPage() {
   } = useGenerationPage({ taskType: '审稿优化', historyApiPath: '/api/reviews' });
 
   const router = useRouter();
+
+  // 账号档案 + 定位 + 成交理由。以侧边栏选中的档案为准，切换时自动跟着变
+  const { context: creatorContext } = useCreatorContext();
+
 
   const [draftContent, setDraftContent] = useState("");
   const [wordCount, setWordCount] = useState(0);
@@ -200,6 +207,8 @@ export default function ReviewPage() {
       // 把「秒数标注只有 1 处」「金句 27 字超长」这类客观事实喂给模型。
       // 后端检测到已有 query 就不再自行拼装。
       const query = buildReviewPrompt({
+        // 账号背景随每次生成带上，不用用户在这一页重填一遍
+        contextBlock: buildContextBlock(creatorContext, "review"),
         draftContent,
         platform,
         duration,
@@ -218,9 +227,7 @@ export default function ReviewPage() {
           taskType: "审稿优化",
           query,
           // 记忆按档案隔离，与脚本、选题两页保持一致
-          profileId: typeof window !== "undefined"
-            ? localStorage.getItem("activeProfileId")
-            : null,
+          profileId: getActiveProfileId(),
           // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           platform,
           duration,

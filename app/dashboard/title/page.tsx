@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import { takeHandoff } from "@/lib/handoff";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
 import { buildTitlePrompt } from "@/lib/title-standards";
+import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { buildContextBlock } from "@/lib/creator-context";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -19,6 +21,7 @@ import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
+import { getActiveProfileId } from '@/lib/active-profile';
 // 标题风格选项
 const TITLE_STYLES = [
   { id: "pain", label: "痛点型", desc: "直击用户痛点", example: "还在为...发愁？" },
@@ -68,6 +71,9 @@ const AB_TEST_COUNTS = [
 ];
 
 export default function TitlePage() {
+  // 账号档案 + 定位 + 成交理由。以侧边栏选中的档案为准，切换时自动跟着变
+  const { context: creatorContext } = useCreatorContext();
+
   const [topic, setTopic] = useState("");
   const [scriptContent, setScriptContent] = useState("");
   const [videoTopic, setVideoTopic] = useState("");
@@ -192,6 +198,8 @@ export default function TitlePage() {
     // 平台规则、风险词、自查项一并交给 lib/title-standards 拼。
     const keywordStrategyOption = KEYWORD_STRATEGIES.find(k => k.value === keywordStrategy);
     const prompt = buildTitlePrompt({
+        // 账号背景随每次生成带上，不用用户在这一页重填一遍
+        contextBlock: buildContextBlock(creatorContext, "title"),
       topic,
       titleTypeLabel: TITLE_TYPES.find(t => t.value === titleType)?.label || "悬念式",
       titleFormulaValue: titleFormula,
@@ -212,9 +220,7 @@ export default function TitlePage() {
           query: prompt,
           // 记忆按档案隔离，与脚本、选题两页一致；不传的话代运营多个账号时
           // 会把 A 号起过的标题串到 B 号的生成里
-          profileId: typeof window !== "undefined"
-            ? localStorage.getItem("activeProfileId")
-            : null,
+          profileId: getActiveProfileId(),
           // 结构化字段带上，供知识库检索的短查询使用
           platform,
           titleType,

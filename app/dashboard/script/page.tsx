@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { extractScriptContext } from "@/lib/positioning-utils";
+import { buildContextBlock, type CreatorProfile } from "@/lib/creator-context";
+import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
 import { enhancePromptWithMCNStandards } from "@/lib/enhance-prompt";
 import { recommendFormula, generateFormulaGuide } from "@/lib/formula-enforcer";
@@ -206,6 +208,11 @@ export default function ScriptPage() {
   useEffect(() => {
     loadProfiles();
     loadPositionings();
+    // 侧边栏切档案时跟着换，不用刷新页面
+    return onActiveProfileChange(() => {
+      const id = getActiveProfileId();
+      if (id) setSelectedProfileId(id);
+    });
   }, []);
 
   // 检查额度
@@ -287,7 +294,12 @@ export default function ScriptPage() {
       const res = await fetch("/api/profiles");
       if (res.ok) {
         const data = await res.json();
-        console.log("✅ 档案加载成功:", data.length, "条"); setProfiles(data);
+        setProfiles(data);
+        // 跟侧边栏选的是同一个档案，不用在这儿再选一遍
+        const active = getActiveProfileId();
+        if (active && Array.isArray(data) && data.some((p: any) => p.id === active)) {
+          setSelectedProfileId((cur) => cur || active);
+        }
       }
     } catch (error) {
       console.error("加载档案失败:", error);
@@ -386,19 +398,17 @@ export default function ScriptPage() {
       let profileInfo = "";
       let positioningInfo = "";
 
+      // 这里原本只传 6 个字段：名称、平台、赛道、阶段、粉丝量级、风格。
+      // 写脚本真正要的东西一个都没在里面——说话语气、核心卖点、用户痛点、
+      // 已验证的开场钩子，以及「绝对不能说：最好、第一、全网最便宜」。
+      // 最后一条是硬禁忌，漏掉它模型就会照常写出违规文案。
       if (selectedProfileId) {
         const profile = profiles.find(p => p.id === selectedProfileId);
         if (profile) {
-          profileInfo = `
-
-【个人档案】
-- 档案名称：${profile.profile_name || '未命名'}
-- 平台：${profile.account_platform?.join("、") || "未设置"}
-- 赛道：${profile.account_track?.join("、") || "未设置"}
-- 账号阶段：${profile.account_stage || "未设置"}
-- 粉丝量级：${profile.fans_level || "未设置"}
-- 内容风格：${profile.content_style?.join("、") || "未设置"}
-`;
+          profileInfo = "\n\n" + buildContextBlock(
+            { profile: profile, positioning: null, dealReasons: [] },
+            'script'
+          );
         }
       }
 
@@ -852,7 +862,13 @@ ${formatRequirements}
             <Field label="账号档案" optional>
               <select
                 value={selectedProfileId}
-                onChange={(e) => setSelectedProfileId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedProfileId(e.target.value);
+                  // 在这儿换了档案，侧边栏和其他板块也要跟着换
+                  if (e.target.value) {
+                    setActiveProfileId(e.target.value, profiles.find((p: any) => p.id === e.target.value));
+                  }
+                }}
                 className={SELECT_CLS}
               >
                 <option value="">不使用档案</option>

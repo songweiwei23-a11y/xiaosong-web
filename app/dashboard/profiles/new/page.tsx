@@ -4,6 +4,7 @@ import { useState } from 'react'
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback';
+import { setActiveProfileId } from '@/lib/active-profile'
 
 export default function NewProfilePage() {
   const router = useRouter()
@@ -249,7 +250,8 @@ export default function NewProfilePage() {
         console.log('✅ 档案创建成功:', newProfile)
         
         // 设置为当前激活档案
-        localStorage.setItem('activeProfileId', newProfile.id)
+        // 新建完直接设为当前档案并广播，省得用户回头还要再去侧边栏选一次
+        setActiveProfileId(newProfile.id, newProfile)
         
         // 触发档案更新事件
         window.dispatchEvent(new Event('profileUpdated'))

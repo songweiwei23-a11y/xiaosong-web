@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { formatRelativeTime } from "@/lib/script-result-utils";
 import { Field } from "@/components/form/Field";
@@ -18,6 +18,7 @@ import { throwApiError } from "@/lib/api-error";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
+import { getActiveProfileId } from '@/lib/active-profile';
 interface Profile {
   id: string
   profile_name: string
@@ -85,7 +86,7 @@ export default function PositioningPage() {
   const loadActiveProfile = async () => {
     setLoadingProfile(true)
     try {
-      const activeId = localStorage.getItem('activeProfileId')
+      const activeId = getActiveProfileId()
       if (!activeId) {
         console.log('⚠️ 未找到激活的档案')
         setLoadingProfile(false)

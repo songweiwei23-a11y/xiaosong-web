@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, User, RefreshCw, Plus, Settings } from 'lucide-react'
+import { getActiveProfileId, setActiveProfileId } from '@/lib/active-profile'
 
 interface Profile {
   id: string
@@ -40,20 +41,15 @@ export default function ProfileSwitcher() {
         setProfiles(data)
         
         // 加载激活的档案
-        const savedId = localStorage.getItem('activeProfileId')
-        if (savedId) {
-          const active = data.find((p: Profile) => p.id === savedId)
-          if (active) {
-            setActiveProfile(active)
-          } else if (data.length > 0) {
-            // 如果保存的档案不存在，激活第一个
-            setActiveProfile(data[0])
-            localStorage.setItem('activeProfileId', data[0].id)
-          }
+        const savedId = getActiveProfileId()
+        const active = savedId ? data.find((p: Profile) => p.id === savedId) : null
+        if (active) {
+          setActiveProfile(active)
         } else if (data.length > 0) {
-          // 默认激活第一个
+          // 存的档案不存在（或还没选过）就用第一个。这里必须走统一入口广播出去：
+          // 别的板块读到的还是那个不存在的 id，不通知它们就会各算各的
           setActiveProfile(data[0])
-          localStorage.setItem('activeProfileId', data[0].id)
+          setActiveProfileId(data[0].id, data[0])
         }
       }
     } catch (error) {
@@ -65,13 +61,9 @@ export default function ProfileSwitcher() {
 
   const switchProfile = (profile: Profile) => {
     setActiveProfile(profile)
-    localStorage.setItem('activeProfileId', profile.id)
     setIsOpen(false)
-    
-    // 触发全局事件，通知其他组件档案已切换
-    window.dispatchEvent(new CustomEvent('profileChanged', { detail: profile }))
-    
-    console.log('✅ 已切换档案:', profile.profile_name)
+    // 写存储 + 广播，两件事绑在一起做，漏不掉
+    setActiveProfileId(profile.id, profile)
   }
 
   const calculateCompleteness = (profile: Profile) => {

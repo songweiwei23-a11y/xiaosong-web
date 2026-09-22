@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { putHandoff, parseTopicOptions } from "@/lib/handoff";
@@ -12,6 +12,8 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { extractStrategySummary } from '@/lib/positioning-utils';
+import { buildContextBlock, describeExecutionConstraints, describeRestrictions, type CreatorProfile } from '@/lib/creator-context';
+import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 
 
 
@@ -145,6 +147,12 @@ export default function TopicPage() {
       // API直接返回数组
       if (Array.isArray(data)) {
         setProfiles(data);
+        // 跟侧边栏用同一个档案。以前这个下拉框是空的，用户在侧边栏选了"言山廷"，
+        // 进选题页还得再选一次——不选就等于没档案，选错就是另一个号的设定
+        const active = getActiveProfileId();
+        if (active && data.some((p: any) => p.id === active)) {
+          setSelectedProfileId((cur) => cur || active);
+        }
       }
     } catch (error) {
       console.error("加载档案失败:", error);
@@ -304,6 +312,8 @@ export default function TopicPage() {
   const handleProfileSelect = (profileId: string) => {
     setSelectedProfileId(profileId);
     const profile = profiles.find((p) => p.id === profileId);
+    // 在这儿换档案，侧边栏和其他板块也要跟着换，否则又变成两套
+    if (profileId) setActiveProfileId(profileId, profile);
     if (profile && mode === "quick") {
       // 自动填充
       if (profile.account_track && profile.account_track.length > 0) {
@@ -389,6 +399,11 @@ export default function TopicPage() {
     loadProfiles();
     loadPositionings();
     loadHistory();
+    // 用户在侧边栏切了档案，这一页不刷新也要跟上
+    return onActiveProfileChange(() => {
+      const id = getActiveProfileId();
+      if (id) setSelectedProfileId(id);
+    });
   }, []);
 
   // 生成选题函数
@@ -431,7 +446,30 @@ export default function TopicPage() {
         完整定位内容: selectedPositioning.full_content,
         选题摘要: selectedPositioning.strategy_summary,
       } : null;
-      
+
+      // 定位以前在这儿被算出来就扔了：extractStrategySummary 的结果赋给一个
+      // 没人用的变量，提示词里只留下一句「以上是从完整定位方案中提取的…」，
+      // 而"以上"根本不存在。用户选了定位，模型一个字都没看到。
+      const positioningForCtx = selectedPositioning
+        ? {
+            name: selectedPositioning.positioning_name || "账号定位",
+            summary:
+              selectedPositioning.strategy_summary ||
+              extractStrategySummary(selectedPositioning.full_content || ""),
+            full: selectedPositioning.full_content || "",
+          }
+        : null;
+
+      // 成交理由这里不传：选题页的成交理由是用户从固定清单里勾的，
+      // 下面已经单独拼进 query，再塞一遍等于重复付费
+      const topicContext = buildContextBlock(
+        { profile: selectedProfile ?? null, positioning: positioningForCtx, dealReasons: [] },
+        'topic'
+      );
+      const customModeContext = selectedProfile
+        ? describeRestrictions(selectedProfile)
+        : '';
+
       const requestData = {
         mode: mode,
         topicType: topicType,
@@ -464,43 +502,23 @@ export default function TopicPage() {
 
       // 构建详细的prompt
       let query = `【工作任务】生成${topicCount}条${topicType}\n\n`;
-      query += `🚨 核心原则：可落地、低成本、易执行\n`;
-      query += `- 拍摄方式：手机即可，不需要专业设备\n`;
-      query += `- 人员配置：一个人就能拍，不需要团队或演员\n`;
-      query += `- 场景要求：日常场景（店内/家里），避免凌晨拍摄、多场景切换\n`;
-      query += `- 道具要求：日常道具，避免复杂道具\n`;
+      query += `🚨 核心原则：可落地、易执行\n`;
+      query += describeExecutionConstraints(selectedProfile ?? null) + `\n`;
       query += `- 真实性：基于真实场景，不能天马行空或过度夸张\n\n`;
 
       // 模式说明
       if (mode === "quick") {
         query += `【模式】⚡ 快速模式（使用已保存的档案和定位）\n\n`;
-        
-        if (profileInfo) {
-          query += `【个人档案详情】\n`;
-          query += `- 档案名称：${profileInfo.档案名称 || '未设置'}\n`;
-          query += `- 平台：${profileInfo.平台 || '未设置'}\n`;
-          query += `- 赛道：${profileInfo.赛道 || '未设置'}\n`;
-          query += `- 账号阶段：${profileInfo.账号阶段 || '未设置'}\n`;
-          query += `- 粉丝量级：${profileInfo.粉丝量级 || '未设置'}\n`;
-          query += `- 目标年龄：${profileInfo.目标年龄 || '未设置'}\n`;
-          query += `- 目标性别：${profileInfo.目标性别 || '未设置'}\n`;
-          query += `- 目标职业：${profileInfo.目标职业 || '未设置'}\n`;
-          query += `- 目标痛点：${profileInfo.目标痛点 || '未设置'}\n`;
-          query += `- 目标需求：${profileInfo.目标需求 || '未设置'}\n`;
-          query += `- 内容类别：${profileInfo.内容类别 || '未设置'}\n`;
-          query += `- 内容风格：${profileInfo.内容风格 || '未设置'}\n`;
-          query += `- 内容形式：${profileInfo.内容形式 || '未设置'}\n`;
-          query += `- 内容价值：${profileInfo.内容价值 || '未设置'}\n`;
-          query += `- 独特卖点：${profileInfo.独特卖点 || '未设置'}\n\n`;
-        }
-        
-        if (positioningInfo && (positioningInfo.选题摘要 || positioningInfo.完整定位内容)) {
-          // 优先使用strategy_summary（选题专用摘要），如果没有则从full_content提取
-          const relevantInfo = positioningInfo.选题摘要 || extractStrategySummary(positioningInfo.完整定位内容 || "");
-          query += `💡 提示：以上是从完整定位方案中提取的选题相关关键信息\n\n`;
-        }
+        // 档案和定位统一由 buildContextBlock 拼。原来这里是手写的 15 行「- 字段：值」，
+        // 有两个毛病：一是漏掉了「绝对不能说」这条硬禁忌；二是没值时输出一片
+        // 「未设置」，等于花 token 告诉模型"我不知道"。
+        if (topicContext) query += topicContext + `\n\n`;
       } else {
         query += `【模式】🎨 自定义模式（手动填写）\n\n`;
+        // 自定义模式下平台、赛道、阶段这些用户自己填了，以他填的为准。
+        // 但禁忌和拍摄条件表单里根本没问——不带上的话，
+        // 「全网最便宜不能说」会因为换了个模式就凭空消失
+        if (customModeContext) query += customModeContext + `\n\n`;
       }
 
       // 基础信息
@@ -652,10 +670,8 @@ export default function TopicPage() {
       query += `\n⚠️ 核心要求（必须严格遵守）：\n`;
       query += `🎯 可落地性原则：\n`;
       query += `- 生成的选题必须100%可执行，不能天马行空\n`;
-      query += `- 拍摄成本要低：手机即可，不需要专业设备\n`;
-      query += `- 简单易上手：个体老板一个人就能拍，不需要团队\n`;
-      query += `- 贴合现实：基于真实场景，不能太夸张\n`;
-      query += `- 避免：凌晨拍摄、需要演员、复杂道具、多场景切换\n\n`;
+      query += describeExecutionConstraints(selectedProfile ?? null) + `\n`;
+      query += `- 贴合现实：基于真实场景，不能太夸张\n\n`;
       query += `📋 具体要求：\n`;
       query += `1. 开篇钩子：只写文案，不要画面描述！必须结合知识库优化\n`;
       query += `2. 内容方向及目的是重中之重：核心方向一句话，用户价值要明确\n`;

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Send, Loader2, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { readDifyStream } from '@/lib/sse-stream'
+import { getActiveProfileId } from '@/lib/active-profile'
 import {
   listConversations,
   createConversation,
@@ -190,7 +191,7 @@ export default function ContinuousDialog({
           // 于是追问时模型已经见过刚生成的内容，不必再整段贴一遍
           profileId:
             contextData?.profileInfo?.id ||
-            (typeof window !== 'undefined' ? localStorage.getItem('activeProfileId') : null),
+            getActiveProfileId(),
           profileData: contextData?.profileInfo ? {
             profile_name: contextData.profileInfo
           } : undefined

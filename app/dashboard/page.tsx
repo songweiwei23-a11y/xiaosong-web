@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
 import { listWorks, type Work } from "@/lib/works";
+import { getActiveProfileId } from '@/lib/active-profile';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, Loader2, History,
@@ -149,7 +150,7 @@ export default function DashboardPage() {
         if (profileRes?.ok) {
           const list = await profileRes.json();
           if (Array.isArray(list) && list.length > 0) {
-            const savedId = localStorage.getItem("activeProfileId");
+            const savedId = getActiveProfileId();
             setProfile(list.find((p: any) => p.id === savedId) || list[0]);
           }
         }

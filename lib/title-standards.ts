@@ -126,6 +126,12 @@ export interface TitlePromptParams {
   platform: string;
   targetAudience: string;
   count: number;
+  /**
+   * 账号的创作上下文。标题要「赌对人群的点击动机」，
+   * 而人群画像、痛点、卖点用户在档案里都填过了——
+   * 此前这一页只有一个「目标人群」输入框要他再手打一遍。
+   */
+  contextBlock?: string;
 }
 
 export function buildTitlePrompt(p: TitlePromptParams): string {
@@ -136,6 +142,12 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push('你是一位专做爆款标题的短视频编导，日常工作就是给同一条内容写出多个');
   parts.push('可以拿去 A/B 测试的标题，并说清每个标题赌的是哪一类用户的点击动机。');
   parts.push('');
+
+  // 账号背景在主题之前：先知道给谁写，再看写什么
+  if (p.contextBlock) {
+    parts.push(p.contextBlock);
+    parts.push('');
+  }
 
   parts.push('## 🎬 视频主题');
   parts.push('');

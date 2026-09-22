@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { getActiveProfileId, setActiveProfileId as persistActiveProfile } from '@/lib/active-profile'
 
 interface Profile {
   id: string
@@ -39,13 +40,15 @@ export default function ProfileDashboard() {
   }
 
   const loadActiveProfile = () => {
-    const saved = localStorage.getItem('activeProfileId')
+    const saved = getActiveProfileId()
     if (saved) setActiveProfileId(saved)
   }
 
   const setActiveProfile = (id: string) => {
     setActiveProfileId(id)
-    localStorage.setItem('activeProfileId', id)
+    // 走统一入口：写存储的同时广播出去，否则定位页和各创作板块
+    // 还停在上一个档案上，而用户以为已经切过来了
+    persistActiveProfile(id, profiles.find((p) => p.id === id) ?? id)
   }
 
   const calculateCompleteness = (profile: Profile) => {

@@ -188,4 +188,29 @@ describe('全仓库缺陷模式扫描', () => {
     }
     expect(bad, `这些模块没有任何地方引用：\n${bad.join('\n')}`).toEqual([]);
   });
+
+  /**
+   * 「当前在用哪个档案」只能走 lib/active-profile。
+   *
+   * 之前有三个地方各自往 localStorage.activeProfileId 写，只有侧边栏那个会广播
+   * profileChanged。于是从档案总览页切了账号，定位页和各创作板块收不到通知，
+   * 界面上显示的档案和实际进提示词的档案悄悄错开——不报错、构建正常，
+   * 用户也看不出来，只会觉得「AI 怎么答得不对」。这种只能靠扫描守住。
+   */
+  it('activeProfileId 只在 lib/active-profile 里直接读写', () => {
+    const bad: string[] = [];
+    for (const { file, code } of sources) {
+      if (rel(file) === 'lib/active-profile.ts') continue;
+      for (const m of code.matchAll(
+        /localStorage\s*\.\s*(?:getItem|setItem|removeItem)\s*\(\s*['"`]activeProfileId/g
+      )) {
+        bad.push(locate(file, code, m.index!));
+      }
+    }
+    expect(
+      bad,
+      `这些地方绕过 lib/active-profile 直接读写 activeProfileId：\n${bad.join('\n')}\n` +
+        `改用 getActiveProfileId() / setActiveProfileId()——后者把「写存储」和「通知其他板块」绑在一起，漏不掉。`
+    ).toEqual([]);
+  });
 });

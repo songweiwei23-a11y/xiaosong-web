@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import { takeHandoff, putHandoff } from "@/lib/handoff";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
 import { buildStoryboardPrompt, auditStoryboard } from "@/lib/storyboard-standards";
+import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { buildContextBlock } from "@/lib/creator-context";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -23,6 +25,7 @@ import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 
 import { readDifyStream } from '@/lib/sse-stream';
+import { getActiveProfileId } from '@/lib/active-profile';
 const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
 const DURATIONS = ["15秒", "30秒", "60秒", "90秒", "3-5分钟"];
 
@@ -75,13 +78,10 @@ export default function StoryboardPage() {
 
   const router = useRouter();
 
-  /*
-   * 对模型排出来的分镜表做一次代码核对。
-   *
-   * 不能信它自己写的那行「总时长：60s（已对账）」——实测里表格实际相加
-   * 是 55s，它声称加过了其实没加。时长对不上，拍摄当天才会发现素材不够。
-   * 用 useMemo 是因为流式生成时 result 每个字都在变，不必每帧重算整张表。
-   */
+  // 账号档案 + 定位 + 成交理由。以侧边栏选中的档案为准，切换时自动跟着变
+  const { context: creatorContext } = useCreatorContext();
+
+
   const [scriptContent, setscriptContent] = useState("");
   const [platform, setPlatform] = useState("抖音");
   const [duration, setDuration] = useState("60秒");
@@ -106,7 +106,15 @@ export default function StoryboardPage() {
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult);
 
-  // 生成结束后才核对：流式过程中表格还是残缺的，中途算出来的数字没有意义
+  /*
+   * 对模型排出来的分镜表做一次代码核对。
+   *
+   * 不能信它自己写的那行「总时长：60s（已对账）」——实测里表格实际相加
+   * 是 55s，它声称加过了其实没加。时长对不上，拍摄当天才会发现素材不够。
+   *
+   * 生成结束后才核对：流式过程中表格还是残缺的，中途算出来的数字没有意义。
+   * 用 useMemo 是因为流式生成时 result 每个字都在变，不必每帧重算整张表。
+   */
   const audit = useMemo(
     () => (isGenerating || !result ? null : auditStoryboard(result, duration)),
     [isGenerating, result, duration]
@@ -200,6 +208,8 @@ export default function StoryboardPage() {
       // 和目标时长的差额），把客观数据交给模型。后端检测到已有 query
       // 就不再用那套只有格式约束的旧模板。
       const query = buildStoryboardPrompt({
+        // 账号背景随每次生成带上，不用用户在这一页重填一遍
+        contextBlock: buildContextBlock(creatorContext, "storyboard"),
         scriptContent,
         platform,
         duration,
@@ -216,9 +226,7 @@ export default function StoryboardPage() {
           taskType: "分镜脚本",
           query,
           // 记忆按档案隔离，与其余板块共用同一个工作窗口
-          profileId: typeof window !== "undefined"
-            ? localStorage.getItem("activeProfileId")
-            : null,
+          profileId: getActiveProfileId(),
           // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           platform,
           duration,

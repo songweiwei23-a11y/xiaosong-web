@@ -52,8 +52,34 @@ const RHYTHM_GUIDE = `### 景别节奏：跟着情绪走
 - 单个镜头超过 **6 秒**不切，除非画面里有持续发生的变化（动作、字幕递进）
 - 高潮段可以压到 1-1.5 秒一切，但前后必须有慢镜头衬托，全片都快等于都不快`;
 
-/** 运镜与情绪的对应，以及手机拍摄的现实约束 */
-const CAMERA_MOVE_GUIDE = `### 运镜：每一个运动都要有理由
+/**
+ * 运镜与情绪的对应，以及器材带来的现实约束。
+ *
+ * 【为什么要按器材分两套】这一段原先无条件写着「手机拍摄的现实约束
+ * （必须遵守）」。实测发现：即便把账号档案里的「专业摄像机、灯光、
+ * 稳定器、2-3人团队」注入了提示词，产出仍然清一色按手机设计——
+ * 因为方法论正文里这条硬约束权重远大于几百字的背景块，
+ * 模型看到「必须遵守」就照办了。
+ *
+ * 背景接上了却不生效，是最容易自欺的一种情况。器材约束必须跟着
+ * 真实条件走。
+ */
+function cameraMoveGuide(hasRealSetup: boolean): string {
+  const constraints = hasRealSetup
+    ? `**按上面写的真实器材来设计**：
+- 有稳定器就放开用运动镜头，不必压在 1/3 以内——买了设备不用等于白买
+- 有灯光就明确写光位（主光在哪、有没有轮廓光），别退回"找自然光好的位置"
+- 有收音设备就不用为环境噪音做妥协设计
+- 有第二台机器、且团队不止一人，才可以安排双机位同时拍
+- 器材清单里没有的东西不要假设它存在`
+    : `**手机单人拍摄的现实约束（必须遵守）**：
+- 没有稳定器时运动镜头很难稳。**运动镜头占比不超过总镜头数的 1/3**，
+  其余用固定镜头 + 剪辑节奏来制造动感——这是低成本拍摄的正解
+- 推拉优先用「走近/走远」而不是变焦，手机数码变焦会糊
+- 一个人拍，不要出现需要两台机器同时工作的镜头
+- 每个运动镜头前后各留 1 秒静止，剪辑时才有干净的出入点`;
+
+  return `### 运镜：每一个运动都要有理由
 
 | 运镜 | 它制造什么感觉 | 适合放在哪 |
 |---|---|---|
@@ -63,11 +89,8 @@ const CAMERA_MOVE_GUIDE = `### 运镜：每一个运动都要有理由
 | 摇镜 | 展示空间关系、罗列 | 展示店面、一排东西 |
 | 移镜/跟随 | 代入感，观众"跟着走" | 探店进门、走动中的讲述 |
 
-**手机拍摄的现实约束（必须遵守）**：
-- 没有稳定器时，运动镜头很难稳。**运动镜头占比不超过总镜头数的 1/3**，
-  其余用固定镜头 + 剪辑节奏来制造动感——这是低成本拍摄的正解
-- 推拉优先用「走近/走远」而不是变焦，手机数码变焦会糊
-- 每个运动镜头前后各留 1 秒静止，剪辑时才有干净的出入点`;
+${constraints}`;
+}
 
 /** 画面与口播的关系——新手最大的坑 */
 const VISUAL_VS_NARRATION = `### 画面不要复述台词
@@ -167,6 +190,15 @@ export interface StoryboardPromptParams {
   /** 视觉风格的中文标签 */
   visualStyleLabel: string;
   additionalInfo: string;
+  /**
+   * 账号的创作上下文（由 lib/creator-context 按模块拼好）。
+   *
+   * 分镜最需要的是拍摄条件——设备、团队、场地、剪辑能力。
+   * 这些用户在档案里早就填了，最完整的一个填着「专业摄像机、灯光、
+   * 稳定器、2-3人小团队」，而这份提示词此前写死的假设是
+   * 「一个人用手机拍，没有灯」。有真实条件就该用真的。
+   */
+  contextBlock?: string;
 }
 
 /** 把目标时长解析成秒数，顺带给出建议镜头数 */
@@ -311,19 +343,36 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   const { seconds, min, max } = planShots(p.duration || '60秒');
   const parts: string[] = [];
 
+  const hasRealSetup = !!p.contextBlock?.includes('真实拍摄条件');
+
   parts.push('# 短视频分镜脚本');
   parts.push('');
   parts.push('你是一位拍过上千条短视频的执行导演，现在要把这条口播稿拆成');
-  parts.push('拍摄当天能直接照着执行的分镜。拿到你这份分镜的人可能只有一部手机、');
-  parts.push('一个人、没有灯——你给的每一个镜头都必须是他真的拍得出来的。');
+  parts.push('拍摄当天能直接照着执行的分镜。');
+  if (hasRealSetup) {
+    // 档案里填了真实设备和团队，就别再按「一个人一部手机」设计——
+    // 有稳定器却不敢安排运动镜头，等于白买了设备
+    parts.push('这个账号的真实拍摄条件写在下面，**按它给的条件来**，');
+    parts.push('不要凭空按最低配假设。');
+  } else {
+    // 没填就保守假设，宁可设计得简单也不要拍不出来
+    parts.push('拿到你这份分镜的人可能只有一部手机、一个人、没有灯——');
+    parts.push('你给的每一个镜头都必须是他真的拍得出来的。');
+  }
   parts.push('');
+
+  // 账号背景放在脚本之前：先知道这是谁的号、能拍成什么样，再看稿子
+  if (p.contextBlock) {
+    parts.push(p.contextBlock);
+    parts.push('');
+  }
 
   parts.push('## 📄 待拆解的脚本');
   parts.push('');
   parts.push(script || '未提供脚本内容');
   parts.push('');
 
-  parts.push('## 📌 拍摄条件');
+  parts.push('## 📌 本条的拍摄参数');
   parts.push(`- 发布平台：${p.platform}`);
   parts.push(`- 目标时长：${p.duration}（${seconds} 秒）`);
   parts.push(`- 视觉风格：${p.visualStyleLabel}`);
@@ -341,7 +390,7 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('');
   parts.push(RHYTHM_GUIDE);
   parts.push('');
-  parts.push(CAMERA_MOVE_GUIDE);
+  parts.push(cameraMoveGuide(hasRealSetup));
   parts.push('');
   parts.push(VISUAL_VS_NARRATION);
   parts.push('');
@@ -404,7 +453,11 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('');
   parts.push('- 景别分布：特写 X 个 / 近景 X 个 / 中景 X 个 / 全景 X 个 / 远景 X 个');
   parts.push('- 特写占比：X%（应 ≤ 25%）');
-  parts.push('- 运动镜头占比：X%（手机拍摄应 ≤ 33%）');
+  parts.push(
+    hasRealSetup
+      ? '- 运动镜头占比：X%（按上面的器材条件判断是否合理，有稳定器可以更高）'
+      : '- 运动镜头占比：X%（手机无稳定器时应 ≤ 33%）'
+  );
   parts.push('- 最长镜头：Xs（超过 6s 需说明画面里在持续发生什么）');
   parts.push('- 开场 3 秒内镜头数：X 个（应 ≥ 2）');
   parts.push('- 总时长：Xs（必须等于 ' + seconds + 's）');
@@ -419,8 +472,15 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
 
   parts.push('### 4. 🧰 拍摄清单');
   parts.push('');
-  parts.push('- **必备**：手机 + 哪些最低限度的东西（三脚架/支架等）');
-  parts.push('- **加分项**：有了会明显更好的（补光灯/领夹麦等），并说明它解决什么问题');
+  if (hasRealSetup) {
+    // 他已经有这些器材了，需要的是「这条片子要从库里拿哪几件」，
+    // 而不是一份采购建议
+    parts.push('- **这条片子要带的器材**：从上面列出的可用器材里挑，说明每件用在哪几个镜号');
+    parts.push('- **用不上的**：列出来的器材里哪些这条用不着，省得白扛');
+  } else {
+    parts.push('- **必备**：手机 + 哪些最低限度的东西（三脚架/支架等）');
+    parts.push('- **加分项**：有了会明显更好的（补光灯/领夹麦等），并说明它解决什么问题');
+  }
   parts.push('- **道具与场地**：从分镜表里反推出来的清单，拍之前要备齐的');
   parts.push('');
 

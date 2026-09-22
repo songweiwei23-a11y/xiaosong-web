@@ -34,6 +34,12 @@ export interface ReviewPromptParams {
   compareMode: boolean;
   /** 是否给每个问题标注严重程度 */
   severityLabels: boolean;
+  /**
+   * 账号的创作上下文。审稿最需要它——「这句话好不好」离开了
+   * 「说给谁听、这个号是什么语气、有什么绝对不能说的」根本判不了。
+   * 此前审稿只拿到一篇孤零零的稿子，评的是通用好坏。
+   */
+  contextBlock?: string;
 }
 
 /** 把七个评分维度连同权重写成表格，模型照着打分才有一致性 */
@@ -140,6 +146,13 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('你的判断要能落地：指出问题之后必须给出可以直接抄进脚本的改写，');
   parts.push('而不是「建议加强情绪」这类正确但没用的话。');
   parts.push('');
+
+  // 账号背景放在稿子之前：先知道这是谁的号、说给谁听，再看内容。
+  // 顺序反过来的话，模型会先形成一个通用判断，再被背景信息拉扯
+  if (p.contextBlock) {
+    parts.push(p.contextBlock);
+    parts.push('');
+  }
 
   parts.push('## 📄 待审稿件');
   parts.push('');

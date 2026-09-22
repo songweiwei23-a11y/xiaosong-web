@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { throwApiError } from "@/lib/api-error";
 import ReactMarkdown from "react-markdown";
+import { getActiveProfileId } from '@/lib/active-profile';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
   Menu, X, Copy, Check, Bot, User as UserIcon,
@@ -172,7 +173,7 @@ export default function FreeChatPage() {
         if (!res.ok) return;
         const data: ActiveProfile[] = await res.json();
         if (!Array.isArray(data) || data.length === 0) return;
-        const savedId = localStorage.getItem("activeProfileId");
+        const savedId = getActiveProfileId();
         const active = data.find((x) => x.id === savedId) || data[0];
         setProfile(active);
       } catch (e) {
