@@ -44,6 +44,7 @@ export function ResultPanel({
   onDownload,
   onContinue,
   nextActions,
+  footer,
 }: {
   result: string;
   isGenerating: boolean;
@@ -64,6 +65,14 @@ export function ResultPanel({
    * 这是九个功能之间最缺的一环：同一条内容原先要手动粘贴四五次。
    */
   nextActions?: NextAction[];
+  /**
+   * 正文之后、「接下来」之前的位置，给各页面放自己的核对结果。
+   *
+   * 分镜页用它显示代码数出来的时长/景别配比——模型自检栏写的数字不可信，
+   * 实测里它声称「总时长 60s（已对账）」而表格实际只有 55s。
+   * 做成插槽而不是写死在这里：别的板块的核对项各不相同。
+   */
+  footer?: React.ReactNode;
 }) {
   // 拆分与统计只依赖 result，用 memo 避免流式输出时逐字符重算
   const { body, report, stats, quality } = useMemo(() => {
@@ -140,6 +149,9 @@ export function ResultPanel({
       )}
 
       {showQuality && report && !isGenerating && <QualityCard report={report} quality={quality} />}
+
+      {/* 各页面自己的核对结果。紧跟正文，因为它说的就是上面这份内容对不对 */}
+      {body && !isGenerating && footer}
 
       {/* 接下来：放在正文之后，因为它是「读完再决定」的动作，
           摆在顶部会和复制下载抢位置，也不符合阅读顺序 */}

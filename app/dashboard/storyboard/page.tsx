@@ -3,7 +3,7 @@
 import { takeHandoff, putHandoff } from "@/lib/handoff";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
-import { buildStoryboardPrompt } from "@/lib/storyboard-standards";
+import { buildStoryboardPrompt, auditStoryboard } from "@/lib/storyboard-standards";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -12,7 +12,7 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { useRouter } from "next/navigation";
 import { Film, Copy, Download, Loader2, Sparkles, Wand2, Tag } from "lucide-react";
@@ -75,6 +75,13 @@ export default function StoryboardPage() {
 
   const router = useRouter();
 
+  /*
+   * 对模型排出来的分镜表做一次代码核对。
+   *
+   * 不能信它自己写的那行「总时长：60s（已对账）」——实测里表格实际相加
+   * 是 55s，它声称加过了其实没加。时长对不上，拍摄当天才会发现素材不够。
+   * 用 useMemo 是因为流式生成时 result 每个字都在变，不必每帧重算整张表。
+   */
   const [scriptContent, setscriptContent] = useState("");
   const [platform, setPlatform] = useState("抖音");
   const [duration, setDuration] = useState("60秒");
@@ -98,6 +105,12 @@ export default function StoryboardPage() {
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult);
+
+  // 生成结束后才核对：流式过程中表格还是残缺的，中途算出来的数字没有意义
+  const audit = useMemo(
+    () => (isGenerating || !result ? null : auditStoryboard(result, duration)),
+    [isGenerating, result, duration]
+  );
 
   // 加载示例脚本
   const loadExample = () => {
@@ -403,6 +416,38 @@ export default function StoryboardPage() {
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
+        // 代码数出来的核对结果。模型自检栏写的数字不可信，以这里为准
+        footer={
+          audit ? (
+            <div className="glass-panel rounded-xl px-4 py-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+                <span className="font-medium text-foreground">系统核对</span>
+                <span>{audit.shots} 个镜头</span>
+                <span className={Math.abs(audit.diff) > 2 ? "font-medium text-amber-500" : ""}>
+                  合计 {audit.totalSeconds}s / 目标 {audit.target}s
+                </span>
+                <span>特写 {audit.closeUpRatio}%</span>
+                <span>运动镜头 {audit.moveRatio}%</span>
+                <span>最长 {audit.longest}s</span>
+              </div>
+
+              {audit.issues.length > 0 ? (
+                <ul className="mt-2 space-y-1">
+                  {audit.issues.map((issue) => (
+                    <li key={issue} className="flex gap-2 text-[12px] text-amber-500">
+                      <span aria-hidden="true">·</span>
+                      <span>{issue}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  时长、景别配比、镜头长度都在标准范围内，可以照着拍。
+                </p>
+              )}
+            </div>
+          ) : null
+        }
         // 分镜此前没有任何往下的交接，作品链条到这里就断了。
         // 拆完分镜通常还剩起标题这一步。
         nextActions={[

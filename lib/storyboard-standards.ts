@@ -226,6 +226,86 @@ function scriptFacts(script: string, targetSeconds: number): string {
   return lines.join('\n');
 }
 
+export interface StoryboardAudit {
+  /** 表格里识别到的镜头数 */
+  shots: number;
+  /** 各镜头时长相加 */
+  totalSeconds: number;
+  /** 目标时长 */
+  target: number;
+  /** 实际减目标，正为超时、负为不足 */
+  diff: number;
+  longest: number;
+  closeUpRatio: number;
+  moveRatio: number;
+  /** 不达标的地方，给用户看的话 */
+  issues: string[];
+}
+
+const MOVE_WORDS = ['推镜', '拉镜', '摇镜', '移镜', '跟随'];
+
+/**
+ * 核对模型排出来的分镜表。
+ *
+ * 为什么必须在代码里再算一遍：实测中模型的自检栏写着「总时长：60s（已对账）」，
+ * 而表格实际相加是 55s——它声称加过了，其实没加。这和审稿模块把
+ * 「2.5/100」写成「2.5 分」是同一类问题：模型会自信地断言一个它没真算过的数。
+ *
+ * 往提示词里再加几句「务必相加」解决不了，只能由代码来数。
+ * 数出来的结果直接摆给用户，他拍之前就知道素材够不够。
+ */
+export function auditStoryboard(markdown: string, duration: string): StoryboardAudit | null {
+  const target = planShots(duration || '60秒').seconds;
+
+  // 只取分镜表的数据行：以 | 开头、第二格是纯数字（镜号）
+  const rows = (markdown || '')
+    .split('\n')
+    .filter((line) => /^\s*\|\s*\d+\s*\|/.test(line))
+    .map((line) => line.split('|').map((c) => c.trim()));
+
+  if (rows.length === 0) return null;
+
+  const durations: number[] = [];
+  let closeUps = 0;
+  let moves = 0;
+
+  for (const cells of rows) {
+    // 表格列序：| 镜号 | 景别 | 运镜 | 画面 | 台词 | 时长 | 拍摄要点 |
+    // split('|') 后首尾各有一个空串，所以镜号在 [1]、时长在 [6]
+    const size = cells[2] ?? '';
+    const move = cells[3] ?? '';
+    const dur = cells[6] ?? '';
+
+    const n = Number((dur.match(/[\d.]+/) || [])[0] || 0);
+    if (n > 0) durations.push(n);
+
+    if (size.includes('特写')) closeUps++;
+    if (MOVE_WORDS.some((w) => move.includes(w))) moves++;
+  }
+
+  const shots = rows.length;
+  const totalSeconds = Math.round(durations.reduce((a, b) => a + b, 0) * 10) / 10;
+  const longest = durations.length ? Math.max(...durations) : 0;
+  const closeUpRatio = shots ? Math.round((closeUps / shots) * 100) : 0;
+  const moveRatio = shots ? Math.round((moves / shots) * 100) : 0;
+  const diff = totalSeconds - target;
+
+  const issues: string[] = [];
+  // 2 秒以内的出入属于正常取整，不值得打扰用户
+  if (Math.abs(diff) > 2) {
+    issues.push(
+      diff > 0
+        ? `镜头时长合计 ${totalSeconds}s，比目标多 ${diff}s，拍出来会超时`
+        : `镜头时长合计 ${totalSeconds}s，比目标少 ${Math.abs(diff)}s，素材会不够`
+    );
+  }
+  if (closeUpRatio > 25) issues.push(`特写占 ${closeUpRatio}%，超过 25% 的建议上限，感叹号用多了就不响了`);
+  if (moveRatio > 33) issues.push(`运动镜头占 ${moveRatio}%，手机没有稳定器时建议不超过 33%`);
+  if (longest > 6) issues.push(`最长镜头 ${longest}s，超过 6s 不切容易掉完播，确认画面里有持续变化`);
+
+  return { shots, totalSeconds, target, diff, longest, closeUpRatio, moveRatio, issues };
+}
+
 export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   const script = p.scriptContent || '';
   const { seconds, min, max } = planShots(p.duration || '60秒');
