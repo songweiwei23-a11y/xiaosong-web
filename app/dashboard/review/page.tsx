@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { takeHandoff, putHandoff } from "@/lib/handoff";
 import { throwApiError } from "@/lib/api-error";
+import { buildReviewPrompt } from "@/lib/review-standards";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -194,20 +195,35 @@ export default function ReviewPage() {
     }
 
     try {
+      // 提示词在前端拼：这样才能先用 quality-checker 把稿子量一遍，
+      // 把「秒数标注只有 1 处」「金句 27 字超长」这类客观事实喂给模型。
+      // 后端检测到已有 query 就不再自行拼装。
+      const query = buildReviewPrompt({
+        draftContent,
+        platform,
+        duration,
+        scriptType,
+        reviewDimensions: reviewDimensions.join("\n"),
+        optimizationGoals: optimizationGoals.join("、"),
+        benchmarkScript,
+        compareMode,
+        severityLabels,
+      });
+
       const response = await fetch("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: "审稿优化",
-          draftContent,
+          query,
+          // 记忆按档案隔离，与脚本、选题两页保持一致
+          profileId: typeof window !== "undefined"
+            ? localStorage.getItem("activeProfileId")
+            : null,
+          // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           platform,
           duration,
           scriptType,
-          reviewDimensions: reviewDimensions.join("\n"),
-          optimizationGoals: optimizationGoals.join("、"),
-          benchmarkScript,
-          compareMode,
-          severityLabels,
         }),
       });
 

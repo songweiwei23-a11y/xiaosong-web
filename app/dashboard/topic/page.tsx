@@ -329,14 +329,25 @@ export default function TopicPage() {
     setSelectedPositioningId(positioningId);
     const positioning = positionings.find((p) => p.id === positioningId);
     if (positioning && mode === "quick") {
-      // 优先使用strategy_summary（选题专用摘要），如果没有则从full_content提取
+      // 优先使用 strategy_summary（选题专用摘要），没有则从 full_content 提取。
+      //
+      // 这里原先一律截到 300 字再补上「...」。账号定位平均生成 2000 字以上，
+      // 300 字大概只够一句赛道分析的开头——用户以为定位在指导选题，
+      // 实际传过去的只是个头。摘要本身已经滤掉了执行层细节（配比、拍摄方向、
+      // 15天计划），剩下的赛道、人群、优势、差异化正是选题要用的，不该再砍。
+      //
+      // 仍留一个上限，但放到足以容纳整份摘要的量级，只防异常长文把提示词撑爆。
+      const MAX_POSITIONING_CHARS = 2000;
+      const clip = (text: string) =>
+        text.length > MAX_POSITIONING_CHARS
+          ? text.slice(0, MAX_POSITIONING_CHARS) + "…（后续内容已省略）"
+          : text;
+
       if (positioning.strategy_summary) {
-        // 使用已生成的选题摘要（干净、无执行细节）
-        setPositioningExtra(positioning.strategy_summary.substring(0, 300) + "...");
+        setPositioningExtra(clip(positioning.strategy_summary));
       } else if (positioning.full_content) {
-        // 兼容旧数据：如果没有strategy_summary，使用过滤后的内容
-        const filtered = extractStrategySummary(positioning.full_content);
-        setPositioningExtra(filtered.substring(0, 300) + "...");
+        // 兼容旧数据：没有摘要时现场从完整定位里提取
+        setPositioningExtra(clip(extractStrategySummary(positioning.full_content)));
       }
     }
   };
@@ -524,9 +535,12 @@ export default function TopicPage() {
       }
       if (selectedStyles.length > 0) query += `- 风格：${selectedStyles.join('、')}\n`;
       if (positioningExtra) {
-        // 再次过滤positioningExtra，确保不包含内容配比等信息
+        // 再次过滤，确保不包含内容配比等执行层信息
         const filteredExtra = extractRelevantPositioningInfo(positioningExtra);
-        query += `- 定位补充：${filteredExtra}\n`;
+        // 定位现在是完整摘要而非 300 字残片，多行内容挂在「- 」后面会
+        // 破坏列表结构，模型容易把后续行读成并列的基础信息，所以单独成段
+        query += `\n【账号定位】\n${filteredExtra}\n`;
+        query += `⚠️ 以上是这个账号已经确定的定位，生成的每条选题都必须符合它，不能偏离赛道和目标人群。\n`;
       }
       query += `\n`;
 
@@ -654,50 +668,19 @@ export default function TopicPage() {
       query += `${selectedDealReasons.length > 0 ? '7' : '6'}. 每条选题严格控制在200字以内！去废话！\n`;
 
       
-      // 🔥 最终过滤：强制移除"内容方向与配比"及相关段落
-      const removeKeywords = [
-        '## 💎 内容方向与配比',
-        '### 当前阶段推荐配比',
-        '### 流量型内容',
-        '### 变现型内容', 
-        '### 人设型内容',
-        '**拍摄方向思路**',
-        '**目的**：快速涨粉',
-        '**目的**：引导本地用户',
-        '**目的**：让用户记住你',
-        '**必须体现的成交理由**',
-        '**转化路径**：视频最后'
-      ];
-      
-      let filteredQuery = '';
-      let skipSection = false;
-      const queryLines = query.split('\n');
-      
-      for (let i = 0; i < queryLines.length; i++) {
-        const line = queryLines[i];
-        
-        // 检查是否命中移除关键词
-        const shouldRemove = removeKeywords.some(kw => line.includes(kw));
-        
-        if (shouldRemove) {
-          skipSection = true;
-          continue;
-        }
-        
-        // 遇到新的##或###标题，且不在移除列表中，结束跳过
-        if ((line.startsWith('##') || line.startsWith('###')) && skipSection) {
-          if (!removeKeywords.some(kw => line.includes(kw))) {
-            skipSection = false;
-          }
-        }
-        
-        // 如果不在跳过状态，保留这一行
-        if (!skipSection) {
-          filteredQuery += line + '\n';
-        }
-      }
-      
-      query = filteredQuery;
+      // 这里原本还有一道「最终过滤」，对**整条提示词**逐行扫描，命中
+      // '**拍摄方向思路**' 之类的关键词就开始跳过，直到遇见 `##` 开头的行才恢复。
+      //
+      // 问题是：这段提示词从头到尾只有一行以 `##` 开头（输出格式里的
+      // 「## 选题X：[标题]」），其余全是 `**1️⃣ …**` 这种加粗行。一旦定位内容里
+      // 带进任何一个关键词，从那里到那一行之间的内容——基础信息、脚本类型约束、
+      // 爆款元素配置——会被整段静默删掉，页面上完全看不出来。
+      //
+      // 而定位文本在进入 query 之前已经被 extractStrategySummary 和
+      // extractRelevantPositioningInfo 过滤了两道，本就轮不到第三道。
+      // 现在定位不再截断到 300 字、内容长了 6 倍，这颗雷只会更容易踩到，
+      // 所以直接拆掉——该过滤的在源头过滤，不该拿整条提示词去冒险。
+
       const response = await fetch("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

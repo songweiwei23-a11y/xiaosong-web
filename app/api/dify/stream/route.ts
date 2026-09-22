@@ -115,8 +115,10 @@ export async function POST(req: NextRequest) {
       parts.push('3. 编导拍摄思路：景别组合、运镜方式、情绪设计、开场钩子建议');
       
       query = parts.join('\n');
-    } else if (body.taskType === '审稿优化') {
-      // 审稿优化逻辑
+    } else if (body.taskType === '审稿优化' && !body.query) {
+      // 审稿页现已在前端用 lib/review-standards 拼好完整提示词
+      // （含评分标准、话术禁忌、机器预检结果、达标范例），此处只是旧版兜底。
+      // 与选题策划同理：已有 query 就直接沿用，否则会把好提示词覆盖成这套简化模板。
       const parts = ['请帮我审稿并优化以下短视频脚本'];
       parts.push('\n## 脚本内容');
       parts.push(body.draftContent || '未提供脚本内容');

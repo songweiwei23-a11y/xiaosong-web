@@ -2,6 +2,7 @@
 
 import { takeHandoff } from "@/lib/handoff";
 import { throwApiError } from "@/lib/api-error";
+import { buildTitlePrompt } from "@/lib/title-standards";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -185,25 +186,21 @@ export default function TitlePage() {
       platform
     };
 
-    const prompt = `# 短视频标题生成
-
-## 视频主题
-${topic}
-
-## 配置要求
-- 标题类型：${TITLE_TYPES.find(t => t.value === titleType)?.label}
-- 标题公式：${TITLE_FORMULAS.find(f => f.value === titleFormula)?.label}
-- 关键词策略：${KEYWORD_STRATEGIES.find(k => k.value === keywordStrategy)?.label}
-- 目标平台：${platform}
-${targetAudience ? `- 目标人群：${targetAudience}` : ''}
-- 生成数量：${abTestCount}个
-
-请生成${abTestCount}个爆款标题，每个标题要：
-1. 符合${platform}平台特点
-2. 使用${TITLE_TYPES.find(t => t.value === titleType)?.label}技巧
-3. 包含情绪钩子
-4. 控制在15-25字
-5. 标注核心卖点`;
+    // 页面上这些选项本来就带着示例和公式结构，原提示词只取了标签文字，
+    // 等于让模型自己猜「数字+动词+结果」是什么意思。现在把公式拆解、
+    // 平台规则、风险词、自查项一并交给 lib/title-standards 拼。
+    const keywordStrategyOption = KEYWORD_STRATEGIES.find(k => k.value === keywordStrategy);
+    const prompt = buildTitlePrompt({
+      topic,
+      titleTypeLabel: TITLE_TYPES.find(t => t.value === titleType)?.label || "悬念式",
+      titleFormulaValue: titleFormula,
+      titleFormulaLabel: TITLE_FORMULAS.find(f => f.value === titleFormula)?.label || "",
+      keywordStrategyLabel: keywordStrategyOption?.label || "",
+      keywordStrategyDesc: keywordStrategyOption?.desc || "",
+      platform,
+      targetAudience,
+      count: abTestCount,
+    });
 
     try {
       const response = await fetch("/api/dify/stream", {
@@ -212,6 +209,14 @@ ${targetAudience ? `- 目标人群：${targetAudience}` : ''}
         body: JSON.stringify({
           taskType: "标题封面",
           query: prompt,
+          // 记忆按档案隔离，与脚本、选题两页一致；不传的话代运营多个账号时
+          // 会把 A 号起过的标题串到 B 号的生成里
+          profileId: typeof window !== "undefined"
+            ? localStorage.getItem("activeProfileId")
+            : null,
+          // 结构化字段带上，供知识库检索的短查询使用
+          platform,
+          titleType,
         }),
       });
 
