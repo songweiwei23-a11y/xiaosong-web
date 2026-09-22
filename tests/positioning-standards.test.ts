@@ -196,9 +196,11 @@ describe('行业视角', () => {
     expect(p).toContain('比写"25-35岁女性"有用一百倍');
   });
 
-  it('输出里「先说这一行」排在账号定位之前', () => {
-    // 顺序反了，模型会先进入"介绍账号"的腔调，行业洞察就变成补充说明了
-    expect(p.indexOf('先说这一行')).toBeLessThan(p.indexOf('一句话定位'));
+  it('输出里「先说这一行」排在一句话定位那一节之前', () => {
+    // 顺序反了，模型会先进入"介绍账号"的腔调，行业洞察就变成补充说明了。
+    // 注意要比小节标题，不能比「一句话定位」这个词——
+    // 开头的核心结论摘要里也会提到它，比词会比到摘要上去
+    expect(p.indexOf('## 🔍 先说这一行')).toBeLessThan(p.indexOf('## 一句话定位'));
   });
 
   it('实体店用 50/20/30 配比，个人 IP 用另一套', () => {
@@ -209,6 +211,94 @@ describe('行业视角', () => {
   it('给出能直接抄走的账号五件套', () => {
     expect(p).toContain('账号五件套');
     expect(p).toContain('不要写"建议优化头像"这种废话');
+  });
+});
+
+/**
+ * 第三轮反馈，两条硬伤：
+ *
+ * 1. 「你的行业那段我都没看懂，我的定位是代运营，你给我我这个行业的才对」
+ *    ——我把「实体店 12 大类型」硬套在一个代运营账号上，讲餐饮毛利、
+ *    服装淡旺季。那是他客户的行业，不是他的。
+ *    根因是提示词默认所有账号都是实体店。
+ *
+ * 2. 「人设、用户、内容三维写得太简单，完全是从档案照搬」
+ *    ——提示词只写了"输出什么"，没写"怎么分析出来"，
+ *    模型就把档案字段翻译一遍交差。
+ */
+describe('先认主体类型，不默认是实体店', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('给出四类主体，代运营单独成一类', () => {
+    expect(p).toContain('本地实体店');
+    expect(p).toContain('服务商 / 代运营');
+    expect(p).toContain('个人 IP / 知识博主');
+    expect(p).toContain('电商 / 带货');
+  });
+
+  it('明确不能按他服务的客户行业去归类', () => {
+    // 给火锅店做代运营的账号，主体是 B 不是 A——他自己不卖火锅
+    expect(p).toContain('他自己不卖火锅');
+  });
+
+  it('代运营这一行有自己的行业认知，不是讲客户的毛利', () => {
+    expect(p).toContain('绝对不要去讲他客户那一行的毛利');
+    expect(p).toContain('是不是又一个来割韭菜的');
+    expect(p).toContain('客户为什么流失');
+    // 县域市场和一二线不是一回事
+    expect(p).toContain('熟人社会');
+  });
+
+  it('to B 账号不套八大人群词根', () => {
+    expect(p).toContain('上面那八类**不适用**');
+    expect(p).toContain('他会先潜水观察你很久');
+  });
+
+  it('提醒 to B 别把观众当泛粉', () => {
+    expect(p).toContain('比 10 万播放全是同行围观强得多');
+  });
+});
+
+describe('人设/用户/内容三维要真分析，不是照搬档案', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('人设：要求先指出原料，并把形容词翻译成具体行为', () => {
+    expect(p).toContain('档案里那些形容词是**原料**');
+    expect(p).toContain('把形容词翻译成具体行为');
+    // 给了正反例，"专业、靠谱、有温度"这种谁都能用的词要挡住
+    expect(p).toContain('不收预付款、先干出效果再谈钱的县城编导');
+    expect(p).toContain('在同类账号里的位置');
+  });
+
+  it('用户：要写成一个具体的人，并且要敢排除人群', () => {
+    expect(p).toContain('不要把档案里的痛点清单抄一遍');
+    expect(p).toContain('不敢排除人群 = 定位没做完');
+    // 嘴上不会说的那句话，才是真实心理
+    expect(p).toContain('他嘴上不会说的那句话');
+  });
+
+  it('内容：要说明每类内容管用户旅程的哪一段', () => {
+    expect(p).toContain('每类内容管哪一段路');
+    expect(p).toContain('只堆配比不说明这个，等于没规划');
+    expect(p).toContain('第一条该发什么');
+  });
+});
+
+describe('开头摘要和前18条选题', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('第一屏是核心结论 8 条', () => {
+    expect(p).toContain('核心结论（先看这 8 条）');
+    // 摘要必须排在展开论证之前，否则等于没摘要
+    expect(p.indexOf('核心结论')).toBeLessThan(p.indexOf('先说这一行'));
+  });
+
+  it('结尾给前 18 条，按发布顺序带节奏', () => {
+    expect(p).toContain('前 18 条怎么拍（按发布顺序）');
+    expect(p).toContain('标题写成能直接用的');
+    expect(p).toContain('前 3 条要特别说明为什么这样开场');
+    // 产能撑不住就不能排成每天一条
+    expect(p).toContain('不要排成每天一条');
   });
 });
 
