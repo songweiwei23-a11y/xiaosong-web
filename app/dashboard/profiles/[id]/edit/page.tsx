@@ -1,185 +1,148 @@
-﻿'use client'
+'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { notify } from '@/components/ui/feedback';
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { notify } from '@/components/ui/feedback'
+import { ProfileForm, type ProfileFormData } from '@/components/profile/ProfileForm'
+import { getActiveProfileId, setActiveProfileId } from '@/lib/active-profile'
+import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 
+/**
+ * 编辑已有档案。
+ *
+ * 这一页原来是个空壳，上面写着「编辑功能正在开发中，请先删除旧档案后重新创建」，
+ * 而档案列表里就有「编辑」入口——用户点进来得到的是"请删掉重建"。
+ * 现在复用 ProfileForm，和创建页是同一份表单。
+ */
 export default function EditProfilePage() {
   const router = useRouter()
   const params = useParams()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [loading, setLoading] = useState(false)
-  const [fetching, setFetching] = useState(true)
-  const [formData, setFormData] = useState({
-    id: '',
-    profile_name: '',
-    account_platform: [] as string[],
-    account_track: [] as string[],
-    account_stage: '',
-    fans_level: '',
-    target_gender: '',
-    target_age: '',
-    target_region: '',
-    target_occupation: '',
-    target_income: '',
-    target_pain_points: '',
-    target_needs: '',
-    target_interests: '',
-    content_style: [] as string[],
-    content_format: [] as string[],
-    content_themes: '',
-    content_tone: '',
-    content_value: '',
-    unique_selling_point: '',
-    video_duration: '',
-    update_frequency: '',
-    best_post_time: '',
-    reference_accounts: '',
-    avoid_content: '',
-    monetization_model: [] as string[],
-    product_category: '',
-    price_range: '',
-    target_conversion: '',
-    competitive_advantage: ''
-  })
+  const id = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : ''
+
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
+  // 「没找到这份档案」和「接口没取到」是两回事：前者该提示已删除，
+  // 后者多半是登录过期或网络问题，提示成"已被删除"会把人误导
+  const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
+  const [errMsg, setErrMsg] = useState('')
 
   useEffect(() => {
-    fetchProfile()
-  }, [params?.id])
-
-  const fetchProfile = async () => {
-    try {
-      const res = await fetch('/api/profiles')
-      if (res.ok) {
-        const profiles = await res.json()
-        const profile = profiles.find((p: any) => p.id === params?.id)
-        if (profile) {
-          setFormData({
-            ...profile,
-            account_platform: profile.account_platform || [],
-            account_track: profile.account_track || [],
-            content_style: profile.content_style || [],
-            content_format: profile.content_format || [],
-            monetization_model: profile.monetization_model || []
-          })
-        } else {
-          notify('档案不存在')
-          router.push('/dashboard/profiles')
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/profiles')
+        if (!alive) return
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          setErrMsg(body?.error || (res.status === 401 ? '登录已过期，请重新登录' : `接口返回 ${res.status}`))
+          setState('error')
+          return
         }
+        const list = await res.json()
+        const found = Array.isArray(list) ? list.find((p: { id: string }) => p.id === id) : null
+        if (!alive) return
+        if (found) {
+          setProfile(found)
+          setState('ready')
+        } else {
+          setState('missing')
+        }
+      } catch (e) {
+        console.error('获取档案失败:', e)
+        if (!alive) return
+        setErrMsg('网络不通，稍后再试')
+        setState('error')
       }
-    } catch (error) {
-      console.error('获取档案失败:', error)
-      notify('获取档案失败')
-    } finally {
-      setFetching(false)
+    })()
+    return () => {
+      alive = false
     }
-  }
+  }, [id])
 
-  const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleArrayToggle = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field as keyof typeof prev].includes(value)
-        ? (prev[field as keyof typeof prev] as string[]).filter((v: string) => v !== value)
-        : [...(prev[field as keyof typeof prev] as string[]), value]
-    }))
-  }
-
-  const handleSubmit = async () => {
-    if (!formData.profile_name) {
-      notify('请填写档案名称')
-      return
-    }
-
-    setLoading(true)
+  const handleSubmit = async (data: ProfileFormData) => {
     try {
       const res = await fetch('/api/profiles', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        // 只发表单字段 + id。不要把整行原样回传——
+        // 里面的 user_id / created_at 不该被改写
+        body: JSON.stringify({ id, ...data }),
       })
-
-      if (res.ok) {
-        notify('档案更新成功！')
-        router.push('/dashboard/profiles')
-      } else {
-        notify('更新失败，请重试')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        notify('保存失败：' + (err.error || '请重试'))
+        return
       }
-    } catch (error) {
-      console.error('更新档案失败:', error)
-      notify('更新失败，请重试')
-    } finally {
-      setLoading(false)
+      const updated = await res.json()
+
+      // 档案内容变了，各板块缓存的上下文要作废，否则接着生成用的还是旧的
+      invalidateCreatorContext()
+      // 改的正是当前在用的档案时，广播一下让各页面重新取
+      if (getActiveProfileId() === id) setActiveProfileId(id, updated)
+
+      notify('已保存')
+      router.push('/dashboard/profiles')
+    } catch (e) {
+      console.error('更新档案失败:', e)
+      notify('保存失败，请重试')
     }
   }
 
-  const totalSteps = 5
-
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center mb-8">
-      {[1, 2, 3, 4, 5].map((step) => (
-        <div key={step} className="flex items-center">
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${
-              step === currentStep
-                ? 'bg-accent text-white'
-                : step < currentStep
-                ? 'bg-emerald-500 text-white'
-                : 'bg-muted text-muted-foreground'
-            }`}
-          >
-            {step < currentStep ? '✓' : step}
-          </div>
-          {step < 5 && (
-            <div
-              className={`w-16 h-1 ${
-                step < currentStep ? 'bg-emerald-500' : 'bg-muted'
-              }`}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  )
-
-  if (fetching) {
+  if (state === 'loading') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">加载中...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-[13px] text-muted-foreground">加载中…</p>
+      </div>
+    )
+  }
+
+  if (state === 'missing' || state === 'error') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <p className="text-[13px] text-muted-foreground">
+          {state === 'missing' ? '没找到这份档案，可能已经被删除了。' : `档案没取到：${errMsg}`}
+        </p>
+        <div className="flex gap-2.5">
+          {state === 'error' && (
+            <button
+              onClick={() => location.reload()}
+              className="rounded-xl bg-primary px-5 py-2 text-[13px] text-primary-foreground"
+            >
+              重试
+            </button>
+          )}
+          <button
+            onClick={() => router.push('/dashboard/profiles')}
+            className="glass-panel rounded-xl px-5 py-2 text-[13px] text-foreground"
+          >
+            返回档案列表
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-background py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="glass-panel rounded-2xl shadow-sm p-8">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="glass-panel rounded-2xl p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">编辑档案</h1>
-            <p className="mt-2 text-muted-foreground">更新您的账号信息</p>
+            <h1 className="text-2xl font-semibold text-foreground">
+              编辑档案：{String(profile?.profile_name || '未命名')}
+            </h1>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              改哪一步都行，随时可以保存，不必一路点到最后。
+            </p>
           </div>
 
-          {renderStepIndicator()}
-
-          <div className="mb-8">
-            <p className="text-muted-foreground">编辑功能正在开发中，请先删除旧档案后重新创建</p>
-          </div>
-
-          <div className="flex justify-between pt-6 border-t border-border">
-            <button
-              onClick={() => router.push('/dashboard/profiles')}
-              className="px-6 py-2 bg-muted text-foreground rounded-xl hover:bg-muted/70"
-            >
-              返回档案列表
-            </button>
-          </div>
+          <ProfileForm
+            initial={profile}
+            submitLabel="保存修改"
+            submittingLabel="保存中…"
+            onSubmit={handleSubmit}
+            onCancel={() => router.push('/dashboard/profiles')}
+          />
         </div>
       </div>
     </div>
   )
 }
-
-
