@@ -48,7 +48,15 @@ if (-not (Test-Path $sshKey)) {
 # 部署目录必须与 PM2 进程的工作目录一致，否则文件传上去了、构建也成功了，
 # 但 next start 用的是另一个目录里的旧产物。曾因此出现"grep 文件是新代码、
 # 实际请求却是旧行为"的假象，排查了很久。
-$pm2Cwd = ssh -i "$sshKey" ${serverUser}@${serverIP} "pm2 describe xiaosong-web 2>/dev/null | grep -i 'exec cwd' | sed 's/.*│ *//' | tr -d ' '"
+# 别改回去解析 pm2 describe 的表格：那行长这样
+#   │ exec cwd          │ /var/www/xiaosong-web        │
+# 末尾还有一根竖线，而 sed 's/.*│ *//' 是贪婪的，会一路吃到最后那根，
+# 结果恒为空字符串——脚本每次都停在下面那句"无法读取 PM2 工作目录"，
+# 还倒打一耙说进程不存在，害人去查一个根本没有的问题。
+# 改读 pm2 jlist 的 JSON。这里刻意不带任何引号和方括号：
+# PowerShell 5.1 把命令交给 ssh 时会重新拆词，引号到不了远端 shell。
+$cwdCmd = 'pm2 jlist 2>/dev/null | tr , ''\n'' | grep pm_cwd | head -1 | sed s/.*pm_cwd...// | sed s/.$//'
+$pm2Cwd = ssh -i "$sshKey" ${serverUser}@${serverIP} $cwdCmd
 $pm2Cwd = ($pm2Cwd | Out-String).Trim()
 if (-not $pm2Cwd) {
     Write-Host "无法读取 PM2 工作目录，请确认进程 xiaosong-web 存在" -ForegroundColor Red
@@ -213,13 +221,42 @@ if (-not $ready) {
 }
 
 Write-Host ""
-Write-Host "[5/5] 校验线上代码是否为本次版本..." -ForegroundColor Yellow
-$verifyCmd = "cd $serverPath; " +
-  "echo search_query=`$(grep -c search_query app/api/dify/stream/route.ts); " +
-  "echo conv=`$(grep -c saveDifyConversationId app/api/dify/stream/route.ts); " +
-  "echo restarts=`$(pm2 jlist | grep -o '\`"restart_time\`":[0-9]*' | head -1 | cut -d: -f2)"
-$verify = ssh -i "$sshKey" ${serverUser}@${serverIP} $verifyCmd
-$verify -split "`n" | Where-Object { $_.Trim() } | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+Write-Host "[5/5] 校验线上文件是否为本次版本..." -ForegroundColor Yellow
+# 旧版这里数的是 search_query / saveDifyConversationId 出现了几次——那是很久以前
+# 某次 Dify 改动的痕迹。文件一次没传上去，这两个数也照样对，等于没校验。
+# 改成逐个比对本次改动文件的 MD5。已验证 Windows 与 Linux 算出的哈希一致
+# （tar 原样打包，不转换行尾），所以对得上就是同一份字节。
+$changed = @(git diff-tree --no-commit-id --name-only -r HEAD |
+    Where-Object { $_ -match '^(app|components|hooks|lib|types|supabase|public)/' -or
+                   $_ -match '^(middleware\.ts|next\.config\.js|package\.json)$' } |
+    Where-Object { Test-Path $_ })
+
+if ($changed.Count -eq 0) {
+    Write-Host "  本次提交没有改到会上传的文件，跳过比对" -ForegroundColor DarkGray
+} else {
+    $localHash = @{}
+    foreach ($f in $changed) {
+        $localHash[$f] = (Get-FileHash $f -Algorithm MD5).Hash.ToLower()
+    }
+    # 路径里没有空格和引号，直接拼即可；带引号的命令过不了 PowerShell 的参数拆分
+    $remote = ssh -i "$sshKey" ${serverUser}@${serverIP} "cd $serverPath; md5sum $($changed -join ' ') 2>&1"
+    $remoteHash = @{}
+    foreach ($line in ($remote -split "`n")) {
+        if ($line -match '^([0-9a-f]{32})\s+(\S+)') { $remoteHash[$Matches[2]] = $Matches[1] }
+    }
+
+    $bad = @()
+    foreach ($f in $changed) {
+        if ($remoteHash[$f] -ne $localHash[$f]) { $bad += $f }
+    }
+    if ($bad.Count -gt 0) {
+        Write-Host "  以下文件线上和本地对不上，本次改动没有真正生效：" -ForegroundColor Red
+        $bad | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+        pause
+        exit 1
+    }
+    Write-Host "  $($changed.Count) 个改动文件全部比对一致" -ForegroundColor Green
+}
 
 Write-Host ""
 Write-Host "部署完成，服务已就绪！" -ForegroundColor Green
