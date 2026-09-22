@@ -223,40 +223,51 @@ if (-not $ready) {
 Write-Host ""
 Write-Host "[5/5] 校验线上文件是否为本次版本..." -ForegroundColor Yellow
 # 旧版这里数的是 search_query / saveDifyConversationId 出现了几次——那是很久以前
-# 某次 Dify 改动的痕迹。文件一次没传上去，这两个数也照样对，等于没校验。
-# 改成逐个比对本次改动文件的 MD5。已验证 Windows 与 Linux 算出的哈希一致
-# （tar 原样打包，不转换行尾），所以对得上就是同一份字节。
-$changed = @(git diff-tree --no-commit-id --name-only -r HEAD |
-    Where-Object { $_ -match '^(app|components|hooks|lib|types|supabase|public)/' -or
-                   $_ -match '^(middleware\.ts|next\.config\.js|package\.json)$' } |
-    Where-Object { Test-Path $_ })
-
-if ($changed.Count -eq 0) {
-    Write-Host "  本次提交没有改到会上传的文件，跳过比对" -ForegroundColor DarkGray
-} else {
-    $localHash = @{}
-    foreach ($f in $changed) {
-        $localHash[$f] = (Get-FileHash $f -Algorithm MD5).Hash.ToLower()
-    }
-    # 路径里没有空格和引号，直接拼即可；带引号的命令过不了 PowerShell 的参数拆分
-    $remote = ssh -i "$sshKey" ${serverUser}@${serverIP} "cd $serverPath; md5sum $($changed -join ' ') 2>&1"
-    $remoteHash = @{}
-    foreach ($line in ($remote -split "`n")) {
-        if ($line -match '^([0-9a-f]{32})\s+(\S+)') { $remoteHash[$Matches[2]] = $Matches[1] }
-    }
-
-    $bad = @()
-    foreach ($f in $changed) {
-        if ($remoteHash[$f] -ne $localHash[$f]) { $bad += $f }
-    }
-    if ($bad.Count -gt 0) {
-        Write-Host "  以下文件线上和本地对不上，本次改动没有真正生效：" -ForegroundColor Red
-        $bad | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
-        pause
-        exit 1
-    }
-    Write-Host "  $($changed.Count) 个改动文件全部比对一致" -ForegroundColor Green
+# 某次 Dify 改动的痕迹。文件一个都没传上去，这两个数照样对，等于没校验。
+#
+# 改成逐个比对 MD5。已验证 Windows 与 Linux 算出的哈希一致（tar 原样打包，
+# 不动行尾），对得上就是同一份字节。
+#
+# 比的是"这次上传的全部文件"，不是"HEAD 这个提交改了哪些文件"：
+# 部署传的是整个工作区，而 HEAD 完全可能是一个没碰业务代码的提交
+# （比如改了这个脚本本身），那样按 HEAD 取差集会得到空集合、直接跳过校验，
+# 校验就又变成了摆设。186 个文件本地算哈希只要 1 秒，没必要省。
+$srcDirs = @("app", "components", "hooks", "lib", "types", "supabase", "public") |
+    Where-Object { Test-Path $_ }
+$localHash = @{}
+$rootLen = (Get-Item -LiteralPath $projectPath).FullName.Length + 1
+foreach ($file in Get-ChildItem -Path $srcDirs -Recurse -File -ErrorAction SilentlyContinue) {
+    # 不能用 Resolve-Path -Relative：它按通配符解析路径，而项目里有
+    # app/dashboard/profiles/[id]/edit——方括号被当成字符集，这一条会静静地
+    # 算不出来（返回 null），文件数从 186 变 185，少校验一个也没人发现。
+    $rel = $file.FullName.Substring($rootLen) -replace '\\', '/'
+    $localHash[$rel] = (Get-FileHash -LiteralPath $file.FullName -Algorithm MD5).Hash.ToLower()
 }
+
+# 用 find 让服务器自己列文件，省得把上万字符的路径拼进命令行。
+# 同样不带引号：PowerShell 5.1 把命令交给 ssh 时会重新拆词。
+$findCmd = "cd $serverPath; find $($srcDirs -join ' ') -type f -exec md5sum {} +"
+$remote = ssh -i "$sshKey" ${serverUser}@${serverIP} $findCmd
+$remoteHash = @{}
+foreach ($line in ($remote -split "`n")) {
+    if ($line -match '^([0-9a-f]{32})\s+\.?/?(\S+)') { $remoteHash[$Matches[2]] = $Matches[1] }
+}
+
+if ($remoteHash.Count -eq 0) {
+    Write-Host "  没能从服务器读到任何哈希，校验无效——请手动确认" -ForegroundColor Red
+    pause
+    exit 1
+}
+
+$bad = @($localHash.Keys | Where-Object { $remoteHash[$_] -ne $localHash[$_] })
+if ($bad.Count -gt 0) {
+    Write-Host "  以下文件线上和本地对不上，本次改动没有真正生效：" -ForegroundColor Red
+    $bad | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+    if ($bad.Count -gt 20) { Write-Host "    …另有 $($bad.Count - 20) 个" -ForegroundColor Red }
+    pause
+    exit 1
+}
+Write-Host "  $($localHash.Count) 个文件全部比对一致" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "部署完成，服务已就绪！" -ForegroundColor Green
