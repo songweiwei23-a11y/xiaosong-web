@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -10,7 +10,6 @@ import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { throwApiError } from "@/lib/api-error";
 import { BookOpen, Search, Loader2, Lightbulb } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { notify } from '@/components/ui/feedback';
 import { saveGenerationHistory } from '@/lib/history';
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Loader2, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
+import { Markdown } from '@/components/markdown'
 import { readDifyStream } from '@/lib/sse-stream'
 import { getActiveProfileId } from '@/lib/active-profile'
 import {
@@ -353,7 +353,7 @@ export default function ContinuousDialog({
                   >
                     {msg.role === 'assistant' ? (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <Markdown>{msg.content}</Markdown>
                       </div>
                     ) : (
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>

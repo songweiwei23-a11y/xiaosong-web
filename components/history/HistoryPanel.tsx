@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { History, X, Trash2, Clock, Copy, RefreshCw } from "lucide-react";
 import { generationHistoryService } from "@/lib/supabase";
-import ReactMarkdown from "react-markdown";
+import { Markdown } from "@/components/markdown";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
 interface HistoryRecord {
@@ -210,7 +210,7 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                     <div className="prose prose-sm dark:prose-invert max-w-none
                       prose-p:text-[14px] prose-p:leading-[1.8]
                       prose-strong:text-foreground prose-headings:text-foreground">
-                      <ReactMarkdown>{selectedRecord.result}</ReactMarkdown>
+                      <Markdown>{selectedRecord.result}</Markdown>
                     </div>
                   </div>
                 ) : (

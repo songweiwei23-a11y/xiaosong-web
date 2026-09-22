@@ -12,7 +12,6 @@ import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { throwApiError } from "@/lib/api-error";
 import ContinuousDialog from '@/components/ContinuousDialog';

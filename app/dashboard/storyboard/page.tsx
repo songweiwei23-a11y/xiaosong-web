@@ -18,8 +18,6 @@ import { useState, useEffect, useMemo } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { useRouter } from "next/navigation";
 import { Film, Copy, Download, Loader2, Sparkles, Wand2, Tag } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';

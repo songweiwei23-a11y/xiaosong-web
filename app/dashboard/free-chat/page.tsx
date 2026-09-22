@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { throwApiError } from "@/lib/api-error";
-import ReactMarkdown from "react-markdown";
+import { Markdown } from "@/components/markdown";
 import { getActiveProfileId } from '@/lib/active-profile';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
@@ -553,7 +553,7 @@ export default function FreeChatPage() {
                           prose-li:text-[14px] prose-strong:text-foreground
                           prose-headings:text-foreground prose-headings:font-semibold
                           prose-hr:border-border/60">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          <Markdown>{msg.content}</Markdown>
                         </div>
                       ) : (
                         <Loader2 className="h-4 w-4 animate-spin text-accent" />

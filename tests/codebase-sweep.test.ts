@@ -190,6 +190,33 @@ describe('全仓库缺陷模式扫描', () => {
   });
 
   /**
+   * Markdown 渲染只能走 components/markdown。
+   *
+   * 分镜正文是一张 7 列表格，但页面上渲染成了一整段流水账。原因是
+   * react-markdown 默认只认 CommonMark，表格属于 GFM 扩展，不挂 remark-gfm
+   * 就不识别——而且不报错：那些行被当成一个普通段落，Markdown 又会把
+   * 段落内的单换行折叠成空格，于是整张表塌成一行。
+   *
+   * 当时全站 5 个渲染点全漏了插件，分镜页还 import 了 remarkGfm 却没用上
+   * （真正渲染的是 ResultPanel），看代码只会以为早就支持了。
+   * 这种「不报错、构建正常、只是显示不对」的事，靠人记是记不住的。
+   */
+  it('Markdown 渲染都走统一组件（否则表格不会被识别）', () => {
+    const bad: string[] = [];
+    for (const { file, code } of sources) {
+      if (rel(file) === 'components/markdown.tsx') continue;
+      for (const m of code.matchAll(/from\s+['"]react-markdown['"]|from\s+['"]remark-gfm['"]/g)) {
+        bad.push(locate(file, code, m.index!));
+      }
+    }
+    expect(
+      bad,
+      `这些地方直接用了 react-markdown / remark-gfm：\n${bad.join('\n')}\n` +
+        `改用 <Markdown>（@/components/markdown）——它挂了 remark-gfm，表格才认得出来。`
+    ).toEqual([]);
+  });
+
+  /**
    * 「当前在用哪个档案」只能走 lib/active-profile。
    *
    * 之前有三个地方各自往 localStorage.activeProfileId 写，只有侧边栏那个会广播

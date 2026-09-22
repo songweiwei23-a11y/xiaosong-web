@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import ReactMarkdown from "react-markdown";
+import { Markdown } from "@/components/markdown";
 import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, type LucideIcon } from "lucide-react";
 import {
   splitQualityReport,
@@ -132,7 +132,7 @@ export function ResultPanel({
                        prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px]
                        prose-strong:text-foreground prose-hr:border-border/60"
           >
-            <ReactMarkdown>{body}</ReactMarkdown>
+            <Markdown>{body}</Markdown>
           </div>
 
           {isGenerating && (
@@ -276,7 +276,7 @@ function QualityCard({
                    prose-h2:hidden prose-h3:text-[12px] prose-h3:mt-3 prose-h3:mb-1.5
                    prose-h3:text-muted-foreground prose-strong:text-foreground"
       >
-        <ReactMarkdown>{report}</ReactMarkdown>
+        <Markdown>{report}</Markdown>
       </div>
     </div>
   );

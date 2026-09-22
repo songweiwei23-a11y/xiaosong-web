@@ -17,7 +17,6 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare, Film, Tag } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';

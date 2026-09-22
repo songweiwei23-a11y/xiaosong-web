@@ -17,7 +17,6 @@ import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCircle, Trash2, Tag } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
