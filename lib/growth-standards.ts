@@ -1,0 +1,231 @@
+/**
+ * 起号板块的提示词。
+ *
+ * 两件事：
+ *   ① 起号打法推荐 —— 从 37 计里挑适合这个号的，给出怎么测
+ *   ② 开篇钩子生成 —— 用 36 张方法卡给一条内容写开头
+ *
+ * 【为什么不是把 37 计摆出来让用户自己挑】知识库第18节原话：
+ * 「先选适合自己的，而非最炫的」。用户看完 37 计的第一反应是挑最有意思的，
+ * 而不是挑自己拍得出来的——单人低预算的号去学多人剧情，
+ * 拍两条就撑不住了。所以核心是那张**选择矩阵**：
+ * 按真实资源条件（团队、设备、场地、有无门店、擅长什么）匹配。
+ *
+ * 【为什么不把 37 计全塞进提示词】全文塞进去一万多字，而且会让模型
+ * 在 37 个里平均用力。改成：先按矩阵筛出候选，只把候选那几计的完整内容
+ * 发过去，让它在有限范围里做深。
+ */
+
+import { GROWTH_TACTICS, SELECTION_MATRIX, TEST_RULE, tacticByName } from './growth-tactics';
+import { OPENING_CARDS, type OpeningCard } from './opening-cards';
+import { THIRTY_DAY_PLAN, DIAGNOSIS_TREE } from './positioning-standards';
+
+/** 一计压缩成一行，用于「候选清单」那一段 */
+const brief = (name: string) => {
+  const t = tacticByName(name);
+  return t ? `- **${t.name}**（${t.formula}）：${t.mechanism}。适合：${t.fit}` : '';
+};
+
+/** 一计的完整内容，用于被选中的那几计 */
+const full = (name: string) => {
+  const t = tacticByName(name);
+  if (!t) return '';
+  return `### ${t.no}. ${t.name}
+
+- **核心机制**：${t.mechanism}
+- **结构公式**：${t.formula}
+- **适合**：${t.fit}
+- **执行**：${t.howto}
+- **案例与变体**：${t.cases}
+- **边界**：${t.limit}`;
+};
+
+const MATRIX_TABLE = `### 选择矩阵：先选适合自己的，而非最炫的
+
+| 资源条件 | 优先尝试 | 暂缓 |
+|---|---|---|
+${SELECTION_MATRIX.map((m) => `| ${m.condition} | ${m.prefer.join('、')} | ${m.defer} |`).join('\n')}
+
+⚠️ 这张表是这一步的核心。**用户看完 37 计的第一反应是挑最有意思的，
+而不是挑自己拍得出来的**——单人低预算的号去学多人剧情，拍两条就撑不住。
+你要按他档案里的真实条件（团队几个人、有什么设备、有没有门店、
+擅长讲故事还是讲干货）去匹配，不是按哪一计更酷。`;
+
+export interface GrowthPlanParams {
+  /** 账号上下文（创作简报切片 + 档案），由调用方用 buildContextBlock 拼好 */
+  contextBlock?: string;
+  /** 用户补充说明 */
+  notes?: string;
+  /** 用户手动圈定的打法。不传就让 AI 按矩阵推荐 */
+  picked?: string[];
+}
+
+/** ① 起号打法推荐 */
+export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
+  const parts: string[] = [];
+
+  parts.push(`你是一位做实体店短视频代运营的资深编导，正在给一个新号定起号打法。
+
+**你不是在介绍方法，是在替他做选择。** 方案写完他就照着拍，
+所以每一计都要说清楚：他为什么能拍、第一条具体拍什么、什么情况下换掉。`);
+  parts.push('');
+
+  if (p.contextBlock?.trim()) {
+    parts.push(p.contextBlock.trim());
+    parts.push('');
+  }
+  if (p.notes?.trim()) {
+    parts.push('## 💡 这次的额外要求', '', p.notes.trim(), '');
+  }
+
+  parts.push('## 📚 判断依据', '');
+  parts.push(MATRIX_TABLE, '');
+
+  // 用户圈定了就只发那几计的完整内容；没圈定就发全部的一行摘要
+  if (p.picked?.length) {
+    parts.push('### 用户已经圈定了这几计，就在这里面做深', '');
+    parts.push(p.picked.map(full).filter(Boolean).join('\n\n'), '');
+    parts.push('⚠️ 不要推荐清单之外的打法——用户已经选好了。', '');
+  } else {
+    parts.push('### 37 计速览（挑 3-4 计，然后去下面要完整内容）', '');
+    parts.push(GROWTH_TACTICS.map((t) => brief(t.name)).filter(Boolean).join('\n'), '');
+  }
+
+  parts.push('### 测试规则', '', TEST_RULE, '');
+  parts.push(THIRTY_DAY_PLAN, '');
+  parts.push(DIAGNOSIS_TREE, '');
+
+  parts.push(`## 📤 输出格式
+
+# 🚀 起号方案
+
+## 📌 先说结论
+
+- **建议主攻**：哪 1 计，为什么是它
+- **备选**：2-3 计，什么情况下切过去
+- **明确不做**：2 条，说明为什么（多半是资源撑不住）
+- **多久能看出跑没跑通**
+
+## 🎯 主攻打法：[计名]
+
+- **为什么是你能拍的**：对照他的真实资源逐条说，不要泛泛而谈
+- **结构公式**：套到他这个号上，写成具体的
+- **前 3 条具体拍什么**：每条一句能直接当标题用的话 + 拍摄要点
+- **边界**：什么不能碰（从这一计的边界里挑对他适用的）
+
+## 🔄 备选打法（2-3 计）
+
+每计写：什么情况下切过去、一句话说明怎么套到他这个号上。
+
+## 🧪 怎么测
+
+- 一次只改哪个变量
+- 每计测几条、看什么指标
+- 什么信号算"这计行"，什么信号算"换掉"
+
+## 📅 30 天节奏
+
+按他的真实产能排，不要排成每天一条如果他一周只能拍两次。
+每段写清任务和交付物。
+
+## 📊 跑不通先查哪里
+
+挑最可能出现的 3 种情况：什么现象 → 先怀疑什么 → 下一步做什么实验。
+
+## ✍️ 写作要求
+
+- **所有建议必须在他的真实资源之内**：团队几个人、有什么设备、能在哪拍
+- **每一计都要说"为什么是你能拍的"**，说不出来就别推荐
+- 具体到能开机，不要写"可以尝试…"这类话
+- 不要把 37 计罗列一遍——只讲你选中的那几计`);
+
+  return parts.join('\n');
+}
+
+export interface OpeningParams {
+  contextBlock?: string;
+  /** 这条内容讲什么 */
+  topic: string;
+  /** 已有的脚本或开头，想优化时传 */
+  currentOpening?: string;
+  /** 用户圈定的方法卡。不传就让 AI 按内容目的挑 */
+  picked?: string[];
+  /** 要几条 */
+  count?: number;
+}
+
+const cardFull = (c: OpeningCard) => `### ${c.no}. ${c.name}（${c.category}）
+
+- **心理机制**：${c.psychology}
+- **开篇公式**：${c.formula}
+- **执行要点**：${c.howto}
+- **案例**：${c.cases}
+- **推荐组合**：${c.combo}
+- **风险边界**：${c.risk}`;
+
+/** ② 开篇钩子生成 */
+export function buildOpeningPrompt(p: OpeningParams): string {
+  const count = p.count ?? 6;
+  const picked = p.picked?.length
+    ? OPENING_CARDS.filter((c) => p.picked!.includes(c.name))
+    : [];
+
+  const parts: string[] = [];
+
+  parts.push(`你是一位短视频编导，正在给一条内容写开头。
+
+**前 3 秒决定这条片子的生死。** 但钩子不是诱饵——
+开头许下的承诺，正文必须兑现，否则完播率会更难看。`);
+  parts.push('');
+
+  if (p.contextBlock?.trim()) {
+    parts.push(p.contextBlock.trim(), '');
+  }
+
+  parts.push('## 🎬 这条内容', '', `**主题**：${p.topic.trim()}`, '');
+  if (p.currentOpening?.trim()) {
+    parts.push('**现在的开头**（觉得不够抓人，要换）：', '', p.currentOpening.trim(), '');
+  }
+
+  parts.push('## 📚 开篇方法卡', '');
+  if (picked.length) {
+    parts.push('用户圈定了这几种，就在这里面写：', '');
+    parts.push(picked.map(cardFull).join('\n\n'), '');
+  } else {
+    parts.push(
+      `下面是 36 种开篇方法。**先看目标用户和内容目的，再选 1 个主钩子、最多 1-2 个辅助钩子**——堆钩子等于没钩子。`,
+      ''
+    );
+    parts.push(
+      OPENING_CARDS.map((c) => `- **${c.name}**（${c.category}）：${c.formula}`).join('\n'),
+      ''
+    );
+  }
+
+  parts.push(`## 📤 输出格式
+
+给 ${count} 条，每条按这个结构：
+
+**第N条 · 用了哪一计**
+> 开头原话（这是要直接念出来的，写成口语，不要写"（停顿）"这类提示）
+
+- **为什么抓得住这群人**：一句话，对应他们的处境
+- **正文怎么兑现**：开头许了什么，正文必须给什么
+- **风险**：这么写可能踩什么坑（没有就写"无"）
+
+最后加一段：
+
+## 🎯 我推荐哪一条
+挑 1 条，说明为什么它最适合这个号——要结合账号的人设和口吻，
+不是挑最刺激的那条。
+
+## ✍️ 写作要求
+
+- **开头写成能直接念的口语**，不是文案腔
+- 必须和这个号的口吻一致（看上面的人设与口吻那一段）
+- 不要用账号禁忌里写明不能说的话
+- **每条用不同的计**，不要六条都是同一个套路
+- 承诺要兑现：写不出正文怎么接的，这条就不要给`);
+
+  return parts.join('\n');
+}

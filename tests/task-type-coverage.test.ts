@@ -76,8 +76,10 @@ describe('dify/stream 调用方必须声明 taskType', () => {
     it(`${rel} 的每次调用都带 taskType`, () => {
       const source = fs.readFileSync(page, 'utf8');
       for (const call of extractStreamCalls(source)) {
+        // 简写属性 `{ taskType, ... }` 也算传了。只认 `taskType:` 会误报，
+        // 而误报久了这条防线就没人当回事了
         expect(call, `${rel} 有一处 /api/dify/stream 调用未传 taskType`).toMatch(
-          /taskType\s*:/
+          /taskType\s*[:,}]|taskType\s*$/m
         );
       }
     });

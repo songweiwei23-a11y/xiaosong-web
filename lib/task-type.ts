@@ -42,6 +42,10 @@ export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   商业定位: 'positioning',
   内容定位: 'positioning',
   创作简报: 'positioning',
+  // 起号板块。方法论已经在提示词里结构化了，走 script 的额度——
+  // 它产出的是可拍的方案和开头，和脚本同属创作
+  起号方案: 'script',
+  开篇钩子: 'script',
   成交理由: 'dealReason',
   自由对话: 'freeChat',
   知识库查询: 'knowledge',
