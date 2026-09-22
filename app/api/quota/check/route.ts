@@ -93,40 +93,45 @@ export async function GET() {
       });
     }
 
-    // ---- 分功能制（免费版）----
+    // ---- 分功能制（免费版、基础版、专业版）----
     const warnings = [];
     let hasExhausted = false;
-    let totalLimit = 0;
+    /** 用得最紧的那个功能，用于在首页点名，而不是只给一个没意义的总数 */
+    let tightest: { featureName: string; used: number; total: number; remaining: number; percentage: number } | null = null;
 
     for (const feature of COUNTED_FEATURES) {
       const verdict = judgeQuota(planId, feature.key, quota);
       if (verdict.limit === -1) continue; // 无限的不参与警告
-      totalLimit += verdict.limit;
 
       // 上限本来就是 0 的功能（免费版的分镜/审稿/标题等）不报警：
       // 它不是「用完了」，而是这个档位没有，天天提醒只会变成噪音
       if (verdict.limit === 0) continue;
 
       const percentage = Math.round((verdict.used / verdict.limit) * 100);
+      const row = {
+        feature: feature.key,
+        featureName: feature.name,
+        used: verdict.used,
+        total: verdict.limit,
+        remaining: verdict.remaining,
+        percentage: Math.min(100, percentage),
+      };
+
+      if (!tightest || percentage > tightest.percentage) {
+        tightest = {
+          featureName: row.featureName,
+          used: row.used,
+          total: row.total,
+          remaining: row.remaining,
+          percentage: row.percentage,
+        };
+      }
+
       if (verdict.remaining === 0) {
         hasExhausted = true;
-        warnings.push({
-          feature: feature.key,
-          featureName: feature.name,
-          used: verdict.used,
-          total: verdict.limit,
-          remaining: 0,
-          percentage: 100,
-        });
+        warnings.push(row);
       } else if (percentage >= 80) {
-        warnings.push({
-          feature: feature.key,
-          featureName: feature.name,
-          used: verdict.used,
-          total: verdict.limit,
-          remaining: verdict.remaining,
-          percentage,
-        });
+        warnings.push(row);
       }
     }
 
@@ -137,7 +142,15 @@ export async function GET() {
       planName: plan.name,
       periodEnd: quota.current_period_end,
       totalUsed,
-      totalLimit,
+      /*
+       * 分功能制下不给总分母。
+       *
+       * 各功能额度加起来（基础版 8×50=400）是个真实存在但会误导人的数字：
+       * 用户看到「20 / 400」会以为还早得很，实际他的脚本生成可能已经
+       * 50 次用满。首页因此改为只显示已用次数，另外点名最紧的那个功能。
+       */
+      totalLimit: 0,
+      tightest,
     });
   } catch (error: any) {
     console.error('[quota/check] 查询失败:', error);

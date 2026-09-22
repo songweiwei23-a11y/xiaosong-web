@@ -101,7 +101,19 @@ interface RecentItem {
 }
 
 export default function DashboardPage() {
-  const [quota, setQuota] = useState<{ used: number; limit: number; plan: string } | null>(null);
+  const [quota, setQuota] = useState<{
+    used: number;
+    limit: number;
+    plan: string;
+    /** 用得最紧的那个功能。按功能分别限额时由接口给出，总量制下为 null */
+    tightest: {
+      featureName: string;
+      used: number;
+      total: number;
+      remaining: number;
+      percentage: number;
+    } | null;
+  } | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [works, setWorks] = useState<Work[]>([]);
@@ -130,6 +142,7 @@ export default function DashboardPage() {
             used: d.totalUsed ?? 0,
             limit: d.totalLimit ?? 0,
             plan: d.planName || "免费版",
+            tightest: d.tightest ?? null,
           });
         }
 
@@ -339,6 +352,40 @@ export default function DashboardPage() {
               {quota?.limit ? (
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${usedPct}%` }} />
+                </div>
+              ) : null}
+
+              {/*
+                套餐按功能分别限额时，总数没有分母可言——各功能额度加起来
+                是个真实但会误导人的数字。这里改为点名用得最紧的那一个：
+                「脚本生成 还剩 2 次」比「20 / 400」有用得多。
+              */}
+              {quota?.tightest ? (
+                <div className="mt-3">
+                  <div className="flex items-baseline justify-between text-[12px]">
+                    <span className="text-muted-foreground">{quota.tightest.featureName}</span>
+                    <span
+                      className={
+                        quota.tightest.remaining === 0
+                          ? "font-medium text-destructive"
+                          : quota.tightest.percentage >= 80
+                            ? "font-medium text-amber-500"
+                            : "text-muted-foreground"
+                      }
+                    >
+                      {quota.tightest.remaining === 0
+                        ? "已用完"
+                        : `还剩 ${quota.tightest.remaining} 次`}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
+                    <div
+                      className={`h-full rounded-full ${
+                        quota.tightest.remaining === 0 ? "bg-destructive" : "bg-primary"
+                      }`}
+                      style={{ width: `${quota.tightest.percentage}%` }}
+                    />
+                  </div>
                 </div>
               ) : null}
 

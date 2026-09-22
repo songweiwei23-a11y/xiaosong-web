@@ -4,7 +4,7 @@ import {
   useState, useEffect } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { SUBSCRIPTION_PLANS, COUNTED_FEATURES } from "@/lib/config/plans";
+import { SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
 import { 
   Sparkles, Zap, CheckCircle, TrendingUp, ArrowRight, 
@@ -115,17 +115,13 @@ export default function HomePage() {
    * 免费版写「账号定位 3次」（实际 1 次）、企业版写 199（收款页收 599）。
    * 首页是对外公示的价格，它和实际收款必须来自同一个源头。
    */
-  const freeQuotaLines = COUNTED_FEATURES
-    .filter((f) => SUBSCRIPTION_PLANS.free.quotas[f.key] > 0)
-    .map((f) => `${f.name} ${SUBSCRIPTION_PLANS.free.quotas[f.key]}次/月`);
-
   const pricingPlans = [
     {
       name: SUBSCRIPTION_PLANS.free.name,
       price: SUBSCRIPTION_PLANS.free.price,
       period: "永久免费",
       desc: "体验核心功能",
-      features: ["知识库无限查询", ...freeQuotaLines],
+      features: quotaSummary("free"),
       highlight: false,
       cta: "立即开始"
     },
@@ -135,9 +131,8 @@ export default function HomePage() {
       period: "月",
       desc: "适合个人创作者",
       features: [
-"知识库无限查询",
-`所有功能合计 ${SUBSCRIPTION_PLANS.basic.totalQuota}次/月`,
-"优先响应速度",
+...quotaSummary("basic"),
+"九大功能全部开放",
 "历史记录保存",
 "邮件客服支持"
       ],
@@ -150,12 +145,11 @@ export default function HomePage() {
       period: "月",
       desc: "适合专业团队",
       features: [
-"知识库无限查询",
-`所有功能合计 ${SUBSCRIPTION_PLANS.pro.totalQuota}次/月`,
+...quotaSummary("pro"),
+"九大功能全部开放",
 "最高优先级",
 "多版本对比",
-"专属客服支持",
-"API接口访问"
+"专属客服支持"
       ],
       highlight: true,
       cta: "选择专业版"
@@ -166,7 +160,7 @@ export default function HomePage() {
       period: "月",
       desc: "适合MCN机构",
       features: [
-"所有功能无限使用",
+...quotaSummary("enterprise"),
 "知识库无限查询",
 "专属AI模型",
 "数据报表分析",

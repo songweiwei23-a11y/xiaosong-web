@@ -1,38 +1,41 @@
 ﻿// 会员套餐配置
 //
-// 两种计量方式，由 totalQuota 决定用哪一种：
+// 三种计量方式，由 totalQuota 决定用哪一种：
 //
-//   totalQuota === null  → 分功能限额（免费版）。各功能互不相通，
-//                          脚本 20 次用完了，选题的 3 次仍然能用。
-//   totalQuota 是数字    → 总量制（基础/专业会员）。所有功能共享一个池子，
-//                          这才是「所有功能：150次/月」这句文案的意思。
+//   totalQuota === null  → 分功能限额。各功能互不相通，脚本用完了
+//                          选题仍然能用。免费版、基础版、专业版都走这一档。
+//   totalQuota 是数字    → 总量制。所有功能共享一个池子。
+//                          目前没有套餐用它，但机制留着，随时可以切。
 //   totalQuota === -1    → 无限（企业版）。
 //
-// 此前没有这个字段，付费版走的是分功能分支，quotas 里每个功能都写着 150，
-// 于是 30 块钱的基础会员实际可用 8 个功能 × 150 = 1200 次，是文案的 8 倍。
-// api-guard 里那段总量校验写了但永远执行不到——调用方每次都传了 feature。
+// 【历史】这里曾经出过一次事：文案写「所有功能 150次/月」，而 quotas 里
+// 每个功能都配着 150，且 api-guard 每次都带 feature 走分功能分支——
+// 于是一份卖 150 次的套餐实际可用 8 个功能 × 150 = 1200 次。
+// 现在计量方式是套餐的显式属性，文案和执行由 quotaSummary() 同源产出，
+// 不会再出现「说的是一套、跑的是另一套」。
 //
-// 知识库在所有付费档都是 -1，且不计入总量：文案单独承诺了「无限使用」。
+// 知识库在所有档位都是 -1：文案单独承诺了「无限使用」，
+// 它也不计入任何总量口径。
 export const SUBSCRIPTION_PLANS = {
   free: {
     id: "free",
     name: "免费版",
     price: 0,
     yearlyPrice: 0,
-    totalQuota: null as number | null, // 免费版按功能分别限额
+    totalQuota: null as number | null, // 按功能分别限额
     features: [
       "知识库：无限使用",
       "账号定位：1次",
       "选题策划：3次/月",
-      "脚本生成：20次/月",
+      "脚本生成：5次/月",
       "自由对话：20次/月",
-      "其他功能：0次"
+      "其他功能：需升级会员"
     ],
     quotas: {
       knowledge: -1,        // -1 表示无限
       positioning: 1,       // 一次性额度
       topic: 3,            // 每月
-      script: 20,          // 每月
+      script: 5,           // 每月。免费版的核心体验额度，刻意给得紧
       freeChat: 20,        // 每月
       storyboard: 0,
       review: 0,
@@ -45,23 +48,24 @@ export const SUBSCRIPTION_PLANS = {
     name: "基础会员",
     price: 49,
     yearlyPrice: 470,     // 49 * 12 * 0.8 ≈ 470
-    totalQuota: 150 as number | null, // 所有功能共用 150 次（知识库除外）
+    totalQuota: null as number | null, // 按功能分别限额，每个功能各 50 次
     features: [
       "知识库：无限使用",
-      "所有功能合计：150次/月",
+      "每个功能各 50次/月",
+      "九大功能全部开放",
       "高级模板支持",
       "标准客服支持"
     ],
     quotas: {
       knowledge: -1,
-      positioning: 150,
-      topic: 150,
-      script: 150,
-      freeChat: 150,
-      storyboard: 150,
-      review: 150,
-      title: 150,
-      dealReason: 150
+      positioning: 50,
+      topic: 50,
+      script: 50,
+      freeChat: 50,
+      storyboard: 50,
+      review: 50,
+      title: 50,
+      dealReason: 50
     }
   },
   pro: {
@@ -69,24 +73,25 @@ export const SUBSCRIPTION_PLANS = {
     name: "专业会员",
     price: 99,
     yearlyPrice: 950,     // 99 * 12 * 0.8 ≈ 950
-    totalQuota: 500 as number | null, // 所有功能共用 500 次（知识库除外）
+    totalQuota: null as number | null, // 按功能分别限额，每个功能各 120 次
     features: [
       "知识库：无限使用",
-      "所有功能合计：500次/月",
+      "每个功能各 120次/月",
+      "九大功能全部开放",
       "全部高级模板",
       "优先客服支持",
       "数据分析报告"
     ],
     quotas: {
       knowledge: -1,
-      positioning: 500,
-      topic: 500,
-      script: 500,
-      freeChat: 500,
-      storyboard: 500,
-      review: 500,
-      title: 500,
-      dealReason: 500
+      positioning: 120,
+      topic: 120,
+      script: 120,
+      freeChat: 120,
+      storyboard: 120,
+      review: 120,
+      title: 120,
+      dealReason: 120
     }
   },
   enterprise: {
@@ -165,6 +170,46 @@ export function usedColumnOf(feature: string): string | undefined {
 export function sumCountedUsage(quota: Record<string, any> | null | undefined): number {
   if (!quota) return 0;
   return COUNTED_FEATURES.reduce((sum, f) => sum + (Number(quota[f.column]) || 0), 0);
+}
+
+/**
+ * 把额度配置翻译成给用户看的几行话。
+ *
+ * 价格页、会员页、首页原本各自手写这几行，于是「说的是一套、跑的是另一套」——
+ * 会员页写着基础版 50 次而实际执行 150 次，首页写免费版账号定位 3 次而
+ * 实际是 1 次。现在统一从 quotas 现算，配置改了文案自动跟上。
+ */
+export function quotaSummary(planId: string): string[] {
+  const plan = getPlan(planId);
+
+  if (plan.totalQuota === -1) return ["所有功能：不限次数"];
+  if (plan.totalQuota !== null) {
+    return [`所有功能合计：${plan.totalQuota} 次/月`, "知识库：不限次数"];
+  }
+
+  // 分功能制。各功能额度相同时合并成一句，否则逐条列出——
+  // 付费档八行「XX：50 次/月」是噪音，免费档逐条列才说得清哪些能用
+  const counted = COUNTED_FEATURES.map((f) => ({ ...f, limit: plan.quotas[f.key] as number }));
+  const usable = counted.filter((f) => f.limit > 0);
+  const unique = new Set(usable.map((f) => f.limit));
+
+  if (usable.length === counted.length && unique.size === 1) {
+    return [`每个功能各 ${[...unique][0]} 次/月`, "知识库：不限次数"];
+  }
+
+  return [
+    "知识库：不限次数",
+    ...usable.map((f) => `${f.name}：${f.limit} 次/月`),
+  ];
+}
+
+/** 该套餐完全不支持的功能（额度为 0），用于在价格表上标出限制 */
+export function unsupportedFeatures(planId: string): string[] {
+  const plan = getPlan(planId);
+  if (plan.totalQuota !== null) return [];
+  return COUNTED_FEATURES.filter((f) => (plan.quotas[f.key] as number) === 0).map(
+    (f) => `不支持${f.name}`
+  );
 }
 
 export interface QuotaVerdict {

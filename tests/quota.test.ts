@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { judgeQuota, sumCountedUsage, SUBSCRIPTION_PLANS, COUNTED_FEATURES } from '@/lib/config/plans';
+import {
+  judgeQuota,
+  SUBSCRIPTION_PLANS,
+  COUNTED_FEATURES,
+  quotaSummary,
+  unsupportedFeatures,
+} from '@/lib/config/plans';
 
 /**
  * 额度判定是直接对着钱的逻辑，之前出过两次错且都没被发现：
@@ -18,11 +24,16 @@ function usage(overrides: Record<string, number> = {}) {
 }
 
 describe('免费版：按功能分别限额', () => {
-  it('脚本用完了不影响选题', () => {
-    const q = usage({ script_used: 20 });
+  it('脚本只有 5 次，用完了不影响选题', () => {
+    const q = usage({ script_used: 5 });
     expect(judgeQuota('free', 'script', q).allowed).toBe(false);
     expect(judgeQuota('free', 'topic', q).allowed).toBe(true);
     expect(judgeQuota('free', 'topic', q).remaining).toBe(3);
+  });
+
+  it('脚本第 5 次仍可用，第 6 次才拦', () => {
+    expect(judgeQuota('free', 'script', usage({ script_used: 4 })).allowed).toBe(true);
+    expect(judgeQuota('free', 'script', usage({ script_used: 5 })).allowed).toBe(false);
   });
 
   it('额度为 0 的功能提示的是「会员功能」而不是「已用完」', () => {
@@ -33,9 +44,9 @@ describe('免费版：按功能分别限额', () => {
   });
 
   it('用完时的提示写明了是哪个功能、上限多少', () => {
-    const verdict = judgeQuota('free', 'script', usage({ script_used: 20 }));
+    const verdict = judgeQuota('free', 'script', usage({ script_used: 5 }));
     expect(verdict.message).toContain('脚本生成');
-    expect(verdict.message).toContain('20');
+    expect(verdict.message).toContain('5');
   });
 
   it('知识库无限，不受任何用量影响', () => {
@@ -45,39 +56,48 @@ describe('免费版：按功能分别限额', () => {
   });
 });
 
-describe('基础会员：所有功能合计 150 次', () => {
-  it('八个功能各用 19 次（合计 152）就该拦下来', () => {
-    const q = usage({
-      script_used: 19, topic_used: 19, positioning_used: 19, free_chat_used: 19,
-      storyboard_used: 19, review_used: 19, title_used: 19, deal_reason_used: 19,
-    });
-    expect(sumCountedUsage(q)).toBe(152);
-    const verdict = judgeQuota('basic', 'script', q);
-    expect(verdict.allowed).toBe(false);
-    expect(verdict.message).toContain('150');
+describe('基础会员：每个功能各 50 次', () => {
+  it('每个功能各算各的，脚本用满不影响分镜', () => {
+    const q = usage({ script_used: 50 });
+    expect(judgeQuota('basic', 'script', q).allowed).toBe(false);
+    expect(judgeQuota('basic', 'storyboard', q).allowed).toBe(true);
+    expect(judgeQuota('basic', 'storyboard', q).remaining).toBe(50);
   });
 
-  it('全部用在一个功能上，也是 150 就到顶', () => {
-    expect(judgeQuota('basic', 'script', usage({ script_used: 149 })).allowed).toBe(true);
-    expect(judgeQuota('basic', 'script', usage({ script_used: 150 })).allowed).toBe(false);
+  it('第 50 次仍可用，第 51 次才拦', () => {
+    expect(judgeQuota('basic', 'script', usage({ script_used: 49 })).allowed).toBe(true);
+    expect(judgeQuota('basic', 'script', usage({ script_used: 50 })).allowed).toBe(false);
   });
 
-  it('剩余次数是总量口径，不是单功能口径', () => {
-    const q = usage({ script_used: 100, topic_used: 30 });
-    expect(judgeQuota('basic', 'title', q).remaining).toBe(20);
+  it('九个功能全部开放，没有额度为 0 的', () => {
+    for (const f of COUNTED_FEATURES) {
+      expect(
+        SUBSCRIPTION_PLANS.basic.quotas[f.key],
+        `基础会员的 ${f.name} 不该是 0`
+      ).toBeGreaterThan(0);
+    }
   });
 
-  it('知识库不计入总量，额度用光后仍可查资料', () => {
-    const q = usage({ script_used: 150 });
+  it('知识库无限，各功能用光后仍可查资料', () => {
+    const q = usage({ script_used: 50, topic_used: 50 });
     expect(judgeQuota('basic', 'script', q).allowed).toBe(false);
     expect(judgeQuota('basic', 'knowledge', q).allowed).toBe(true);
   });
 });
 
-describe('专业会员 500、企业版无限', () => {
-  it('专业会员合计 500', () => {
-    expect(judgeQuota('pro', 'script', usage({ script_used: 499 })).allowed).toBe(true);
-    expect(judgeQuota('pro', 'script', usage({ script_used: 500 })).allowed).toBe(false);
+describe('专业会员每个功能 120 次、企业版无限', () => {
+  it('专业会员单功能 120 到顶', () => {
+    expect(judgeQuota('pro', 'script', usage({ script_used: 119 })).allowed).toBe(true);
+    expect(judgeQuota('pro', 'script', usage({ script_used: 120 })).allowed).toBe(false);
+  });
+
+  it('专业会员每个功能都比基础会员宽', () => {
+    for (const f of COUNTED_FEATURES) {
+      expect(
+        SUBSCRIPTION_PLANS.pro.quotas[f.key],
+        `专业会员的 ${f.name} 不该少于基础会员`
+      ).toBeGreaterThan(SUBSCRIPTION_PLANS.basic.quotas[f.key]);
+    }
   });
 
   it('企业版怎么用都放行', () => {
@@ -87,15 +107,51 @@ describe('专业会员 500、企业版无限', () => {
   });
 });
 
+/**
+ * 文案与执行同源：曾经文案写「所有功能 150次/月」而实际每个功能各 150 次，
+ * 一份套餐卖出了 8 倍的量。现在页面上的话由 quotaSummary 从 quotas 现算。
+ */
+describe('额度文案由配置现算', () => {
+  it('付费档额度一致时合并成一句', () => {
+    expect(quotaSummary('basic').join(' ')).toContain('每个功能各 50 次/月');
+    expect(quotaSummary('pro').join(' ')).toContain('每个功能各 120 次/月');
+  });
+
+  it('免费档逐条列出，说得清哪些能用', () => {
+    const lines = quotaSummary('free').join(' ');
+    expect(lines).toContain('脚本生成：5 次/月');
+    expect(lines).toContain('选题策划：3 次/月');
+    expect(lines).toContain('账号定位：1 次/月');
+  });
+
+  it('免费档不把额度为 0 的功能写成「0 次」，而是归入不支持', () => {
+    expect(quotaSummary('free').join(' ')).not.toContain('：0 次');
+    expect(unsupportedFeatures('free').join(' ')).toContain('分镜脚本');
+  });
+
+  it('企业版直接写不限次数', () => {
+    expect(quotaSummary('enterprise').join(' ')).toContain('不限次数');
+  });
+
+  it('文案里的数字必须等于实际配额', () => {
+    for (const planId of ['free', 'basic', 'pro'] as const) {
+      const text = quotaSummary(planId).join(' ');
+      for (const f of COUNTED_FEATURES) {
+        const limit = SUBSCRIPTION_PLANS[planId].quotas[f.key] as number;
+        if (limit > 0) {
+          expect(text, `${planId} 的文案里找不到 ${f.name} 的 ${limit}`).toContain(String(limit));
+        }
+      }
+    }
+  });
+});
+
 describe('配置本身的一致性', () => {
-  it('付费档的售卖文案与 totalQuota 对得上', () => {
+  it('套餐自带的 features 文案与实际配额对得上', () => {
     // 文案里写的数字必须就是实际执行的上限，这正是当初出问题的地方
-    expect(SUBSCRIPTION_PLANS.basic.features.join(' ')).toContain(
-      String(SUBSCRIPTION_PLANS.basic.totalQuota)
-    );
-    expect(SUBSCRIPTION_PLANS.pro.features.join(' ')).toContain(
-      String(SUBSCRIPTION_PLANS.pro.totalQuota)
-    );
+    expect(SUBSCRIPTION_PLANS.basic.features.join(' ')).toContain('50');
+    expect(SUBSCRIPTION_PLANS.pro.features.join(' ')).toContain('120');
+    expect(SUBSCRIPTION_PLANS.free.features.join(' ')).toContain('5次');
   });
 
   it('计入总量的功能里不包含知识库', () => {
@@ -114,8 +170,9 @@ describe('配置本身的一致性', () => {
   });
 
   it('没有配额记录的新用户按满额对待', () => {
-    expect(judgeQuota('free', 'script', null).remaining).toBe(20);
-    expect(judgeQuota('basic', 'script', null).remaining).toBe(150);
+    expect(judgeQuota('free', 'script', null).remaining).toBe(5);
+    expect(judgeQuota('basic', 'script', null).remaining).toBe(50);
+    expect(judgeQuota('pro', 'script', null).remaining).toBe(120);
   });
 
   it('年付价必须真的比月付十二个月便宜，且是整数', () => {

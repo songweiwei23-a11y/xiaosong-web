@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
-import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, FEATURE_NAMES } from "@/lib/config/plans";
+import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures } from "@/lib/config/plans";
 
 /*
  * 价格和额度一律从 lib/config/plans.ts 取，页面只负责好看。
@@ -12,34 +12,6 @@ import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, FEATURE_NAMES } from "@/lib/confi
  * 199 点进来要付 599）、基础版 29（代码是 30）、额度写「基础 50 次、
  * 专业 200 次」（代码是 150 / 500）。四个地方各写各的，改一处漏三处。
  */
-
-/** 按套餐的真实额度配置生成额度文案，而不是手写一个数字 */
-function quotaLines(planId: keyof typeof SUBSCRIPTION_PLANS): string[] {
-  const plan = SUBSCRIPTION_PLANS[planId];
-
-  if (plan.totalQuota === -1) return ["所有功能：不限次数"];
-
-  if (plan.totalQuota !== null) {
-    return [`所有功能合计：${plan.totalQuota} 次/月`, "知识库：不限次数"];
-  }
-
-  // 免费版按功能分别限额，把有额度的列出来，0 次的单独归到「不支持」
-  const lines = ["知识库：不限次数"];
-  for (const f of COUNTED_FEATURES) {
-    const q = plan.quotas[f.key];
-    if (q > 0) lines.push(`${f.name}：${q} 次/月`);
-  }
-  return lines;
-}
-
-/** 该套餐完全不支持的功能 */
-function unsupported(planId: keyof typeof SUBSCRIPTION_PLANS): string[] {
-  const plan = SUBSCRIPTION_PLANS[planId];
-  if (plan.totalQuota !== null) return [];
-  return COUNTED_FEATURES.filter((f) => plan.quotas[f.key] === 0).map(
-    (f) => `不支持${FEATURE_NAMES[f.key] || f.name}`
-  );
-}
 
 const membershipPlans = [
   {
@@ -51,8 +23,8 @@ const membershipPlans = [
     icon: Shield,
     color: "text-muted-foreground",
     bgColor: "bg-muted",
-    features: [...quotaLines("free"), "历史记录保存", "社区功能"],
-    limits: unsupported("free"),
+    features: [...quotaSummary("free"), "历史记录保存", "社区功能"],
+    limits: unsupportedFeatures("free"),
   },
   {
     id: "basic",
@@ -64,7 +36,7 @@ const membershipPlans = [
     color: "text-primary",
     bgColor: "bg-primary/15",
     popular: false,
-    features: [...quotaLines("basic"), "全部九个功能开放", "高级模板支持", "优先客服支持"],
+    features: [...quotaSummary("basic"), "全部九个功能开放", "高级模板支持", "优先客服支持"],
     limits: [],
   },
   {
@@ -77,7 +49,7 @@ const membershipPlans = [
     color: "text-accent",
     bgColor: "bg-accent/15",
     popular: true,
-    features: [...quotaLines("pro"), "全部高级模板", "数据分析报告", "专属客服 1v1"],
+    features: [...quotaSummary("pro"), "全部高级模板", "数据分析报告", "专属客服 1v1"],
     limits: [],
   },
   {
@@ -91,7 +63,7 @@ const membershipPlans = [
     bgColor: "bg-amber-500/15",
     popular: false,
     features: [
-      ...quotaLines("enterprise"),
+      ...quotaSummary("enterprise"),
       "定制化模板",
       "API 接口调用",
       "数据导出权限",
