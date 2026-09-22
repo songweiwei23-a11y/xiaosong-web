@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { Save, DollarSign, Settings as SettingsIcon, Shield, Zap, Loader2 } from "lucide-react";
+import { Save, DollarSign, Settings as SettingsIcon, Shield, Zap, Loader2, AlertTriangle } from "lucide-react";
+import { SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
 import { notify } from '@/components/ui/feedback';
 
 export default function SettingsPage() {
@@ -9,20 +10,16 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 会员价格配置
-  const [pricing, setPricing] = useState({
-    basic: { monthly: 30, yearly: 288 },
-    pro: { monthly: 99, yearly: 950 },
-    enterprise: { monthly: 199, yearly: 1910 },
-  });
-
-  // 功能配额配置
-  const [quotas, setQuotas] = useState({
-    free: 50,
-    basic: 150,
-    pro: 500,
-    enterprise: -1,
-  });
+  /*
+   * 价格与额度的 state 已删除。
+   *
+   * 它们原本是一组可编辑的输入框，存进 system_settings，而没有任何代码
+   * 读它——真实值一直来自 lib/config/plans.ts。留着这两份 state 的话，
+   * 页面会继续把过期的数字（basic 月付 30、free 配额 50）写回数据库，
+   * 下次谁来接手一看有这份配置，很容易以为它是生效的。
+   *
+   * 现在两个 tab 都改成从 plans.ts 只读展示。
+   */
 
   // 功能开关
   const [features, setFeatures] = useState({
@@ -42,16 +39,10 @@ export default function SettingsPage() {
       const response = await fetch('/api/admin/settings');
       const data = await response.json();
       
-      if (response.ok && data.settings) {
-        if (data.settings.pricing) {
-          setPricing(data.settings.pricing);
-        }
-        if (data.settings.quotas) {
-          setQuotas(data.settings.quotas);
-        }
-        if (data.settings.features) {
-          setFeatures(data.settings.features);
-        }
+      // 只还原功能开关。pricing / quotas 即使库里有旧值也不再读——
+      // 它们从来没生效过，读回来只会在页面上显示一组骗人的数字
+      if (response.ok && data.settings?.features) {
+        setFeatures(data.settings.features);
       }
     } catch (error) {
       console.error('加载配置失败:', error);
@@ -67,13 +58,9 @@ export default function SettingsPage() {
       const response = await fetch('/api/admin/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settings: {
-            pricing,
-            quotas,
-            features,
-          },
-        }),
+        // 只存功能开关。价格和额度在 lib/config/plans.ts 里，
+        // 往这里再存一份就又多了一个会分叉的来源
+        body: JSON.stringify({ settings: { features } }),
       });
 
       const data = await response.json();
@@ -171,110 +158,49 @@ export default function SettingsPage() {
               {/* 价格配置 */}
               {activeTab === "pricing" && (
                 <div className="space-y-6">
-                  <h2 className="text-xl font-bold mb-4">会员价格配置</h2>
+                  <h2 className="text-xl font-bold mb-4">当前生效的价格</h2>
 
-                  {/* 基础会员 */}
-                  <div className="border rounded-lg p-4">
-                    <h3 className="font-semibold mb-3">基础会员</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm text-muted-foreground mb-1">月付价格（¥）</label>
-                        <input
-                          type="number"
-                          value={pricing.basic.monthly}
-                          onChange={(e) =>
-                            setPricing({
-                              ...pricing,
-                              basic: { ...pricing.basic, monthly: Number(e.target.value) },
-                            })
-                          }
-                          className="w-full px-3 py-2 border rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-muted-foreground mb-1">年付价格（¥）</label>
-                        <input
-                          type="number"
-                          value={pricing.basic.yearly}
-                          onChange={(e) =>
-                            setPricing({
-                              ...pricing,
-                              basic: { ...pricing.basic, yearly: Number(e.target.value) },
-                            })
-                          }
-                          className="w-full px-3 py-2 border rounded-lg"
-                        />
-                      </div>
-                    </div>
+                  {/*
+                    这里原本是一组可编辑的价格输入框，改完点保存会写进
+                    system_settings——但没有任何代码读它。真实价格来自
+                    lib/config/plans.ts，首页、会员页、收款页和服务端全从那里取。
+                    管理员改了半天、看到「保存成功」，实际一分钱都没变。
+
+                    没有把它接成「数据库里的价格」，是因为这个产品刚为
+                    「说的是一套、跑的是另一套」付过代价：价格曾经在四个地方
+                    各写一份，企业版首页写 199、收款页收 599。再开一个来源，
+                    等于又给自己埋一颗同样的雷。
+                  */}
+                  <div className="space-y-3">
+                    {(Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => {
+                      const plan = SUBSCRIPTION_PLANS[id];
+                      const save = plan.price * 12 - plan.yearlyPrice;
+                      return (
+                        <div key={id} className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-border/60 p-4">
+                          <span className="font-semibold text-foreground">{plan.name}</span>
+                          {plan.price === 0 ? (
+                            <span className="text-sm text-muted-foreground">免费</span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              ¥{plan.price}/月 · ¥{plan.yearlyPrice}/年
+                              <span className="ml-2 text-xs">（年付省 ¥{save}）</span>
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* 专业会员 */}
-                  <div className="border rounded-lg p-4">
-                    <h3 className="font-semibold mb-3">专业会员</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm text-muted-foreground mb-1">月付价格（¥）</label>
-                        <input
-                          type="number"
-                          value={pricing.pro.monthly}
-                          onChange={(e) =>
-                            setPricing({
-                              ...pricing,
-                              pro: { ...pricing.pro, monthly: Number(e.target.value) },
-                            })
-                          }
-                          className="w-full px-3 py-2 border rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-muted-foreground mb-1">年付价格（¥）</label>
-                        <input
-                          type="number"
-                          value={pricing.pro.yearly}
-                          onChange={(e) =>
-                            setPricing({
-                              ...pricing,
-                              pro: { ...pricing.pro, yearly: Number(e.target.value) },
-                            })
-                          }
-                          className="w-full px-3 py-2 border rounded-lg"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 企业版 */}
-                  <div className="border rounded-lg p-4">
-                    <h3 className="font-semibold mb-3">企业版</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm text-muted-foreground mb-1">月付价格（¥）</label>
-                        <input
-                          type="number"
-                          value={pricing.enterprise.monthly}
-                          onChange={(e) =>
-                            setPricing({
-                              ...pricing,
-                              enterprise: { ...pricing.enterprise, monthly: Number(e.target.value) },
-                            })
-                          }
-                          className="w-full px-3 py-2 border rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-muted-foreground mb-1">年付价格（¥）</label>
-                        <input
-                          type="number"
-                          value={pricing.enterprise.yearly}
-                          onChange={(e) =>
-                            setPricing({
-                              ...pricing,
-                              enterprise: { ...pricing.enterprise, yearly: Number(e.target.value) },
-                            })
-                          }
-                          className="w-full px-3 py-2 border rounded-lg"
-                        />
-                      </div>
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">价格在代码里，不在这里改</p>
+                      <p className="mt-1">
+                        改 <code className="rounded bg-foreground/10 px-1">lib/config/plans.ts</code> 后重新部署，
+                        首页、会员页、收款页会一起变。放在这个页面改会出现
+                        「页面显示一套、实际收另一套」——这正是之前企业版
+                        首页写 199 而收款页收 599 的原因。
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -283,28 +209,57 @@ export default function SettingsPage() {
               {/* 功能配置 */}
               {activeTab === "features" && (
                 <div className="space-y-6">
-                  <h2 className="text-xl font-bold mb-4">功能额度配置</h2>
+                  <h2 className="text-xl font-bold mb-4">当前生效的套餐与额度</h2>
 
-                  <div className="space-y-4">
-                    {Object.entries(quotas).map(([plan, quota]) => (
-                      <div key={plan} className="border rounded-lg p-4">
-                        <label className="block font-semibold mb-2 capitalize">
-                          {plan === 'free' ? '免费版' : plan === 'basic' ? '基础会员' : plan === 'pro' ? '专业会员' : '企业版'}
-                        </label>
-                        <input
-                          type="number"
-                          value={quota}
-                          onChange={(e) =>
-                            setQuotas({ ...quotas, [plan]: Number(e.target.value) })
-                          }
-                          className="w-full px-3 py-2 border rounded-lg"
-                          placeholder={quota === -1 ? "无限（输入-1）" : ""}
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {quota === -1 ? '无限额度' : `每月 ${quota} 次`}
-                        </p>
-                      </div>
-                    ))}
+                  {/*
+                    这里原本是一组可编辑的数字输入框，改完点保存会写进
+                    system_settings——但没有任何代码读它，真实额度一直来自
+                    lib/config/plans.ts。也就是说管理员改了半天、看到「保存成功」，
+                    实际什么都没变。
+
+                    没有把它接成「数据库里的额度」，是因为这个产品刚为
+                    「文案与执行不一致」付过代价：价格曾经在四个地方各写一份，
+                    企业版首页 199、收款页 599。再加一个数据库来源，
+                    等于又开一个会分叉的口子。
+
+                    改成如实展示当前生效的配置，并说清改哪里。
+                  */}
+                  <div className="space-y-3">
+                    {(Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => {
+                      const plan = SUBSCRIPTION_PLANS[id];
+                      return (
+                        <div key={id} className="rounded-xl border border-border/60 p-4">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="font-semibold text-foreground">{plan.name}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {plan.price === 0
+                                ? "免费"
+                                : `¥${plan.price}/月 · ¥${plan.yearlyPrice}/年`}
+                            </span>
+                          </div>
+                          <ul className="mt-2 space-y-0.5">
+                            {quotaSummary(id).map((line) => (
+                              <li key={line} className="text-xs text-muted-foreground">
+                                · {line}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">这些数字改不了</p>
+                      <p className="mt-1">
+                        价格和额度由代码里的 <code className="rounded bg-foreground/10 px-1">lib/config/plans.ts</code> 决定，
+                        首页、会员页、收款页和服务端的额度校验都从那一处取值。
+                        要调整请改那个文件并重新部署——放在这里改会出现
+                        「页面显示一套、实际执行另一套」，这个产品在价格上已经吃过一次亏。
+                      </p>
+                    </div>
                   </div>
 
                   <h2 className="text-xl font-bold mb-4 mt-8">功能开关</h2>

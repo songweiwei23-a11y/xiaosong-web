@@ -31,15 +31,13 @@ export default function AdminQRCodesPage() {
   const loadQRCodes = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("payment_qrcodes")
-        .select("*")
-        .order("payment_method");
-
-      if (error) throw error;
+      // 走服务端：表加了 RLS 之后浏览器读不到，而且这本来就该经过管理员校验
+      const res = await fetch("/api/admin/qrcodes");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "加载失败");
       setQrcodes(data || []);
     } catch (error: any) {
-      notify("加载失败: " + error.message);
+      notify(error?.message || "加载失败");
     } finally {
       setLoading(false);
     }
@@ -65,16 +63,18 @@ export default function AdminQRCodesPage() {
         .from("payment-qrcodes")
         .getPublicUrl(fileName);
 
-      const { error: updateError } = await supabase
-        .from("payment_qrcodes")
-        .update({
-          qrcode_url: urlData.publicUrl,
-          is_active: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq("payment_method", method);
-
-      if (updateError) throw updateError;
+      /*
+       * 「把地址记进表」这一步必须经过服务端。
+       * 原先是浏览器直接 UPDATE，加了 RLS 之后会被拒；而且本来也不该让
+       * 浏览器有权改收款码——这是一张收钱的图，改掉它等于把钱转到别处。
+       */
+      const res = await fetch("/api/admin/qrcodes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethod: method, qrcodeUrl: urlData.publicUrl }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "保存失败");
 
       notify("二维码上传成功");
       loadQRCodes();
