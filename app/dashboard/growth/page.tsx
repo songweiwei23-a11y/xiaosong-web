@@ -12,7 +12,14 @@ import { ContextBadge } from '@/components/workspace/ContextBadge'
 import { Markdown } from '@/components/markdown'
 import { GROWTH_TACTICS, SELECTION_MATRIX } from '@/lib/growth-tactics'
 import { OPENING_CARDS, OPENING_CATEGORIES } from '@/lib/opening-cards'
-import { buildGrowthPlanPrompt, buildOpeningPrompt } from '@/lib/growth-standards'
+import {
+  buildGrowthPlanPrompt,
+  buildOpeningPrompt,
+  buildTacticPickPrompt,
+  parseTacticCandidates,
+  type TacticCandidate,
+} from '@/lib/growth-standards'
+import { takeHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
 
 /**
  * 起号板块：起号 36+1 计 + 开篇 36 计。
@@ -45,6 +52,19 @@ export default function GrowthPage() {
   const [showAllTactics, setShowAllTactics] = useState(false)
   const [openCat, setOpenCat] = useState<string | null>(null)
 
+  /**
+   * AI 推荐的候选打法。
+   * 先出 5 个候选让用户选，再生成完整方案——直接出方案要跑三分钟才知道
+   * 方向对不对，不对还得重来；而且方案是"给"的不是"选"的，执行意愿差一截。
+   */
+  const [candidates, setCandidates] = useState<TacticCandidate[]>([])
+  const [picking, setPicking] = useState(false)
+
+  /** 可以直接拿来用的选题和脚本 */
+  const [recentTopics, setRecentTopics] = useState<string[]>([])
+  const [recentScripts, setRecentScripts] = useState<Array<{ title: string; body: string }>>([])
+  const [handoffFrom, setHandoffFrom] = useState('')
+
   useEffect(() => {
     if (!busy) return
     setElapsed(0)
@@ -52,7 +72,23 @@ export default function GrowthPage() {
     return () => clearInterval(t)
   }, [busy])
 
-  // 换页回来内容还在
+  // 别的页面带过来的内容（选题页/脚本页的「设计开篇」入口）
+  useEffect(() => {
+    const data = takeHandoff()
+    if (!data) return
+    if (data.tab === 'opening') setTab('opening')
+    if (data.topic) setTopic(data.topic)
+    if (data.currentOpening) setCurrentOpening(data.currentOpening)
+    if (data.from) setHandoffFrom(data.from)
+  }, [])
+
+  /*
+   * 换页回来内容还在，同时把最近的选题和脚本取出来备用。
+   *
+   * 为什么要取：开篇钩子是给某条具体内容写开头的，而那条内容多半
+   * 刚在选题页或脚本页生成过。让用户再手打一遍主题、或者回去复制，
+   * 是白白把已经有的东西丢掉。
+   */
   useEffect(() => {
     const restore = async () => {
       try {
@@ -60,10 +96,31 @@ export default function GrowthPage() {
         if (!res.ok) return
         const rows = await res.json()
         if (!Array.isArray(rows)) return
+
         const plan = rows.find((x: any) => x.task_type === '起号方案')
         const open = rows.find((x: any) => x.task_type === '开篇钩子')
         if (plan?.result) setPlanResult((c) => c || plan.result)
         if (open?.result) setOpeningResult((c) => c || open.result)
+
+        // 最近的选题：从选题结果里解析出条目
+        const topicRow = rows.find((x: any) => x.task_type === '选题策划')
+        if (topicRow?.result) setRecentTopics(parseTopicOptions(topicRow.result).slice(0, 8))
+
+        // 最近几条脚本：标题取第一行，正文用来截开头
+        setRecentScripts(
+          rows
+            .filter((x: any) => x.task_type === '脚本生成' && x.result)
+            .slice(0, 5)
+            .map((x: any) => ({
+              title:
+                (x.result as string)
+                  .split('\n')
+                  .find((l: string) => l.trim())
+                  ?.replace(/^#+\s*/, '')
+                  .slice(0, 40) || '未命名脚本',
+              body: x.result as string,
+            }))
+        )
       } catch (e) {
         console.error('恢复失败:', e)
       }
@@ -95,6 +152,38 @@ export default function GrowthPage() {
       notify((e as Error)?.message || '生成失败，请重试')
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** 先要候选。30 秒，选错了成本也小 */
+  const askCandidates = async () => {
+    setPicking(true)
+    setCandidates([])
+    try {
+      const res = await fetch('/api/dify/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskType: '起号方案',
+          profileId: getActiveProfileId(),
+          query: buildTacticPickPrompt({
+            contextBlock: buildContextBlock(context, 'script'),
+            notes: planNotes,
+          }),
+        }),
+      })
+      if (!res.ok) await throwApiError(res)
+      const full = await readDifyStream(res, {
+        onChunk: (_p, all) => setCandidates(parseTacticCandidates(all)),
+      })
+      const parsed = parseTacticCandidates(full)
+      setCandidates(parsed)
+      if (parsed.length === 0) notify('没解析出候选，可以直接点下面生成完整方案')
+    } catch (e: unknown) {
+      console.error('推荐失败:', e)
+      notify((e as Error)?.message || '推荐失败，请重试')
+    } finally {
+      setPicking(false)
     }
   }
 
@@ -182,11 +271,55 @@ export default function GrowthPage() {
               </ul>
             </div>
 
+            {/* AI 推荐候选 → 用户自己选 → 再出完整方案。
+                直接出方案要跑三分钟才知道方向对不对，而且方案是"给"的不是"选"的 */}
+            <button
+              onClick={askCandidates}
+              disabled={picking || busy}
+              className="mb-4 w-full rounded-xl border border-primary/40 bg-primary/[0.08] py-2.5 text-[13px] font-medium text-primary disabled:opacity-50"
+            >
+              {picking ? `正在按你的条件挑… ${timer}` : '✨ 让 AI 先推荐几个，我再选'}
+            </button>
+
+            {candidates.length > 0 && (
+              <div className="mb-4 space-y-1.5">
+                <p className="text-[12px] text-muted-foreground">
+                  按你的资源条件挑出这几个，勾中意的再生成完整方案（可多选）：
+                </p>
+                {candidates.map((c) => {
+                  const on = pickedTactics.includes(c.name)
+                  return (
+                    <button
+                      key={c.name}
+                      onClick={() => toggle(pickedTactics, setPickedTactics, c.name)}
+                      aria-pressed={on}
+                      className={`glass-interactive block w-full rounded-xl border px-4 py-3 text-left ${
+                        on ? 'glass-selected' : 'glass-panel'
+                      }`}
+                    >
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className={`text-[13px] font-medium ${on ? 'text-primary' : 'text-foreground'}`}>
+                          {c.name}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          适合度 {c.fitLevel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">{c.why}</p>
+                      <p className="mt-1 text-[11.5px] leading-relaxed text-emerald-500">
+                        第一条：{c.firstShot}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             <button
               onClick={() => setShowAllTactics((v) => !v)}
               className="mb-3 text-[12px] text-primary underline"
             >
-              {showAllTactics ? '收起' : '我想自己圈定打法'}
+              {showAllTactics ? '收起' : '或者从 37 计里自己圈定'}
               {pickedTactics.length > 0 && `（已选 ${pickedTactics.length}）`}
             </button>
 
@@ -229,6 +362,62 @@ export default function GrowthPage() {
           </div>
         ) : (
           <div className="glass-panel mb-6 rounded-2xl p-6">
+            {handoffFrom && (
+              <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] px-3.5 py-2.5 text-[12px] text-emerald-500">
+                内容来自「{handoffFrom}」，已经替你填好了 ✓
+              </div>
+            )}
+
+            {/*
+              开篇钩子是给某条具体内容写开头的，而那条内容多半刚在选题页
+              或脚本页生成过。让用户再手打一遍、或者回去复制，
+              是白白把已经有的东西丢掉。
+            */}
+            {recentTopics.length > 0 && (
+              <div className="mb-4">
+                <p className="mb-1.5 text-[12px] text-muted-foreground">
+                  刚生成的选题，点一条直接用：
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentTopics.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTopic(t)}
+                      title={t}
+                      className={`glass-interactive max-w-full truncate rounded-lg border px-2.5 py-1.5 text-[12px] ${
+                        topic === t ? 'glass-selected text-primary' : 'glass-panel text-foreground'
+                      }`}
+                    >
+                      {t.length > 26 ? t.slice(0, 26) + '…' : t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {recentScripts.length > 0 && (
+              <div className="mb-4">
+                <p className="mb-1.5 text-[12px] text-muted-foreground">
+                  刚写的脚本，点一条把开头调出来改：
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentScripts.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setTopic(s.title)
+                        setCurrentOpening(extractOpening(s.body))
+                      }}
+                      title={s.title}
+                      className="glass-interactive glass-panel max-w-full truncate rounded-lg border px-2.5 py-1.5 text-[12px] text-foreground"
+                    >
+                      {s.title.length > 22 ? s.title.slice(0, 22) + '…' : s.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <label className="mb-2 block text-[13px] font-medium text-foreground">
               这条内容讲什么 <span className="text-destructive">*</span>
             </label>

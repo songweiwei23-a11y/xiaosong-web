@@ -77,7 +77,8 @@ export default function QuotaReminder({ open, onClose, warnings, planName }: Quo
           <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             我知道了
           </Button>
-          <Link href="/dashboard/subscription" className="w-full sm:w-auto">
+          {/* 同 quota-exhausted.tsx：/dashboard/subscription 这个路由不存在 */}
+          <Link href="/dashboard/membership" className="w-full sm:w-auto">
             <Button className="w-full">
               升级套餐
             </Button>

@@ -58,7 +58,7 @@ import { useScriptHistory } from "./useScriptHistory";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContextBadge } from "@/components/workspace/ContextBadge";
-import { putHandoff, takeHandoff } from "@/lib/handoff";
+import { putHandoff, takeHandoff, extractOpening } from "@/lib/handoff";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -1454,6 +1454,22 @@ ${formatRequirements}
             onClick: (body) => {
               putHandoff({ from: "脚本生成", scriptContent: body, workId: workId ?? undefined });
               router.push("/dashboard/review");
+            },
+          },
+          {
+            // 开头不够抓人是最常见的返工点。把正文开头那几句截过去，
+            // 省得用户从两千字里自己找
+            label: "换个开头",
+            icon: Sparkles,
+            onClick: (body) => {
+              putHandoff({
+                from: "脚本生成",
+                topic,
+                currentOpening: extractOpening(body),
+                tab: "opening",
+                workId: workId ?? undefined,
+              });
+              router.push("/dashboard/growth");
             },
           },
           {

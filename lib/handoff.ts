@@ -31,6 +31,38 @@ export interface HandoffPayload {
    * 而不是变成又一条互不相干的零散记录。
    */
   workId?: string;
+  /**
+   * 现有的开头，开篇钩子页用来做优化。
+   * 从脚本带过去时自动截取正文开头那几句——用户想换的就是这几句，
+   * 让他自己从两千字里找出来再粘过去是多余的。
+   */
+  currentOpening?: string;
+  /** 目标页要落在哪个标签上（起号页有「起号打法」和「开篇钩子」两个） */
+  tab?: string;
+}
+
+/**
+ * 从脚本正文里截出开头那几句。
+ *
+ * 脚本动辄两三千字，而「开篇」指的是前 3 秒念出来的那句话。
+ * 带整篇过去，模型要在里面猜哪句是开头；用户自己找又麻烦。
+ * 所以这里按结构标记和句读取前面一小段。
+ */
+export function extractOpening(script: string, maxLen = 120): string {
+  if (!script?.trim()) return "";
+  // 去掉【开场】0-5秒 这类结构标记，留下真正要念的话
+  const cleaned = script
+    .replace(/^#+.*$/gm, "")
+    .replace(/【[^】]*】/g, "")
+    .replace(/^\s*\d+[.、)]\s*/gm, "")
+    .replace(/\d+\s*[-–]\s*\d+\s*秒[：:]?/g, "")
+    .trim();
+  const firstPara = cleaned.split(/\n\s*\n/)[0]?.trim() || cleaned;
+  if (firstPara.length <= maxLen) return firstPara;
+  // 超长就按句号断，宁可短也不要切在半句上
+  const cut = firstPara.slice(0, maxLen);
+  const lastStop = Math.max(cut.lastIndexOf("。"), cut.lastIndexOf("！"), cut.lastIndexOf("？"));
+  return lastStop > 20 ? cut.slice(0, lastStop + 1) : cut;
 }
 
 /** 存下要交接的内容。调用方随后自行跳转 */

@@ -1120,6 +1120,21 @@ export default function TopicPage() {
               router.push("/dashboard/script");
             },
           },
+          {
+            // 选题定了就能先想开头——开头决定这条片子的生死，
+            // 而且想清楚开头再写正文，脚本会顺得多
+            label: "设计开篇",
+            icon: Sparkles,
+            onClick: (body) => {
+              const options = parseTopicOptions(body);
+              putHandoff({
+                from: "选题策划",
+                topic: options[0] || "",
+                tab: "opening",
+              });
+              router.push("/dashboard/growth");
+            },
+          },
         ]}
       />
 

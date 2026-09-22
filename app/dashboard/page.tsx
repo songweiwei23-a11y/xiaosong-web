@@ -9,6 +9,7 @@ import { getActiveProfileId } from '@/lib/active-profile';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, Loader2, History,
+  ClipboardList, Rocket, Wallet, LayoutList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,10 +49,43 @@ const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; a
   },
 ];
 
-const MORE_TOOLS: { name: string; icon: LucideIcon; href: string }[] = [
+/**
+ * 先把地基打好，后面所有产出才准。
+ *
+ * 单独成一组而不是混进「更多工具」里：这几项有明确的先后——
+ * 档案 → 定位 → 简报，简报做完选题、脚本、分镜才真的用得上你的账号信息。
+ * 混在工具堆里，用户不会意识到这是要先做的事。
+ */
+const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; step: string }[] = [
+  {
+    name: "个人档案",
+    desc: "填一次，全站都用它",
+    icon: User,
+    href: "/dashboard/profiles",
+    step: "1",
+  },
+  {
+    name: "账号定位",
+    desc: "这个号是什么、给谁、凭什么",
+    icon: Target,
+    href: "/dashboard/positioning",
+    step: "2",
+  },
+  {
+    name: "创作简报",
+    desc: "把定位翻译成各板块能直接用的指令",
+    icon: ClipboardList,
+    href: "/dashboard/creative-brief",
+    step: "3",
+  },
+];
+
+const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }[] = [
   { name: "审稿优化", icon: CheckCircle, href: "/dashboard/review" },
   { name: "标题封面", icon: Tag, href: "/dashboard/title" },
-  { name: "账号定位", icon: Target, href: "/dashboard/positioning" },
+  { name: "起号", icon: Rocket, href: "/dashboard/growth", tip: "37计 + 开篇36计" },
+  { name: "商业定位", icon: Wallet, href: "/dashboard/business-positioning", tip: "靠什么赚钱" },
+  { name: "内容定位", icon: LayoutList, href: "/dashboard/content-positioning", tip: "长期发什么" },
   { name: "成交理由", icon: Award, href: "/dashboard/deal-reason" },
   { name: "高阶自由", icon: MessagesSquare, href: "/dashboard/free-chat" },
   { name: "知识库", icon: BookOpen, href: "/dashboard/knowledge" },
@@ -67,6 +101,12 @@ const TASK_ROUTES: Record<string, string> = {
   账号定位: "/dashboard/positioning",
   成交理由: "/dashboard/deal-reason",
   知识库查询: "/dashboard/knowledge",
+  // 新板块也要能点回去，否则历史里点一条会跳到 /history
+  商业定位: "/dashboard/business-positioning",
+  内容定位: "/dashboard/content-positioning",
+  创作简报: "/dashboard/creative-brief",
+  起号方案: "/dashboard/growth",
+  开篇钩子: "/dashboard/growth",
 };
 
 function greeting() {
@@ -243,6 +283,34 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* 地基单独成组：这三步有先后，做完简报后面所有产出才用得上账号信息。
+                混进工具堆里用户不会意识到这是要先做的 */}
+            <h2 className="mb-1 mt-7 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              先打地基
+            </h2>
+            <p className="mb-3 text-[11.5px] text-muted-foreground">
+              按顺序做完这三步，选题、脚本、分镜才会真的用上你的账号信息
+            </p>
+            <div className="space-y-2">
+              {FOUNDATION.map((f) => (
+                <Link
+                  key={f.href}
+                  href={f.href}
+                  className="glass-panel glass-interactive group flex items-center gap-3 rounded-xl px-3.5 py-3"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[11px] font-medium text-primary">
+                    {f.step}
+                  </span>
+                  <f.icon className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] text-foreground">{f.name}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{f.desc}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              ))}
+            </div>
+
             <h2 className="mb-3 mt-7 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
               更多工具
             </h2>
@@ -254,7 +322,12 @@ export default function DashboardPage() {
                   className="glass-panel glass-interactive group flex items-center gap-2.5 rounded-xl px-3.5 py-2.5"
                 >
                   <t.icon className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
-                  <span className="truncate text-[12.5px] text-foreground">{t.name}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] text-foreground">{t.name}</span>
+                    {t.tip && (
+                      <span className="block truncate text-[10.5px] text-muted-foreground">{t.tip}</span>
+                    )}
+                  </span>
                 </Link>
               ))}
             </div>

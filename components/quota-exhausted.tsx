@@ -32,7 +32,9 @@ export default function QuotaExhausted({ planName, feature }: QuotaExhaustedProp
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <Link href="/dashboard/subscription">
+        {/* 原来指向 /dashboard/subscription——那个路由不存在，
+            额度用完点「立即升级」直接 404，等于把付费入口堵死了 */}
+        <Link href="/dashboard/membership">
           <Button size="lg" className="gap-2">
             <Sparkles className="h-4 w-4" />
             立即升级套餐

@@ -142,6 +142,77 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
   return parts.join('\n');
 }
 
+/**
+ * ①.5 先推荐候选，让用户自己选。
+ *
+ * 【为什么要多这一步】直接出整份方案有两个问题：一是跑三分钟才知道
+ * 它选的方向对不对，不对就得重来；二是用户没有参与感——方案是"给"他的，
+ * 不是他"选"的，执行意愿差一截。
+ *
+ * 所以先花 30 秒出 5 个候选，每个说清"为什么是你能拍的"和"第一条拍什么"，
+ * 用户勾中意的，再生成完整方案。选错了成本也只有 30 秒。
+ */
+export function buildTacticPickPrompt(p: { contextBlock?: string; notes?: string }): string {
+  const parts: string[] = [];
+
+  parts.push(`你是一位做实体店短视频代运营的资深编导。
+从下面 37 计里，按这个账号的**真实资源条件**挑出 5 个候选，交给他自己选。
+
+**不要挑最炫的，挑他拍得出来的。** 单人低预算的号推多人剧情，
+他拍两条就撑不住，这样的推荐等于没推荐。`);
+  parts.push('');
+
+  if (p.contextBlock?.trim()) parts.push(p.contextBlock.trim(), '');
+  if (p.notes?.trim()) parts.push('## 💡 额外要求', '', p.notes.trim(), '');
+
+  parts.push('## 📚 判断依据', '', MATRIX_TABLE, '');
+  parts.push('### 37 计速览', '');
+  parts.push(GROWTH_TACTICS.map((t) => brief(t.name)).filter(Boolean).join('\n'), '');
+
+  parts.push(`## 📤 输出格式
+
+**严格按下面的格式输出 5 条，一条都不要多。** 每条之间空一行：
+
+计名｜适合度｜为什么是你能拍的｜第一条拍什么
+
+- **计名**：必须和上面 37 计里的名字**一字不差**
+- **适合度**：高 / 中 / 可以试试
+- **为什么是你能拍的**：一句话，必须点到他的真实条件（团队几个人、
+  有什么设备、能在哪拍、擅长什么），不要写"适合你的账号"这种空话
+- **第一条拍什么**：一句能直接当标题用的话
+
+示例（格式参考，内容要换成这个账号的）：
+情境还原｜高｜你每周都在客户店里干活，素材自动产生，一个人拿手机就能拍｜今天帮张老板拍第5条，他说昨天来了8个人
+
+不要写前言、不要写总结、不要用表格、不要加编号。只输出这 5 行。`);
+
+  return parts.join('\n');
+}
+
+/** 解析候选推荐。格式约定得很死，但模型仍可能变形，所以要容错 */
+export interface TacticCandidate {
+  name: string;
+  fitLevel: string;
+  why: string;
+  firstShot: string;
+}
+
+export function parseTacticCandidates(text: string): TacticCandidate[] {
+  const out: TacticCandidate[] = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.trim().replace(/^[-*\d.、\s]+/, '');
+    if (!line.includes('｜') && !line.includes('|')) continue;
+    const cols = line.split(/[｜|]/).map((s) => s.trim());
+    if (cols.length < 4) continue;
+    // 计名必须对得上 37 计，否则是模型编的或表头行
+    const hit = GROWTH_TACTICS.find((t) => cols[0].includes(t.name));
+    if (!hit) continue;
+    if (out.some((x) => x.name === hit.name)) continue;
+    out.push({ name: hit.name, fitLevel: cols[1], why: cols[2], firstShot: cols[3] });
+  }
+  return out;
+}
+
 export interface OpeningParams {
   contextBlock?: string;
   /** 这条内容讲什么 */
