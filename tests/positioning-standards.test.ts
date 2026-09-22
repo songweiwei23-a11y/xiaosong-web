@@ -71,18 +71,15 @@ describe('给的是判断依据，不只是小节清单', () => {
 describe('缺的那几块都补上了', () => {
   const p = buildPositioningPrompt(base);
 
-  it('呈现形式有四种对比，不再是一句「口播/Vlog等」', () => {
-    expect(p).toContain('情景剧');
-    expect(p).toContain('资源不足时，高质量口播远胜粗糙剧情');
-    // 情境真实是可信度的执行底线
-    expect(p).toContain('宝宝一定要收藏');
-  });
-
-  it('风格调性给了六个触点，不是三个关键词了事', () => {
-    for (const t of ['主页', '单条封面', '人物', '场景', '语言', '音乐剪辑']) {
-      expect(p, `触点缺 ${t}`).toContain(t);
-    }
-    expect(p).toContain('有意反差');
+  /*
+   * 呈现形式四表、风格六触点、内容系列这三块，实测后已从账号定位里移走：
+   * 变现 2542 + 呈现 2072 + 风格 1930 字，比「人设/用户/内容」
+   * 这三个用户点名的重点还多，而变现和内容**各自已有独立板块**。
+   * 常量保留，深挖板块照常用——下面「移走的内容去了该去的地方」那组卡这个。
+   */
+  it('风格调性只保留最有用的那条：会说和不会说的话', () => {
+    expect(p).toContain('正向匹配还是有意反差');
+    expect(p).toContain('这比形容词有用');
   });
 
   it('记忆点这一整块补上了', () => {
@@ -100,29 +97,18 @@ describe('缺的那几块都补上了', () => {
     expect(p).toContain('不要急着否定整个赛道');
   });
 
-  it('有系列化设计，能撑 30 集才立项', () => {
-    expect(p).toContain('连续追更');
-    expect(p).toContain('至少 30 集');
-    expect(p).toContain('假装随机却被识破');
-  });
-
   it('变现先分清在玩哪种经济', () => {
     expect(p).toContain('流量经济');
     expect(p).toContain('粉丝经济');
     expect(p).toContain('产品是为了满足需求，人物是为了制造偏好');
   });
 
-  it('30 天实验排到了周期和交付物', () => {
-    expect(p).toContain('第1-3天');
-    expect(p).toContain('第26-30天');
-    expect(p).toContain('一次只改一个变量');
-  });
-
-  it('自带「跑不通怎么办」的诊断树', () => {
-    expect(p).toContain('数据诊断树');
-    expect(p).toContain('有曝光但前段流失');
-    expect(p).toContain('咨询多成交少');
-  });
+  /*
+   * 30 天实验和数据诊断树原来也在这份提示词里，现已移出——
+   * 产出被撑到 27000 字、单次跑 10 分钟，而这两块本来就是**起号阶段**的活，
+   * 起号会单独成板块（起号36计 + 开篇36计），留在定位里是重复。
+   * 常量保留并导出，起号板块直接拿去用。下面「该砍的确实砍掉了」那组就是卡这个的。
+   */
 
   it('三大原则筛掉自嗨方向', () => {
     expect(p).toContain('有用处');
@@ -293,12 +279,65 @@ describe('开头摘要和前18条选题', () => {
     expect(p.indexOf('核心结论')).toBeLessThan(p.indexOf('先说这一行'));
   });
 
-  it('结尾给前 18 条，按发布顺序带节奏', () => {
-    expect(p).toContain('前 18 条怎么拍（按发布顺序）');
-    expect(p).toContain('标题写成能直接用的');
-    expect(p).toContain('前 3 条要特别说明为什么这样开场');
-    // 产能撑不住就不能排成每天一条
-    expect(p).toContain('不要排成每天一条');
+});
+
+/**
+ * 用户看完实测产出后的决定：砍内容。
+ * 30天实验、数据诊断树、前18条选题整体移交给未来的「起号」板块
+ * （它有自己的方法论：起号36计 + 开篇36计）。
+ * 定位这份只回答"这个号是什么、给谁、凭什么"，写到风险就收尾。
+ */
+describe('该砍的确实砍掉了', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('不再要求输出 30 天计划和数据诊断', () => {
+    expect(p).not.toContain('## 🚦 30 天起号实验');
+    expect(p).not.toContain('## 📊 跑不通怎么诊断');
+    // 参考资料里那两张表也不再塞进去，白占篇幅还拖慢生成
+    expect(p).not.toContain('第26-30天');
+    expect(p).not.toContain('有曝光但前段流失');
+  });
+
+  it('不再要求输出前 18 条选题', () => {
+    expect(p).not.toContain('前 18 条怎么拍');
+  });
+
+  it('明确告诉模型写到风险就收尾，别越界写到起号去', () => {
+    expect(p).toContain('到这里为止');
+    expect(p).toContain('属于「起号」板块');
+  });
+
+  it('两个常量仍然导出，起号板块要用', async () => {
+    const m = await import('@/lib/positioning-standards');
+    expect(m.THIRTY_DAY_PLAN).toContain('第1-3天');
+    expect(m.DIAGNOSIS_TREE).toContain('咨询多成交少');
+  });
+
+  it('已有独立板块的三维只给结论，不在这儿展开', () => {
+    // 变现定位 2542 字曾是全篇最长的一节，而商业定位已是独立板块
+    expect(p).toContain('这个号的变现有独立的「商业定位」板块专门深挖');
+    expect(p).toContain('不要展开写内容系列和排期');
+    expect(p).toContain('只给结论，≤200字');
+  });
+
+  it('移走的内容去了该去的地方：深挖板块照常能用', () => {
+    // 从账号定位摘掉不等于删掉——商业定位仍要内容配比，内容定位仍要系列设计
+    const biz = buildPositioningPrompt({ ...base, focus: 'business' });
+    const con = buildPositioningPrompt({ ...base, focus: 'content' });
+    expect(con).toContain('连续追更');       // 系列化
+    expect(con).toContain('高质量口播远胜粗糙剧情'); // 呈现形式四表
+    expect(biz).toContain('知识型');          // 内容五类型
+  });
+
+  it('给出整体篇幅上限，并点名哪三维要写透', () => {
+    expect(p).toContain('人设、用户、内容这三维要写透');
+    expect(p).toContain('8000 字以内');
+  });
+
+  it('该留的一个没少', () => {
+    for (const k of ['核心结论', '先说这一行', '六维地基', '记忆点', '差异化', '账号五件套', '最大的风险']) {
+      expect(p, `不该砍掉 ${k}`).toContain(k);
+    }
   });
 });
 
@@ -355,10 +394,12 @@ describe('禁忌是硬约束', () => {
 });
 
 describe('一个函数三种用法', () => {
-  it('full：六维全套 + 30天实验', () => {
+  it('full：六维全套，收尾在风险', () => {
     const p = buildPositioningPrompt({ ...base, focus: 'full' });
     expect(p).toContain('# 🎯 账号定位方案');
-    expect(p).toContain('30 天起号实验');
+    expect(p).toContain('六维地基');
+    // 30天实验已移交给起号板块，见「该砍的确实砍掉了」那组
+    expect(p).toContain('最大的风险');
   });
 
   it('business：变现深挖，要成交路径和信任证据', () => {
