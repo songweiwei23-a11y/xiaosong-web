@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home } from "lucide-react";
+import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home, Ticket } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  /** 注册必填。校验在服务端做，这里只负责收集 */
+  const [inviteCode, setInviteCode] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -36,25 +38,38 @@ export default function LoginPage() {
           router.refresh();
         }, 500);
       } else {
-        // 注册
-        const { data, error } = await supabase.auth.signUp({
+        /*
+         * 注册走服务端，不再用浏览器里的 supabase.auth.signUp()。
+         *
+         * 邀请码校验只能在服务端做：signUp 用的是公开的 anon key，
+         * 任何人都可以跳过这个页面直接 POST 到 Supabase 的 /auth/v1/signup，
+         * 前端加多少个输入框都拦不住。/api/auth/register 用 service_role
+         * 建号，并在同一次请求里原子地占用邀请码。
+         */
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, code: inviteCode }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "注册失败");
+
+        setMessage(`${data.message || "注册成功"}！正在为你登录…`);
+
+        // 直接把人登进去。让他注册完再手输一遍同样的账号密码，
+        // 是没有必要的一道坎
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
-          options: {
-            emailRedirectTo: undefined,
-            data: {
-              email_confirmed: true
-            }
-          }
         });
-
-        if (error) throw error;
-
-        if (data?.user?.identities?.length === 0) {
-          setMessage("该邮箱已注册，请直接登录。");
-        } else {
+        if (signInError) {
           setMessage("注册成功！请切换到登录标签页进行登录。");
           setTimeout(() => setIsLogin(true), 1500);
+        } else {
+          setTimeout(() => {
+            router.push("/dashboard");
+            router.refresh();
+          }, 600);
         }
       }
     } catch (error: any) {
@@ -165,6 +180,31 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+
+            {/* 邀请码：只在注册时出现 */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  邀请码
+                </label>
+                <div className="relative">
+                  <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                    placeholder="例如 XS8AF30E"
+                    // 码里不含 0/O/1/I/L，统一转大写展示，抄错的概率低很多
+                    className="w-full pl-10 pr-4 py-3 bg-background/50 border border-border rounded-xl font-mono tracking-wider focus:ring-2 focus:ring-primary/25 focus:border-primary text-foreground placeholder:text-muted-foreground placeholder:font-sans placeholder:tracking-normal transition-colors"
+                    required
+                    autoComplete="off"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  目前为邀请制，需要邀请码才能注册。没有的话请联系我们获取。
+                </p>
+              </div>
+            )}
 
             {/* 消息提示 */}
             {message && (

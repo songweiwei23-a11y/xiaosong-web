@@ -31,6 +31,8 @@ export enum AdminActions {
   CHANGE_USER_PLAN = 'change_user_plan',
   GRANT_ADMIN = 'grant_admin',
   REVOKE_ADMIN = 'revoke_admin',
+  GENERATE_INVITATIONS = 'generate_invitations',
+  REVOKE_INVITATION = 'revoke_invitation',
 }
 
 interface LogOptions {

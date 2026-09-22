@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import {
-  Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft,
+  Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket,
 } from "lucide-react";
 
 /*
@@ -37,6 +37,7 @@ const navGroups: {
   {
     label: "配置",
     items: [
+      { name: "邀请码", href: "/admin/invitations", icon: Ticket },
       { name: "收款二维码", href: "/admin/qrcodes", icon: QrCode },
       { name: "权限管理", href: "/admin/permissions", icon: ShieldCheck },
       { name: "系统设置", href: "/admin/settings", icon: Settings },
