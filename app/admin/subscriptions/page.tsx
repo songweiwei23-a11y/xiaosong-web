@@ -4,6 +4,20 @@ import { useState, useEffect } from "react";
 import { Crown, Edit, Save, X, Calendar, Zap, RefreshCw, Search } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { Loading } from '@/components/ui/loading';
+import { SUBSCRIPTION_PLANS, quotaSummary } from '@/lib/config/plans';
+
+/**
+ * 套餐徽章的配色。必须是完整的类名字面量——
+ * Tailwind 在构建时扫描源码收集用到的类，`bg-${color}-100` 这种运行时
+ * 拼出来的字符串它看不见，对应的样式压根不会生成。
+ * 页面上那些徽章此前一直是没有底色的。
+ */
+const PLAN_BADGE: Record<string, string> = {
+  free: 'bg-muted text-muted-foreground',
+  basic: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+  pro: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+  enterprise: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+};
 
 interface UserSubscription {
   id: string;
@@ -55,12 +69,20 @@ export default function SubscriptionsManagement() {
     }
   };
 
-  const planInfo: any = {
-    free: { label: "免费版", color: "gray", quota: 50 },
-    basic: { label: "基础会员", color: "blue", quota: 150 },
-    pro: { label: "专业会员", color: "purple", quota: 500 },
-    enterprise: { label: "企业版", color: "orange", quota: -1 },
-  };
+  /*
+   * 套餐名称与额度说明一律从 lib/config/plans 取。
+   *
+   * 这里原先写死着 free 50 / basic 150 / pro 500——改价改额度之后三个数字
+   * 全错，而后台正是管理员判断「这人该有多少额度」的地方，
+   * 显示错的数字比不显示更糟。颜色是纯展示，留在页面里。
+   */
+  const planInfo: Record<string, { label: string; quotaText: string }> =
+    Object.fromEntries(
+      (Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => [
+        id,
+        { label: SUBSCRIPTION_PLANS[id].name, quotaText: quotaSummary(id)[0] },
+      ])
+    );
 
   const handleEdit = (user: UserSubscription) => {
     setEditingId(user.user_id);
@@ -252,15 +274,22 @@ export default function SubscriptionsManagement() {
                           onChange={(e) => setEditForm({ ...editForm, plan: e.target.value })}
                           className="px-2 py-1 border rounded text-sm"
                         >
-                          <option value="free">免费版</option>
-                          <option value="basic">基础会员</option>
-                          <option value="pro">专业会员</option>
-                          <option value="enterprise">企业版</option>
+                          {(Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => (
+                            <option key={id} value={id}>{SUBSCRIPTION_PLANS[id].name}</option>
+                          ))}
                         </select>
                       ) : (
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold bg-${planInfo[user.plan]?.color}-100 text-${planInfo[user.plan]?.color}-700`}>
-                          {planInfo[user.plan]?.label || user.plan}
-                        </span>
+                        <div>
+                          {/* 类名必须是完整字面量。原先写的是 bg-${color}-100，
+                              Tailwind 在构建时扫不到运行时拼出来的类名，
+                              这些底色从来就没生成过，徽章一直是透明的 */}
+                          <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${PLAN_BADGE[user.plan] ?? PLAN_BADGE.free}`}>
+                            {planInfo[user.plan]?.label || user.plan}
+                          </span>
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            {planInfo[user.plan]?.quotaText}
+                          </div>
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3">

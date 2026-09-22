@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
+import { SUBSCRIPTION_PLANS, COUNTED_FEATURES } from '@/lib/config/plans';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,8 +34,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '订单不存在' }, { status: 404 });
     }
 
+    // 只有传了凭证（reviewing）的订单才谈得上审核。
+    // pending 是下了单还没传凭证，approved/rejected 是审过了，都不该再审一次。
     if (order.status !== 'reviewing') {
-      return NextResponse.json({ error: '订单状态不允许审核' }, { status: 400 });
+      const why =
+        order.status === 'pending'
+          ? '用户还没上传转账凭证'
+          : order.status === 'approved'
+            ? '该订单已通过审核'
+            : '该订单已被拒绝';
+      return NextResponse.json({ error: why }, { status: 400 });
     }
 
     const now = new Date().toISOString();
@@ -56,7 +65,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '审核失败' }, { status: 500 });
     }
 
-    // 如果通过，开通会员
+    // 通过则开通会员
     if (approved) {
       const endDate = new Date();
       if (order.billing_cycle === 'yearly') {
@@ -65,19 +74,71 @@ export async function POST(request: Request) {
         endDate.setMonth(endDate.getMonth() + 1);
       }
 
+      /*
+       * 套餐 id 直接取订单上的 plan_id。
+       *
+       * 原先是 order.plan_name.toLowerCase().replace('会员','').replace('版','')
+       * ——拿中文显示名去凑英文 id。「基础会员」凑出来是「基础」，
+       * 不是任何一个合法套餐，写进 subscriptions 之后 getPlan() 会兜底成
+       * 免费版：用户付了钱，权益一点没涨，而且没有任何报错。
+       */
+      const planId = order.plan_id;
+      if (!planId || !(planId in SUBSCRIPTION_PLANS)) {
+        console.error('[admin/orders/review] 订单上的套餐 id 非法:', planId);
+        return NextResponse.json(
+          { error: `订单的套餐标识非法（${planId}），无法开通，请联系技术处理` },
+          { status: 400 }
+        );
+      }
+
+      /*
+       * 列名必须是 start_date / end_date。
+       * 原先写的是 current_period_start / current_period_end——subscriptions
+       * 表上没有这两列，整条 upsert 会失败，而失败只是 console.error 了一下：
+       * 订单显示「已通过」，会员其实没开通。
+       */
       const { error: subError } = await supabase
         .from('subscriptions')
-        .upsert({
-          user_id: order.user_id,
-          plan: order.plan_name.toLowerCase().replace('会员', '').replace('版', ''),
-          status: 'active',
-          current_period_start: now,
-          current_period_end: endDate.toISOString(),
-          updated_at: now,
-        });
+        .upsert(
+          {
+            user_id: order.user_id,
+            plan: planId,
+            status: 'active',
+            start_date: now,
+            end_date: endDate.toISOString(),
+            updated_at: now,
+          },
+          { onConflict: 'user_id' }
+        );
 
       if (subError) {
-        console.error('开通会员失败:', subError);
+        // 开通失败必须让管理员知道。默默记日志的话，他会以为审核成功了
+        console.error('[admin/orders/review] 开通会员失败:', subError);
+        return NextResponse.json(
+          { error: '订单状态已更新，但开通会员失败：' + subError.message },
+          { status: 500 }
+        );
+      }
+
+      /*
+       * 新周期开始，额度重置。
+       * 不重置的话，用户升级后带着上个周期用满的数字进来，
+       * 交了钱却立刻显示额度已用完。
+       */
+      const resetColumns: Record<string, unknown> = {
+        current_period_start: now,
+        current_period_end: endDate.toISOString(),
+        updated_at: now,
+      };
+      for (const f of COUNTED_FEATURES) resetColumns[f.column] = 0;
+      resetColumns.knowledge_used = 0;
+
+      const { error: quotaError } = await supabase
+        .from('user_quotas')
+        .upsert({ user_id: order.user_id, ...resetColumns }, { onConflict: 'user_id' });
+
+      if (quotaError) {
+        console.error('[admin/orders/review] 额度重置失败:', quotaError);
       }
     }
 
@@ -89,7 +150,9 @@ export async function POST(request: Request) {
       target_id: orderId,
       details: {
         order_amount: order.amount,
-        plan: order.plan_name,
+        plan: order.plan_id,
+        plan_name: order.plan_name,
+        billing_cycle: order.billing_cycle,
         note: note,
       },
     });

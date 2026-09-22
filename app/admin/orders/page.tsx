@@ -43,25 +43,25 @@ export default function AdminOrdersPage() {
 
   const loadOrders = async () => {
     try {
-      const { data, error } = await supabase
-        .from("payment_orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      // 获取用户邮箱
-      const ordersWithEmail = await Promise.all(
-        (data || []).map(async (order) => {
-          const { data: userData } = await supabase.auth.admin.getUserById(order.user_id);
-          return { ...order, user_email: userData.user?.email || "未知" };
-        })
-      );
-
-      setOrders(ordersWithEmail);
+      /*
+       * 走服务端接口，不在浏览器里直接查表。
+       *
+       * 原先这里除了查表还调了 supabase.auth.admin.getUserById() 取邮箱——
+       * 那是 service_role 才有的方法，页面拿的是 anon key，实测返回
+       * `User not allowed`，于是每条订单的邮箱都显示「未知」，
+       * 管理员看着一屏「未知」不知道是谁付的钱。
+       *
+       * 凭证图也改由服务端发短时效签名链接，不再是永久可访问的公开地址。
+       */
+      const res = await fetch("/api/admin/orders");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "加载订单失败");
+      }
+      setOrders(await res.json());
     } catch (error: any) {
       console.error("加载订单失败:", error);
-      notify("加载订单失败", "error");
+      notify(error?.message || "加载订单失败", "error");
     } finally {
       setLoading(false);
     }

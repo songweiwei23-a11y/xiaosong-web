@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Check, X, Crown, Zap, Rocket } from "lucide-react";
 import { SUBSCRIPTION_PLANS } from "@/lib/config/plans";
+import { toneSoft } from "@/lib/ui-tokens";
 
 export default function PricingPage() {
   const plans = [
@@ -45,8 +46,10 @@ export default function PricingPage() {
                 )}
 
                 <div className="text-center mb-6">
-                  <div className={`inline-flex p-3 rounded-full mb-4 bg-${plan.color}-100`}>
-                    <Icon className={`w-8 h-8 text-${plan.color}-600`} />
+                  {/* 类名必须是完整字面量。`bg-${plan.color}-100` 是运行时拼出来的，
+                      Tailwind 构建时扫不到，这些图标底色从上线起就没生效过 */}
+                  <div className={`inline-flex p-3 rounded-full mb-4 ${toneSoft(plan.color)}`}>
+                    <Icon className="w-8 h-8" />
                   </div>
                   <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
                   <div className="flex items-baseline justify-center gap-1">

@@ -1,333 +1,220 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { notify } from '@/components/ui/feedback';
+import { useState, useEffect, useCallback } from "react";
 import {
-  TrendingUp,
-  Users,
-  DollarSign,
-  Activity,
-  FileText,
-  Lightbulb,
-  Film,
-  CheckCircle,
-  Tag,
-  Target,
-  BookOpen,
+  Users, UserPlus, Activity, Wallet, TrendingUp, Gauge,
+  FileText, Lightbulb, Target, MessageCircle, Film, CheckCircle, Tag, DollarSign,
+  type LucideIcon,
 } from "lucide-react";
+import { Loading } from "@/components/ui/loading";
+import { SUBSCRIPTION_PLANS } from "@/lib/config/plans";
+import { toneSoft, toneBar, PLAN_TONE, FEATURE_TONE } from "@/lib/ui-tokens";
 
-export default function AnalyticsPage() {
-  const router = useRouter();
-  const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
-  const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalRevenue: 0,
-    monthlyRevenue: 0,
-    totalUsers: 0,
-    activeUsers: 0,
-    conversionRate: 0,
-    avgUsagePerUser: 0,
-  });
-  const [featureUsage, setFeatureUsage] = useState<any[]>([]);
+/*
+ * 数据分析。
+ *
+ * 重写而不是修补，因为改造前这一页大部分是假的：
+ *   - 用户增长图是写死的数组，日期停在「07-20」，与真实时间无关；
+ *   - 套餐分布里付费三档直接写 0，免费版写的是「总用户 - 活跃用户」，
+ *     这个减法没有任何含义；
+ *   - 营收硬编码 0；
+ *   - 读的字段名（features / activeUsers / totalUsage）和接口返回的
+ *     （featureUsage / activeToday / totalGenerations）对不上，
+ *     `analyticsData.features.map` 直接在 undefined 上调用会抛错，
+ *     被外层 catch 吞掉，页面于是一片空白。
+ *
+ * 现在只显示接口真的给得出来的数字。拿不到的（比如按日增长曲线，
+ * 需要按天聚合的表，目前没有）就不显示——空着比编一条假曲线好。
+ */
 
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
+const FEATURE_ICONS: Record<string, LucideIcon> = {
+  script: FileText,
+  topic: Lightbulb,
+  positioning: Target,
+  freeChat: MessageCircle,
+  storyboard: Film,
+  review: CheckCircle,
+  title: Tag,
+  dealReason: DollarSign,
+};
 
-  const loadAnalytics = async () => {
-    try {
-      setIsLoading(true);
-
-      // 检查登录
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
-      const userId = session.user.id;
-
-      // 检查管理员权限
-      const checkResponse = await fetch(`/api/admin/check`);
-      const checkData = await checkResponse.json();
-
-      if (!checkData.isAdmin) {
-        notify("⚠️ 您没有管理员权限");
-        router.push("/dashboard");
-        return;
-      }
-
-      // 加载统计数据
-      const statsResponse = await fetch(`/api/admin/stats`);
-      const statsData = await statsResponse.json();
-      
-      if (!statsData.error) {
-        setStats({
-          totalRevenue: 0,
-          monthlyRevenue: statsData.monthlyRevenue || 0,
-          totalUsers: statsData.totalUsers || 0,
-          activeUsers: statsData.activeUsers || 0,
-          conversionRate: statsData.paidUsers && statsData.totalUsers 
-            ? parseFloat(((statsData.paidUsers / statsData.totalUsers) * 100).toFixed(1))
-            : 0,
-          avgUsagePerUser: statsData.totalUsers 
-            ? Math.round(statsData.totalUsage / statsData.totalUsers)
-            : 0,
-        });
-      }
-
-      // 加载功能使用统计
-      const analyticsResponse = await fetch(`/api/admin/analytics`);
-      const analyticsData = await analyticsResponse.json();
-      
-      if (!analyticsData.error) {
-        const iconMap: any = {
-"脚本生成": { icon: FileText, color: "blue" },
-"选题策划": { icon: Lightbulb, color: "yellow" },
-"分镜脚本": { icon: Film, color: "purple" },
-"审稿优化": { icon: CheckCircle, color: "green" },
-"标题封面": { icon: Tag, color: "red" },
-"账号定位": { icon: Target, color: "indigo" },
-"知识库": { icon: BookOpen, color: "pink" },
-        };
-
-        setFeatureUsage(analyticsData.features.map((f: any) => ({
-          ...f,
-          ...iconMap[f.name],
-        })));
-      }
-    } catch (error) {
-      console.error("Load analytics error:", error);
-    } finally {
-      setIsLoading(false);
-    }
+interface Analytics {
+  stats: {
+    totalUsers: number;
+    newUsers: number;
+    activeUsers: number;
+    totalRevenue: number;
+    paidOrderCount: number;
+    paidUsers: number;
+    conversionRate: number;
+    avgUsagePerUser: number;
   };
+  featureUsage: { name: string; key: string; usage: number }[];
+  planDistribution: Record<string, number>;
+}
 
-  // 用户增长数据(暂时保留模拟数据)
-  const userGrowth = [
-    { date: "07-20", users: 0 },
-    { date: "07-21", users: 0 },
-    { date: "07-22", users: 0 },
-    { date: "07-23", users: 0 },
-    { date: "07-24", users: 0 },
-    { date: "07-25", users: 0 },
-    { date: "07-26", users: 0 },
-    { date: "07-27", users: 1 },
-  ];
+const RANGES = [
+  { value: "7d", label: "近 7 天" },
+  { value: "30d", label: "近 30 天" },
+  { value: "90d", label: "近 90 天" },
+];
 
-  // 套餐分布(暂时保留模拟数据)
-  const planDistribution = [
-    { plan: "免费版", count: stats.totalUsers - stats.activeUsers, percentage: 100, color: "gray" },
-    { plan: "基础会员", count: 0, percentage: 0, color: "blue" },
-    { plan: "专业会员", count: 0, percentage: 0, color: "purple" },
-    { plan: "企业版", count: 0, percentage: 0, color: "orange" },
+export default function AdminAnalyticsPage() {
+  const [range, setRange] = useState("30d");
+  const [data, setData] = useState<Analytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/analytics?timeRange=${range}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "读取失败");
+      setData(json);
+    } catch (e: any) {
+      setError(e?.message || "读取失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [range]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <Loading />;
+
+  if (error || !data) {
+    return (
+      <div className="p-8">
+        <div className="glass-panel rounded-2xl p-6 text-center">
+          <p className="text-[13px] text-muted-foreground">{error || "暂无数据"}</p>
+          <button onClick={load} className="mt-3 text-[13px] text-primary hover:opacity-80">
+            重试
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const s = data.stats;
+  const maxUsage = Math.max(1, ...data.featureUsage.map((f) => f.usage));
+  const totalPlanUsers = Object.values(data.planDistribution).reduce((a, b) => a + b, 0);
+
+  const cards: { label: string; value: string; hint: string; icon: LucideIcon; tone: string }[] = [
+    { label: "总用户", value: String(s.totalUsers), hint: "以认证系统为准", icon: Users, tone: "blue" },
+    { label: "新增用户", value: String(s.newUsers), hint: RANGES.find((r) => r.value === range)!.label, icon: UserPlus, tone: "green" },
+    { label: "活跃用户", value: String(s.activeUsers), hint: "区间内有过生成", icon: Activity, tone: "indigo" },
+    { label: "营收", value: `¥${s.totalRevenue}`, hint: `${s.paidOrderCount} 笔已通过订单`, icon: Wallet, tone: "orange" },
+    { label: "付费用户", value: String(s.paidUsers), hint: `转化率 ${s.conversionRate}%`, icon: TrendingUp, tone: "purple" },
+    { label: "人均生成", value: String(s.avgUsagePerUser), hint: "累计次数 ÷ 总用户", icon: Gauge, tone: "pink" },
   ];
 
   return (
-    <div className="min-h-screen bg-muted dark:bg-muted">
-      {/* 顶部导航 */}
-      <div className="glass-panel border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground dark:text-foreground">数据统计</h1>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground mt-1">
-                查看平台数据和用户行为分析
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value as any)}
-                className="px-4 py-2 border border-border dark:border-border dark:bg-muted dark:text-foreground rounded-lg focus:ring-2 focus:ring-primary"
+    <div className="h-full overflow-y-auto px-8 py-9">
+      <div className="mx-auto max-w-5xl">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] font-semibold text-foreground">数据分析</h1>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              用户、营收与各功能的真实使用情况
+            </p>
+          </div>
+          <div className="flex gap-1.5">
+            {RANGES.map((r) => (
+              <button
+                key={r.value}
+                onClick={() => setRange(r.value)}
+                className={`glass-interactive rounded-xl border px-3.5 py-2 text-[12.5px] ${
+                  range === r.value ? "glass-selected text-foreground" : "glass-panel text-muted-foreground"
+                }`}
               >
-                <option value="7d">最近 7 天</option>
-                <option value="30d">最近 30 天</option>
-                <option value="90d">最近 90 天</option>
-              </select>
-              <a
-                href="/admin"
-                className="text-sm text-primary hover:text-primary"
-              >
-                ← 返回后台首页
-              </a>
-            </div>
+                {r.label}
+              </button>
+            ))}
           </div>
-        </div>
-      </div>
+        </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* 核心指标 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="glass-panel rounded-xl border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-emerald-500/15">
-                <DollarSign className="w-6 h-6 text-green-500" />
+        <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+          {cards.map((c) => (
+            <div key={c.label} className="glass-panel rounded-2xl p-5">
+              <div className="flex items-start justify-between">
+                <span className="text-[12.5px] text-muted-foreground">{c.label}</span>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${toneSoft(c.tone)}`}>
+                  <c.icon className="h-4 w-4" />
+                </span>
               </div>
-              <span className="text-sm font-medium text-green-500">+0%</span>
+              <div className="mt-2 text-[24px] font-semibold tabular-nums text-foreground">{c.value}</div>
+              <div className="mt-0.5 text-[11.5px] text-muted-foreground">{c.hint}</div>
             </div>
-            <div className="text-2xl font-bold text-foreground dark:text-foreground mb-1">
-              ¥{stats.monthlyRevenue}
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground">本月收入</div>
-          </div>
+          ))}
+        </section>
 
-          <div className="glass-panel rounded-xl border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-primary/15">
-                <Users className="w-6 h-6 text-primary" />
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <section className="glass-panel rounded-2xl p-5">
+            <h2 className="mb-4 text-[14px] font-semibold text-foreground">各功能使用量</h2>
+            {data.featureUsage.every((f) => f.usage === 0) ? (
+              <p className="text-[12.5px] text-muted-foreground">还没有任何生成记录。</p>
+            ) : (
+              <div className="space-y-3">
+                {data.featureUsage.map((f) => {
+                  const Icon = FEATURE_ICONS[f.key] ?? Activity;
+                  const tone = FEATURE_TONE[f.key] ?? "gray";
+                  return (
+                    <div key={f.key}>
+                      <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
+                        <span className="flex items-center gap-2 text-foreground">
+                          <span className={`flex h-6 w-6 items-center justify-center rounded-lg ${toneSoft(tone)}`}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          {f.name}
+                        </span>
+                        <span className="tabular-nums text-muted-foreground">{f.usage} 次</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
+                        <div
+                          className={`h-full rounded-full ${toneBar(tone)}`}
+                          style={{ width: `${(f.usage / maxUsage) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <span className="text-sm font-medium text-primary">+100%</span>
-            </div>
-            <div className="text-2xl font-bold text-foreground dark:text-foreground mb-1">
-              {stats.totalUsers}
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground">总用户数</div>
-          </div>
+            )}
+          </section>
 
-          <div className="glass-panel rounded-xl border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-accent/15">
-                <Activity className="w-6 h-6 text-accent" />
-              </div>
-              <span className="text-sm font-medium text-accent">+100%</span>
-            </div>
-            <div className="text-2xl font-bold text-foreground dark:text-foreground mb-1">
-              {stats.activeUsers}
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground">活跃用户</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* 用户增长趋势 */}
-          <div className="glass-panel rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-foreground dark:text-foreground mb-4">
-              用户增长趋势
-            </h2>
-            <div className="h-64 flex items-end justify-between gap-2">
-              {userGrowth.map((day, index) => (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-primary rounded-t-lg transition-all hover:bg-primary"
-                    style={{
-                      height: `${Math.max(day.users * 100, 5)}%`,
-                    }}
-                  />
-                  <div className="text-xs text-muted-foreground dark:text-muted-foreground mt-2">{day.date}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 会员分布 */}
-          <div className="glass-panel rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-foreground dark:text-foreground mb-4">
-              会员套餐分布
-            </h2>
-            <div className="space-y-4">
-              {planDistribution.map((item) => (
-                <div key={item.plan}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground/80 dark:text-foreground">
-                      {item.plan}
-                    </span>
-                    <span className="text-sm text-muted-foreground dark:text-muted-foreground">
-                      {item.count} 人 ({item.percentage}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted dark:bg-muted rounded-full h-2">
-                    <div
-                      className={`bg-${item.color}-500 h-2 rounded-full transition-all`}
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 功能使用排行 */}
-        <div className="glass-panel rounded-xl border p-6 mb-8">
-          <h2 className="text-lg font-semibold text-foreground dark:text-foreground mb-4">
-            功能使用排行
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {featureUsage
-              .sort((a, b) => b.count - a.count)
-              .map((feature, index) => {
-                const Icon = feature.icon;
+          <section className="glass-panel rounded-2xl p-5">
+            <h2 className="mb-4 text-[14px] font-semibold text-foreground">套餐分布</h2>
+            <div className="space-y-3">
+              {(Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => {
+                const count = data.planDistribution[id] ?? 0;
+                const pct = totalPlanUsers ? Math.round((count / totalPlanUsers) * 100) : 0;
                 return (
-                  <div
-                    key={feature.name}
-                    className="relative p-4 rounded-lg border hover:shadow-md transition-shadow"
-                  >
-                    <div className="absolute top-2 right-2">
-                      <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">
-                        #{index + 1}
+                  <div key={id}>
+                    <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
+                      <span className="text-foreground">{SUBSCRIPTION_PLANS[id].name}</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {count} 人 · {pct}%
                       </span>
                     </div>
-                    <div
-                      className={`inline-flex p-3 rounded-lg bg-${feature.color}-100 mb-3`}
-                    >
-                      <Icon className={`w-5 h-5 text-${feature.color}-600`} />
+                    <div className="h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
+                      <div
+                        className={`h-full rounded-full ${toneBar(PLAN_TONE[id])}`}
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
-                    <div className="text-sm font-medium text-foreground/80 dark:text-foreground mb-1">
-                      {feature.name}
-                    </div>
-                    <div className="text-2xl font-bold text-foreground dark:text-foreground">
-                      {feature.count}
-                    </div>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground">次使用</div>
                   </div>
                 );
               })}
-          </div>
-        </div>
+            </div>
 
-        {/* 关键指标 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="glass-panel rounded-xl border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground dark:text-muted-foreground mb-2">
-              付费转化率
-            </h3>
-            <div className="text-3xl font-bold text-foreground dark:text-foreground mb-1">
-              {stats.conversionRate}%
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground">
-              {stats.totalUsers > 0
-                ? `${stats.totalUsers - 1} 用户未付费`
-                : "暂无数据"}
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-xl border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground dark:text-muted-foreground mb-2">
-              人均使用次数
-            </h3>
-            <div className="text-3xl font-bold text-foreground dark:text-foreground mb-1">
-              {stats.avgUsagePerUser}
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground">次/用户</div>
-          </div>
-
-          <div className="glass-panel rounded-xl border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground dark:text-muted-foreground mb-2">
-              累计收入
-            </h3>
-            <div className="text-3xl font-bold text-foreground dark:text-foreground mb-1">
-              ¥{stats.totalRevenue}
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground">自平台上线以来</div>
-          </div>
+            <p className="mt-4 border-t border-border/60 pt-3 text-[11.5px] text-muted-foreground">
+              没有订阅记录的用户按免费版计。
+            </p>
+          </section>
         </div>
       </div>
     </div>
   );
 }
-
-
-
