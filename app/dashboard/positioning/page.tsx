@@ -14,6 +14,8 @@ import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { buildPositioningPrompt } from '@/lib/positioning-standards';
+import { SectionEditor } from '@/components/positioning/SectionEditor';
+import { invalidateCreatorContext } from '@/hooks/useCreatorContext';
 import { throwApiError } from "@/lib/api-error";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
@@ -146,26 +148,10 @@ export default function PositioningPage() {
     }
   }
 
-  const handleGenerate = async () => {
-    if (!activeProfile) {
-      notify("❌ 请先创建并选择一个用户档案")
-      return
-    }
-
-    // 检查配额
-    const remainingQuota = await checkQuota("positioning");
-    if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("账号定位的额度已用完，请升级会员或等待下月重置");
-      return;
-    }
-
-    setIsGenerating(true);
-    setResult("");
-    let fullResult = "";
-    let conversationId = "";
-
-    // 构建基于档案的详细信息
-    const profileSummary = `
+  /** 档案摘要。整份生成和单节重生成都用它，不要各拼一份 */
+  const buildProfileSummary = () => {
+    if (!activeProfile) return ''
+    return `
 我的基本信息：
 - 档案名称：${activeProfile.profile_name}
 - 平台：${activeProfile.account_platform?.join('、') || '未设置'}
@@ -205,6 +191,26 @@ export default function PositioningPage() {
 - 竞争优势：${activeProfile.competitive_advantage || '未设置'}
 - 竞争劣势：${activeProfile.competitive_weakness || '未设置'}
 `.trim()
+  }
+  const handleGenerate = async () => {
+    if (!activeProfile) {
+      notify("❌ 请先创建并选择一个用户档案")
+      return
+    }
+
+    // 检查配额
+    const remainingQuota = await checkQuota("positioning");
+    if (remainingQuota !== null && remainingQuota <= 0) {
+      notify("账号定位的额度已用完，请升级会员或等待下月重置");
+      return;
+    }
+
+    setIsGenerating(true);
+    setResult("");
+    let fullResult = "";
+    let conversationId = "";
+
+    const profileSummary = buildProfileSummary();
 
     // 提示词在这里拼完整的。旧版只把档案丢给服务端，服务端那套只规定
     // 「输出哪些小节」、没给任何判断依据，产出自然是格式对但不专业。
@@ -252,7 +258,8 @@ export default function PositioningPage() {
         // 保存生成历史
         await saveGenerationHistory("账号定位", { profileSummary, additionalNotes }, fullResult);
 
-        // 增加配额使用        // 打开持续对话，传递 conversation_id
+        // 增加配额使用
+        // 打开持续对话，传递 conversation_id
         setDialogConversationId(conversationId || undefined);
         setShowDialog(true);
       }
@@ -530,6 +537,35 @@ export default function PositioningPage() {
         }}
         onContinue={result ? () => setShowDialog(true) : undefined}
       />
+
+      {/*
+        逐节调整。原来只有"整份重生成"一条路——为改一句话要等 5 分钟，
+        而且其他九成对的内容也会跟着变，结果是用户不敢点重新生成。
+      */}
+      {result && selectedPositioning && viewMode !== 'summary' && (
+        <SectionEditor
+          content={result}
+          profileId={activeProfile?.id ?? null}
+          profileSummary={buildProfileSummary() || undefined}
+          onSave={async (next) => {
+            const res = await fetch('/api/positioning', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: selectedPositioning.id,
+                full_content: next,
+                strategy_summary: extractStrategySummary(next),
+              }),
+            })
+            if (!res.ok) return false
+            setResult(next)
+            // 简报和各板块缓存的上下文要作废，否则接着生成用的还是旧的
+            invalidateCreatorContext()
+            loadPositionings()
+            return true
+          }}
+        />
+      )}
 
       <ContinuousDialog
         isOpen={showDialog}

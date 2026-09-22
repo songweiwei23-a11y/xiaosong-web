@@ -466,7 +466,7 @@ ${note}
 不要套用其他平台的经验。`;
 }
 
-const OUTPUT_FULL = `## 📤 输出格式
+export const OUTPUT_FULL = `## 📤 输出格式
 
 按下面的顺序输出，标题原样保留。不要有前言，不要复述我给你的档案。
 
@@ -862,3 +862,27 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
 
   return parts.join('\n');
 }
+
+/**
+ * 参考资料按名字导出，供「单节重生成」按需取用。
+ *
+ * 单节重生成不该把整份一万两千字的方法论都发过去——
+ * 重写「人设定位」只要人设七入口和代运营立场，不需要内容配比表。
+ * 这里给个名字到内容的映射，由 lib/positioning-sections 里各节声明要哪些。
+ */
+export const POSITIONING_REFS = {
+  stance: AGENCY_STANCE,
+  industry: INDUSTRY_LENS,
+  audienceChange: AUDIENCE_CHANGE,
+  principles: THREE_PRINCIPLES,
+  sixDim: SIX_DIMENSIONS,
+  persona: PERSONA_ENTRIES,
+  contentMix: CONTENT_MIX,
+  series: SERIES_DESIGN,
+  presentation: PRESENTATION_FORMS,
+  tone: TONE_TOUCHPOINTS,
+  memory: MEMORY_HOOKS,
+  diff: DIFFERENTIATION,
+  economy: ECONOMY_MODELS,
+  coherence: COHERENCE_CHECK,
+} as const;
