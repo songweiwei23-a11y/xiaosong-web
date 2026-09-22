@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { saveConversationMessage, getConversationHistory, formatConversationHistory } from '@/lib/conversation';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { buildSearchQuery } from '@/lib/search-query';
 import { getFeatureFromTaskType } from '@/lib/task-type';
@@ -17,7 +16,6 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { sessionId, saveHistory } = body;
 
     // 必须按具体功能校验额度。requireUserWithQuota() 不传 feature 时只会
     // 检查 basic/pro 的总量，免费版的分功能限额（脚本 20 次、选题 3 次等）
@@ -31,20 +29,18 @@ export async function POST(req: NextRequest) {
     // 对话记忆无法从第一轮开始累积。
     const originalQuery: string = body.query || '';
 
-    // 如果需要对话记忆，加载历史对话
-    if (sessionId && saveHistory) {
-      console.log('🔍 加载对话历史，Session ID:', sessionId);
-      const history = await getConversationHistory(sessionId, 5); // 最近5轮对话
-      if (history.length > 0) {
-        console.log(`📚 找到 ${history.length} 条历史消息`);
-        const formattedHistory = formatConversationHistory(history);
-        // 将历史对话拼到查询前面（自由问答类分支会直接读取 body.query）
-        body.query = formattedHistory + originalQuery;
-      } else {
-        console.log('📭 没有历史消息');
-      }
-    }
-    
+    /*
+     * 这里原本还有一套「手动对话记忆」：调用方传 sessionId + saveHistory，
+     * 服务端就从 conversation_messages 表读最近 5 轮拼到查询前面，生成完
+     * 再把这一轮写回去。
+     *
+     * 但从来没有任何页面传过这两个参数——生产库里那张表是 0 行。
+     * 记忆早已改由 Dify 的 conversation_id 承担（见 lib/dify-conversation.ts），
+     * 按「用户 + 档案 + 功能」分档，比手动拼历史更准也更省 token。
+     * 留着这段死逻辑只会让人以为记忆是在这里实现的，所以一并删掉。
+     */
+
+
     // 爆款元素英文到中文的映射
     const elementMap: Record<string, string> = {
       'cost': '💰 成本',
@@ -562,30 +558,6 @@ export async function POST(req: NextRequest) {
             // 有内容产出却没拿到会话 id，说明 SSE 事件里始终不含 conversation_id。
             // 不记下来的话，表为空时无法判断是没执行还是执行了没拿到值。
             console.warn('[dify-conversation] 本轮未捕获到 conversation_id，会话不会被延续');
-          }
-          
-          // 保存对话历史
-          if (sessionId && saveHistory && originalQuery) {
-            console.log('💾 保存对话历史到数据库...');
-            
-            // 保存用户消息
-            await saveConversationMessage({
-              sessionId: sessionId,
-              taskType: body.taskType || '未知',
-              role: 'user',
-              content: originalQuery
-            });
-            
-            // 保存助手回复（如果有完整回复）
-            if (fullResponse) {
-              await saveConversationMessage({
-                sessionId: sessionId,
-                taskType: body.taskType || '未知',
-                role: 'assistant',
-                content: fullResponse
-              });
-              console.log('✅ 对话历史已保存');
-            }
           }
         } catch (err) {
           console.error('Stream error:', err);

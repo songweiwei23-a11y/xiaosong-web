@@ -1,6 +1,7 @@
 "use client";
 
 import { takeHandoff, putHandoff } from "@/lib/handoff";
+import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
@@ -12,7 +13,8 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
-import { Film, Copy, Download, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Film, Copy, Download, Loader2, Sparkles, Wand2, Tag } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { notify } from '@/components/ui/feedback';
@@ -69,6 +71,8 @@ export default function StoryboardPage() {
     downloadAsFile,
     lastResult,
   } = useGenerationPage({ taskType: '分镜脚本', historyApiPath: '/api/storyboards' });
+
+  const router = useRouter();
 
   const [scriptContent, setscriptContent] = useState("");
   const [platform, setPlatform] = useState("抖音");
@@ -205,10 +209,15 @@ export default function StoryboardPage() {
       setIsGenerating(false);
       
       // 保存生成历史记录
-      if (fullResult && fullResult.length > 50) {
+      // 只要有内容就存。原来的门槛是 50 字，模型返回得短一点
+      // （比如只给了几个标题、或者一句拒答）就什么都不留——
+      // 而额度已经在服务端扣掉了，用户刷新后一无所获，还以为系统吞了。
+      if (fullResult && fullResult.trim().length > 0) {
         setTimeout(async () => {
           try {            const inputData = { scriptContent, platform, duration, contentType, visualStyle };
-            await saveGenerationHistory("分镜脚本", inputData, fullResult, workId);          } catch (err) {
+            await saveGenerationHistory("分镜脚本", inputData, fullResult, workId);
+            // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
+            await recordStage(workId, "分镜脚本");          } catch (err) {
             console.error("⚠️ 保存失败:", err);
           }
         }, 500);
@@ -377,6 +386,24 @@ export default function StoryboardPage() {
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
+        // 分镜此前没有任何往下的交接，作品链条到这里就断了。
+        // 拆完分镜通常还剩起标题这一步。
+        nextActions={[
+          {
+            label: "给这条起标题",
+            icon: Tag,
+            onClick: () => {
+              // 带的是原始脚本而不是分镜表：起标题要看的是内容讲了什么，
+              // 镜号和景别对它没有帮助
+              putHandoff({
+                from: "分镜脚本",
+                scriptContent: scriptContent,
+                workId: workId ?? undefined,
+              });
+              router.push("/dashboard/title");
+            },
+          },
+        ]}
       />
 
       <HistoryPanel

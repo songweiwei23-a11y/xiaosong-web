@@ -56,7 +56,7 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { putHandoff, takeHandoff } from "@/lib/handoff";
 import { throwApiError } from "@/lib/api-error";
-import { createWork, touchWork } from "@/lib/works";
+import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
@@ -739,7 +739,10 @@ ${formatRequirements}
       setIsGenerating(false);
       
       // 保存生成历史记录
-      if (fullResult && fullResult.length > 50) {
+      // 只要有内容就存。原来的门槛是 50 字，模型返回得短一点
+      // （比如只给了几个标题、或者一句拒答）就什么都不留——
+      // 而额度已经在服务端扣掉了，用户刷新后一无所获，还以为系统吞了。
+      if (fullResult && fullResult.trim().length > 0) {
         setTimeout(async () => {
           try {            const inputData = {
               topic, scriptType, platform,
@@ -755,12 +758,12 @@ ${formatRequirements}
             if (!currentWork) {
               currentWork = await createWork(topic || "未命名脚本", selectedProfileId || null);
               if (currentWork) setWorkId(currentWork);
-            } else {
-              // 已有作品：刷新时间，让它在「进行中」列表里回到最前
-              await touchWork(currentWork);
             }
 
             await saveGenerationHistory("脚本生成", inputData, fullResult, currentWork);
+            // 登记到作品。必须排在保存之后——recordStage 要读这条作品已有的
+            // 环节才能判断是不是刚补上最后一块。
+            await recordStage(currentWork, "脚本生成");
             // 重新加载历史记录
             await loadScriptHistory();
 

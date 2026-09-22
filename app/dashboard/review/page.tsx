@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { takeHandoff, putHandoff } from "@/lib/handoff";
+import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
 import { buildReviewPrompt } from "@/lib/review-standards";
 import ContinuousDialog from "@/components/ContinuousDialog";
@@ -13,7 +14,7 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
-import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare, Film } from "lucide-react";
+import { CheckCircle, Copy, Download, Loader2, AlertCircle, FileText, Sparkles, Zap, Target, Eye, MessageSquare, Film, Tag } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
@@ -241,10 +242,15 @@ export default function ReviewPage() {
       setIsGenerating(false);
       
       // 保存生成历史记录
-      if (fullResult && fullResult.length > 50) {
+      // 只要有内容就存。原来的门槛是 50 字，模型返回得短一点
+      // （比如只给了几个标题、或者一句拒答）就什么都不留——
+      // 而额度已经在服务端扣掉了，用户刷新后一无所获，还以为系统吞了。
+      if (fullResult && fullResult.trim().length > 0) {
         setTimeout(async () => {
           try {            const inputData = { draftContent, scriptType, platform, duration };
-            await saveGenerationHistory("审稿优化", inputData, fullResult, workId);          } catch (err) {
+            await saveGenerationHistory("审稿优化", inputData, fullResult, workId);
+            // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
+            await recordStage(workId, "审稿优化");          } catch (err) {
             console.error("⚠️ 保存失败:", err);
           }
         }, 500);
@@ -424,14 +430,32 @@ export default function ReviewPage() {
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `审稿意见-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
-        // 审完通常要拿改好的版本重新拆分镜
+        // 审完通常要拿改好的版本重新拆分镜，或者直接去起标题
         nextActions={[
           {
             label: "拿改好的版本拆分镜",
             icon: Film,
             onClick: (body) => {
-              putHandoff({ from: "审稿优化", scriptContent: body });
+              // workId 必须一并带走。漏掉的话下一个环节生成出来就挂不到
+              // 这条内容下面，作品的链条在这里断开，变成一条零散记录。
+              putHandoff({
+                from: "审稿优化",
+                scriptContent: body,
+                workId: workId ?? undefined,
+              });
               router.push("/dashboard/storyboard");
+            },
+          },
+          {
+            label: "给这条起标题",
+            icon: Tag,
+            onClick: (body) => {
+              putHandoff({
+                from: "审稿优化",
+                scriptContent: body,
+                workId: workId ?? undefined,
+              });
+              router.push("/dashboard/title");
             },
           },
         ]}

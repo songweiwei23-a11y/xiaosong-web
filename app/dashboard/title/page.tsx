@@ -1,6 +1,7 @@
 "use client";
 
 import { takeHandoff } from "@/lib/handoff";
+import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
 import { buildTitlePrompt } from "@/lib/title-standards";
 import { Field } from "@/components/form/Field";
@@ -232,6 +233,8 @@ export default function TitlePage() {
 
       if (fullResult) {
         await saveGenerationHistory("标题封面", inputData, fullResult, workId);
+            // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
+            await recordStage(workId, "标题封面");
         await loadTitleHistory();
         setShowDialog(true);
       }

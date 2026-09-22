@@ -59,6 +59,43 @@ export async function touchWork(id: string, patch: { title?: string; isDone?: bo
   }
 }
 
+/**
+ * 一个环节刚保存完，登记到作品上。
+ *
+ * 此前只有脚本页做了这件事，分镜、审稿、标题保存后都不通知作品，
+ * 于是 updated_at 停在最后一次写脚本的时间——作品在「进行中」列表里
+ * 排序全乱，做到一半的那条反而沉底。
+ *
+ * 顺带解决另一个问题：作品从来没有被标记完成，五个环节都做完了仍然
+ * 挂在「进行中」，列表只增不减。这里在最后一个环节落地时自动收尾。
+ */
+export async function recordStage(workId: string | null | undefined, stageName: string) {
+  if (!workId) return; // 零散记录，本来就不属于任何作品
+
+  try {
+    // 拿这条作品当前的环节进度，判断是不是刚补上最后一块
+    const res = await fetch(`/api/works?id=${encodeURIComponent(workId)}`);
+    if (!res.ok) {
+      await touchWork(workId);
+      return;
+    }
+    const work = await res.json();
+    const done = new Set<string>(
+      (work?.items ?? []).map((it: { task_type: string }) => it.task_type)
+    );
+    done.add(stageName);
+
+    const allDone = STAGE_ORDER.every((s) => done.has(s));
+    await touchWork(workId, allDone ? { isDone: true } : {});
+  } catch {
+    // 查不到就退回最基本的动作：至少把时间刷新，让它回到列表最前
+    await touchWork(workId);
+  }
+}
+
+/** 作品的五个环节，顺序即创作流程。与 app/api/works/route.ts 保持一致 */
+export const STAGE_ORDER = ['选题策划', '脚本生成', '分镜脚本', '审稿优化', '标题封面'] as const;
+
 export async function listWorks(limit = 20): Promise<Work[]> {
   try {
     const res = await fetch(`/api/works?limit=${limit}`);
