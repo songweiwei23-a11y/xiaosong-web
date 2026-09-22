@@ -150,8 +150,12 @@ export async function POST(req: NextRequest) {
       // 成交理由此前也发 '知识库查询'，导致它的用量被记成知识库（无限额度），
       // 等于这个功能从不计费；现在按自己的名字发，计费才落到 dealReason 上。
       query = body.topic || body.query || '请提供具体问题';
-    } else if (body.taskType === '分镜脚本') {
-      // 分镜脚本生成逻辑
+    } else if (body.taskType === '分镜脚本' && !body.query) {
+      // 分镜页现已在前端用 lib/storyboard-standards 拼好完整提示词
+      // （景别语言、景别节奏、运镜与情绪、画面与口播的关系、剪辑点、
+      // 拍摄顺序、各内容类型的设计要点），此处只是旧版兜底。
+      // 与选题、审稿同理：已有 query 就直接沿用，否则会把带方法论的提示词
+      // 覆盖成这套只有格式约束的模板。
       const parts = ['请为以下脚本生成专业分镜脚本'];
       parts.push('\n## 原始脚本');
       parts.push(body.scriptContent || '未提供脚本内容');

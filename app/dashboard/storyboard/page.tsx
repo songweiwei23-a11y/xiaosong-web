@@ -3,6 +3,7 @@
 import { takeHandoff, putHandoff } from "@/lib/handoff";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
+import { buildStoryboardPrompt } from "@/lib/storyboard-standards";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -182,17 +183,33 @@ export default function StoryboardPage() {
     let fullResult = ""; // 保存历史记录用
 
     try {
+      // 提示词在前端拼：这样才能先把脚本量一遍（字数换算口播时长、
+      // 和目标时长的差额），把客观数据交给模型。后端检测到已有 query
+      // 就不再用那套只有格式约束的旧模板。
+      const query = buildStoryboardPrompt({
+        scriptContent,
+        platform,
+        duration,
+        contentType,
+        visualStyle,
+        visualStyleLabel: VISUAL_STYLES.find((s) => s.value === visualStyle)?.label || "电影感",
+        additionalInfo,
+      });
+
       const response = await fetch("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: "分镜脚本",
-          scriptContent,
+          query,
+          // 记忆按档案隔离，与其余板块共用同一个工作窗口
+          profileId: typeof window !== "undefined"
+            ? localStorage.getItem("activeProfileId")
+            : null,
+          // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           platform,
           duration,
           contentType,
-          visualStyle,
-          additionalInfo,
         }),
       });
 
