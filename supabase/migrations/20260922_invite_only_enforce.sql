@@ -49,7 +49,7 @@ SECURITY DEFINER            -- GoTrue 以 supabase_auth_admin 身份插入，需
 SET search_path = public
 AS $$
 DECLARE
-  v_found BOOLEAN;
+  v_count INTEGER;
 BEGIN
   -- 消费入场券。券必须是 15 分钟内发的——
   -- 不设时限的话，一张早年遗留的券会一直躺在那里当后门。
@@ -57,14 +57,19 @@ BEGIN
   WHERE lower(email) = lower(NEW.email)
     AND created_at > NOW() - INTERVAL '15 minutes';
 
-  GET DIAGNOSTICS v_found = FOUND;
+  -- 取受影响行数判断有没有消费到券。
+  -- 这里不能写 GET DIAGNOSTICS ... = FOUND：FOUND 是 PL/pgSQL 的特殊变量，
+  -- 直接读即可，GET DIAGNOSTICS 只接受 ROW_COUNT 这类诊断项，
+  -- 写成 FOUND 会报 42601 unrecognized GET DIAGNOSTICS item。
+  GET DIAGNOSTICS v_count = ROW_COUNT;
 
-  IF v_found THEN
+  IF v_count > 0 THEN
+    -- 顺手清掉过期的券，不用为此单开定时任务。
+    -- 必须放在成功分支里：下面 RAISE EXCEPTION 会回滚整个事务，
+    -- 写在异常分支里的 DELETE 永远提交不了，等于一句白写的代码。
+    DELETE FROM registration_authorizations WHERE created_at < NOW() - INTERVAL '1 day';
     RETURN NEW;
   END IF;
-
-  -- 顺手清掉过期的券，不用为此单开定时任务
-  DELETE FROM registration_authorizations WHERE created_at < NOW() - INTERVAL '1 day';
 
   RAISE EXCEPTION '注册需要邀请码'
     USING HINT = '请通过产品的注册页面并填写有效邀请码';
