@@ -26,6 +26,12 @@ interface Conversation {
   remoteId?: string;
   title: string;
   difyConversationId: string;
+  /**
+   * 这条线程是用户点「新建对话」开的，第一句话要从干净的窗口开始，
+   * 而不是接着该档案的主工作窗口往下说。仅在发出第一句话时有意义，
+   * 之后这条线程就有自己的 difyConversationId 了。
+   */
+  wantsFreshWindow?: boolean;
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
@@ -195,11 +201,17 @@ export default function FreeChatPage() {
     return parts.join("；");
   }, [profile]);
 
-  const createConversation = useCallback(() => {
+  /**
+   * @param fresh true = 用户主动点「新建对话」，要一个干净的窗口；
+   *   false/省略 = 系统自动开的第一条线程，接着该档案的主工作窗口说，
+   *   这样它才知道各生成板块刚产出了什么。
+   */
+  const createConversation = useCallback((fresh = false) => {
     const conv: Conversation = {
       id: uid(),
-      title: "新对话",
+      title: fresh ? "新对话" : "接着上次",
       difyConversationId: "",
+      wantsFreshWindow: fresh,
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -301,6 +313,11 @@ export default function FreeChatPage() {
         body: JSON.stringify({
           query,
           conversationId: difyConvId || undefined,
+          // 没有自己的会话时，服务端会把这条线程接入该档案的主工作窗口，
+          // 于是「刚才那条脚本怎么改」这类问题它是真的知道指的是哪条
+          profileId: profile?.id || null,
+          // 这条线程是用户点「新建对话」开的，明确要求从干净的窗口开始
+          freshWindow: !difyConvId && conv.wantsFreshWindow === true,
         }),
       });
 
@@ -402,7 +419,7 @@ export default function FreeChatPage() {
         <div className="flex w-64 flex-col border-r bg-card">
           <div className="p-3">
             <button
-              onClick={createConversation}
+              onClick={() => createConversation(true)}
               className="flex w-full items-center justify-center gap-2 rounded-xl brand-gradient py-3 font-medium text-white shadow-sm transition-all"
             >
               <Plus className="h-4 w-4" />
@@ -460,7 +477,11 @@ export default function FreeChatPage() {
             <div>
               <div className="text-sm font-bold text-foreground">高阶自由模式</div>
               <div className="text-xs text-muted-foreground">
-                {activeConv?.difyConversationId ? "✅ 记忆已开启" : "🆕 新对话"} · 选题·脚本·打磨都能聊
+                {activeConv?.difyConversationId
+          ? "✅ 记忆已开启"
+          : activeConv?.wantsFreshWindow
+            ? "🆕 从头开始"
+            : "🔗 接着各板块刚做的内容"} · 选题·脚本·打磨都能聊
               </div>
             </div>
           </div>
@@ -567,7 +588,8 @@ export default function FreeChatPage() {
             </button>
           </div>
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-            💡 对话有记忆，可连续追问；换个话题建议点“新建对话”。内容已同步云端，换设备也能接着聊。
+            💡 这里和选题、脚本、分镜共用同一段记忆——刚生成的内容可以直接接着聊。
+        想彻底换个话题就点「新建对话」，会开一个干净的窗口。内容已同步云端，换设备也能接着聊。
           </p>
         </div>
       </div>

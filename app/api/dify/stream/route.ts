@@ -429,11 +429,7 @@ export async function POST(req: NextRequest) {
     // 带上该作用域的历史会话，让 Dify 把多次生成串成一轮对话。
     // 作用域 = 用户 + 账号档案 + 功能，见 lib/dify-conversation.ts。
     const profileId = body.profileId || body.profile_id || null;
-    const existingConversationId = await getDifyConversationId(
-      guard.userId!,
-      body.taskType || '未知',
-      profileId
-    );
+    const existingConversationId = await getDifyConversationId(guard.userId!, profileId);
     if (existingConversationId) {
       difyRequestBody.conversation_id = existingConversationId;
       console.log('🔗 延续已有会话:', existingConversationId);
@@ -458,7 +454,7 @@ export async function POST(req: NextRequest) {
       const errText = await response.clone().text();
       if (isInvalidConversationError(response.status, errText)) {
         console.warn('⚠️ 会话已失效，清除后以新会话重试:', errText.slice(0, 160));
-        await clearDifyConversationId(guard.userId!, body.taskType || '未知', profileId);
+        await clearDifyConversationId(guard.userId!, profileId);
         delete difyRequestBody.conversation_id;
         response = await callDify();
       }
@@ -550,9 +546,9 @@ export async function POST(req: NextRequest) {
           if (totalChunks > 0 && guard.userId && capturedConversationId) {
             await saveDifyConversationId(
               guard.userId,
-              body.taskType || '未知',
               capturedConversationId,
-              profileId
+              profileId,
+              body.taskType || '未知'
             );
           } else if (totalChunks > 0 && !capturedConversationId) {
             // 有内容产出却没拿到会话 id，说明 SSE 事件里始终不含 conversation_id。

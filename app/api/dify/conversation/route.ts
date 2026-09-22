@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
+import { getDifyConversationId } from '@/lib/dify-conversation';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -34,7 +35,10 @@ export async function POST(req: NextRequest) {
     // 若不传，检索节点会拿到空查询导致召回失效。
     const difyBody: any = {
       inputs: {
-        search_query: String(query).replace(/\s+/g, ' ').trim().slice(0, 200)
+        query: query,
+        search_query: String(query).replace(/\s+/g, ' ').trim().slice(0, 200),
+        conversation_history: '',
+        dealReasons: ''
       },
       query: query,
       response_mode: 'streaming',
@@ -43,9 +47,13 @@ export async function POST(req: NextRequest) {
       user: guard.userId!
     };
 
-    // 如果有 conversation_id，传递它以保持对话记忆
-    if (conversationId) {
-      difyBody.conversation_id = conversationId;
+    // 调用方给了会话就用它，没给就接入这个档案的主工作窗口，
+    // 让追问能看见各生成板块刚产出的内容。
+    const profileId = body.profileId || null;
+    const useConversationId =
+      conversationId || (await getDifyConversationId(guard.userId!, profileId));
+    if (useConversationId) {
+      difyBody.conversation_id = useConversationId;
     }
 
     console.log('📤 发送给 Dify 的数据:', JSON.stringify(difyBody, null, 2));

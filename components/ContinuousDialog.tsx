@@ -186,6 +186,11 @@ export default function ContinuousDialog({
           query: userInput,
           conversationId: conversationId || undefined,
           initialContent: !conversationId ? initialContent : undefined, // ✅ 首次对话时传递
+          // 没有自己的会话时，服务端会接入该档案的主工作窗口，
+          // 于是追问时模型已经见过刚生成的内容，不必再整段贴一遍
+          profileId:
+            contextData?.profileInfo?.id ||
+            (typeof window !== 'undefined' ? localStorage.getItem('activeProfileId') : null),
           profileData: contextData?.profileInfo ? {
             profile_name: contextData.profileInfo
           } : undefined

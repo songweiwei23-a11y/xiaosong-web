@@ -3,16 +3,35 @@
 // Dify 以 conversation_id 串起多轮对话。此前请求体里从不携带它，
 // 每次生成都是一次孤立的对话，"再来一条"这类指令无从谈起。
 //
-// 会话粒度取 用户 + 账号档案 + 功能：代运营场景下一个用户会管多个账号，
-// 档案 A 的脚本记忆不应混进档案 B；不同功能的上下文也各自独立。
+// 【会话粒度：一个账号档案 = 一个工作窗口】
+//
+// 早先的粒度是 用户 + 档案 + 功能，九个板块各自一个会话。隔离得很干净，
+// 代价是板块之间互相不认识：在选题里定了方向，去脚本页它不知道；
+// 在自由对话里问"刚才那条脚本怎么改"，它根本没见过那条脚本。
+// 而这个产品的价值恰恰在于把一条内容的各个环节串起来。
+//
+// 现在改成按档案分档：同一个账号档案下，选题、脚本、分镜、审稿、标题、
+// 定位、自由对话、追问，全都落在同一个 Dify 会话里，前后承接。
+// 档案仍然是隔离边界——代运营管多个号时，A 号的内容绝不能串到 B 号。
+//
+// 代价要说清楚：上下文会随使用累积，请求带的历史越来越长，
+// 成本和延迟都会上升，久了还可能串味。所以留了 startNewWindow()
+// 让用户能主动开一个干净的窗口。
 
 import { getServiceSupabase } from '@/lib/admin-auth';
 
-/** 组合出会话作用域键。档案为空时归入 default，保证键始终非空。 */
-export function buildScopeKey(taskType: string, profileId?: string | null): string {
-  const t = (taskType || 'unknown').trim();
+/**
+ * 组合出会话作用域键。
+ *
+ * 只按账号档案分，不再按功能分——这正是"同一个窗口"的实现方式。
+ * 档案为空时归入 default，保证键始终非空。
+ *
+ * 注意：改档之前写入的键形如 `脚本生成:default`，改档之后是 `default`。
+ * 旧行不会被读到，也不影响新键，留着即可，下次清理时再删。
+ */
+export function buildScopeKey(profileId?: string | null): string {
   const p = (profileId || '').trim();
-  return `${t}:${p || 'default'}`;
+  return p || 'default';
 }
 
 /**
@@ -21,7 +40,6 @@ export function buildScopeKey(taskType: string, profileId?: string | null): stri
  */
 export async function getDifyConversationId(
   userId: string,
-  taskType: string,
   profileId?: string | null
 ): Promise<string | null> {
   try {
@@ -30,7 +48,7 @@ export async function getDifyConversationId(
       .from('dify_conversations')
       .select('conversation_id')
       .eq('user_id', userId)
-      .eq('scope_key', buildScopeKey(taskType, profileId))
+      .eq('scope_key', buildScopeKey(profileId))
       .maybeSingle();
     if (error) {
       console.error('[dify-conversation] 读取失败:', error.message);
@@ -46,9 +64,10 @@ export async function getDifyConversationId(
 /** 记录/更新该作用域的会话 id。失败只记日志，不影响已经产出的内容。 */
 export async function saveDifyConversationId(
   userId: string,
-  taskType: string,
   conversationId: string,
-  profileId?: string | null
+  profileId?: string | null,
+  /** 最后写入这个窗口的是哪个板块，仅用于排查，不参与分档 */
+  lastTaskType?: string
 ): Promise<void> {
   if (!conversationId) return;
   try {
@@ -56,8 +75,8 @@ export async function saveDifyConversationId(
     const { error } = await supabase.from('dify_conversations').upsert(
       {
         user_id: userId,
-        scope_key: buildScopeKey(taskType, profileId),
-        task_type: taskType,
+        scope_key: buildScopeKey(profileId),
+        task_type: lastTaskType || null,
         profile_id: profileId || null,
         conversation_id: conversationId,
         updated_at: new Date().toISOString(),
@@ -70,7 +89,7 @@ export async function saveDifyConversationId(
       // 成功也要留痕：只在失败时打日志，会导致"没执行"与"执行成功"
       // 在日志里无法区分，排查时只能靠推理。
       console.log(
-        `[dify-conversation] 已保存会话 scope=${buildScopeKey(taskType, profileId)} id=${conversationId}`
+        `[dify-conversation] 已保存会话 scope=${buildScopeKey(profileId)} id=${conversationId}`
       );
     }
   } catch (e: any) {
@@ -85,7 +104,6 @@ export async function saveDifyConversationId(
  */
 export async function clearDifyConversationId(
   userId: string,
-  taskType: string,
   profileId?: string | null
 ): Promise<void> {
   try {
@@ -94,10 +112,24 @@ export async function clearDifyConversationId(
       .from('dify_conversations')
       .delete()
       .eq('user_id', userId)
-      .eq('scope_key', buildScopeKey(taskType, profileId));
+      .eq('scope_key', buildScopeKey(profileId));
   } catch (e: any) {
     console.error('[dify-conversation] 清除异常:', e?.message);
   }
+}
+
+/**
+ * 主动开一个干净的工作窗口。
+ *
+ * 所有板块共用一个会话之后，上下文只会越来越长：成本、延迟都会涨，
+ * 而且聊久了容易串味——上一条内容的设定会渗进下一条。用户需要一个
+ * 能主动"翻篇"的动作，自由对话页的「新建对话」就绑在这里。
+ *
+ * 只是删掉本地记的 id，Dify 那边的历史会话仍在，不会丢东西。
+ */
+export async function startNewWindow(userId: string, profileId?: string | null): Promise<void> {
+  await clearDifyConversationId(userId, profileId);
+  console.log(`[dify-conversation] 已开新窗口 scope=${buildScopeKey(profileId)}`);
 }
 
 /**
