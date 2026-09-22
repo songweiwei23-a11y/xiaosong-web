@@ -74,6 +74,14 @@ ${PROFILE_SUMMARY}
 - 总字数控制在1000字以内
 - 不要输出：视觉呈现、妆容穿搭、话术风格、发布节奏、15天计划、变现路径、判断标准`;
 
+/**
+ * 必须用流式，和线上一致。
+ *
+ * 一开始这里用的是 blocking，提示词涨到 8000 多字之后直接 504——
+ * 网关等不到整段生成完。线上走的是 /api/dify/stream，逐块下发不会超时，
+ * 所以那个 504 是测试方式的问题，不是功能的问题。但拿 blocking 测
+ * 一个线上用流式的功能，本身就测错了对象。
+ */
 async function run(prompt: string) {
   const searchQuery = buildSearchQuery('账号定位', { taskType: '账号定位' }, prompt);
   const r = await fetch('https://api.dify.ai/v1/chat-messages', {
@@ -82,13 +90,34 @@ async function run(prompt: string) {
     body: JSON.stringify({
       inputs: { query: prompt, search_query: searchQuery, conversation_history: '', dealReasons: '' },
       query: prompt,
-      response_mode: 'blocking',
+      response_mode: 'streaming',
       user: 'positioning-ab',
     }),
   });
-  const t = await r.text();
-  expect(r.ok, `HTTP ${r.status}: ${t.slice(0, 200)}`).toBe(true);
-  return JSON.parse(t).answer || '';
+  expect(r.ok, `HTTP ${r.status}`).toBe(true);
+
+  const reader = r.body!.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let answer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() || '';
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t.startsWith('data: ')) continue;
+      try {
+        const d = JSON.parse(t.slice(6));
+        answer += d.answer ?? '';
+      } catch {
+        // 半行或非 JSON，跳过
+      }
+    }
+  }
+  return answer;
 }
 
 describe('账号定位：新提示词是否真的产出更专业', () => {
@@ -134,8 +163,37 @@ describe('账号定位：新提示词是否真的产出更专业', () => {
     console.log('\n=== 用上真实资源条件 ===');
     console.log(`  新：${(a.match(res) || []).length} 处 / 旧：${(b.match(res) || []).length} 处`);
 
-    console.log('\n=== 新版产出，前 1200 字 ===');
-    console.log(a.slice(0, 1200));
+    // ⑤ 用户反馈第一版「太片面、不够全」，补进去的就是下面这几块。
+    //    光看字数涨了没用，要确认这几节真的出现在产出里。
+    const sections: Array<[string, RegExp]> = [
+      ['一句话定位', /一句话定位/],
+      ['六维地基', /六维/],
+      ['记忆点', /记忆点/],
+      ['差异化 A\\+B', /差异化|变量\s*B|常规\s*A/],
+      ['内容系列', /系列/],
+      ['30天起号实验', /30\s*天|第1-3天|第26-30天/],
+      ['数据诊断树', /诊断|跑不通|先怀疑/],
+      ['自洽检验', /遮住字幕|自洽/],
+      ['风险', /风险/],
+    ];
+    console.log('\n=== 新版产出的章节清单 ===');
+    const missing: string[] = [];
+    for (const [name, re] of sections) {
+      const ok = re.test(a);
+      console.log(`  ${ok ? '✓' : '✗'} ${name}`);
+      if (!ok) missing.push(name);
+    }
+
+    // 把完整产出留一份，便于人工逐节复核——指标看不出"写得够不够实"。
+    // 写到系统临时目录，别污染仓库
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const dump = path.join(os.tmpdir(), 'positioning-output.txt');
+    fs.writeFileSync(dump, a, 'utf8');
+    console.log(`\n完整产出已写入 ${dump}`);
+
+    expect(missing, `这几节没出现在产出里：${missing.join('、')}`).toEqual([]);
 
     expect(hitNew.length, '新版六维覆盖不足').toBeGreaterThanOrEqual(5);
     expect(hitNew.length, '新版六维应当明显多于旧版').toBeGreaterThan(hitOld.length);

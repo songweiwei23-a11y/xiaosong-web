@@ -63,6 +63,84 @@ describe('给的是判断依据，不只是小节清单', () => {
   });
 });
 
+/**
+ * 用户反馈第一版「不够细节、太片面、不够全」。原因是我只用了知识库的
+ * 第一篇（战略与IP定位），后面几篇里跟定位直接相关的内容全没进来。
+ * 下面这组卡住的就是补进去的那几块——少任何一块，方案就会回到"骨架"状态。
+ */
+describe('缺的那几块都补上了', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('呈现形式有四种对比，不再是一句「口播/Vlog等」', () => {
+    expect(p).toContain('情景剧');
+    expect(p).toContain('资源不足时，高质量口播远胜粗糙剧情');
+    // 情境真实是可信度的执行底线
+    expect(p).toContain('宝宝一定要收藏');
+  });
+
+  it('风格调性给了六个触点，不是三个关键词了事', () => {
+    for (const t of ['主页', '单条封面', '人物', '场景', '语言', '音乐剪辑']) {
+      expect(p, `触点缺 ${t}`).toContain(t);
+    }
+    expect(p).toContain('有意反差');
+  });
+
+  it('记忆点这一整块补上了', () => {
+    expect(p).toContain('让用户能复述你');
+    for (const k of ['语言', '动作', '道具', '服装', '场景']) expect(p).toContain(k);
+    // 记忆点最终留哪个要看评论区，不能写成必须照做
+    expect(p).toContain('自然形成的标签');
+  });
+
+  it('差异化给的是 24 元素微创新方法，不是「别人vs你」', () => {
+    expect(p).toContain('身份互换');
+    expect(p).toContain('情境还原');
+    expect(p).toContain('借物喻人');
+    expect(p).toContain('A + 变量B');
+    expect(p).toContain('不要急着否定整个赛道');
+  });
+
+  it('有系列化设计，能撑 30 集才立项', () => {
+    expect(p).toContain('连续追更');
+    expect(p).toContain('至少 30 集');
+    expect(p).toContain('假装随机却被识破');
+  });
+
+  it('变现先分清在玩哪种经济', () => {
+    expect(p).toContain('流量经济');
+    expect(p).toContain('粉丝经济');
+    expect(p).toContain('产品是为了满足需求，人物是为了制造偏好');
+  });
+
+  it('30 天实验排到了周期和交付物', () => {
+    expect(p).toContain('第1-3天');
+    expect(p).toContain('第26-30天');
+    expect(p).toContain('一次只改一个变量');
+  });
+
+  it('自带「跑不通怎么办」的诊断树', () => {
+    expect(p).toContain('数据诊断树');
+    expect(p).toContain('有曝光但前段流失');
+    expect(p).toContain('咨询多成交少');
+  });
+
+  it('三大原则筛掉自嗨方向', () => {
+    expect(p).toContain('有用处');
+    expect(p).toContain('有共鸣');
+    expect(p).toContain('只想着展示自己的产品');
+  });
+
+  it('要求输出结论而不是抄参考表', () => {
+    expect(p).toContain('不要原样抄进方案里');
+    expect(p).toContain('不要越写越简略');
+  });
+
+  it('要求指出风险，不许只讲好听的', () => {
+    expect(p).toContain('这个号最大的风险');
+    expect(p).toContain('不要粉饰');
+  });
+});
+
 describe('不再写死抖音', () => {
   it('按档案里的平台给对应特性', () => {
     const xhs = buildPositioningPrompt({ ...base, platform: '小红书' });
@@ -103,10 +181,10 @@ describe('禁忌是硬约束', () => {
 });
 
 describe('一个函数三种用法', () => {
-  it('full：六维全套 + 起步30条', () => {
+  it('full：六维全套 + 30天实验', () => {
     const p = buildPositioningPrompt({ ...base, focus: 'full' });
     expect(p).toContain('# 🎯 账号定位方案');
-    expect(p).toContain('起步 30 条怎么排');
+    expect(p).toContain('30 天起号实验');
   });
 
   it('business：变现深挖，要成交路径和信任证据', () => {
