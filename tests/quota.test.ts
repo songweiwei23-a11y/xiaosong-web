@@ -117,4 +117,49 @@ describe('配置本身的一致性', () => {
     expect(judgeQuota('free', 'script', null).remaining).toBe(20);
     expect(judgeQuota('basic', 'script', null).remaining).toBe(150);
   });
+
+  it('年付价必须真的比月付十二个月便宜，且是整数', () => {
+    for (const id of ['basic', 'pro', 'enterprise'] as const) {
+      const p = SUBSCRIPTION_PLANS[id];
+      expect(Number.isInteger(p.yearlyPrice), `${id} 年付价不是整数`).toBe(true);
+      expect(p.yearlyPrice, `${id} 年付比月付×12 还贵`).toBeLessThan(p.price * 12);
+    }
+  });
+});
+
+/**
+ * 价格曾经在四个地方各写一份：lib/config/plans.ts、首页、会员页、收款页。
+ * 结果企业版在首页写 199、收款页收 599，用户看到一个价点进去是另一个价；
+ * 基础版 29 和 30 并存；额度写着 50/200 而实际执行 150/500。
+ *
+ * 现在四处都从 plans.ts 取值。这组用例守住「没有第二处价格」这件事。
+ */
+describe('价格只有一个源头', () => {
+  const PAGES = [
+    'app/page.tsx',
+    'app/payment/page.tsx',
+    'app/dashboard/membership/page.tsx',
+  ];
+
+  it('展示价格的页面都从 plans.ts 取值，不自己写价目表', async () => {
+    const fs = await import('node:fs');
+    for (const page of PAGES) {
+      const src = fs.readFileSync(page, 'utf8');
+      expect(src, `${page} 没有引入 lib/config/plans`).toMatch(/@\/lib\/config\/plans/);
+    }
+  });
+
+  it('页面里不再出现写死的套餐价', async () => {
+    const fs = await import('node:fs');
+    // 注释里可以提这些数字（用来解释当初为什么出错），代码里不行
+    const priceLike = /(?:price|yearly|yearlyPrice)\s*[:=]\s*(\d{2,4})/g;
+    for (const page of PAGES) {
+      const src = fs
+        .readFileSync(page, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '');
+      const hits = [...src.matchAll(priceLike)].map((m) => m[1]);
+      expect(hits, `${page} 里仍有写死的价格：${hits.join('、')}`).toEqual([]);
+    }
+  });
 });

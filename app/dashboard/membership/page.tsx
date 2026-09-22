@@ -3,88 +3,99 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
+import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, FEATURE_NAMES } from "@/lib/config/plans";
+
+/*
+ * 价格和额度一律从 lib/config/plans.ts 取，页面只负责好看。
+ *
+ * 此前这里自己写了一份：企业版 599（首页和代码是 199，用户在首页看到
+ * 199 点进来要付 599）、基础版 29（代码是 30）、额度写「基础 50 次、
+ * 专业 200 次」（代码是 150 / 500）。四个地方各写各的，改一处漏三处。
+ */
+
+/** 按套餐的真实额度配置生成额度文案，而不是手写一个数字 */
+function quotaLines(planId: keyof typeof SUBSCRIPTION_PLANS): string[] {
+  const plan = SUBSCRIPTION_PLANS[planId];
+
+  if (plan.totalQuota === -1) return ["所有功能：不限次数"];
+
+  if (plan.totalQuota !== null) {
+    return [`所有功能合计：${plan.totalQuota} 次/月`, "知识库：不限次数"];
+  }
+
+  // 免费版按功能分别限额，把有额度的列出来，0 次的单独归到「不支持」
+  const lines = ["知识库：不限次数"];
+  for (const f of COUNTED_FEATURES) {
+    const q = plan.quotas[f.key];
+    if (q > 0) lines.push(`${f.name}：${q} 次/月`);
+  }
+  return lines;
+}
+
+/** 该套餐完全不支持的功能 */
+function unsupported(planId: keyof typeof SUBSCRIPTION_PLANS): string[] {
+  const plan = SUBSCRIPTION_PLANS[planId];
+  if (plan.totalQuota !== null) return [];
+  return COUNTED_FEATURES.filter((f) => plan.quotas[f.key] === 0).map(
+    (f) => `不支持${FEATURE_NAMES[f.key] || f.name}`
+  );
+}
 
 const membershipPlans = [
   {
     id: "free",
-    name: "免费版",
-    price: 0,
+    name: SUBSCRIPTION_PLANS.free.name,
+    price: SUBSCRIPTION_PLANS.free.price,
+    yearlyPrice: SUBSCRIPTION_PLANS.free.yearlyPrice,
     period: "永久",
     icon: Shield,
     color: "text-muted-foreground",
     bgColor: "bg-muted",
-    features: [
-"每月 5 次使用额度",
-"脚本生成基础功能",
-"选题策划 3 个方案",
-"知识库基础搜索",
-"社区功能",
-    ],
-    limits: [
-"不支持分镜脚本",
-"不支持审稿优化",
-"不支持账号定位",
-    ],
+    features: [...quotaLines("free"), "历史记录保存", "社区功能"],
+    limits: unsupported("free"),
   },
   {
     id: "basic",
-    name: "基础会员",
-    price: 29,
+    name: SUBSCRIPTION_PLANS.basic.name,
+    price: SUBSCRIPTION_PLANS.basic.price,
+    yearlyPrice: SUBSCRIPTION_PLANS.basic.yearlyPrice,
     period: "月",
     icon: Star,
     color: "text-primary",
     bgColor: "bg-primary/15",
     popular: false,
-    features: [
-"每月 50 次使用额度",
-"所有脚本生成功能",
-"选题策划 12 个方案",
-"分镜脚本生成",
-"知识库高级搜索",
-"标题封面生成",
-"优先客服支持",
-    ],
+    features: [...quotaLines("basic"), "全部九个功能开放", "高级模板支持", "优先客服支持"],
     limits: [],
   },
   {
     id: "pro",
-    name: "专业会员",
-    price: 99,
+    name: SUBSCRIPTION_PLANS.pro.name,
+    price: SUBSCRIPTION_PLANS.pro.price,
+    yearlyPrice: SUBSCRIPTION_PLANS.pro.yearlyPrice,
     period: "月",
     icon: Crown,
     color: "text-accent",
     bgColor: "bg-accent/15",
     popular: true,
-    features: [
-"每月 200 次使用额度",
-"所有功能无限制使用",
-"审稿优化功能",
-"账号定位 7 天计划",
-"AI 智能分析",
-"数据导出功能",
-"专属客服 1v1",
-"定制化模板",
-    ],
+    features: [...quotaLines("pro"), "全部高级模板", "数据分析报告", "专属客服 1v1"],
     limits: [],
   },
   {
     id: "enterprise",
-    name: "企业版",
-    price: 599,
+    name: SUBSCRIPTION_PLANS.enterprise.name,
+    price: SUBSCRIPTION_PLANS.enterprise.price,
+    yearlyPrice: SUBSCRIPTION_PLANS.enterprise.yearlyPrice,
     period: "月",
     icon: Zap,
     color: "text-orange-500",
     bgColor: "bg-amber-500/15",
     popular: false,
     features: [
-"无限次使用额度",
-"多账号协作（5人）",
-"企业级数据安全",
-"API 接口调用",
-"私有化部署支持",
-"定制化开发",
-"专属客户经理",
-"培训与技术支持",
+      ...quotaLines("enterprise"),
+      "定制化模板",
+      "API 接口调用",
+      "数据导出权限",
+      "专属客户经理",
     ],
     limits: [],
   },
@@ -143,7 +154,11 @@ export default function MembershipPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {membershipPlans.map((plan) => {
           const Icon = plan.icon;
-          const finalPrice = billingCycle === "yearly" ? Math.floor(plan.price * 12 * 0.8) : plan.price;
+          // 年付价直接取配置里的 yearlyPrice，不再当场按 12×0.8 算。
+          // 当场算出来的数和 plans.ts 里写的对不上时（比如 49×12×0.8=470.4），
+          // 页面显示一个价、收款按另一个价，用户会以为被多收了。
+          const finalPrice = billingCycle === "yearly" ? plan.yearlyPrice : plan.price;
+          const listPrice = plan.price * 12;
           
           return (
             <div
@@ -192,7 +207,7 @@ export default function MembershipPage() {
                     </div>
                     {billingCycle === "yearly" && plan.price > 0 && (
                       <div className="text-sm text-muted-foreground mt-1">
-                        原价 ¥{plan.price * 12}，省 ¥{plan.price * 12 * 0.2}
+                        原价 ¥{listPrice}，省 ¥{listPrice - plan.yearlyPrice}
                       </div>
                     )}
                   </>
@@ -257,9 +272,10 @@ export default function MembershipPage() {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-foreground mb-2">额度用不完怎么办？</h3>
+            <h3 className="font-semibold text-foreground mb-2">额度什么时候重置？</h3>
             <p className="text-muted-foreground text-sm">
-              每月额度不会清零，可累积到下个月使用，最多累积 3 个月。
+              按订阅周期每 30 天重置一次，重置后额度回到满额。
+              未用完的次数不会累积到下个周期。
             </p>
           </div>
           <div>

@@ -4,6 +4,7 @@ import {
   useState, useEffect } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { SUBSCRIPTION_PLANS, COUNTED_FEATURES } from "@/lib/config/plans";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
 import { 
   Sparkles, Zap, CheckCircle, TrendingUp, ArrowRight, 
@@ -107,30 +108,35 @@ export default function HomePage() {
     }
   ];
 
+  /*
+   * 价格与额度全部从 lib/config/plans.ts 派生。
+   *
+   * 这里原本手写着一份，和代码、会员页、收款页三处都对不上：
+   * 免费版写「账号定位 3次」（实际 1 次）、企业版写 199（收款页收 599）。
+   * 首页是对外公示的价格，它和实际收款必须来自同一个源头。
+   */
+  const freeQuotaLines = COUNTED_FEATURES
+    .filter((f) => SUBSCRIPTION_PLANS.free.quotas[f.key] > 0)
+    .map((f) => `${f.name} ${SUBSCRIPTION_PLANS.free.quotas[f.key]}次/月`);
+
   const pricingPlans = [
     {
-      name: "免费版",
-      price: 0,
+      name: SUBSCRIPTION_PLANS.free.name,
+      price: SUBSCRIPTION_PLANS.free.price,
       period: "永久免费",
       desc: "体验核心功能",
-      features: [
-"知识库无限查询",
-"账号定位 3次",
-"选题策划 3次",
-"脚本生成 20次",
-"自由对话 20次/月"
-      ],
+      features: ["知识库无限查询", ...freeQuotaLines],
       highlight: false,
       cta: "立即开始"
     },
     {
-      name: "基础版",
-      price: 30,
+      name: SUBSCRIPTION_PLANS.basic.name,
+      price: SUBSCRIPTION_PLANS.basic.price,
       period: "月",
       desc: "适合个人创作者",
       features: [
 "知识库无限查询",
-"所有功能 150次/月",
+`所有功能合计 ${SUBSCRIPTION_PLANS.basic.totalQuota}次/月`,
 "优先响应速度",
 "历史记录保存",
 "邮件客服支持"
@@ -139,13 +145,13 @@ export default function HomePage() {
       cta: "选择基础版"
     },
     {
-      name: "专业版",
-      price: 99,
+      name: SUBSCRIPTION_PLANS.pro.name,
+      price: SUBSCRIPTION_PLANS.pro.price,
       period: "月",
       desc: "适合专业团队",
       features: [
 "知识库无限查询",
-"所有功能 500次/月",
+`所有功能合计 ${SUBSCRIPTION_PLANS.pro.totalQuota}次/月`,
 "最高优先级",
 "多版本对比",
 "专属客服支持",
@@ -155,8 +161,8 @@ export default function HomePage() {
       cta: "选择专业版"
     },
     {
-      name: "企业版",
-      price: 199,
+      name: SUBSCRIPTION_PLANS.enterprise.name,
+      price: SUBSCRIPTION_PLANS.enterprise.price,
       period: "月",
       desc: "适合MCN机构",
       features: [
@@ -498,7 +504,9 @@ export default function HomePage() {
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
                 <div className="glass-panel p-4">月度成本</div>
                 <div className="glass-panel p-4 text-center text-muted-foreground">¥8000+</div>
-                <div className="glass-panel p-4 text-center font-semibold text-primary">¥30-199</div>
+                <div className="glass-panel p-4 text-center font-semibold text-primary">
+                  ¥{SUBSCRIPTION_PLANS.basic.price}-{SUBSCRIPTION_PLANS.enterprise.price}
+                </div>
                 <div className="glass-panel p-4 text-center font-bold text-green-500">省95%</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">

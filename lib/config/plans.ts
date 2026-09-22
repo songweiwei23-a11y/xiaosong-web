@@ -43,8 +43,8 @@ export const SUBSCRIPTION_PLANS = {
   basic: {
     id: "basic",
     name: "基础会员",
-    price: 30,
-    yearlyPrice: 288,     // 30 * 12 * 0.8 = 288
+    price: 49,
+    yearlyPrice: 470,     // 49 * 12 * 0.8 ≈ 470
     totalQuota: 150 as number | null, // 所有功能共用 150 次（知识库除外）
     features: [
       "知识库：无限使用",
@@ -92,6 +92,10 @@ export const SUBSCRIPTION_PLANS = {
   enterprise: {
     id: "enterprise",
     name: "企业版",
+    // ⚠️ 待定：改造前三处写着两个价——首页和这里 199，会员页和收款页 599，
+    // 用户在首页看到 199 点进去要付 599。暂取 199：它是对外公示过的价，
+    // 也是较低的那个，宁可少收也不能变成先低价引流再抬价。
+    // 确定之后只改这两行，全站页面都从这里取值。
     price: 199,
     yearlyPrice: 1910,    // 199 * 12 * 0.8 ≈ 1910
     totalQuota: -1 as number | null, // 无限

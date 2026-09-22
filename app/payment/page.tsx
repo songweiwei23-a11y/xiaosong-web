@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Smartphone, CreditCard, QrCode, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notify } from '@/components/ui/feedback';
+import { getPlan } from '@/lib/config/plans';
 
 function PaymentContent() {
   const router = useRouter();
@@ -19,16 +20,20 @@ function PaymentContent() {
     const plan = searchParams?.get("plan") || "basic";
     const cycle = searchParams?.get("cycle") || "monthly";
     
-    const plans: any = {
-      basic: { name: "基础会员", price: 29, yearly: 278 },
-      pro: { name: "专业会员", price: 99, yearly: 950 },
-      enterprise: { name: "企业版", price: 599, yearly: 5750 },
-    };
-
+    /*
+     * 价格从 lib/config/plans.ts 取，收款页不再自己写一份。
+     *
+     * 此前这里写的是 基础 29 / 企业 599，而首页和代码里是 30 / 199——
+     * 用户在首页看到企业版 199，点进来这一页要付 599。收款页是整条链路
+     * 上最不能出错的一环，它必须和对外公示的价格来自同一处。
+     */
+    const config = getPlan(plan);
     setSelectedPlan({
-      ...plans[plan],
-      cycle: cycle,
-      finalPrice: cycle === "yearly" ? plans[plan].yearly : plans[plan].price,
+      name: config.name,
+      price: config.price,
+      yearly: config.yearlyPrice,
+      cycle,
+      finalPrice: cycle === "yearly" ? config.yearlyPrice : config.price,
     });
   }, [searchParams]);
 
