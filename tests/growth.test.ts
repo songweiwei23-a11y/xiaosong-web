@@ -183,11 +183,14 @@ describe('开篇钩子提示词', () => {
     expect(p).toContain('堆钩子等于没钩子');
   });
 
-  it('圈定之后只发那几张卡的完整内容', () => {
+  it('圈定之后只发那几张卡的完整内容，并且每张各写一条', () => {
     const p = buildOpeningPrompt({ topic: 'x', picked: ['圈定人群', '直接提问'] });
-    expect(p).toContain('用户圈定了这几种');
+    expect(p).toContain('用户圈定了 2 种');
     expect(p).toContain('**心理机制**');
     expect(p).not.toContain('复古怀旧');
+    // 改过一次：原来是"在这几种里面写"，可以两条都用同一张卡。
+    // 用户要的是横向比较——每种开法各一条，才比得出差别
+    expect(p).toContain('每一种各写一条');
   });
 
   it('要求每条用不同的计，并给出推荐', () => {

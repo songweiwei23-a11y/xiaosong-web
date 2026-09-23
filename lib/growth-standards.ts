@@ -355,8 +355,80 @@ export interface OpeningParams {
   currentOpening?: string;
   /** 用户圈定的方法卡。不传就让 AI 按内容目的挑 */
   picked?: string[];
-  /** 要几条 */
+  /** 要几条。圈定了卡时这个数被忽略——每张卡各一条 */
   count?: number;
+}
+
+/** 一条开头。从生成结果里逐条解析出来，供用户挑一条去写脚本 */
+export interface ParsedOpening {
+  no: number;
+  /** 用的哪张卡 */
+  card: string;
+  /** 开头原话——要直接念出来的那句 */
+  line: string;
+  /** 为什么抓得住这群人 */
+  why: string;
+  /** 正文怎么兑现 */
+  deliver: string;
+  risk: string;
+}
+
+/**
+ * 从开篇结果里逐条解析。
+ *
+ * 用户要的是「选一个开篇就能去写脚本」，所以必须能把每一条单独拿出来，
+ * 而不是把整篇结果当一坨文本丢给脚本页。
+ *
+ * 输出格式在 buildOpeningPrompt 里约定成 `### N. 卡名` + 一行引用，
+ * 但模型仍会变形，所以这里放宽：标题层级 2-4 级都认，序号后的分隔符
+ * 点、顿号、空格都认；引用行缺失时退而取第一行正文。
+ */
+export function parseOpenings(text: string): ParsedOpening[] {
+  if (!text) return [];
+  const lines = text.split('\n');
+
+  // 先找出所有条目标题的行号
+  const heads: Array<{ at: number; no: number; card: string }> = [];
+  lines.forEach((raw, i) => {
+    const m = raw.match(/^#{2,4}\s*\**\s*(?:第\s*)?(\d+)\s*(?:条)?\s*[.、·:：\-\s]\s*\**\s*(.+?)\s*\**\s*$/);
+    if (!m) return;
+    const label = m[2].replace(/[（(].*?[）)]/g, '').trim();
+    // 卡名必须对得上 36 张，否则是"我推荐哪一条"这类小标题或模型编的
+    const hit = OPENING_CARDS.find((c) => label.includes(c.name));
+    if (!hit) return;
+    heads.push({ at: i, no: Number(m[1]), card: hit.name });
+  });
+
+  const field = (block: string[], key: string) => {
+    for (const l of block) {
+      const m = l.match(new RegExp(`^[-*]\\s*\\**${key}\\**\\s*[：:]\\s*(.+)$`));
+      if (m) return m[1].replace(/\*\*/g, '').trim();
+    }
+    return '';
+  };
+
+  return heads.map((h, idx) => {
+    const end = idx + 1 < heads.length ? heads[idx + 1].at : lines.length;
+    const block = lines.slice(h.at + 1, end);
+
+    // 开头原话优先取引用行；模型没用引用时退而取第一行不是列表的正文
+    const quoted = block
+      .filter((l) => /^\s*>/.test(l))
+      .map((l) => l.replace(/^\s*>\s?/, '').trim())
+      .filter(Boolean)
+      .join(' ');
+    const fallback =
+      block.find((l) => l.trim() && !/^[-*#>]/.test(l.trim()))?.trim() ?? '';
+
+    return {
+      no: h.no,
+      card: h.card,
+      line: (quoted || fallback).replace(/^\**|\**$/g, '').trim(),
+      why: field(block, '为什么抓得住这群人'),
+      deliver: field(block, '正文怎么兑现'),
+      risk: field(block, '风险'),
+    };
+  });
 }
 
 const cardFull = (c: OpeningCard) => `### ${c.no}. ${c.name}（${c.category}）
@@ -394,7 +466,14 @@ export function buildOpeningPrompt(p: OpeningParams): string {
 
   parts.push('## 📚 开篇方法卡', '');
   if (picked.length) {
-    parts.push('用户圈定了这几种，就在这里面写：', '');
+    // 圈定了就每张各写一条。用户的原话是「每一种开篇都设计一个」——
+    // 他要的是横向对比同一条内容的不同开法，不是同一个套路换几个词。
+    parts.push(
+      `用户圈定了 ${picked.length} 种。**每一种各写一条，一条都不能少、也不要多写**，`,
+      '顺序和下面一致。同一条内容用不同的钩子开，差别应该是看得出来的——',
+      '如果两条开头换掉几个词就一样，说明其中一条没真的用上那张卡。',
+      ''
+    );
     parts.push(picked.map(cardFull).join('\n\n'), '');
   } else {
     parts.push(
@@ -407,16 +486,32 @@ export function buildOpeningPrompt(p: OpeningParams): string {
     );
   }
 
+  /*
+   * 格式约定得很死，是因为用户要在页面上逐条挑一条去写脚本——
+   * 挑不出来就等于还得自己复制粘贴。标题行必须是「### 序号. 卡名」，
+   * 开头原话必须单独一行引用，解析靠的就是这两条。
+   */
   parts.push(`## 📤 输出格式
 
-给 ${count} 条，每条按这个结构：
+${
+  picked.length
+    ? `按下面的顺序，给这 ${picked.length} 张卡各写一条，共 ${picked.length} 条：\n\n${picked
+        .map((c, i) => `${i + 1}. ${c.name}`)
+        .join('\n')}`
+    : `给 ${count} 条，每条用一张不同的卡。`
+}
 
-**第N条 · 用了哪一计**
+**每条严格按这个结构写，标题行的卡名要和上面一字不差：**
+
+### 1. 卡名
 > 开头原话（这是要直接念出来的，写成口语，不要写"（停顿）"这类提示）
 
 - **为什么抓得住这群人**：一句话，对应他们的处境
 - **正文怎么兑现**：开头许了什么，正文必须给什么
 - **风险**：这么写可能踩什么坑（没有就写"无"）
+
+⚠️ 开头原话必须单独放在 > 引用行里，只放要念的那句话，
+不要把解释、括号备注写进引用行——这一行会被直接拿去当脚本的开头。
 
 最后加一段：
 

@@ -8,6 +8,8 @@ import {
   tacticBrief,
   summarizeTacticTests,
   buildTacticPickPrompt,
+  buildOpeningPrompt,
+  parseOpenings,
   MIN_SAMPLES,
 } from '@/lib/growth-standards';
 import fs from 'node:fs';
@@ -270,9 +272,141 @@ describe('起号页把链路接上了', () => {
   });
 
   it('开篇结果能带着钩子去标题页', () => {
-    expect(src).toContain('用这个钩子起标题');
+    expect(src).toContain('用这些钩子起标题');
     expect(src).toContain('openingCards');
     // 用户没手动圈时，要从正文里认出模型挑了哪几张
     expect(src).toContain('detectOpeningCards(result)');
+  });
+});
+
+/**
+ * 选题 → 开篇 → 脚本 这条链要能一路点下去：
+ * 选题整批带过来任选一条，每种开法各出一条，挑中一条直接去写脚本。
+ */
+describe('每种开法各出一条', () => {
+  it('圈定了卡就按卡数出条数，并逐张列出顺序', () => {
+    const prompt = buildOpeningPrompt({
+      topic: '淡季怎么把老客拉回来',
+      picked: ['圈定人群', '反认知', '损失厌恶'],
+    });
+    expect(prompt).toContain('每一种各写一条');
+    expect(prompt).toMatch(/给这 3 张卡各写一条，共 3 条/);
+    // 顺序要列出来，否则模型容易漏掉其中一张
+    expect(prompt).toContain('1. 圈定人群');
+    expect(prompt).toContain('2. 反认知');
+    expect(prompt).toContain('3. 损失厌恶');
+  });
+
+  it('没圈定时仍按条数走，不会说"各写一条"', () => {
+    const prompt = buildOpeningPrompt({ topic: 'x', count: 6 });
+    expect(prompt).toContain('给 6 条');
+    expect(prompt).not.toContain('每一种各写一条');
+  });
+
+  it('要求开头原话单独放在引用行——解析全靠这一条', () => {
+    const prompt = buildOpeningPrompt({ topic: 'x', picked: ['反认知'] });
+    expect(prompt).toContain('必须单独放在 > 引用行里');
+    expect(prompt).toContain('### 1. 卡名');
+  });
+});
+
+describe('开篇结果能逐条拆出来', () => {
+  const sample = `## 开篇方案
+
+### 1. 圈定人群
+> 南乐开饭店的老板，淡季别急着发优惠券。
+
+- **为什么抓得住这群人**：淡季是他们最焦虑的时候
+- **正文怎么兑现**：给出三个不降价的拉客动作
+- **风险**：圈得太窄，外地人划走
+
+### 2. 反认知
+> 我劝你淡季别打折，打了才是真的没人来。
+
+- **为什么抓得住这群人**：和他们第一反应相反
+- **正文怎么兑现**：解释打折为什么反噬复购
+- **风险**：无
+
+## 🎯 我推荐哪一条
+推荐第 2 条，更符合你直接的口吻。`;
+
+  it('拆得出每一条，卡名和开头原话都对', () => {
+    const out = parseOpenings(sample);
+    expect(out.length).toBe(2);
+    expect(out[0].card).toBe('圈定人群');
+    expect(out[0].line).toBe('南乐开饭店的老板，淡季别急着发优惠券。');
+    expect(out[0].deliver).toBe('给出三个不降价的拉客动作');
+    expect(out[1].card).toBe('反认知');
+    expect(out[1].risk).toBe('无');
+  });
+
+  it('不会把「我推荐哪一条」当成一条开头', () => {
+    expect(parseOpenings(sample).some((o) => o.card.includes('推荐'))).toBe(false);
+  });
+
+  it('模型换了标题写法也认（第N条 · 卡名）', () => {
+    const out = parseOpenings(`### 第1条 · 直击痛点
+> 拍了半年没人看？问题出在开头这三秒。
+- **正文怎么兑现**：拆解三秒结构`);
+    expect(out.length).toBe(1);
+    expect(out[0].card).toBe('直击痛点');
+    expect(out[0].line).toContain('拍了半年没人看');
+  });
+
+  it('模型忘了用引用行时，退而取第一行正文', () => {
+    const out = parseOpenings(`### 1. 极限数字
+这家店一年卖出十二万串。
+
+- **风险**：无`);
+    expect(out[0].line).toBe('这家店一年卖出十二万串。');
+  });
+
+  it('编出来的卡名不算一条', () => {
+    expect(parseOpenings('### 1. 宇宙无敌开场\n> 随便一句')).toEqual([]);
+  });
+
+  it('空值和纯文本不炸', () => {
+    for (const x of ['', '一段没有结构的话', null as unknown as string]) {
+      expect(parseOpenings(x)).toEqual([]);
+    }
+  });
+});
+
+describe('选定的开头会锁死脚本第一句', () => {
+  const src = read('app/dashboard/script/page.tsx');
+
+  it('脚本页收得到并拼进提示词', () => {
+    expect(src).toContain('openingLine');
+    expect(src).toContain('开头已经定了，必须用这一句');
+    expect(src).toContain('一字不改');
+  });
+
+  it('锁死时不再发"开场钩子要求"，避免两条指令打架', () => {
+    expect(src).toContain('effectiveHookGuide');
+    expect(src).toMatch(/openingLine\.trim\(\)\s*\?\s*''\s*:\s*hookGuide/);
+    // 两个分支都要换成 effectiveHookGuide，不能只改一个
+    expect((src.match(/\$\{effectiveHookGuide\}/g) ?? []).length).toBe(2);
+    expect(src).not.toMatch(/\$\{hookGuide\}/);
+  });
+});
+
+describe('选题整批带到开篇页', () => {
+  it('选题页「设计开篇」带的是整批，不是只有第一条', () => {
+    const src = read('app/dashboard/topic/page.tsx');
+    const block = src.slice(src.indexOf('label: "设计开篇"'), src.indexOf('label: "设计开篇"') + 600);
+    expect(block).toContain('topicOptions: options');
+  });
+
+  it('起号页优先用带过来的那批，不被历史覆盖', () => {
+    const src = read('app/dashboard/growth/page.tsx');
+    expect(src).toContain('handoffTopics');
+    expect(src).toMatch(/handoffTopics\.length > 0 \? handoffTopics : recentTopics/);
+  });
+
+  it('每条开头都有「用这条写脚本」的出口', () => {
+    const src = read('app/dashboard/growth/page.tsx');
+    expect(src).toContain('用这条写脚本');
+    expect(src).toMatch(/openingLine:\s*o\.line/);
+    expect(src).toContain('parseOpenings');
   });
 });

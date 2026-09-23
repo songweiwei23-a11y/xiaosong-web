@@ -188,6 +188,13 @@ export default function ScriptPage() {
    * 会写进历史记录，复盘按它统计「这一计测了几条」。
    */
   const [tactic, setTactic] = useState("");
+  /**
+   * 开篇页选定的那句开头，以及它用的卡。
+   * 有它时脚本的第一句被锁死——用户已经在开篇页横向比过一轮挑出来了，
+   * 再让模型自由发挥一个开头，等于把他刚做的决定扔掉。
+   */
+  const [openingLine, setOpeningLine] = useState("");
+  const [openingCard, setOpeningCard] = useState("");
 
   useEffect(() => {
     const data = takeHandoff();
@@ -199,6 +206,9 @@ export default function ScriptPage() {
     if (data.workId) setWorkId(data.workId);
     // 选题页/起号页带过来的拍法
     if (data.tactic) setTactic(data.tactic);
+    // 开篇页选定的那句开头
+    if (data.openingLine) setOpeningLine(data.openingLine);
+    if (data.openingCards?.length) setOpeningCard(data.openingCards[0]);
   }, []);
 
   // 创作简报从这里来。之前这一页漏了 brief，脚本最吃的
@@ -543,6 +553,32 @@ ${tacticText}
         : '';
       // ========== 拍法结束 ==========
 
+      // ========== 已选定的开头 ==========
+      // 用户在开篇页把 N 种开法横着比了一轮才挑的这一句，
+      // 不锁死的话模型会"参考"一下然后另写一个，那一轮比较就白做了。
+      const openingSection = openingLine.trim()
+        ? `
+## 🎯 开头已经定了，必须用这一句
+
+> ${openingLine.trim()}
+
+${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
+**硬要求**：
+1. 脚本的第一句话就是上面这句，**一字不改**（口播顺不过来时可以调语气词，但意思和钩子不能变）
+2. 不要再另写一个开头，也不要在它前面加铺垫
+3. 开头许的东西，正文必须兑现——这是完播率的关键，开头一套正文另一套比不抓人更糟
+4. 后面的分段节奏照常按脚本结构走
+
+这一句本身就是前 3 秒的钩子，已经在开篇板块里横向比过一轮才选出来的，
+不需要再为它设计一个钩子。
+`
+        : '';
+
+      // 开头锁死时就别再发"开场钩子要求"了：那一段是教模型怎么造钩子的，
+      // 和"用这一句、一字不改"直接打架，两条同时给，模型多半会另写一个。
+      const effectiveHookGuide = openingLine.trim() ? '' : hookGuide;
+      // ========== 开头结束 ==========
+
       const fourStepWorkflow = `
 ## 🧭 生成流程（必须按顺序输出）
 
@@ -636,7 +672,8 @@ ${profileInfo}${positioningInfo}
 ${structureGuide}
 ${formulaSection}
 ${tacticSection}
-${hookGuide}
+${openingSection}
+${effectiveHookGuide}
 
 ## 产品信息（核心）
 ${productInfo ? `**产品介绍**：${productInfo}` : "⚠️ 未填写产品信息"}
@@ -710,7 +747,8 @@ ${profileInfo}${positioningInfo}
 ${structureGuide}
 ${formulaSection}
 ${tacticSection}
-${hookGuide}
+${openingSection}
+${effectiveHookGuide}
 
 ## 目标定位
 - **目标受众**：${selectedTargetGroup}
@@ -1137,6 +1175,30 @@ ${formatRequirements}
 
           {/* 创意设计 */}
           <CollapsibleSection title="创意设计" icon={Lightbulb} defaultOpen={true}>
+            {/* 从开篇页挑过来的那句。不显示的话用户不知道开头已经被锁死了 */}
+            {openingLine && (
+              <div className="glass-panel mb-3 rounded-xl border border-primary/30 p-3">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-medium text-primary">
+                    开头已选定{openingCard ? ` · ${openingCard}` : ''}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setOpeningLine("");
+                      setOpeningCard("");
+                    }}
+                    className="shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    取消锁定
+                  </button>
+                </div>
+                <p className="text-[12px] leading-relaxed text-foreground">{openingLine}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  脚本会用这句当第一句，不另写开头
+                </p>
+              </div>
+            )}
+
             {/*
               拍法。和下面的「脚本结构」分工不同：
               结构管时间怎么分，拍法管片子里发生什么事。

@@ -20,6 +20,7 @@ import {
   detectTactics,
   detectOpeningCards,
   summarizeTacticTests,
+  parseOpenings,
   MIN_SAMPLES,
   type TacticCandidate,
   type TacticTestStat,
@@ -71,6 +72,8 @@ export default function GrowthPage() {
   const [recentTopics, setRecentTopics] = useState<string[]>([])
   const [recentScripts, setRecentScripts] = useState<Array<{ title: string; body: string }>>([])
   const [handoffFrom, setHandoffFrom] = useState('')
+  // 选题页整批带过来的选题。优先于从历史里捞的那批
+  const [handoffTopics, setHandoffTopics] = useState<string[]>([])
   // 每一计已经写过几条脚本。没有它，知识库的测试规则就只是一句话
   const [tested, setTested] = useState<TacticTestStat[]>([])
 
@@ -89,6 +92,9 @@ export default function GrowthPage() {
     if (data.topic) setTopic(data.topic)
     if (data.currentOpening) setCurrentOpening(data.currentOpening)
     if (data.from) setHandoffFrom(data.from)
+    // 选题页整批带过来的。单独存一份，不要和历史里捞的混在一起——
+    // 历史是异步取的，会晚一步把这批覆盖掉
+    if (data.topicOptions?.length) setHandoffTopics(data.topicOptions)
   }, [])
 
   /*
@@ -236,6 +242,8 @@ export default function GrowthPage() {
 
   const timer = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`
   const result = tab === 'plan' ? planResult : openingResult
+  // 开篇结果拆成可逐条选的卡片。生成中也解析，写到哪条就先显示到哪条
+  const openings = tab === 'opening' ? parseOpenings(openingResult) : []
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -428,13 +436,15 @@ export default function GrowthPage() {
               或脚本页生成过。让用户再手打一遍、或者回去复制，
               是白白把已经有的东西丢掉。
             */}
-            {recentTopics.length > 0 && (
+            {(handoffTopics.length > 0 ? handoffTopics : recentTopics).length > 0 && (
               <div className="mb-4">
                 <p className="mb-1.5 text-[12px] text-muted-foreground">
-                  刚生成的选题，点一条直接用：
+                  {handoffTopics.length > 0
+                    ? `刚生成的 ${handoffTopics.length} 条选题，挑一条给它设计开篇：`
+                    : '刚生成的选题，点一条直接用：'}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {recentTopics.map((t) => (
+                  {(handoffTopics.length > 0 ? handoffTopics : recentTopics).map((t) => (
                     <button
                       key={t}
                       onClick={() => setTopic(t)}
@@ -580,6 +590,77 @@ export default function GrowthPage() {
             )}
 
             {/*
+              逐条挑。用户要的是"选一个开篇就能去写脚本"——
+              把整篇结果丢给脚本页等于还要他自己复制粘贴，
+              所以这里把每一条拆出来，点哪条就带哪条走。
+              解析不出来时整块不出现，下面那排通用出口还在，不会卡死。
+            */}
+            {tab === 'opening' && !busy && openings.length > 0 && (
+              <div className="mt-6 border-t border-border/60 pt-5">
+                <p className="mb-3 text-[12.5px] text-foreground">
+                  挑一条去写完整脚本（共 {openings.length} 条，每种开法一条）
+                </p>
+                <div className="space-y-2.5">
+                  {openings.map((o) => (
+                    <div
+                      key={`${o.no}-${o.card}`}
+                      className="rounded-xl border border-border bg-foreground/[0.02] p-3.5"
+                    >
+                      <div className="mb-1.5 flex items-center gap-2">
+                        <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+                          {o.card}
+                        </span>
+                      </div>
+                      <p className="text-[13.5px] leading-relaxed text-foreground">{o.line}</p>
+                      {o.why && (
+                        <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                          为什么抓得住：{o.why}
+                        </p>
+                      )}
+                      {o.risk && o.risk !== '无' && (
+                        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+                          ⚠️ {o.risk}
+                        </p>
+                      )}
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => {
+                            if (!topic.trim()) {
+                              notify('先在上面选一条选题')
+                              return
+                            }
+                            putHandoff({
+                              from: '开篇钩子',
+                              topic,
+                              openingLine: o.line,
+                              openingCards: [o.card],
+                              // 开头许了什么、正文要兑现什么，一起带过去，
+                              // 不然脚本很容易开头一套、正文另一套
+                              note: o.deliver ? `开头承诺的，正文必须兑现：${o.deliver}` : undefined,
+                            })
+                            router.push('/dashboard/script')
+                          }}
+                          className="rounded-lg border border-primary/40 bg-primary/[0.08] px-3 py-1.5 text-[12px] font-medium text-primary"
+                        >
+                          用这条写脚本
+                        </button>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard?.writeText(o.line)
+                            notify('已复制这句开头')
+                          }}
+                          className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"
+                        >
+                          只复制这句
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/*
               下一步出口。用户手动圈定过就用他圈的；没圈就从正文里认——
               模型挑了哪一计只写在文字里，不认出来的话这个信息就断在这一页了。
             */}
@@ -603,31 +684,20 @@ export default function GrowthPage() {
                       按这一计去选题
                     </button>
                   ) : (
-                    <>
-                      <button
-                        onClick={() => {
-                          const cards = pickedCards.length ? pickedCards : detectOpeningCards(result)
-                          putHandoff({
-                            from: '开篇钩子',
-                            topic,
-                            openingCards: cards.slice(0, 3),
-                          })
-                          router.push('/dashboard/title')
-                        }}
-                        className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
-                      >
-                        用这个钩子起标题
-                      </button>
-                      <button
-                        onClick={() => {
-                          putHandoff({ from: '开篇钩子', topic })
-                          router.push('/dashboard/script')
-                        }}
-                        className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
-                      >
-                        写成脚本
-                      </button>
-                    </>
+                    <button
+                      onClick={() => {
+                        const cards = pickedCards.length ? pickedCards : detectOpeningCards(result)
+                        putHandoff({
+                          from: '开篇钩子',
+                          topic,
+                          openingCards: cards.slice(0, 3),
+                        })
+                        router.push('/dashboard/title')
+                      }}
+                      className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
+                    >
+                      用这些钩子起标题
+                    </button>
                   )}
                 </div>
               </div>

@@ -52,6 +52,14 @@ export interface HandoffPayload {
    * 传给标题页时，标题会和开头赌同一个钩子，不会自己跟自己打架。
    */
   openingCards?: string[];
+  /**
+   * 用户选定的那一条开头原话。
+   *
+   * 和 currentOpening 方向相反：currentOpening 是"这个开头不好，帮我换"，
+   * openingLine 是"就用这句，照它往下写"。脚本页会把它锁成第一句，
+   * 而不是让模型再自由发挥一个开头——用户已经在开篇页挑过了。
+   */
+  openingLine?: string;
 }
 
 /**

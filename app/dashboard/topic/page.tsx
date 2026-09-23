@@ -1196,8 +1196,12 @@ export default function TopicPage() {
               const options = parseTopicOptions(body);
               putHandoff({
                 from: "选题策划",
+                // 整批都带过去，让他在开篇页自己挑给哪条写开头。
+                // 只带第一条的话，等于替他做了选择——而这一批本来就是给他挑的
+                topicOptions: options,
                 topic: options[0] || "",
                 tab: "opening",
+                tactic: tactic || undefined,
               });
               router.push("/dashboard/growth");
             },
