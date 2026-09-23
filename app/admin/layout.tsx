@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import {
-  Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket,
+  Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
 } from "lucide-react";
 
 /*
@@ -24,7 +24,12 @@ const navGroups: {
 }[] = [
   {
     label: null,
-    items: [{ name: "管理概览", href: "/admin", icon: Home }],
+    items: [
+      { name: "管理概览", href: "/admin", icon: Home },
+      // 大屏放最上面：它要回答的是"此刻有没有人需要我动手"，
+      // 而不是"上个月数据怎么样"。排在配置项里就没人会开了
+      { name: "实时监控", href: "/admin/monitor", icon: Radar },
+    ],
   },
   {
     label: "经营",
