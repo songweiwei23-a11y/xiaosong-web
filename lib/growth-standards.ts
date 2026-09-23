@@ -152,7 +152,12 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
  * 所以先花 30 秒出 5 个候选，每个说清"为什么是你能拍的"和"第一条拍什么"，
  * 用户勾中意的，再生成完整方案。选错了成本也只有 30 秒。
  */
-export function buildTacticPickPrompt(p: { contextBlock?: string; notes?: string }): string {
+export function buildTacticPickPrompt(p: {
+  contextBlock?: string;
+  notes?: string;
+  /** 已经测过的打法及条数，来自 summarizeTacticTests */
+  tested?: TacticTestStat[];
+}): string {
   const parts: string[] = [];
 
   parts.push(`你是一位做实体店短视频代运营的资深编导。
@@ -164,6 +169,29 @@ export function buildTacticPickPrompt(p: { contextBlock?: string; notes?: string
 
   if (p.contextBlock?.trim()) parts.push(p.contextBlock.trim(), '');
   if (p.notes?.trim()) parts.push('## 💡 额外要求', '', p.notes.trim(), '');
+
+  /*
+   * 已测记录。没有这一段，推荐就是每次从 37 计里重新抽签——
+   * 用户拍了 4 条「行业避坑」还会被再推一次，
+   * 而只拍了 1 条就放弃的那一计，也没人告诉他样本根本不够。
+   */
+  if (p.tested?.length) {
+    parts.push('## 🧪 他已经测过的', '');
+    for (const t of p.tested) {
+      parts.push(
+        `- **${t.name}**：已拍 ${t.count} 条${t.enough ? '（样本够了，可以下判断）' : `（还差 ${MIN_SAMPLES - t.count} 条才够判断）`}`
+      );
+    }
+    parts.push('');
+    parts.push(TEST_RULE);
+    parts.push('');
+    parts.push(
+      `**据此调整推荐**：还没测够 ${MIN_SAMPLES} 条的，优先建议他接着测完，` +
+        '不要急着换新的；已经测够且效果不好的，才换方向。' +
+        '如果你推荐的是他已经在测的那一计，要在「为什么是你能拍的」里说明这是接着测，不是重新开始。'
+    );
+    parts.push('');
+  }
 
   parts.push('## 📚 判断依据', '', MATRIX_TABLE, '');
   parts.push('### 37 计速览', '');
@@ -211,6 +239,112 @@ export function parseTacticCandidates(text: string): TacticCandidate[] {
     out.push({ name: hit.name, fitLevel: cols[1], why: cols[2], firstShot: cols[3] });
   }
   return out;
+}
+
+/**
+ * 从生成结果里认出实际用到的计名 / 卡名。
+ *
+ * 用户没有手动圈定时，是模型自己挑的，挑了哪几个只写在正文里。
+ * 想把这个信息传给下一个板块（选题带打法、标题跟钩子），
+ * 或者事后统计某一计测了几条，就得先把它从文字里认出来。
+ *
+ * 只认知识库里真实存在的名字——模型偶尔会造词，造出来的不算。
+ * 按出现先后排序：结果里通常第一个就是主推的那个。
+ */
+function detectNames(text: string, names: string[]): string[] {
+  if (!text) return [];
+  const hits: Array<{ name: string; at: number }> = [];
+  for (const name of names) {
+    const at = text.indexOf(name);
+    if (at >= 0) hits.push({ name, at });
+  }
+  return hits.sort((a, b) => a.at - b.at).map((h) => h.name);
+}
+
+export function detectTactics(text: string): string[] {
+  return detectNames(text, GROWTH_TACTICS.map((t) => t.name));
+}
+
+export function detectOpeningCards(text: string): string[] {
+  return detectNames(text, OPENING_CARDS.map((c) => c.name));
+}
+
+/**
+ * 某一计的可注入说明，给选题页和脚本页共用。
+ *
+ * 打法不是选题——「南乐烧烤店怎么引流」是选题，「反向操作」是拍法。
+ * 同一个选题套不同的计，拍出来是两条完全不同的片子。
+ * 所以这一段要同时带三样东西：
+ *   - 结构公式：脚本按它排，这是这一计之所以成立的骨架
+ *   - 适合场景：防止模型把这一计用在它根本不适用的题材上
+ *   - 边界：知识库原文写的红线（比如「不要伪造专业资质」），
+ *     以前只在起号页显示给人看，模型从来没见过
+ */
+export function tacticBrief(name: string): string {
+  const t = tacticByName(name);
+  if (!t) return '';
+  return [
+    `**第 ${t.no} 计 · ${t.name}**`,
+    ``,
+    `- **为什么成立**：${t.mechanism}`,
+    `- **结构公式**：${t.formula}`,
+    `- **适合**：${t.fit}`,
+    `- **执行要点**：${t.howto}`,
+    `- **⚠️ 边界（必须守住）**：${t.limit}`,
+  ].join('\n');
+}
+
+export interface TacticTestStat {
+  name: string;
+  /** 用这一计写过几条脚本 */
+  count: number;
+  /** 按知识库的测试规则，样本够不够下判断 */
+  enough: boolean;
+}
+
+/** 知识库的测试规则要求每种打法至少测 3—5 条，少于这个数不能否定方法本身 */
+export const MIN_SAMPLES = 3;
+
+/**
+ * 统计每一计写过几条脚本。
+ *
+ * 这是 TEST_RULE 能落地的前提。规则原话是「每种打法至少测 3—5 条；
+ * 样本太少只能判断单条执行好坏，不能否定方法本身」——
+ * 但系统此前不记录哪条脚本用了哪一计，所以这条规则一直是纸上的：
+ * 用户拍一条没火就换打法，永远在换、永远起不来，而系统一句话都提示不了。
+ *
+ * 只数脚本，不数选题：选题是一批 10 条，不是 10 次测试；
+ * 一条脚本才对应一条真要拍出来的片子。
+ */
+export function summarizeTacticTests(rows: unknown): TacticTestStat[] {
+  if (!Array.isArray(rows)) return [];
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    const r = row as { task_type?: string; input_data?: unknown };
+    if (r?.task_type !== '脚本生成') continue;
+
+    // input_data 可能是 jsonb 解出来的对象，也可能是一段 JSON 字符串
+    let data: { tactic?: unknown } | null = null;
+    if (typeof r.input_data === 'string') {
+      try {
+        data = JSON.parse(r.input_data);
+      } catch {
+        continue;
+      }
+    } else if (r.input_data && typeof r.input_data === 'object') {
+      data = r.input_data as { tactic?: unknown };
+    }
+
+    const name = typeof data?.tactic === 'string' ? data.tactic.trim() : '';
+    // 只认知识库里真实存在的计名
+    if (!name || !tacticByName(name)) continue;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count, enough: count >= MIN_SAMPLES }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 export interface OpeningParams {

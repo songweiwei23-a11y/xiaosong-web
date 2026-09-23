@@ -12,7 +12,18 @@
  *
  * 这里补上三样东西：平台各自的规则、公式的分段结构与范例、
  * 一套能自查的评判标准。
+ *
+ * 后来又接上了开篇 36 计。标题和开头本来就是同一门手艺——都是钩子，
+ * 赌的都是那几种心理（认知缺口、损失厌恶、自我关联）。知识库里那 36 张卡
+ * 把机制、公式、风险边界都写清楚了，标题这边却一直不知道它们的存在。
+ *
+ * 接法是给索引、让模型自己挑，并要求它报出用的是哪一张。
+ * 没有按「标题类型 → 卡片类别」硬映射，因为类别分布很不均：
+ * 价值与损失 10 张、视觉与感官 9 张，而冲突与选择只有 1 张。
+ * 按类别映射的话，故事式、情感式这些会被死死绑在那一张上。
  */
+
+import { OPENING_CARDS } from './opening-cards';
 
 /** 各平台的标题逻辑差异。同一个主题在不同平台该起不同的标题 */
 const PLATFORM_RULES: Record<string, string[]> = {
@@ -113,6 +124,27 @@ const FORBIDDEN_WORDS = [
   { word: '100%/彻底根治', why: '绝对化承诺，有违规风险', instead: '大多数情况下、我这几次都有效' },
 ];
 
+/**
+ * 开篇 36 计的索引。一行一张，只给名字、类别和公式——
+ * 全量展开是 36 段详情，塞进标题提示词会把主任务冲淡。
+ * 用户圈定了卡片时才展开那几张的细节。
+ */
+function hookIndex(): string {
+  return OPENING_CARDS.map((c) => `- **${c.name}**（${c.category}）：${c.formula}`).join('\n');
+}
+
+function hookDetail(names: string[]): string {
+  return OPENING_CARDS.filter((c) => names.includes(c.name))
+    .map(
+      (c) => `### ${c.name}（${c.category}）
+- **心理机制**：${c.psychology}
+- **公式**：${c.formula}
+- **执行要点**：${c.howto}
+- **风险边界**：${c.risk}`
+    )
+    .join('\n\n');
+}
+
 export interface TitlePromptParams {
   topic: string;
   /** 标题类型的中文标签，如「痛点式」 */
@@ -132,6 +164,12 @@ export interface TitlePromptParams {
    * 此前这一页只有一个「目标人群」输入框要他再手打一遍。
    */
   contextBlock?: string;
+  /**
+   * 用户圈定的开篇卡（卡名）。不传就给 36 张的索引让模型自己挑。
+   * 从开篇钩子页带过来时会传，这样标题和开头赌的是同一个钩子，
+   * 不会出现「标题走好奇、开头走损失」这种自己跟自己打架的情况。
+   */
+  openingCards?: string[];
 }
 
 export function buildTitlePrompt(p: TitlePromptParams): string {
@@ -177,6 +215,23 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
     parts.push('');
   }
 
+  // 钩子机制库。公式管"话怎么摆"，钩子卡管"为什么有人会点"，两者不重复
+  const picked = p.openingCards?.filter((n) => OPENING_CARDS.some((c) => c.name === n)) ?? [];
+  parts.push('## 🪝 钩子机制库（开篇 36 计）');
+  parts.push('');
+  if (picked.length) {
+    parts.push('这条内容的开头已经定了钩子，标题要和它用同一套机制，不要各走各的：');
+    parts.push('');
+    parts.push(hookDetail(picked));
+    parts.push('');
+  } else {
+    parts.push('标题和开头是同一门手艺。下面 36 张卡是钩子的底层机制，');
+    parts.push('**每个标题挑 1 张主卡**——堆钩子等于没钩子。');
+    parts.push('');
+    parts.push(hookIndex());
+    parts.push('');
+  }
+
   // 平台规则
   const rules = PLATFORM_RULES[p.platform];
   if (rules) {
@@ -191,6 +246,14 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   for (const f of FORBIDDEN_WORDS) {
     parts.push(`- **禁用「${f.word}」**：${f.why}。改用：${f.instead}`);
   }
+  // 钩子库里有一张卡就叫「内幕揭秘」，而上面又禁用「揭秘」二字。
+  // 不说清楚的话，模型会以为卡名给了它豁免，直接把「揭秘」写进标题。
+  // 这两条其实不冲突：禁的是这个词，不是这个机制。
+  parts.push(
+    '- ⚠️ **卡名不是豁免**：钩子库里有「内幕揭秘」这张卡，指的是「用信息不对称制造价值感」' +
+      '这个机制，不是允许你在标题里写「揭秘」二字。机制照用，词要换——' +
+      '写成「干了十年装修，我只看这 3 个地方」，而不是「装修行业内幕大揭秘」。'
+  );
   parts.push('');
 
   parts.push('## 📏 每个标题的自查项（不达标就重写，不要输出不达标的）');
@@ -200,18 +263,21 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push('3. **是否避免了形容词堆砌**——「很棒」「超赞」「绝了」不算信息');
   parts.push('4. **换个人能不能用**——如果这个标题套在任何视频上都成立，它就太空了');
   parts.push('5. **是否命中风险词**');
+  parts.push('6. **钩子卡是真用上了，还是只贴了个名字**——机制要能在标题里看出来');
   parts.push('');
 
   parts.push('## 📤 输出格式');
   parts.push('');
   parts.push(`请输出 ${p.count} 个标题，**每个标题赌的点击动机必须不同**，`);
   parts.push('这样 A/B 测试才有意义——同一个套路换几个词不算多个方案。');
+  if (!picked.length) parts.push('相应地，这几个标题用的钩子卡也不能重复。');
   parts.push('');
   parts.push('每个标题按下面的格式写：');
   parts.push('');
   parts.push('```');
   parts.push('### N. 标题原文');
   parts.push('- **字数**：X 字');
+  parts.push('- **用的钩子**：卡名（必须是上面 36 张里的原名，不要自己造）');
   parts.push('- **赌的动机**：好奇 / 恐惧 / 获得感 / 认同 / 窥私 / 省钱（选一个，并说明为什么这类人会点）');
   parts.push('- **核心卖点**：这条视频真正要交付的东西');
   parts.push('- **埋的关键词**：（搜索型策略必填，其他可写"无"）');

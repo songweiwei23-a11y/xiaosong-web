@@ -17,9 +17,15 @@ import {
   buildOpeningPrompt,
   buildTacticPickPrompt,
   parseTacticCandidates,
+  detectTactics,
+  detectOpeningCards,
+  summarizeTacticTests,
+  MIN_SAMPLES,
   type TacticCandidate,
+  type TacticTestStat,
 } from '@/lib/growth-standards'
-import { takeHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
+import { takeHandoff, putHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
+import { useRouter } from 'next/navigation'
 
 /**
  * 起号板块：起号 36+1 计 + 开篇 36 计。
@@ -34,6 +40,7 @@ type Tab = 'plan' | 'opening'
 
 export default function GrowthPage() {
   const { context } = useCreatorContext()
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('plan')
 
   // 起号方案
@@ -64,6 +71,8 @@ export default function GrowthPage() {
   const [recentTopics, setRecentTopics] = useState<string[]>([])
   const [recentScripts, setRecentScripts] = useState<Array<{ title: string; body: string }>>([])
   const [handoffFrom, setHandoffFrom] = useState('')
+  // 每一计已经写过几条脚本。没有它，知识库的测试规则就只是一句话
+  const [tested, setTested] = useState<TacticTestStat[]>([])
 
   useEffect(() => {
     if (!busy) return
@@ -96,6 +105,9 @@ export default function GrowthPage() {
         if (!res.ok) return
         const rows = await res.json()
         if (!Array.isArray(rows)) return
+
+        // 按打法统计已拍条数，给下面的「测试进度」和 AI 推荐用
+        setTested(summarizeTacticTests(rows))
 
         const plan = rows.find((x: any) => x.task_type === '起号方案')
         const open = rows.find((x: any) => x.task_type === '开篇钩子')
@@ -169,6 +181,8 @@ export default function GrowthPage() {
           query: buildTacticPickPrompt({
             contextBlock: buildContextBlock(context, 'script'),
             notes: planNotes,
+            // 推荐要知道他已经测到哪儿了，否则每次都是重新抽签
+            tested,
           }),
         }),
       })
@@ -270,6 +284,47 @@ export default function GrowthPage() {
                 ))}
               </ul>
             </div>
+
+            {/*
+              测试进度。知识库的规则是「每种打法至少测 3-5 条，样本太少
+              只能判断单条执行好坏，不能否定方法本身」——这块面板就是让
+              这条规则看得见：拍一条没火就换，是起不来号的主要原因。
+              只有写过带打法的脚本才会有数据，所以没数据时整块不出现。
+            */}
+            {tested.length > 0 && (
+              <div className="mb-4 rounded-xl border border-border bg-foreground/[0.03] p-4">
+                <p className="mb-2 text-[12.5px] text-foreground">
+                  你已经测过的打法（每种至少 {MIN_SAMPLES} 条才够下判断）
+                </p>
+                <ul className="space-y-1.5">
+                  {tested.map((t) => (
+                    <li key={t.name} className="flex items-center gap-2 text-[11.5px]">
+                      <span className="w-20 shrink-0 truncate text-foreground">{t.name}</span>
+                      <span className="flex gap-0.5">
+                        {Array.from({ length: Math.max(MIN_SAMPLES, t.count) }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={`inline-block h-2 w-2 rounded-full ${
+                              i < t.count ? 'bg-primary' : 'bg-foreground/15'
+                            }`}
+                          />
+                        ))}
+                      </span>
+                      <span className={t.enough ? 'text-primary' : 'text-muted-foreground'}>
+                        {t.enough
+                          ? `${t.count} 条，可以判断了`
+                          : `${t.count} 条，还差 ${MIN_SAMPLES - t.count} 条`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {tested.some((t) => !t.enough) && (
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                    没测够就换打法，只能说明那一条拍得不好，说明不了这一计不行。
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* AI 推荐候选 → 用户自己选 → 再出完整方案。
                 直接出方案要跑三分钟才知道方向对不对，而且方案是"给"的不是"选"的 */}
@@ -522,6 +577,60 @@ export default function GrowthPage() {
             </div>
             {busy && (
               <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />
+            )}
+
+            {/*
+              下一步出口。用户手动圈定过就用他圈的；没圈就从正文里认——
+              模型挑了哪一计只写在文字里，不认出来的话这个信息就断在这一页了。
+            */}
+            {result && !busy && (
+              <div className="mt-6 border-t border-border/60 pt-4">
+                <div className="mb-2 text-[12px] text-muted-foreground">下一步</div>
+                <div className="flex flex-wrap gap-2">
+                  {tab === 'plan' ? (
+                    <button
+                      onClick={() => {
+                        const picked = pickedTactics.length ? pickedTactics : detectTactics(result)
+                        if (!picked.length) {
+                          notify('没认出用的是哪一计，先在上面圈一个')
+                          return
+                        }
+                        putHandoff({ from: '起号打法', tactic: picked[0] })
+                        router.push('/dashboard/topic')
+                      }}
+                      className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
+                    >
+                      按这一计去选题
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          const cards = pickedCards.length ? pickedCards : detectOpeningCards(result)
+                          putHandoff({
+                            from: '开篇钩子',
+                            topic,
+                            openingCards: cards.slice(0, 3),
+                          })
+                          router.push('/dashboard/title')
+                        }}
+                        className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
+                      >
+                        用这个钩子起标题
+                      </button>
+                      <button
+                        onClick={() => {
+                          putHandoff({ from: '开篇钩子', topic })
+                          router.push('/dashboard/script')
+                        }}
+                        className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
+                      >
+                        写成脚本
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}

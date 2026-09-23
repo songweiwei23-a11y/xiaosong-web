@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -59,6 +59,8 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { putHandoff, takeHandoff, extractOpening } from "@/lib/handoff";
+import { GROWTH_TACTICS } from "@/lib/growth-tactics";
+import { tacticBrief } from "@/lib/growth-standards";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -181,6 +183,11 @@ export default function ScriptPage() {
    * 进页面就建会攒下一堆用户其实没生成任何东西的空作品。
    */
   const [workId, setWorkId] = useState<string | null>(null);
+  /**
+   * 这条脚本用的起号计。从选题页或起号页带过来，也可以在本页改。
+   * 会写进历史记录，复盘按它统计「这一计测了几条」。
+   */
+  const [tactic, setTactic] = useState("");
 
   useEffect(() => {
     const data = takeHandoff();
@@ -190,6 +197,8 @@ export default function ScriptPage() {
     if (data.topicOptions?.length) setHandoffTopics(data.topicOptions);
     if (data.note) setAdditionalInfo(data.note);
     if (data.workId) setWorkId(data.workId);
+    // 选题页/起号页带过来的拍法
+    if (data.tactic) setTactic(data.tactic);
   }, []);
 
   // 创作简报从这里来。之前这一页漏了 brief，脚本最吃的
@@ -508,6 +517,32 @@ ${getRelevantExample(scriptType, durationForCalc, scriptStructure)}
 `;
       // ========== 公式蓝图结束 ==========
 
+      // ========== 拍法（起号 36+1 计）==========
+      // 从起号页选题页一路带过来的那一计。
+      // 它和上面的"脚本结构"不是一回事，容易混，所以这里把分工写明：
+      //   脚本结构 = 时间怎么分（0-3秒钩子、3-15秒铺垫…）
+      //   拍法公式 = 事件怎么走（常规A → 反向B → 真实反应）
+      // 两者叠加，不是二选一。不说清楚的话模型会拿其中一个覆盖另一个。
+      const tacticText = tactic ? tacticBrief(tactic) : '';
+      const tacticSection = tacticText
+        ? `
+## 🎬 本条用的拍法：${tactic}
+
+${tacticText}
+
+**怎么和上面的脚本结构配合**：
+- 脚本结构决定**时间怎么分**（哪一秒放什么）
+- 这一计的结构公式决定**事件怎么走**（片子里发生了什么）
+- 两者同时成立，不要用其中一个替掉另一个
+
+**硬要求**：
+1. 片子的事件走向必须落在这一计的结构公式上，不能只在开头提一句就没了
+2. 上面的「边界」是红线，宁可换个拍法也不要碰线
+3. 在脚本策略卡里写明：这一计的每一段分别落在第几秒
+`
+        : '';
+      // ========== 拍法结束 ==========
+
       const fourStepWorkflow = `
 ## 🧭 生成流程（必须按顺序输出）
 
@@ -600,6 +635,7 @@ ${profileInfo}${positioningInfo}
 
 ${structureGuide}
 ${formulaSection}
+${tacticSection}
 ${hookGuide}
 
 ## 产品信息（核心）
@@ -673,6 +709,7 @@ ${profileInfo}${positioningInfo}
 
 ${structureGuide}
 ${formulaSection}
+${tacticSection}
 ${hookGuide}
 
 ## 目标定位
@@ -771,7 +808,10 @@ ${formatRequirements}
                 ? "AI推荐"
                 : durationMode === "custom" && customDuration
                   ? `${customDuration}秒`
-                  : duration
+                  : duration,
+              // 复盘要按打法数样本：知识库的测试规则是「每种打法至少测 3-5 条」，
+              // 不记这一条，那条规则就永远只是纸上的
+              tactic: tactic || undefined,
             };
             // 归到作品下。从选题带过来时已有作品，直接进本页的则在这里建——
             // 等生成完再建，才不会攒下一堆用户其实没写出东西的空作品。
@@ -1097,6 +1137,33 @@ ${formatRequirements}
 
           {/* 创意设计 */}
           <CollapsibleSection title="创意设计" icon={Lightbulb} defaultOpen={true}>
+            {/*
+              拍法。和下面的「脚本结构」分工不同：
+              结构管时间怎么分，拍法管片子里发生什么事。
+            */}
+            <Field
+              label="拍法（起号 36+1 计）"
+              optional
+              hint={
+                tactic
+                  ? GROWTH_TACTICS.find((t) => t.name === tactic)?.formula
+                  : '不选就不限形式。选了会写进历史，复盘按它统计这一计测了几条'
+              }
+            >
+              <select
+                value={tactic}
+                onChange={(e) => setTactic(e.target.value)}
+                className={SELECT_CLS}
+              >
+                <option value="">不指定</option>
+                {GROWTH_TACTICS.map((t) => (
+                  <option key={t.no} value={t.name}>
+                    {t.no}. {t.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
             {/* 广告类专属：产品信息 */}
             {isAdScript() && (
               <>

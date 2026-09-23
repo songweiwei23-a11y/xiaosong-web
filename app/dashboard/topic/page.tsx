@@ -1,7 +1,9 @@
 ﻿"use client";
 
 import { useRouter } from "next/navigation";
-import { putHandoff, parseTopicOptions } from "@/lib/handoff";
+import { putHandoff, takeHandoff, parseTopicOptions } from "@/lib/handoff";
+import { GROWTH_TACTICS } from "@/lib/growth-tactics";
+import { tacticBrief } from "@/lib/growth-standards";
 import { throwApiError } from "@/lib/api-error";
 import { createWork } from "@/lib/works";
 import { Field } from "@/components/form/Field";
@@ -93,6 +95,11 @@ export default function TopicPage() {
   const [topicCount, setTopicCount] = useState(10);
   const [withHook, setWithHook] = useState(true);
   const [difficulty, setDifficulty] = useState("中等创意");
+  /**
+   * 这一批选题用哪一计拍。空 = 不指定，模型自由发挥。
+   * 从起号页「按这一计去选题」带过来，也可以在这一页直接选。
+   */
+  const [tactic, setTactic] = useState("");
   const [personalRequirement, setPersonalRequirement] = useState("");
 
   // 生成状态
@@ -414,6 +421,9 @@ export default function TopicPage() {
     loadProfiles();
     loadPositionings();
     loadHistory();
+    // 起号页带过来的打法
+    const handed = takeHandoff();
+    if (handed?.tactic) setTactic(handed.tactic);
     // 用户在侧边栏切了档案，这一页不刷新也要跟上
     return onActiveProfileChange(() => {
       const id = getActiveProfileId();
@@ -524,7 +534,9 @@ export default function TopicPage() {
         viralCases: viralCases,
         topicCount: topicCount,
         difficulty: difficulty,
-        withHook: withHook
+        withHook: withHook,
+        // 复盘要按打法统计样本数，所以每条记录都要留下用的是哪一计
+        tactic: tactic || undefined,
       };
 
       // 构建详细的prompt
@@ -639,6 +651,21 @@ export default function TopicPage() {
       query += `- 开头钩子：${withHook ? '✅ 需要生成3秒钩子' : '❌ 不需要'}\n\n`;
       
       // 明确输出格式要求
+      // 拍法。放在输出格式之前，让这条约束离"开始写"最近。
+      // 打法决定的是形式不是内容：同一条选题用「反向操作」和用「情境还原」
+      // 是两条完全不同的片子，所以它必须影响每一条选题的拍摄思路。
+      if (tactic) {
+        const brief = tacticBrief(tactic);
+        if (brief) {
+          query += `【本批选题的拍法】🎬 必须遵守\n\n`;
+          query += `${brief}\n\n`;
+          query += `⚠️ 这 ${topicCount} 条选题都要能用这一计拍出来：\n`;
+          query += `- 每条选题的拍摄思路要落在上面那个结构公式上，不是只在标题里提一句\n`;
+          query += `- 拍不出来的选题就别给——宁可换个角度，也不要凑数\n`;
+          query += `- 上面的「边界」是红线，碰线的选题直接不要\n\n`;
+        }
+      }
+
       query += `【创新要求】🎨 重要！\n`;
       query += `- ⚡ 追求新颖角度，避免常见套路和老梗\n`;
       query += `- 🎯 每条选题都要有独特的切入点\n`;
@@ -901,6 +928,44 @@ export default function TopicPage() {
             </>
           )}
 
+          {/*
+            拍法。爆款元素管"讲什么内容"，拍法管"用什么形式拍"，两件事。
+            37 计平铺出来太多，这里只做一个下拉；真要挑还是去起号页看完整说明。
+          */}
+          <CollapsibleSection title="拍法（起号 36+1 计）" defaultOpen={!!tactic}>
+            <Field
+              label="用哪一计拍"
+              optional
+              stacked
+              hint={
+                tactic
+                  ? '这一批选题都会按这一计的结构公式来想'
+                  : '不选就是不限形式。想看每一计的详细说明，去「起号方案」'
+              }
+            >
+              <select
+                value={tactic}
+                onChange={(e) => setTactic(e.target.value)}
+                className={SELECT_CLS}
+              >
+                <option value="">不指定</option>
+                {GROWTH_TACTICS.map((t) => (
+                  <option key={t.no} value={t.name}>
+                    {t.no}. {t.name}（{t.fit}）
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {tactic && (
+              <div className="glass-panel mt-2 rounded-xl border border-primary/30 p-3">
+                <div className="text-[11px] leading-relaxed text-muted-foreground">
+                  <span className="font-medium text-primary">结构公式</span>：
+                  {GROWTH_TACTICS.find((t) => t.name === tactic)?.formula}
+                </div>
+              </div>
+            )}
+          </CollapsibleSection>
+
           <CollapsibleSection title="爆款元素" defaultOpen>
             <Field
               label="爆款元素"
@@ -1116,6 +1181,8 @@ export default function TopicPage() {
                 topicOptions: options,
                 topic: options.length === 1 ? options[0] : undefined,
                 workId,
+                // 打法跟着选题一路走到脚本，脚本才能按这一计的结构公式排
+                tactic: tactic || undefined,
               });
               router.push("/dashboard/script");
             },

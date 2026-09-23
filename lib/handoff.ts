@@ -39,6 +39,19 @@ export interface HandoffPayload {
   currentOpening?: string;
   /** 目标页要落在哪个标签上（起号页有「起号打法」和「开篇钩子」两个） */
   tab?: string;
+  /**
+   * 这条内容用的起号计（计名，取自 lib/growth-tactics）。
+   *
+   * 打法不是选题，是拍法——同一个选题套「反向操作」和套「情境还原」
+   * 拍出来是两条完全不同的片子。所以它要跟着选题一路传到脚本，
+   * 脚本才能按那一计的结构公式来排，并守住那一计的边界。
+   */
+  tactic?: string;
+  /**
+   * 这条内容用的开篇卡（卡名，取自 lib/opening-cards）。
+   * 传给标题页时，标题会和开头赌同一个钩子，不会自己跟自己打架。
+   */
+  openingCards?: string[];
 }
 
 /**

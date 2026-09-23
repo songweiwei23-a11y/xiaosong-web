@@ -99,6 +99,8 @@ export default function TitlePage() {
   const [showDialog, setShowDialog] = useState(false);
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
   const [workId, setWorkId] = useState<string | null>(null);
+  // 开篇钩子页带过来的卡名。为空时让模型从 36 张里自己挑
+  const [openingCards, setOpeningCards] = useState<string[]>([]);
 
 
   // 接收从脚本页带来的主题
@@ -106,6 +108,8 @@ export default function TitlePage() {
     const data = takeHandoff();
     if (data?.workId) setWorkId(data.workId);
     if (data?.topic) setTopic(data.topic);
+    // 从开篇钩子页带过来的卡：标题跟着用同一套钩子机制
+    if (data?.openingCards?.length) setOpeningCards(data.openingCards);
   }, []);
 
   // 加载历史记录
@@ -190,7 +194,8 @@ export default function TitlePage() {
       keywordStrategy,
       abTestCount,
       targetAudience,
-      platform
+      platform,
+      openingCards,
     };
 
     // 页面上这些选项本来就带着示例和公式结构，原提示词只取了标签文字，
@@ -209,6 +214,7 @@ export default function TitlePage() {
       platform,
       targetAudience,
       count: abTestCount,
+      openingCards,
     });
 
     try {
@@ -301,6 +307,26 @@ export default function TitlePage() {
               />
             </Field>
           </CollapsibleSection>
+
+          {/* 从开篇页带过来时才出现。不提示的话用户不知道这次的标题被约束了 */}
+          {openingCards.length > 0 && (
+            <div className="glass-panel mb-4 rounded-xl border border-primary/30 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-[12px] font-medium text-primary">跟随开篇钩子</div>
+                  <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    标题会用和开头同一套机制：{openingCards.join('、')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOpeningCards([])}
+                  className="shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
 
           <CollapsibleSection title="标题风格" defaultOpen>
             <Field label="标题类型" optional stacked>
