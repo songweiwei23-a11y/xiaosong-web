@@ -1,8 +1,14 @@
 ﻿# 同步到服务器脚本
+#
+# -Yes：跳过两处确认。给非交互环境用（CI、后台窗口、被别的脚本调起）。
+#       在 NonInteractive 模式下 Read-Host 会直接抛异常，脚本走不到同步那一步。
+#       注意 -Yes 只跳过"确认"，不跳过检查——swap 读不到照样会红字警告。
 # 外部命令(tar/scp/ssh/git/npx)向 stderr 写入时，PowerShell 5.1 会把它包成
 # ErrorRecord。若 ErrorActionPreference 为 Stop，这会直接终止脚本，连后面的
 # pause 都执行不到，表现就是"窗口闪退、看不到任何错误"。
 # 这些命令的成败一律以 $LASTEXITCODE 判断，因此这里不能用 Stop。
+param([switch]$Yes)
+
 $ErrorActionPreference = "Continue"
 
 # 兜底：任何未预期的终止错误都先打出来再停住，不让窗口直接消失。
@@ -91,17 +97,21 @@ if ($swap -eq "0" -or $swap -eq "") {
                  else { "服务器没有 swap，构建可能把机器压死。" }) -ForegroundColor Red
     Write-Host "建议先执行：" -ForegroundColor Red
     Write-Host "  sudo fallocate -l 2G /swapfile; sudo chmod 600 /swapfile; sudo mkswap /swapfile; sudo swapon /swapfile" -ForegroundColor Gray
-    $go = Read-Host "仍要继续吗? (y/n)"
-    if ($go -ne "y") { exit 0 }
+    if (-not $Yes) {
+        $go = Read-Host "仍要继续吗? (y/n)"
+        if ($go -ne "y") { exit 0 }
+    }
 } else {
     Write-Host "  swap: ${swap}MB" -ForegroundColor Gray
 }
 Write-Host ""
 
 Write-Host "[3/3] 同步文件..." -ForegroundColor Yellow
-$confirm = Read-Host "确认开始同步? (y/n)"
-if ($confirm -ne "y") {
-    exit 0
+if (-not $Yes) {
+    $confirm = Read-Host "确认开始同步? (y/n)"
+    if ($confirm -ne "y") { exit 0 }
+} else {
+    Write-Host "  -Yes：跳过确认" -ForegroundColor Gray
 }
 
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
