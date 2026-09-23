@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
-import { getPlan, judgeQuota, usedColumnOf } from '@/lib/config/plans';
+import { getPlan, judgeQuota, usedColumnOf, effectivePlanId, FREE_ONE_TIME_FEATURES } from '@/lib/config/plans';
 
 export interface GuardResult {
   ok: boolean;
@@ -54,9 +54,10 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
   }
 
   // 获取用户订阅信息
+  // end_date 必须一起取：没有它就判断不了订阅有没有到期
   const { data: subscription } = await serviceSupabase
     .from('subscriptions')
-    .select('plan, status')
+    .select('plan, status, end_date')
     .eq('user_id', user.id)
     .single();
 
@@ -71,7 +72,8 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     };
   }
 
-  const planId = subscription?.status === 'active' ? subscription.plan : 'free';
+  // 到期判定收敛在 effectivePlanId 里，两个判定点共用一份，免得再次走偏
+  const planId = effectivePlanId(subscription);
   const plan = getPlan(planId);
 
   // 企业版无限使用
@@ -110,7 +112,12 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
       .from('user_quotas')
       .update({
         knowledge_used: 0,
-        positioning_used: planId === 'free' ? quota.positioning_used : 0, // 免费版定位永久
+        // 免费版的定位是一次性额度，不随月重置。这条规则同时决定了价格页
+        // 上的文案，所以两边都从 FREE_ONE_TIME_FEATURES 读，别再各写一份
+        positioning_used:
+          planId === 'free' && FREE_ONE_TIME_FEATURES.includes('positioning')
+            ? quota.positioning_used
+            : 0,
         topic_used: 0,
         script_used: 0,
         free_chat_used: 0,

@@ -134,7 +134,9 @@ describe('额度文案由配置现算', () => {
     // 同样从配置取数，避免调额度时这里跟着红
     expect(lines).toContain(`脚本生成：${SUBSCRIPTION_PLANS.free.quotas.script} 次/月`);
     expect(lines).toContain(`选题策划：${SUBSCRIPTION_PLANS.free.quotas.topic} 次/月`);
-    expect(lines).toContain(`账号定位：${SUBSCRIPTION_PLANS.free.quotas.positioning} 次/月`);
+    // 定位在免费版是一次性额度（api-guard 重置时不清零），
+    // 所以文案不能写「次/月」——详见 payment-flow.test.ts 里那组用例
+    expect(lines).toContain(`账号定位：${SUBSCRIPTION_PLANS.free.quotas.positioning} 次（一次性`);
   });
 
   it('免费档不把额度为 0 的功能写成「0 次」，而是归入不支持', () => {

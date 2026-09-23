@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
 import { getServiceSupabase } from '@/lib/admin-auth';
-import { getPlan, COUNTED_FEATURES, sumCountedUsage, judgeQuota } from '@/lib/config/plans';
+import { getPlan, COUNTED_FEATURES, sumCountedUsage, judgeQuota, effectivePlanId } from '@/lib/config/plans';
 
 /**
  * 当前登录用户的额度概况：已用多少、还剩多少、哪些功能快见底了。
@@ -22,11 +22,12 @@ export async function GET() {
 
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('plan, status')
+      .select('plan, status, end_date')
       .eq('user_id', userId)
       .maybeSingle();
 
-    const planId = subscription?.status === 'active' ? subscription.plan : 'free';
+    // 与 api-guard 共用同一份到期判定，两边不能各写各的
+  const planId = effectivePlanId(subscription);
     const plan = getPlan(planId);
 
     const { data: quota } = await supabase

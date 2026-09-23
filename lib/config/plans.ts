@@ -151,6 +151,19 @@ export const COUNTED_FEATURES: { key: keyof typeof SUBSCRIPTION_PLANS.free.quota
   { key: 'dealReason', column: 'deal_reason_used', name: '成交理由' },
 ];
 
+/**
+ * 免费版里不按月重置的功能。
+ *
+ * api-guard 重置配额时有这么一行：
+ *     positioning_used: planId === 'free' ? quota.positioning_used : 0
+ * 也就是说免费版的账号定位是**一次性**额度，用掉就没了，下个月也不回来。
+ * 而 quotaSummary 一律按「N 次/月」渲染，页面上写着「账号定位：3 次/月」——
+ * 说的和跑的又对不上。
+ *
+ * 收敛成一份数据：文案和重置逻辑都读它，不会再各说各话。
+ */
+export const FREE_ONE_TIME_FEATURES: readonly string[] = ['positioning'];
+
 /** 功能代码 → user_quotas 的列名。驼峰转下划线的写法散落多处，统一到这里 */
 export function usedColumnOf(feature: string): string | undefined {
   return COUNTED_FEATURES.find((f) => f.key === feature)?.column
@@ -190,7 +203,11 @@ export function quotaSummary(planId: string): string[] {
 
   return [
     "知识库：不限次数",
-    ...usable.map((f) => `${f.name}：${f.limit} 次/月`),
+    ...usable.map((f) =>
+      planId === 'free' && FREE_ONE_TIME_FEATURES.includes(f.key as string)
+        ? `${f.name}：${f.limit} 次（一次性，不按月重置）`
+        : `${f.name}：${f.limit} 次/月`
+    ),
   ];
 }
 
@@ -221,6 +238,42 @@ export function unsupportedFeatures(planId: string): string[] {
   return COUNTED_FEATURES.filter((f) => (plan.quotas[f.key] as number) === 0).map(
     (f) => `不支持${f.name}`
   );
+}
+
+/**
+ * 这条订阅此刻实际享有的套餐。
+ *
+ * 【为什么必须有这个函数】原来两个判定点都是同一句：
+ *     const planId = subscription?.status === 'active' ? subscription.plan : 'free';
+ * 只看 status，不看 end_date。而 end_date 在整个代码库里只写不读——
+ * 审核通过时写上一个月后的日期，之后没有任何地方回来看它，
+ * 也没有定时任务把 status 改掉。
+ *
+ * 结果：付 49 块买一个月，基础会员就是永久的。
+ * 这是唯一的收入路径上一个直接漏钱的口子，而且不报错、没人会发现。
+ *
+ * 规则：
+ *   - 没有订阅记录 → 免费版
+ *   - status 不是 active（含封禁的 inactive）→ 免费版
+ *   - end_date 已过 → 免费版
+ *   - end_date 为空 → 不过期（线上 10 条订阅目前都是这种，
+ *     包括手动开的企业版；按"过期"处理会把它们全部误降级）
+ *   - plan 不在套餐表里 → 免费版（脏数据兜底）
+ */
+export function effectivePlanId(
+  sub: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined
+): string {
+  if (!sub || sub.status !== 'active') return 'free';
+
+  if (sub.end_date) {
+    const end = new Date(sub.end_date).getTime();
+    // 日期解析不出来时按"不过期"处理：宁可少收一次，也不要因为一个
+    // 脏字段把正在付费的用户当场降级
+    if (!Number.isNaN(end) && end <= Date.now()) return 'free';
+  }
+
+  const plan = sub.plan ?? '';
+  return plan in SUBSCRIPTION_PLANS ? plan : 'free';
 }
 
 export interface QuotaVerdict {
