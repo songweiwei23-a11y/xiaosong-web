@@ -101,14 +101,33 @@ describe('三段加载用同一个动画', () => {
    * 三处各画各的话，用户会连着看到三种不同的加载画面闪过，
    * 那比只有一个转圈更像"卡"。
    */
-  it('都用 LoadingRings', () => {
-    for (const f of [
-      'components/auth/AuthTransition.tsx',
-      'app/dashboard/loading.tsx',
-      'app/dashboard/page.tsx',
-    ]) {
+  it('两处全屏等待用同一个动画', () => {
+    for (const f of ['components/auth/AuthTransition.tsx', 'app/dashboard/loading.tsx']) {
       expect(read(f), `${f} 没有用统一的加载动画`).toContain('LoadingRings');
     }
+  });
+
+  /*
+   * 工作台首页不该有"整屏等待"这回事。
+   *
+   * 原来是 `if (loading) return <整屏转圈>`，四个接口全回来之前页面一片空。
+   * 但左边那三组（开始创作 / 先打地基 / 更多工具）是纯静态的，
+   * 一个字节的数据都不需要——用户最常做的就是进来点「选题策划」，
+   * 却要先陪着等 2 秒多（实测最慢的 /api/quota/check 要 2.3 秒）。
+   */
+  it('工作台首页不整屏阻塞，静态部分立刻可点', () => {
+    const code = readCode('app/dashboard/page.tsx');
+    expect(code, '又把整页挡在 loading 后面了').not.toMatch(/if\s*\(\s*loading\s*\)\s*\{?\s*return\s*\(/);
+    // 静态入口必须在返回的 JSX 里，不受 loading 影响
+    expect(code).toContain('MAIN_FLOW.map');
+    expect(code).toContain('MORE_TOOLS.map');
+  });
+
+  it('依赖数据的几块各自显示骨架', () => {
+    const code = readCode('app/dashboard/page.tsx');
+    // 额度没回来前别显示 0——那会被当成"我一次都没用过"
+    expect((code.match(/loading \? \(/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(code).toContain('animate-pulse');
   });
 
   it('工作台不再用另一个 spinner', () => {

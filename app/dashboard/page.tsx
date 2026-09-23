@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
 import { listWorks, type Work } from "@/lib/works";
 import { getActiveProfileId } from '@/lib/active-profile';
-import { LoadingRings } from "@/components/auth/LoadingRings";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
@@ -245,18 +244,17 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  if (loading) {
-    // 和登录过渡层、loading.tsx 用同一个动画：
-    // 从点登录到内容出现是一段连续的等待，不该中途换三次画面
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="flex flex-col items-center">
-          <LoadingRings size={72} />
-          <p className="mt-5 text-[13px] text-muted-foreground">正在准备工作台…</p>
-        </div>
-      </div>
-    );
-  }
+  /*
+   * 这里原本是 `if (loading) return <整屏转圈>`：四个接口全部回来之前，
+   * 页面上什么都没有。
+   *
+   * 但左边那三组（开始创作 / 先打地基 / 更多工具）是纯静态的，
+   * 一个字节的数据都不需要——用户最常做的事就是进来点「选题策划」，
+   * 却要先陪着等 2 秒多（实测最慢的 /api/quota/check 要 2.3 秒）。
+   *
+   * 改成：静态部分立刻显示，只有真正依赖数据的那几块（档案名、额度、
+   * 接着上次、最近记录）自己显示骨架。人一进来就能点，不用等。
+   */
 
   const usedPct = quota?.limit ? Math.min(100, (quota.used / quota.limit) * 100) : 0;
 
@@ -266,11 +264,16 @@ export default function DashboardPage() {
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-[28px] font-semibold tracking-tight text-foreground">{greeting()}</h1>
-            <p className="mt-1.5 text-[14px] text-muted-foreground">
-              {profile
-                ? `当前档案：${profile.profile_name || "未命名档案"}`
-                : "还没有账号档案，建一个后生成会更贴合你的号"}
-            </p>
+            {/* 档案名要等接口，没回来前占位，别闪一下「还没有档案」再变 */}
+            {loading ? (
+              <div className="mt-2.5 h-4 w-56 animate-pulse rounded bg-muted" />
+            ) : (
+              <p className="mt-1.5 text-[14px] text-muted-foreground">
+                {profile
+                  ? `当前档案：${profile.profile_name || "未命名档案"}`
+                  : "还没有账号档案，建一个后生成会更贴合你的号"}
+              </p>
+            )}
           </div>
 
           <Link
@@ -278,7 +281,7 @@ export default function DashboardPage() {
             className="glass-panel glass-interactive flex items-center gap-2 rounded-xl px-4 py-2 text-[13px]"
           >
             <User className="h-4 w-4 text-muted-foreground" />
-            {profile ? "切换档案" : "创建档案"}
+            {loading ? "档案" : profile ? "切换档案" : "创建档案"}
           </Link>
         </header>
 
@@ -380,7 +383,13 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              {works.length > 0 ? (
+              {loading ? (
+                <div className="space-y-2">
+                  {[0, 1].map((i) => (
+                    <div key={i} className="h-12 animate-pulse rounded-xl bg-muted" />
+                  ))}
+                </div>
+              ) : works.length > 0 ? (
                 <div className="space-y-0.5">
                   {works.map((w) => (
                     <Link
@@ -445,14 +454,19 @@ export default function DashboardPage() {
             <section className="glass-panel rounded-2xl p-5">
               <div className="flex items-baseline justify-between">
                 <span className="text-[13px] text-muted-foreground">本月已用</span>
-                <span className="text-[22px] font-semibold tabular-nums text-foreground">
-                  {quota?.used ?? 0}
-                  {quota?.limit ? (
-                    <span className="ml-1 text-[12px] font-normal text-muted-foreground">
-                      / {quota.limit}
-                    </span>
-                  ) : null}
-                </span>
+                {/* 额度没回来前别显示 0——那会被当成"我一次都没用过" */}
+                {loading ? (
+                  <span className="h-6 w-16 animate-pulse rounded bg-muted" />
+                ) : (
+                  <span className="text-[22px] font-semibold tabular-nums text-foreground">
+                    {quota?.used ?? 0}
+                    {quota?.limit ? (
+                      <span className="ml-1 text-[12px] font-normal text-muted-foreground">
+                        / {quota.limit}
+                      </span>
+                    ) : null}
+                  </span>
+                )}
               </div>
 
               {quota?.limit ? (
