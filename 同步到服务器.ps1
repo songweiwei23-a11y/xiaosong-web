@@ -112,8 +112,16 @@ Write-Host "创建压缩包..." -ForegroundColor Yellow
 
 # 部署清单。缺少 hooks 会导致 useGenerationPage 解析失败，
 # 缺少 postcss.config.js 会导致 Tailwind 不生效，两者都会让服务器构建出问题。
+# 部署清单。缺少 hooks 会导致 useGenerationPage 解析失败，
+# 缺少 postcss.config.js 会导致 Tailwind 不生效，两者都会让服务器构建出问题。
+#
+# tests 也必须传。服务器上的 npm run build 会跑 tsc，而 tsc 会把 tests/ 一起
+# 类型检查。早期部署过一份 tests，之后清单里没有它，那份就永远停在旧版本——
+# 一旦改动让旧测试类型不过（实测：删掉 plans.ts 里的 features 字段后，
+# 服务器上那份旧 quota.test.ts 立刻让构建失败），部署就卡住，
+# 而本地一切正常，很难想到是服务器上一份没人管的旧文件在拦路。
 $payload = @(
-    "app", "components", "hooks", "lib", "types", "supabase", "public",
+    "app", "components", "hooks", "lib", "types", "supabase", "public", "tests",
     "middleware.ts", "next.config.js", "postcss.config.js", "tailwind.config.js",
     "tsconfig.json", "components.json", "package.json", "package-lock.json"
 )
