@@ -77,10 +77,19 @@ Write-Host "服务器连接正常，运行目录与部署目录一致" -Foregrou
 
 # 构建对内存敏感，这台机器物理内存只有 2G。没有 swap 时一旦吃紧，
 # 内核既杀不掉也换不出，表现为 SSH 与网站同时失联，只能去控制台强制重启。
-$swap = (ssh -i "$sshKey" ${serverUser}@${serverIP} "free -m | awk '/Swap:/ {print \$2}'" | Out-String).Trim()
-if ($swap -eq "0") {
+# 这里原本是 awk '/Swap:/ {print $2}'，但 $2 过不来：
+# PowerShell 5.1 把命令交给 ssh 时会重新拆词，转义的 $ 到远端变成裸反斜杠，
+# awk 直接报语法错，$swap 恒为空。空字符串不等于 "0"，于是永远走 else 分支，
+# 打印出一句「swap: MB」——检查形同虚设，真没 swap 时也照样往下走，
+# 而这台机器只有 2G 内存，没 swap 构建会把它压死。
+# 改成 grep，不需要任何 $ 和引号。
+$swapLine = (ssh -i "$sshKey" ${serverUser}@${serverIP} "free -m | grep -i swap" | Out-String).Trim()
+$swap = if ($swapLine -match '^\S+\s+(\d+)') { $Matches[1] } else { "" }
+if ($swap -eq "0" -or $swap -eq "") {
     Write-Host ""
-    Write-Host "服务器没有 swap，构建可能把机器压死。建议先执行：" -ForegroundColor Red
+    Write-Host $(if ($swap -eq "") { "读不到 swap 信息，无法确认内存安全。" }
+                 else { "服务器没有 swap，构建可能把机器压死。" }) -ForegroundColor Red
+    Write-Host "建议先执行：" -ForegroundColor Red
     Write-Host "  sudo fallocate -l 2G /swapfile; sudo chmod 600 /swapfile; sudo mkswap /swapfile; sudo swapon /swapfile" -ForegroundColor Gray
     $go = Read-Host "仍要继续吗? (y/n)"
     if ($go -ne "y") { exit 0 }
