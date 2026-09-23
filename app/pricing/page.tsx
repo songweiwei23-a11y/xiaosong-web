@@ -2,16 +2,24 @@
 
 import Link from "next/link";
 import { Check, X, Crown, Zap, Rocket } from "lucide-react";
-import { SUBSCRIPTION_PLANS } from "@/lib/config/plans";
+import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/config/plans";
 import { toneSoft } from "@/lib/ui-tokens";
 
 export default function PricingPage() {
+  /*
+   * 额度文案必须现算。
+   *
+   * 这一页原来是 `...SUBSCRIPTION_PLANS.free` 整个摊开，于是 features 用的是
+   * 配置里手写的那份文案，和 quotas 是两个来源。会员页和首页早就改成
+   * quotaSummary() 现算了，只有这一页还读手写的——改额度时这里会悄悄留在旧数字上，
+   * 又变成「说的是一套、跑的是另一套」。
+   */
   const plans = [
     { ...SUBSCRIPTION_PLANS.free, icon: Zap, color: "gray" },
     { ...SUBSCRIPTION_PLANS.basic, icon: Check, color: "blue" },
     { ...SUBSCRIPTION_PLANS.pro, icon: Crown, color: "purple" },
     { ...SUBSCRIPTION_PLANS.enterprise, icon: Rocket, color: "orange" }
-  ];
+  ].map((p) => ({ ...p, features: [...quotaSummary(p.id), ...planSellingPoints(p.id)] }));
 
   return (
     <div className="min-h-screen py-12 px-4">

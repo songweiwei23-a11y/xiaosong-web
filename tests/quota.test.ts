@@ -5,6 +5,7 @@ import {
   COUNTED_FEATURES,
   quotaSummary,
   unsupportedFeatures,
+  planSellingPoints,
 } from '@/lib/config/plans';
 
 /**
@@ -23,17 +24,28 @@ function usage(overrides: Record<string, number> = {}) {
   return { ...row, ...overrides };
 }
 
+/*
+ * 下面几条原来把「5 次」这个数字写死在断言里。额度是会调的——
+ * 体检发现免费版走不完引导路径后就从 5 改成了 8——一调就红一片，
+ * 而红的原因跟逻辑对不对无关，只是数字变了。
+ *
+ * 所以改成从配置里取上限，断言的是边界行为：到上限前放行、到了就拦。
+ * 「够不够走完一条内容」这个产品要求由文件末尾那组用例单独守。
+ */
+const FREE_SCRIPT = SUBSCRIPTION_PLANS.free.quotas.script;
+const FREE_TOPIC = SUBSCRIPTION_PLANS.free.quotas.topic;
+
 describe('免费版：按功能分别限额', () => {
-  it('脚本只有 5 次，用完了不影响选题', () => {
-    const q = usage({ script_used: 5 });
+  it('脚本用完了不影响选题', () => {
+    const q = usage({ script_used: FREE_SCRIPT });
     expect(judgeQuota('free', 'script', q).allowed).toBe(false);
     expect(judgeQuota('free', 'topic', q).allowed).toBe(true);
-    expect(judgeQuota('free', 'topic', q).remaining).toBe(3);
+    expect(judgeQuota('free', 'topic', q).remaining).toBe(FREE_TOPIC);
   });
 
-  it('脚本第 5 次仍可用，第 6 次才拦', () => {
-    expect(judgeQuota('free', 'script', usage({ script_used: 4 })).allowed).toBe(true);
-    expect(judgeQuota('free', 'script', usage({ script_used: 5 })).allowed).toBe(false);
+  it('到上限前仍可用，到了上限才拦', () => {
+    expect(judgeQuota('free', 'script', usage({ script_used: FREE_SCRIPT - 1 })).allowed).toBe(true);
+    expect(judgeQuota('free', 'script', usage({ script_used: FREE_SCRIPT })).allowed).toBe(false);
   });
 
   it('额度为 0 的功能提示的是「会员功能」而不是「已用完」', () => {
@@ -44,9 +56,9 @@ describe('免费版：按功能分别限额', () => {
   });
 
   it('用完时的提示写明了是哪个功能、上限多少', () => {
-    const verdict = judgeQuota('free', 'script', usage({ script_used: 5 }));
+    const verdict = judgeQuota('free', 'script', usage({ script_used: FREE_SCRIPT }));
     expect(verdict.message).toContain('脚本生成');
-    expect(verdict.message).toContain('5');
+    expect(verdict.message).toContain(String(FREE_SCRIPT));
   });
 
   it('知识库无限，不受任何用量影响', () => {
@@ -119,9 +131,10 @@ describe('额度文案由配置现算', () => {
 
   it('免费档逐条列出，说得清哪些能用', () => {
     const lines = quotaSummary('free').join(' ');
-    expect(lines).toContain('脚本生成：5 次/月');
-    expect(lines).toContain('选题策划：3 次/月');
-    expect(lines).toContain('账号定位：1 次/月');
+    // 同样从配置取数，避免调额度时这里跟着红
+    expect(lines).toContain(`脚本生成：${SUBSCRIPTION_PLANS.free.quotas.script} 次/月`);
+    expect(lines).toContain(`选题策划：${SUBSCRIPTION_PLANS.free.quotas.topic} 次/月`);
+    expect(lines).toContain(`账号定位：${SUBSCRIPTION_PLANS.free.quotas.positioning} 次/月`);
   });
 
   it('免费档不把额度为 0 的功能写成「0 次」，而是归入不支持', () => {
@@ -147,11 +160,27 @@ describe('额度文案由配置现算', () => {
 });
 
 describe('配置本身的一致性', () => {
-  it('套餐自带的 features 文案与实际配额对得上', () => {
-    // 文案里写的数字必须就是实际执行的上限，这正是当初出问题的地方
-    expect(SUBSCRIPTION_PLANS.basic.features.join(' ')).toContain('50');
-    expect(SUBSCRIPTION_PLANS.pro.features.join(' ')).toContain('120');
-    expect(SUBSCRIPTION_PLANS.free.features.join(' ')).toContain('5次');
+  /*
+   * 原来这里断言的是套餐自带的 features 文案里能找到 50 / 120 / 5次。
+   * 那份手写文案已经删掉了——它和 quotas 是同一件事写两遍，
+   * 而价格页正是读的那一份，改额度时会悄悄留在旧数字上。
+   *
+   * 现在只有一个来源，所以改成断言"卖点里不许再出现额度数字"，
+   * 防止哪天有人又把次数写回文案里。
+   */
+  it('卖点文案里不含额度数字——额度只能有一个来源', () => {
+    for (const planId of ['free', 'basic', 'pro', 'enterprise'] as const) {
+      const text = planSellingPoints(planId).join(' ');
+      expect(text, `${planId} 的卖点里出现了数字，额度文案该由 quotaSummary 现算`).not.toMatch(
+        /\d+\s*次/
+      );
+    }
+  });
+
+  it('额度文案确实由 quotas 现算', () => {
+    expect(quotaSummary('basic').join(' ')).toContain('50');
+    expect(quotaSummary('pro').join(' ')).toContain('120');
+    expect(quotaSummary('enterprise').join(' ')).toContain('不限次数');
   });
 
   it('计入总量的功能里不包含知识库', () => {
@@ -170,9 +199,9 @@ describe('配置本身的一致性', () => {
   });
 
   it('没有配额记录的新用户按满额对待', () => {
-    expect(judgeQuota('free', 'script', null).remaining).toBe(5);
-    expect(judgeQuota('basic', 'script', null).remaining).toBe(50);
-    expect(judgeQuota('pro', 'script', null).remaining).toBe(120);
+    for (const id of ['free', 'basic', 'pro'] as const) {
+      expect(judgeQuota(id, 'script', null).remaining).toBe(SUBSCRIPTION_PLANS[id].quotas.script);
+    }
   });
 
   it('年付价必须真的比月付十二个月便宜，且是整数', () => {
@@ -217,6 +246,77 @@ describe('价格只有一个源头', () => {
         .replace(/\/\/[^\n]*/g, '');
       const hits = [...src.matchAll(priceLike)].map((m) => m[1]);
       expect(hits, `${page} 里仍有写死的价格：${hits.join('、')}`).toEqual([]);
+    }
+  });
+});
+
+/**
+ * 免费版必须能走完产品自己引导的路径。
+ *
+ * 这是体检时发现的：positioning 桶是四个板块共用的，而免费版只给 1 次。
+ * 首页「先打地基」却把 档案→定位→简报 标成 1-2-3 步让用户按顺序做——
+ * 第 2 步用掉唯一一次，第 3 步没额度。而简报正是让其他板块用上账号信息
+ * 的那一环，免费用户永远走不到产品最值钱的地方，然后就走了。
+ *
+ * 这类问题不报错、不影响构建，只体现为"用户试了一下就不来了"。
+ */
+describe('免费版走得完引导路径', () => {
+  /** 板块 → 额度桶，与 lib/task-type.ts 保持一致 */
+  const BOARD_BUCKET: Record<string, string> = {
+    账号定位: 'positioning',
+    创作简报: 'positioning',
+    选题策划: 'topic',
+    开篇钩子: 'script',
+    脚本生成: 'script',
+  };
+
+  const freeQuota = (bucket: string) =>
+    SUBSCRIPTION_PLANS.free.quotas[bucket as keyof typeof SUBSCRIPTION_PLANS.free.quotas] as number;
+
+  /** 走一遍某条路径要消耗的各桶次数 */
+  const cost = (boards: string[]) => {
+    const need: Record<string, number> = {};
+    for (const b of boards) need[BOARD_BUCKET[b]] = (need[BOARD_BUCKET[b]] ?? 0) + 1;
+    return need;
+  };
+
+  it('首页「先打地基」这三步能做完', () => {
+    // 档案不计费，定位和简报都吃 positioning
+    const need = cost(['账号定位', '创作简报']);
+    for (const [bucket, n] of Object.entries(need)) {
+      expect(
+        freeQuota(bucket),
+        `免费版 ${bucket} 只有 ${freeQuota(bucket)} 次，而走完地基要 ${n} 次`
+      ).toBeGreaterThanOrEqual(n);
+    }
+  });
+
+  it('首页主流程至少能完整走通一条内容', () => {
+    // 选题 → 开篇 → 脚本（分镜和标题免费版本来就不开放，不算在内）
+    const need = cost(['选题策划', '开篇钩子', '脚本生成']);
+    for (const [bucket, n] of Object.entries(need)) {
+      expect(
+        freeQuota(bucket),
+        `免费版 ${bucket} 只有 ${freeQuota(bucket)} 次，走通一条内容要 ${n} 次`
+      ).toBeGreaterThanOrEqual(n);
+    }
+  });
+
+  it('地基 + 一条内容加起来也够', () => {
+    const need = cost(['账号定位', '创作简报', '选题策划', '开篇钩子', '脚本生成']);
+    for (const [bucket, n] of Object.entries(need)) {
+      expect(
+        freeQuota(bucket),
+        `免费版 ${bucket} 不够：有 ${freeQuota(bucket)} 次，需要 ${n} 次`
+      ).toBeGreaterThanOrEqual(n);
+    }
+  });
+
+  it('共用同一个桶的板块都登记在这张表里', async () => {
+    // 新板块接进来时如果忘了登记，上面几条就会变成空检查
+    const { TASK_TYPE_TO_FEATURE } = await import('@/lib/task-type');
+    for (const [board, bucket] of Object.entries(BOARD_BUCKET)) {
+      expect(TASK_TYPE_TO_FEATURE[board], `${board} 在 task-type 里的桶变了`).toBe(bucket);
     }
   });
 });

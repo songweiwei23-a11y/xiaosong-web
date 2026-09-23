@@ -1,4 +1,4 @@
-﻿// 会员套餐配置
+// 会员套餐配置
 //
 // 三种计量方式，由 totalQuota 决定用哪一种：
 //
@@ -23,19 +23,34 @@ export const SUBSCRIPTION_PLANS = {
     price: 0,
     yearlyPrice: 0,
     totalQuota: null as number | null, // 按功能分别限额
-    features: [
-      "知识库：无限使用",
-      "账号定位：1次",
-      "选题策划：3次/月",
-      "脚本生成：5次/月",
-      "自由对话：20次/月",
-      "其他功能：需升级会员"
-    ],
+    // 这里原来还有一份手写的 features 文案，和下面的 quotas 是同一件事写两遍。
+    // 已删除——额度文案一律由 quotaSummary() 现算，卖点由 SELLING_POINTS 提供。
     quotas: {
       knowledge: -1,        // -1 表示无限
-      positioning: 1,       // 一次性额度
+      /*
+       * positioning 这个桶是四个板块共用的：
+       * 账号定位、商业定位、内容定位、创作简报。
+       *
+       * 原来是 1。而首页「先打地基」把 档案→定位→简报 标成 1-2-3 步，
+       * 让用户按顺序做完——第 2 步用掉唯一一次，第 3 步就没额度了。
+       * 而简报恰恰是让其他所有板块用上账号信息的那一环，
+       * 免费用户永远走不到产品最值钱的地方。
+       *
+       * 给 3：定位 1 次 + 简报 1 次 + 留 1 次重做（定位第一版常常不满意）。
+       * 商业定位和内容定位属于深化，留给付费。
+       */
+      positioning: 3,
       topic: 3,            // 每月
-      script: 5,           // 每月。免费版的核心体验额度，刻意给得紧
+      /*
+       * script 这个桶也是三个板块共用：脚本生成、起号方案、开篇钩子。
+       *
+       * 原来是 5。而开篇设计现在是主流程的第 2 步，
+       * 每做一次开篇就少一条脚本——5 次实际只够两条半完整视频。
+       *
+       * 给 8：起号方案 1 次（一次性的）+ 3 条视频各用 开篇1+脚本1 = 6 次，
+       * 再留 1 次余量。刚好够把一条内容完整走通三遍。
+       */
+      script: 8,
       freeChat: 20,        // 每月
       storyboard: 0,
       review: 0,
@@ -49,13 +64,6 @@ export const SUBSCRIPTION_PLANS = {
     price: 49,
     yearlyPrice: 470,     // 49 * 12 * 0.8 ≈ 470
     totalQuota: null as number | null, // 按功能分别限额，每个功能各 50 次
-    features: [
-      "知识库：无限使用",
-      "每个功能各 50次/月",
-      "九大功能全部开放",
-      "高级模板支持",
-      "标准客服支持"
-    ],
     quotas: {
       knowledge: -1,
       positioning: 50,
@@ -74,14 +82,6 @@ export const SUBSCRIPTION_PLANS = {
     price: 99,
     yearlyPrice: 950,     // 99 * 12 * 0.8 ≈ 950
     totalQuota: null as number | null, // 按功能分别限额，每个功能各 120 次
-    features: [
-      "知识库：无限使用",
-      "每个功能各 120次/月",
-      "九大功能全部开放",
-      "全部高级模板",
-      "优先客服支持",
-      "数据分析报告"
-    ],
     quotas: {
       knowledge: -1,
       positioning: 120,
@@ -102,13 +102,6 @@ export const SUBSCRIPTION_PLANS = {
     price: 199,
     yearlyPrice: 1910,    // 199 * 12 * 0.8 ≈ 1910
     totalQuota: -1 as number | null, // 无限
-    features: [
-      "所有功能：无限使用",
-      "定制化模板",
-      "专属客服支持",
-      "API接口调用",
-      "数据导出权限"
-    ],
     quotas: {
       knowledge: -1,
       positioning: -1,
@@ -199,6 +192,26 @@ export function quotaSummary(planId: string): string[] {
     "知识库：不限次数",
     ...usable.map((f) => `${f.name}：${f.limit} 次/月`),
   ];
+}
+
+/**
+ * 与额度无关的卖点。
+ *
+ * 套餐的 features 数组里原来混着两种东西：一种是额度（「脚本生成：5次/月」），
+ * 一种是服务承诺（「优先客服支持」）。前者和 quotas 是同一件事写了两遍，
+ * 改额度时忘了改文案就会对不上——价格页就一直停在手写的那份上。
+ *
+ * 所以这里只留后者，额度一律由 quotaSummary() 现算。
+ */
+const SELLING_POINTS: Record<string, string[]> = {
+  free: ['历史记录保存'],
+  basic: ['九大功能全部开放', '高级模板支持', '标准客服支持'],
+  pro: ['九大功能全部开放', '全部高级模板', '优先客服支持', '数据分析报告'],
+  enterprise: ['定制化模板', '专属客服支持', 'API接口调用', '数据导出权限'],
+};
+
+export function planSellingPoints(planId: string): string[] {
+  return SELLING_POINTS[planId] ?? [];
 }
 
 /** 该套餐完全不支持的功能（额度为 0），用于在价格表上标出限制 */

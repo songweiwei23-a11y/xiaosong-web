@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   useState, useEffect } from "react";
@@ -15,7 +15,19 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const [stats, setStats] = useState({ users: 0, scripts: 0, satisfaction: 0 });
+  /**
+   * 落地页的三个大数字。
+   *
+   * 原来是编的（接口里写着「返回合理的假数据」，失败时前端还会退回
+   * 1280/15680/98 这组写死的数），并以「创作者正在使用」的名义展示。
+   * 现在只认接口给的真实数；接口给 null 就那一项不显示——
+   * 宁可少一块，也不编一个。
+   */
+  const [stats, setStats] = useState<{
+    users: number | null;
+    scripts: number | null;
+    methods: number | null;
+  }>({ users: null, scripts: null, methods: null });
   const [mounted, setMounted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -27,23 +39,41 @@ export default function HomePage() {
   const loadStats = async () => {
     try {
       const res = await fetch('/api/public/stats');
+      if (!res.ok) return;
       const data = await res.json();
-      animateNumbers(data);
+      animateNumbers({
+        users: typeof data.users === 'number' ? data.users : null,
+        scripts: typeof data.scripts === 'number' ? data.scripts : null,
+        methods: typeof data.methods === 'number' ? data.methods : null,
+      });
     } catch {
-      animateNumbers({ users: 1280, scripts: 15680, satisfaction: 98 });
+      // 拿不到就保持 null，那几块不显示。不再退回写死的假数
     }
   };
 
-  const animateNumbers = (target: any) => {
+  const animateNumbers = (target: {
+    users: number | null;
+    scripts: number | null;
+    methods: number | null;
+  }) => {
     const steps = 60;
     const duration = 2000;
-    const inc = { users: target.users / steps, scripts: target.scripts / steps, satisfaction: target.satisfaction / steps };
-    
+    // null 的那项全程保持 null，不参与动画，否则会从 0 跳一下再消失
+    const step = (v: number | null, i: number) =>
+      v === null ? null : Math.floor((v / steps) * i);
+
     let current = 0;
     const timer = setInterval(() => {
       current++;
-      setStats({ users: Math.floor(inc.users * current), scripts: Math.floor(inc.scripts * current), satisfaction: Math.floor(inc.satisfaction * current) });
-      if (current >= steps) { clearInterval(timer); setStats(target); }
+      setStats({
+        users: step(target.users, current),
+        scripts: step(target.scripts, current),
+        methods: step(target.methods, current),
+      });
+      if (current >= steps) {
+        clearInterval(timer);
+        setStats(target);
+      }
     }, duration / steps);
   };
 
@@ -296,31 +326,50 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
               <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">免费试用·无需信用卡</span></div>
               <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">10秒生成专业脚本</span></div>
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">98%用户好评</span></div>
+              {/* 原来是「98%用户好评」。系统里没有任何评价数据，这个数字是编的。
+                  换成一句确实为真的：知识库和方法都是内置的，不是通用模型现编 */}
+              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">内置编导知识库</span></div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-16 bg-white/50 dark:bg-muted/50 backdrop-blur-xl border-y border-border/40">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="text-center group hover:scale-105 transition-transform">
-              <div className="text-5xl md:text-6xl font-extrabold brand-gradient bg-clip-text text-transparent mb-2">{stats.users.toLocaleString()}+</div>
-              <div className="text-sm text-muted-foreground font-medium">创作者正在使用</div>
+      {/*
+        Stats：只显示真实且够得上展示门槛的数字。
+        接口返回 null 的那一项直接不渲染；三项都没有时整段不出现。
+        以前这里是编的（1280 创作者 / 15680 脚本 / 98% 满意度）。
+      */}
+      {(() => {
+        const tiles = [
+          { key: 'users', value: stats.users, label: '创作者正在使用', suffix: '+' },
+          { key: 'scripts', value: stats.scripts, label: '累计生成内容', suffix: '+' },
+          { key: 'methods', value: stats.methods, label: '内置编导方法', suffix: '' },
+        ].filter((t) => typeof t.value === 'number' && t.value > 0);
+
+        if (tiles.length === 0) return null;
+
+        return (
+          <section className="py-16 bg-white/50 dark:bg-muted/50 backdrop-blur-xl border-y border-border/40">
+            <div className="container mx-auto px-4">
+              <div
+                className={`grid grid-cols-1 gap-8 max-w-4xl mx-auto ${
+                  tiles.length >= 3 ? 'md:grid-cols-3' : tiles.length === 2 ? 'md:grid-cols-2' : ''
+                }`}
+              >
+                {tiles.map((t) => (
+                  <div key={t.key} className="text-center group hover:scale-105 transition-transform">
+                    <div className="text-5xl md:text-6xl font-extrabold brand-gradient bg-clip-text text-transparent mb-2">
+                      {(t.value as number).toLocaleString()}
+                      {t.suffix}
+                    </div>
+                    <div className="text-sm text-muted-foreground font-medium">{t.label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="text-center group hover:scale-105 transition-transform">
-              <div className="text-5xl md:text-6xl font-extrabold brand-gradient bg-clip-text text-transparent mb-2">{stats.scripts.toLocaleString()}+</div>
-              <div className="text-sm text-muted-foreground font-medium">脚本生成数量</div>
-            </div>
-            <div className="text-center group hover:scale-105 transition-transform">
-              <div className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent mb-2">{stats.satisfaction}%</div>
-              <div className="text-sm text-muted-foreground font-medium">用户满意度</div>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        );
+      })()}
 
       {/* 三大核心优势 */}
       <section id="advantages" className="py-20 px-4 bg-primary/10">
@@ -625,7 +674,8 @@ export default function HomePage() {
             准备好开始创作了吗？
           </h2>
           <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-            加入1280+创作者，让AI帮您创作出更专业、更高效的短视频内容
+            {/* 原来写「加入1280+创作者」，那个数字是编的 */}
+            从账号定位开始，一条内容从选题到分镜一路做完
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
