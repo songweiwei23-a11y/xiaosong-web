@@ -5,6 +5,7 @@ import {
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
+import { SHOWCASE_TACTICS, SHOWCASE_CARDS, FACTS } from "@/lib/showcase";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
 import { 
   Sparkles, Zap, CheckCircle, TrendingUp, ArrowRight, 
@@ -133,7 +134,7 @@ export default function HomePage() {
       icon: BookOpen,
       title: "知识库查询",
       desc: "150+篇编导资料随时查阅，分五个专题库",
-      benefits: ["12大类目覆盖", "每周更新", "实战案例库"],
+      benefits: ["五个专题分库", "起号36+1计", "开篇36计"],
       color: "indigo"
     }
   ];
@@ -192,7 +193,7 @@ export default function HomePage() {
       features: [
 ...quotaSummary("enterprise"),
 "知识库无限查询",
-"专属AI模型",
+"多账号档案切换",
 "数据报表分析",
 "团队协作功能",
 "1v1专属顾问"
@@ -209,19 +210,25 @@ export default function HomePage() {
     },
     {
       q: "生成的脚本质量如何？",
-      a: "我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 73 个成体系的起号/开篇方法。生成的脚本包含完整的开场、冲突、高潮、结尾结构，平均完播率提升30%以上。支持一键生成多个版本供您选择优化。"
+      a: "我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 73 个成体系的起号/开篇方法。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。支持一键生成多个版本供您选择优化。"
     },
     {
       q: "和其他AI工具有什么区别？",
-      a: "我们不是简单的AI对话工具。核心优势在于：①成体系的编导知识库（150+篇，五个专题库），②针对短视频创作的全流程支持（定位→选题→脚本→分镜→转化），③每周更新的爆款案例库，④专为中文短视频优化的提示词工程。"
+      a: "我们不是简单的AI对话工具。核心优势在于：①成体系的编导知识库（150+篇，五个专题库），②针对短视频创作的全流程支持（定位→选题→脚本→分镜→转化），③起号与开篇共 73 条成体系的方法，每条带结构公式和不能用的边界，④专为中文短视频优化的提示词工程。"
     },
     {
       q: "免费版有什么限制？",
-      a: "免费版每月提供50次核心功能使用额度（账号定位3次、选题策划3次、脚本生成20次、对话20次），知识库查询不限次数。功能和付费版完全一样，只是使用次数有限制。足够您深度体验所有功能。"
+      /*
+       * 这一行原来是手写的「每月 50 次（账号定位3次、选题3次、脚本20次、对话20次）」，
+       * 四个数字里有三个和 lib/config/plans.ts 对不上，总数 50 也是凑的。
+       * 价格页早就改成从配置现算了，只有这里还留着一份手写的。
+       * 直接用 quotaSummary，配置改了这里自动跟。
+       */
+      a: `免费版的额度是：${quotaSummary("free").join("、")}。功能和付费版一样，只是次数有限制，足够你把一条内容从定位做到分镜走通一遍。`
     },
     {
       q: "如何保证数据安全？",
-      a: "所有数据采用银行级加密存储，绝不泄露您的创意和脚本内容。我们承诺：①数据仅用于为您生成内容，②不会用于AI训练，③7天无理由退款保障，④支持导出所有历史记录。"
+      a: "数据存放在 Supabase（Postgres），传输与静态存储均加密，并按账号做了行级隔离——不同账号之间互相读不到内容。我们承诺：①数据仅用于为您生成内容，②不会用于AI训练，③支持导出所有历史记录。"
     },
     {
       q: "可以开发票吗？",
@@ -263,7 +270,10 @@ export default function HomePage() {
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">核心功能</a>
             <a href="#advantages" className="text-sm font-medium hover:text-primary transition-colors">核心优势</a>
-            <a href="#cases" className="text-sm font-medium hover:text-primary transition-colors">成功案例</a>
+            {/* 原来是「成功案例」指向 #cases，而页面上根本没有这个版块——点了不会有
+                任何反应。而且我们手上没有可公开的真实客户案例，编一个就是另一种形式的
+                假数据。换成真正能说服人、也抄不走的东西：方法本身 */}
+            <a href="#method" className="text-sm font-medium hover:text-primary transition-colors">编导方法</a>
             <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">价格方案</a>
           </nav>
           <div className="flex items-center gap-4">
@@ -318,7 +328,7 @@ export default function HomePage() {
                   立即免费体验 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Link>
-              <a href="#demo" className="px-8 py-4 glass-panel text-foreground rounded-xl font-semibold text-lg border-2 border-border hover:border-primary/40 transition-all hover:scale-105 flex items-center gap-2">
+              <a href="#method" className="px-8 py-4 glass-panel text-foreground rounded-xl font-semibold text-lg border-2 border-border hover:border-primary/40 transition-all hover:scale-105 flex items-center gap-2">
                 <Play className="w-5 h-5 text-primary" /> 观看演示
               </a>
             </div>
@@ -335,15 +345,38 @@ export default function HomePage() {
       </section>
 
       {/*
-        Stats：只显示真实且够得上展示门槛的数字。
-        接口返回 null 的那一项直接不渲染；三项都没有时整段不出现。
-        以前这里是编的（1280 创作者 / 15680 脚本 / 98% 满意度）。
+        Stats。
+        以前这里是编的（1280 创作者 / 15680 脚本 / 98% 满意度），清掉之后换成了
+        真实数字，但「累计生成内容 168」这种说法是在拿我们最弱的一面当门面——
+        一个刚起步的产品，用量天然不好看，而且那根本不是我们的优势。
+
+        改成讲**结构性的东西**：方法成体系、全流程打通、知识库是真的编导知识。
+        这几条不随用量涨跌，也是通用 AI 给不了的。
+        每一条都必须为真——数字统一从 lib/showcase.ts 的 FACTS 取。
       */}
       {(() => {
         const tiles = [
-          { key: 'users', value: stats.users, label: '创作者正在使用', suffix: '+' },
-          { key: 'scripts', value: stats.scripts, label: '累计生成内容', suffix: '+' },
-          { key: 'methods', value: stats.methods, label: '内置编导方法', suffix: '' },
+          {
+            key: 'methods',
+            value: FACTS.methods,
+            label: '条可直接照拍的方法',
+            sub: `起号 ${FACTS.tactics} 计 · 开篇 ${FACTS.cards} 计，每条带结构公式`,
+            suffix: '',
+          },
+          {
+            key: 'pipeline',
+            value: FACTS.pipeline.length,
+            label: '步全流程打通',
+            sub: FACTS.pipeline.join(' → '),
+            suffix: '',
+          },
+          {
+            key: 'docs',
+            value: FACTS.libraries,
+            label: '个专题知识分库',
+            sub: `${FACTS.docs} 篇编导资料，不是网上抓的通用内容`,
+            suffix: '',
+          },
         ].filter((t) => typeof t.value === 'number' && t.value > 0);
 
         if (tiles.length === 0) return null;
@@ -362,7 +395,11 @@ export default function HomePage() {
                       {(t.value as number).toLocaleString()}
                       {t.suffix}
                     </div>
-                    <div className="text-sm text-muted-foreground font-medium">{t.label}</div>
+                    <div className="text-sm text-foreground font-medium">{t.label}</div>
+                    {/* 副标题是关键：光一个数字说明不了优势，得说清这个数字意味着什么 */}
+                    <div className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                      {t.sub}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -400,8 +437,8 @@ export default function HomePage() {
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">涵盖情感、剧情、知识、搞笑等12大类目</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">每周更新最新爆款脚本套路</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">专业编导团队人工标注验证</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">每条方法写明机制、结构公式与适用边界</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">来自成体系的编导课程，不是网上抓的碎片</span></li>
                 </ul>
               </div>
             </div>
@@ -447,13 +484,90 @@ export default function HomePage() {
       </section>
 
 
-      {/* 8大核心功能 */}
+      {/*
+        编导方法库。
+        取代原来那个指向空锚点的「成功案例」——我们没有可公开的真实客户案例，
+        编一个就是另一种形式的假数据。而这一段展示的是**抄不走也编不出来**的
+        东西：每一计都有名字、机制、结构公式和适用范围。
+        别家能说"AI 帮你写脚本"，说不出"这是第 22 计行业避坑，
+        结构是 点名坑 → 后果 → 识别信号 → 替代方案"。
+
+        内容来自 lib/showcase.ts，那里的每一条都有测试盯着，和真实方法库逐字段比对。
+      */}
+      <section id="method" className="py-20 px-4 bg-muted/40 dark:bg-muted/20">
+        <div className="container mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">这是我们和通用 AI 的区别</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              <span className="brand-gradient bg-clip-text text-transparent">拍法是有公式的</span>
+            </h2>
+            <p className="text-xl text-muted-foreground dark:text-foreground max-w-3xl mx-auto">
+              通用 AI 给你一段文字，我们给你<span className="font-semibold text-primary">一套能照着拍的结构</span>。
+              起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计，每一条都写明了机制、结构公式、
+              适合谁拍，以及<span className="font-semibold text-primary">什么情况下不能用</span>。
+            </p>
+          </div>
+
+          <div className="max-w-6xl mx-auto">
+            <h3 className="text-sm font-semibold tracking-widest text-muted-foreground mb-4">
+              起号 {FACTS.tactics} 计 · 摘三条
+            </h3>
+            <div className="grid md:grid-cols-3 gap-5 mb-12">
+              {SHOWCASE_TACTICS.map((t) => (
+                <div key={t.no} className="glass-panel rounded-2xl p-6 border-2 border-border hover:border-primary/40 transition-colors">
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <span className="text-xs font-mono text-primary/70">第 {t.no} 计</span>
+                    <span className="text-lg font-bold">{t.name}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">{t.mechanism}</p>
+                  {/* 结构公式是这套东西最有说服力的部分，单独框出来 */}
+                  <div className="rounded-xl bg-primary/[0.07] border border-primary/20 px-3 py-2.5 mb-3">
+                    {/* 实测：/70 透明度下 10px 小字对比度只有 3.06，低于可读标准，改用实色并加大一号 */}
+                    <div className="text-[11px] font-medium tracking-wider text-primary mb-1">结构公式</div>
+                    <div className="text-[13px] font-medium text-foreground">{t.formula}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">适合：{t.fit}</div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-sm font-semibold tracking-widest text-muted-foreground mb-4">
+              开篇 {FACTS.cards} 计 · 摘三张
+            </h3>
+            <div className="grid md:grid-cols-3 gap-5">
+              {SHOWCASE_CARDS.map((c) => (
+                <div key={c.no} className="glass-panel rounded-2xl p-6 border-2 border-border hover:border-accent/40 transition-colors">
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <span className="text-lg font-bold">{c.name}</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-accent/15 text-accent">{c.category}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">{c.psychology}</p>
+                  <div className="rounded-xl bg-accent/[0.07] border border-accent/20 px-3 py-2.5">
+                    <div className="text-[11px] font-medium tracking-wider text-accent mb-1">开篇公式</div>
+                    <div className="text-[13px] font-medium text-foreground">{c.formula}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-center text-sm text-muted-foreground mt-10">
+              以上是 {FACTS.methods} 条里的 6 条。生成时 AI 会按你的资源条件挑出能拍的那几条，
+              并守住每一条写明的边界。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 核心功能。下面列了 8 个最常用的；全站共 15 个板块，数字统一从 FACTS 取 */}
       <section id="features" className="py-20 px-4 glass-panel">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
               <Star className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">8大核心功能</span>
+              <span className="text-sm font-medium text-primary">{FACTS.boards} 个板块 · 这是最常用的 8 个</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               <span className="brand-gradient bg-clip-text text-transparent">

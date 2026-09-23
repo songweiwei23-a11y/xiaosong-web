@@ -7,13 +7,10 @@ import { supabase } from "@/lib/supabase/client";
 import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home, Ticket } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AuthTransition } from "@/components/auth/AuthTransition";
-import { GROWTH_TACTICS } from "@/lib/growth-tactics";
-import { OPENING_CARDS } from "@/lib/opening-cards";
+// 数字走 FACTS 统一口径。原来这里 import 整套方法库只为数一个 length——
+// 900 多行数据被打进登录页的包，访客还没登录就先下载一份完整知识资产
+import { FACTS } from "@/lib/showcase";
 
-/** 从代码里数出来，不手写——手写的数字迟早和现实对不上 */
-const METHOD_COUNT = GROWTH_TACTICS.length + OPENING_CARDS.length;
-/** 创作板块数。app/dashboard 下的页面数，改了板块这里要跟着改 */
-const BOARD_COUNT = 15;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -302,15 +299,20 @@ export default function LoginPage() {
 
           换成三个从代码里数得出来、也确实是卖点的数字。
         */}
+        {/*
+          说辞要讲清楚"这个数字意味着什么"。
+          「内置编导方法 73」只是个数字，「73 条可直接照拍的方法」才是优势。
+          数字统一从 lib/showcase.ts 的 FACTS 取，全站一个口径。
+        */}
         <div className="mt-8 grid grid-cols-3 gap-4">
           {[
-            { n: String(BOARD_COUNT), label: "创作板块" },
-            { n: String(METHOD_COUNT), label: "内置编导方法" },
-            { n: "5", label: "知识库分库" },
+            { n: String(FACTS.methods), label: "条可照拍的方法" },
+            { n: String(FACTS.pipeline.length), label: "步全流程打通" },
+            { n: String(FACTS.libraries), label: "个专题知识库" },
           ].map((x) => (
             <div key={x.label} className="glass-panel text-center p-4 rounded-xl">
               <div className="text-3xl font-bold brand-text">{x.n}</div>
-              <div className="text-xs text-muted-foreground mt-1">{x.label}</div>
+              <div className="text-xs text-muted-foreground mt-1 leading-snug">{x.label}</div>
             </div>
           ))}
         </div>
