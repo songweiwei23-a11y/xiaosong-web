@@ -42,6 +42,11 @@ export interface PositioningPromptParams {
   focus?: PositioningFocus;
   /** 深挖模式下已有的六维地基原文 */
   baseline?: string;
+  /**
+   * 覆盖产出要求。快速版用它只要核心几节；不传就按 focus 走完整版。
+   * 由 lib/positioning-sections.ts 拼，那边有按标题切 OUTPUT_FULL 的机器。
+   */
+  outputSpec?: string;
 }
 
 /**
@@ -838,7 +843,26 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
   parts.push(restrictionSection(p.restrictions));
   parts.push('');
 
-  parts.push(focus === 'business' ? OUTPUT_BUSINESS : focus === 'content' ? OUTPUT_CONTENT : OUTPUT_FULL);
+  /*
+   * 产出要求。
+   *
+   * outputSpec 是给「快速版」用的覆盖口：完整版 15 节要跑 287 秒，
+   * 而线上漏斗显示只有 40% 的人撑到定位做完、10% 撑到简报——
+   * 新用户第二步就卡着五分钟不动，走掉是必然的。
+   * 快速版只出核心几节，其余等他需要时再补。
+   *
+   * 传进来而不是在这里挑，是为了不和 positioning-sections 互相 import
+   * （那边已经有按标题切 OUTPUT_FULL 的机器，挑哪几节归它管）。
+   */
+  parts.push(
+    p.outputSpec?.trim()
+      ? p.outputSpec.trim()
+      : focus === 'business'
+        ? OUTPUT_BUSINESS
+        : focus === 'content'
+          ? OUTPUT_CONTENT
+          : OUTPUT_FULL
+  );
   parts.push('');
 
   parts.push(`## ✍️ 写作要求

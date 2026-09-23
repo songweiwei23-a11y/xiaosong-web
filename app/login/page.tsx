@@ -7,6 +7,13 @@ import { supabase } from "@/lib/supabase/client";
 import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home, Ticket } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AuthTransition } from "@/components/auth/AuthTransition";
+import { GROWTH_TACTICS } from "@/lib/growth-tactics";
+import { OPENING_CARDS } from "@/lib/opening-cards";
+
+/** 从代码里数出来，不手写——手写的数字迟早和现实对不上 */
+const METHOD_COUNT = GROWTH_TACTICS.length + OPENING_CARDS.length;
+/** 创作板块数。app/dashboard 下的页面数，改了板块这里要跟着改 */
+const BOARD_COUNT = 15;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -28,9 +35,9 @@ export default function LoginPage() {
    * 用户看到按钮变回"登录账户"、页面却不动，那几秒最像卡死。
    * 现在从验证成功一直到新页面接管，过渡层不撤。
    */
-  const goDashboard = () => {
+  const goDashboard = (to: string = "/dashboard") => {
     setHandingOff(true);
-    router.push("/dashboard");
+    router.push(to);
     router.refresh();
   };
 
@@ -82,7 +89,12 @@ export default function LoginPage() {
           setMessage("注册成功！请切换到登录标签页进行登录。");
           setTimeout(() => setIsLogin(true), 1500);
         } else {
-          goDashboard();
+          /*
+           * 刚注册完的人一步都没做过，直接送去引导清单。
+           * 线上漏斗显示 90% 的人没做到创作简报——而那一步是让整个产品
+           * 真正生效的关键。不主动带一程，他们不会自己找到。
+           */
+          goDashboard("/onboarding");
           return;
         }
       }
@@ -279,20 +291,28 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* 功能亮点 */}
+        {/*
+          功能亮点。三个数字原来是「8 核心功能 / 10000+ 知识库 / 10秒 生成脚本」，
+          三个都不对：
+            · 板块早就 15 个了，不是 8 个；
+            · 知识库是 153 篇文档，「10000+」没有出处；
+            · **最要命的是「10秒生成脚本」**——脚本要跑一两分钟、定位要几分钟。
+              先许诺 10 秒，用户等 90 秒就会觉得"卡死了"。
+              这一条等于在亲手制造"这产品很慢"的印象。
+
+          换成三个从代码里数得出来、也确实是卖点的数字。
+        */}
         <div className="mt-8 grid grid-cols-3 gap-4">
-          <div className="glass-panel text-center p-4 rounded-xl">
-            <div className="text-3xl font-bold brand-text">8</div>
-            <div className="text-xs text-muted-foreground mt-1">核心功能</div>
-          </div>
-          <div className="glass-panel text-center p-4 rounded-xl">
-            <div className="text-3xl font-bold brand-text">10000+</div>
-            <div className="text-xs text-muted-foreground mt-1">知识库</div>
-          </div>
-          <div className="glass-panel text-center p-4 rounded-xl">
-            <div className="text-3xl font-bold brand-text">10秒</div>
-            <div className="text-xs text-muted-foreground mt-1">生成脚本</div>
-          </div>
+          {[
+            { n: String(BOARD_COUNT), label: "创作板块" },
+            { n: String(METHOD_COUNT), label: "内置编导方法" },
+            { n: "5", label: "知识库分库" },
+          ].map((x) => (
+            <div key={x.label} className="glass-panel text-center p-4 rounded-xl">
+              <div className="text-3xl font-bold brand-text">{x.n}</div>
+              <div className="text-xs text-muted-foreground mt-1">{x.label}</div>
+            </div>
+          ))}
         </div>
 
         {/* 底部链接 */}

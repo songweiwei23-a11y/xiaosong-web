@@ -7,6 +7,7 @@ import { throwApiError } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
+import { takeHandoff } from '@/lib/handoff'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import {
   BRIEF_FIELDS,
@@ -108,6 +109,26 @@ export default function CreativeBriefPage() {
     return onActiveProfileChange(load)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /*
+   * 从定位页「一键生成创作简报」进来时，自动开跑。
+   *
+   * 线上漏斗：40% 的人做完账号定位，只有 10% 做到简报。中间这一步
+   * 全靠用户自己想起来去侧边栏找——而简报正是让其他板块真正用上
+   * 账号信息的那一环，不做它，生成出来的东西和直接问 AI 没区别。
+   *
+   * 等 load() 把定位取回来再跑：没有定位就没法生成，
+   * 此时 autoRan 保持 false，定位一到就会触发。
+   */
+  const [autoRan, setAutoRan] = useState(false)
+  useEffect(() => {
+    if (autoRan || loading || !positioning || isGenerating) return
+    const handed = takeHandoff()
+    if (handed?.from !== '账号定位') return
+    setAutoRan(true)
+    generate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, positioning, isGenerating, autoRan])
 
   useEffect(() => {
     if (!isGenerating) return

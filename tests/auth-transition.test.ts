@@ -32,14 +32,25 @@ describe('登录成功后不提前收起加载态', () => {
 
   it('跳转封装成一个函数，登录和注册两条路径共用', () => {
     expect(code).toContain('const goDashboard');
-    // 两处成功分支都要走它，不能只改登录那条。
-    // 恰好 2 次调用：函数定义写作 `const goDashboard = () =>`，不含 `goDashboard()`
-    expect((code.match(/goDashboard\(\)/g) ?? []).length).toBe(2);
+    /*
+     * 两处成功分支都要走它，不能只改登录那条。
+     * 注册那条现在带参数（新注册的人送去 /onboarding），
+     * 所以不能按 `goDashboard()` 精确计数——匹配调用即可。
+     */
+    const calls = code.match(/goDashboard\([^)]*\)/g) ?? [];
+    // 定义写作 `const goDashboard = (to: string = ...) =>`，不计入
+    const invocations = calls.filter((c) => !/^goDashboard\(to/.test(c));
+    expect(invocations.length).toBe(2);
+  });
+
+  it('注册完的新用户送去引导清单，不是直接丢进工作台', () => {
+    // 线上漏斗：90% 的人没做到创作简报，而那步是让产品真正生效的关键
+    expect(code).toContain('goDashboard("/onboarding")');
   });
 
   it('成功时提前 return，不落到 finally 的 setLoading(false)', () => {
     // 落进去的话按钮会在页面被替换前恢复成可点状态，看着像失败了
-    const successBlocks = code.match(/goDashboard\(\);\s*return;/g) ?? [];
+    const successBlocks = code.match(/goDashboard\([^)]*\);\s*return;/g) ?? [];
     expect(successBlocks.length).toBe(2);
   });
 

@@ -200,6 +200,50 @@ function splitChunks(markdown: string): Chunk[] {
   return out;
 }
 
+/**
+ * 快速版包含哪几节。
+ *
+ * 【为什么要有快速版】完整版 15 节、12000 多字，实测跑一次 287 秒。
+ * 而线上漏斗是：100% 的人建了档案 → 40% 做完账号定位 → **10% 做到创作简报**。
+ * 新用户在第二步就要对着一个五分钟不动的等待，走掉是必然的。
+ *
+ * 【为什么是这五节】用户明确说过重点是「人设、用户、内容」这三维，
+ * 加上开头的核心结论（整份摘要）和一句话定位（最常被引用的那句）。
+ * 其余十节是深化——等他真的要用的时候再补，不该挡在第一次体验前面。
+ *
+ * 顺序按 SECTIONS 来，不在这里另排，免得两处顺序对不上。
+ */
+export const QUICK_SECTION_KEYS = ['summary', 'oneline', 'persona', 'audience', 'content'] as const;
+
+/**
+ * 拼出快速版的产出要求。
+ *
+ * 直接从 OUTPUT_FULL 里切那几节，**不另写一份**——
+ * 两处各记一份的话，快速版和完整版生成出来的同一节结构会不一样，
+ * 用户补完剩下几节后会发现前后对不上。
+ */
+export function buildQuickOutputSpec(): string {
+  const chunks = splitChunks(OUTPUT_FULL);
+  const picked = QUICK_SECTION_KEYS.map((k) => chunks.find((c) => c.key === k)).filter(
+    (c): c is NonNullable<typeof c> => Boolean(c)
+  );
+
+  return [
+    '## 📤 输出格式',
+    '',
+    '按下面的顺序输出，标题原样保留。不要有前言，不要复述我给你的档案。',
+    '',
+    '# 🎯 账号定位方案',
+    '',
+    ...picked.map((c) => `${c.heading}\n${c.body.trimEnd()}`),
+    '',
+    '---',
+    '',
+    '⚠️ **只输出上面这几节，不要自己补别的小节。**',
+    '这是快速版：先把最要紧的几件事说清楚，其余部分用户需要时会单独再要。',
+  ].join('\n\n');
+}
+
 /** 解析定位全文 → 各小节内容 */
 export function parsePositioning(markdown: string | null | undefined): Record<string, string> {
   if (!markdown?.trim()) return {};

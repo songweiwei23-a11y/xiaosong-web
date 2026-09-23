@@ -83,7 +83,7 @@ export default function HomePage() {
     {
       icon: Target,
       title: "账号定位",
-      desc: "3分钟精准定位，AI分析目标用户画像、内容方向、变现路径",
+      desc: "先出核心几节让你尽快看到方向，再补完整方案",
       benefits: ["避免试错成本", "精准人设定位", "商业模式规划"],
       color: "blue"
     },
@@ -97,8 +97,8 @@ export default function HomePage() {
     {
       icon: FileText,
       title: "脚本生成",
-      desc: "10秒生成完整脚本，支持多版本对比优选",
-      benefits: ["Claude AI驱动", "10000+案例库", "一键多版本"],
+      desc: "一两分钟出一版完整脚本，支持多版本对比优选",
+      benefits: ["Claude AI驱动", "内置编导知识库", "一键多版本"],
       color: "green"
     },
     {
@@ -132,7 +132,7 @@ export default function HomePage() {
     {
       icon: BookOpen,
       title: "知识库查询",
-      desc: "10000+编导技巧随时查阅，专业知识触手可及",
+      desc: "150+篇编导资料随时查阅，分五个专题库",
       benefits: ["12大类目覆盖", "每周更新", "实战案例库"],
       color: "indigo"
     }
@@ -205,15 +205,15 @@ export default function HomePage() {
   const faqs = [
     {
       q: "完全不懂编导可以用吗？",
-      a: "完全可以！小宋编导工作台内置10000+专业编导知识库，AI会根据您的需求自动匹配最佳方案。无论您是新手还是专业编导，都能快速上手，3分钟即可生成专业级脚本。"
+      a: "完全可以！小宋编导工作台内置 150+ 篇专业编导资料，AI会根据您的需求自动匹配最佳方案。无论您是新手还是专业编导，都能快速上手，几分钟就能出一版专业脚本。"
     },
     {
       q: "生成的脚本质量如何？",
-      a: "我们基于Anthropic Claude最新AI模型，结合10000+爆款案例和专业编导知识库训练。生成的脚本包含完整的开场、冲突、高潮、结尾结构，平均完播率提升30%以上。支持一键生成多个版本供您选择优化。"
+      a: "我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 73 个成体系的起号/开篇方法。生成的脚本包含完整的开场、冲突、高潮、结尾结构，平均完播率提升30%以上。支持一键生成多个版本供您选择优化。"
     },
     {
       q: "和其他AI工具有什么区别？",
-      a: "我们不是简单的AI对话工具。核心优势在于：①专业的10000+编导知识库，②针对短视频创作的全流程支持（定位→选题→脚本→分镜→转化），③每周更新的爆款案例库，④专为中文短视频优化的提示词工程。"
+      a: "我们不是简单的AI对话工具。核心优势在于：①成体系的编导知识库（150+篇，五个专题库），②针对短视频创作的全流程支持（定位→选题→脚本→分镜→转化），③每周更新的爆款案例库，④专为中文短视频优化的提示词工程。"
     },
     {
       q: "免费版有什么限制？",
@@ -285,7 +285,7 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-6">
               <Rocket className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Claude AI驱动 · 专业编导知识库 · 10秒生成爆款脚本</span>
+              <span className="text-sm font-medium text-primary">Claude AI驱动 · 专业编导知识库 · 全流程打通爆款脚本</span>
             </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
@@ -325,7 +325,7 @@ export default function HomePage() {
 
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
               <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">免费试用·无需信用卡</span></div>
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">10秒生成专业脚本</span></div>
+              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">一两分钟出一版脚本</span></div>
               {/* 原来是「98%用户好评」。系统里没有任何评价数据，这个数字是编的。
                   换成一句确实为真的：知识库和方法都是内置的，不是通用模型现编 */}
               <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">内置编导知识库</span></div>
@@ -394,9 +394,9 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-2xl font-bold mb-4">专业编导知识库</h3>
                 <p className="text-muted-foreground dark:text-foreground mb-6">
-                  整合<span className="font-semibold text-primary">10000+</span>专业编导技巧、
-                  <span className="font-semibold text-primary">500+</span>爆款案例分析、
-                  <span className="font-semibold text-primary">100+</span>行业洞察
+                  整合<span className="font-semibold text-primary">150+</span>篇专业编导资料、
+                  <span className="font-semibold text-primary">73</span>个成体系的起号与开篇方法、
+                  <span className="font-semibold text-primary">5</span>个专题分库
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">涵盖情感、剧情、知识、搞笑等12大类目</span></li>
@@ -418,7 +418,7 @@ export default function HomePage() {
                   结合编导知识库，智能理解您的需求，生成专业级脚本
                 </p>
                 <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">10秒生成完整脚本，节省80%创作时间</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">一两分钟出一版完整脚本，比手写快得多</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">自动匹配最佳叙事结构和节奏</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">支持一键优化和多版本生成</span></li>
                 </ul>
@@ -535,7 +535,7 @@ export default function HomePage() {
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
                 <div className="glass-panel p-4">脚本创作时间</div>
                 <div className="glass-panel p-4 text-center text-muted-foreground">2-4小时</div>
-                <div className="glass-panel p-4 text-center font-semibold text-primary">10秒</div>
+                <div className="glass-panel p-4 text-center font-semibold text-primary">约 2 分钟</div>
                 <div className="glass-panel p-4 text-center font-bold text-green-500">↑99%</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">

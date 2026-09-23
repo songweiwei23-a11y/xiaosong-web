@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { formatRelativeTime } from "@/lib/script-result-utils";
 import { Field } from "@/components/form/Field";
@@ -9,11 +9,19 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { putHandoff } from "@/lib/handoff";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { buildPositioningPrompt } from '@/lib/positioning-standards';
+import {
+  SECTIONS,
+  QUICK_SECTION_KEYS,
+  buildQuickOutputSpec,
+  parsePositioning,
+} from '@/lib/positioning-sections';
 import { SectionEditor } from '@/components/positioning/SectionEditor';
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext';
 import { throwApiError } from "@/lib/api-error";
@@ -60,9 +68,16 @@ export default function PositioningPage() {
   const [selectedPositioning, setSelectedPositioning] = useState<Positioning | null>(null)
   
   // 表单字段
+  const router = useRouter();
   const [additionalNotes, setAdditionalNotes] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false)
+  /**
+   * 生成深度。默认快速版——第一次做定位的人最需要的是"尽快看到东西"，
+   * 而不是一份五分钟才出完的完整方案。
+   */
+  const [depth, setDepth] = useState<"quick" | "full">("quick")
+
   /*
    * 已经跑了多少秒。提示词一万多字、产出也上万字，Dify 还要先跑 5 个检索节点，
    * 首字返回前有很长一段静默——按钮不动，用户会以为"点击没反应"再点一次
@@ -71,6 +86,26 @@ export default function PositioningPage() {
   const [result, setResult] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'full' | 'summary'>('full'); // 查看模式：完整版或选题摘要
+
+  /**
+   * 这一轮预计会写哪几节，以及已经写完了哪几节。
+   *
+   * 流式输出时整屏字往下滚，看不出"还要多久"。把小节列出来打勾，
+   * 等待就有了尽头——这是最难熬的部分。
+   *
+   * 最后一节可能只写了一半，所以不算"已完成"：解析出来的节里
+   * 去掉末尾那个，才是真正写完的。
+   */
+  const expectedSections =
+    depth === 'quick'
+      ? SECTIONS.filter((s) => (QUICK_SECTION_KEYS as readonly string[]).includes(s.key))
+      : SECTIONS;
+
+  const doneSections = (() => {
+    if (!isGenerating || !result) return [];
+    const keys = Object.keys(parsePositioning(result));
+    return keys.slice(0, Math.max(0, keys.length - 1));
+  })();
   const [dialogConversationId, setDialogConversationId] = useState<string>();
 
   // 加载当前档案
@@ -226,6 +261,13 @@ export default function PositioningPage() {
 
     // 提示词在这里拼完整的。旧版只把档案丢给服务端，服务端那套只规定
     // 「输出哪些小节」、没给任何判断依据，产出自然是格式对但不专业。
+    /*
+     * 快速版只出核心五节。
+     *
+     * 完整版 15 节实测 287 秒，而线上漏斗是：100% 建了档案 →
+     * 40% 做完定位 → 10% 做到创作简报。新用户第二步就对着五分钟不动的
+     * 等待，走掉是必然的。剩下十节等他需要时用「补全」再要。
+     */
     const query = buildPositioningPrompt({
       profileSummary,
       additionalNotes,
@@ -234,6 +276,7 @@ export default function PositioningPage() {
         : activeProfile.account_platform || undefined,
       restrictions: activeProfile.content_restrictions || undefined,
       focus: "full",
+      outputSpec: depth === "quick" ? buildQuickOutputSpec() : undefined,
     });
 
     try {
@@ -446,6 +489,38 @@ export default function PositioningPage() {
             </Field>
           </CollapsibleSection>
 
+          {/*
+            生成深度。默认快速版：完整版 15 节要跑 5 分钟，
+            而第一次做定位的人最需要的是尽快看到东西。
+            剩下十节做完之后可以用「补全」单独再要。
+          */}
+          <div className="mb-3">
+            <div className="glass-panel grid grid-cols-2 gap-1 rounded-xl p-1">
+              {([
+                ["quick", "快速版", "核心 5 节 · 约 1 分半"],
+                ["full", "完整版", "全部 15 节 · 约 5 分钟"],
+              ] as const).map(([k, label, hint]) => (
+                <button
+                  key={k}
+                  onClick={() => setDepth(k)}
+                  disabled={isGenerating}
+                  aria-pressed={depth === k}
+                  className={`rounded-lg px-3 py-2 text-center transition-colors disabled:opacity-60 ${
+                    depth === k ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <div className="text-[12.5px] font-medium">{label}</div>
+                  <div className="mt-0.5 text-[10.5px] opacity-80">{hint}</div>
+                </button>
+              ))}
+            </div>
+            {depth === "quick" && (
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                先把人设、用户、内容这三维说透，其余十节生成完可以单独补
+              </p>
+            )}
+          </div>
+
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !activeProfile}
@@ -459,10 +534,40 @@ export default function PositioningPage() {
             ) : (
               <>
                 <Target className="h-4 w-4" />
-                基于档案生成定位
+                {depth === "quick" ? "生成定位（快速版）" : "生成完整定位"}
               </>
             )}
           </button>
+
+          {/*
+            生成过程中的进度。定位是流式输出的，但整屏字往下滚看不出
+            「还要多久」——把已经写完的小节列出来，等待就有了尽头。
+          */}
+          {isGenerating && doneSections.length > 0 && (
+            <div className="mt-3 rounded-xl border border-border bg-foreground/[0.03] p-3">
+              <p className="mb-2 text-[11.5px] text-muted-foreground">
+                已写完 {doneSections.length} / {expectedSections.length} 节
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {expectedSections.map((s) => {
+                  const done = doneSections.includes(s.key);
+                  return (
+                    <span
+                      key={s.key}
+                      className={`rounded-md px-2 py-1 text-[11px] ${
+                        done
+                          ? "bg-primary/12 text-primary"
+                          : "bg-foreground/[0.05] text-muted-foreground/60"
+                      }`}
+                    >
+                      {done ? "✓ " : ""}
+                      {s.label}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {positionings.length > 0 && (
             <CollapsibleSection title="历史定位" defaultOpen>
@@ -556,6 +661,49 @@ export default function PositioningPage() {
         }}
         onContinue={result ? () => setShowDialog(true) : undefined}
       />
+
+      {/*
+        定位做完之后最要紧的下一步。
+        线上漏斗：40% 的人做完账号定位，只有 10% 做到创作简报——
+        中间这一步全靠用户自己想起来去侧边栏找。而简报正是让选题、脚本、
+        分镜真正用上账号信息的那一环；不做它，生成出来的东西是通用的，
+        和直接问 AI 没区别。所以把它放在定位结果的正下方，一点就走。
+      */}
+      {result && !isGenerating && (
+        <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/[0.06] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[14px] font-medium text-foreground">
+                下一步：生成创作简报
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                定位是「这个号该做什么」，简报是「每次生成时照着做什么」。
+                做完这一步，选题、脚本、分镜才会真的用上你的账号信息。
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                putHandoff({ from: '账号定位' });
+                router.push('/dashboard/creative-brief');
+              }}
+              className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground"
+            >
+              一键生成创作简报
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/*
+        快速版生成完之后，把"还能补什么"说清楚。
+        不说的话用户不知道这是删减版，会以为定位就这么点内容。
+      */}
+      {result && !isGenerating && depth === 'quick' && (
+        <p className="mt-3 text-center text-[11.5px] text-muted-foreground">
+          这是快速版（核心 {QUICK_SECTION_KEYS.length} 节）。
+          需要变现路径、记忆点、差异化这些深化内容时，把上面切到「完整版」再生成一次。
+        </p>
+      )}
 
       {/*
         逐节调整。原来只有"整份重生成"一条路——为改一句话要等 5 分钟，

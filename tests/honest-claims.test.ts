@@ -19,8 +19,15 @@ import { readSource as read, readCode, stripComments } from './helpers/source';
  * 是实打实的合规风险。只能靠扫描守住。
  */
 
-/** 那几个具体的编造数字，不许再出现在对外页面里 */
-const FABRICATED = ['1280', '15680', '98%'];
+/**
+ * 那几个具体的编造数字，不许再出现在对外页面里。
+ *
+ * 「10秒」是后来补上的：登录页原本写着「10秒 生成脚本」，
+ * 而脚本实际要跑一两分钟、定位要几分钟。这一条比另外几个更有害——
+ * 先许诺 10 秒，用户等 90 秒就会觉得"卡死了"，等于在亲手制造
+ * "这产品很慢"的第一印象。
+ */
+const FABRICATED = ['1280', '15680', '98%', '10秒', '10000+'];
 
 /** 面向访客的页面（登录后的工作台不算对外宣传） */
 const PUBLIC_PAGES = ['app/page.tsx', 'app/pricing/page.tsx', 'app/login/page.tsx'];

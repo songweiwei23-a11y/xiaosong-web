@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
 import { listWorks, type Work } from "@/lib/works";
 import { getActiveProfileId } from '@/lib/active-profile';
+import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
@@ -184,6 +185,9 @@ export default function DashboardPage() {
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
+  /** 这个档案下已有的定位类型，用来算「先打地基」还差几步 */
+  const [posTypes, setPosTypes] = useState<string[]>([]);
+  const [profileCount, setProfileCount] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -214,9 +218,28 @@ export default function DashboardPage() {
 
         if (profileRes?.ok) {
           const list = await profileRes.json();
-          if (Array.isArray(list) && list.length > 0) {
-            const savedId = getActiveProfileId();
-            setProfile(list.find((p: any) => p.id === savedId) || list[0]);
+          if (Array.isArray(list)) {
+            setProfileCount(list.length);
+            if (list.length > 0) {
+              const savedId = getActiveProfileId();
+              const active = list.find((p: any) => p.id === savedId) || list[0];
+              setProfile(active);
+
+              /*
+               * 顺带把这个档案的定位类型取回来，用于「先打地基」的进度。
+               * 这条不并进上面那一批：它依赖档案 id，必须等档案回来才能发。
+               * 也刻意不 await 进主流程——地基进度晚一点出来无所谓，
+               * 不该为它把整页的加载态拖长。
+               */
+              fetch(`/api/positioning?profileId=${active.id}`)
+                .then((r) => (r.ok ? r.json() : []))
+                .then((rows: any) => {
+                  if (Array.isArray(rows)) {
+                    setPosTypes(rows.map((x: any) => x.positioning_type ?? ""));
+                  }
+                })
+                .catch(() => {});
+            }
           }
         }
 
@@ -257,6 +280,15 @@ export default function DashboardPage() {
    */
 
   const usedPct = quota?.limit ? Math.min(100, (quota.used / quota.limit) * 100) : 0;
+
+  // 「先打地基」的进度。判断逻辑在 lib/setup-progress，
+  // 引导页和这里共用一份，免得两处对不上
+  const setupInput = { profileCount, positioningTypes: posTypes };
+  const setupState = {
+    steps: setupSteps(setupInput),
+    next: nextSetupStep(setupInput),
+    ...setupProgress(setupInput),
+  };
 
   return (
     <div className="h-full overflow-y-auto px-8 py-9">
@@ -320,30 +352,69 @@ export default function DashboardPage() {
 
             {/* 地基单独成组：这三步有先后，做完简报后面所有产出才用得上账号信息。
                 混进工具堆里用户不会意识到这是要先做的 */}
-            <h2 className="mb-1 mt-7 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
-              先打地基
+            <h2 className="mb-1 mt-7 flex items-center justify-between text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              <span>先打地基</span>
+              {!loading && (
+                <span className="tabular-nums normal-case tracking-normal">
+                  {setupState.done}/{setupState.total}
+                </span>
+              )}
             </h2>
             <p className="mb-3 text-[11.5px] text-muted-foreground">
               按顺序做完这三步，选题、脚本、分镜才会真的用上你的账号信息
             </p>
+
+            {/*
+              没打完就把清单入口摆出来。
+              线上漏斗：100% 建了档案，40% 做完定位，只有 10% 做到简报——
+              而简报是让整个产品真正生效的那一步。光列三个链接不够，
+              得让人看见"我还差几步"。
+            */}
+            {!loading && setupState.done < setupState.total && (
+              <Link
+                href="/onboarding"
+                className="mb-2 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.06] px-3.5 py-3"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[12.5px] font-medium text-primary">
+                    还差 {setupState.total - setupState.done} 步
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                    下一步：{setupState.next?.title}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-primary/60" />
+              </Link>
+            )}
+
             <div className="space-y-2">
-              {FOUNDATION.map((f) => (
-                <Link
-                  key={f.href}
-                  href={f.href}
-                  className="glass-panel glass-interactive group flex items-center gap-3 rounded-xl px-3.5 py-3"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[11px] font-medium text-primary">
-                    {f.step}
-                  </span>
-                  <f.icon className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] text-foreground">{f.name}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">{f.desc}</span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              ))}
+              {FOUNDATION.map((f, i) => {
+                // 三步的顺序和 setup-progress 里一致，按下标取完成状态
+                const isDone = !loading && setupState.steps[i]?.done;
+                return (
+                  <Link
+                    key={f.href}
+                    href={f.href}
+                    className="glass-panel glass-interactive group flex items-center gap-3 rounded-xl px-3.5 py-3"
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-medium ${
+                        isDone ? "bg-primary/20 text-primary" : "bg-primary/12 text-primary"
+                      }`}
+                    >
+                      {isDone ? <CheckCircle className="h-3.5 w-3.5" /> : f.step}
+                    </span>
+                    <f.icon className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-[12.5px] ${isDone ? "text-muted-foreground" : "text-foreground"}`}>
+                        {f.name}
+                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground">{f.desc}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                );
+              })}
             </div>
 
             <h2 className="mb-3 mt-7 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
