@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readSource as read, readCode } from './helpers/source';
-import { SHOWCASE_TACTICS, SHOWCASE_CARDS, FACTS } from '@/lib/showcase';
+import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from '@/lib/showcase';
+import { SCRIPT_STRUCTURE_DETAILS } from '@/lib/script-structure-details';
 import { GROWTH_TACTICS } from '@/lib/growth-tactics';
 import { OPENING_CARDS } from '@/lib/opening-cards';
 import { SUBSCRIPTION_PLANS } from '@/lib/config/plans';
@@ -36,7 +37,20 @@ describe('展示的方法和真实方法库逐字段对得上', () => {
     }
   });
 
+  it('脚本结构：名字、公式、核心逻辑、情绪曲线全部一致', () => {
+    const d = SCRIPT_STRUCTURE_DETAILS as Record<string, any>;
+    for (const s of SHOWCASE_STRUCTURES) {
+      const real = d[s.id];
+      expect(real, `脚本结构 ${s.id} 在真实数据里不存在`).toBeDefined();
+      expect(real.name, `${s.id} 的名字对不上`).toBe(s.name);
+      expect(real.formula, `${s.name} 的结构公式对不上`).toBe(s.formula);
+      expect(real.coreLogic, `${s.name} 的核心逻辑对不上`).toBe(s.coreLogic);
+      expect(real.emotionCurve, `${s.name} 的情绪曲线对不上`).toBe(s.emotionCurve);
+    }
+  });
+
   it('样例本身不能空，也不能只有一条', () => {
+    expect(SHOWCASE_STRUCTURES.length).toBeGreaterThanOrEqual(3);
     // 只摆一条说明不了"成体系"
     expect(SHOWCASE_TACTICS.length).toBeGreaterThanOrEqual(3);
     expect(SHOWCASE_CARDS.length).toBeGreaterThanOrEqual(3);
@@ -49,10 +63,89 @@ describe('展示的方法和真实方法库逐字段对得上', () => {
 });
 
 describe('全站数字口径统一', () => {
-  it('FACTS 里的方法数和真实数据一致', () => {
+  it('FACTS 里的方法数和真实数据一致', async () => {
     expect(FACTS.tactics).toBe(GROWTH_TACTICS.length);
     expect(FACTS.cards).toBe(OPENING_CARDS.length);
-    expect(FACTS.methods).toBe(GROWTH_TACTICS.length + OPENING_CARDS.length);
+
+    /*
+     * 脚本结构只数"用户真选得到、且真有方法数据"的那些，并排除 auto。
+     * auto 是「AI推荐」——它不是一种结构，是"让 AI 替你挑"，算进去就是凑数。
+     */
+    const { SCRIPT_STRUCTURES } = await import('@/app/dashboard/script/constants');
+    const { SCRIPT_STRUCTURE_DETAILS } = await import('@/lib/script-structure-details');
+    const detailIds = Object.keys(SCRIPT_STRUCTURE_DETAILS);
+    const usable = (SCRIPT_STRUCTURES as { id: string }[]).filter(
+      (s) => s.id !== 'auto' && detailIds.includes(s.id)
+    );
+    expect(FACTS.structures, `FACTS.structures 写的是 ${FACTS.structures}，实际 ${usable.length} 种`).toBe(
+      usable.length
+    );
+
+    expect(FACTS.methods, '方法总数必须等于三部分之和').toBe(
+      GROWTH_TACTICS.length + OPENING_CARDS.length + FACTS.structures
+    );
+  });
+
+  it('每种可选的脚本结构都真有方法数据——不能有选了没内容的', () => {
+    // 数字要能站住，前提是那 19 种里没有空壳
+    return (async () => {
+      const { SCRIPT_STRUCTURES } = await import('@/app/dashboard/script/constants');
+      const { SCRIPT_STRUCTURE_DETAILS } = await import('@/lib/script-structure-details');
+      const d = SCRIPT_STRUCTURE_DETAILS as Record<string, any>;
+      const missing = (SCRIPT_STRUCTURES as { id: string }[])
+        .filter((s) => !d[s.id])
+        .map((s) => s.id);
+      expect(missing, `这些结构用户选得到却没有方法数据：${missing.join('、')}`).toEqual([]);
+
+      // 每一条都得带公式和情绪曲线，否则"每条都写明情绪走向"就是假话
+      for (const [id, v] of Object.entries(d)) {
+        if (id === 'auto') continue;
+        expect(v.formula, `${id} 没有结构公式`).toBeTruthy();
+        expect(v.emotionCurve, `${id} 没有情绪曲线`).toBeTruthy();
+        expect(v.avoidMistakes?.length, `${id} 没有避坑清单`).toBeGreaterThan(0);
+      }
+    })();
+  });
+
+  it('开篇计的类别数对得上', () => {
+    const cats = new Set(OPENING_CARDS.map((c) => c.category));
+    expect(FACTS.cardCategories, `写的是 ${FACTS.cardCategories} 类，实际 ${cats.size} 类`).toBe(
+      cats.size
+    );
+  });
+
+  /**
+   * 知识库的篇数和字数是现数出来的。
+   *
+   * 「43 万字」是这一版数据带里最硬的一个数，也最容易过期——
+   * 删几篇资料它就不成立了。所以不能写死在文案里靠人记得改。
+   */
+  it('知识库的篇数和字数确实数得出来', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const root = path.join(process.cwd(), '编导知识大全', '_导入Dify');
+
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (e.name.endsWith('.md')) files.push(p);
+      }
+    };
+    walk(root);
+
+    expect(files.length, `FACTS.docs 写的是 ${FACTS.docs}，实际 ${files.length} 篇`).toBe(FACTS.docs);
+
+    const libs = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory()).length;
+    expect(FACTS.libraries, `分库数写的是 ${FACTS.libraries}，实际 ${libs} 个`).toBe(libs);
+
+    const chars = files.reduce((sum, p) => sum + fs.readFileSync(p, 'utf8').length, 0);
+    const wan = chars / 10000;
+    // 对外宣称的字数只能说少不能说多，所以取整后必须不大于真实值
+    expect(FACTS.wordsWan, `对外说 ${FACTS.wordsWan} 万字，实际只有 ${wan.toFixed(1)} 万`).toBeLessThanOrEqual(wan);
+    // 但也不能过分保守到失去意义（比如真有 43 万却只敢说 10 万）
+    expect(FACTS.wordsWan).toBeGreaterThan(wan - 1);
   });
 
   it('板块数和 app/dashboard 下真实的页面数一致', async () => {
@@ -76,6 +169,27 @@ describe('全站数字口径统一', () => {
   it('对外页面都从 FACTS 取数，不自己写死', () => {
     for (const f of ['app/page.tsx', 'app/login/page.tsx']) {
       expect(read(f), `${f} 没用统一口径`).toContain('@/lib/showcase');
+    }
+  });
+
+  /*
+   * 光引入 FACTS 还不够——FAQ 那几段长文案就是绕过它手写的，
+   * 于是首页顶部数据带已经改成 92 了，往下翻到 FAQ 还写着「73 个方法」
+   * 「150+ 篇」。同一页上两个数字打架，而且不报错、构建正常。
+   *
+   * 这条扫的是渲染出来的代码（注释已剥掉），把这几个具体的旧数字钉死。
+   */
+  it('对外页面里没有手写的旧数字', () => {
+    const STALE: [RegExp, string][] = [
+      [/150\s*\+/, '「150+」是旧的篇数，现在是 FACTS.docs'],
+      [/\b73\s*[个条]\s*(?:成体系)?/, '「73 条方法」漏了 19 种脚本结构，用 FACTS.methods'],
+      [/\d+\s*大类目/, '类目数是手写的，和 lib/content-types.ts 对不上'],
+    ];
+    for (const f of ['app/page.tsx', 'app/login/page.tsx', 'app/pricing/page.tsx']) {
+      const code = readCode(f);
+      for (const [re, why] of STALE) {
+        expect(re.test(code), `${f}：${why}`).toBe(false);
+      }
     }
   });
 });

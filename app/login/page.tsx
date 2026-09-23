@@ -306,9 +306,12 @@ export default function LoginPage() {
         */}
         <div className="mt-8 grid grid-cols-3 gap-4">
           {[
-            { n: String(FACTS.methods), label: "条可照拍的方法" },
-            { n: String(FACTS.pipeline.length), label: "步全流程打通" },
-            { n: String(FACTS.libraries), label: "个专题知识库" },
+            // 和落地页数据带保持同一组数：方法数、知识库字数、板块数。
+            // 原来中间一格是 pipeline.length（5），三个数里最小的一个摆中间，
+            // 把整排都压下去了
+            { n: String(FACTS.methods), label: "条带公式的方法" },
+            { n: `${FACTS.wordsWan}万`, label: "字自有知识库" },
+            { n: String(FACTS.boards), label: "个创作板块" },
           ].map((x) => (
             <div key={x.label} className="glass-panel text-center p-4 rounded-xl">
               <div className="text-3xl font-bold brand-text">{x.n}</div>

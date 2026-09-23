@@ -36,6 +36,15 @@ export interface ShowcaseCard {
   psychology: string;
 }
 
+export interface ShowcaseStructure {
+  id: string;
+  name: string;
+  formula: string;
+  coreLogic: string;
+  /** 情绪曲线。这一项是别家给不出来的——它说的是观众从第几秒该有什么感觉 */
+  emotionCurve: string;
+}
+
 /** 起号 36+1 计里挑三条：一条靠反差、一条靠现场、一条靠避险，覆盖面广 */
 export const SHOWCASE_TACTICS: ShowcaseTactic[] = [
   {
@@ -86,24 +95,63 @@ export const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
 ];
 
+/** 19 种脚本结构里挑三种：一种解决问题、一种打破认知、一种靠情节，路数完全不同 */
+export const SHOWCASE_STRUCTURES: ShowcaseStructure[] = [
+  {
+    id: 'problem',
+    name: '解题型',
+    formula: '难题呈现 → 危机升级 → 解决方案 → 执行步骤',
+    coreLogic: '用户有具体问题需要解决',
+    emotionCurve: '焦虑 → 共鸣 → 希望 → 行动力',
+  },
+  {
+    id: 'expose',
+    name: '揭秘型',
+    formula: '反常识观点 → 内幕揭露 → 真相示范',
+    coreLogic: '打破用户认知，建立权威',
+    emotionCurve: '疑惑 → 震惊 → 恍然大悟',
+  },
+  {
+    id: 'story',
+    name: '故事型',
+    formula: '现状铺垫 → 困境冲突 → 转折高潮 → 成就结局',
+    coreLogic: '用故事情节吸引完播',
+    emotionCurve: '代入 → 焦虑 → 惊喜 → 满足',
+  },
+];
+
 /**
  * 全站统一的口径。
  *
  * 这些数字散在落地页、登录页、FAQ 里，之前各写各的，
  * 于是出现过「8 核心功能」（实际 15 个）这种对不上的情况。
  * 收到一处，改一次全站跟着变。
+ *
+ * 【为什么从 73 改成 92】原来只数了起号计和开篇计，把 19 种脚本结构漏掉了——
+ * 而那 19 种同样是一条条写好的方法：每种都有结构公式、核心逻辑、情绪曲线和
+ * 避坑清单，用户在脚本页选得到，选完直接进提示词。漏数它等于白白把自己
+ * 说小了一圈。数字全部对着代码和文件现数，见 tests/showcase.test.ts。
  */
 export const FACTS = {
-  /** 起号 36+1 计 */
+  /** 起号 36+1 计 —— lib/growth-tactics.ts */
   tactics: 37,
-  /** 开篇 36 计 */
+  /** 开篇 36 计 —— lib/opening-cards.ts */
   cards: 36,
-  /** 两者合计 */
-  methods: 73,
+  /** 开篇计的类别数：相关性/认知缺口/价值与损失/冲突与选择/事件期待/视觉与感官 */
+  cardCategories: 6,
+  /**
+   * 脚本结构种数 —— 脚本页选得到、且有完整方法数据的，不含「AI推荐」。
+   * AI推荐不是一种结构，是"让 AI 替你挑"，算进去就是凑数。
+   */
+  structures: 19,
+  /** 三者合计，每一条都带结构公式，也都写明了什么情况下不能用 */
+  methods: 92,
   /** 创作板块数 */
   boards: 15,
-  /** 编导知识篇数（编导知识大全/_导入Dify 下五个分库合计 153 篇，对外说 150+） */
-  docs: '150+',
+  /** 编导知识篇数（编导知识大全/_导入Dify 下五个分库现数） */
+  docs: 153,
+  /** 知识库字数，单位万字。现数出来 43.2 万，对外取整说 43 万，宁可说少 */
+  wordsWan: 43,
   /** 知识分库数 */
   libraries: 5,
   /** 主流程环节：选题 → 开篇 → 脚本 → 分镜 → 标题 */

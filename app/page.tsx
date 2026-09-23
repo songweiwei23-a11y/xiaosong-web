@@ -5,7 +5,7 @@ import {
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
-import { SHOWCASE_TACTICS, SHOWCASE_CARDS, FACTS } from "@/lib/showcase";
+import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
 import { 
   Sparkles, Zap, CheckCircle, TrendingUp, ArrowRight, 
@@ -135,7 +135,7 @@ export default function HomePage() {
       title: "知识库查询",
       // 不写「随时查阅」——知识库现在只有企业版无限，其余档位按次计费，
       // 「随时」就成了一句兑现不了的话
-      desc: "150+篇编导资料，分五个专题库，问一句就能查",
+      desc: `${FACTS.wordsWan} 万字编导资料，分 ${FACTS.libraries} 个专题库，问一句就能查`,
       benefits: ["五个专题分库", "起号36+1计", "开篇36计"],
       color: "indigo"
     }
@@ -208,15 +208,15 @@ export default function HomePage() {
   const faqs = [
     {
       q: "完全不懂编导可以用吗？",
-      a: "完全可以！小宋编导工作台内置 150+ 篇专业编导资料，AI会根据您的需求自动匹配最佳方案。无论您是新手还是专业编导，都能快速上手，几分钟就能出一版专业脚本。"
+      a: `完全可以！小宋编导工作台内置 ${FACTS.docs} 篇、共 ${FACTS.wordsWan} 万字的专业编导资料，AI会根据您的需求自动匹配最佳方案。无论您是新手还是专业编导，都能快速上手，几分钟就能出一版专业脚本。`
     },
     {
       q: "生成的脚本质量如何？",
-      a: "我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 73 个成体系的起号/开篇方法。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。支持一键生成多个版本供您选择优化。"
+      a: `我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 ${FACTS.methods} 条成体系的方法（起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种）。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。支持一键生成多个版本供您选择优化。`
     },
     {
       q: "和其他AI工具有什么区别？",
-      a: "我们不是简单的AI对话工具。核心优势在于：①成体系的编导知识库（150+篇，五个专题库），②针对短视频创作的全流程支持（定位→选题→脚本→分镜→转化），③起号与开篇共 73 条成体系的方法，每条带结构公式和不能用的边界，④专为中文短视频优化的提示词工程。"
+      a: `我们不是简单的AI对话工具。核心优势在于：①${FACTS.wordsWan} 万字的自有编导知识库（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库），不是网上抓的通用内容；②${FACTS.boards} 个板块打通全流程（定位→选题→开篇→脚本→分镜→标题→成交），上一步的产出直接喂给下一步；③${FACTS.methods} 条成体系的方法，每条都带结构公式、情绪走向和不能用的边界；④专为中文短视频优化的提示词工程。`
     },
     {
       q: "免费版有什么限制？",
@@ -361,22 +361,28 @@ export default function HomePage() {
           {
             key: 'methods',
             value: FACTS.methods,
-            label: '条可直接照拍的方法',
-            sub: `起号 ${FACTS.tactics} 计 · 开篇 ${FACTS.cards} 计，每条带结构公式`,
+            label: '条带公式的方法',
+            sub: `起号 ${FACTS.tactics} 计 · 开篇 ${FACTS.cards} 计 · 脚本结构 ${FACTS.structures} 种，每条都写明什么情况下不能用`,
             suffix: '',
           },
           {
-            key: 'pipeline',
-            value: FACTS.pipeline.length,
-            label: '步全流程打通',
-            sub: FACTS.pipeline.join(' → '),
+            /*
+             * 这一格原来是「5 步全流程打通」。5 是这三个数里最小的一个，
+             * 摆在中间反而把整排数据压下去了，而且"5 步"听上去像流程图，
+             * 不像资产。换成知识库字数——43 万字是我们手上最硬的一个数，
+             * 也是通用 AI 最给不出来的东西。
+             */
+            key: 'words',
+            value: FACTS.wordsWan,
+            label: '万字自有编导知识库',
+            sub: `${FACTS.docs} 篇 · ${FACTS.libraries} 个专题分库，不是网上抓的通用内容`,
             suffix: '',
           },
           {
-            key: 'docs',
-            value: FACTS.libraries,
-            label: '个专题知识分库',
-            sub: `${FACTS.docs} 篇编导资料，不是网上抓的通用内容`,
+            key: 'boards',
+            value: FACTS.boards,
+            label: '个创作板块打通全流程',
+            sub: `${FACTS.pipeline.join(' → ')}，一路到成交理由`,
             suffix: '',
           },
         ].filter((t) => typeof t.value === 'number' && t.value > 0);
@@ -431,15 +437,21 @@ export default function HomePage() {
                 <div className="w-16 h-16 bg-primary/15 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <BookOpen className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">专业编导知识库</h3>
+                <h3 className="text-2xl font-bold mb-4">43 万字自有知识库</h3>
+                {/*
+                  原来写「150+ 篇、73 个方法」。两个数都把自己说小了：
+                  现数是 153 篇、43.2 万字，方法漏掉了 19 种脚本结构。
+                  数字一律从 FACTS 取，那里每一个都有测试对着源头现数。
+                */}
                 <p className="text-muted-foreground dark:text-foreground mb-6">
-                  整合<span className="font-semibold text-primary">150+</span>篇专业编导资料、
-                  <span className="font-semibold text-primary">73</span>个成体系的起号与开篇方法、
-                  <span className="font-semibold text-primary">5</span>个专题分库
+                  <span className="font-semibold text-primary">{FACTS.wordsWan} 万字</span>、
+                  <span className="font-semibold text-primary">{FACTS.docs}</span> 篇自有编导资料，
+                  拆成 <span className="font-semibold text-primary">{FACTS.libraries}</span> 个专题分库，
+                  提炼出 <span className="font-semibold text-primary">{FACTS.methods}</span> 条带公式的方法
                 </p>
                 <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">涵盖情感、剧情、知识、搞笑等12大类目</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">每条方法写明机制、结构公式与适用边界</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、脚本结构 {FACTS.structures} 种</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">每条都写明机制、结构公式、情绪曲线与适用边界</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">来自成体系的编导课程，不是网上抓的碎片</span></li>
                 </ul>
               </div>
@@ -470,9 +482,10 @@ export default function HomePage() {
                 <div className="w-16 h-16 bg-accent/15 dark:bg-pink-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Layers className="w-8 h-8 text-accent" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">全流程创作支持</h3>
+                <h3 className="text-2xl font-bold mb-4">{FACTS.boards} 个板块打通全流程</h3>
                 <p className="text-muted-foreground dark:text-foreground mb-6">
-                  从账号定位到成交转化，覆盖短视频创作的<span className="font-semibold text-accent">每一个环节</span>
+                  从账号定位到成交转化，覆盖短视频创作的<span className="font-semibold text-accent">每一个环节</span>，
+                  上一步的产出直接喂给下一步，不用来回复制粘贴
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">账号定位 → 选题策划 → 脚本生成</span></li>
@@ -508,8 +521,10 @@ export default function HomePage() {
             </h2>
             <p className="text-xl text-muted-foreground dark:text-foreground max-w-3xl mx-auto">
               通用 AI 给你一段文字，我们给你<span className="font-semibold text-primary">一套能照着拍的结构</span>。
-              起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计，每一条都写明了机制、结构公式、
-              适合谁拍，以及<span className="font-semibold text-primary">什么情况下不能用</span>。
+              起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、脚本结构 {FACTS.structures} 种，
+              共 <span className="font-semibold text-primary">{FACTS.methods} 条</span>，
+              每一条都写明了机制、结构公式、情绪走向、适合谁拍，以及
+              <span className="font-semibold text-primary">什么情况下不能用</span>。
             </p>
           </div>
 
@@ -537,9 +552,9 @@ export default function HomePage() {
             </div>
 
             <h3 className="text-sm font-semibold tracking-widest text-muted-foreground mb-4">
-              开篇 {FACTS.cards} 计 · 摘三张
+              开篇 {FACTS.cards} 计 · 分 {FACTS.cardCategories} 大类 · 摘三张
             </h3>
-            <div className="grid md:grid-cols-3 gap-5">
+            <div className="grid md:grid-cols-3 gap-5 mb-12">
               {SHOWCASE_CARDS.map((c) => (
                 <div key={c.no} className="glass-panel rounded-2xl p-6 border-2 border-border hover:border-accent/40 transition-colors">
                   <div className="flex items-baseline gap-2 mb-3">
@@ -555,8 +570,36 @@ export default function HomePage() {
               ))}
             </div>
 
+            {/*
+              第三行：脚本结构。这一块原来整个没展示，而它恰恰是"情绪曲线"
+              这种通用 AI 根本给不出来的东西——它说的是观众从第几秒该有什么感觉。
+            */}
+            <h3 className="text-sm font-semibold tracking-widest text-muted-foreground mb-4">
+              脚本结构 {FACTS.structures} 种 · 摘三种
+            </h3>
+            <div className="grid md:grid-cols-3 gap-5">
+              {SHOWCASE_STRUCTURES.map((s) => (
+                <div
+                  key={s.id}
+                  className="glass-panel rounded-2xl p-6 border-2 border-border hover:border-emerald-500/40 transition-colors"
+                >
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <span className="text-lg font-bold">{s.name}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">{s.coreLogic}</p>
+                  <div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 px-3 py-2.5 mb-3">
+                    <div className="text-[11px] font-medium tracking-wider text-emerald-500 mb-1">结构公式</div>
+                    <div className="text-[13px] font-medium text-foreground">{s.formula}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    情绪曲线：{s.emotionCurve}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <p className="text-center text-sm text-muted-foreground mt-10">
-              以上是 {FACTS.methods} 条里的 6 条。生成时 AI 会按你的资源条件挑出能拍的那几条，
+              以上是 {FACTS.methods} 条里的 9 条。生成时 AI 会按你的资源条件挑出能拍的那几条，
               并守住每一条写明的边界。
             </p>
           </div>
