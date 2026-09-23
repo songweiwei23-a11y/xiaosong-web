@@ -1,8 +1,11 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { Check, X, Crown, Zap, Rocket } from "lucide-react";
-import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/config/plans";
+import {
+  SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints,
+  COUNTED_FEATURES, FREE_ONE_TIME_FEATURES,
+} from "@/lib/config/plans";
 import { toneSoft } from "@/lib/ui-tokens";
 
 export default function PricingPage() {
@@ -120,82 +123,43 @@ export default function PricingPage() {
                 </tr>
               </thead>
               <tbody>
+                {/*
+                  这张表原来是手写的，而且数字全是旧的：基础会员写 150次/月、
+                  专业写 500次/月，实际是 50 和 120——对外宣传比实际多 3 倍。
+                  账号定位免费版写 1 次（实际 3）、脚本生成写 20 次（实际 8）。
+                  这是一张**公示价格的对比表**，写错等于虚假宣传，
+                  而我们刚刚才在同一页写上"不支持无理由退款"。
+
+                  改成从 lib/config/plans.ts 现算。配置改了这里自动跟，
+                  不会再有第二份说法。
+                */}
+                {COUNTED_FEATURES.map((feat) => (
+                  <tr key={feat.key} className="border-b border-border hover:bg-muted/50">
+                    <td className="py-4 px-4">{feat.name}</td>
+                    {(['free', 'basic', 'pro', 'enterprise'] as const).map((planId) => {
+                      const n = SUBSCRIPTION_PLANS[planId].quotas[feat.key] as number;
+                      return (
+                        <td key={planId} className="text-center py-4 px-4">
+                          {n === -1 ? (
+                            '无限'
+                          ) : n === 0 ? (
+                            <X className="w-5 h-5 text-destructive mx-auto" />
+                          ) : planId === 'free' && FREE_ONE_TIME_FEATURES.includes(feat.key) ? (
+                            `${n} 次`
+                          ) : (
+                            `${n} 次/月`
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
                 <tr className="border-b border-border hover:bg-muted/50">
                   <td className="py-4 px-4">知识库</td>
                   <td className="text-center py-4 px-4">无限</td>
                   <td className="text-center py-4 px-4">无限</td>
                   <td className="text-center py-4 px-4">无限</td>
                   <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">账号定位</td>
-                  <td className="text-center py-4 px-4">1次</td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">选题策划</td>
-                  <td className="text-center py-4 px-4">3次/月</td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">脚本生成</td>
-                  <td className="text-center py-4 px-4">20次/月</td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">自由对话</td>
-                  <td className="text-center py-4 px-4">20次/月</td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">分镜脚本</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">审稿优化</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">标题封面</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">成交理由</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
-                  <td className="text-center py-4 px-4">150次/月</td>
-                  <td className="text-center py-4 px-4">500次/月</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">客服支持</td>
-                  <td className="text-center py-4 px-4">社区</td>
-                  <td className="text-center py-4 px-4">标准</td>
-                  <td className="text-center py-4 px-4">优先</td>
-                  <td className="text-center py-4 px-4">专属</td>
-                </tr>
-                <tr className="hover:bg-muted/50">
-                  <td className="py-4 px-4">API接口</td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
-                  <td className="text-center py-4 px-4"><X className="w-5 h-5 text-destructive mx-auto" /></td>
-                  <td className="text-center py-4 px-4"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
                 </tr>
               </tbody>
             </table>
@@ -216,7 +180,7 @@ export default function PricingPage() {
             </div>
             <div className="bg-card p-6 rounded-xl border border-border">
               <h3 className="font-bold mb-2">支持退款吗？</h3>
-              <p className="text-sm text-muted-foreground">开通后7天内如未使用可申请退款</p>
+              <p className="text-sm text-muted-foreground">虚拟商品开通后不支持无理由退款。购买前有疑问请先联系我们</p>
             </div>
             <div className="bg-card p-6 rounded-xl border border-border">
               <h3 className="font-bold mb-2">企业版有什么特殊服务？</h3>

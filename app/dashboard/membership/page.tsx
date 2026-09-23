@@ -240,7 +240,7 @@ export default function MembershipPage() {
           <div>
             <h3 className="font-semibold text-foreground mb-2">可以退款吗？</h3>
             <p className="text-muted-foreground text-sm">
-              购买后 7 天内，如不满意可申请全额退款，无需理由。
+              虚拟商品开通后不支持无理由退款。购买前有疑问可以先问清楚再买。
             </p>
           </div>
           <div>
@@ -253,7 +253,7 @@ export default function MembershipPage() {
           <div>
             <h3 className="font-semibold text-foreground mb-2">企业版如何联系？</h3>
             <p className="text-muted-foreground text-sm">
-              请添加客服微信：xiaosong-service，或发送邮件至 enterprise@xiaosong.ai
+              请添加微信：13240286600（手机同号）
             </p>
           </div>
         </div>

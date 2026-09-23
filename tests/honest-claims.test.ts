@@ -101,3 +101,97 @@ describe('额度文案不会和实际执行脱节', () => {
     expect(src).toContain('planSellingPoints');
   });
 });
+
+/**
+ * 业务承诺必须是他真能兑现的。
+ *
+ * 这三条是问过本人才改的：
+ *   退款 —— 不认，虚拟商品不支持无理由退款
+ *   发票 —— 开不了，目前不支持
+ *   客服邮箱 support@xiaosong.ai —— 这个邮箱根本不存在
+ *
+ * 前两条写在页面上就是承诺，做不到会变成纠纷；第三条更直接：
+ * 用户遇到问题写信过去石沉大海，比没有联系方式还糟。
+ */
+describe('对外承诺兑现得了', () => {
+  const PAGES = [
+    'app/page.tsx',
+    'app/pricing/page.tsx',
+    'app/dashboard/membership/page.tsx',
+  ];
+
+  it('不承诺无理由退款', () => {
+    /*
+     * 查的是"承诺"，不是"退款"这两个字。
+     * 第一版直接匹配 /无理由退款/，把「**不**支持无理由退款」这句
+     * 正确的声明也一起拦了——页面上必须能说清不提供什么，
+     * 否则用户是在不知情的情况下付钱。
+     */
+    for (const p of PAGES) {
+      const code = stripComments(read(p));
+      expect(code, `${p} 还在承诺无理由退款`).not.toMatch(/(?<!不)支持无理由退款/);
+      expect(code, `${p} 还在承诺全额退款`).not.toMatch(/可申请全额退款|全额退款，无需理由/);
+      expect(code, `${p} 还在承诺 7 天退款`).not.toMatch(/7\s*天[内]?[^。，]{0,10}(可申请)?退款/);
+    }
+  });
+
+  it('但必须说清"不提供什么"——不能含糊带过', () => {
+    // 用户有权在付钱前知道退不了
+    const landing = stripComments(read('app/page.tsx'));
+    expect(landing).toMatch(/不支持无理由退款/);
+  });
+
+  it('不承诺开发票', () => {
+    const code = stripComments(read('app/page.tsx'));
+    expect(code).not.toMatch(/可以开具增值税/);
+    expect(code).not.toMatch(/\d\s*个工作日内开具/);
+  });
+
+  it('不再留那个不存在的邮箱', () => {
+    for (const p of PAGES) {
+      expect(stripComments(read(p)), `${p} 还留着不存在的邮箱`).not.toContain('xiaosong.ai');
+    }
+  });
+
+  it('留的是真能联系上的方式', () => {
+    // 手机/微信同号，是他本人在对接
+    expect(stripComments(read('app/page.tsx'))).toContain('13240286600');
+  });
+});
+
+/**
+ * 公示的价格对比表不能和实际额度对不上。
+ *
+ * 这张表原来是手写的，而且是旧数据：基础会员写 150次/月、专业写 500次/月，
+ * 实际只有 50 和 120——对外宣传比实际多 3 倍。账号定位免费版写 1 次
+ * （实际 3）、脚本生成写 20 次（实际 8）。
+ *
+ * 这是一张公示价格的表，写错就是虚假宣传；而同一页还写着"不支持无理由退款"，
+ * 用户按 150 次买、拿到 50 次，是实打实的纠纷。
+ */
+describe('价格对比表和实际额度一致', () => {
+  const code = stripComments(read('app/pricing/page.tsx'));
+
+  it('表体从配置现算，不再手写', () => {
+    expect(code).toContain('COUNTED_FEATURES.map');
+    expect(code).toContain('SUBSCRIPTION_PLANS[planId].quotas');
+  });
+
+  it('旧的 150/500 已经不在表里', () => {
+    expect(code).not.toMatch(/150\s*次\/月/);
+    expect(code).not.toMatch(/500\s*次\/月/);
+  });
+
+  it('表里的数字确实等于配置里的额度', async () => {
+    const { SUBSCRIPTION_PLANS: P, COUNTED_FEATURES: CF } = await import('@/lib/config/plans');
+    // 现算意味着这些值就是配置值——顺带确认配置本身没被改乱
+    expect(P.basic.quotas.script).toBe(50);
+    expect(P.pro.quotas.script).toBe(120);
+    expect(CF.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('免费版的一次性额度标成「次」而不是「次/月」', () => {
+    // 账号定位在免费版不按月重置，写成「次/月」是另一种形式的说错
+    expect(code).toContain('FREE_ONE_TIME_FEATURES.includes');
+  });
+});

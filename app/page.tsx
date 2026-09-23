@@ -232,15 +232,15 @@ export default function HomePage() {
     },
     {
       q: "可以开发票吗？",
-      a: "可以开具增值税电子普通发票和专用发票。购买后在个人中心-订单管理中申请开票，我们会在3个工作日内开具并发送到您的邮箱。"
+      a: "目前还不支持开发票。有开票需求请先联系我们再决定是否购买，避免付完款才发现开不了。"
     },
     {
       q: "支持哪些支付方式？",
-      a: "目前支持微信支付和支付宝支付。企业版支持对公转账，联系客服获取账户信息。所有支付均通过官方渠道，安全可靠。"
+      a: "微信和支付宝转账，扫码付款后上传转账截图，我核对后开通。企业版对公转账请加微信 13240286600 获取账号。"
     },
     {
       q: "如何联系客服？",
-      a: "免费版用户可通过邮件联系客服（support@xiaosong.ai），基础版及以上用户享有优先响应权。专业版和企业版配有专属客服，响应时间<2小时。"
+      a: "直接加微信：13240286600（手机同号）。目前是我本人在对接，看到就回。"
     }
   ];
 
@@ -719,7 +719,7 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-12 text-sm text-muted-foreground">
-            <p>所有方案均支持7天无理由退款 · 随时取消订阅 · 数据完全保密</p>
+            <p>虚拟商品开通后不支持无理由退款 · 随时取消续费 · 数据完全保密</p>
           </div>
         </div>
       </section>
@@ -766,7 +766,7 @@ export default function HomePage() {
               还有其他问题？
             </p>
             <a 
-              href="mailto:support@xiaosong.ai" 
+              href="weixin://" 
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary/15 dark:bg-blue-900/30 text-primary rounded-lg hover:bg-primary/20 dark:hover:bg-blue-900/50 transition-colors font-medium"
             >
               <MessageCircle className="w-5 h-5" />
@@ -839,7 +839,7 @@ export default function HomePage() {
               <h4 className="font-semibold text-white mb-4">支持</h4>
               <ul className="space-y-2 text-sm">
                 <li><a href="#faq" className="hover:text-white transition-colors">常见问题</a></li>
-                <li><a href="mailto:support@xiaosong.ai" className="hover:text-white transition-colors">联系客服</a></li>
+                <li><a href="weixin://" className="hover:text-white transition-colors">联系客服</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">使用文档</a></li>
               </ul>
             </div>
