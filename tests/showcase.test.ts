@@ -152,3 +152,33 @@ describe('对外说辞站得住', () => {
     expect(free.script).toBeGreaterThanOrEqual(2); // 开篇 + 脚本
   });
 });
+
+/**
+ * 浮在卡片上方的徽章必须有 z-index。
+ *
+ * 线上出过一次：价格方案里「最受欢迎」那个徽章被横着切掉将近一半。
+ * 原因不是字体也不是行高——
+ *   徽章高 29px、只往上露出 16px（-top-4），剩下 13px 压在卡片上；
+ *   而卡片是 glass-panel，带 backdrop-filter，那会创建新的层叠上下文。
+ *   两者 z-index 都是 auto 时，DOM 里靠后的卡片就画在徽章上面。
+ *
+ * 关键在于**徽章和卡片是兄弟关系**。子元素本来就画在父级背景之上，
+ * 所以页面上其他几个同样写法的徽章都没事——只有这一处是兄弟。
+ */
+describe('浮动徽章不会被卡片盖住', () => {
+  it('落地页的「最受欢迎」带 z-index', () => {
+    const code = readCode('app/page.tsx');
+    const i = code.indexOf('最受欢迎');
+    expect(i, '没找到徽章').toBeGreaterThan(0);
+    // 往前找它所在的那个 div 的 className
+    const cls = code.slice(Math.max(0, i - 300), i);
+    expect(cls, '徽章没有 z-index，会被 glass-panel 盖掉一半').toMatch(/absolute[^>]*\bz-\d+/);
+  });
+
+  it('和它并列的卡片确实带 backdrop-filter（这才是会盖住它的原因）', () => {
+    // 如果哪天卡片不再用 glass-panel，这条会提醒上面那个 z-index 还有没有必要
+    const code = readCode('app/page.tsx');
+    const i = code.indexOf('最受欢迎');
+    expect(code.slice(i, i + 400)).toContain('glass-panel');
+  });
+});

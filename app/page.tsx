@@ -679,8 +679,21 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {pricingPlans.map((plan, idx) => (
               <div key={idx} className={`relative ${plan.highlight ? 'md:scale-105' : ''}`}>
+                {/*
+                  下面那个徽章必须有 z-10。
+
+                  徽章高 29px、只往上露出 16px（-top-4），剩下 13px 压在卡片上。
+                  而卡片是 glass-panel，带 backdrop-filter——那会创建新的层叠
+                  上下文，在两者 z-index 都是 auto 时，DOM 里靠后的卡片就画在
+                  徽章上面，把它盖掉将近一半。
+                  表现是「最受欢迎」被横着切了一刀，而不是不显示，所以很容易
+                  被当成字体或行高的问题。
+
+                  注意徽章和卡片是**兄弟**。页面上别处的徽章都是卡片的子元素，
+                  子元素本来就画在父级背景之上，所以只有这一处会出事。
+                */}
                 {plan.highlight && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 brand-gradient text-white text-sm font-semibold rounded-full shadow-lg">
+                  <div className="absolute -top-4 left-1/2 z-10 -translate-x-1/2 px-4 py-1 brand-gradient text-white text-sm font-semibold rounded-full shadow-lg">
                     最受欢迎
                   </div>
                 )}

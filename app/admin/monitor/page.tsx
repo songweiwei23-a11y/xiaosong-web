@@ -351,7 +351,8 @@ export default function MonitorPage() {
                       className="absolute inset-x-0 h-px"
                       style={{ background: "rgba(148,163,184,.13)" }}
                     />
-                    <span className="absolute -top-2 left-0 bg-[#05070d] pr-1.5 font-mono text-[9.5px] tabular-nums text-slate-600">
+                    {/* z-10：后面那个 <svg> 是兄弟元素，不加的话发光的折线会压在刻度值上 */}
+                    <span className="absolute -top-2 left-0 z-10 bg-[#05070d] pr-1.5 font-mono text-[9.5px] tabular-nums text-slate-600">
                       {Math.round(peak * r)}
                     </span>
                   </div>
