@@ -1,5 +1,5 @@
-﻿import { supabase } from "@/lib/supabase/client";
-import { getPlan, judgeQuota, sumCountedUsage } from '@/lib/config/plans';
+import { supabase } from "@/lib/supabase/client";
+import { getPlan, judgeQuota, sumCountedUsage, effectivePlanId } from '@/lib/config/plans';
 
 /**
  * 保存生成历史记录到数据库
@@ -72,10 +72,10 @@ export async function checkQuota(feature?: string): Promise<number | null> {
 
     const userId = session.user.id;
 
-    // 获取用户订阅信息
+    // end_date 必须一起取，否则下面判不出订阅有没有到期
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('plan, status')
+      .select('plan, status, end_date')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -84,7 +84,16 @@ export async function checkQuota(feature?: string): Promise<number | null> {
       return 0;
     }
 
-    const planId = subscription?.status === 'active' ? subscription.plan : 'free';
+    /*
+     * 到期判定必须和服务端共用同一个函数。
+     *
+     * 这里原来是 `subscription?.status === 'active' ? subscription.plan : 'free'`，
+     * 只看 status、不看 end_date——而服务端的 requireUserWithQuota 早就换成
+     * effectivePlanId 了。两边结论不一致的后果是：订阅已过期的用户在界面上
+     * 看到"还剩 50 次"，点下去服务端回 402。不报错，只是两个数字对不上，
+     * 用户会以为是系统出问题了。
+     */
+    const planId = effectivePlanId(subscription);
     const plan = getPlan(planId);
 
     // 企业版无限使用

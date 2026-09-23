@@ -6,7 +6,7 @@ import {
   FREE_ONE_TIME_FEATURES,
 } from '@/lib/config/plans';
 
-import { readSource as read, readCode } from './helpers/source';
+import { readSource as read, readCode, stripComments } from './helpers/source';
 
 /**
  * 付费链路是这个产品唯一的收入路径，而它从来没有被完整走通过一次
@@ -65,17 +65,49 @@ describe('订阅到期判定', () => {
     expect(effectivePlanId({ plan: 'basic', status: 'active', end_date: '不是日期' })).toBe('basic');
   });
 
-  it('两个判定点都用同一个函数，不再各写一份', () => {
-    for (const f of ['lib/api-guard.ts', 'app/api/quota/check/route.ts']) {
+  it('判定点都用同一个函数，不再各写一份', () => {
+    for (const f of ['lib/api-guard.ts', 'app/api/quota/check/route.ts', 'lib/history.ts']) {
       const src = read(f);
       expect(src, `${f} 没用 effectivePlanId`).toContain('effectivePlanId');
-      // 旧写法只看 status，会把到期判定漏掉
-      expect(src, `${f} 还残留着只看 status 的旧写法`).not.toMatch(
-        /status === 'active' \? \w+\.plan : 'free'/
-      );
       // 不取 end_date 就无从判断
       expect(src, `${f} 查询里没带上 end_date`).toMatch(/select\('plan, status, end_date'\)/);
     }
+  });
+
+  /*
+   * 上面那条原来只列了 api-guard 和 quota/check 两个文件——而 lib/history.ts
+   * 里还有第三份旧写法，就这么躲过去了。手写清单守不住"还有没有别处"这件事：
+   * 清单是穷举，而问题恰恰出在没被穷举到的那个文件上。
+   *
+   * 所以这条改成全仓扫描。只看 status 不看 end_date 的写法，一处都不许有。
+   */
+  it('全仓没有第二处"只看 status"的旧写法', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+
+    const SKIP = new Set(['node_modules', '.next', '.git', 'tests', '编导知识大全', 'docs']);
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.name.startsWith('.') || SKIP.has(e.name)) continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/\.tsx?$/.test(e.name)) files.push(p);
+      }
+    };
+    walk(process.cwd());
+
+    // 防止扫描空转：真的扫到了足够多的源文件才算数
+    expect(files.length, '扫描没扫到文件，这条用例是空过的').toBeGreaterThan(80);
+
+    const OLD = /status === 'active'\s*\?\s*\w+\.plan\s*:\s*'free'/;
+    const offenders = files.filter((p) =>
+      OLD.test(stripComments(fs.readFileSync(p, 'utf8')))
+    );
+    expect(
+      offenders.map((p) => path.relative(process.cwd(), p)),
+      '这些文件还在只看 status 判定套餐，到期的订阅会被当成有效'
+    ).toEqual([]);
   });
 });
 
