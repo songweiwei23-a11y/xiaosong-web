@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home, Ticket } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { AuthTransition } from "@/components/auth/AuthTransition";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,8 +15,24 @@ export default function LoginPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  /** 验证通过、正在把人交接给工作台。这期间全屏过渡层不撤 */
+  const [handingOff, setHandingOff] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
+
+  /**
+   * 跳转到工作台，并全程保持过渡层。
+   *
+   * 这里刻意不再 setLoading(false)：原来 handleAuth 的 finally 会立刻把
+   * loading 关掉，于是按钮上的转圈在真正的等待**开始之前**就停了——
+   * 用户看到按钮变回"登录账户"、页面却不动，那几秒最像卡死。
+   * 现在从验证成功一直到新页面接管，过渡层不撤。
+   */
+  const goDashboard = () => {
+    setHandingOff(true);
+    router.push("/dashboard");
+    router.refresh();
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,18 +42,17 @@ export default function LoginPage() {
     try {
       if (isLogin) {
         // 登录
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
-        
-        setMessage("登录成功！正在跳转...");
-        setTimeout(() => {
-          router.push("/dashboard");
-          router.refresh();
-        }, 500);
+
+        // 原来这里要先 setMessage 再等 500ms 才跳，纯粹是为了让人看清那句
+        // "登录成功"。现在过渡层本身就在说话，这 500ms 只是白等，去掉。
+        goDashboard();
+        return;
       } else {
         /*
          * 注册走服务端，不再用浏览器里的 supabase.auth.signUp()。
@@ -66,16 +82,17 @@ export default function LoginPage() {
           setMessage("注册成功！请切换到登录标签页进行登录。");
           setTimeout(() => setIsLogin(true), 1500);
         } else {
-          setTimeout(() => {
-            router.push("/dashboard");
-            router.refresh();
-          }, 600);
+          goDashboard();
+          return;
         }
       }
     } catch (error: any) {
       console.error("Auth error:", error);
       setMessage(error.message || "操作失败，请重试");
+      setHandingOff(false);
     } finally {
+      // 只有"没走成"才收起转圈。跳转成功时页面即将被替换，
+      // 这时候把按钮恢复成可点状态反而会让人以为失败了
       setLoading(false);
     }
   };
@@ -84,6 +101,16 @@ export default function LoginPage() {
     // 背景交给全站的 AmbientBackground。这里原本自带一层写死的渐变和光斑，
     // 会盖住氛围层，且颜色不跟随配色方案切换。
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+
+      {/* 验证通过之后到工作台出现之前，全程盖住——这段原来是完全没有反馈的 */}
+      <AuthTransition
+        show={handingOff}
+        name={email.includes("@") ? email.split("@")[0] : undefined}
+        onRetry={() => {
+          // 卡住时给个出口：整页重载比停在这里干等强
+          window.location.href = "/dashboard";
+        }}
+      />
 
       {/* 顶部导航 */}
       <div className="absolute top-0 left-0 right-0 z-10">

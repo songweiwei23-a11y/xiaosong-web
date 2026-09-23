@@ -314,3 +314,36 @@
     }
   }
 }
+
+/*
+ * 登录到工作台的过渡动画。
+ *
+ * 放在全局而不是组件里，是因为这段动画要在三个地方连续出现：
+ * 登录页的全屏过渡层 → 路由切换时的 loading.tsx → 工作台自己拉数据时。
+ * 三处用同一套动画，看起来才是"一段连续的等待"，
+ * 而不是"三种不同的加载画面接连闪过"——后者反而更像卡。
+ */
+@keyframes authSpin { to { transform: rotate(360deg); } }
+@keyframes authFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes authRise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes authPulse {
+  0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.14); }
+}
+@keyframes authBlink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes authSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* 系统里关了动效就别硬播，全屏动画最容易引起不适 */
+@media (prefers-reduced-motion: reduce) {
+  .auth-anim,
+  .auth-anim * {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

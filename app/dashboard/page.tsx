@@ -6,9 +6,10 @@ import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
 import { listWorks, type Work } from "@/lib/works";
 import { getActiveProfileId } from '@/lib/active-profile';
+import { LoadingRings } from "@/components/auth/LoadingRings";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
-  MessagesSquare, ChevronRight, Clock, Crown, User, Loader2, History,
+  MessagesSquare, ChevronRight, Clock, Crown, User, History,
   ClipboardList, Rocket, Wallet, LayoutList, Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -245,11 +246,13 @@ export default function DashboardPage() {
   }, []);
 
   if (loading) {
+    // 和登录过渡层、loading.tsx 用同一个动画：
+    // 从点登录到内容出现是一段连续的等待，不该中途换三次画面
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
-          <p className="mt-3 text-[13px] text-muted-foreground">正在准备工作台…</p>
+        <div className="flex flex-col items-center">
+          <LoadingRings size={72} />
+          <p className="mt-5 text-[13px] text-muted-foreground">正在准备工作台…</p>
         </div>
       </div>
     );

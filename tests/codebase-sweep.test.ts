@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { stripComments } from './helpers/source';
 
 /**
  * 全仓库的缺陷模式扫描。
@@ -35,19 +36,17 @@ function walk(dir: string, out: string[] = []): string[] {
 const files = ROOTS.flatMap((r) => walk(path.join(process.cwd(), r)));
 const rel = (f: string) => path.relative(process.cwd(), f).replace(/\\/g, '/');
 
-/**
- * 去掉注释再扫。
+/*
+ * 去注释已搬到 tests/helpers/source.ts。
  *
- * 必须连 JSX 注释 {/* … *\/} 一起去掉：修好一个坑之后，通常会在原地写一行
- * 注释说明「原先写的是 bg-${color}-100」——那行注释会被扫描器当成新的违规，
- * 结果是「越解释越报错」。
+ * 原先这里那版多了一条专门处理 JSX 花括号注释的规则，而它是错的：
+ * `} else {` 后面紧跟块注释时，那个左花括号会被当成 JSX 注释的开头，
+ * 一路吞到很远处才收尾，把中间的真代码一起删掉。
+ * 实测 app/page.tsx 因此少扫 5593 个字符——扫描器少看了那么多代码，
+ * 报出来的「干净」是不作数的。
+ *
+ * 去掉那条特判就对了：块注释统一去掉之后，JSX 注释自然只剩一对空花括号。
  */
-function stripComments(src: string): string {
-  return src
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')  // JSX 注释
-    .replace(/\/\*[\s\S]*?\*\//g, '')             // 块注释
-    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');        // 行注释（避开 https://）
-}
 
 const sources = files.map((f) => ({ file: f, raw: fs.readFileSync(f, 'utf8') }))
   .map((x) => ({ ...x, code: stripComments(x.raw) }));

@@ -1,6 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
 import {
   effectivePlanId,
   SUBSCRIPTION_PLANS,
@@ -8,18 +6,7 @@ import {
   FREE_ONE_TIME_FEATURES,
 } from '@/lib/config/plans';
 
-const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
-
-/**
- * 去掉注释再查。
- * 这些用例查的字样（比如 replace('会员'）正好会出现在"解释当初错在哪"的
- * 注释里——按原文查必然误报。同一类坑这个项目里已经踩过四次了。
- */
-const readCode = (rel: string) =>
-  read(rel)
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+import { readSource as read, readCode } from './helpers/source';
 
 /**
  * 付费链路是这个产品唯一的收入路径，而它从来没有被完整走通过一次

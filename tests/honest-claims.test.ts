@@ -1,23 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { readSource as read, readCode, stripComments } from './helpers/source';
 
-const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
 
-/**
- * 去掉注释，只留会真正跑起来/渲染出去的代码。
- *
- * 必须这么做：这些用例查的就是「1280」「baseUsers」这类字样，
- * 而解释当初错在哪的注释里一定会提到它们。按行首是不是 * 来过滤不够——
- * 多行注释的中间几行行首是中文，照样漏出来。
- * （同一类误报在这个项目里已经踩过三次：grep 断链、useSearchParams、这次。）
- */
-function stripComments(src: string): string {
-  return src
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '') // JSX 注释 {/* ... */}
-    .replace(/\/\*[\s\S]*?\*\//g, '') // 块注释
-    .replace(/(^|[^:])\/\/.*$/gm, '$1'); // 行注释（别切到 http://）
-}
+
 
 /**
  * 对外展示的数字必须是真的。
