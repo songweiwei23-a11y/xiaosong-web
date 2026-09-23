@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { getActiveProfileId } from '@/lib/active-profile';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, Loader2, History,
-  ClipboardList, Rocket, Wallet, LayoutList,
+  ClipboardList, Rocket, Wallet, LayoutList, Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +25,17 @@ import {
  */
 
 /** 创作主线：三步有先后，界面按顺序排并标出第几步 */
+/**
+ * 主流程。
+ *
+ * 原来是三步（选题→脚本→分镜），因为那时候各板块之间并没有真的打通，
+ * 摆成流程只是好看。现在这几步是能一路点下去的：选题生成完能直接去设计
+ * 开篇，开篇里每种开法各出一条、挑中一条带着那句话去写脚本，脚本写完去
+ * 分镜、去起标题，内容一路跟着走，不用复制粘贴。
+ *
+ * 所以把开篇和标题从「更多工具」提上来——它们已经是流程里的一环，
+ * 埋在工具堆里等于告诉用户这条链不存在。
+ */
 const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; accent: string }[] = [
   {
     name: "选题策划",
@@ -32,6 +43,13 @@ const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; a
     icon: Lightbulb,
     href: "/dashboard/topic",
     accent: "bg-amber-500/12 text-amber-500",
+  },
+  {
+    name: "开篇设计",
+    desc: "每种开法各给一条，挑一条带走",
+    icon: Sparkles,
+    href: "/dashboard/growth?tab=opening",
+    accent: "bg-rose-500/12 text-rose-500",
   },
   {
     name: "脚本生成",
@@ -46,6 +64,13 @@ const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; a
     icon: Film,
     href: "/dashboard/storyboard",
     accent: "bg-violet-500/12 text-violet-500",
+  },
+  {
+    name: "标题封面",
+    desc: "跟着开头的钩子起标题",
+    icon: Tag,
+    href: "/dashboard/title",
+    accent: "bg-emerald-500/12 text-emerald-500",
   },
 ];
 
@@ -82,8 +107,8 @@ const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; 
 
 const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }[] = [
   { name: "审稿优化", icon: CheckCircle, href: "/dashboard/review" },
-  { name: "标题封面", icon: Tag, href: "/dashboard/title" },
-  { name: "起号", icon: Rocket, href: "/dashboard/growth", tip: "37计 + 开篇36计" },
+  // 开篇那一半已经提到主流程里了，这里留的是「挑哪一计拍」这一半
+  { name: "起号打法", icon: Rocket, href: "/dashboard/growth?tab=plan", tip: "37计，按你的条件推荐" },
   { name: "商业定位", icon: Wallet, href: "/dashboard/business-positioning", tip: "靠什么赚钱" },
   { name: "内容定位", icon: LayoutList, href: "/dashboard/content-positioning", tip: "长期发什么" },
   { name: "成交理由", icon: Award, href: "/dashboard/deal-reason" },
@@ -257,9 +282,13 @@ export default function DashboardPage() {
         <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
           {/* 左：开始创作 */}
           <section>
-            <h2 className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            <h2 className="mb-1 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
               开始创作
             </h2>
+            {/* 这条链现在是真通的，但不说用户不会知道，还会继续复制粘贴 */}
+            <p className="mb-3 text-[11.5px] text-muted-foreground">
+              每一步做完都能直接带着内容进下一步，不用复制粘贴
+            </p>
             <div className="space-y-2.5">
               {MAIN_FLOW.map((m, i) => (
                 <Link

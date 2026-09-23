@@ -203,3 +203,54 @@ describe('从脚本正文里截开头', () => {
     }
   });
 });
+
+/**
+ * 首页的主流程要和真实能走通的链路一致。
+ *
+ * 原来是选题→脚本→分镜三步，那时候板块之间并没打通，摆成流程只是好看。
+ * 现在开篇和标题都在链上，埋在「更多工具」里等于告诉用户这条链不存在。
+ */
+describe('首页主流程就是真实链路', () => {
+  const home = read('app/dashboard/page.tsx');
+  const flow = home.slice(home.indexOf('const MAIN_FLOW'), home.indexOf('const FOUNDATION'));
+
+  it('五步齐全，顺序和实际交接一致', () => {
+    const order = ['/dashboard/topic', '/dashboard/growth', '/dashboard/script',
+                   '/dashboard/storyboard', '/dashboard/title'];
+    const seen = order.map((r) => flow.indexOf(r));
+    expect(seen.every((i) => i >= 0), '有步骤没进主流程').toBe(true);
+    // 必须是递增的：顺序错了用户会按错的次序做
+    expect([...seen].sort((a, b) => a - b)).toEqual(seen);
+  });
+
+  it('开篇直接落在开篇标签上，不用再点一下', () => {
+    expect(flow).toContain('/dashboard/growth?tab=opening');
+  });
+
+  it('提到了「不用复制粘贴」——这条链通了但不说没人知道', () => {
+    expect(home).toContain('不用复制粘贴');
+  });
+
+  it('标题不再重复出现在更多工具里', () => {
+    const tools = home.slice(home.indexOf('const MORE_TOOLS'), home.indexOf('const TASK_ROUTES'));
+    expect(tools).not.toContain('/dashboard/title');
+    // 起号打法那一半还在工具里，并且直接落到打法标签
+    expect(tools).toContain('/dashboard/growth?tab=plan');
+  });
+});
+
+describe('起号页认得出地址栏里的标签', () => {
+  const src = read('app/dashboard/growth/page.tsx');
+
+  it('读 ?tab= 并且只认两个合法值', () => {
+    expect(src).toContain("new URLSearchParams(window.location.search).get('tab')");
+    expect(src).toMatch(/t === 'opening' \|\| t === 'plan'/);
+  });
+
+  it('不用 useSearchParams——那会要求整页包 Suspense', () => {
+    // 只看有没有真的用：代码里那句注释本身就提到了这个名字，
+    // 光查字符串会命中注释（和之前 grep 误报断链是同一类坑）
+    expect(src).not.toMatch(/import\s*\{[^}]*useSearchParams/);
+    expect(src).not.toMatch(/useSearchParams\s*\(/);
+  });
+});

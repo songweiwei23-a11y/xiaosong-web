@@ -86,6 +86,21 @@ export default function GrowthPage() {
 
   // 别的页面带过来的内容（选题页/脚本页的「设计开篇」入口）
   useEffect(() => {
+    /*
+     * 先看地址栏。首页的「开篇设计」是直接链过来的，没有交接数据，
+     * 不认 ?tab= 的话点进来会落在「起号打法」上，用户得自己再点一下。
+     *
+     * 这里读 window.location 而不是 useSearchParams：后者会要求整页包在
+     * Suspense 里，否则构建时报 "should be wrapped in a suspense boundary"，
+     * 而这一页本来是静态预渲染的，不值得为一个参数改掉。
+     */
+    try {
+      const t = new URLSearchParams(window.location.search).get('tab')
+      if (t === 'opening' || t === 'plan') setTab(t)
+    } catch {
+      // 地址栏读不到就按默认标签走，不影响其他功能
+    }
+
     const data = takeHandoff()
     if (!data) return
     if (data.tab === 'opening') setTab('opening')
