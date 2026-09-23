@@ -347,3 +347,64 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/*
+ * 管理后台侧边栏。
+ *
+ * 原来是一块扁平深灰面板，和旁边青色霓虹的监控大屏像两个产品拼在一起。
+ * 统一成同一套视觉：同样的网格底纹、同样的青色、右边缘渐隐而不是硬线。
+ * 颜色走变量，浅色主题下也不会糊成一片。
+ */
+.admin-rail {
+  --rail-line: hsl(var(--primary) / 0.5);
+  --rail-edge: hsl(var(--primary) / 0.35);
+  background:
+    radial-gradient(120% 60% at 0% 0%, hsl(var(--primary) / 0.07), transparent 60%),
+    hsl(var(--card));
+}
+.dark .admin-rail {
+  --rail-line: hsl(var(--primary) / 0.55);
+  --rail-edge: hsl(var(--primary) / 0.45);
+  background:
+    radial-gradient(120% 60% at 0% 0%, hsl(var(--primary) / 0.10), transparent 60%),
+    #070b12;
+}
+
+@keyframes adminSpin { to { transform: rotate(360deg); } }
+
+/*
+ * 扫描线：大屏"活着"的关键。
+ * 数据稀疏时（最近一小时没人用），如果只靠数据驱动，
+ * 整块就是一个空框——而真正的直播大屏在没数据时也好看，
+ * 靠的就是这类不依赖数据的环境动效。
+ */
+@keyframes adminScan {
+  0% { transform: translateY(-100%); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translateY(1000%); opacity: 0; }
+}
+@keyframes adminSweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes adminFlicker {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-anim,
+  .admin-anim * {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* 脉搏图上来回扫的光标 */
+@keyframes adminScanX {
+  0%   { left: 0%;   opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}

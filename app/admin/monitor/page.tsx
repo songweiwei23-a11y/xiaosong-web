@@ -171,6 +171,26 @@ export default function MonitorPage() {
 
   const pulse = snap?.pulse ?? [];
   const peak = Math.max(1, ...pulse);
+
+  /*
+   * 把 60 个分钟桶画成心电图的路径。
+   *
+   * 留 12px 的底边：全是 0 的时候线才不会贴着边框，
+   * 看起来像"基线"而不是"图没画出来"。
+   */
+  const { pulseLine, pulseArea } = (() => {
+    const W = 600, H = 168, PAD = 12;
+    const pts = (pulse.length ? pulse : new Array(60).fill(0)).map((v, i, arr) => {
+      const x = (i / Math.max(1, arr.length - 1)) * W;
+      const y = H - PAD - (v / peak) * (H - PAD * 2);
+      return [x, y] as const;
+    });
+    const line = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+    return {
+      pulseLine: line,
+      pulseArea: `${line} L${W},${H} L0,${H} Z`,
+    };
+  })();
   const needsAction = (snap?.totals.pendingReview ?? 0) > 0;
 
   return (
@@ -193,46 +213,68 @@ export default function MonitorPage() {
       />
 
       <div className="relative mx-auto max-w-[1600px] px-6 py-6">
-        {/* 顶栏 */}
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              {live && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-70" />
-              )}
-              <span className={`relative inline-flex h-3 w-3 rounded-full ${live ? "bg-cyan-400" : "bg-rose-500"}`} />
-            </span>
-            <h1 className="text-[22px] font-semibold tracking-[0.2em] text-cyan-300">
-              实时监控中心
-            </h1>
-            <span className="rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-300">
-              {live ? `每 ${POLL_MS / 1000} 秒刷新` : "连接中断"}
-            </span>
+        {/*
+          顶栏。做成仪表台的样子：标题下面带一行英文代号和状态，
+          时间用大字号等宽——这两样是"大屏感"最便宜也最有效的来源。
+        */}
+        <header className="admin-anim relative mb-5 overflow-hidden rounded-2xl border border-cyan-400/15 bg-white/[0.02] px-5 py-4 backdrop-blur">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-px"
+            style={{ background: "linear-gradient(90deg,transparent,rgba(34,211,238,.75),transparent)" }}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <span className="relative flex h-3 w-3">
+                {live && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-70" />
+                )}
+                <span className={`relative inline-flex h-3 w-3 rounded-full ${live ? "bg-cyan-400" : "bg-rose-500"}`} />
+              </span>
+              <div>
+                <h1 className="text-[21px] font-semibold leading-none tracking-[0.22em] text-cyan-300">
+                  实时监控中心
+                </h1>
+                <p className="mt-1.5 flex items-center gap-2 text-[10px] tracking-[0.22em] text-cyan-400/50">
+                  <span>LIVE OPS MONITOR</span>
+                  <span className="h-2.5 w-px bg-cyan-400/25" />
+                  <span>{live ? `${POLL_MS / 1000}S REFRESH` : "DISCONNECTED"}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="font-mono text-[28px] leading-none tabular-nums tracking-[0.08em] text-cyan-200">
+                  {clock || "--:--:--"}
+                </div>
+                <div className="mt-1 text-[10px] tracking-[0.2em] text-cyan-400/40">
+                  {new Date().toLocaleDateString("zh-CN")}
+                </div>
+              </div>
+              <button
+                onClick={() => (sound.enabled ? sound.disable() : sound.unlock())}
+                className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[12.5px] transition-colors ${
+                  sound.enabled
+                    ? "border-cyan-400/50 bg-cyan-400/10 text-cyan-300"
+                    : "border-amber-400/50 bg-amber-400/10 text-amber-300"
+                }`}
+              >
+                {sound.enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                {sound.enabled ? "声音已开" : "点击开启声音"}
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-[26px] tabular-nums tracking-wider text-cyan-200">{clock}</span>
-            <button
-              onClick={() => (sound.enabled ? sound.disable() : sound.unlock())}
-              className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] transition-colors ${
-                sound.enabled
-                  ? "border-cyan-400/50 bg-cyan-400/10 text-cyan-300"
-                  : "border-amber-400/50 bg-amber-400/10 text-amber-300"
-              }`}
-            >
-              {sound.enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-              {sound.enabled ? "声音已开" : "点击开启声音"}
-            </button>
-          </div>
+          {/* 浏览器拦截自动播放，不说清楚用户会以为坏了。
+              并进顶栏而不是单占一行——它是常驻提示，不该每次都抢一整条版面 */}
+          {!sound.enabled && (
+            <div className="mt-3 flex items-center gap-2 border-t border-amber-400/15 pt-3 text-[11.5px] text-amber-200/80">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              浏览器规定：没有点击过页面就不允许播声音。点上面那个按钮才会响。
+            </div>
+          )}
         </header>
-
-        {/* 浏览器拦截自动播放，不说清楚用户会以为坏了 */}
-        {!sound.enabled && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.07] px-4 py-2.5 text-[12.5px] text-amber-200/90">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            浏览器规定：没有点击过页面就不允许播声音。点右上角那个按钮才会响。
-          </div>
-        )}
 
         {err && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2.5 text-[12.5px] text-rose-200">
@@ -275,34 +317,92 @@ export default function MonitorPage() {
         <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           {/* 左：脉搏 + 功能分布 */}
           <div className="space-y-4">
-            <Panel title="最近一小时活跃脉搏" icon={Activity}>
-              <div className="flex h-[150px] items-end gap-[3px]">
-                {pulse.map((v, i) => (
-                  <div
-                    key={i}
-                    title={`${pulse.length - 1 - i} 分钟前：${v} 次`}
-                    className="flex-1 rounded-t-sm transition-all"
-                    style={{
-                      height: `${Math.max(2, (v / peak) * 100)}%`,
-                      background:
-                        v === 0
-                          ? "rgba(148,163,184,.13)"
-                          : "linear-gradient(to top,rgba(34,211,238,.35),rgba(34,211,238,.95))",
-                      boxShadow: v > 0 ? "0 0 10px rgba(34,211,238,.45)" : "none",
-                    }}
+            <Panel
+              title="最近一小时活跃脉搏"
+              icon={Activity}
+              right={
+                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-cyan-400"
+                    style={{ animation: "adminFlicker 1.6s ease-in-out infinite" }}
                   />
+                  {pulse.some((v) => v > 0) ? `峰值 ${peak} 次/分` : "静默"}
+                </span>
+              }
+            >
+              {/*
+                原来这里只有 60 根柱子。最近一小时没人用的时候（线上常态），
+                所有柱子都贴底，整块就是一个空框——截图里就是这样。
+                改成心电图式：底纹网格 + 基线 + 面积填充 + 一个来回扫的光标。
+                数据为零时它是一条平线，但仍然在动——不假装有活动，
+                只是让"没有活动"这件事也有个像样的呈现。
+              */}
+              <div className="relative h-[168px] w-full">
+                {/*
+                  横向刻度线 + 刻度值。
+                  加数值是为了让"线贴在底部"读成"当前是 0"，
+                  而不是"这个图没画出来"——没有刻度的话，
+                  空白区域就只是空白。
+                */}
+                {[0, 0.5, 1].map((r) => (
+                  <div key={r} className="pointer-events-none absolute inset-x-0" style={{ bottom: `${r * 100}%` }}>
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-0 h-px"
+                      style={{ background: "rgba(148,163,184,.13)" }}
+                    />
+                    <span className="absolute -top-2 left-0 bg-[#05070d] pr-1.5 font-mono text-[9.5px] tabular-nums text-slate-600">
+                      {Math.round(peak * r)}
+                    </span>
+                  </div>
                 ))}
+
+                <svg
+                  viewBox="0 0 600 168"
+                  preserveAspectRatio="none"
+                  className="absolute inset-0 h-full w-full"
+                >
+                  <defs>
+                    <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgb(34,211,238)" stopOpacity="0.42" />
+                      <stop offset="100%" stopColor="rgb(34,211,238)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d={pulseArea} fill="url(#pulseFill)" />
+                  <path
+                    d={pulseLine}
+                    fill="none"
+                    stroke="rgb(34,211,238)"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    style={{ filter: "drop-shadow(0 0 6px rgba(34,211,238,.75))" }}
+                  />
+                </svg>
+
+                {/* 来回扫的光标。不依赖数据，静默时这块也不会死掉 */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 w-px bg-cyan-300/50"
+                  style={{
+                    animation: "adminScanX 5.5s ease-in-out infinite",
+                    boxShadow: "0 0 12px 2px rgba(34,211,238,.4)",
+                  }}
+                />
               </div>
+
               <div className="mt-2 flex justify-between text-[11px] text-slate-500">
                 <span>60 分钟前</span>
-                <span>峰值 {peak} 次/分</span>
+                <span className="tabular-nums">
+                  合计 {pulse.reduce((a, b) => a + b, 0)} 次
+                </span>
                 <span>现在</span>
               </div>
             </Panel>
 
             <Panel title="今日各功能用量" icon={Zap}>
               {(snap?.byFeature ?? []).length === 0 ? (
-                <p className="py-6 text-center text-[13px] text-slate-500">今天还没有人生成内容</p>
+                <EmptyBox text="今天还没有人生成内容" height={140} />
               ) : (
                 <div className="space-y-2.5">
                   {snap!.byFeature.slice(0, 8).map((f) => {
@@ -334,9 +434,7 @@ export default function MonitorPage() {
           <div className="space-y-4">
             <Panel title={`最近活跃用户（${snap?.online.length ?? 0}）`} icon={Wifi}>
               {(snap?.online ?? []).length === 0 ? (
-                <p className="py-4 text-center text-[13px] text-slate-500">
-                  {ONLINE_WINDOW_MIN} 分钟内没有人登录
-                </p>
+                <EmptyBox text={`${ONLINE_WINDOW_MIN} 分钟内没有人登录`} height={96} />
               ) : (
                 <div className="space-y-1.5">
                   {snap!.online.slice(0, 8).map((u) => (
@@ -357,7 +455,7 @@ export default function MonitorPage() {
             <Panel title="实时动态" icon={Activity}>
               <div className="max-h-[360px] space-y-1.5 overflow-y-auto pr-1">
                 {(snap?.events ?? []).length === 0 ? (
-                  <p className="py-6 text-center text-[13px] text-slate-500">暂无动态</p>
+                  <EmptyBox text="暂无动态" height={120} />
                 ) : (
                   snap!.events.map((e) => (
                     <div
@@ -382,6 +480,34 @@ export default function MonitorPage() {
             </Panel>
           </div>
         </div>
+
+        {/*
+          底部状态条。
+          原来页面下半屏是一大片空白——不是因为没东西可放，
+          而是这些数字散落在各处没人汇总。放成一条等宽的状态带，
+          既填了版面，也回答了"整体什么情况"这个问题。
+        */}
+        <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-cyan-400/15 bg-cyan-400/10 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            { k: "数据链路", v: live ? "正常" : "中断", ok: live },
+            { k: "刷新间隔", v: `${POLL_MS / 1000} 秒`, ok: true },
+            { k: "声音提醒", v: sound.enabled ? "已开" : "未开", ok: sound.enabled },
+            { k: "待审订单", v: String(snap?.totals.pendingReview ?? 0), ok: (snap?.totals.pendingReview ?? 0) === 0 },
+            { k: "待付款", v: String(snap?.totals.pendingPay ?? 0), ok: true },
+            { k: "累计生成", v: String(snap?.totals.generations ?? 0), ok: true },
+          ].map((x) => (
+            <div key={x.k} className="bg-[#070b12] px-4 py-3">
+              <div className="text-[10.5px] tracking-[0.16em] text-slate-500">{x.k}</div>
+              <div
+                className={`mt-1 font-mono text-[15px] tabular-nums ${
+                  x.ok ? "text-cyan-300" : "text-rose-400"
+                }`}
+              >
+                {x.v}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 新事件弹一下，声音之外再给个眼睛能看到的信号 */}
@@ -403,6 +529,37 @@ export default function MonitorPage() {
   );
 }
 
+/**
+ * 数字变化时滚上去，而不是直接跳。
+ *
+ * 大屏的"活着"感很大一部分来自这个：一个静止的 47 和一个刚从 46 滚上来的 47
+ * 给人的感觉完全不同。滚动只在**值真的变了**的时候发生，不是循环动画——
+ * 循环的话就变成装饰了，反而分不清哪次是真有新数据。
+ */
+function useCountUp(target: number, ms = 600) {
+  const [shown, setShown] = useState(target);
+  const fromRef = useRef(target);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    if (from === target) return;
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms);
+      // easeOutCubic：起步快、收尾稳，比线性自然
+      const e = 1 - Math.pow(1 - p, 3);
+      setShown(Math.round(from + (target - from) * e));
+      if (p < 1) raf = requestAnimationFrame(step);
+      else fromRef.current = target;
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+
+  return shown;
+}
+
 function Kpi({
   icon: Icon, label, value, hint, tone,
 }: {
@@ -410,36 +567,132 @@ function Kpi({
   tone: "cyan" | "violet" | "emerald" | "amber";
 }) {
   const tones = {
-    cyan: "text-cyan-300 border-cyan-400/25 shadow-[0_0_28px_rgba(34,211,238,.10)]",
-    violet: "text-violet-300 border-violet-400/25 shadow-[0_0_28px_rgba(139,92,246,.10)]",
-    emerald: "text-emerald-300 border-emerald-400/25 shadow-[0_0_28px_rgba(52,211,153,.10)]",
-    amber: "text-amber-300 border-amber-400/25 shadow-[0_0_28px_rgba(251,191,36,.10)]",
+    cyan: { text: "text-cyan-300", border: "border-cyan-400/25", rgb: "34,211,238" },
+    violet: { text: "text-violet-300", border: "border-violet-400/25", rgb: "139,92,246" },
+    emerald: { text: "text-emerald-300", border: "border-emerald-400/25", rgb: "52,211,153" },
+    amber: { text: "text-amber-300", border: "border-amber-400/25", rgb: "251,191,36" },
   } as const;
+  const t = tones[tone];
+
+  /*
+   * 数字才滚，带货币符号那种直接显示。
+   * 硬凑一个通用解析器不值得——这里只有「¥123」一种带前缀的情况。
+   */
+  const numeric = typeof value === "number" ? value : Number(String(value).replace(/[^\d.-]/g, ""));
+  const prefix = typeof value === "string" ? String(value).replace(/[\d.,-]+$/, "") : "";
+  const animated = useCountUp(Number.isFinite(numeric) ? numeric : 0);
+  const display = Number.isFinite(numeric) ? `${prefix}${animated.toLocaleString()}` : String(value);
 
   return (
-    <div className={`rounded-2xl border bg-white/[0.025] p-4 backdrop-blur ${tones[tone]}`}>
+    <div
+      className={`admin-anim relative overflow-hidden rounded-2xl border bg-white/[0.025] p-4 backdrop-blur ${t.border} ${t.text}`}
+      style={{ boxShadow: `0 0 28px rgba(${t.rgb},.09)` }}
+    >
+      {/* 顶边的一道亮线：给每张卡一个"通电"的起点 */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{ background: `linear-gradient(90deg,transparent,rgba(${t.rgb},.8),transparent)` }}
+      />
+      {/* 右上角的角标 */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute right-0 top-0 h-3.5 w-3.5 rounded-tr-2xl border-r border-t"
+        style={{ borderColor: `rgba(${t.rgb},.45)` }}
+      />
+
       <div className="mb-2 flex items-center gap-2">
         <Icon className="h-4 w-4" />
-        <span className="text-[12px] tracking-wider text-slate-400">{label}</span>
+        <span className="text-[11.5px] tracking-[0.14em] text-slate-400">{label}</span>
       </div>
-      <div className="font-mono text-[34px] leading-none tabular-nums">{value}</div>
+      <div className="font-mono text-[36px] leading-none tabular-nums">{display}</div>
       <div className="mt-1.5 text-[11px] text-slate-500">{hint}</div>
     </div>
   );
 }
 
+/**
+ * 空状态。
+ *
+ * 原来直接写一行灰字摆在大框正中间，越空越显得这块坏了。
+ * 改成带网格底纹的占位——看得出"这里本来会有东西"，
+ * 而不是"这里什么都没有"。
+ */
+function EmptyBox({ text, height = 120 }: { text: string; height?: number }) {
+  return (
+    <div
+      className="relative flex items-center justify-center overflow-hidden rounded-xl"
+      style={{ height }}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(148,163,184,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.10) 1px,transparent 1px)",
+          backgroundSize: "18px 18px",
+          maskImage: "radial-gradient(ellipse at center, black 20%, transparent 75%)",
+        }}
+      />
+      <span className="relative text-[12.5px] text-slate-500">{text}</span>
+    </div>
+  );
+}
+
+/**
+ * HUD 面板。
+ *
+ * 四角的直角括号 + 缓慢扫过的光带，是这块屏"高级感"的来源——
+ * 而且它们**不依赖数据**：最近一小时没人用的时候，原来的面板就是
+ * 一个空框，现在它仍然在呼吸。真正的直播大屏在闲时也好看，
+ * 靠的就是这类环境动效，不是靠把数据堆满。
+ */
 function Panel({
-  title, icon: Icon, children,
+  title, icon: Icon, children, right, className = "",
 }: {
-  title: string; icon: typeof Users; children: React.ReactNode;
+  title: string;
+  icon: typeof Users;
+  children: React.ReactNode;
+  right?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur">
-      <h2 className="mb-3 flex items-center gap-2 text-[13px] tracking-wider text-slate-300">
-        <Icon className="h-4 w-4 text-cyan-400" />
-        {title}
+    <section
+      className={`admin-anim relative overflow-hidden rounded-2xl border border-cyan-400/15 bg-white/[0.02] p-4 backdrop-blur ${className}`}
+    >
+      {/* 四角括号 */}
+      {[
+        "left-0 top-0 border-l border-t rounded-tl-2xl",
+        "right-0 top-0 border-r border-t rounded-tr-2xl",
+        "left-0 bottom-0 border-l border-b rounded-bl-2xl",
+        "right-0 bottom-0 border-r border-b rounded-br-2xl",
+      ].map((c) => (
+        <span
+          key={c}
+          aria-hidden
+          className={`pointer-events-none absolute h-4 w-4 border-cyan-400/45 ${c}`}
+        />
+      ))}
+
+      {/* 缓慢扫过的光带 */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 w-1/3"
+        style={{
+          background:
+            "linear-gradient(90deg,transparent,rgba(34,211,238,.055),transparent)",
+          animation: "adminSweep 7s ease-in-out infinite",
+        }}
+      />
+
+      <h2 className="relative mb-3 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-[12.5px] tracking-[0.12em] text-slate-300">
+          <Icon className="h-4 w-4 text-cyan-400" />
+          {title}
+        </span>
+        {right}
       </h2>
-      {children}
+      <div className="relative">{children}</div>
     </section>
   );
 }

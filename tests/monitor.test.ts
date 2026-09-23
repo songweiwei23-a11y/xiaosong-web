@@ -283,3 +283,66 @@ describe('页面本身的几条硬要求', () => {
     expect(read('app/admin/layout.tsx')).toContain('/admin/monitor');
   });
 });
+
+/**
+ * 后台的视觉一致性。
+ *
+ * 不测像素，只守住几个真实的设计决策——这些是"改着改着就回去了"的那类，
+ * 而回去之后没人会立刻发现。
+ */
+describe('后台视觉', () => {
+  const layout = read('app/admin/layout.tsx');
+  const page = read('app/admin/monitor/page.tsx');
+
+  it('整个后台固定深色，不跟随用户主题', () => {
+    /*
+     * 监控大屏的背景是写死的 #05070d，而侧边栏原本跟随主题——
+     * 用户切到浅色时，左边浅灰、右边近黑，中间一道硬边，
+     * 像两个产品拼在一起。
+     */
+    expect(layout).toMatch(/className="dark /);
+  });
+
+  it('侧边栏和大屏用同一套视觉语言', () => {
+    // 侧栏原来是一块扁平深灰面板，和青色霓虹的大屏毫无关系
+    expect(layout).toContain('admin-rail');
+    expect(read('app/globals.css')).toContain('.admin-rail');
+  });
+
+  it('脉搏图不依赖数据就能画出来', () => {
+    /*
+     * 原来是 60 根柱子：最近一小时没人用时（线上常态）全部贴底，
+     * 整块就是一个空框。改成心电图式的路径 + 扫描光标，
+     * 零活动时是一条平线，但仍然在动。
+     */
+    expect(page).toContain('pulseLine');
+    expect(page).toContain('pulseArea');
+    expect(page).toContain('adminScanX');
+    // 柱状图那版已经不在了
+    expect(page).not.toMatch(/pulse\.map\(\(v, i\) => \(\s*<div/);
+  });
+
+  it('空状态有占位纹理，不是一行灰字摆在大框中间', () => {
+    expect(page).toContain('EmptyBox');
+    const bare = page.match(/<p className="py-\d+ text-center text-\[13px\] text-slate-500">/g) ?? [];
+    expect(bare, '又出现了裸的空状态文字').toEqual([]);
+  });
+
+  it('面板有 HUD 角标和扫光——闲时也不会死掉', () => {
+    expect(page).toContain('adminSweep');
+    expect(page).toMatch(/rounded-tl-2xl/);
+  });
+
+  it('数字变化时滚动，且只在真的变了时滚', () => {
+    expect(page).toContain('useCountUp');
+    // 循环动画会让人分不清哪次是真有新数据
+    expect(page).toMatch(/if \(from === target\) return/);
+  });
+
+  it('动效尊重系统的"减少动效"设置', () => {
+    const css = read('app/globals.css');
+    expect(css).toMatch(/prefers-reduced-motion[\s\S]{0,300}\.admin-anim/);
+    expect(page).toContain('admin-anim');
+    expect(layout).toContain('admin-anim');
+  });
+});
