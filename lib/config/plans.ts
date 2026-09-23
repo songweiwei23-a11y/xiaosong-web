@@ -14,8 +14,18 @@
 // 现在计量方式是套餐的显式属性，文案和执行由 quotaSummary() 同源产出，
 // 不会再出现「说的是一套、跑的是另一套」。
 //
-// 知识库在所有档位都是 -1：文案单独承诺了「无限使用」，
-// 它也不计入任何总量口径。
+// 【知识库为什么改成限额】
+// 原来所有档位都是 -1（无限）。但一次知识库查询就是一次完整的 Dify 调用——
+// 先跑 5 个检索节点，再让模型写答案，成本和生成一条脚本是一个量级。
+// 「无限」等于免费档有一个不封顶的成本口子，而且它恰恰是这个产品最值钱的
+// 那部分（五个专题库的资料），白送没有道理。
+//
+// 定额的原则：知识库是**查资料**，是为了创作而做的辅助动作，
+// 所以每一档都设得比该档的创作额度更宽——不能让"查资料"先于"出内容"用完。
+//   免费 20（与自由对话对齐）／基础 100（创作额度的 2 倍）／
+//   专业 300（2.5 倍，约每天 10 次）／企业 无限
+// 改数字只改下面 quotas 里的那一个值，文案、价格对比表、用量提醒、
+// 管理后台统计全都跟着走。
 export const SUBSCRIPTION_PLANS = {
   free: {
     id: "free",
@@ -26,7 +36,9 @@ export const SUBSCRIPTION_PLANS = {
     // 这里原来还有一份手写的 features 文案，和下面的 quotas 是同一件事写两遍。
     // 已删除——额度文案一律由 quotaSummary() 现算，卖点由 SELLING_POINTS 提供。
     quotas: {
-      knowledge: -1,        // -1 表示无限
+      // 和自由对话对齐（同样是 20）。这两个都是"问一句"的动作、成本也一样，
+      // 给两个不同的数字对用户来说是没道理的差别
+      knowledge: 20,
       /*
        * positioning 这个桶是四个板块共用的：
        * 账号定位、商业定位、内容定位、创作简报。
@@ -65,7 +77,7 @@ export const SUBSCRIPTION_PLANS = {
     yearlyPrice: 470,     // 49 * 12 * 0.8 ≈ 470
     totalQuota: null as number | null, // 按功能分别限额，每个功能各 50 次
     quotas: {
-      knowledge: -1,
+      knowledge: 100,      // 创作额度的 2 倍，查资料不会先于出内容用完
       positioning: 50,
       topic: 50,
       script: 50,
@@ -83,7 +95,7 @@ export const SUBSCRIPTION_PLANS = {
     yearlyPrice: 950,     // 99 * 12 * 0.8 ≈ 950
     totalQuota: null as number | null, // 按功能分别限额，每个功能各 120 次
     quotas: {
-      knowledge: -1,
+      knowledge: 300,      // 2.5 倍，约每天 10 次
       positioning: 120,
       topic: 120,
       script: 120,
@@ -103,7 +115,7 @@ export const SUBSCRIPTION_PLANS = {
     yearlyPrice: 1910,    // 199 * 12 * 0.8 ≈ 1910
     totalQuota: -1 as number | null, // 无限
     quotas: {
-      knowledge: -1,
+      knowledge: -1,       // 企业版是唯一还无限的档位
       positioning: -1,
       topic: -1,
       script: -1,
@@ -116,29 +128,26 @@ export const SUBSCRIPTION_PLANS = {
   }
 };
 
-// 功能名称映射
-export const FEATURE_NAMES: Record<string, string> = {
-  knowledge: "知识库",
-  positioning: "账号定位",
-  topic: "选题策划",
-  script: "脚本生成",
-  freeChat: "自由对话",
-  storyboard: "分镜脚本",
-  review: "审稿优化",
-  title: "标题封面",
-  dealReason: "成交理由"
-};
-
 // 获取套餐信息
 export function getPlan(planId: string) {
   return SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.free;
 }
 
 /**
- * 计入总量的功能，及其在 user_quotas 表里的列名。
+ * 所有计费功能，及其在 user_quotas 表里的列名。
  *
- * 知识库不在其中——所有档位都承诺「无限使用」，把它算进总量
- * 等于查几次资料就把创作次数吃掉了。
+ * 这张表是全站的分发点，加一项等于同时接上六处：
+ *   app/api/quota/check    用量提醒、首页"最紧的那个功能"
+ *   lib/admin-stats        管理后台的分功能统计
+ *   app/pricing            价格对比表的表体
+ *   quotaSummary           套餐卡片上的额度文案
+ *   三个管理接口            开通/审单/改套餐时的额度清零
+ *   sumCountedUsage        总量制下的合计（目前没有套餐用总量制）
+ *
+ * 知识库原来**不在**这张表里，因为它当时是无限的。现在它有了限额，
+ * 就必须进来——否则限额会拦人，但用户在任何地方都看不到自己还剩几次，
+ * 只会在某次查询时突然撞上 402。放在最后一位：它是辅助动作，
+ * 价格对比表里也一直排在末行。
  */
 export const COUNTED_FEATURES: { key: keyof typeof SUBSCRIPTION_PLANS.free.quotas; column: string; name: string }[] = [
   { key: 'script', column: 'script_used', name: '脚本生成' },
@@ -149,7 +158,23 @@ export const COUNTED_FEATURES: { key: keyof typeof SUBSCRIPTION_PLANS.free.quota
   { key: 'review', column: 'review_used', name: '审稿优化' },
   { key: 'title', column: 'title_used', name: '标题封面' },
   { key: 'dealReason', column: 'deal_reason_used', name: '成交理由' },
+  { key: 'knowledge', column: 'knowledge_used', name: '知识库查询' },
 ];
+
+/**
+ * 功能代码 → 给用户看的名字。
+ *
+ * 原来这是一份手写的对象，和 COUNTED_FEATURES 里的 name 是同一批名字写两遍。
+ * 两份立刻就走偏了：手写那份把知识库叫「知识库」，COUNTED_FEATURES 叫
+ * 「知识库查询」，于是超额弹窗说的是前者、用量提醒说的是后者。
+ * 改成派生，只剩一个源头。
+ *
+ * 必须放在 COUNTED_FEATURES 之后：const 不提升，写在前面会在模块初始化时
+ * 踩到暂时性死区。
+ */
+export const FEATURE_NAMES: Record<string, string> = Object.fromEntries(
+  COUNTED_FEATURES.map((f) => [f.key, f.name])
+);
 
 /**
  * 免费版里不按月重置的功能。
@@ -164,10 +189,15 @@ export const COUNTED_FEATURES: { key: keyof typeof SUBSCRIPTION_PLANS.free.quota
  */
 export const FREE_ONE_TIME_FEATURES: readonly string[] = ['positioning'];
 
-/** 功能代码 → user_quotas 的列名。驼峰转下划线的写法散落多处，统一到这里 */
+/**
+ * 功能代码 → user_quotas 的列名。驼峰转下划线的写法散落多处，统一到这里。
+ *
+ * 这里原来有一句 `?? (feature === 'knowledge' ? 'knowledge_used' : undefined)`，
+ * 因为知识库当时不在 COUNTED_FEATURES 里，扣减时查不到列名就会被静默跳过。
+ * 现在它进表了，那个特例不再需要。
+ */
 export function usedColumnOf(feature: string): string | undefined {
-  return COUNTED_FEATURES.find((f) => f.key === feature)?.column
-    ?? (feature === 'knowledge' ? 'knowledge_used' : undefined);
+  return COUNTED_FEATURES.find((f) => f.key === feature)?.column;
 }
 
 /** 把一行 user_quotas 里计入总量的各列加起来 */
@@ -188,27 +218,49 @@ export function quotaSummary(planId: string): string[] {
 
   if (plan.totalQuota === -1) return ["所有功能：不限次数"];
   if (plan.totalQuota !== null) {
-    return [`所有功能合计：${plan.totalQuota} 次/月`, "知识库：不限次数"];
+    return [`所有功能合计：${plan.totalQuota} 次/月`, knowledgeLine(planId)];
   }
 
-  // 分功能制。各功能额度相同时合并成一句，否则逐条列出——
-  // 付费档八行「XX：50 次/月」是噪音，免费档逐条列才说得清哪些能用
-  const counted = COUNTED_FEATURES.map((f) => ({ ...f, limit: plan.quotas[f.key] as number }));
-  const usable = counted.filter((f) => f.limit > 0);
+  /*
+   * 分功能制。创作类功能额度相同时合并成一句，否则逐条列出——
+   * 付费档八行「XX：50 次/月」是噪音，免费档逐条列才说得清哪些能用。
+   *
+   * 知识库必须排除在这个合并判断之外。付费档八个创作功能额度一律相同
+   * （基础 50、专业 120），而知识库是另一个数（100 / 300）——
+   * 它一旦参与判断，unique.size 永远大于 1，合并逻辑当场失效，
+   * 付费卡片会从两行变成九行。所以它单独成行接在后面。
+   */
+  const creation = COUNTED_FEATURES.filter((f) => f.key !== 'knowledge').map((f) => ({
+    ...f,
+    limit: plan.quotas[f.key] as number,
+  }));
+  const usable = creation.filter((f) => f.limit > 0);
   const unique = new Set(usable.map((f) => f.limit));
 
-  if (usable.length === counted.length && unique.size === 1) {
-    return [`每个功能各 ${[...unique][0]} 次/月`, "知识库：不限次数"];
+  if (usable.length === creation.length && unique.size === 1) {
+    // 「每个创作功能」而不是「每个功能」：知识库不在这句话的覆盖范围里了
+    return [`每个创作功能各 ${[...unique][0]} 次/月`, knowledgeLine(planId)];
   }
 
   return [
-    "知识库：不限次数",
     ...usable.map((f) =>
       planId === 'free' && FREE_ONE_TIME_FEATURES.includes(f.key as string)
         ? `${f.name}：${f.limit} 次（一次性，不按月重置）`
         : `${f.name}：${f.limit} 次/月`
     ),
+    knowledgeLine(planId),
   ];
+}
+
+/**
+ * 知识库那一行。
+ *
+ * 单独抽出来是因为三个分支都要用，而这句话以前在三个分支里各写了一遍
+ * 「知识库：不限次数」——正是那种改了一处漏两处的写法。
+ */
+function knowledgeLine(planId: string): string {
+  const n = getPlan(planId).quotas.knowledge as number;
+  return n === -1 ? '知识库：不限次数' : `知识库查询：${n} 次/月`;
 }
 
 /**
@@ -302,7 +354,8 @@ export function judgeQuota(
   const plan = getPlan(planId);
   const featureQuota = plan.quotas[feature as keyof typeof plan.quotas];
 
-  // 该功能本身就是无限的（知识库），不受总量约束
+  // 该功能在这一档就是无限的，不受总量约束。
+  // 知识库以前走的是这条路，现在只有企业版还会命中。
   if (featureQuota === -1) {
     return { allowed: true, remaining: -1, limit: -1, used: 0 };
   }

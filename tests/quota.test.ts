@@ -61,10 +61,17 @@ describe('免费版：按功能分别限额', () => {
     expect(verdict.message).toContain(String(FREE_SCRIPT));
   });
 
-  it('知识库无限，不受任何用量影响', () => {
-    const q = usage({ script_used: 999, knowledge_used: 999 });
-    expect(judgeQuota('free', 'knowledge', q).allowed).toBe(true);
-    expect(judgeQuota('free', 'knowledge', q).remaining).toBe(-1);
+  it('知识库也有限额了，用满就拦', () => {
+    const limit = SUBSCRIPTION_PLANS.free.quotas.knowledge as number;
+    expect(judgeQuota('free', 'knowledge', usage({ knowledge_used: limit - 1 })).allowed).toBe(true);
+    expect(judgeQuota('free', 'knowledge', usage({ knowledge_used: limit })).allowed).toBe(false);
+  });
+
+  it('知识库和创作额度互不影响', () => {
+    // 分功能制的本意：查资料查完了不该连脚本都不能生成
+    const q = usage({ knowledge_used: SUBSCRIPTION_PLANS.free.quotas.knowledge as number });
+    expect(judgeQuota('free', 'knowledge', q).allowed).toBe(false);
+    expect(judgeQuota('free', 'script', q).allowed).toBe(true);
   });
 });
 
@@ -90,7 +97,7 @@ describe('基础会员：每个功能各 50 次', () => {
     }
   });
 
-  it('知识库无限，各功能用光后仍可查资料', () => {
+  it('创作额度用光后仍可查资料（知识库是独立的桶）', () => {
     const q = usage({ script_used: 50, topic_used: 50 });
     expect(judgeQuota('basic', 'script', q).allowed).toBe(false);
     expect(judgeQuota('basic', 'knowledge', q).allowed).toBe(true);
@@ -124,9 +131,41 @@ describe('专业会员每个功能 120 次、企业版无限', () => {
  * 一份套餐卖出了 8 倍的量。现在页面上的话由 quotaSummary 从 quotas 现算。
  */
 describe('额度文案由配置现算', () => {
-  it('付费档额度一致时合并成一句', () => {
-    expect(quotaSummary('basic').join(' ')).toContain('每个功能各 50 次/月');
-    expect(quotaSummary('pro').join(' ')).toContain('每个功能各 120 次/月');
+  it('付费档创作额度一致时合并成一句', () => {
+    expect(quotaSummary('basic').join(' ')).toContain('每个创作功能各 50 次/月');
+    expect(quotaSummary('pro').join(' ')).toContain('每个创作功能各 120 次/月');
+  });
+
+  it('合并那一句不能把知识库也说进去', () => {
+    /*
+     * 知识库的额度和创作功能不是一个数（基础 50 / 100，专业 120 / 300）。
+     * 如果这句还写成「每个功能各 50 次/月」，用户会按 50 去理解知识库，
+     * 而它实际是 100——说少了同样是说错。
+     */
+    for (const planId of ['basic', 'pro'] as const) {
+      const lines = quotaSummary(planId);
+      const merged = lines.find((l) => l.includes('每个'))!;
+      expect(merged, `${planId} 的合并句还在说"每个功能"`).not.toMatch(/每个功能各/);
+      // 知识库必须另起一行，且写的是它自己的数
+      const kb = SUBSCRIPTION_PLANS[planId].quotas.knowledge as number;
+      expect(lines.join(' '), `${planId} 没有单独写知识库的额度`).toContain(`知识库查询：${kb} 次/月`);
+    }
+  });
+
+  it('付费档卡片不会因为知识库变成九行', () => {
+    // 合并逻辑一旦被知识库带崩，这里会从 2 行变成 9 行
+    expect(quotaSummary('basic').length).toBe(2);
+    expect(quotaSummary('pro').length).toBe(2);
+  });
+
+  it('只有企业版还写"知识库不限次数"', () => {
+    expect(quotaSummary('enterprise').join(' ')).toContain('不限次数');
+    for (const planId of ['free', 'basic', 'pro'] as const) {
+      expect(
+        quotaSummary(planId).join(' '),
+        `${planId} 还在承诺知识库不限次数，而它已经有额度了`
+      ).not.toContain('知识库：不限次数');
+    }
   });
 
   it('免费档逐条列出，说得清哪些能用', () => {
@@ -185,8 +224,74 @@ describe('配置本身的一致性', () => {
     expect(quotaSummary('enterprise').join(' ')).toContain('不限次数');
   });
 
-  it('计入总量的功能里不包含知识库', () => {
-    expect(COUNTED_FEATURES.map((f) => f.key)).not.toContain('knowledge');
+  /*
+   * 这条原来断言的是相反的事：「计入总量的功能里不包含知识库」。
+   * 当时知识库是无限的，放进那张表等于查几次资料就吃掉创作次数。
+   *
+   * 现在它有了限额，就必须进表——COUNTED_FEATURES 是全站的分发点，
+   * 用量提醒、管理后台统计、价格对比表、额度清零都从它派生。
+   * 不在表里的后果不是报错，而是：限额照样拦人，但用户在任何地方
+   * 都看不到自己还剩几次，只会在某一次查询时突然撞上 402。
+   */
+  it('知识库在计费功能表里——否则限额拦得住人却没人看得见', () => {
+    expect(COUNTED_FEATURES.map((f) => f.key)).toContain('knowledge');
+  });
+
+  it('超额提示里的功能名和用量提醒里的是同一个', async () => {
+    /*
+     * FEATURE_NAMES 以前是手写的第二份名单，和 COUNTED_FEATURES 的 name
+     * 立刻就走偏了：一个叫「知识库」、一个叫「知识库查询」，
+     * 于是 402 弹窗和额度提醒对同一个功能给出两个名字。
+     */
+    const { FEATURE_NAMES } = await import('@/lib/config/plans');
+    for (const f of COUNTED_FEATURES) {
+      expect(FEATURE_NAMES[f.key], `${f.key} 在两处的名字不一致`).toBe(f.name);
+    }
+  });
+
+  it('知识库用满时的提示说得清是哪个功能、上限多少', () => {
+    const limit = SUBSCRIPTION_PLANS.free.quotas.knowledge as number;
+    const verdict = judgeQuota('free', 'knowledge', usage({ knowledge_used: limit }));
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.message).toContain('知识库');
+    expect(verdict.message).toContain(String(limit));
+    // 不能说成"会员功能"——免费版是有知识库的，只是用完了
+    expect(verdict.message).not.toContain('会员功能');
+  });
+
+  it('每个计费功能都能查到 user_quotas 的列名', async () => {
+    // usedColumnOf 查不到列名时，扣减会被静默跳过——用了不计次
+    const { usedColumnOf } = await import('@/lib/config/plans');
+    for (const f of COUNTED_FEATURES) {
+      expect(usedColumnOf(f.key), `${f.name} 查不到列名，扣减会被静默跳过`).toBe(f.column);
+    }
+  });
+
+  it('知识库按等级递增，企业版才是无限', () => {
+    const kb = (id: keyof typeof SUBSCRIPTION_PLANS) =>
+      SUBSCRIPTION_PLANS[id].quotas.knowledge as number;
+    expect(kb('free')).toBeGreaterThan(0);
+    expect(kb('basic')).toBeGreaterThan(kb('free'));
+    expect(kb('pro')).toBeGreaterThan(kb('basic'));
+    expect(kb('enterprise')).toBe(-1);
+  });
+
+  it('知识库额度不低于同档的创作额度', () => {
+    /*
+     * 定额时的原则：查资料是为创作服务的辅助动作，不能比创作先用完。
+     * 否则用户会遇到"还能写脚本，但查不了资料"这种说不通的状态。
+     */
+    for (const planId of ['free', 'basic', 'pro'] as const) {
+      const kb = SUBSCRIPTION_PLANS[planId].quotas.knowledge as number;
+      const maxCreation = Math.max(
+        ...COUNTED_FEATURES.filter((f) => f.key !== 'knowledge').map(
+          (f) => SUBSCRIPTION_PLANS[planId].quotas[f.key] as number
+        )
+      );
+      expect(kb, `${planId} 的知识库(${kb})比创作额度(${maxCreation})还紧`).toBeGreaterThanOrEqual(
+        maxCreation
+      );
+    }
   });
 
   it('每个计费功能都有对应的 quotas 条目', () => {

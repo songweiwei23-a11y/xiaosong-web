@@ -130,8 +130,9 @@ export async function POST(request: Request) {
         current_period_end: endDate.toISOString(),
         updated_at: now,
       };
+      // knowledge_used 以前要在这儿单独补一行（它当时不在 COUNTED_FEATURES 里）。
+      // 现在它进表了，这一行会跟着一起清零，不必也不该再写第二遍。
       for (const f of COUNTED_FEATURES) resetColumns[f.column] = 0;
-      resetColumns.knowledge_used = 0;
 
       const { error: quotaError } = await supabase
         .from('user_quotas')

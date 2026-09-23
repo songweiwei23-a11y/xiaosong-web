@@ -154,13 +154,12 @@ export default function PricingPage() {
                     })}
                   </tr>
                 ))}
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="py-4 px-4">知识库</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                  <td className="text-center py-4 px-4">无限</td>
-                </tr>
+                {/*
+                  知识库原来是手写的一行「无限 / 无限 / 无限 / 无限」。
+                  现在只有企业版还是无限，其余三档都有次数——这一行已经
+                  进了 COUNTED_FEATURES，由上面的循环渲染，删掉手写的这份，
+                  免得又变成"公示的和实际执行的对不上"。
+                */}
               </tbody>
             </table>
           </div>
