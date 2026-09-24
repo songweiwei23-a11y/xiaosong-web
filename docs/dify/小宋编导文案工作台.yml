@@ -10,12 +10,12 @@ dependencies:
 - current_identifier: null
   type: marketplace
   value:
-    marketplace_plugin_unique_identifier: langgenius/openai:1.0.5@51583313a5988d5dca405063831ffeeacdc1f2e95f32a8c10b4c281ceef39ebb
+    marketplace_plugin_unique_identifier: langgenius/openai_api_compatible:0.0.67@fb3b4fe807abf06719464cda5d4e845a1d21b865f120bdd4fe6814d6c8a2f6c5
     version: null
 - current_identifier: null
   type: marketplace
   value:
-    marketplace_plugin_unique_identifier: langgenius/openai_api_compatible:0.0.66@51801b51069b2578c3fcf6d38edc45c45efd8b7ef4fdb25f096bd84d4f95a53d
+    marketplace_plugin_unique_identifier: langgenius/siliconflow:0.0.61@f0952b183715405503a23ccef015e5d43948591fd10b60690f24c07873eed723
     version: null
 - current_identifier: null
   type: marketplace
@@ -165,18 +165,6 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: tool
-        targetType: llm
-      id: 1784145143827-source-llm_analyze-target
-      source: '1784145143827'
-      sourceHandle: source
-      target: llm_analyze
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
         sourceType: knowledge-retrieval
         targetType: llm
       id: 1784278550430-source-llm_analyze-target
@@ -219,18 +207,6 @@ workflow:
       source: '1784278567965'
       sourceHandle: source
       target: llm_analyze
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: start
-        targetType: tool
-      id: start-source-1784145143827-target
-      source: start
-      sourceHandle: source
-      target: '1784145143827'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -307,6 +283,54 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: llm
+      id: 1790086497370-source-llm_analyze-target
+      source: '1790086497370'
+      sourceHandle: source
+      target: llm_analyze
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: tool
+      id: start-source-1790086497370-target
+      source: start
+      sourceHandle: source
+      target: '1790086497370'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: tool
+      id: start-source-1790086576262-target
+      source: start
+      sourceHandle: source
+      target: '1790086576262'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: llm
+      id: 1790086576262-source-llm_analyze-target
+      source: '1790086576262'
+      sourceHandle: source
+      target: llm_analyze
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: 接收用户输入
@@ -330,7 +354,7 @@ workflow:
           required: false
           type: text-input
           variable: dealReasons
-      height: 137
+      height: 163
       id: start
       position:
         x: -203.96742632664518
@@ -378,13 +402,15 @@ workflow:
         - edition_type: basic
           id: sys-prompt
           role: system
-          text: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【记忆与上下文规则】\n\n你拥有完整对话历史。用户说\"再来一条\"\
-            \"继续\"\"再写一个\"时，自动应用之前记住的所有信息（行业/定位/风格/成交理由/反馈偏好），不要重复询问。\n\n每次回答前快速检查：用户之前有没有提过行业、定位、风格、特殊要求？如果有，这次必须沿用。\n\
-            \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n你是\"小宋编导写文案工作台\"的AI助手，专门为短视频编导提供脚本创作和选题策划服务。\n\
-            \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【知识库内容】以下是检索到的专业知识：\n\n你拥有5个专业知识库：\n1.\
-            \ 知识检索（定位与选题库）\n2. 知识检索 2（脚本与文案库）\n3. 知识检索 3（拍摄与执行库）\n4. 知识检索 4（综合知识手册）\n\
-            5. 知识检索 5（成交理由知识库 - 17个核心成交理由：颜值高、效果好、选择多、有特色、便利性、老板好、服务好、案例多、有面子、性价比、质量好、生意好、好评多、专业强、规模大、稀缺唯一、实在不坑）\n\
-            \n检索结果：\n【库1·定位与选题库】\n{{#1784278550430.result#}}\n\n【库2·脚本与文案库】\n{{#1784278557271.result#}}\n\n【库3·拍摄与执行库】\n{{#1784278562285.result#}}\n\n【库4·综合知识手册】\n{{#1784278567965.result#}}\n\n【库5·成交理由库】\n{{#1785235125826.result#}}\n\n【联网搜索补充】来自Tavily实时搜索\n{{#1784145143827.text#}}\n\
+          text: "{{#context#}}{{#1790086576262.text#}}{{#1790086497370.text#}}━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\
+            【记忆与上下文规则】\n\n你拥有完整对话历史。用户说\"再来一条\"\"继续\"\"再写一个\"时，自动应用之前记住的所有信息（行业/定位/风格/成交理由/反馈偏好），不要重复询问。\n\
+            \n每次回答前快速检查：用户之前有没有提过行业、定位、风格、特殊要求？如果有，这次必须沿用。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\
+            \n你是\"小宋编导写文案工作台\"的AI助手，专门为短视频编导提供脚本创作和选题策划服务。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\
+            【知识库内容】以下是检索到的专业知识：\n\n你拥有5个专业知识库：\n1. 知识检索（定位与选题库）\n2. 知识检索 2（脚本与文案库）\n\
+            3. 知识检索 3（拍摄与执行库）\n4. 知识检索 4（综合知识手册）\n5. 知识检索 5（成交理由知识库 - 17个核心成交理由：颜值高、效果好、选择多、有特色、便利性、老板好、服务好、案例多、有面子、性价比、质量好、生意好、好评多、专业强、规模大、稀缺唯一、实在不坑）\n\
+            \n检索结果：\n【库1·定位与选题库】\n{{#1784278550430.result#}}\n\n【库2·脚本与文案库】\n{{#1784278557271.result#}}\n\
+            \n【库3·拍摄与执行库】\n{{#1784278562285.result#}}\n\n【库4·综合知识手册】\n{{#1784278567965.result#}}\n\
+            \n【库5·成交理由库】\n{{#1785235125826.result#}}\n\n【联网搜索补充】来自Tavily实时搜索\n{{#1790086576262.text#}}{{#1790086497370.text#}}\n\
             \n⚠️ 重要：如果用户要求联网或需要最新信息/案例/热点，你必须：\n1. 优先使用上方Tavily搜索结果\n2. 明确说明哪些内容来自联网搜索\n\
             3. 结合知识库方法论+最新搜索案例，给出完整创作\n4. 如果搜索结果为空，明确告诉用户\"未搜索到相关信息\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\
             【知识来源优先级】\n\n1. 专业方法论（脚本公式/选题方法/拍摄技巧/成交理由应用）→ 必须使用知识库\n2. 最新案例和热点（爆款案例/热门话题）→\
@@ -479,10 +505,607 @@ workflow:
           default: null
           form: llm
           human_description:
+            en_US: One or more URLs to extract content from (comma-separated if multiple).
+            ja_JP: One or more URLs to extract content from (comma-separated if multiple).
+            pt_BR: One or more URLs to extract content from (comma-separated if multiple).
+            zh_Hans: 要从中提取内容的一个或多个 URL（如果有多个，请用逗号分隔）。
+          input_schema: null
+          label:
+            en_US: URLs
+            ja_JP: URLs
+            pt_BR: URLs
+            zh_Hans: URLs
+          llm_description: One or more URLs to extract content from (comma-separated
+            if multiple).
+          max: null
+          min: null
+          multiple: false
+          name: urls
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: A query string to rerank extracted content chunks based on relevance
+              to your intent.
+            ja_JP: A query string to rerank extracted content chunks based on relevance
+              to your intent.
+            pt_BR: A query string to rerank extracted content chunks based on relevance
+              to your intent.
+            zh_Hans: 用于根据您的意图对提取的内容块进行相关性重新排序的查询字符串。
+          input_schema: null
+          label:
+            en_US: Query
+            ja_JP: Query
+            pt_BR: Query
+            zh_Hans: 查询
+          llm_description: Optional query string to rerank extracted content chunks
+            based on relevance to user intent.
+          max: null
+          min: null
+          multiple: false
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: false
+          form: form
+          human_description:
+            en_US: Include a list of images extracted from the URLs in the response.
+            ja_JP: Include a list of images extracted from the URLs in the response.
+            pt_BR: Include a list of images extracted from the URLs in the response.
+            zh_Hans: 在响应中包含从 URL 提取的图像列表。
+          input_schema: null
+          label:
+            en_US: Include Images
+            ja_JP: Include Images
+            pt_BR: Include Images
+            zh_Hans: 包含图像
+          llm_description: Include images from the URLs in the response. Default is
+            false.
+          max: null
+          min: null
+          multiple: false
+          name: include_images
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: false
+          form: form
+          human_description:
+            en_US: Include favicon URL for each result.
+            ja_JP: Include favicon URL for each result.
+            pt_BR: Include favicon URL for each result.
+            zh_Hans: 包含每个结果的favicon URL。
+          input_schema: null
+          label:
+            en_US: Include Favicon
+            ja_JP: Include Favicon
+            pt_BR: Include Favicon
+            zh_Hans: 包含Favicon
+          llm_description: When set to true, includes the favicon URL for each result.
+          max: null
+          min: null
+          multiple: false
+          name: include_favicon
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: basic
+          form: llm
+          human_description:
+            en_US: The depth of the extraction process. 'advanced' retrieves more
+              data but may increase latency and costs more credits.
+            ja_JP: The depth of the extraction process. 'advanced' retrieves more
+              data but may increase latency and costs more credits.
+            pt_BR: The depth of the extraction process. 'advanced' retrieves more
+              data but may increase latency and costs more credits.
+            zh_Hans: 提取过程的深度。"advanced"检索更多数据，但可能增加延迟和消耗更多积分。
+          input_schema: null
+          label:
+            en_US: Extract Depth
+            ja_JP: Extract Depth
+            pt_BR: Extract Depth
+            zh_Hans: 提取深度
+          llm_description: Extraction depth - 'basic' (default, faster) or 'advanced'
+            (more data, higher cost).
+          max: null
+          min: null
+          multiple: false
+          name: extract_depth
+          options:
+          - icon: ''
+            label:
+              en_US: Basic
+              ja_JP: Basic
+              pt_BR: Basic
+              zh_Hans: 基本
+            value: basic
+          - icon: ''
+            label:
+              en_US: Advanced
+              ja_JP: Advanced
+              pt_BR: Advanced
+              zh_Hans: 高级
+            value: advanced
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: select
+        - auto_generate: null
+          default: markdown
+          form: form
+          human_description:
+            en_US: The format of extracted content.
+            ja_JP: The format of extracted content.
+            pt_BR: The format of extracted content.
+            zh_Hans: 提取内容的格式。
+          input_schema: null
+          label:
+            en_US: Content Format
+            ja_JP: Content Format
+            pt_BR: Content Format
+            zh_Hans: 内容格式
+          llm_description: Format of extracted content - 'markdown' (default) or 'text'
+            (plain text).
+          max: null
+          min: null
+          multiple: false
+          name: format
+          options:
+          - icon: ''
+            label:
+              en_US: Markdown
+              ja_JP: Markdown
+              pt_BR: Markdown
+              zh_Hans: Markdown
+            value: markdown
+          - icon: ''
+            label:
+              en_US: Text
+              ja_JP: Text
+              pt_BR: Text
+              zh_Hans: 文本
+            value: text
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: select
+        - auto_generate: null
+          default: 3
+          form: form
+          human_description:
+            en_US: Maximum number of content chunks (up to 500 characters each) returned
+              per source.
+            ja_JP: Maximum number of content chunks (up to 500 characters each) returned
+              per source.
+            pt_BR: Maximum number of content chunks (up to 500 characters each) returned
+              per source.
+            zh_Hans: 每个来源返回的内容块的最大数量（每块最多500个字符）。
+          input_schema: null
+          label:
+            en_US: Chunks Per Source
+            ja_JP: Chunks Per Source
+            pt_BR: Chunks Per Source
+            zh_Hans: 每来源块数
+          llm_description: Maximum number of relevant content chunks (1-5) returned
+            per source. Default is 3.
+          max: 5
+          min: 1
+          multiple: false
+          name: chunks_per_source
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: form
+          human_description:
+            en_US: Request timeout in seconds. Default is 10s for basic extraction
+              and 30s for advanced.
+            ja_JP: Request timeout in seconds. Default is 10s for basic extraction
+              and 30s for advanced.
+            pt_BR: Request timeout in seconds. Default is 10s for basic extraction
+              and 30s for advanced.
+            zh_Hans: 请求超时时间（秒）。基本提取默认为10秒，高级提取默认为30秒。
+          input_schema: null
+          label:
+            en_US: Timeout
+            ja_JP: Timeout
+            pt_BR: Timeout
+            zh_Hans: 超时时间
+          llm_description: Request timeout in seconds (1.0-60.0). Default is 10s for
+            basic, 30s for advanced extraction.
+          max: 60
+          min: 1
+          multiple: false
+          name: timeout
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: false
+          form: form
+          human_description:
+            en_US: Include API usage information (credit usage) in the response.
+            ja_JP: Include API usage information (credit usage) in the response.
+            pt_BR: Include API usage information (credit usage) in the response.
+            zh_Hans: 在响应中包含API使用信息（积分使用情况）。
+          input_schema: null
+          label:
+            en_US: Include Usage
+            ja_JP: Include Usage
+            pt_BR: Include Usage
+            zh_Hans: 包含使用信息
+          llm_description: When set to true, includes API credit usage information
+            in the response.
+          max: null
+          min: null
+          multiple: false
+          name: include_usage
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: null
+          form: form
+          human_description:
+            en_US: Optional project ID for tracking and analytics purposes. Will be
+              sent as X-Project-ID header.
+            ja_JP: Optional project ID for tracking and analytics purposes. Will be
+              sent as X-Project-ID header.
+            pt_BR: Optional project ID for tracking and analytics purposes. Will be
+              sent as X-Project-ID header.
+            zh_Hans: 用于跟踪和分析目的的可选项目 ID。将作为 X-Project-ID 标头发送。
+          input_schema: null
+          label:
+            en_US: Project ID
+            ja_JP: Project ID
+            pt_BR: Project ID
+            zh_Hans: 项目 ID
+          llm_description: Optional project ID for usage tracking and analytics.
+          max: null
+          min: null
+          multiple: false
+          name: project_id
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        params:
+          chunks_per_source: ''
+          extract_depth: ''
+          format: ''
+          include_favicon: ''
+          include_images: ''
+          include_usage: ''
+          project_id: ''
+          query: ''
+          timeout: ''
+          urls: ''
+        plugin_id: langgenius/tavily
+        plugin_unique_identifier: langgenius/tavily:0.1.12@e4549f7c84774e734d2540e589c569346e15fb428366d6ffcbd4b7e4c1d8d5b3
+        provider_icon: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=6d4dde74-9daa-4c71-b20a-c3cacfdcb18d&filename=f101df9eef27f789f598e3dc725c287588a9cae750423d101b31ca6e72d6d80e.svg
+        provider_icon_dark: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=6d4dde74-9daa-4c71-b20a-c3cacfdcb18d&filename=7be5cd10ccfb793707eb22ed82c234cf81d84be910950f127c474df7a427b5d4.svg
+        provider_id: langgenius/tavily/tavily
+        provider_name: langgenius/tavily/tavily
+        provider_show_name: Tavily
+        provider_type: builtin
+        selected: false
+        title: Tavily Extract
+        tool_configurations:
+          chunks_per_source:
+            type: constant
+            value: 200
+          format:
+            type: constant
+            value: markdown
+          include_favicon:
+            type: constant
+            value: false
+          include_images:
+            type: constant
+            value: false
+          include_usage:
+            type: constant
+            value: false
+          project_id:
+            type: mixed
+            value: ''
+          timeout:
+            type: constant
+            value: null
+        tool_description: 使用 Tavily Extract 从一个或多个指定的 URL 提取网页内容。
+        tool_label: Tavily Extract
+        tool_name: tavily_extract
+        tool_node_version: '2'
+        tool_parameters:
+          extract_depth:
+            type: constant
+            value: advanced
+          query:
+            type: mixed
+            value: '{{#start.search_query#}}'
+          urls:
+            type: mixed
+            value: '{{#start.search_query#}}'
+        type: tool
+      height: 244
+      id: '1790086497370'
+      position:
+        x: 348.13737853406
+        y: -165.79022390951815
+      positionAbsolute:
+        x: 348.13737853406
+        y: -165.79022390951815
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - NLVYGIoNDZ0Cm0K1Ejut1MNxLi6RFtokQua3drMRUfGNtVCOGi5N7BMrSE9vpohG
+        - 34vLwvnZfUfjFREiFFuOZSxmc6Mr+bmGbnTyrryB1Z+jEijfzGW4TPCqCqDKHSdH
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          score_threshold: null
+          top_k: 4
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - start
+        - search_query
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索
+        type: knowledge-retrieval
+      height: 90
+      id: '1784278550430'
+      position:
+        x: 348.13737853406
+        y: 184.81092140106796
+      positionAbsolute:
+        x: 348.13737853406
+        y: 184.81092140106796
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - jwGtlRBIBEt708NwSjLaHJDoxlTmhIujB3HBnwX/ZjIc7eL3Q7b0OpmwEZPxHh0q
+        - MrbFYwIIKLFSGLJ5jPj0GwCGkebcooAJZpJ87c7n+A1Ol3foY7TRqim/B8xuC5Wn
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          score_threshold: null
+          top_k: 4
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - start
+        - search_query
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索 2
+        type: knowledge-retrieval
+      height: 90
+      id: '1784278557271'
+      position:
+        x: 348.13737853406
+        y: 294.16442914162593
+      positionAbsolute:
+        x: 348.13737853406
+        y: 294.16442914162593
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - GD9EcAkem1R+EjbxVaRnLSAbtGcPwzhLje3Dk9iLMwW5jtl+G1p5Y6Q1ynyfyWPV
+        - 5oJODhIloyqv7Q8VVm3Oubcr2hgRsgF0raXHiidCIeRIu/QJezlOGHIzlbMmn7ec
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          score_threshold: null
+          top_k: 4
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - start
+        - search_query
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索 3
+        type: knowledge-retrieval
+      height: 90
+      id: '1784278562285'
+      position:
+        x: 348.13737853406
+        y: 406.5619798466294
+      positionAbsolute:
+        x: 348.13737853406
+        y: 406.5619798466294
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - I0UGoJOnx7e1+y4/EG5b3gvPL8DB63fzdgR5R2bU0AO6fd9//uqwVihWLtuEoSqL
+        - W87nNy+pip3MOEXgLHSWwfbeDn4IO6X/uOzkseR5Ugy3xSwUZSbovyv8UEMshON+
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          score_threshold: null
+          top_k: 4
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - start
+        - search_query
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索 4
+        type: knowledge-retrieval
+      height: 90
+      id: '1784278567965'
+      position:
+        x: 348.13737853406
+        y: 514.4689381592107
+      positionAbsolute:
+        x: 348.13737853406
+        y: 514.4689381592107
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - xogXeslyf5bTMpT5rsYHwHsUnz8ZK63C/j47vH2z9WOMLfNEFwoSP7EAFBSzwHwT
+        - KLIZjPCoWZMzliUJBcjP8dvoitWYONF0K7/O1ZeCBlp8XfbtT8XIEoOmstup2QcW
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          score_threshold: null
+          top_k: 4
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: BAAI/bge-m3
+              embedding_provider_name: langgenius/siliconflow/siliconflow
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - start
+        - search_query
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索 5
+        type: knowledge-retrieval
+      height: 90
+      id: '1785235125826'
+      position:
+        x: 348.13737853406
+        y: 644.5397853044557
+      positionAbsolute:
+        x: 348.13737853406
+        y: 644.5397853044557
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        is_team_authorization: true
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
             en_US: The search query you want to execute with Tavily.
             ja_JP: The search query you want to execute with Tavily.
             pt_BR: The search query you want to execute with Tavily.
             zh_Hans: 您想用 Tavily 执行的搜索查询。
+          input_schema: null
           label:
             en_US: Query
             ja_JP: Query
@@ -491,6 +1114,7 @@ workflow:
           llm_description: The search query.
           max: null
           min: null
+          multiple: false
           name: query
           options: []
           placeholder: null
@@ -507,6 +1131,7 @@ workflow:
             ja_JP: The depth of the search.
             pt_BR: The depth of the search.
             zh_Hans: 搜索的深度。
+          input_schema: null
           label:
             en_US: Search Depth
             ja_JP: Search Depth
@@ -517,6 +1142,7 @@ workflow:
             fastest results with minimal processing.
           max: null
           min: null
+          multiple: false
           name: search_depth
           options:
           - icon: ''
@@ -561,6 +1187,7 @@ workflow:
             ja_JP: The category of the search.
             pt_BR: The category of the search.
             zh_Hans: 搜索的类别。
+          input_schema: null
           label:
             en_US: Topic
             ja_JP: Topic
@@ -570,6 +1197,7 @@ workflow:
             'news', and 'finance'.
           max: null
           min: null
+          multiple: false
           name: topic
           options:
           - icon: ''
@@ -607,6 +1235,7 @@ workflow:
             ja_JP: The time range back from the current date to filter results.
             pt_BR: The time range back from the current date to filter results.
             zh_Hans: 从当前日期起向后筛选结果的时间范围。
+          input_schema: null
           label:
             en_US: Time Range
             ja_JP: Time Range
@@ -617,6 +1246,7 @@ workflow:
             When time_range is set, do not set start_date or end_date.
           max: null
           min: null
+          multiple: false
           name: time_range
           options:
           - icon: ''
@@ -671,6 +1301,7 @@ workflow:
             pt_BR: The start date for filtering results. Required to be written in
               the format YYYY-MM-DD.
             zh_Hans: 筛选结果的开始日期。必须以YYYY-MM-DD格式编写。
+          input_schema: null
           label:
             en_US: Start Date
             ja_JP: Start Date
@@ -682,6 +1313,7 @@ workflow:
             or end_date.
           max: null
           min: null
+          multiple: false
           name: start_date
           options: []
           placeholder: null
@@ -701,6 +1333,7 @@ workflow:
             pt_BR: The end date for filtering results. Required to be written in the
               format YYYY-MM-DD.
             zh_Hans: 筛选结果的结束日期。必须以YYYY-MM-DD格式编写。
+          input_schema: null
           label:
             en_US: End Date
             ja_JP: End Date
@@ -711,6 +1344,7 @@ workflow:
             up to this date. When time_range is set, do not set start_date or end_date.
           max: null
           min: null
+          multiple: false
           name: end_date
           options: []
           placeholder: null
@@ -730,6 +1364,7 @@ workflow:
             pt_BR: Automatically configure search parameters based on query content
               and intent.
             zh_Hans: 根据查询内容和意图自动配置搜索参数。
+          input_schema: null
           label:
             en_US: Auto Parameters
             ja_JP: Auto Parameters
@@ -739,6 +1374,7 @@ workflow:
             parameters based on your query.
           max: null
           min: null
+          multiple: false
           name: auto_parameters
           options: []
           placeholder: null
@@ -755,6 +1391,7 @@ workflow:
             ja_JP: Include a list of query-related images in the response.
             pt_BR: Include a list of query-related images in the response.
             zh_Hans: 在响应中包含与查询相关的图片列表。
+          input_schema: null
           label:
             en_US: Include Images
             ja_JP: Include Images
@@ -764,6 +1401,7 @@ workflow:
             in the response.
           max: null
           min: null
+          multiple: false
           name: include_images
           options: []
           placeholder: null
@@ -780,6 +1418,7 @@ workflow:
             ja_JP: When include_images is True, adds descriptive text for each image.
             pt_BR: When include_images is True, adds descriptive text for each image.
             zh_Hans: 当 include_images 为 True 时，为每个图像添加描述文本。
+          input_schema: null
           label:
             en_US: Include Image Descriptions
             ja_JP: Include Image Descriptions
@@ -789,6 +1428,7 @@ workflow:
             descriptive text for each image.
           max: null
           min: null
+          multiple: false
           name: include_image_descriptions
           options: []
           placeholder: null
@@ -805,6 +1445,7 @@ workflow:
             ja_JP: Include favicon URL for each result.
             pt_BR: Include favicon URL for each result.
             zh_Hans: 包含每个结果的favicon URL。
+          input_schema: null
           label:
             en_US: Include Favicon
             ja_JP: Include Favicon
@@ -813,6 +1454,7 @@ workflow:
           llm_description: When set to true, includes the favicon URL for each result.
           max: null
           min: null
+          multiple: false
           name: include_favicon
           options: []
           placeholder: null
@@ -835,6 +1477,7 @@ workflow:
               'basic' or 'true' for a quick answer or 'advanced' for a more detailed,
               comprehensive answer.
             zh_Hans: 在回复中包含对原始问题的简短回答。对于简要回答，请使用“基本”或“是”；对于更详细、更全面的回答，请使用“高级”。
+          input_schema: null
           label:
             en_US: Include Answer
             ja_JP: Include Answer
@@ -845,6 +1488,7 @@ workflow:
             comprehensive answer.
           max: null
           min: null
+          multiple: false
           name: include_answer
           options:
           - icon: ''
@@ -892,6 +1536,7 @@ workflow:
             pt_BR: Include the cleaned and parsed HTML content of each search result.
               Use 'markdown' for markdown format or 'text' for plain text.
             zh_Hans: 包含每个搜索结果的已清理和解析的HTML内容。使用 Markdown 格式请选择 Markdown 选项，使用纯文本请选择文本选项。
+          input_schema: null
           label:
             en_US: Include Raw Content
             ja_JP: Include Raw Content
@@ -902,6 +1547,7 @@ workflow:
             plain text format.
           max: null
           min: null
+          multiple: false
           name: include_raw_content
           options:
           - icon: ''
@@ -949,6 +1595,7 @@ workflow:
             pt_BR: Include API usage information (token counts, credits used) in the
               response.
             zh_Hans: 在响应中包含API使用信息（token计数、使用的积分）。
+          input_schema: null
           label:
             en_US: Include Usage
             ja_JP: Include Usage
@@ -958,6 +1605,7 @@ workflow:
             token counts and credits used in the response.
           max: null
           min: null
+          multiple: false
           name: include_usage
           options: []
           placeholder: null
@@ -974,6 +1622,7 @@ workflow:
             ja_JP: The maximum number of search results to return.
             pt_BR: The maximum number of search results to return.
             zh_Hans: 要返回的最大搜索结果数。
+          input_schema: null
           label:
             en_US: Max Results
             ja_JP: Max Results
@@ -983,6 +1632,7 @@ workflow:
             1-20.
           max: 20
           min: 1
+          multiple: false
           name: max_results
           options: []
           placeholder: null
@@ -1002,6 +1652,7 @@ workflow:
             pt_BR: Maximum number of content chunks returned per source (advanced
               and fast search only).
             zh_Hans: 每个来源返回的内容片段的最大数量（仅限高级和快速搜索）。
+          input_schema: null
           label:
             en_US: Chunks Per Source
             ja_JP: Chunks Per Source
@@ -1011,6 +1662,7 @@ workflow:
             per source. Valid when search_depth is 'advanced' or 'fast'.
           max: 3
           min: 1
+          multiple: false
           name: chunks_per_source
           options: []
           placeholder: null
@@ -1027,6 +1679,7 @@ workflow:
             ja_JP: Boost search results for a specific country (topic must be general).
             pt_BR: Boost search results for a specific country (topic must be general).
             zh_Hans: 从特定国家/地区提升搜索结果（主题必须是general）。
+          input_schema: null
           label:
             en_US: Country
             ja_JP: Country
@@ -1036,6 +1689,7 @@ workflow:
             Use one of the exact option values.
           max: null
           min: null
+          multiple: false
           name: country
           options:
           - icon: ''
@@ -2217,6 +2871,7 @@ workflow:
             pt_BR: A comma-separated list of domains to specifically include in the
               search results.
             zh_Hans: 要在搜索结果中特别包含的域的逗号分隔列表。
+          input_schema: null
           label:
             en_US: Include Domains
             ja_JP: Include Domains
@@ -2226,6 +2881,7 @@ workflow:
             in the search results.
           max: null
           min: null
+          multiple: false
           name: include_domains
           options: []
           placeholder: null
@@ -2245,6 +2901,7 @@ workflow:
             pt_BR: A comma-separated list of domains to specifically exclude from
               the search results.
             zh_Hans: 要从搜索结果中特别排除的域的逗号分隔列表。
+          input_schema: null
           label:
             en_US: Exclude Domains
             ja_JP: Exclude Domains
@@ -2254,6 +2911,7 @@ workflow:
             from the search results.
           max: null
           min: null
+          multiple: false
           name: exclude_domains
           options: []
           placeholder: null
@@ -2273,6 +2931,7 @@ workflow:
             pt_BR: Optional project ID for tracking and analytics purposes. Will be
               sent as X-Project-ID header.
             zh_Hans: 用于跟踪和分析目的的可选项目 ID。将作为 X-Project-ID 标头发送。
+          input_schema: null
           label:
             en_US: Project ID
             ja_JP: Project ID
@@ -2281,6 +2940,7 @@ workflow:
           llm_description: Optional project ID for usage tracking and analytics.
           max: null
           min: null
+          multiple: false
           name: project_id
           options: []
           placeholder: null
@@ -2310,8 +2970,9 @@ workflow:
           time_range: ''
           topic: ''
         plugin_id: langgenius/tavily
-        plugin_unique_identifier: langgenius/tavily:0.1.11@c0d8a474058bacd5fe1bc8178fbae8c446e947ceee2ab03f182d873c949be0f7
-        provider_icon: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=b9a3679d-019f-4069-9161-cb741bcbbd9c&filename=87e9610216108c07bc947745c1df5715aa276dbaa90e5d60866102c549fb5452.png
+        plugin_unique_identifier: langgenius/tavily:0.1.12@e4549f7c84774e734d2540e589c569346e15fb428366d6ffcbd4b7e4c1d8d5b3
+        provider_icon: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=6d4dde74-9daa-4c71-b20a-c3cacfdcb18d&filename=f101df9eef27f789f598e3dc725c287588a9cae750423d101b31ca6e72d6d80e.svg
+        provider_icon_dark: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=6d4dde74-9daa-4c71-b20a-c3cacfdcb18d&filename=7be5cd10ccfb793707eb22ed82c234cf81d84be910950f127c474df7a427b5d4.svg
         provider_id: langgenius/tavily/tavily
         provider_name: langgenius/tavily/tavily
         provider_show_name: Tavily
@@ -2324,10 +2985,10 @@ workflow:
             value: false
           chunks_per_source:
             type: constant
-            value: 50
+            value: 100
           include_answer:
             type: constant
-            value: 'true'
+            value: advanced
           include_favicon:
             type: constant
             value: false
@@ -2339,10 +3000,10 @@ workflow:
             value: false
           include_raw_content:
             type: constant
-            value: 'true'
+            value: markdown
           include_usage:
             type: constant
-            value: true
+            value: false
           max_results:
             type: constant
             value: 100
@@ -2365,10 +3026,10 @@ workflow:
             value: null
           include_domains:
             type: mixed
-            value: ''
+            value: /
           query:
             type: mixed
-            value: '{{#sys.query#}}'
+            value: '{{#start.search_query#}}'
           search_depth:
             type: constant
             value: advanced
@@ -2377,204 +3038,19 @@ workflow:
             value: null
           time_range:
             type: constant
-            value: week
+            value: not_specified
           topic:
             type: constant
-            value: general
+            value: news
         type: tool
       height: 322
-      id: '1784145143827'
+      id: '1790086576262'
       position:
         x: 348.13737853406
-        y: -165.79022390951815
+        y: -525.554275826071
       positionAbsolute:
         x: 348.13737853406
-        y: -165.79022390951815
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-      zIndex: 0
-    - data:
-        dataset_ids:
-        - NLVYGIoNDZ0Cm0K1Ejut1MNxLi6RFtokQua3drMRUfGNtVCOGi5N7BMrSE9vpohG
-        multiple_retrieval_config:
-          reranking_enable: false
-          reranking_mode: weighted_score
-          top_k: 4
-          weights:
-            keyword_setting:
-              keyword_weight: 0.3
-            vector_setting:
-              embedding_model_name: BAAI/bge-m3
-              embedding_provider_name: langgenius/siliconflow/siliconflow
-              vector_weight: 0.7
-            weight_type: customized
-        query_attachment_selector: []
-        query_variable_selector:
-        - start
-        - search_query
-        retrieval_mode: multiple
-        selected: false
-        title: 知识检索
-        type: knowledge-retrieval
-      height: 90
-      id: '1784278550430'
-      position:
-        x: 348.13737853406
-        y: 184.81092140106796
-      positionAbsolute:
-        x: 348.13737853406
-        y: 184.81092140106796
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-      zIndex: 0
-    - data:
-        dataset_ids:
-        - jwGtlRBIBEt708NwSjLaHJDoxlTmhIujB3HBnwX/ZjIc7eL3Q7b0OpmwEZPxHh0q
-        multiple_retrieval_config:
-          reranking_enable: false
-          reranking_mode: weighted_score
-          top_k: 4
-          weights:
-            keyword_setting:
-              keyword_weight: 0.3
-            vector_setting:
-              embedding_model_name: BAAI/bge-m3
-              embedding_provider_name: langgenius/siliconflow/siliconflow
-              vector_weight: 0.7
-            weight_type: customized
-        query_attachment_selector: []
-        query_variable_selector:
-        - start
-        - search_query
-        retrieval_mode: multiple
-        selected: false
-        title: 知识检索 2
-        type: knowledge-retrieval
-      height: 90
-      id: '1784278557271'
-      position:
-        x: 348.13737853406
-        y: 294.16442914162593
-      positionAbsolute:
-        x: 348.13737853406
-        y: 294.16442914162593
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-      zIndex: 0
-    - data:
-        dataset_ids:
-        - GD9EcAkem1R+EjbxVaRnLSAbtGcPwzhLje3Dk9iLMwW5jtl+G1p5Y6Q1ynyfyWPV
-        multiple_retrieval_config:
-          reranking_enable: false
-          reranking_mode: weighted_score
-          top_k: 4
-          weights:
-            keyword_setting:
-              keyword_weight: 0.3
-            vector_setting:
-              embedding_model_name: BAAI/bge-m3
-              embedding_provider_name: langgenius/siliconflow/siliconflow
-              vector_weight: 0.7
-            weight_type: customized
-        query_attachment_selector: []
-        query_variable_selector:
-        - start
-        - search_query
-        retrieval_mode: multiple
-        selected: false
-        title: 知识检索 3
-        type: knowledge-retrieval
-      height: 90
-      id: '1784278562285'
-      position:
-        x: 348.13737853406
-        y: 406.5619798466294
-      positionAbsolute:
-        x: 348.13737853406
-        y: 406.5619798466294
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-      zIndex: 0
-    - data:
-        dataset_ids:
-        - I0UGoJOnx7e1+y4/EG5b3gvPL8DB63fzdgR5R2bU0AO6fd9//uqwVihWLtuEoSqL
-        multiple_retrieval_config:
-          reranking_enable: false
-          reranking_mode: weighted_score
-          top_k: 4
-          weights:
-            keyword_setting:
-              keyword_weight: 0.3
-            vector_setting:
-              embedding_model_name: BAAI/bge-m3
-              embedding_provider_name: langgenius/siliconflow/siliconflow
-              vector_weight: 0.7
-            weight_type: customized
-        query_attachment_selector: []
-        query_variable_selector:
-        - start
-        - search_query
-        retrieval_mode: multiple
-        selected: false
-        title: 知识检索 4
-        type: knowledge-retrieval
-      height: 90
-      id: '1784278567965'
-      position:
-        x: 348.13737853406
-        y: 514.4689381592107
-      positionAbsolute:
-        x: 348.13737853406
-        y: 514.4689381592107
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-      zIndex: 0
-    - data:
-        dataset_ids:
-        - xogXeslyf5bTMpT5rsYHwHsUnz8ZK63C/j47vH2z9WOMLfNEFwoSP7EAFBSzwHwT
-        multiple_retrieval_config:
-          reranking_enable: false
-          reranking_mode: weighted_score
-          top_k: 4
-          weights:
-            keyword_setting:
-              keyword_weight: 0.3
-            vector_setting:
-              embedding_model_name: BAAI/bge-m3
-              embedding_provider_name: langgenius/siliconflow/siliconflow
-              vector_weight: 0.7
-            weight_type: customized
-        query_attachment_selector: []
-        query_variable_selector:
-        - start
-        - search_query
-        retrieval_mode: multiple
-        selected: false
-        title: 知识检索 5
-        type: knowledge-retrieval
-      height: 90
-      id: '1785235125826'
-      position:
-        x: 348.13737853406
-        y: 644.5397853044557
-      positionAbsolute:
-        x: 348.13737853406
-        y: 644.5397853044557
+        y: -525.554275826071
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2582,7 +3058,7 @@ workflow:
       width: 242
       zIndex: 0
     viewport:
-      x: 34.155491627896936
-      y: 172.5581343909392
-      zoom: 0.8705505632961253
+      x: 225.96153676626523
+      y: 685.1423736344337
+      zoom: 0.9604000896787968
   rag_pipeline_variables: []
