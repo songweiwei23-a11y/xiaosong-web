@@ -7,6 +7,7 @@ import { readDifyStream } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId } from '@/lib/active-profile'
 import { useCreatorContext } from '@/hooks/useCreatorContext'
+import { profileSearchHints } from '@/lib/profile-summary'
 import { buildContextBlock } from '@/lib/creator-context'
 import { ContextBadge } from '@/components/workspace/ContextBadge'
 import { Markdown } from '@/components/markdown'
@@ -279,7 +280,8 @@ export default function GrowthPage() {
         headers: { 'Content-Type': 'application/json' },
         // 写成显式 taskType: taskType，不用简写——全仓库扫描按
         // `taskType:` 匹配，简写会被判成"没传"，误报久了就没人当回事了
-        body: JSON.stringify({ taskType: taskType, profileId: getActiveProfileId(), query }),
+        // 赛道、地域进检索词：联网搜索才能搜到这个号相关的行情，不是通用文章
+        body: JSON.stringify({ taskType: taskType, profileId: getActiveProfileId(), query, ...profileSearchHints(context.profile) }),
       })
       if (!res.ok) await throwApiError(res)
       const full = await readDifyStream(res, { onChunk: (_p, all) => setResult(all) })
@@ -307,6 +309,7 @@ export default function GrowthPage() {
         body: JSON.stringify({
           taskType: '起号方案',
           profileId: getActiveProfileId(),
+          ...profileSearchHints(context.profile),
           query: buildTacticPickPrompt({
             contextBlock: buildContextBlock(context, 'growth'),
             contentPlan,

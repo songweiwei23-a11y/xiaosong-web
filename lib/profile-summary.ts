@@ -68,6 +68,26 @@ export const PROFILE_SUMMARY_EXCLUDED: Record<string, string> = {
   content_restrictions: '作为硬性禁忌单独传给提示词（restrictions），不混在档案里',
 };
 
+/**
+ * 放进请求体里给检索用的短字段：赛道、地域。
+ *
+ * 检索词原来只有任务主题词（"账号定位 IP定位 赛道选择 人群画像"），
+ * 联网搜索拿它去搜，只会搜回一堆通用的"怎么做定位"文章，
+ * 和这个号的赛道、所在城市毫无关系。buildSearchQuery 会自动把 60 字以内的
+ * 字段拼进检索词，所以这里只要把它们放进请求体。
+ */
+export function profileSearchHints(profile: object | null | undefined): Record<string, string> {
+  if (!profile) return {};
+  const p = profile as ProfileLike;
+  const clip = (v: unknown) => asText(v).slice(0, 40);
+  const out: Record<string, string> = {};
+  const track = clip(p.account_track);
+  const region = clip(p.target_region);
+  if (track) out.track = track;
+  if (region) out.region = region;
+  return out;
+}
+
 export function buildProfileSummary(p: ProfileLike): string {
   const lines = [`- 档案名称：${asText(p.profile_name, '未命名')}`];
   for (const [key, label] of PROFILE_SUMMARY_FIELDS) {

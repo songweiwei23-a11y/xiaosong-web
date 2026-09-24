@@ -44,19 +44,30 @@ if (extract) {
   note(`删除节点 Tavily Extract（${extract.id}）及其 ${before - g.edges.length} 条连线`);
 }
 
-// ③ Tavily Search：限定域名原来填的是 "/"，类型是"新闻"——方法论问题不该去搜新闻
+/*
+ * ③ Tavily Search：线上实测它每次都报错，联网从来没通过——
+ *    "All domains in include_domains are invalid: ['/']"。
+ *    修好域名之后还有第二个坑：chunks_per_source 填的是 100，Tavily 只允许 1-5，照样报错；
+ *    max_results 100 + 抓网页全文，一旦搜到东西会把几十个网页全文塞给模型，直接撑爆上下文。
+ */
 const search = g.nodes.find((n) => n.data.title === 'Tavily Search');
 if (search) {
-  const p = search.data.tool_parameters;
-  const set = (k, v, why) => {
+  const setIn = (bucket, label, k, v, why) => {
+    const p = search.data[bucket];
     if (JSON.stringify(p[k]?.value) !== JSON.stringify(v)) {
-      note(`Tavily Search.${k}：${JSON.stringify(p[k]?.value)} → ${JSON.stringify(v)}（${why}）`);
+      note(`Tavily Search.${label}：${JSON.stringify(p[k]?.value)} → ${JSON.stringify(v)}（${why}）`);
       p[k] = { ...(p[k] || { type: 'constant' }), value: v };
     }
   };
-  set('include_domains', null, '原来是"/"，不限定域名');
-  set('topic', 'general', '方法论和案例不该只搜新闻');
-  set('search_depth', 'basic', '每次生成都会跑，basic 更快');
+  const param = (k, v, why) => setIn('tool_parameters', k, k, v, why);
+  const conf = (k, v, why) => setIn('tool_configurations', k, k, v, why);
+  param('include_domains', null, '原来是"/"，Tavily 判为无效域名，每次都报错');
+  param('topic', 'general', '只搜新闻搜不到案例、玩法、平台规则');
+  param('search_depth', 'advanced', '深度搜索，结果质量优先');
+  conf('chunks_per_source', 3, '原来 100，Tavily 只允许 1-5，会报错');
+  conf('max_results', 6, '原来 100；6 个来源足够，多了只会稀释');
+  conf('include_raw_content', 'false', '整页全文太长，改用下面的相关段落 + 总结');
+  conf('include_answer', 'advanced', '让 Tavily 先把搜到的内容总结成一段');
 }
 
 // ④ 主模型节点

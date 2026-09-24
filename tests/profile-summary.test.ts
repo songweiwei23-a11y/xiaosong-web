@@ -63,3 +63,22 @@ describe('档案摘要', () => {
     expect(readCode('components/positioning/SectionEditor.tsx')).toMatch(/profileSummary,\s*userDirection,\s*\}\)/);
   });
 });
+
+describe('赛道、地域进检索词（联网搜索才搜得到这个号相关的东西）', () => {
+  it('从档案取出短字段，buildSearchQuery 会把它们拼进检索词', async () => {
+    const { profileSearchHints } = await import('@/lib/profile-summary');
+    const { buildSearchQuery } = await import('@/lib/search-query');
+    const hints = profileSearchHints({ account_track: ['短视频代运营', '短视频博主'], target_region: ['本地同城', '南乐县'] });
+    expect(hints).toEqual({ track: '短视频代运营、短视频博主', region: '本地同城、南乐县' });
+    const q = buildSearchQuery('账号定位', { taskType: '账号定位', query: '长提示词', ...hints }, '长提示词');
+    expect(q).toContain('短视频代运营');
+    expect(q).toContain('南乐县');
+    expect(profileSearchHints(null)).toEqual({});
+  });
+
+  it('账号定位、深挖、起号三处请求都带上', () => {
+    expect(readCode('app/dashboard/positioning/page.tsx')).toMatch(/\.\.\.profileSearchHints\(activeProfile\)/);
+    expect(readCode('components/positioning/DeepDivePage.tsx')).toMatch(/\.\.\.profileSearchHints\(profile\)/);
+    expect(readCode('app/dashboard/growth/page.tsx').match(/\.\.\.profileSearchHints\(context\.profile\)/g)?.length).toBe(2);
+  });
+});

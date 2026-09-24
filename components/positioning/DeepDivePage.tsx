@@ -9,7 +9,7 @@ import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { buildPositioningPrompt, type PositioningFocus } from '@/lib/positioning-standards'
 import { Markdown } from '@/components/markdown'
-import { asText, buildProfileSummary } from '@/lib/profile-summary'
+import { asText, buildProfileSummary, profileSearchHints } from '@/lib/profile-summary'
 import ContinuousDialog from '@/components/ContinuousDialog'
 
 /**
@@ -155,6 +155,8 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
           profileId: profile.id,
           query,
           profileInfo: summary,
+          // 赛道、地域进检索词：联网搜索才能搜到这个号相关的行情，不是通用文章
+          ...profileSearchHints(profile),
           additionalNotes: notes || '无补充说明',
         }),
       })

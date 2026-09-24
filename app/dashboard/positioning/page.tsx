@@ -16,7 +16,7 @@ import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { buildPositioningPrompt } from '@/lib/positioning-standards';
-import { buildProfileSummary as summarizeProfile } from '@/lib/profile-summary';
+import { buildProfileSummary as summarizeProfile, profileSearchHints } from '@/lib/profile-summary';
 import {
   SECTIONS,
   QUICK_SECTION_KEYS,
@@ -252,6 +252,8 @@ export default function PositioningPage() {
           query,
           // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           profileInfo: profileSummary,
+          // 赛道、地域进检索词：联网搜索才能搜到这个号相关的行情，不是通用文章
+          ...profileSearchHints(activeProfile),
           additionalNotes: additionalNotes || "无补充说明",
         }),
       });
