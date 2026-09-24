@@ -18,6 +18,7 @@ export default function LoginPage() {
   /** 注册必填。校验在服务端做，这里只负责收集 */
   const [inviteCode, setInviteCode] = useState("");
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgot, setShowForgot] = useState(false);
   const [loading, setLoading] = useState(false);
   /** 验证通过、正在把人交接给工作台。这期间全屏过渡层不撤 */
   const [handingOff, setHandingOff] = useState(false);
@@ -200,9 +201,34 @@ export default function LoginPage() {
 
             {/* 密码输入 */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                密码
-              </label>
+              <div className="mb-2 flex items-baseline justify-between">
+                <label className="block text-sm font-medium text-foreground">
+                  密码
+                </label>
+                {/*
+                  忘记密码不走邮件：系统没有配置发信服务，用户邮箱也从未验证过，
+                  做一个"发重置邮件"的按钮就是一个点了没反应的按钮。
+                  现在的流程是找客服，管理员在后台一键重置、发临时密码，
+                  用户登录后在「我的账户」里改掉。
+                  在这之前全站没有任何找回途径——注册又是邀请制，
+                  忘了密码的人永远进不来，连重新注册都要再要一个邀请码。
+                */}
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot((v) => !v)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    忘记密码？
+                  </button>
+                )}
+              </div>
+              {isLogin && showForgot && (
+                <div className="mb-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                  加客服微信 <span className="font-semibold text-foreground">13240286600</span>（手机同号），
+                  报上注册邮箱，我们会重置并发你一个临时密码。登录后请到「我的账户」里改成你自己的。
+                </div>
+              )}
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input

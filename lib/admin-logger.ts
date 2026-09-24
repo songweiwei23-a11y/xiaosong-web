@@ -21,6 +21,7 @@ export enum AdminActions {
   RESET_USER_QUOTA = 'reset_user_quota',
   BAN_USER = 'ban_user',
   UNBAN_USER = 'unban_user',
+  RESET_USER_PASSWORD = 'reset_user_password',
   DELETE_CONTENT = 'delete_content',
   UPDATE_SYSTEM_SETTINGS = 'update_system_settings',
   UPDATE_SETTINGS = 'update_settings',

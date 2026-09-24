@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { LogOut, User as UserIcon } from "lucide-react";
 
@@ -41,10 +42,15 @@ export function UserProfile() {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 text-sm">
+      {/* 点自己的名字进账户设置，是大多数人找"改密码/看会员"的第一反应 */}
+      <Link
+        href="/dashboard/account"
+        title="我的账户：会员状态、订单、修改密码"
+        className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors hover:bg-muted"
+      >
         <UserIcon className="h-4 w-4 text-muted-foreground" />
         <span className="text-foreground">{user.email}</span>
-      </div>
+      </Link>
       <button
         onClick={handleLogout}
         className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"

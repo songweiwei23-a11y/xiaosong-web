@@ -20,10 +20,19 @@ export async function GET() {
   const guard = await requireUser();
   if (!guard.ok) return guard.response!;
 
+  /*
+   * 显式按 user_id 过滤。
+   *
+   * 行级权限（own orders read）本来就只放行自己的订单，但这个项目里
+   * 出现过表的 RLS 没开的情况——一旦哪天被关掉，不带过滤的查询会把
+   * 所有人的订单（含金额、付款截图路径）返回给任何一个登录用户。
+   * 两道都守着，不赌其中一道一直在。
+   */
   const supabase = await getServerSupabase();
   const { data, error } = await supabase
     .from('payment_orders')
     .select('*')
+    .eq('user_id', guard.userId!)
     .order('created_at', { ascending: false })
     .limit(20);
 

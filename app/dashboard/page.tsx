@@ -585,9 +585,15 @@ export default function DashboardPage() {
                   <Crown className="h-3.5 w-3.5" />
                   {quota?.plan ?? "免费版"}
                 </span>
-                <Link href="/dashboard/membership" className="text-[12px] text-primary hover:opacity-80">
-                  升级
-                </Link>
+                <span className="flex items-center gap-3">
+                  {/* 到期时间、订单审核结果都在账户页，从这里顺手就能进 */}
+                  <Link href="/dashboard/account" className="text-[12px] text-muted-foreground hover:text-primary">
+                    账户
+                  </Link>
+                  <Link href="/dashboard/membership" className="text-[12px] text-primary hover:opacity-80">
+                    升级
+                  </Link>
+                </span>
               </div>
             </section>
           </aside>

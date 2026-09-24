@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
 import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures, planSellingPoints } from "@/lib/config/plans";
@@ -68,13 +69,42 @@ const membershipPlans = [
   },
 ];
 
+interface Status {
+  planId: string;
+  planName: string;
+  endDate: string | null;
+  permanent: boolean;
+  daysLeft: number | null;
+  expired: { planName: string; endDate: string } | null;
+}
+
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
+
 export default function MembershipPage() {
   const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const currentPlan = "free"; // 从用户数据获取
+
+  /*
+   * 当前套餐原来是写死的：`const currentPlan = "free"; // 从用户数据获取`。
+   * 付费会员打开这一页看到的也是"当前套餐：免费版"，而且还能再点一次
+   * 自己正在用的那档去付款。现在从 /api/account 取真实状态。
+   *
+   * 取到之前是 null——这段时间不标任何"当前套餐"，免得先闪一下"免费版"。
+   */
+  const [status, setStatus] = useState<Status | null>(null);
+  useEffect(() => {
+    fetch("/api/account")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setStatus(d))
+      .catch(() => {});
+  }, []);
+  const currentPlan = status?.planId ?? null;
 
   const handleUpgrade = (planId: string) => {
-    if (planId === "free" || planId === currentPlan) return;
+    // 免费版不用买；当前的付费套餐可以点——那是续费。
+    // 续费从原到期日往后顺延，不会吞掉剩余天数（见 activationPlan）
+    if (planId === "free") return;
     router.push(`/payment?plan=${planId}&cycle=${billingCycle}`);
   };
 
@@ -88,6 +118,33 @@ export default function MembershipPage() {
         <p className="text-lg text-muted-foreground">
           选择适合你的套餐，开启高效创作之旅
         </p>
+
+        {/* 当前状态。到期时间在这之前全站没有任何地方显示 */}
+        {status && (
+          <div className="mx-auto mt-6 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl border border-border bg-muted/40 px-5 py-3 text-sm">
+            <span className="text-muted-foreground">当前：</span>
+            <span className="font-semibold text-foreground">{status.planName}</span>
+            {status.permanent && <span className="text-muted-foreground">长期有效</span>}
+            {status.endDate && (
+              <span className="text-muted-foreground">
+                {fmtDate(status.endDate)} 到期
+                {status.daysLeft !== null && (
+                  <span className={status.daysLeft <= 7 ? "ml-1 font-medium text-amber-500" : "ml-1"}>
+                    （还剩 {status.daysLeft} 天）
+                  </span>
+                )}
+              </span>
+            )}
+            {status.expired && (
+              <span className="text-amber-500">
+                {status.expired.planName}已于 {fmtDate(status.expired.endDate)} 到期
+              </span>
+            )}
+            <Link href="/dashboard/account" className="text-primary hover:underline">
+              订单与账户 →
+            </Link>
+          </div>
+        )}
 
         {/* 计费周期切换 */}
         <div className="flex items-center justify-center gap-4 mt-8">
@@ -203,20 +260,35 @@ export default function MembershipPage() {
                 </ul>
               )}
 
-              {/* 按钮 */}
-              <button
-                onClick={() => handleUpgrade(plan.id)}
-                disabled={currentPlan === plan.id}
-                className={`w-full py-3 rounded-lg font-medium transition-colors ${
-                  currentPlan === plan.id
-                    ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : plan.popular
-                    ? "brand-gradient text-white hover:from-purple-700 hover:to-pink-700"
-                    : "bg-primary text-white hover:opacity-90"
-                }`}
-              >
-                {currentPlan === plan.id ? "当前套餐" : plan.price === 0 ? "免费使用" : "立即升级"}
-              </button>
+              {/*
+                按钮。只有"正在用免费版"时免费版那张卡不可点；
+                付费套餐是当前套餐时要能点——那是续费。
+                原来一律"当前套餐就禁用"，一旦把当前套餐改成真实值，
+                付费会员自己那张卡就变灰，想续费都点不了。
+              */}
+              {(() => {
+                const isCurrent = currentPlan === plan.id;
+                const isFree = plan.price === 0;
+                const disabled = isFree;
+                const label = isFree
+                  ? isCurrent ? "当前套餐" : "免费使用"
+                  : isCurrent ? "续费" : "立即升级";
+                return (
+                  <button
+                    onClick={() => handleUpgrade(plan.id)}
+                    disabled={disabled}
+                    className={`w-full py-3 rounded-lg font-medium transition-colors ${
+                      disabled
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : plan.popular
+                        ? "brand-gradient text-white hover:from-purple-700 hover:to-pink-700"
+                        : "bg-primary text-white hover:opacity-90"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })()}
             </div>
           );
         })}

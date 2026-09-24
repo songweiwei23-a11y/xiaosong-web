@@ -182,12 +182,151 @@ describe('订单状态机', () => {
     expect(block).toContain('开通会员失败');
   });
 
-  it('开通后重置额度，覆盖所有计费功能', () => {
+  it('开通后重置额度，覆盖所有计费功能', async () => {
     // 不重置的话，用户升级后带着上个周期用满的数字进来，
     // 交了钱却立刻显示额度已用完
     expect(review).toMatch(/for \(const f of COUNTED_FEATURES\) resetColumns\[f\.column\] = 0/);
-    expect(review).toContain('knowledge_used');
     expect(review).toMatch(/current_period_end/);
+    /*
+     * 这里原来是 expect(review).toContain('knowledge_used')。
+     * 上一版能通过，靠的是审核代码里**一行注释**恰好提到了 knowledge_used——
+     * 注释删掉它就红，而逻辑一点没变。改成断言真正要保证的事：
+     * 那个循环覆盖的计费功能里包含知识库。
+     */
+    const { COUNTED_FEATURES } = await import('@/lib/config/plans');
+    expect(COUNTED_FEATURES.map((f) => f.column)).toContain('knowledge_used');
+  });
+});
+
+/**
+ * 审核通过后，到期日和额度周期怎么算。
+ *
+ * 原来的两个坑（都会让付了钱的人吃亏，而且不报错）：
+ *   1. 到期日从"现在"起算——提前续费会吞掉已付费的剩余天数
+ *   2. 额度周期被设成和订阅一样长——**年付用户一整年只有一个月额度**
+ * 修之前线上还没有人买过年付，所以没人中招；这组用例确保以后也不会。
+ */
+describe('开通与续费', () => {
+  const DAY = 86_400_000;
+  const NOW = Date.parse('2026-09-24T12:00:00Z');
+  const iso = (ms: number) => new Date(ms).toISOString();
+
+  it('同款续费、还没到期：从原到期日往后顺延，剩余天数不丢', async () => {
+    const { activationPlan } = await import('@/lib/config/plans');
+    const end = NOW + 20 * DAY; // 还剩 20 天
+    const p = activationPlan({ plan: 'pro', status: 'active', end_date: iso(end) }, 'pro', 'monthly', NOW);
+    expect(p.isRenewal).toBe(true);
+    // 新到期日 = 原到期日 + 1 个月，而不是 今天 + 1 个月
+    const newEnd = Date.parse(p.endDate!);
+    expect(newEnd - end, '新到期日没有从原到期日起算').toBeGreaterThanOrEqual(28 * DAY);
+    expect(newEnd, '剩余的 20 天被吞掉了').toBeGreaterThan(NOW + 45 * DAY);
+  });
+
+  it('同款续费不清零额度——他还在当前这一轮里', async () => {
+    const { activationPlan } = await import('@/lib/config/plans');
+    const p = activationPlan({ plan: 'pro', status: 'active', end_date: iso(NOW + 5 * DAY) }, 'pro', 'monthly', NOW);
+    expect(p.resetQuota).toBe(false);
+  });
+
+  it('升级：从现在起算，额度清零（价格页写明"升级后立即生效"）', async () => {
+    const { activationPlan } = await import('@/lib/config/plans');
+    const p = activationPlan({ plan: 'basic', status: 'active', end_date: iso(NOW + 20 * DAY) }, 'pro', 'monthly', NOW);
+    expect(p.isRenewal).toBe(false);
+    expect(p.resetQuota).toBe(true);
+    expect(Date.parse(p.endDate!)).toBeLessThan(NOW + 32 * DAY);
+  });
+
+  it('已过期再买：从现在起算，不从过去的到期日顺延', async () => {
+    const { activationPlan } = await import('@/lib/config/plans');
+    const p = activationPlan({ plan: 'pro', status: 'active', end_date: iso(NOW - 10 * DAY) }, 'pro', 'monthly', NOW);
+    expect(p.isRenewal).toBe(false);
+    expect(Date.parse(p.endDate!)).toBeGreaterThan(NOW + 27 * DAY);
+  });
+
+  it('长期有效的会员又付了一次：保持长期有效，不能反而变成会过期', async () => {
+    const { activationPlan } = await import('@/lib/config/plans');
+    const p = activationPlan({ plan: 'enterprise', status: 'active', end_date: null }, 'enterprise', 'monthly', NOW);
+    expect(p.endDate).toBeNull();
+  });
+
+  it('年付：订阅一年，但额度周期仍然是 30 天', async () => {
+    const { activationPlan, QUOTA_PERIOD_DAYS } = await import('@/lib/config/plans');
+    const p = activationPlan(null, 'basic', 'yearly', NOW);
+    expect(Date.parse(p.endDate!)).toBeGreaterThan(NOW + 360 * DAY);
+    // 这就是那个坑：额度周期若跟着订阅走，年付用户一年只有一个月额度
+    const quotaDays = (Date.parse(p.quotaPeriodEnd) - NOW) / DAY;
+    expect(quotaDays, `年付的额度周期是 ${quotaDays} 天`).toBe(QUOTA_PERIOD_DAYS);
+  });
+
+  it('审核代码用的是 activationPlan，没有再自己算"现在 + 一个月"', () => {
+    // 去掉注释再查：注释里会复述旧写法用来解释，不能让它干扰判断
+    const code = readCode('app/api/admin/orders/review/route.ts');
+    expect(code).toContain('activationPlan(');
+    expect(code).toContain('plan.quotaPeriodEnd');
+    // 旧写法的特征
+    expect(code, '又从"现在"起算到期日了').not.toMatch(/const endDate = new Date\(\);/);
+    expect(code, '额度周期又被设成订阅到期日了').not.toMatch(/current_period_end:\s*endDate/);
+  });
+});
+
+/**
+ * 给用户看的会员状态。会员页原来把当前套餐写死成 "free"，
+ * 全站也没有任何地方显示到期时间。
+ */
+describe('会员状态', () => {
+  const DAY = 86_400_000;
+  const NOW = Date.parse('2026-09-24T12:00:00Z');
+  const iso = (ms: number) => new Date(ms).toISOString();
+
+  it('付费有效：给出到期日和剩余天数', async () => {
+    const { membershipStatus } = await import('@/lib/config/plans');
+    const s = membershipStatus({ plan: 'pro', status: 'active', end_date: iso(NOW + 10 * DAY) }, NOW);
+    expect(s.planId).toBe('pro');
+    expect(s.daysLeft).toBe(10);
+    expect(s.expired).toBeNull();
+  });
+
+  it('付费已过期：按免费版算，同时告诉用户是哪个套餐哪天过期的', async () => {
+    const { membershipStatus } = await import('@/lib/config/plans');
+    const s = membershipStatus({ plan: 'pro', status: 'active', end_date: iso(NOW - DAY) }, NOW);
+    expect(s.planId).toBe('free');
+    expect(s.expired?.planName).toBe('专业会员');
+  });
+
+  it('封禁不算"过期"——不能提示人家续费就好', async () => {
+    const { membershipStatus } = await import('@/lib/config/plans');
+    const s = membershipStatus({ plan: 'pro', status: 'inactive', end_date: iso(NOW - DAY) }, NOW);
+    expect(s.expired).toBeNull();
+  });
+
+  it('没有到期日的付费套餐是长期有效', async () => {
+    const { membershipStatus } = await import('@/lib/config/plans');
+    const s = membershipStatus({ plan: 'enterprise', status: 'active', end_date: null }, NOW);
+    expect(s.permanent).toBe(true);
+    expect(s.daysLeft).toBeNull();
+  });
+
+  it('和服务端放行用的是同一套判定', async () => {
+    const { membershipStatus, effectivePlanId } = await import('@/lib/config/plans');
+    const cases = [
+      { plan: 'pro', status: 'active', end_date: iso(Date.now() + DAY) },
+      { plan: 'pro', status: 'active', end_date: iso(Date.now() - DAY) },
+      { plan: 'basic', status: 'inactive', end_date: null },
+      null,
+    ];
+    for (const c of cases) expect(membershipStatus(c).planId).toBe(effectivePlanId(c));
+  });
+
+  it('会员页不再把当前套餐写死', () => {
+    const page = readCode('app/dashboard/membership/page.tsx');
+    expect(page, '当前套餐又写死了').not.toMatch(/currentPlan\s*=\s*["']free["']/);
+    expect(page).toContain('/api/account');
+  });
+
+  it('当前的付费套餐可以续费——不能因为"是当前套餐"就禁用', () => {
+    const page = readCode('app/dashboard/membership/page.tsx');
+    expect(page).toContain('续费');
+    expect(page, '当前套餐又被一律禁用了').not.toMatch(/disabled=\{currentPlan === plan\.id\}/);
   });
 });
 

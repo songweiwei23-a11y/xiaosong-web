@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
-import { SUBSCRIPTION_PLANS, COUNTED_FEATURES } from '@/lib/config/plans';
+import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, activationPlan } from '@/lib/config/plans';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,13 +67,6 @@ export async function POST(request: Request) {
 
     // 通过则开通会员
     if (approved) {
-      const endDate = new Date();
-      if (order.billing_cycle === 'yearly') {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      } else {
-        endDate.setMonth(endDate.getMonth() + 1);
-      }
-
       /*
        * 套餐 id 直接取订单上的 plan_id。
        *
@@ -92,24 +85,41 @@ export async function POST(request: Request) {
       }
 
       /*
+       * 到期日怎么算、额度要不要清零，交给 activationPlan()。
+       * 原来这里是"从现在起加一个月"，而且把额度周期设成和订阅一样长——
+       * 提前续费会吞掉剩余天数，年付用户一整年只有一个月额度。详见那个函数的注释。
+       */
+      const { data: currentSub } = await supabase
+        .from('subscriptions')
+        .select('plan, status, end_date')
+        .eq('user_id', order.user_id)
+        .maybeSingle();
+      const plan = activationPlan(
+        currentSub,
+        planId,
+        order.billing_cycle === 'yearly' ? 'yearly' : 'monthly'
+      );
+
+      /*
        * 列名必须是 start_date / end_date。
        * 原先写的是 current_period_start / current_period_end——subscriptions
        * 表上没有这两列，整条 upsert 会失败，而失败只是 console.error 了一下：
        * 订单显示「已通过」，会员其实没开通。
+       *
+       * 续费时不改 start_date：它记的是这一段会员从哪天开始的，顺延不算重新开始。
        */
+      const subRow: Record<string, unknown> = {
+        user_id: order.user_id,
+        plan: planId,
+        status: 'active',
+        end_date: plan.endDate,
+        updated_at: now,
+      };
+      if (!plan.isRenewal) subRow.start_date = now;
+
       const { error: subError } = await supabase
         .from('subscriptions')
-        .upsert(
-          {
-            user_id: order.user_id,
-            plan: planId,
-            status: 'active',
-            start_date: now,
-            end_date: endDate.toISOString(),
-            updated_at: now,
-          },
-          { onConflict: 'user_id' }
-        );
+        .upsert(subRow, { onConflict: 'user_id' });
 
       if (subError) {
         // 开通失败必须让管理员知道。默默记日志的话，他会以为审核成功了
@@ -121,25 +131,31 @@ export async function POST(request: Request) {
       }
 
       /*
-       * 新周期开始，额度重置。
+       * 新开 / 升级 / 过期后重新买：额度清零，开新一轮。
        * 不重置的话，用户升级后带着上个周期用满的数字进来，
        * 交了钱却立刻显示额度已用完。
+       *
+       * 同款续费不动额度：他还在当前这一轮里，额度按原来的月度节奏走，
+       * 到点由 api-guard 自动重置。
+       *
+       * 额度周期结束时间用 plan.quotaPeriodEnd（永远 30 天），
+       * **不能**用订阅到期日——那是年付用户一年只有一个月额度的根源。
        */
-      const resetColumns: Record<string, unknown> = {
-        current_period_start: now,
-        current_period_end: endDate.toISOString(),
-        updated_at: now,
-      };
-      // knowledge_used 以前要在这儿单独补一行（它当时不在 COUNTED_FEATURES 里）。
-      // 现在它进表了，这一行会跟着一起清零，不必也不该再写第二遍。
-      for (const f of COUNTED_FEATURES) resetColumns[f.column] = 0;
+      if (plan.resetQuota) {
+        const resetColumns: Record<string, unknown> = {
+          current_period_start: now,
+          current_period_end: plan.quotaPeriodEnd,
+          updated_at: now,
+        };
+        for (const f of COUNTED_FEATURES) resetColumns[f.column] = 0;
 
-      const { error: quotaError } = await supabase
-        .from('user_quotas')
-        .upsert({ user_id: order.user_id, ...resetColumns }, { onConflict: 'user_id' });
+        const { error: quotaError } = await supabase
+          .from('user_quotas')
+          .upsert({ user_id: order.user_id, ...resetColumns }, { onConflict: 'user_id' });
 
-      if (quotaError) {
-        console.error('[admin/orders/review] 额度重置失败:', quotaError);
+        if (quotaError) {
+          console.error('[admin/orders/review] 额度重置失败:', quotaError);
+        }
       }
     }
 

@@ -665,7 +665,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 核心功能。下面列了 8 个最常用的；全站共 15 个板块，数字统一从 FACTS 取 */}
+      {/* 核心功能。下面列了 8 个最常用的；板块总数统一从 FACTS 取 */}
       <section id="features" className="py-20 px-4 glass-panel">
         <div className="container mx-auto">
           <div className="text-center mb-16">

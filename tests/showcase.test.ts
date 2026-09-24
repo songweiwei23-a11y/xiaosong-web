@@ -149,15 +149,28 @@ describe('全站数字口径统一', () => {
     expect(FACTS.wordsWan).toBeGreaterThan(wan - 1);
   });
 
-  it('板块数和 app/dashboard 下真实的页面数一致', async () => {
+  it('板块数和 app/dashboard 下真实的创作板块数一致', async () => {
+    /*
+     * 对外说的是「N 个**创作**板块」。原来直接数 app/dashboard 下的页面目录，
+     * 把会员中心也算了进去——它不是创作板块，15 其实是 14。
+     * 加「我的账户」页时暴露出来：再照原样数就成了 16。
+     *
+     * 非创作页在这里显式列出。以后再加账户类页面，往这里补，
+     * 而不是让数字悄悄涨上去。
+     */
+    const NON_CREATIVE = new Set(['membership', 'account']);
     const fs = await import('node:fs');
     const path = await import('node:path');
     const root = path.join(process.cwd(), 'app', 'dashboard');
-    const n = fs
+    const dirs = fs
       .readdirSync(root, { withFileTypes: true })
       .filter((e) => e.isDirectory() && !e.name.startsWith('['))
-      .filter((e) => fs.existsSync(path.join(root, e.name, 'page.tsx'))).length;
-    expect(FACTS.boards, `FACTS.boards 写的是 ${FACTS.boards}，实际有 ${n} 个板块`).toBe(n);
+      .filter((e) => fs.existsSync(path.join(root, e.name, 'page.tsx')))
+      .map((e) => e.name);
+    const n = dirs.filter((d) => !NON_CREATIVE.has(d)).length;
+    expect(FACTS.boards, `FACTS.boards 写的是 ${FACTS.boards}，实际有 ${n} 个创作板块`).toBe(n);
+    // 防空转：排除清单里的目录必须真的存在，否则排除是空的
+    for (const d of NON_CREATIVE) expect(dirs, `${d} 目录不存在，排除清单过期了`).toContain(d);
   });
 
   it('主流程的环节和首页 MAIN_FLOW 一致', () => {

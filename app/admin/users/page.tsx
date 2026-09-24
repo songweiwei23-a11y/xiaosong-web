@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Eye } from "lucide-react";
+import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Eye, KeyRound, Copy } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
 type User = {
@@ -45,6 +45,8 @@ export default function UsersPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editPlan, setEditPlan] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
+  // 刚重置出来的临时密码。只在这个弹窗里出现一次，关掉就没了
+  const [tempPw, setTempPw] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -137,6 +139,40 @@ export default function UsersPage() {
       }
     } catch (error) {
       console.error('重置配额失败:', error);
+      notify('重置失败');
+    }
+  };
+
+  /*
+   * 替用户重置密码。
+   *
+   * 系统没有发信服务，用户忘了密码只能找客服。在这之前后台也没有
+   * 重置入口——注册又是邀请制，忘了密码的人就永远进不来了。
+   *
+   * 临时密码只出现在这一次的弹窗里，关掉就再也看不到（它不进操作日志）。
+   * 发出去之前，先在微信里核对对方的注册邮箱和付款记录。
+   */
+  const handleResetPassword = async (user: User) => {
+    const confirmed = await confirmDialog(
+      `给 ${user.email} 重置密码？他当前的密码会立刻失效。发临时密码前，请先在微信里核对对方身份。`,
+      { tone: 'danger', confirmText: '确定重置', title: '重置密码' }
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.user_id, action: 'reset_password' }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.tempPassword) {
+        notify(data.error || '重置失败');
+        return;
+      }
+      setTempPw({ email: user.email, password: data.tempPassword });
+    } catch (error) {
+      console.error('重置密码失败:', error);
       notify('重置失败');
     }
   };
@@ -337,6 +373,13 @@ export default function UsersPage() {
                           >
                             <RotateCcw className="h-5 w-5" />
                           </button>
+                          <button
+                            onClick={() => handleResetPassword(user)}
+                            className="text-amber-500 hover:text-amber-400"
+                            title="重置密码（用户忘记密码时用）"
+                          >
+                            <KeyRound className="h-5 w-5" />
+                          </button>
                           {user.subscription_status === 'active' ? (
                             <button
                               onClick={() => handleBanUser(user.user_id)}
@@ -417,6 +460,51 @@ export default function UsersPage() {
         </div>
 
         {/* Edit Modal */}
+        {tempPw && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="glass-panel w-full max-w-md rounded-2xl border border-border p-6 shadow-2xl">
+              <h3 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
+                <KeyRound className="h-5 w-5 text-amber-500" />
+                密码已重置
+              </h3>
+              <p className="mb-4 text-sm text-muted-foreground">{tempPw.email}</p>
+
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3">
+                <code className="flex-1 select-all font-mono text-lg tracking-wider text-foreground">
+                  {tempPw.password}
+                </code>
+                <button
+                  onClick={() => {
+                    // 复制的是整段话术，直接粘到微信里就能发
+                    navigator.clipboard
+                      .writeText(
+                        `你的临时密码是：${tempPw.password}\n登录后请点右上角的邮箱进入「我的账户」，改成你自己的密码。`
+                      )
+                      .then(() => notify('已复制，可以直接粘贴到微信'))
+                      .catch(() => notify('复制失败，请手动选中复制'));
+                  }}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-primary hover:bg-primary/10"
+                >
+                  <Copy className="h-4 w-4" />
+                  复制话术
+                </button>
+              </div>
+
+              <p className="mb-4 text-xs leading-relaxed text-amber-500">
+                这个密码只显示这一次，关掉就看不到了（它不会写进操作日志）。
+                发给用户，并提醒他登录后到「我的账户」里改掉。
+              </p>
+
+              <button
+                onClick={() => setTempPw(null)}
+                className="w-full rounded-lg bg-primary py-2.5 font-medium text-white hover:opacity-90"
+              >
+                已发给用户，关闭
+              </button>
+            </div>
+          </div>
+        )}
+
         {showEditModal && selectedUser && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="glass-panel rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">

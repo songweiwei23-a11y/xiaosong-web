@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
+import { generateTempPassword } from '@/lib/password';
 import { COUNTED_FEATURES } from '@/lib/config/plans';
 
 const supabase = createClient(
@@ -293,6 +294,38 @@ export async function POST(request: Request) {
         await logAdminAction(admin.userId, AdminActions.UNBAN_USER, { targetUserId: userId });
 
         return NextResponse.json({ success: true, message: '用户已解封，可以重新登录' });
+      }
+
+      case 'reset_password': {
+        /*
+         * 替用户重置密码。
+         *
+         * 系统没有发信服务，用户忘了密码只能找客服；而注册又是邀请制，
+         * 在这之前，忘了密码的人**永远进不来**，连重新注册都要再要一个邀请码。
+         *
+         * 临时密码只在这一次响应里返回给管理员，由他转发给用户。
+         * 它**不写进操作日志**——日志是给以后查的，把可用的凭证留在里面，
+         * 等于任何能看日志的人都能登进这个账号。日志里只记"重置过"。
+         *
+         * 身份核实靠人：发临时密码前，先在微信里对一下对方的注册邮箱和
+         * 付款记录，别谁来要都给。
+         */
+        const tempPassword = generateTempPassword();
+        const { error: resetError } = await supabase.auth.admin.updateUserById(userId, {
+          password: tempPassword,
+        });
+        if (resetError) {
+          console.error('[用户管理] 重置密码失败:', resetError.message);
+          return NextResponse.json({ error: '重置密码失败：' + resetError.message }, { status: 500 });
+        }
+
+        await logAdminAction(admin.userId, AdminActions.RESET_USER_PASSWORD, { targetUserId: userId });
+
+        return NextResponse.json({
+          success: true,
+          tempPassword,
+          message: '已重置。把临时密码发给用户，并提醒他登录后到「我的账户」里改掉',
+        });
       }
 
       default:

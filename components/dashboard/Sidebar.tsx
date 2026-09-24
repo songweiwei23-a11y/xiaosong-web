@@ -8,7 +8,7 @@ import { listWorks, type Work } from "@/lib/works";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Sparkles, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket,
+  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown,
 } from "lucide-react";
 
 /*
@@ -62,6 +62,18 @@ const navGroups: {
     items: [
       { name: "高阶自由", href: "/dashboard/free-chat", icon: MessagesSquare },
       { name: "知识库", href: "/dashboard/knowledge", icon: BookOpen },
+    ],
+  },
+  {
+    /*
+     * 会员中心原来不在导航里，只能从工作台首页一个小字链接或额度弹窗进。
+     * 付费用户想看自己还剩几天、订单审没审过，根本找不到地方。
+     */
+    id: "account",
+    label: "账户",
+    items: [
+      { name: "我的账户", href: "/dashboard/account", icon: UserCog },
+      { name: "会员中心", href: "/dashboard/membership", icon: Crown },
     ],
   },
 ];

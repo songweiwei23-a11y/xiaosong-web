@@ -327,15 +327,135 @@ export function unsupportedFeatures(planId: string): string[] {
 export function effectivePlanId(
   sub: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined
 ): string {
-  if (!sub || sub.status !== 'active') return 'free';
+  // 判定本体在 effectivePlanIdAt，这里只是取当前时间。只留一份判定逻辑，
+  // 会员页显示的状态和服务端放行的依据才不会走偏
+  return effectivePlanIdAt(sub, Date.now());
+}
 
+export interface MembershipStatus {
+  /** 此刻实际享有的套餐（已按到期判定过） */
+  planId: string;
+  planName: string;
+  /** 当前付费套餐的到期时间；免费版或长期有效时为 null */
+  endDate: string | null;
+  /** 付费套餐且没有到期日——手动开的企业版就是这种 */
+  permanent: boolean;
+  /** 还剩几天到期；只在付费且有到期日时有值 */
+  daysLeft: number | null;
+  /** 曾经开过付费套餐、现在已经过期了 */
+  expired: { planName: string; endDate: string } | null;
+}
+
+/**
+ * 给用户看的会员状态。
+ *
+ * 【为什么要有】到期判定在服务端早就生效了（effectivePlanId），但用户
+ * 自己在任何地方都看不到哪天到期——只会某天突然发现额度变少了，
+ * 不知道是过期了还是系统出了问题。会员页更糟：当前套餐是写死的
+ * `const currentPlan = "free"`，付费会员打开看到的也是"免费版"。
+ *
+ * 和 effectivePlanId 用同一套判定，不另写一份。
+ */
+export function membershipStatus(
+  sub: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined,
+  now: number = Date.now()
+): MembershipStatus {
+  const planId = effectivePlanIdAt(sub, now);
+  const plan = getPlan(planId);
+  const endMs = sub?.end_date ? new Date(sub.end_date).getTime() : NaN;
+  const hasEnd = !Number.isNaN(endMs);
+  const paid = planId !== 'free';
+
+  // 过期：订阅本身是 active 的付费套餐，只是到期日过了。
+  // 封禁（inactive）不算"过期"——那是另一件事，不能提示人家"续费就好"
+  const subscribed = sub?.plan && sub.plan in SUBSCRIPTION_PLANS ? sub.plan : null;
+  const expired =
+    !paid && subscribed && subscribed !== 'free' && sub?.status === 'active' && hasEnd && endMs <= now
+      ? { planName: getPlan(subscribed).name, endDate: sub!.end_date! }
+      : null;
+
+  return {
+    planId,
+    planName: plan.name,
+    endDate: paid && hasEnd ? sub!.end_date! : null,
+    permanent: paid && !hasEnd,
+    daysLeft: paid && hasEnd ? Math.max(0, Math.ceil((endMs - now) / 86_400_000)) : null,
+    expired,
+  };
+}
+
+/** 额度按月重置，与订阅周期无关。年付也是每 30 天一轮额度 */
+export const QUOTA_PERIOD_DAYS = 30;
+
+export interface ActivationPlan {
+  /** 新的订阅到期日；null 表示保持长期有效 */
+  endDate: string | null;
+  /** 同款续费且还没到期：从原到期日往后顺延 */
+  isRenewal: boolean;
+  /** 要不要清零额度、开新一轮额度周期 */
+  resetQuota: boolean;
+  /** 新额度周期的结束时间（resetQuota 为 true 时才用） */
+  quotaPeriodEnd: string;
+}
+
+/**
+ * 订单审核通过后，订阅该怎么开通、额度该怎么处理。
+ *
+ * 【原来的两个坑】审核代码原本是：
+ *     const endDate = new Date(); endDate.setMonth(+1)      // 从"现在"起算
+ *     user_quotas.current_period_end = endDate               // 额度周期 = 订阅周期
+ *
+ * 1. 从"现在"起算：专业会员还剩 20 天、提前续费一个月，新到期日是
+ *    今天 + 1 个月——已经付过钱的那 20 天白白没了。提前续费越早亏得越多。
+ * 2. 额度周期跟着订阅走：年付时额度周期被设成一年，而额度只在周期结束后
+ *    才重置——**年付用户一整年只有一个月的额度**。付 470 买基础版年付，
+ *    拿到 50 条脚本，而不是 12 × 50。
+ *
+ * 规则：
+ *   - 同款、还在有效期内 → 从原到期日顺延；额度不动，按原来的月度节奏走
+ *   - 同款、且原本长期有效 → 保持长期有效，不能因为又付了一次钱反而变成会过期
+ *   - 新开、升级、降级、已过期 → 从现在起算；额度清零，开新一轮 30 天
+ *     （价格页 FAQ 写明"升级后立即生效，未使用的天数不退款"，与此一致）
+ *   - 额度周期永远是 30 天，与月付年付无关
+ */
+export function activationPlan(
+  current: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined,
+  orderPlanId: string,
+  cycle: 'monthly' | 'yearly',
+  now: number = Date.now()
+): ActivationPlan {
+  const quotaPeriodEnd = new Date(now + QUOTA_PERIOD_DAYS * 86_400_000).toISOString();
+  const addCycle = (base: number) => {
+    const d = new Date(base);
+    if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
+    else d.setMonth(d.getMonth() + 1);
+    return d.toISOString();
+  };
+
+  const samePlanActive = current?.status === 'active' && current?.plan === orderPlanId;
+  const currentEnd = current?.end_date ? new Date(current.end_date).getTime() : NaN;
+
+  if (samePlanActive && !current?.end_date) {
+    return { endDate: null, isRenewal: true, resetQuota: false, quotaPeriodEnd };
+  }
+  if (samePlanActive && !Number.isNaN(currentEnd) && currentEnd > now) {
+    return { endDate: addCycle(currentEnd), isRenewal: true, resetQuota: false, quotaPeriodEnd };
+  }
+  return { endDate: addCycle(now), isRenewal: false, resetQuota: true, quotaPeriodEnd };
+}
+
+/** effectivePlanId 的可注入时间版本，给 membershipStatus 和测试用 */
+function effectivePlanIdAt(
+  sub: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined,
+  now: number
+): string {
+  if (!sub || sub.status !== 'active') return 'free';
   if (sub.end_date) {
     const end = new Date(sub.end_date).getTime();
     // 日期解析不出来时按"不过期"处理：宁可少收一次，也不要因为一个
     // 脏字段把正在付费的用户当场降级
-    if (!Number.isNaN(end) && end <= Date.now()) return 'free';
+    if (!Number.isNaN(end) && end <= now) return 'free';
   }
-
   const plan = sub.plan ?? '';
   return plan in SUBSCRIPTION_PLANS ? plan : 'free';
 }
