@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
+  UserCog, ScrollText,
 } from "lucide-react";
 
 /*
@@ -35,6 +36,9 @@ const navGroups: {
     label: "经营",
     items: [
       { name: "订单审核", href: "/admin/orders", icon: ShoppingCart },
+      // 用户管理原来只能从概览页的卡片进，侧边栏里没有。
+      // 用户忘了密码找来时，重置按钮就在这一页
+      { name: "用户管理", href: "/admin/users", icon: UserCog },
       { name: "会员管理", href: "/admin/subscriptions", icon: Users },
       { name: "数据分析", href: "/admin/analytics", icon: BarChart },
     ],
@@ -45,6 +49,8 @@ const navGroups: {
       { name: "邀请码", href: "/admin/invitations", icon: Ticket },
       { name: "收款二维码", href: "/admin/qrcodes", icon: QrCode },
       { name: "权限管理", href: "/admin/permissions", icon: ShieldCheck },
+      // 紧跟权限管理：两者一起回答"谁能动这个站、动过什么"
+      { name: "操作日志", href: "/admin/logs", icon: ScrollText },
       { name: "系统设置", href: "/admin/settings", icon: Settings },
     ],
   },

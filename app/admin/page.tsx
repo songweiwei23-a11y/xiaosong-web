@@ -1,21 +1,32 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users, Activity, TrendingUp, Settings, Database, FileText, Loader2, RefreshCw } from "lucide-react";
-import { notify } from '@/components/ui/feedback';
 
 type Stats = {
   totalUsers: number;
   activeToday: number;
   apiCallsToday: number;
-  subscriptionStats: {
-    free: number;
-    pro: number;
-    premium: number;
-    enterprise: number;
-  };
+  /*
+   * 键跟着接口走（lib/admin-stats.ts 的 buildPlanDistribution）：free/basic/pro/enterprise。
+   * 这里原来写的是 free/pro/premium/enterprise——套餐里根本没有 premium，
+   * 接口也不返回它，于是"付费会员"= pro + undefined + enterprise = NaN，
+   * 基础会员也一直没被算进去。
+   */
+  subscriptionStats: Record<string, number>;
 };
+
+type Health = {
+  ok: boolean;
+  label: string;
+  note: string;
+  checks: { name: string; ok: boolean; ms: number; detail?: string }[];
+};
+
+/** 付费会员数 = 除免费版以外所有档位之和。不按名字列举，加档位不会漏 */
+const paidCount = (s: Record<string, number>) =>
+  Object.entries(s).reduce((sum, [k, v]) => (k === "free" ? sum : sum + (Number(v) || 0)), 0);
 
 export default function AdminPage() {
   const router = useRouter();
@@ -27,13 +38,27 @@ export default function AdminPage() {
     totalUsers: 0,
     activeToday: 0,
     apiCallsToday: 0,
-    subscriptionStats: { free: 0, pro: 0, premium: 0, enterprise: 0 },
+    subscriptionStats: { free: 0, basic: 0, pro: 0, enterprise: 0 },
   });
+  // null = 还在检查。检查完之前不显示任何状态，更不能先显示"正常"
+  const [health, setHealth] = useState<Health | null>(null);
 
   useEffect(() => {
     checkAdminRole();
     fetchStats();
+    fetchHealth();
   }, []);
+
+  const fetchHealth = async () => {
+    setHealth(null);
+    try {
+      const res = await fetch("/api/admin/health");
+      if (res.ok) setHealth(await res.json());
+      else setHealth({ ok: false, label: "检查失败", note: `健康检查接口返回 ${res.status}`, checks: [] });
+    } catch {
+      setHealth({ ok: false, label: "检查失败", note: "健康检查接口连不上", checks: [] });
+    }
+  };
 
   const checkAdminRole = async () => {
     try {
@@ -145,7 +170,8 @@ export default function AdminPage() {
                 {stats.totalUsers}
               </div>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground">
-                今日活跃: <span className="font-semibold text-primary">{stats.activeToday}</span>
+                {/* 原来写"今日活跃"，接口算的是近 7 天有用量变动的人数（见 /api/admin/stats） */}
+                近 7 天活跃: <span className="font-semibold text-primary">{stats.activeToday}</span>
               </p>
             </div>
 
@@ -154,12 +180,13 @@ export default function AdminPage() {
                 <div className="p-3 bg-emerald-500/10 rounded-xl">
                   <Activity className="h-8 w-8 text-green-500" />
                 </div>
-                <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">API调用</span>
+                <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">生成</span>
               </div>
               <div className="text-4xl font-extrabold text-foreground mb-2">
                 {stats.apiCallsToday}
               </div>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground">今日调用次数</p>
+              {/* 原来写"今日调用次数"，但接口给的是累计生成次数（见 /api/admin/stats 注释） */}
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground">累计生成次数</p>
             </div>
 
             <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
@@ -170,10 +197,10 @@ export default function AdminPage() {
                 <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">会员</span>
               </div>
               <div className="text-4xl font-extrabold text-foreground mb-2">
-                {stats.subscriptionStats.pro + stats.subscriptionStats.premium + stats.subscriptionStats.enterprise}
+                {paidCount(stats.subscriptionStats)}
               </div>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground">
-                免费: {stats.subscriptionStats.free} | 付费: {stats.subscriptionStats.pro + stats.subscriptionStats.premium + stats.subscriptionStats.enterprise}
+                免费: {stats.subscriptionStats.free ?? 0} | 付费: {paidCount(stats.subscriptionStats)}
               </p>
             </div>
 
@@ -184,10 +211,29 @@ export default function AdminPage() {
                 </div>
                 <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">系统状态</span>
               </div>
-              <div className="text-2xl font-bold text-green-500 mb-2">
-                运行正常
-              </div>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground">所有服务正常</p>
+              {/*
+                这里原来是写死的"运行正常 / 所有服务正常"——Dify 挂了、数据库连不上，
+                它都照样显示绿色。现在是真检查：数据库查一次、Dify 探一次活。
+              */}
+              {health === null ? (
+                <div className="mb-2 flex items-center gap-2 text-lg text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" /> 检查中…
+                </div>
+              ) : (
+                <>
+                  <div
+                    className={`text-2xl font-bold mb-2 ${
+                      !health.ok ? "text-destructive" : health.label === "运行正常" ? "text-green-500" : "text-amber-500"
+                    }`}
+                  >
+                    {health.label}
+                  </div>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">{health.note}</p>
+                  <button onClick={fetchHealth} className="mt-2 text-xs text-primary hover:underline">
+                    重新检查
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -212,8 +258,14 @@ export default function AdminPage() {
               </div>
             </button>
 
+            {/*
+              下面三个按钮原来点了都只弹"XX功能开发中..."。
+              其实系统设置和实时监控两页早就做好了，只是按钮没接过去；
+              操作日志是真没有，这次补上了。描述也改成如实的：
+              系统设置页是只读的，操作日志不含系统异常日志。
+            */}
             <button
-              onClick={() => notify("系统配置功能开发中...")}
+              onClick={() => router.push("/admin/settings")}
               className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
@@ -222,15 +274,15 @@ export default function AdminPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-foreground dark:text-foreground mb-2 group-hover:text-accent dark:group-hover:text-accent transition-colors">
-                    系统配置
+                    系统设置
                   </h3>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">修改系统参数、会员套餐、功能开关</p>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">查看当前套餐与额度，以及各项配置在哪里改</p>
                 </div>
               </div>
             </button>
 
             <button
-              onClick={() => notify("数据监控功能开发中...")}
+              onClick={() => router.push("/admin/monitor")}
               className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
@@ -239,15 +291,15 @@ export default function AdminPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-foreground dark:text-foreground mb-2 group-hover:text-accent dark:group-hover:text-accent transition-colors">
-                    数据监控
+                    实时监控
                   </h3>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">实时监控系统运行状态、数据库性能</p>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">实时看站内注册、生成和订单动态</p>
                 </div>
               </div>
             </button>
 
             <button
-              onClick={() => notify("操作日志功能开发中...")}
+              onClick={() => router.push("/admin/logs")}
               className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
             >
               <div className="flex items-start gap-6">
@@ -258,7 +310,7 @@ export default function AdminPage() {
                   <h3 className="text-xl font-bold text-foreground dark:text-foreground mb-2 group-hover:text-accent dark:group-hover:text-accent transition-colors">
                     操作日志
                   </h3>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">查看管理员操作记录、系统异常日志</p>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">谁在什么时候、对谁做了什么操作</p>
                 </div>
               </div>
             </button>

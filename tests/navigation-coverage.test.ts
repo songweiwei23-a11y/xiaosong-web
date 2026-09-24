@@ -28,8 +28,9 @@ function boardRoutes(): string[] {
 const NOT_A_BOARD = new Set([
   '/dashboard/components',
   '/dashboard/profiles', // 档案在首页「先打地基」里，侧边栏也有
-  // 付费页从额度用完的提示进，不占导航位
-  '/dashboard/membership',
+  // 会员中心原来也在这里豁免，理由是"付费页从额度用完的提示进，不占导航位"。
+  // 结果付费用户想看自己还剩几天、订单审没审过，根本找不到入口。
+  // 现在它和「我的账户」一起放进了侧边栏的「账户」组，不再豁免。
 ]);
 
 describe('每个板块都进得去', () => {
@@ -50,6 +51,63 @@ describe('每个板块都进得去', () => {
       expect(home, `${route} 没加到首页`).toContain(route);
     });
   }
+});
+
+/**
+ * 点了没反应的链接。
+ *
+ * 死链扫描原来只查"链接指向的路由存不存在"。可单独一个 `#` 不是路由，
+ * 于是首页页脚的「使用文档」「关于我们」「隐私政策」「服务条款」四个
+ * href="#" 一直漏在外面。「联系客服」用的 weixin:// 也是——桌面端点了
+ * 没反应，手机上也只是打开微信、并不会加上客服。
+ */
+describe('没有点了没反应的链接', () => {
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.tsx')) files.push(p);
+    }
+  };
+  walk(path.join(process.cwd(), 'app'));
+  walk(path.join(process.cwd(), 'components'));
+
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  it('扫到了文件（防空转）', () => {
+    expect(files.length).toBeGreaterThan(50);
+  });
+
+  it('没有 href="#" 这种空链接', () => {
+    const bad: string[] = [];
+    for (const f of files) {
+      const code = strip(fs.readFileSync(f, 'utf8'));
+      if (/href=\{?\s*["']#["']\s*\}?/.test(code)) bad.push(path.relative(process.cwd(), f));
+    }
+    expect(bad, `这些文件里有点了没反应的 href="#"：\n${bad.join('\n')}`).toEqual([]);
+  });
+
+  it('没有 weixin:// 这种打不开的链接', () => {
+    const bad = files.filter((f) => /["']weixin:\/\//.test(strip(fs.readFileSync(f, 'utf8'))));
+    expect(bad.map((f) => path.relative(process.cwd(), f))).toEqual([]);
+  });
+
+  it('隐私政策和服务条款都有页面，并且首页和付款页链得到', () => {
+    for (const p of ['app/privacy/page.tsx', 'app/terms/page.tsx']) {
+      expect(fs.existsSync(path.join(process.cwd(), p)), `${p} 不存在`).toBe(true);
+    }
+    const home = strip(read('app/page.tsx'));
+    expect(home).toMatch(/href="\/privacy"/);
+    expect(home).toMatch(/href="\/terms"/);
+    // 付钱的那一页必须能看到条款
+    expect(strip(read('app/payment/page.tsx'))).toMatch(/href="\/terms"/);
+  });
+
+  it('独立价格页有入口', () => {
+    expect(strip(read('app/page.tsx'))).toMatch(/href="\/pricing"/);
+  });
 });
 
 describe('历史记录点得回去', () => {

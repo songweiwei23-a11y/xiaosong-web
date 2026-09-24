@@ -191,6 +191,18 @@ function PaymentContent() {
                 ))}
               </div>
 
+              {/*
+                不支持无理由退款这件事，原来只写在首页和价格页上，
+                真正付钱的这一页一个字都没提。付款前必须让人看到——
+                事后才知道退不了，是最容易变成纠纷的情形。
+              */}
+              <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
+                会员属于虚拟商品，<span className="font-medium text-foreground">开通后不支持无理由退款</span>，目前也暂不支持开发票。
+                付款即表示同意
+                <Link href="/terms" target="_blank" className="mx-0.5 text-primary hover:underline">服务条款</Link>。
+                有疑问请先加客服微信 13240286600 问清楚再付款。
+              </p>
+
               <button
                 onClick={createOrder}
                 disabled={busy}

@@ -36,6 +36,69 @@ export enum AdminActions {
   REVOKE_INVITATION = 'revoke_invitation',
 }
 
+/**
+ * 操作日志页上显示的中文名。
+ *
+ * 紧挨着枚举放：以后加了新动作忘了配中文，tests/admin-logs.test.ts 会红，
+ * 而不是在日志页上冒出一串 reset_user_password 这样的英文代码。
+ */
+export const ACTION_LABELS: Record<string, string> = {
+  [AdminActions.UPDATE_USER_MEMBERSHIP]: '修改会员',
+  [AdminActions.UPDATE_USER_QUOTA]: '修改额度',
+  [AdminActions.RESET_USER_QUOTA]: '重置额度',
+  [AdminActions.BAN_USER]: '封禁用户',
+  [AdminActions.UNBAN_USER]: '解封用户',
+  [AdminActions.RESET_USER_PASSWORD]: '重置密码',
+  [AdminActions.DELETE_CONTENT]: '删除内容',
+  [AdminActions.UPDATE_SYSTEM_SETTINGS]: '修改系统设置',
+  [AdminActions.UPDATE_SETTINGS]: '修改设置',
+  [AdminActions.APPROVE_ORDER]: '通过订单',
+  [AdminActions.REJECT_ORDER]: '驳回订单',
+  [AdminActions.DELETE_SETTING]: '删除设置',
+  [AdminActions.RESET_SUBSCRIPTION_QUOTA]: '重置订阅额度',
+  [AdminActions.CHANGE_USER_PLAN]: '更换套餐',
+  [AdminActions.GRANT_ADMIN]: '授予管理员',
+  [AdminActions.REVOKE_ADMIN]: '撤销管理员',
+  [AdminActions.GENERATE_INVITATIONS]: '生成邀请码',
+  [AdminActions.REVOKE_INVITATION]: '作废邀请码',
+};
+
+/**
+ * 这些动作碰的是钱或权限，日志页上要标出来。
+ * 被人动了手脚时，最先要看的就是这几类。
+ */
+export const SENSITIVE_ACTIONS = new Set<string>([
+  AdminActions.APPROVE_ORDER,
+  AdminActions.CHANGE_USER_PLAN,
+  AdminActions.UPDATE_USER_MEMBERSHIP,
+  AdminActions.GRANT_ADMIN,
+  AdminActions.REVOKE_ADMIN,
+  AdminActions.RESET_USER_PASSWORD,
+]);
+
+/**
+ * 一条日志"动的是谁"。
+ *
+ * 写日志的两种调用方式把目标用户放在了不同地方：
+ *   - 用户管理页用位置参数，放在 details.targetUserId
+ *   - 权限、订阅那几处用对象参数，放在 target_id（target_type 为 user / subscription）
+ *   - 订单审核的 target_id 是订单号，用户要再反查订单——这里返回 null，
+ *     由调用方按订单号批量去查
+ * 读的时候只看其中一处，另外两类日志的"对象"就是空的。
+ */
+export function logTargetUserId(row: {
+  target_type?: string | null;
+  target_id?: string | null;
+  details?: unknown;
+}): string | null {
+  const d = row.details && typeof row.details === 'object' ? (row.details as Record<string, unknown>) : {};
+  if (typeof d.targetUserId === 'string' && d.targetUserId) return d.targetUserId;
+  if ((row.target_type === 'user' || row.target_type === 'subscription') && row.target_id) {
+    return row.target_id;
+  }
+  return null;
+}
+
 interface LogOptions {
   admin_id: string;
   action: AdminActions | string;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
 import { countAuthUsers, sumFeatureUsage, buildPlanDistribution } from '@/lib/admin-stats';
+import { effectivePlanId } from '@/lib/config/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,11 +37,17 @@ export async function GET() {
       .gte('updated_at', sevenDaysAgo.toISOString());
     const activeToday = activeRows ? new Set(activeRows.map((u) => u.user_id)).size : 0;
 
+    /*
+     * 按"此刻实际享有的套餐"统计。原来只看 status = active，
+     * 到期日过了的订阅照样算付费会员——概览上的付费人数会虚高，
+     * 和服务端实际放行的口径对不上。
+     */
     const { data: subs } = await supabase
       .from('subscriptions')
-      .select('plan, status')
+      .select('plan, status, end_date')
       .eq('status', 'active');
-    const { distribution } = buildPlanDistribution(subs, totalUsers);
+    const effective = (subs ?? []).map((s) => ({ plan: effectivePlanId(s), status: 'active' }));
+    const { distribution } = buildPlanDistribution(effective, totalUsers);
 
     const { data: quotas } = await supabase.from('user_quotas').select('*');
     const totalGenerations = sumFeatureUsage(quotas).reduce((sum, f) => sum + f.usage, 0);

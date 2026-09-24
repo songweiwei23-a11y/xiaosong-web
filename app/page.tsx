@@ -12,7 +12,7 @@ import {
   Sparkles, Zap, CheckCircle, TrendingUp, ArrowRight, 
   FileText, Lightbulb, Film, Target, Star,
   Crown, Check, BarChart3, Award, Rocket, BookOpen,
-  Brain, Layers, Clock, Shield, Quote, Play, ChevronRight,
+  Brain, Layers, Clock, Shield, Quote, ChevronRight,
   MessageCircle, Activity, ChevronDown, X
 } from "lucide-react";
 
@@ -329,8 +329,12 @@ export default function HomePage() {
                   立即免费体验 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Link>
+              {/*
+                原来是「▶ 观看演示」，带播放图标，点了却是跳到页内的方法区——
+                并没有演示视频，用户会以为页面坏了。按它实际去的地方命名。
+              */}
               <a href="#method" className="px-8 py-4 glass-panel text-foreground rounded-xl font-semibold text-lg border-2 border-border hover:border-primary/40 transition-all hover:scale-105 flex items-center gap-2">
-                <Play className="w-5 h-5 text-primary" /> 观看演示
+                <BookOpen className="w-5 h-5 text-primary" /> 看看方法库
               </a>
             </div>
 
@@ -836,7 +840,17 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-12 text-sm text-muted-foreground">
-            <p>虚拟商品开通后不支持无理由退款 · 随时取消续费 · 数据完全保密</p>
+            {/*
+              原来是「随时取消续费 · 数据完全保密」。没有自动续费，谈不上"取消"；
+              生成时输入会发给 Dify 和 Claude 处理（隐私政策里写明了），
+              说"完全保密"和隐私政策自相矛盾。
+            */}
+            <p>虚拟商品开通后不支持无理由退款 · 不会自动扣费 · 不出售你的数据</p>
+            <p className="mt-3">
+              <Link href="/pricing" className="text-primary hover:underline">查看逐项功能对比 →</Link>
+              <span className="mx-2">·</span>
+              <Link href="/terms" className="text-primary hover:underline">服务条款</Link>
+            </p>
           </div>
         </div>
       </section>
@@ -882,13 +896,14 @@ export default function HomePage() {
             <p className="text-muted-foreground mb-4">
               还有其他问题？
             </p>
-            <a 
-              href="weixin://" 
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary/15 dark:bg-blue-900/30 text-primary rounded-lg hover:bg-primary/20 dark:hover:bg-blue-900/50 transition-colors font-medium"
-            >
+            {/*
+              原来是一个"联系客服咨询"按钮，链接 weixin://——桌面端点了没反应，
+              手机上也只是打开微信、并不会加上客服。直接把微信号亮出来，可选中复制。
+            */}
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/15 dark:bg-blue-900/30 text-primary rounded-lg font-medium">
               <MessageCircle className="w-5 h-5" />
-              联系客服咨询
-            </a>
+              客服微信：<span className="select-all">13240286600</span>（手机同号）
+            </div>
           </div>
         </div>
       </section>
@@ -948,31 +963,37 @@ export default function HomePage() {
               <ul className="space-y-2 text-sm">
                 <li><a href="#features" className="hover:text-white transition-colors">核心功能</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">价格方案</a></li>
+                {/* /pricing 有一张逐项的功能对比表，原来全站没有任何入口能走到 */}
+                <li><Link href="/pricing" className="hover:text-white transition-colors">完整功能对比</Link></li>
                 <li><Link href="/dashboard" className="hover:text-white transition-colors">立即使用</Link></li>
               </ul>
             </div>
-            
+
+            {/*
+              这一栏原来有「联系客服」（weixin://，桌面端点了没反应，手机上也只是
+              打开微信、并不会加上客服）和「使用文档」（href="#"，没有文档）。
+              客服改成直接写出微信号，没有文档就不放链接。
+            */}
             <div>
               <h4 className="font-semibold text-white mb-4">支持</h4>
               <ul className="space-y-2 text-sm">
                 <li><a href="#faq" className="hover:text-white transition-colors">常见问题</a></li>
-                <li><a href="weixin://" className="hover:text-white transition-colors">联系客服</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">使用文档</a></li>
+                <li>客服微信：<span className="select-all text-white">13240286600</span></li>
               </ul>
             </div>
-            
+
+            {/* 原来三个都是 href="#"。「关于我们」没有内容可放，撤掉 */}
             <div>
               <h4 className="font-semibold text-white mb-4">关于</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">关于我们</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">隐私政策</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">服务条款</a></li>
+                <li><Link href="/privacy" className="hover:text-white transition-colors">隐私政策</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">服务条款</Link></li>
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t border-border pt-8 text-center text-sm">
-            <p>&copy; 2024 小宋编导工作台. All rights reserved. Powered by Claude AI</p>
+            <p>&copy; {new Date().getFullYear()} 小宋编导工作台. All rights reserved. Powered by Claude AI</p>
           </div>
         </div>
       </footer>
