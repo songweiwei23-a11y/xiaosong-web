@@ -121,6 +121,7 @@ const EDITING_GUIDE = `### 镜头之间靠什么接上
 一个人的口播不涉及轴线，但只要出现两个人或"人看物"的关系，就必须守住。`;
 
 import { contentTypeGuide, visualStyleGuide } from './content-types';
+import { roleInferRule } from './content-roles';
 
 /** 各平台的画幅与安全区——分镜阶段就要定，拍完再发现被遮就晚了 */
 const PLATFORM_FRAME: Record<string, string> = {
@@ -330,6 +331,10 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push(`- 目标时长：${p.duration}（${seconds} 秒）`);
   parts.push(`- 视觉风格：${p.visualStyleLabel}`);
   if (p.additionalInfo) parts.push(`- 补充说明：${p.additionalInfo}`);
+  parts.push('');
+
+  // 镜头重点跟着目的走：变现型要证据感（过程、前后对比），人设型要细节，流量型要情绪
+  parts.push(roleInferRule('shots'));
   parts.push('');
 
   if (script) {

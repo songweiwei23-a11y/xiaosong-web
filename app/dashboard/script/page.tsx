@@ -61,6 +61,7 @@ import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { putHandoff, takeHandoff, extractOpening } from "@/lib/handoff";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { tacticBrief } from "@/lib/growth-standards";
+import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -116,6 +117,16 @@ const SCRIPT_TYPE_STYLE: Record<
 
 export default function ScriptPage() {
   const [scriptType, setScriptType] = useState("teach");
+  /*
+   * 这条视频的目的。原来脚本页只有"脚本类型"，结尾一律"引导互动（点赞/评论/关注）"，
+   * 广告类一律"到店/团购/加微信等"——指令一堆、和目的无关。SOP 的铁律是
+   * 目的决定结构和结尾指令、结尾只要一个。"自动"按脚本类型给默认值，用户可改。
+   */
+  const [scriptRole, setScriptRole] = useState<'自动' | ContentRole>('自动');
+  // 广告四类本来就是变现型
+  const effectiveRole: ContentRole = scriptType.startsWith('ad_')
+    ? '变现型'
+    : scriptRole !== '自动' ? scriptRole : defaultRoleOfScriptType(scriptType);
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState("抖音");
   const [duration, setDuration] = useState("60秒");
@@ -512,8 +523,7 @@ ${scriptContext}
         hookDetail,
         elementsWithNames,
         duration: isAiDuration ? "AI自行推断的最佳时长" : finalDuration,
-        isAd,
-        dealReasonsCount: dealReasons.length  // 传入成交理由数量
+        role: effectiveRole,
       });
       const { structureGuide, hookGuide, formatRequirements } = mcnEnhancement;
       // ========== MCN级提示词增强结束 ==========
@@ -601,6 +611,21 @@ ${tacticText}
         : '';
       // ========== 拍法结束 ==========
 
+      // ========== 这条视频的目的 ==========
+      // 目的决定结构和结尾指令（SOP 05）。放在脚本结构说明之后，
+      // 用户选的结构和目的不配时，以目的为准挑结构里的写法
+      const roleSection = `
+## 🎯 这条视频的目的：${effectiveRole}
+
+${roleBrief(effectiveRole)}
+
+**硬要求**：
+1. 全片只担这一个目的，不要顺手把另外两种也塞进来
+2. 上面选的脚本结构是"时间怎么分"，上面这几种是"这类视频该怎么讲"——按这里挑一个骨架填进去
+3. 结尾行动指令**只要一个**，按上面"结尾行动指令"来，说清楚做什么
+`;
+      // ========== 目的结束 ==========
+
       // ========== 已选定的开头 ==========
       // 用户在开篇页把 N 种开法横着比了一轮才挑的这一句，
       // 不锁死的话模型会"参考"一下然后另写一个，那一轮比较就白做了。
@@ -631,7 +656,7 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
 ## 🧭 生成流程（必须按顺序输出）
 
 ### 第1步：脚本策略卡
-- 用3-5条说明本条脚本的核心策略：目标用户、核心痛点、主钩子、情绪推进、转化/互动目标
+- 用3-5条说明本条脚本的核心策略：视频目的（${effectiveRole}）、目标用户、核心痛点、主钩子、情绪推进、唯一的结尾行动指令
 - 不写空泛定位，必须和主题、行业、账号信息直接相关
 
 ### 第2步：正文脚本
@@ -719,6 +744,7 @@ ${profileInfo}${positioningInfo}
 
 ${structureGuide}
 ${formulaSection}
+${roleSection}
 ${tacticSection}
 ${openingSection}
 ${effectiveHookGuide}
@@ -767,7 +793,7 @@ ${additionalInfo}` : ""}
 1. 使用【广告公式知识库】和【成交理由知识库】
 2. 开场3秒必须直击痛点或利益点
 3. 中段重点展示产品卖点和成交理由
-4. 结尾必须有明确的行动指令（到店/团购/加微信等）
+4. 结尾只要一个明确的行动指令（到店、团购、加微信里选最贴这条的一个，说清楚怎么做）
 5. 全程植入产品信息，自然不生硬
 6. 突出价格优势和稀缺性（限时/限量）
 
@@ -794,6 +820,7 @@ ${profileInfo}${positioningInfo}
 
 ${structureGuide}
 ${formulaSection}
+${roleSection}
 ${tacticSection}
 ${openingSection}
 ${effectiveHookGuide}
@@ -808,7 +835,9 @@ ${effectiveHookGuide}
 - **爆款元素**：${boomElements.length > 0 ? boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label).join("、") : "根据主题推荐"}
 
 ## 价值主张
-${dealReasons.length > 0 ? `**核心价值点**：${dealReasonsText}
+${dealReasons.length > 0 && effectiveRole !== '变现型' ? `**这个号的卖点（背景）**：${dealReasonsText}
+
+这条是${effectiveRole}视频，卖点只作背景，**不要在片子里讲卖点、不要引导成交**——那是变现型视频的活。` : dealReasons.length > 0 ? `**核心价值点**：${dealReasonsText}
 
 ⚠️ **必须严格执行**：
 1. 脚本必须围绕这些价值点设计，每个价值点至少体现1次
@@ -836,8 +865,8 @@ ${additionalInfo}` : ""}
 **生成要求**：
 1. 使用【编导技巧知识库】和【脚本公式知识库】
 2. 开场要有悬念、反常识或情感共鸣
-3. 中段提供干货价值，解决用户痛点
-4. 结尾升华主题，引导互动（点赞/评论/关注）
+3. 中段按${effectiveRole}的写法走：${effectiveRole === '流量型' ? '观点和论据，给情绪价值，覆盖面要广' : effectiveRole === '人设型' ? '真实经历里的"那一刻"，细节验证' : '落在一个成交理由上，晒过程或教知识，先给价值'}
+4. 结尾只要一个行动指令：${ROLE_SPECS[effectiveRole].cta}
 5. 全程注重情感连接，建立信任
 6. 避免硬广，自然输出价值
 
@@ -1031,6 +1060,28 @@ ${formatRequirements}
                   })}
               </div>
             </Field>
+
+            {activeTab === "content" && (
+              <Field
+                label="这条视频的目的"
+                stacked
+                hint={`${effectiveRole}：${ROLE_SPECS[effectiveRole].job}。结尾只要${ROLE_SPECS[effectiveRole].cta}`}
+              >
+                <div className="flex flex-wrap gap-1.5">
+                  {(['自动', ...CONTENT_ROLE_LIST] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setScriptRole(r)}
+                      aria-pressed={scriptRole === r}
+                      className={chipCls(scriptRole === r)}
+                    >
+                      {r === '自动' ? `自动（${defaultRoleOfScriptType(scriptType)}）` : r}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            )}
 
             {/* 从选题页带来的候选：点一条即填进主题框。
                 选完就收起——它只是个过渡入口，留着会一直占地方 */}

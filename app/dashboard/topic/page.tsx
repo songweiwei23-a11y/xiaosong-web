@@ -5,6 +5,7 @@ import { putHandoff, takeHandoff, parseTopicOptions } from "@/lib/handoff";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from "@/lib/viral-elements";
 import { tacticBrief } from "@/lib/growth-standards";
+import { CONTENT_ROLE_LIST, ROLE_SPECS, rolesGuide, roleBrief, type ContentRole } from "@/lib/content-roles";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, listWorks, type Work } from "@/lib/works";
 import { stageRoute, workStageUrl } from "@/lib/resume";
@@ -90,6 +91,12 @@ export default function TopicPage() {
 
   // 成交理由
   const [selectedDealReasons, setSelectedDealReasons] = useState<string[]>([]);
+  /*
+   * 这批选题的目的。原来只按"勾没勾成交理由"分成变现 / 大流量两种，
+   * 人设型根本没有——讲自己经历、让人记住你的那类选题从来出不来。
+   * 代运营 SOP：每条视频只选一个主目的，目的决定选题、脚本结构和结尾指令。
+   */
+  const [topicRole, setTopicRole] = useState<'按配比' | ContentRole>('按配比');
 
   // 高级设置
   const [keyword1, setKeyword1] = useState("");
@@ -493,7 +500,7 @@ export default function TopicPage() {
     setResult("");
 
     try {
-      const topicType = selectedDealReasons.length > 0 ? "变现选题" : "大流量选题";
+      const topicType = topicRole === '按配比' ? "选题（流量型、人设型、变现型按配比搭配）" : `${topicRole}选题`;
       
       // 获取完整的档案信息
       const selectedProfile = profiles.find(p => p.id === selectedProfileId);
@@ -561,6 +568,7 @@ export default function TopicPage() {
       const requestData = {
         mode: mode,
         topicType: topicType,
+        topicRole: topicRole,
         // 传递完整的档案和定位信息，而不是ID
         profileInfo: profileInfo ? JSON.stringify(profileInfo) : "",
         positioningInfo: positioningInfo ? JSON.stringify(positioningInfo) : "",
@@ -633,11 +641,8 @@ export default function TopicPage() {
         
         query += `\n⚠️ 每条选题必须明确标注使用的脚本类型！\n`;
         query += `⚠️ 严格按照上述数量分配，不得超出或减少！\n`;
-        query += `\n💡 【关键】脚本类型 vs 流量/变现的关系：\n`;
-        query += `- 脚本类型 = 视频结构（怎么讲故事）\n`;
-        query += `- 流量/变现 = 内容方向（讲什么内容）\n`;
-        query += `- 同一脚本类型可同时服务于流量型和变现型\n`;
-        query += `- 例如教知识型：流量用爆款元素（《20块vs200块的肥牛差在哪》），变现用成交理由（《排酸牛肉怎么看好坏？老板教你3招》）\n\n`;
+        query += `\n💡 脚本类型不等于目的：同一种脚本可以做不同目的——泛知识是流量型、专业难题是变现型；\n`;
+        query += `讲自己的成长是人设型、讲帮客户做成的事是变现型。每条先定目的，再按目的选结构。\n\n`;
       }
       if (selectedStyles.length > 0) query += `- 风格：${selectedStyles.join('、')}\n`;
       if (positioningExtra) {
@@ -663,25 +668,32 @@ export default function TopicPage() {
         query += `${elementBlock}\n\n`;
       }
       
-      // 成交理由（重要：区分变现和流量选题）
-      if (selectedDealReasons.length > 0) {
-        const dealReasonsText = selectedDealReasons.map(id => {
-          const reason = ALL_DEAL_REASONS.find(r => r.id === id);
-          return reason ? reason.label : id;
-        }).join('、');
-        query += `- 成交理由：${dealReasonsText}\n`;
-        query += `\n⚠️ 重要提示：这是【变现选题】，每条选题必须围绕选中的成交理由设计！\n`;
-        query += `- 选题标题要直接体现成交理由\n`;
-        query += `- 内容方向要围绕成交理由拍摄\n`;
-        query += `- 编导思路要服务于成交理由的说服力\n\n`;
+      /*
+       * 这批选题的目的。原来是二选一：勾了成交理由就是"变现选题"，没勾就是
+       * "大流量选题，不考虑转化"——人设型整个没有，而且流量型被写成了"纯粹为了播放量"，
+       * 涨来的都是泛粉。现在按三种视频来，定义全站只有 lib/content-roles 一份。
+       */
+      const dealReasonsText = selectedDealReasons
+        .map((id) => ALL_DEAL_REASONS.find((r) => r.id === id)?.label ?? id)
+        .join('、');
+      if (topicRole === '按配比') {
+        query += `\n【这批选题的目的】流量型、人设型、变现型按配比搭配\n`;
+        query += `- 按上面账号定位里定好的配比分配这 ${topicCount} 条；没有定位的，按账号阶段来（起号期流量型最多，变现型从第一周就有但占小头）\n`;
+        query += `- 每条只担一个主目的，在选题里标明\n\n`;
+        query += `${rolesGuide()}\n\n`;
       } else {
-        query += `\n⚠️ 重要提示：这是【大流量选题】，目标是涨粉和曝光！\n`;
-        // 举例也从同一份数据取，别再手写——上一版这里写的是「反差」，
-        // 而原文里压根没有这个元素（叫「对立选题」）
-        query += `- 核心手段：使用八大爆款元素（${VIRAL_ELEMENTS.slice(0, 4).map((e) => e.name).join('、')}等）\n`;
-        query += `- 内容特征：话题性强、容易引发讨论、追热点、做对比\n`;
-        query += `- 不考虑转化，纯粹为了播放量和传播\n`;
-
+        query += `\n【这批选题的目的】全部是${topicRole}\n\n${roleBrief(topicRole)}\n\n`;
+      }
+      if (topicRole === '流量型') {
+        // 举例从同一份数据取，别再手写——上一版写的「反差」原文里根本没有（叫「对立选题」）
+        query += `- 流量型的核心手段：八大爆款元素（${VIRAL_ELEMENTS.slice(0, 4).map((e) => e.name).join('、')}等）+ 扩大覆盖（用大众入口承载专业）\n`;
+        query += `- 覆盖要广，但人群要对——垂直是人群垂直：选这个号的目标人群也关心的话题，不是随便什么热闹都蹭\n\n`;
+      }
+      if (dealReasonsText && topicRole !== '流量型' && topicRole !== '人设型') {
+        query += `- 成交理由：${dealReasonsText}\n`;
+        query += `⚠️ 变现型选题必须落在这些成交理由上：标题体现、内容围绕它拍、编导思路服务于它的说服力\n\n`;
+      } else if (topicRole === '变现型') {
+        query += `⚠️ 用户没选成交理由：从档案的核心卖点和客人常问里找出这个号的成交理由，每条变现型选题落在其中一个上\n\n`;
       }
 
       // 高级设置
@@ -726,9 +738,12 @@ export default function TopicPage() {
       query += `- 💡 结合当前热点、时事、流行文化\n`;
       query += `- 🔥 创造记忆点，让人眼前一亮\n\n`;
 
+      query += `【选题三关】（小黄第17节）每条都要过：覆盖的人够不够多、给了什么明确价值、是不是比用户多一步认知\n\n`;
       query += `【输出格式要求】\n`;
-      query += `每条选题必须包含以下7个部分：\n\n`;
+      query += `每条选题必须包含以下部分：\n\n`;
       query += `## 选题X：[标题]\n\n`;
+      query += `**0️⃣ 视频目的**\n`;
+      query += `流量型 / 人设型 / 变现型，只写一个，后面一句话说为什么\n\n`;
       query += `**1️⃣ 爆款元素**\n`;
       if (selectedElements.length > 0) {
         // 用全名（「最差选题」而不是「最差」），和上面那段句式对得上
@@ -752,28 +767,25 @@ export default function TopicPage() {
       query += `- 场景设置：[在哪拍？什么环境？]\n`;
       query += `- 拍摄目的：[为什么这样拍？想达到什么效果？]\n`;
       query += `- 用户价值：[用户看完能获得什么？]\n\n`;
-      query += `**4️⃣ 编导思路**\n`;
-      query += `起承转合（每项最多10字）：\n`;
-      query += `起-开场/承-展开/转-高潮(X秒)/合-收尾CTA\n\n`;
-      query += `**5️⃣ 推荐脚本结构**\n`;
-      query += `从19种结构中推荐3个（按推荐度⭐⭐⭐⭐⭐→⭐⭐⭐排序）：\n`;
-      query += `解题/推荐/揭秘/案例/火车节/论证/故事/对比/清单/时间线/问答/情景剧/测评/挑战/教程/反转/盘点/采访/观察\n`;
-      query += `格式：序号.结构名(星级)-理由(最多8字)\n\n`;
+      query += `**4️⃣ 脚本结构**\n`;
+      /*
+       * 原来是"从 19 种结构中推荐 3 个"：解题/推荐/揭秘/案例/火车节/论证/故事/对比/清单/
+       * 时间线/问答/情景剧/测评/挑战/教程/反转/盘点/采访/观察——大半是知识库里没有的
+       * 通用词，而且跟这条视频的目的无关。现在从目的对应的结构里挑（知识库原文）。
+       */
+      query += `从这条目的对应的结构里挑 1 个最合适的（见上面「三种视频」），写出骨架套到这条上是什么样（每段最多10字）\n\n`;
+      query += `**5️⃣ 结尾行动指令**\n`;
+      query += `只写一个，按目的来：流量型要关注或评论，人设型要关注或看主页，变现型要私信、到店或留资中的一个\n\n`;
       query += `**6️⃣ 执行要点**\n`;
       query += `⚠️ 必须可落地：手机拍、一个人、低成本\n`;
       query += `难度/资源/注意事项（每项最多10字）\n\n`;
       
-      if (selectedDealReasons.length > 0) {
-        const dealReasonsText = selectedDealReasons.map(id => {
-          const reason = ALL_DEAL_REASONS.find(r => r.id === id);
-          return reason ? reason.label : id;
-        }).join('、');
-        query += `**7️⃣ 成交理由**\n`;
-        query += `⚠️ 必须包含转化路径设计！\n`;
-        query += `- 体现的理由：[从${dealReasonsText}中选2-3个]\n`;
+      if (topicRole !== '流量型' && topicRole !== '人设型') {
+        query += `**7️⃣ 成交理由**（只有变现型选题写这一项）\n`;
+        query += `- 体现的理由：[${dealReasonsText ? `从${dealReasonsText}中选1-2个` : '这个号的哪个卖点'}]\n`;
         query += `- 转化路径：[观看→互动→到店/购买，最多15字]\n\n`;
       }
-      
+
       query += `---\n\n`;
       query += `\n⚠️ 核心要求（必须严格遵守）：\n`;
       query += `🎯 可落地性原则：\n`;
@@ -784,12 +796,9 @@ export default function TopicPage() {
       query += `1. 开篇钩子：只写文案，不要画面描述！必须结合知识库优化\n`;
       query += `2. 内容方向及目的是重中之重：核心方向一句话，用户价值要明确\n`;
       query += `3. 每条选题必须包含2-3个爆款元素\n`;
-      if (selectedDealReasons.length > 0) {
-        query += `4. 成交理由必须包含转化路径（最多15字）\n`;
-      }
-      query += `${selectedDealReasons.length > 0 ? '5' : '4'}. 编导思路要简洁，让编导一看就懂框架\n`;
-      query += `${selectedDealReasons.length > 0 ? '6' : '5'}. 推荐脚本结构从19种中选3个，按推荐度排序\n`;
-      query += `${selectedDealReasons.length > 0 ? '7' : '6'}. 每条选题严格控制在200字以内！去废话！\n`;
+      query += `4. 每条只担一个目的；脚本结构和结尾行动指令都按目的来，结尾指令只要一个\n`;
+      query += `5. 变现型选题必须写成交理由和转化路径（最多15字）\n`;
+      query += `6. 每条选题严格控制在220字以内！去废话！\n`;
 
       
       // 这里原本还有一道「最终过滤」，对**整条提示词**逐行扫描，命中
@@ -1061,13 +1070,43 @@ export default function TopicPage() {
             </Field>
 
             <Field
+              label="这批选题的目的"
+              stacked
+              hint={
+                topicRole === '按配比'
+                  ? "流量型、人设型、变现型搭配出，每条标明是哪种"
+                  : ROLE_SPECS[topicRole].job
+              }
+            >
+              <div className="grid grid-cols-4 gap-1.5">
+                {(['按配比', ...CONTENT_ROLE_LIST] as const).map((r) => {
+                  const picked = topicRole === r;
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => setTopicRole(r)}
+                      aria-pressed={picked}
+                      className={`glass-interactive rounded-xl border px-2 py-1.5 text-center text-[11px] ${
+                        picked ? "glass-selected text-primary" : "glass-panel text-muted-foreground"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <Field
               label="成交理由"
               optional
               stacked
               hint={
-                selectedDealReasons.length > 0
-                  ? `已选 ${selectedDealReasons.length} 个，选题标题会体现这些点`
-                  : "不选就是纯流量选题，不涉及变现"
+                topicRole === '流量型' || topicRole === '人设型'
+                  ? `${topicRole}选题不写成交理由，这里选了也不用`
+                  : selectedDealReasons.length > 0
+                    ? `已选 ${selectedDealReasons.length} 个，变现型选题会落在这些点上`
+                    : "不选的话，变现型选题从档案卖点里找成交理由"
               }
             >
               <div className="grid grid-cols-3 gap-1.5">
@@ -1208,7 +1247,7 @@ export default function TopicPage() {
         emptyTips={[
           "快速模式直接套用已存的档案与定位",
           "爆款元素建议选 2–3 个，多了会散",
-          "填了成交理由，选题会往变现上靠",
+          "每条选题只担一个目的：流量、人设或变现",
         ]}
         generatingHint="正在策划选题…"
         onCopy={(text) => copyToClipboard(text)}

@@ -20,6 +20,7 @@ import {
   evaluateScriptQualityStrict,
   getRelevantExample,
 } from './quality-checker';
+import { roleInferRule } from './content-roles';
 
 export interface ReviewPromptParams {
   draftContent: string;
@@ -165,6 +166,15 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   if (p.scriptType) parts.push(`- 脚本类型：${p.scriptType}`);
   parts.push('');
 
+  // 七个维度只查"有没有"——有结尾指令就给分。但一条流量型视频结尾喊"私信我下单"，
+  // 或者一条变现型视频同时要关注、评论、私信，指令"有"，却是错的
+  parts.push(roleInferRule('review'));
+  parts.push('');
+  parts.push(
+    `目的和结构、结尾指令对不上的，列进问题清单${p.severityLabels ? '（🔴 必须改）' : '，排在最前面'}，并在优化后的脚本里改过来。`
+  );
+  parts.push('');
+
   if (draft) {
     parts.push(machineFindings(draft));
     parts.push('');
@@ -224,6 +234,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('');
   parts.push('### 1. 总评');
   parts.push('- **综合得分**：X.X 分（等级）');
+  parts.push('- **视频目的**：流量型 / 人设型 / 变现型，目的、结构、结尾指令是否一致');
   parts.push('- **一句话结论**：这稿子能不能直接拍，不能的话卡在哪');
   parts.push('');
   parts.push('### 2. 逐维度打分');

@@ -24,6 +24,7 @@
  */
 
 import { OPENING_CARDS } from './opening-cards';
+import { roleInferRule } from './content-roles';
 
 /** 各平台的标题逻辑差异。同一个主题在不同平台该起不同的标题 */
 const PLATFORM_RULES: Record<string, string[]> = {
@@ -192,6 +193,11 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push(p.topic);
   parts.push('');
 
+  // 标题赌谁点：流量型要大众都进得来，变现型要点进来的是会买的人——
+  // 同一个主题目的不同，标题该往两个方向写
+  parts.push(roleInferRule('hook'));
+  parts.push('');
+
   parts.push('## ⚙️ 本次要求');
   parts.push(`- 标题类型：${p.titleTypeLabel}`);
   parts.push(`- 使用公式：${p.titleFormulaLabel}`);
@@ -277,6 +283,7 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push('```');
   parts.push('### N. 标题原文');
   parts.push('- **字数**：X 字');
+  parts.push('- **目的**：流量型 / 人设型 / 变现型（同一条内容的几个标题目的一致）');
   parts.push('- **用的钩子**：卡名（必须是上面 36 张里的原名，不要自己造）');
   parts.push('- **赌的动机**：好奇 / 恐惧 / 获得感 / 认同 / 窥私 / 省钱（选一个，并说明为什么这类人会点）');
   parts.push('- **核心卖点**：这条视频真正要交付的东西');

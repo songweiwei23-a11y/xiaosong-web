@@ -19,11 +19,14 @@
 import { GROWTH_TACTICS, SELECTION_MATRIX, TEST_RULE, tacticByName } from './growth-tactics';
 import { OPENING_CARDS, type OpeningCard } from './opening-cards';
 import { THIRTY_DAY_PLAN, DIAGNOSIS_TREE } from './positioning-standards';
+import { roleInferRule, roleOfTactic, rolesGuide } from './content-roles';
 
 /** 一计压缩成一行，用于「候选清单」那一段 */
 const brief = (name: string) => {
   const t = tacticByName(name);
-  return t ? `- **${t.name}**（${t.formula}）：${t.mechanism}。适合：${t.fit}` : '';
+  // 标上这一计最适合做哪种视频，模型才知道它在配比里占的是哪一格
+  const role = roleOfTactic(name);
+  return t ? `- **${t.name}**${role ? `【${role}】` : ''}（${t.formula}）：${t.mechanism}。适合：${t.fit}` : '';
 };
 
 /** 一计的完整内容，用于被选中的那几计 */
@@ -64,7 +67,14 @@ export const GROWTH_MIX = `### 起号期的内容怎么配（小黄第7、40节�
 - 起号期先用**一种**最擅长、反馈最明确的类型集中跑 20-30 条，不要一上来四类齐发
 - **起号成功的标准**：零粉做到一千粉，而且发出去的视频流量都比较稳定
 - 过了这条线，再逐步补观点、故事和变现内容；变现内容从第一周就可以有，但只占小头
-- 配比要和他已经定好的内容定位**对得上**（主力形式、主系列），起号打法是用来把那个方向打开的，不是另起一套`;
+- 配比要和他已经定好的内容定位**对得上**（主力形式、主系列），起号打法是用来把那个方向打开的，不是另起一套
+
+**36 计怎么对应三种视频**（速览里每一计后面都标了【流量型 / 人设型 / 变现型】）：
+- 大多数是**流量打法**，起号期的流量型内容主要靠它们
+- 有一组拍的是**你自己的服务、产品和真实过程**（情境还原、正误对比、对比改造、替网友做、接受挑战、行业避坑、推荐建议……），
+  拍自己的生意时可以直接当**变现型**用——同一条既能拿流量，又能证明你能做成
+- 有一组讲的是**人、关系和经历**（一句话设定故事感、加入人物关系、借物喻人、宠妻/宠夫反差、以物换物……），可以直接当**人设型**用
+- 所以起号期不是"流量型全靠 36 计、另两种另起炉灶"，而是按配比从三组里各挑能拍的`;
 
 export interface GrowthPlanParams {
   /** 账号上下文（创作简报切片 + 档案），由调用方用 buildContextBlock 拼好 */
@@ -176,6 +186,8 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 
   parts.push('## 📚 判断依据', '');
   parts.push(GROWTH_MIX, '');
+  // 三种视频各怎么拍（方向、结构、结尾指令）——起号方案要按它给出每一种的拍法
+  parts.push(rolesGuide(), '');
   parts.push(MATRIX_TABLE, '');
 
   const blocked = tacticsBlockedBy(p.restrictions);
@@ -212,7 +224,9 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 ## 🧮 起号期内容配比
 
 按「起号期的内容怎么配」：
-- 起号期（到一千粉、流量稳定之前）：起号打法占多少、其余发什么，各占多少，为什么
+- 起号期（到一千粉、流量稳定之前）：流量型 / 人设型 / 变现型各占多少，为什么
+- **每一种用哪一计来拍**：从标了对应类型的计里挑，写清"流量型用 X 计、人设型用 Y 计、变现型用 Z 计"，
+  以及每种的脚本结构和结尾行动指令（只写一个）
 - 过线之后：补什么、比例怎么变
 - 和已定的内容定位怎么对上（主力形式、主系列）；没有内容定位的，按档案里数据最好的内容类型来
 
@@ -414,9 +428,11 @@ export function detectOpeningCards(text: string): string[] {
 export function tacticBrief(name: string): string {
   const t = tacticByName(name);
   if (!t) return '';
+  const role = roleOfTactic(t.name);
   return [
     `**第 ${t.no} 计 · ${t.name}**`,
     ``,
+    ...(role ? [`- **最适合做**：${role}视频（按${role}的结尾行动指令收尾）`] : []),
     `- **为什么成立**：${t.mechanism}`,
     `- **结构公式**：${t.formula}`,
     `- **适合**：${t.fit}`,
@@ -591,6 +607,8 @@ export function buildOpeningPrompt(p: OpeningParams): string {
   }
 
   parts.push('## 🎬 这条内容', '', `**主题**：${p.topic.trim()}`, '');
+  // 钩子要为目的服务：流量型开头赌大众，变现型开头赌精准人群
+  parts.push(roleInferRule('hook'), '');
   if (p.currentOpening?.trim()) {
     parts.push('**现在的开头**（觉得不够抓人，要换）：', '', p.currentOpening.trim(), '');
   }
