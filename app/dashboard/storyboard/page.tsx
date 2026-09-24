@@ -52,7 +52,9 @@ export default function StoryboardPage() {
     copyToClipboard,
     downloadAsFile,
     lastResult,
-  } = useGenerationPage({ taskType: '分镜脚本', historyApiPath: '/api/storyboards' });
+  // 原来指向 /api/storyboards——那个路由根本不存在，请求一直 404，
+  // 所以这一页从上线起就没有历史、也不会恢复上次的结果
+  } = useGenerationPage({ taskType: '分镜脚本', historyApiPath: '/api/script-history' });
 
   const router = useRouter();
 

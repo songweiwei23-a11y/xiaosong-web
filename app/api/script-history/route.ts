@@ -33,10 +33,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 })
     }
 
-    // 默认只返回脚本生成，保持各生成页原有行为不变。
-    // 首页要展示「最近在做什么」，需要跨功能的记录，用 taskType=all 取全部。
+    /*
+     * taskType 支持三种写法：
+     *   不传 / '脚本生成'      单一类型
+     *   '起号方案,开篇钩子'     逗号分隔的多个类型
+     *   'all'                 全部
+     *
+     * 【为什么要支持多个】起号页一进来要同时恢复起号方案和开篇钩子，
+     * 还要读最近的选题和脚本做备选。它原先直接 fetch('/api/script-history')
+     * 不带参数，于是只拿到「脚本生成」，然后在结果里 find('起号方案') ——
+     * 永远是 undefined。恢复代码看着对、跑着不报错、什么都恢复不了。
+     * 知识库页和成交理由页栽的是同一个坑。
+     *
+     * 默认值保留「脚本生成」是为了不动脚本页的既有行为，但所有调用方
+     * 现在都显式传参；tests/history-restore.test.ts 会扫描，漏传就红。
+     */
     const { searchParams } = new URL(request.url)
-    const taskType = searchParams.get('taskType') ?? '脚本生成'
+    const raw = searchParams.get('taskType') ?? '脚本生成'
     const limitRaw = Number(searchParams.get('limit'))
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : undefined
 
@@ -46,7 +59,13 @@ export async function GET(request: Request) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (taskType !== 'all') query = query.eq('task_type', taskType)
+    if (raw !== 'all') {
+      const types = raw.split(',').map((t) => t.trim()).filter(Boolean)
+      // types 为空（?taskType= 这种）按"不过滤"处理：宁可多返回，
+      // 也不要 .eq('task_type', undefined) 之后悄悄返回空数组
+      if (types.length === 1) query = query.eq('task_type', types[0])
+      else if (types.length > 1) query = query.in('task_type', types)
+    }
     if (limit) query = query.limit(limit)
 
     const { data, error } = await query

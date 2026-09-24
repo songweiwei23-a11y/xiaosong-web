@@ -26,7 +26,9 @@ export function useScriptHistory() {
 
   const loadScriptHistory = useCallback(async () => {
     try {
-      const response = await fetch("/api/script-history");
+      // 显式传参。这一页靠的正好是接口的默认值（脚本生成），碰巧是对的，
+      // 但"碰巧"不该是依赖——别的页栽在同一个默认值上
+      const response = await fetch("/api/script-history?taskType=脚本生成");
       if (!response.ok) return;
       const data = await response.json();
       if (Array.isArray(data)) {

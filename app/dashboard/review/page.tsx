@@ -41,7 +41,8 @@ export default function ReviewPage() {
     copyToClipboard,
     downloadAsFile,
     lastResult,
-  } = useGenerationPage({ taskType: '审稿优化', historyApiPath: '/api/reviews' });
+  // 同分镜页：/api/reviews 不存在，请求 404，历史和恢复都是空的
+  } = useGenerationPage({ taskType: '审稿优化', historyApiPath: '/api/script-history' });
 
   const router = useRouter();
 

@@ -122,7 +122,18 @@ export default function GrowthPage() {
   useEffect(() => {
     const restore = async () => {
       try {
-        const res = await fetch('/api/script-history')
+        /*
+         * 必须显式传 taskType。
+         *
+         * 这里原来是 fetch('/api/script-history')，而那个接口不传参时
+         * **只返回「脚本生成」**。下面那几行 find('起号方案')、find('开篇钩子')、
+         * find('选题策划') 因此永远拿不到东西——这一页的"记忆"从上线起
+         * 就没生效过，而且不报错、控制台干净，只有真的换页回来才发现内容没了。
+         */
+        const need = ['起号方案', '开篇钩子', '选题策划', '脚本生成']
+        const res = await fetch(
+          `/api/script-history?taskType=${encodeURIComponent(need.join(','))}`
+        )
         if (!res.ok) return
         const rows = await res.json()
         if (!Array.isArray(rows)) return
@@ -134,6 +145,34 @@ export default function GrowthPage() {
         const open = rows.find((x: any) => x.task_type === '开篇钩子')
         if (plan?.result) setPlanResult((c) => c || plan.result)
         if (open?.result) setOpeningResult((c) => c || open.result)
+
+        /*
+         * 连当时的输入一起恢复。
+         *
+         * 只恢复正文是半截的：回来看到方案还在，但选中的计、写的备注、
+         * 那条内容的主题全空了，想改一版还得从头再勾一遍。
+         * input_data 本来就存着（run() 的第四个参数），取回来就是。
+         *
+         * 一律用 `(c) => c.length ? c : 新值` 的形式：用户可能在请求返回前
+         * 就动了手，那就以他正在做的为准，不要覆盖。
+         */
+        const planIn = plan?.input_data
+        if (planIn && typeof planIn === 'object') {
+          if (Array.isArray(planIn.picked)) {
+            setPickedTactics((c) => (c.length ? c : planIn.picked.filter((x: unknown) => typeof x === 'string')))
+          }
+          if (typeof planIn.notes === 'string') setPlanNotes((c) => c || planIn.notes)
+        }
+        const openIn = open?.input_data
+        if (openIn && typeof openIn === 'object') {
+          if (typeof openIn.topic === 'string') setTopic((c) => c || openIn.topic)
+          if (typeof openIn.currentOpening === 'string') {
+            setCurrentOpening((c) => c || openIn.currentOpening)
+          }
+          if (Array.isArray(openIn.picked)) {
+            setPickedCards((c) => (c.length ? c : openIn.picked.filter((x: unknown) => typeof x === 'string')))
+          }
+        }
 
         // 最近的选题：从选题结果里解析出条目
         const topicRow = rows.find((x: any) => x.task_type === '选题策划')

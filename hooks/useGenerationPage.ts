@@ -35,9 +35,24 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
   // 那时若再回填，就会用旧内容盖掉用户刚生成的东西。
   const restoredRef = useRef(false);
 
+  /*
+   * 列表和删除各自拼 URL。
+   *
+   * historyApiPath 传进来的是**不带查询串的路径**，查询参数在这里加：
+   *   取列表 → ?taskType=xxx
+   *   删单条 → ?id=xxx
+   * 之前删除那行是 `${historyApiPath}?id=`，如果调用方自己在路径上带了
+   * 查询串，就会拼出两个 ?，删除直接失效。
+   */
+  const listUrl = `${historyApiPath}?taskType=${encodeURIComponent(taskType)}`;
+
   const loadHistory = useCallback(async () => {
     try {
-      const response = await fetch(historyApiPath);
+      const response = await fetch(listUrl);
+      // 404 也走这里。分镜页和审稿页就是这么栽的：它们指向
+      // /api/storyboards 和 /api/reviews，而这两个路由根本不存在——
+      // 请求 404、这里直接 return，历史和上次结果都不会恢复，
+      // 控制台干净、页面也不报错，只表现为"换页回来内容没了"。
       if (!response.ok) return;
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -52,7 +67,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
     } catch (error) {
       console.error("加载历史记录失败:", error);
     }
-  }, [historyApiPath, taskType]);
+  }, [listUrl, taskType]);
 
   const deleteHistory = useCallback(
     async (id: string) => {

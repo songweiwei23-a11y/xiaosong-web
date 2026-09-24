@@ -48,7 +48,12 @@ export default function KnowledgePage() {
     let cancelled = false;
     const restore = async () => {
       try {
-        const res = await fetch('/api/script-history');
+        // 必须显式传 taskType：不传的话接口只返回「脚本生成」，
+        // 下面那句 find(HISTORY_TASK_TYPE) 就永远是 undefined，
+        // 这一页的恢复从上线起就没生效过，且不报错
+        const res = await fetch(
+          `/api/script-history?taskType=${encodeURIComponent(HISTORY_TASK_TYPE)}&limit=1`
+        );
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled || !Array.isArray(data)) return;

@@ -70,7 +70,11 @@ export default function DealReasonPage() {
     let cancelled = false;
     const restore = async () => {
       try {
-        const res = await fetch('/api/script-history');
+        // 同知识库页：不传 taskType 只会拿到「脚本生成」，
+        // 下面的 find 永远落空，恢复等于没写
+        const res = await fetch(
+          `/api/script-history?taskType=${encodeURIComponent(HISTORY_TASK_TYPE)}&limit=1`
+        );
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled || !Array.isArray(data)) return;
