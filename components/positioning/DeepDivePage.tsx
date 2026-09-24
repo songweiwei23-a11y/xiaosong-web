@@ -209,6 +209,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
         onConversationId: (id) => {
           convId = id
         },
+        onRecovering: () => notify('网络断了一下，AI 那边还在写，写完会自动取回，请别关页面'),
       })
 
       if (full) {

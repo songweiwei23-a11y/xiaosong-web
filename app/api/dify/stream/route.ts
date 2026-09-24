@@ -15,6 +15,8 @@ import {
   ISOLATED_TASKS,
 } from '@/lib/topic-library';
 import { loadPriorTopicTitles } from '@/lib/topic-library-server';
+import { difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
+import { waitForDifyMessage } from '@/lib/dify-recover';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -464,11 +466,11 @@ export async function POST(req: NextRequest) {
     // 作用域 = 用户 + 账号档案 + 功能，见 lib/dify-conversation.ts。
     const profileId = body.profileId || body.profile_id || null;
     /*
-     * 出新点子的任务不接共用会话。
+     * 有些任务不接共用会话（名单和理由见 ISOLATED_TASKS）。
      *
-     * 共用会话里躺着上一次同样问题的完整回答，模型会被它带着走——
-     * 这正是选题撞车的根源。它需要的"记忆"（账号是谁、出过哪些选题）
-     * 都已经明确写进这一次的提示词里了，不需要会话来带。
+     * 选题：共用会话里躺着上一次同样问题的完整回答，模型会被它带着走——
+     * 这正是选题撞车的根源。三份定位：篇幅太大，会把共用会话撑爆。
+     * 它们需要的背景都已经明确写进这一次的提示词里了，不需要会话来带。
      * 返回的新会话 id 也不存：存了会把其他板块共用的那个窗口顶掉。
      */
     const isolated = ISOLATED_TASKS.has(body.taskType);
@@ -508,88 +510,190 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const err = await response.text();
       console.error('Dify Error:', err);
-      return new Response(JSON.stringify({ error: 'API调用失败' }), { 
+      return new Response(JSON.stringify({ error: 'API调用失败' }), {
         status: response.status,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('无法读取响应');
-
     let totalChunks = 0;
     let fullResponse = ''; // 收集完整回复用于保存
     let capturedConversationId = '';
+    let capturedMessageId = '';
+    const userId = guard.userId!;
+    const encoder = new TextEncoder();
+
     const stream = new ReadableStream({
       async start(controller) {
-        const decoder = new TextDecoder();
-        let buffer = '';
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              console.log('Stream done. Total chunks:', totalChunks);
-              break;
-            }
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (const line of lines) {
-              if (!line.trim() || !line.startsWith('data: ')) continue;
-              try {
-                const data = JSON.parse(line.slice(6));
+        /*
+         * 浏览器那头断了（切走、锁屏、网络抖动）也要把上游读完：
+         * Dify 照样会写完，这边读完才能扣次数、记下会话；
+         * 用户回来后页面会按消息 id 把全文取回（见 lib/dify-recover.ts）。
+         * 所以往浏览器写失败不抛错，只记一下"对面已经不在了"。
+         */
+        let clientGone = false;
+        let lastSent = Date.now();
+        const write = (chunk: string) => {
+          if (clientGone) return;
+          try {
+            controller.enqueue(encoder.encode(chunk));
+            lastSent = Date.now();
+          } catch {
+            clientGone = true;
+          }
+        };
+        const send = (obj: Record<string, unknown>) => write(`data: ${JSON.stringify(obj)}\n\n`);
+
+        /*
+         * 心跳。开头检索知识库有十几秒一个字都不出，长文中途模型也会停顿；
+         * 链路上任何一层（Nginx、运营商、浏览器）见连接长时间没动静就可能掐掉。
+         * Dify 自己会发 ping，原来被这里过滤掉了，所以这边自己补。
+         * 以冒号开头的是 SSE 注释行，页面解析时直接跳过。
+         */
+        const heartbeat = setInterval(() => {
+          if (Date.now() - lastSent >= 10_000) write(': ping\n\n');
+        }, 5_000);
+
+        /** 读一次上游。返回：正常结束 / Dify 报错 / 连接断了 */
+        const pump = async (
+          res: Response
+        ): Promise<{ kind: 'done' } | { kind: 'error'; message: string } | { kind: 'broken'; error: unknown }> => {
+          const reader = res.body?.getReader();
+          if (!reader) return { kind: 'broken', error: new Error('无法读取响应') };
+          const decoder = new TextDecoder();
+          let buffer = '';
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) return { kind: 'done' };
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              for (const line of lines) {
+                if (!line.trim() || !line.startsWith('data: ')) continue;
+                let data: any;
+                try {
+                  data = JSON.parse(line.slice(6));
+                } catch (e) {
+                  console.warn('Parse error:', e);
+                  continue;
+                }
 
                 // 记下本轮的会话 id，下次同作用域的请求带上它以延续对话。
                 // 新会话时 Dify 在首个事件里就会返回，这里只取一次。
                 if (data.conversation_id && !capturedConversationId) {
                   capturedConversationId = data.conversation_id;
                 }
-
-                // 调试：打印 Dify 返回的数据结构
-                if (totalChunks === 0) {
-                  console.log('📥 Dify 首个响应:', JSON.stringify(data, null, 2));
+                // 消息 id：断线后凭它去 Dify 取回全文
+                if (data.message_id && !capturedMessageId) {
+                  capturedMessageId = data.message_id;
                 }
-                
+
+                const failure = difyEventError(data);
+                if (failure) return { kind: 'error', message: failure };
+
                 // 支持两种事件类型：Chatbot 的 message 和工作流的 text_chunk
                 const text = data.answer || data.text || '';
                 const isContent = (data.event === 'message' || data.event === 'text_chunk') && text;
-                
                 if (isContent) {
                   totalChunks++;
-                  
-                  // 收集完整回复
                   fullResponse += text;
-                  
-                  // 调试：首次收到内容时打印
                   if (totalChunks === 1) {
                     console.log('✅ 开始接收内容，事件类型:', data.event);
                   }
-                  
-                  // 返回 SSE 格式
-                  const sseData = `data: ${JSON.stringify({ 
+                  send({
                     answer: text,
-                    conversation_id: data.conversation_id 
-                  })}\n\n`;
-                  controller.enqueue(new TextEncoder().encode(sseData));
+                    conversation_id: capturedConversationId || data.conversation_id,
+                    message_id: capturedMessageId || undefined,
+                  });
                 }
-              } catch (e) {
-                console.warn('Parse error:', e);
               }
             }
+          } catch (error) {
+            return { kind: 'broken', error };
+          } finally {
+            reader.releaseLock();
           }
-          controller.close();
+        };
+
+        try {
+          let outcome = await pump(response);
+
+          /*
+           * 会话塞满了（超出模型上下文）：一个字还没出，就换新会话重来一次。
+           * 线上 9/24 内容定位连续三次就是这样失败的，页面上"点了没反应"。
+           * 旧会话 id 清掉，其他板块下次也会从新窗口开始，不会接着撞。
+           */
+          if (
+            outcome.kind === 'error' &&
+            totalChunks === 0 &&
+            difyRequestBody.conversation_id &&
+            isContextOverflowError(outcome.message)
+          ) {
+            console.warn('⚠️ 会话超出模型上下文，换新会话重试:', outcome.message.slice(0, 160));
+            if (!isolated) await clearDifyConversationId(userId, profileId);
+            delete difyRequestBody.conversation_id;
+            capturedConversationId = '';
+            capturedMessageId = '';
+            const retry = await callDify();
+            outcome = retry.ok
+              ? await pump(retry)
+              : { kind: 'error', message: `重试失败 ${retry.status}: ${(await retry.text()).slice(0, 200)}` };
+          }
+
+          /*
+           * 和 Dify 之间的连接断了，但它那边多半照样写完了：等它写完，取回全文。
+           * 用 message_replace 整篇替换，页面上已经显示的半截会被补全。
+           */
+          if (outcome.kind === 'broken' && capturedConversationId && capturedMessageId) {
+            console.warn('⚠️ 与 Dify 的连接中断，等待并取回全文:', String(outcome.error).slice(0, 160));
+            const got = await waitForDifyMessage(capturedConversationId, capturedMessageId, userId);
+            if (got.status === 'done') {
+              fullResponse = got.answer;
+              totalChunks = Math.max(totalChunks, 1);
+              send({ event: 'message_replace', answer: got.answer, conversation_id: capturedConversationId, message_id: capturedMessageId });
+              outcome = { kind: 'done' };
+            } else if (got.status === 'error') {
+              outcome = { kind: 'error', message: got.message };
+            }
+          }
+
+          if (outcome.kind === 'error') {
+            console.error('Dify 生成失败:', outcome.message.slice(0, 300));
+            send({ event: 'error', message: friendlyDifyError(outcome.message) });
+          } else if (outcome.kind === 'broken') {
+            console.error('Stream error:', outcome.error);
+            send({ event: 'error', message: '和 AI 的连接断了，请重试' });
+          } else if (totalChunks === 0) {
+            // 正常结束却一个字没有：原来页面上就是"点了没反应"，现在明说
+            console.warn('Dify 正常结束但没有任何正文');
+            send({ event: 'error', message: '这次没有生成出内容，请重试' });
+          } else {
+            console.log('Stream done. Total chunks:', totalChunks);
+            // 结束标记：页面据此区分"写完了"和"半路断了"
+            send({ event: 'message_end', conversation_id: capturedConversationId, message_id: capturedMessageId });
+          }
+
+          clearInterval(heartbeat);
+          if (!clientGone) {
+            try {
+              controller.close();
+            } catch {
+              /* 对面已经关了 */
+            }
+          }
 
           // 生成成功（有内容）后，服务端扣减一次配额
-          if (totalChunks > 0 && guard.userId) {
-            await incrementUsageServer(guard.userId, getFeatureFromTaskType(body.taskType));
+          if (outcome.kind === 'done' && totalChunks > 0) {
+            await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType));
           }
 
           // 持久化会话 id，使下一次同作用域的生成延续本轮对话。
           // 仅在确有内容产出时保存，避免把失败的空会话记下来。
           // 独立会话不写回共用窗口（见上面 isolated 的说明）
-          if (!isolated && totalChunks > 0 && guard.userId && capturedConversationId) {
+          if (!isolated && outcome.kind === 'done' && totalChunks > 0 && capturedConversationId) {
             await saveDifyConversationId(
-              guard.userId,
+              userId,
               capturedConversationId,
               profileId,
               body.taskType || '未知'
@@ -600,19 +704,25 @@ export async function POST(req: NextRequest) {
             console.warn('[dify-conversation] 本轮未捕获到 conversation_id，会话不会被延续');
           }
         } catch (err) {
+          clearInterval(heartbeat);
           console.error('Stream error:', err);
-          controller.error(err);
-        } finally {
-          reader.releaseLock();
+          try {
+            controller.error(err);
+          } catch {
+            /* 对面已经关了 */
+          }
         }
       }
     });
 
     return new Response(stream, {
-      headers: { 
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
+      headers: {
+        // 必须是 event-stream：Nginx 的 gzip 会把 text/plain 攒起来压缩，攒够了才往下发
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        // 告诉 Nginx 别缓冲，来一段转一段
+        'X-Accel-Buffering': 'no',
       }
     });
   } catch (error) {

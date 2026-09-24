@@ -304,6 +304,7 @@ export default function PositioningPage() {
       fullResult += await readDifyStream(response, {
         onChunk: (_piece, full) => setResult(full),
         onConversationId: (id) => { conversationId = id; },
+        onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
       });
 
       // 保存到数据库

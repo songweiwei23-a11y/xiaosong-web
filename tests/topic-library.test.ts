@@ -197,7 +197,7 @@ describe('接线：生成和追问都用上', () => {
   it('生成选题不接共用会话，也不写回去', () => {
     expect(stream).toMatch(/const isolated = ISOLATED_TASKS\.has\(body\.taskType\)/);
     expect(stream).toMatch(/isolated \? null : await getDifyConversationId\(/);
-    expect(stream).toMatch(/if \(!isolated && totalChunks > 0[^)]*\)\s*\{\s*await saveDifyConversationId\(/);
+    expect(stream).toMatch(/if \(!isolated && [^{]*\)\s*\{\s*await saveDifyConversationId\(/);
   });
 
   it('清单覆盖所有历史批次，删掉的也算出过、排在最前', () => {

@@ -16,6 +16,7 @@ import {
   wantsNewTopics,
 } from '@/lib/topic-library'
 import { loadPriorTopicTitles, saveFollowUpTopics } from '@/lib/topic-library-server'
+import { difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors'
 
 /*
  * 自由对话与所有「追问」都走这个路由。
@@ -259,6 +260,28 @@ export async function POST(request: NextRequest) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(customEvent)}\n\n`))
               }
 
+              /*
+               * Dify 报错：原文是英文堆栈，换成用户看得懂的话再转发。
+               * 共用窗口塞满了（超出模型上下文）就把它清掉，下一句从新窗口开始——
+               * 不清的话这个档案之后的每一次追问都会撞同一个错。
+               */
+              const failure = difyEventError(data)
+              if (failure) {
+                console.error('[dify/chat] Dify 报错:', failure.slice(0, 300))
+                if (
+                  !hasContent &&
+                  isContextOverflowError(failure) &&
+                  sharedConversationId &&
+                  useConversationId === sharedConversationId
+                ) {
+                  await clearDifyConversationId(guard.userId!, profileId)
+                }
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ event: 'error', message: friendlyDifyError(failure) })}\n\n`)
+                )
+                continue
+              }
+
               if (data.answer) {
                 hasContent = true
                 if (data.event === 'message' || data.event === 'agent_message') {
@@ -279,8 +302,10 @@ export async function POST(request: NextRequest) {
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
+        // 告诉 Nginx 别缓冲，来一段转一段
+        'X-Accel-Buffering': 'no',
       },
     })
   } catch (error) {
