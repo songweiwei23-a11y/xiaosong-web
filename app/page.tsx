@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
 import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
+import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
 import { 
   Sparkles, Zap, CheckCircle, TrendingUp, ArrowRight, 
@@ -216,7 +217,7 @@ export default function HomePage() {
     },
     {
       q: "和其他AI工具有什么区别？",
-      a: `我们不是简单的AI对话工具。核心优势在于：①${FACTS.wordsWan} 万字的自有编导知识库（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库），不是网上抓的通用内容；②${FACTS.boards} 个板块打通全流程（定位→选题→开篇→脚本→分镜→标题→成交），上一步的产出直接喂给下一步；③${FACTS.methods} 条成体系的方法，每条都带结构公式、情绪走向和不能用的边界；④专为中文短视频优化的提示词工程。`
+      a: `我们不是简单的AI对话工具。核心优势在于：①${FACTS.wordsWan} 万字的自有编导知识库（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库），不是网上抓的通用内容；②${FACTS.methods} 条成体系的方法——四大脚本（教知识/聊观点/晒过程/讲故事）各对一个生意目的，八大爆款元素给个行业就能套出八个方向，起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种每条都带公式和不能用的边界；③${FACTS.boards} 个板块打通全流程（定位→选题→开篇→脚本→分镜→标题→成交），上一步的产出直接喂给下一步；④专为中文短视频优化的提示词工程。`
     },
     {
       q: "免费版有什么限制？",
@@ -362,7 +363,7 @@ export default function HomePage() {
             key: 'methods',
             value: FACTS.methods,
             label: '条带公式的方法',
-            sub: `起号 ${FACTS.tactics} 计 · 开篇 ${FACTS.cards} 计 · 脚本结构 ${FACTS.structures} 种，每条都写明什么情况下不能用`,
+            sub: `四大脚本 · 八大爆款元素 · 起号 ${FACTS.tactics} 计 · 开篇 ${FACTS.cards} 计 · 脚本结构 ${FACTS.structures} 种，每条都写明什么情况下不能用`,
             suffix: '',
           },
           {
@@ -450,7 +451,8 @@ export default function HomePage() {
                   提炼出 <span className="font-semibold text-primary">{FACTS.methods}</span> 条带公式的方法
                 </p>
                 <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、脚本结构 {FACTS.structures} 种</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">四大脚本（教知识/聊观点/晒过程/讲故事）各对一个生意目的</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">八大爆款元素、起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、脚本结构 {FACTS.structures} 种</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">每条都写明机制、结构公式、情绪曲线与适用边界</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">来自成体系的编导课程，不是网上抓的碎片</span></li>
                 </ul>
@@ -521,14 +523,40 @@ export default function HomePage() {
             </h2>
             <p className="text-xl text-muted-foreground dark:text-foreground max-w-3xl mx-auto">
               通用 AI 给你一段文字，我们给你<span className="font-semibold text-primary">一套能照着拍的结构</span>。
-              起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、脚本结构 {FACTS.structures} 种，
-              共 <span className="font-semibold text-primary">{FACTS.methods} 条</span>，
+              四大脚本、八大爆款元素、起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、
+              脚本结构 {FACTS.structures} 种，共 <span className="font-semibold text-primary">{FACTS.methods} 条</span>，
               每一条都写明了机制、结构公式、情绪走向、适合谁拍，以及
               <span className="font-semibold text-primary">什么情况下不能用</span>。
             </p>
           </div>
 
           <div className="max-w-6xl mx-auto">
+            {/*
+              四大脚本放在最前面，因为它是这套方法的骨架。
+              它真正的卖点不是"分了四类"，而是**四类各对应一个生意目的**——
+              通用 AI 问你"想要什么风格"，这套东西问的是"你这条是要涨粉、
+              要粉丝更铁、要促变现，还是要成交高客单"。目的定了结构才定得下来。
+            */}
+            <h3 className="text-sm font-semibold tracking-widest text-muted-foreground mb-4">
+              四大脚本 · 各对一个生意目的
+            </h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+              {SCRIPT_FAMILIES.map((f) => (
+                <div
+                  key={f.name}
+                  className="glass-panel rounded-2xl p-5 border-2 border-border hover:border-amber-500/40 transition-colors"
+                >
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-lg font-bold">{f.name}</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-500 font-medium">
+                      {f.purpose}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{f.note}</p>
+                </div>
+              ))}
+            </div>
+
             <h3 className="text-sm font-semibold tracking-widest text-muted-foreground mb-4">
               起号 {FACTS.tactics} 计 · 摘三条
             </h3>
@@ -598,9 +626,42 @@ export default function HomePage() {
               ))}
             </div>
 
+            {/*
+              八大爆款元素用紧凑的两列排，不做成大卡片——
+              它的说服力在于"八个方向一次看全"，摊成八张大卡反而散了。
+              每条都带真实句式，因为句式才是能直接套用的东西，
+              「要有冲突感」那种说法是正确的废话。
+            */}
+            <h3 className="text-sm font-semibold tracking-widest text-muted-foreground mt-12 mb-4">
+              八大爆款元素 · 给个行业就能套出八个方向
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {VIRAL_ELEMENTS.map((e) => (
+                <div
+                  key={e.name}
+                  className="glass-panel rounded-xl px-4 py-3.5 border border-border hover:border-primary/40 transition-colors"
+                >
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-1.5">
+                    <span className="font-bold">{e.name}</span>
+                    <span className="text-xs text-muted-foreground">{e.hook}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {e.patterns.map((p) => (
+                      <span
+                        key={p}
+                        className="text-[11px] px-2 py-1 rounded-md bg-primary/[0.08] border border-primary/20 text-foreground"
+                      >
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <p className="text-center text-sm text-muted-foreground mt-10">
-              以上是 {FACTS.methods} 条里的 9 条。生成时 AI 会按你的资源条件挑出能拍的那几条，
-              并守住每一条写明的边界。
+              以上是 {FACTS.methods} 条里的 {3 + 3 + 3 + FACTS.elements} 条。
+              生成时 AI 会按你的资源条件挑出能拍的那几条，并守住每一条写明的边界。
             </p>
           </div>
         </div>

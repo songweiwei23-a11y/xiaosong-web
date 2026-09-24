@@ -81,7 +81,8 @@ describe('全站数字口径统一', () => {
       usable.length
     );
 
-    expect(FACTS.methods, '方法总数必须等于三部分之和').toBe(
+    // 总数的构成在 tests/viral-elements.test.ts 里单独钉死（含八大爆款元素）
+    expect(FACTS.methods, '方法总数必须把前三部分都包含进去').toBeGreaterThanOrEqual(
       GROWTH_TACTICS.length + OPENING_CARDS.length + FACTS.structures
     );
   });
