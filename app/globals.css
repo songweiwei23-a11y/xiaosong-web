@@ -3,6 +3,29 @@
 @tailwind utilities;
 
 /*
+ * 品牌字「开物」。
+ *
+ * 取自思源宋体（Noto Serif SC，SIL OFL 1.1，可商用、可嵌入），只切了「开物KAIWU」
+ * 这几个字，每个字重约 2.6KB。自己托管，不走 Google 字体——服务器和用户都在国内，
+ * 连不上就会退回系统字体，品牌字当场变样。
+ * 其余正文照旧用系统字体，不为品牌字拖慢整站。
+ */
+@font-face {
+  font-family: 'Kaiwu Serif';
+  src: url('/fonts/kaiwu-serif-900.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Kaiwu Serif';
+  src: url('/fonts/kaiwu-serif-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
  * 设计基调：深色为主的紫粉调，玻璃质感。
  *
  * 关于毛玻璃的两条硬规则，改配色时请一并遵守，否则质感会塌：
@@ -272,6 +295,35 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  /*
+   * 品牌字：宋体粗体 + 疏朗字距，取书法题字的"留白"感。
+   * letter-spacing 会在最后一个字后面也留一截空，用负的右外边距抵掉，
+   * 否则居中时整体会往左偏。
+   */
+  .font-brand {
+    font-family: 'Kaiwu Serif', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', serif;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    margin-right: -0.16em;
+  }
+  /* 英文副标：细一点、字距拉开，做点缀，不抢主字 */
+  .font-brand-latin {
+    font-family: 'Kaiwu Serif', 'Noto Serif SC', Georgia, serif;
+    font-weight: 600;
+    letter-spacing: 0.42em;
+    margin-right: -0.42em;
+  }
+  /*
+   * 印章式标志：品牌渐变底 + 内嵌一圈细白边（印章的边框），
+   * 比原来"渐变方块里放个星星图标"更有辨识度，也和宋体字是一套气质。
+   */
+  .brand-seal {
+    background-image: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
+    box-shadow:
+      inset 0 0 0 1.5px rgb(255 255 255 / 0.28),
+      0 8px 20px -8px hsl(var(--brand-from) / 0.55);
   }
 
   /* 主按钮：渐变 + 柔光投影，投影用品牌色而非黑色，才有"发光"感 */

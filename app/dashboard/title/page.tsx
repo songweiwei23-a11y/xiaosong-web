@@ -61,7 +61,7 @@ const TITLE_FORMULAS = [
 const KEYWORD_STRATEGIES = [
   { value: "search", label: "搜索词", desc: "高搜索量", example: "减肥、赚钱", icon: "🔍" },
   { value: "long-tail", label: "长尾词", desc: "精准细分", example: "30天减肥10斤", icon: "🎯" },
-  { value: "brand", label: "品牌词", desc: "个人IP", example: "小宋编导", icon: "🏷️" },
+  { value: "brand", label: "品牌词", desc: "个人IP", example: "不一编导", icon: "🏷️" },
   { value: "hot", label: "热点词", desc: "当下热门", example: "AI、ChatGPT", icon: "🔥" },
 ];
 

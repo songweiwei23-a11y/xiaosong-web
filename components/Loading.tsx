@@ -1,5 +1,6 @@
 ﻿// 全局加载动画组件
 import React from 'react';
+import { BrandWordmark } from '@/components/brand/Brand';
 
 interface LoadingProps {
   message?: string;
@@ -33,8 +34,8 @@ export default function Loading({ message = "正在加载...", size = 'medium' }
         </div>
 
         {/* 加载文字 */}
-        <h2 className={`${textSizes[size]} font-bold brand-gradient bg-clip-text text-transparent mb-2`}>
-          小宋编导工作台
+        <h2 className={`${textSizes[size]} brand-text mb-3 flex justify-center`}>
+          <BrandWordmark />
         </h2>
         <p className="text-muted-foreground animate-pulse">
           {message}

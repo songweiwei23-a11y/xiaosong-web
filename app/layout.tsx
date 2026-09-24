@@ -8,7 +8,7 @@ import { AmbientBackground } from '@/components/theme/AmbientBackground';
 import { FeedbackHost } from '@/components/ui/feedback';
 
 export const metadata: Metadata = {
-  title: '小宋编导工作台 - AI短视频脚本生成',
+  title: '开物 - AI短视频脚本生成',
   description: '3秒生成专业级短视频脚本，达到MCN团队水平（25/35分）',
 };
 
@@ -45,6 +45,8 @@ export default function RootLayout({
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* 品牌字只有 2.6KB，预加载了，首屏的「开物」就不会先闪一下系统字体 */}
+        <link rel="preload" href="/fonts/kaiwu-serif-900.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
         <ThemeProvider>

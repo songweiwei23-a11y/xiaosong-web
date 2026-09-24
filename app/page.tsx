@@ -8,8 +8,9 @@ import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/confi
 import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
 import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
+import { BRAND_NAME, BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import { 
-  Sparkles, Zap, CheckCircle, TrendingUp, ArrowRight, 
+  Zap, CheckCircle, TrendingUp, ArrowRight, 
   FileText, Lightbulb, Film, Target, Star,
   Crown, Check, BarChart3, Award, Rocket, BookOpen,
   Brain, Layers, Clock, Shield, Quote, ChevronRight,
@@ -207,7 +208,7 @@ export default function HomePage() {
   const faqs = [
     {
       q: "完全不懂编导可以用吗？",
-      a: `完全可以！小宋编导工作台内置 ${FACTS.docs} 篇、共 ${FACTS.wordsWan} 万字的专业编导资料，AI会根据您的需求自动匹配最佳方案。无论您是新手还是专业编导，都能快速上手，几分钟就能出一版专业脚本。`
+      a: `完全可以！${BRAND_NAME}内置 ${FACTS.docs} 篇、共 ${FACTS.wordsWan} 万字的专业编导资料，AI会根据您的需求自动匹配最佳方案。无论您是新手还是专业编导，都能快速上手，几分钟就能出一版专业脚本。`
     },
     {
       q: "生成的脚本质量如何？",
@@ -262,10 +263,10 @@ export default function HomePage() {
       {/* Navigation */}
       <header className="fixed top-0 w-full border-b border-border bg-white/80 dark:bg-muted/80 backdrop-blur-xl z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl hover:scale-105 transition-transform">
-            <Sparkles className="w-6 h-6 text-primary animate-pulse" />
-            <span className="brand-gradient bg-clip-text text-transparent">
-              小宋编导工作台
+          <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
+            <BrandSeal size={32} />
+            <span className="text-[21px] text-foreground">
+              <BrandWordmark />
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
@@ -745,13 +746,13 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* 传统方式 vs 小宋工作台对比 */}
+          {/* 传统方式 vs 开物对比 */}
           <div className="max-w-5xl mx-auto mb-16 overflow-x-auto">
             <div className="glass-panel rounded-2xl border-2 border-border overflow-hidden shadow-xl">
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
                 <div className="bg-muted dark:bg-muted p-4 font-bold text-center">对比项</div>
                 <div className="bg-muted dark:bg-muted p-4 font-bold text-center">传统方式</div>
-                <div className="bg-primary/10 p-4 font-bold text-center text-primary">小宋工作台</div>
+                <div className="bg-primary/10 p-4 text-center text-primary"><BrandWordmark /></div>
                 <div className="bg-emerald-500/10 p-4 font-bold text-center text-green-500">提升幅度</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
@@ -949,9 +950,11 @@ export default function HomePage() {
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-6 h-6 text-primary" />
-                <span className="font-bold text-white text-lg">小宋编导工作台</span>
+              <div className="flex items-center gap-2.5 mb-4">
+                <BrandSeal size={30} />
+                <span className="text-[19px] text-foreground">
+                  <BrandWordmark latin />
+                </span>
               </div>
               <p className="text-sm leading-relaxed">
                 基于Claude AI的专业短视频创作助手，让创作更简单、更高效。
@@ -993,7 +996,7 @@ export default function HomePage() {
           </div>
 
           <div className="border-t border-border pt-8 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} 小宋编导工作台. All rights reserved. Powered by Claude AI</p>
+            <p>&copy; {new Date().getFullYear()} {BRAND_NAME}. All rights reserved. Powered by Claude AI</p>
           </div>
         </div>
       </footer>

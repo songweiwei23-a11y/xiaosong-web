@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, SUPPORT_WECHAT } from "@/components/legal/LegalPage";
 import { QUOTA_PERIOD_DAYS, FREE_ONE_TIME_FEATURES, FEATURE_NAMES } from "@/lib/config/plans";
 
-export const metadata: Metadata = { title: "服务条款 - 小宋编导工作台" };
+export const metadata: Metadata = { title: "服务条款 - 开物" };
 
 /*
  * 这里的每一条规则，都必须和代码实际执行的一致：
@@ -19,7 +19,7 @@ export default function TermsPage() {
     <LegalPage title="服务条款">
       <section>
         <p>
-          欢迎使用小宋编导工作台（以下简称"我们"）。注册或使用本服务，即表示你同意以下条款。
+          欢迎使用开物（以下简称"我们"）。注册或使用本服务，即表示你同意以下条款。
         </p>
       </section>
 

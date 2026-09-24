@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPage, SUPPORT_WECHAT } from "@/components/legal/LegalPage";
 
-export const metadata: Metadata = { title: "隐私政策 - 小宋编导工作台" };
+export const metadata: Metadata = { title: "隐私政策 - 开物" };
 
 /*
  * 每一条都对着代码核过，只写真在做的事：
@@ -17,7 +17,7 @@ export default function PrivacyPage() {
     <LegalPage title="隐私政策">
       <section>
         <p>
-          小宋编导工作台（以下简称"我们"）重视你的个人信息。这份政策说明我们收集哪些信息、拿来做什么、
+          开物（以下简称"我们"）重视你的个人信息。这份政策说明我们收集哪些信息、拿来做什么、
           交给了谁，以及你能怎么管理它们。
         </p>
       </section>

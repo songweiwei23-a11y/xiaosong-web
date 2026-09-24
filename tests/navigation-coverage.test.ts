@@ -177,6 +177,10 @@ describe('内部链接都指向存在的页面', () => {
   /** 某个 /dashboard/xxx 或 /xxx 路由有没有对应的 page.tsx */
   const routeExists = (route: string) => {
     const segs = route.replace(/^\//, '').split('/').filter(Boolean);
+    // public/ 下的静态文件（品牌字体等）也是真实存在的地址
+    if (segs.length && fs.statSync(path.join(process.cwd(), 'public', ...segs), { throwIfNoEntry: false })?.isFile()) {
+      return true;
+    }
     const dir = path.join(process.cwd(), 'app', ...segs);
     if (fs.existsSync(path.join(dir, 'page.tsx'))) return true;
     // 动态路由：父目录下有 [xxx]

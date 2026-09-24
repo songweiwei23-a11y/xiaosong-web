@@ -7,9 +7,10 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { listWorks, deleteWork, type Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
 import { confirmDialog, notify } from "@/components/ui/feedback";
+import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
-  BookOpen, User, Home, Sparkles, Award, MessagesSquare, X, ChevronDown,
+  BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
   Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen,
 } from "lucide-react";
 
@@ -189,14 +190,12 @@ export function Sidebar() {
         {/* 品牌区 */}
         <div className="flex h-[72px] shrink-0 items-center justify-between gap-2 px-5">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="brand-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-lg shadow-primary/25">
-              <Sparkles className="h-[18px] w-[18px] text-white" />
-            </div>
+            <BrandSeal size={36} />
             <div className="min-w-0">
-              <div className="truncate text-[15px] font-semibold leading-tight text-foreground">
-                小宋编导工作台
+              <div className="text-[19px] text-foreground">
+                <BrandWordmark />
               </div>
-              <div className="truncate text-[11px] leading-tight text-muted-foreground">
+              <div className="mt-1 truncate text-[11px] leading-tight text-muted-foreground">
                 AI 短视频创作智能体
               </div>
             </div>

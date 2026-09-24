@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { LogIn, Mail, Lock, Sparkles, ArrowLeft, Home, Ticket } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowLeft, Home, Ticket } from "lucide-react";
+import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AuthTransition } from "@/components/auth/AuthTransition";
 // 数字走 FACTS 统一口径。原来这里 import 整套方法库只为数一个 length——
@@ -139,10 +140,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10 px-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4 hover:scale-105 transition-transform">
-            <Sparkles className="w-10 h-10 text-primary animate-pulse" />
-            <h1 className="text-3xl font-bold brand-text">
-              小宋编导工作台
+          <Link href="/" className="inline-flex items-center gap-3.5 mb-4 transition-opacity hover:opacity-90">
+            <BrandSeal size={48} />
+            <h1 className="text-[34px] text-foreground">
+              <BrandWordmark latin />
             </h1>
           </Link>
           <p className="text-muted-foreground">AI驱动的短视频脚本创作工具</p>
