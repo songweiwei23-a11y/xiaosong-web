@@ -189,9 +189,8 @@ describe('行业视角', () => {
     expect(p.indexOf('## 🔍 先说这一行')).toBeLessThan(p.indexOf('## 一句话定位'));
   });
 
-  it('实体店用 50/20/30 配比，个人 IP 用另一套', () => {
-    expect(p).toContain('变现50% / 人设20% / 流量30%');
-    expect(p).toContain('门店等的是客人，不是粉丝');
+  it('50/20/30 是起号后的实体店/服务商配比，不是起号期的', () => {
+    expect(p).toMatch(/\*\*起号后到成熟前\*\*[^\n]*\*\*变现50% \/ 人设20% \/ 流量30%\*\*/);
   });
 
   it('给出能直接抄走的账号五件套', () => {
@@ -240,8 +239,74 @@ describe('先认主体类型，不默认是实体店', () => {
     expect(p).toContain('他会先潜水观察你很久');
   });
 
-  it('提醒 to B 别把观众当泛粉', () => {
-    expect(p).toContain('比 10 万播放全是同行围观强得多');
+  it('只接本地客户的号，才提醒别把观众当泛粉', () => {
+    expect(p).toContain('**如果这个号唯一的变现就是接本地客户**');
+    expect(p).toContain('比 10 万播放全是同行围观强');
+  });
+
+  /*
+   * 第四轮反馈：「用编导的眼睛记录世界，做有影响力的 IP，既有大流量又能变现」，
+   * 结果被判成纯 to B 服务号，配比教知识 60%。
+   * 档案里变现方式是"广告变现、带货佣金、卖 AI 工具、代运营"——前三样都靠大流量。
+   */
+  it('允许混合型：按每种变现方式靠什么来判，而不是硬塞一类', () => {
+    expect(p).toContain('**可以是混合型，不要硬塞进一类。**');
+    expect(p).toMatch(/广告变现、带货佣金、卖课 \/ 卖工具 → 靠\*\*大流量\*\*/);
+    expect(p).toContain('不能把他判成纯 to B 服务号');
+  });
+
+  it('"别当泛粉"那条只管服务线，不压流量线', () => {
+    expect(p).toContain('**但这条只管服务线。**');
+  });
+});
+
+/**
+ * 第四轮反馈：同一份档案、同一句"既有大流量又能变现"，一天之内给出
+ * 教知识60% / 知识45% / 晒过程40% / 过程60% 四种主打。
+ * 查下来是提示词的问题：知识库里知识40% 是**成熟账号**的配比，提示词把这四个字丢了；
+ * "变现50%"又紧跟着"走教知识"；作用和形式两层混在一起；也没有规则把"要大流量"和配比挂钩。
+ */
+describe('内容配比按知识库的顺序推', () => {
+  const p = buildPositioningPrompt(base);
+
+  it('知识40% 明确标成成熟账号的，并警告新号别套', () => {
+    expect(p).toMatch(/\*\*成熟账号\*\*：形式上可参考 \*\*知识40% \/ 故事20% \/ 过程20% \/ 观点20%\*\*/);
+    expect(p).toContain('**这是成熟账号的基准，不是新号的**');
+    // 旧写法：个人 IP 直接用知识40%，不分阶段
+    expect(p).not.toContain('纯个人 IP / 知识博主**（靠内容本身变现）用 知识40%');
+  });
+
+  it('新号流量型必须是最大的一块', () => {
+    expect(p).toMatch(/\*\*新号 \/ 刚起号\*\*[\s\S]{0,200}\*\*流量型必须是最大的一块\*\*/);
+  });
+
+  it('作用和形式分两层给', () => {
+    expect(p).toContain('配比必须**两层都给**');
+    expect(p).toMatch(/作用配比：流量型 \/ 人设型 \/ 变现型 各占多少/);
+  });
+
+  it('用户要大流量时，行业干货不当主力（知识库：选题决定流量上限）', () => {
+    expect(p).toContain('**想要大流量，就不能让行业干货当主力。**');
+    expect(p).toMatch(/要\*\*大流量、有影响力、涨粉、做博主\*\* → 流量型往上加/);
+  });
+
+  it('主力形式就是档案里数据最好的类型', () => {
+    expect(p).toContain('**它就是主力形式**');
+  });
+
+  it('"变现"不再直接等于"教知识"', () => {
+    expect(p).not.toContain('变现型走教知识和晒过程');
+    expect(p).toContain('不是把知识型抬成主力');
+  });
+
+  it('输出里要逐条写出配比核验', () => {
+    expect(p).toContain('**配比核验**');
+    expect(p).toContain('3. 用户要大流量的话，行业干货是不是没当主力？');
+  });
+
+  it('没有知识库里不存在的"新号 60/30/10"', () => {
+    // 那组数字是旧代码里写的，知识库里找不到，不能冒充知识库的结论
+    expect(p).not.toMatch(/流量型\s*60%/);
   });
 });
 
@@ -452,12 +517,30 @@ describe('变现这一维不能再被砍掉', () => {
 describe('补充说明优先于档案', () => {
   it('用户临时写的要求要压过档案里的默认值', () => {
     const p = buildPositioningPrompt({ ...base, additionalNotes: '这次只想做同城' });
-    expect(p).toContain('这次只想做同城');
-    expect(p).toContain('优先级高于上面的档案');
+    expect(p).toMatch(/## 🎯 用户自己定的方向（硬约束）\n\n这次只想做同城/);
+    expect(p).toContain('优先于上面的档案，也优先于下面方法论里的默认值');
+  });
+
+  it('点名它管定位和配比，且不许自作主张改方向', () => {
+    const p = buildPositioningPrompt({ ...base, additionalNotes: '做有影响力的IP，既有大流量又能变现' });
+    expect(p).toContain('**主体判断、一句话定位、人设**要落在这个方向上');
+    expect(p).toContain('**内容配比**要服务这个目标');
+    expect(p).toContain('不要自作主张改方向');
+  });
+
+  it('他写的核心定位原样保留在一句话定位里', () => {
+    const p = buildPositioningPrompt(base);
+    expect(p).toContain('他原话里的核心短语要**原样出现**在这句话里');
+  });
+
+  it('禁忌也管例子；不许替用户编经历和数字', () => {
+    const p = buildPositioningPrompt(base);
+    expect(p).toContain('**以上禁忌同样管你举的例子、示范标题和脚本**');
+    expect(p).toContain('（示例，换成你自己的真实经历）');
   });
 
   it('没写补充说明时不留空段落', () => {
     const p = buildPositioningPrompt({ profileSummary: base.profileSummary });
-    expect(p).not.toContain('用户补充说明');
+    expect(p).not.toContain('用户自己定的方向');
   });
 });

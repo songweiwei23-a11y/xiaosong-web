@@ -9,6 +9,7 @@ import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { buildPositioningPrompt, type PositioningFocus } from '@/lib/positioning-standards'
 import { Markdown } from '@/components/markdown'
+import { asText, buildProfileSummary } from '@/lib/profile-summary'
 import ContinuousDialog from '@/components/ContinuousDialog'
 
 /**
@@ -39,51 +40,8 @@ interface Profile {
   [k: string]: unknown
 }
 
-const asText = (v: unknown, fallback = '') => {
-  if (v == null) return fallback
-  const s = Array.isArray(v) ? v.filter(Boolean).join('、') : String(v)
-  return s.trim() || fallback
-}
-
-/** 把档案摊成提示词里那段「这个账号的情况」 */
-function profileSummary(p: Profile): string {
-  const line = (label: string, v: unknown) => {
-    const t = asText(v)
-    return t ? `- ${label}：${t}` : ''
-  }
-  return [
-    `- 档案名称：${asText(p.profile_name, '未命名')}`,
-    line('平台', p.account_platform),
-    line('赛道', p.account_track),
-    line('账号阶段', p.account_stage),
-    line('粉丝量级', p.fans_level),
-    line('目标人群', [asText(p.target_age), asText(p.target_gender), asText(p.target_occupation)].filter(Boolean).join(' · ')),
-    line('地域', p.target_region),
-    line('客人最担心', p.target_pain_points),
-    line('他们真正想要', p.target_needs),
-    line('客人常问', p.fan_common_questions),
-    line('核心卖点', p.unique_selling_point),
-    line('想让观众发生的变化', p.content_value),
-    line('内容风格', p.content_style),
-    line('内容形式', p.content_format),
-    line('语言风格', p.content_tone),
-    line('数据最好的内容类型', p.viral_content_pattern),
-    line('团队', p.team_structure),
-    line('设备', p.equipment),
-    line('场地', p.shooting_location),
-    line('后期能力', p.editing_capability),
-    line('单条预算', p.budget_per_video),
-    line('变现方式', p.monetization_model),
-    line('产品品类', p.product_category),
-    line('价格区间', p.price_range),
-    line('成交路径', p.conversion_path),
-    line('成交障碍', p.conversion_barriers),
-    line('手上的资源', p.unique_resources),
-    line('目前的短板', p.competitive_weakness),
-  ]
-    .filter(Boolean)
-    .join('\n')
-}
+/** 档案摘要和账号定位页是同一份，见 lib/profile-summary.ts */
+const profileSummary = (p: Profile) => buildProfileSummary(p)
 
 export function DeepDivePage({ focus, taskType, title, subtitle, bullets, generatingHint }: Props) {
   const router = useRouter()

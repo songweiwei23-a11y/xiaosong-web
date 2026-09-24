@@ -16,6 +16,7 @@ import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { buildPositioningPrompt } from '@/lib/positioning-standards';
+import { buildProfileSummary as summarizeProfile } from '@/lib/profile-summary';
 import {
   SECTIONS,
   QUICK_SECTION_KEYS,
@@ -195,50 +196,11 @@ export default function PositioningPage() {
     selectedPositioning ??
     (result ? positionings.find((p) => p.full_content?.trim() === result.trim()) ?? null : null)
 
-  /** 档案摘要。整份生成和单节重生成都用它，不要各拼一份 */
-  const buildProfileSummary = () => {
-    if (!activeProfile) return ''
-    return `
-我的基本信息：
-- 档案名称：${activeProfile.profile_name}
-- 平台：${activeProfile.account_platform?.join('、') || '未设置'}
-- 赛道：${activeProfile.account_track?.join('、') || '未设置'}
-- 账号阶段：${activeProfile.account_stage || '未设置'}
-- 粉丝量级：${activeProfile.fans_level || '未设置'}
-
-目标用户画像：
-- 年龄段：${activeProfile.target_age?.join('、') || '未设置'}
-- 性别：${activeProfile.target_gender || '未设置'}
-- 职业：${activeProfile.target_occupation?.join('、') || '未设置'}
-- 痛点：${activeProfile.target_pain_points || '未设置'}
-- 需求：${activeProfile.target_needs || '未设置'}
-
-内容方向：
-- 内容类别：${activeProfile.content_category?.join('、') || '未设置'}
-- 内容风格：${activeProfile.content_style?.join('、') || '未设置'}
-- 内容形式：${activeProfile.content_format?.join('、') || '未设置'}
-- 内容价值：${activeProfile.content_value || '未设置'}
-- 独特卖点：${activeProfile.unique_selling_point || '未设置'}
-
-现有资源：
-- 团队配置：${activeProfile.team_structure || '未设置'}
-- 设备资源：${activeProfile.equipment?.join('、') || '未设置'}
-- 拍摄场地：${activeProfile.shooting_location?.join('、') || '未设置'}
-- 独特资源：${activeProfile.unique_resources || '未设置'}
-
-变现规划：
-- 变现模式：${activeProfile.monetization_model?.join('、') || '未设置'}
-- 产品类别：${activeProfile.product_category?.join('、') || '未设置'}
-- 价格区间：${activeProfile.price_range?.join('、') || '未设置'}
-- 转化路径：${activeProfile.conversion_path || '未设置'}
-- 转化钩子：${activeProfile.conversion_hooks || '未设置'}
-
-竞争分析：
-- 参考账号：${activeProfile.reference_accounts || '未设置'}
-- 竞争优势：${activeProfile.competitive_advantage || '未设置'}
-- 竞争劣势：${activeProfile.competitive_weakness || '未设置'}
-`.trim()
-  }
+  /**
+   * 档案摘要。整份生成和单节重生成都用它，不要各拼一份；
+   * 和商业定位、内容定位也是同一份（见 lib/profile-summary.ts 为什么要收成一份）
+   */
+  const buildProfileSummary = () => (activeProfile ? summarizeProfile(activeProfile) : '')
   const handleGenerate = async () => {
     if (!activeProfile) {
       notify("❌ 请先创建并选择一个用户档案")
@@ -715,6 +677,7 @@ export default function PositioningPage() {
           content={result}
           profileId={activeProfile?.id ?? null}
           profileSummary={buildProfileSummary() || undefined}
+          userDirection={additionalNotes || undefined}
           onSave={async (next) => {
             const res = await fetch('/api/positioning', {
               method: 'PATCH',

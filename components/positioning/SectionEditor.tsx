@@ -29,11 +29,13 @@ interface Props {
   content: string
   profileId: string | null
   profileSummary?: string
+  /** 用户在补充说明里定的方向，单节重写也要守 */
+  userDirection?: string
   /** 保存改动。返回是否成功 */
   onSave: (next: string) => Promise<boolean>
 }
 
-export function SectionEditor({ content, profileId, profileSummary, onSave }: Props) {
+export function SectionEditor({ content, profileId, profileSummary, userDirection, onSave }: Props) {
   const parsed = parsePositioning(content)
   const [open, setOpen] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
@@ -84,6 +86,7 @@ export function SectionEditor({ content, profileId, profileSummary, onSave }: Pr
             positioningFull: content,
             note,
             profileSummary,
+            userDirection,
           }),
         }),
       })

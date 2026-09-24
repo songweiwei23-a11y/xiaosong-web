@@ -317,6 +317,8 @@ export function buildSectionPrompt(params: {
   /** 用户说哪里不对、想改成什么 */
   note: string;
   profileSummary?: string;
+  /** 用户在补充说明里定的方向（要大流量、核心定位那句话）。整份生成当硬约束，单节重写也得守 */
+  userDirection?: string;
 }): string {
   const def = sectionOf(params.sectionKey);
   if (!def) return '';
@@ -345,7 +347,11 @@ export function buildSectionPrompt(params: {
 ## 📌 这份方案已经定下的东西（保持一致）
 
 ${anchors || '（暂无）'}
-${params.profileSummary?.trim() ? `\n## 📇 账号档案\n\n${params.profileSummary.trim()}\n` : ''}
+${params.profileSummary?.trim() ? `\n## 📇 账号档案\n\n${params.profileSummary.trim()}\n` : ''}${
+    params.userDirection?.trim()
+      ? `\n## 🎯 用户自己定的方向（硬约束，优先于档案）\n\n${params.userDirection.trim()}\n`
+      : ''
+  }
 ## 📄 这一节现在写的是
 
 ${current || '（这一节目前是空的）'}

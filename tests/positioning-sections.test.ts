@@ -295,3 +295,17 @@ describe('单节重生成的提示词', () => {
     expect(sectionOf('xxx')).toBeUndefined();
   });
 });
+
+describe('单节重写守住用户定的方向', () => {
+  it('传了就作为硬约束写进去，没传就不留空段', () => {
+    const withDir = buildSectionPrompt({
+      sectionKey: 'content',
+      positioningFull: '# 🎯 账号定位方案\n\n## 一句话定位\n用编导的眼睛记录世界\n',
+      note: '配比不对',
+      userDirection: '做有影响力的IP，既有大流量又能变现',
+    });
+    expect(withDir).toMatch(/## 🎯 用户自己定的方向（硬约束，优先于档案）\n\n做有影响力的IP，既有大流量又能变现/);
+    const without = buildSectionPrompt({ sectionKey: 'content', positioningFull: '## 一句话定位\nx\n', note: '' });
+    expect(without).not.toContain('用户自己定的方向');
+  });
+});
