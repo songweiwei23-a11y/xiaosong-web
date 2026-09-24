@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from '@/lib/viral-elements';
+import {
+  VIRAL_ELEMENTS, SCRIPT_FAMILIES, viralElementById, viralElementPrompt,
+} from '@/lib/viral-elements';
 import { FACTS } from '@/lib/showcase';
+import { readCode } from './helpers/source';
 
 /**
  * 「八大爆款元素」「四大脚本」是写在落地页上的对外说辞，
@@ -92,6 +95,87 @@ describe('四大脚本与课程原文一致', () => {
 
   it('四个目的互不重复——重复就说明这个分类没意义', () => {
     expect(new Set(SCRIPT_FAMILIES.map((f) => f.purpose)).size).toBe(4);
+  });
+});
+
+/**
+ * 选题页选了元素，提示词里必须真的带上句式。
+ *
+ * 【这组用例守的是什么】
+ * 改造前，选题页只把元素名发给模型——「爆款元素：成本、人群」。
+ * 模型拿到两个词，只能猜，出来的选题和这套方法基本无关。
+ * 八个按钮点了等于没点，而且**不报错、看不出来**，
+ * 只有真读一遍生成出来的提示词才知道。
+ */
+describe('选中的元素会把句式带进提示词', () => {
+  it('带上了名字、机制和全部句式', () => {
+    const out = viralElementPrompt(['worst']);
+    const worst = VIRAL_ELEMENTS.find((e) => e.id === 'worst')!;
+    expect(out).toContain(worst.name);
+    expect(out).toContain(worst.hook);
+    for (const p of worst.patterns) {
+      expect(out, `句式「${p}」没进提示词`).toContain(p);
+    }
+  });
+
+  it('明确要求按句式出题、并标注用了哪条——否则模型会自由发挥', () => {
+    const out = viralElementPrompt(['worst', 'cost']);
+    expect(out).toContain('必须落在上面某一个句式上');
+    expect(out).toContain('不要自己另造');
+    expect(out).toMatch(/标注用的是哪个元素/);
+  });
+
+  it('多选时每个元素各占一段', () => {
+    const out = viralElementPrompt(['worst', 'cost', 'curious']);
+    for (const id of ['worst', 'cost', 'curious']) {
+      expect(out).toContain(VIRAL_ELEMENTS.find((e) => e.id === id)!.name);
+    }
+    expect(out.match(/可套句式：/g)?.length).toBe(3);
+  });
+
+  it('没选就返回空串，不往提示词里塞空段落', () => {
+    expect(viralElementPrompt([])).toBe('');
+  });
+
+  it('认不出的 id 直接跳过，不会把原始 id 当成元素名塞进去', () => {
+    // 宁可少给一条，也不要让提示词里出现「爆款元素：xxx」
+    expect(viralElementPrompt(['不存在的id'])).toBe('');
+    const out = viralElementPrompt(['不存在的id', 'worst']);
+    expect(out).not.toContain('不存在的id');
+    expect(out).toContain('最差选题');
+  });
+
+  it('每个 id 都取得到，且 id 不重复', () => {
+    expect(new Set(VIRAL_ELEMENTS.map((e) => e.id)).size).toBe(VIRAL_ELEMENTS.length);
+    for (const e of VIRAL_ELEMENTS) {
+      expect(viralElementById(e.id), `${e.id} 取不到`).toBe(e);
+    }
+  });
+});
+
+describe('选题页用的是同一份数据，没有第二份手写清单', () => {
+  const code = readCode('app/dashboard/topic/page.tsx');
+
+  it('从 lib/viral-elements 取，不自己写死八个元素', () => {
+    expect(code).toContain('@/lib/viral-elements');
+    expect(code).toContain('VIRAL_ELEMENTS');
+    // 旧写法的特征：一整排带 zhName 的字面量
+    expect(code, '又出现了手写的元素清单').not.toMatch(/zhName:\s*["']成本["']/);
+  });
+
+  it('提示词由 viralElementPrompt 拼，不再只发名字', () => {
+    expect(code).toContain('viralElementPrompt');
+    expect(code, '还在只发元素名').not.toMatch(/八大爆款元素：\$\{elementsText\}/);
+  });
+
+  it('页面里没有原文没有的元素名', () => {
+    /*
+     * 旧清单把「猎奇选题」叫成「奇葩」、「对立选题」叫成「反差」。
+     * 这两个词在知识库里根本不是元素名，发给模型等于给了个不存在的角度。
+     * 注意「反差萌」是风格选项，不是元素，所以要精确匹配。
+     */
+    expect(code).not.toMatch(/["']奇葩["']/);
+    expect(code).not.toMatch(/爆款元素（[^）]*反差/);
   });
 });
 

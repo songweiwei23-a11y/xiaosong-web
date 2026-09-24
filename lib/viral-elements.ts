@@ -9,7 +9,8 @@
  * 结构化之后有三个好处：
  *   1. 落地页可以直接摊开讲，而且数字有源头
  *   2. tests/viral-elements.test.ts 会拿每一条去原始 .md 里比对，抄错就红
- *   3. 以后选题页可以直接把八大元素做成可选的选题角度（还没接，下一步）
+ *   3. 选题页直接用这一份做可选的选题角度，并由 viralElementPrompt()
+ *      把原文句式带进提示词（已接）
  *
  * 【口径】句式是从原文里提炼的概要，不是逐字照搬——原文每一条都是一整段
  * 带例子的讲解，全抄进来既臃肿也没必要。但**名字必须和原文一字不差**，
@@ -17,6 +18,8 @@
  */
 
 export interface ViralElement {
+  /** 选题页多选用的稳定标识。不入库，只在前端 state 和提示词拼装之间传 */
+  id: string;
   /** 元素名，必须与「八大爆款元素选题.md」里的小标题一字不差 */
   name: string;
   /** 一句话说清这个元素在利用什么 */
@@ -33,46 +36,95 @@ export interface ViralElement {
  */
 export const VIRAL_ELEMENTS: ViralElement[] = [
   {
+    id: 'celebrity',
     name: '头牌选题',
     hook: '人天然想看"最"——最贵、最牛、最顶的那个到底什么样',
     patterns: ['世界上最贵的X到底有多贵', '最牛的人到底有多牛', '最贵的东西到底好在哪'],
   },
   {
+    id: 'nostalgia',
     name: '怀旧选题',
     hook: '调动共同记忆，让同龄人一眼认出"这说的是我那会儿"',
     patterns: ['20年前经典的X', '古代人是如何办到的', '当年最火的X'],
   },
   {
+    id: 'contrast',
     name: '对立选题',
     hook: '把两类人摆在一起，双方都想看自己那一边',
     patterns: ['穷人 vs 富人', '南方人 vs 北方人', '曾经 vs 现在'],
   },
   {
+    id: 'worst',
     name: '最差选题',
     hook: '负面比正面更抓人——人更怕踩坑，而不是更想变好',
     patterns: ['贬值最快的X', '差评最多的X', '最没面子的X', '反人类设计的X'],
   },
   {
+    id: 'hormone',
     name: '荷尔蒙选题',
     hook: '异性评价是最强的即时动机，看完就想改',
     patterns: ['异性会多看你两眼的X', '一秒下头的X', '自以为很好、实际对方眼里很差的X'],
   },
   {
+    id: 'curious',
     name: '猎奇选题',
     hook: '外行看不到的那一层，本身就是信息差',
     patterns: ['外行人绝对不知道的X', '内行人的神奇操作', '黑心内幕操作'],
   },
   {
+    id: 'people',
     name: '圈人群选题',
     hook: '先点名再说话，被点到的人会觉得"在说我"',
     patterns: ['某星座 / 某 MBTI 的X', '内向（或外向）的人的X', '第一次体验X的人'],
   },
   {
+    id: 'cost',
     name: '成本选题',
     hook: '金钱、时间、面子、力气——四种成本都是人爱看的',
     patterns: ['花小钱办大事', '十分之一时间就能完成的X', '便宜又有面子的X'],
   },
 ];
+
+/** 按 id 取元素，取不到返回 undefined */
+export function viralElementById(id: string): ViralElement | undefined {
+  return VIRAL_ELEMENTS.find((e) => e.id === id);
+}
+
+/**
+ * 把选中的爆款元素渲染成提示词里的一段。
+ *
+ * 【这个函数是整件事的重点】
+ * 选题页原先只把元素名发给模型——「爆款元素：成本、人群」。
+ * 模型只能靠猜"成本"是什么意思，出来的选题和这套方法没什么关系，
+ * 等于这八个按钮点了基本没用，而且不报错，看不出来。
+ *
+ * 现在把原文的固定句式一起发过去，并明确要求每条选题落在某个句式上、
+ * 还要标注用的是哪个。这样"用户选最差选题，AI 就按那几个句式出选题"
+ * 才真的成立。
+ *
+ * 认不出的 id 直接跳过——宁可少给一条，也不要把 'xxx' 这种字符串
+ * 当成元素名塞进提示词里。
+ */
+export function viralElementPrompt(ids: string[]): string {
+  const picked = ids.map(viralElementById).filter((e): e is ViralElement => !!e);
+  if (picked.length === 0) return '';
+
+  const lines = [
+    '【八大爆款元素】选中以下角度，按给定句式出选题：',
+    '',
+    ...picked.flatMap((e) => [
+      // 用括号而不是破折号：hook 本身就含破折号，两个撞在一起读不清
+      `▸ ${e.name}（${e.hook}）`,
+      `  可套句式：${e.patterns.join(' / ')}`,
+    ]),
+    '',
+    '要求：',
+    '- 每条选题必须落在上面某一个句式上，把 X 换成本行业的具体东西',
+    '- 句式是知识库给定的，不要自己另造一套',
+    '- 每条选题后标注用的是哪个元素、套的哪个句式',
+  ];
+  return lines.join('\n');
+}
 
 export interface ScriptFamily {
   /** 脚本类型名，必须与课程原文一字不差 */

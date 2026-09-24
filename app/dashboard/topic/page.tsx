@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { putHandoff, takeHandoff, parseTopicOptions } from "@/lib/handoff";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
+import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from "@/lib/viral-elements";
 import { tacticBrief } from "@/lib/growth-standards";
 import { throwApiError } from "@/lib/api-error";
 import { createWork } from "@/lib/works";
@@ -141,16 +142,33 @@ export default function TopicPage() {
 "热血激情", "佛系淡定", "反差萌", "知性优雅"
   ];
 
-  const explosiveElements = [
-    { id: "cost", label: "💰 成本", desc: "价格/金额/省钱", icon: DollarSign, zhName: "成本" },
-    { id: "people", label: "👥 人群", desc: "特定身份", icon: Users, zhName: "人群" },
-    { id: "celebrity", label: "⭐ 头牌", desc: "名人/名牌", icon: Sparkles, zhName: "头牌" },
-    { id: "weird", label: "🤪 奇葩", desc: "反常识/猎奇", icon: Zap, zhName: "奇葩" },
-    { id: "worst", label: "👎 最差", desc: "极端负面", icon: Target, zhName: "最差" },
-    { id: "contrast", label: "⚡ 反差", desc: "身份对比", icon: Eye, zhName: "反差" },
-    { id: "nostalgia", label: "📼 怀旧", desc: "年代感", icon: Heart, zhName: "怀旧" },
-    { id: "hormone", label: "🔥 荷尔蒙", desc: "吸引力", icon: Flame, zhName: "荷尔蒙" },
-  ];
+  /*
+   * 这里原来是一份手写的八个元素，和知识库里真正的「八大爆款元素」对不上：
+   * 「奇葩」在原文里叫「猎奇选题」、「反差」叫「对立选题」。
+   * 更要命的是它只把名字发给模型（「爆款元素：成本、人群」），句式一个没传——
+   * 模型只能靠猜，这八个按钮点了基本等于没点，而且不报错。
+   *
+   * 现在统一用 lib/viral-elements.ts，名字和原文一字不差（有测试回源比对），
+   * 提示词由 viralElementPrompt() 带上原文句式。
+   * 图标留在页面这一层：它是展示细节，不该塞进数据文件。
+   */
+  const ELEMENT_ICONS: Record<string, typeof DollarSign> = {
+    cost: DollarSign,
+    people: Users,
+    celebrity: Sparkles,
+    curious: Zap,
+    worst: Target,
+    contrast: Eye,
+    nostalgia: Heart,
+    hormone: Flame,
+  };
+  const explosiveElements = VIRAL_ELEMENTS.map((e) => ({
+    id: e.id,
+    // 按钮上只放短名，「最差选题」在四列网格里放不下
+    zhName: e.name.replace(/选题$/, ''),
+    desc: e.hook,
+    icon: ELEMENT_ICONS[e.id] ?? Sparkles,
+  }));
 
   // 多选切换函数
   const toggleSelection = (item: string, selected: string[], setSelected: (arr: string[]) => void) => {
@@ -521,10 +539,8 @@ export default function TopicPage() {
         contentTypes: selectedContentTypes.join("、"),
         styles: selectedStyles.join("、"),
         positioningExtra: positioningExtra,
-        elements: selectedElements.map(id => {
-          const element = explosiveElements.find(e => e.id === id);
-          return element ? element.zhName : id;
-        }).join("、"),
+        // 这条是存历史用的，写全名才看得出当时用的是哪个元素
+        elements: selectedElements.map((id) => viralElementById(id)?.name ?? id).join("、"),
         dealReasons: selectedDealReasons.map(id => {
           const reason = ALL_DEAL_REASONS.find(r => r.id === id);
           return reason ? reason.label : id;
@@ -601,14 +617,17 @@ export default function TopicPage() {
       }
       query += `\n`;
 
-      // 创意元素
-      query += `【创意元素】\n`;
-      if (selectedElements.length > 0) {
-        const elementsText = selectedElements.map(id => {
-          const element = explosiveElements.find(e => e.id === id);
-          return element ? element.zhName : id;
-        }).join('、');
-        query += `- 八大爆款元素：${elementsText}\n`;
+      /*
+       * 爆款元素连句式一起发。
+       *
+       * 原来这里只发名字（「- 八大爆款元素：成本、人群」），模型拿到的是
+       * 两个词，出来的选题跟这套方法没什么关系。真正有用的是原文那些
+       * 固定句式——「贬值最快的X」「外行人绝对不知道的X」，
+       * 模型套上去就能直接出选题。
+       */
+      const elementBlock = viralElementPrompt(selectedElements);
+      if (elementBlock) {
+        query += `${elementBlock}\n\n`;
       }
       
       // 成交理由（重要：区分变现和流量选题）
@@ -624,7 +643,9 @@ export default function TopicPage() {
         query += `- 编导思路要服务于成交理由的说服力\n\n`;
       } else {
         query += `\n⚠️ 重要提示：这是【大流量选题】，目标是涨粉和曝光！\n`;
-        query += `- 核心手段：使用八大爆款元素（成本、反差、荷尔蒙、猎奇等）\n`;
+        // 举例也从同一份数据取，别再手写——上一版这里写的是「反差」，
+        // 而原文里压根没有这个元素（叫「对立选题」）
+        query += `- 核心手段：使用八大爆款元素（${VIRAL_ELEMENTS.slice(0, 4).map((e) => e.name).join('、')}等）\n`;
         query += `- 内容特征：话题性强、容易引发讨论、追热点、做对比\n`;
         query += `- 不考虑转化，纯粹为了播放量和传播\n`;
 
@@ -677,11 +698,11 @@ export default function TopicPage() {
       query += `## 选题X：[标题]\n\n`;
       query += `**1️⃣ 爆款元素**\n`;
       if (selectedElements.length > 0) {
-        const elementsText = selectedElements.map(id => {
-          const element = explosiveElements.find(e => e.id === id);
-          return element ? element.zhName : id;
-        }).join('、');
-        query += `使用2-3个元素（从${elementsText}中选择）及应用方式\n\n`;
+        // 用全名（「最差选题」而不是「最差」），和上面那段句式对得上
+        const elementsText = selectedElements
+          .map((id) => viralElementById(id)?.name ?? id)
+          .join('、');
+        query += `注明用了哪个元素（限 ${elementsText}）以及套的是哪一条句式\n\n`;
       } else {
         query += `使用2-3个元素及应用方式\n\n`;
       }
