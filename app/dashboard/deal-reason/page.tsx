@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -6,133 +6,122 @@ import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN } from 
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { throwApiError } from "@/lib/api-error";
-import { useCreatorContext } from '@/hooks/useCreatorContext';
-import { buildContextBlock } from '@/lib/creator-context';
-import { Award, Loader2, Sparkles, Save, Check } from "lucide-react";
-import { supabase, dealReasonService } from "@/lib/supabase";
-import { notify } from '@/components/ui/feedback';
-import { saveGenerationHistory } from '@/lib/history';
+import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { buildContextBlock } from "@/lib/creator-context";
+import { Award, Loader2, Sparkles, Save, Check, ChevronDown } from "lucide-react";
+import { notify } from "@/components/ui/feedback";
+import { saveGenerationHistory } from "@/lib/history";
+import { readDifyStream } from "@/lib/sse-stream";
+import {
+  DEAL_REASONS,
+  APPLICABLE_MIN_SCORE,
+  buildDealReasonPrompt,
+  parseDealReasons,
+  normalizeLegacyResult,
+} from "@/lib/deal-reasons";
 
-import { readDifyStream } from '@/lib/sse-stream';
+/*
+ * 成交理由。改动的来龙去脉见 lib/deal-reasons.ts 顶部，这里只说页面：
+ *
+ *   - 结果区原样显示模型输出。原来有个"格式化"把 <br> 换成空行、|| 换成加粗，
+ *     表格就是被它撑碎的；新的提示词不出表格，也就不需要格式化了
+ *   - 分析完只自动勾上**适用的**（7 分及以上），不适用的收起来，想加可以展开手动勾
+ *   - 至少选 1 个就能保存。原来要求至少 15 个，等于逼人把不相干的也存进去
+ *   - 保存走 /api/deal-reasons。原来那个写法在线上从没成功过
+ */
 
-// 历史里用它区分本页记录。发给 Dify 的 taskType 是「知识库查询」，
-// 与知识库页相同，若历史也共用同一个值，两页的记录会互相串。
+// 历史里用它区分本页记录
 const HISTORY_TASK_TYPE = "成交理由";
-// 17个核心成交理由
-const ALL_DEAL_REASONS = [
-  { id: "looks", label: "颜值高", icon: "🌟", desc: "好看出片上镜" },
-  { id: "effect", label: "效果好", icon: "✨", desc: "改变明显" },
-  { id: "choice", label: "选择多", icon: "📋", desc: "品类全款式多" },
-  { id: "unique", label: "有特色", icon: "🎨", desc: "独家唯一" },
-  { id: "convenient", label: "便利性", icon: "📍", desc: "近快方便" },
-  { id: "boss", label: "老板好", icon: "👨‍🍳", desc: "热情专业" },
-  { id: "service", label: "服务好", icon: "💎", desc: "贴心细致" },
-  { id: "cases", label: "案例多", icon: "📊", desc: "经验丰富" },
-  { id: "prestige", label: "有面子", icon: "🎩", desc: "档次品味" },
-  { id: "value", label: "性价比", icon: "💰", desc: "实惠划算" },
-  { id: "quality", label: "质量好", icon: "✅", desc: "用料足" },
-  { id: "popular", label: "生意好", icon: "🔥", desc: "火爆排队" },
-  { id: "reputation", label: "好评多", icon: "⭐", desc: "复购率高" },
-  { id: "professional", label: "专业强", icon: "🎓", desc: "有资质" },
-  { id: "scale", label: "规模大", icon: "🏢", desc: "连锁分店多" },
-  { id: "rare", label: "稀缺唯一", icon: "🦄", desc: "限量独家" },
-  { id: "honest", label: "实在不坑", icon: "🤝", desc: "透明不宰客" }
-];
 
 const STORE_TYPES = [
-"餐饮美食", "美容美发", "休闲娱乐", "运动健身",
-"亲子教育", "生活服务", "医疗健康", "宠物服务",
-"汽车服务", "其他"
+  "餐饮美食", "美容美发", "休闲娱乐", "运动健身",
+  "亲子教育", "生活服务", "医疗健康", "宠物服务",
+  "汽车服务", "其他",
 ];
 
+interface Saved {
+  reasons: string[];
+  updatedAt: string | null;
+  storeName: string;
+  storeType: string;
+}
+
 export default function DealReasonPage() {
-  // 账号上下文。这一页之前完全没接，分析成交理由却不知道这个号的人群和卖点
   const { context: creatorContext } = useCreatorContext();
 
-  // 用户ID
-  const [userId, setUserId] = useState<string | null>(null);
-  
-  // 输入信息
   const [storeName, setStoreName] = useState("");
   const [storeType, setStoreType] = useState("餐饮美食");
   const [storeFeatures, setStoreFeatures] = useState("");
   const [targetCustomer, setTargetCustomer] = useState("");
-  
-  // AI分析结果
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
-
-  // 切换页面或刷新后，把云端最近一条分析结果取回来显示。
-  // 本页原先既不保存也不恢复，结果只活在组件 state 里，一离开就没了。
-  useEffect(() => {
-    let cancelled = false;
-    const restore = async () => {
-      try {
-        // 同知识库页：不传 taskType 只会拿到「脚本生成」，
-        // 下面的 find 永远落空，恢复等于没写
-        const res = await fetch(
-          `/api/script-history?taskType=${encodeURIComponent(HISTORY_TASK_TYPE)}&limit=1`
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled || !Array.isArray(data)) return;
-        const latest = data.find((x: any) => x.task_type === HISTORY_TASK_TYPE);
-        if (latest?.result) setAnalysisResult((current) => current || latest.result);
-      } catch (error) {
-        console.error('恢复上次分析失败:', error);
-      }
-    };
-    restore();
-    return () => { cancelled = true; };
-  }, []);
-
-  // 格式化分析结果，将<br>转换为换行
-  const formatAnalysisResult = (text: string) => {
-    return text
-      .replace(/<br\s*\/?>/gi, '\n\n')  // 将<br>转为双换行
-      .replace(/\|\|/g, '\n\n**')        // 将||转为段落分隔
-      .replace(/\*\*([^*]+)\*\*:/g, '\n\n### $1\n')  // 将加粗标题转为h3
-      .trim();
-  };
-  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
-  
-  // 已保存的成交理由
-  const [savedData, setSavedData] = useState<any>(null);
+  /** 勾选的理由，存中文名 */
+  const [selected, setSelected] = useState<string[]>([]);
+  const [showOthers, setShowOthers] = useState(false);
+  const [saved, setSaved] = useState<Saved | null>(null);
+  const [saving, setSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 获取当前用户
+  // 从结果里现算适用 / 不适用。显示给用户的和自动勾上的是同一份
+  const parsed = useMemo(() => parseDealReasons(analysisResult), [analysisResult]);
+  const scoreOf = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of [...parsed.applicable, ...parsed.notApplicable]) m.set(r.label, r.score);
+    return m;
+  }, [parsed]);
+  const applicableLabels = parsed.applicable.map((r) => r.label);
+  // 没被判为适用的其余理由（包括模型漏掉没打分的）
+  const otherReasons = DEAL_REASONS.filter((r) => !applicableLabels.includes(r.label));
+
+  /*
+   * 进页面时把两样东西取回来：已保存的（表单和勾选以它为准），
+   * 以及最近一次分析（结果区以它为准——可能分析了但还没保存）。
+   */
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        // 加载已保存的成交理由
-        const saved = await dealReasonService.get(user.id);
-        if (saved) {
-          setSavedData(saved);
-          setStoreName(saved.store_name);
-          setStoreType(saved.store_type);
-          setStoreFeatures(saved.store_features || "");
-          setTargetCustomer(saved.target_customer || "");
-          setAnalysisResult(formatAnalysisResult(saved.analysis_result || ""));
-          setSelectedReasons(saved.selected_reasons || []);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [savedRes, histRes] = await Promise.all([
+          fetch("/api/deal-reasons"),
+          fetch(`/api/script-history?taskType=${encodeURIComponent(HISTORY_TASK_TYPE)}&limit=1`),
+        ]);
+        const s = savedRes.ok ? await savedRes.json() : null;
+        const h = histRes.ok ? await histRes.json() : [];
+        if (cancelled) return;
+
+        const latest = Array.isArray(h) ? h.find((x: any) => x.task_type === HISTORY_TASK_TYPE) : null;
+        const input = latest?.input_data && typeof latest.input_data === "object" ? latest.input_data : {};
+
+        setStoreName(s?.storeName || input.storeName || "");
+        setStoreType(s?.storeType || input.storeType || "餐饮美食");
+        setStoreFeatures(s?.storeFeatures || input.storeFeatures || "");
+        setTargetCustomer(s?.targetCustomer || input.targetCustomer || "");
+
+        const result = normalizeLegacyResult(latest?.result || s?.analysisResult || "");
+        // 只在结果区还空着时回填，不覆盖用户这期间已经跑出来的新结果
+        setAnalysisResult((current) => current || result);
+
+        if (s?.reasons?.length) {
+          setSaved({ reasons: s.reasons, updatedAt: s.updatedAt, storeName: s.storeName, storeType: s.storeType });
+          setSelected(s.reasons);
+        } else {
+          setSelected(parseDealReasons(result).applicable.map((r) => r.label));
         }
+      } catch (e) {
+        console.error("恢复成交理由失败:", e);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-      setIsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
     };
-    getUser();
   }, []);
 
-  // AI分析成交理由
   const handleAnalyze = async () => {
-    // 临时移除登录检查,允许游客使用
-    // if (!userId) {
-    //   notify("请先登录");
-    //   return;
-    // }
-    
     if (!storeName.trim() || !storeFeatures.trim()) {
       notify("请填写店铺名称和特色描述");
       return;
@@ -140,62 +129,44 @@ export default function DealReasonPage() {
 
     setIsAnalyzing(true);
     setAnalysisResult("");
-    setSelectedReasons([]);
+    setSelected([]);
+    setShowOthers(false);
 
     try {
-      /*
-       * 账号上下文。这一页之前完全没接——审计时发现它对账号一无所知，
-       * 分析成交理由却不知道这个号的人群、卖点和禁忌，等于隔空猜。
-       */
-      const accountContext = buildContextBlock(creatorContext, 'dealReason');
-
-      const query = `请作为短视频编导专家，全面分析以下店铺的成交理由：
-${accountContext ? `\n${accountContext}\n` : ''}
-店铺名称：${storeName}
-店铺类型：${storeType}
-店铺特色：${storeFeatures}
-${targetCustomer ? `目标客户：${targetCustomer}` : ''}
-
-请对以下17个成交理由逐一分析评分（0-10分）：
-颜值高、效果好、选择多、有特色、便利性、老板好、服务好、案例多、有面子、性价比、质量好、生意好、好评多、专业强、规模大、稀缺唯一、实在不坑
-
-要求：
-1. 每个成交理由都要分析并打分
-2. 解释该成交理由是否适合这个店铺
-3. 给出如何在短视频中体现的建议
-4. 最后标注出得分最高的TOP3核心成交理由
-5. 用表格或清晰的格式展示所有17个成交理由的评分`;
+      const query = buildDealReasonPrompt({
+        // 账号上下文：这个号的人群、卖点、禁忌。不给的话分析等于隔空猜
+        accountContext: buildContextBlock(creatorContext, 'dealReason'),
+        storeName,
+        storeType,
+        storeFeatures,
+        targetCustomer,
+      });
 
       const response = await fetch("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // 按自己的名字发。此前发 '知识库查询'，用量被记进「知识库」
-          // （无限额度），这个功能等于从来没计过费。
-          taskType: "成交理由",
-          category: "成交理由",
-          topic: query
-        }),
+        body: JSON.stringify({ taskType: "成交理由", category: "成交理由", topic: query }),
       });
-
       if (!response.ok) await throwApiError(response, "分析失败");
-      // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
+
       const full = await readDifyStream(response, {
-        onChunk: (_piece, text) => setAnalysisResult(formatAnalysisResult(text)),
+        onChunk: (_piece, text) => setAnalysisResult(text),
       });
 
-      // 存一份到云端，换页面或刷新后才能取回来
+      // 只自动勾上适用的
+      const applicable = parseDealReasons(full).applicable.map((r) => r.label);
+      setSelected(applicable);
+      if (applicable.length === 0) {
+        notify("没有分析出适用的成交理由，可以把店铺特色写得更具体些再试");
+      }
+
       if (full.trim()) {
         await saveGenerationHistory(
           HISTORY_TASK_TYPE,
           { storeName, storeType, storeFeatures, targetCustomer },
-          formatAnalysisResult(full)
+          full
         );
       }
-
-      // 分析完成后,自动选中所有17个成交理由
-      setSelectedReasons(ALL_DEAL_REASONS.map(r => r.id));
-
     } catch (error: any) {
       notify(error.message || "分析失败");
     } finally {
@@ -203,46 +174,37 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
     }
   };
 
-  // 手动选择成交理由
-  const toggleReason = (id: string) => {
-    setSelectedReasons(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
+  const toggle = (label: string) =>
+    setSelected((prev) => (prev.includes(label) ? prev.filter((x) => x !== label) : [...prev, label]));
 
-  // 保存成交理由到Supabase
   const handleSave = async () => {
-    if (!userId) {
-      notify("请先登录");
+    if (selected.length === 0) {
+      notify("至少选一个成交理由");
       return;
     }
-    
-    if (selectedReasons.length < 15) {
-      notify(`请至少选择15个成交理由（当前已选${selectedReasons.length}个）`);
-      return;
-    }
-
+    setSaving(true);
     try {
-      const saved = await dealReasonService.save({
-        userId,
-        storeName,
-        storeType,
-        storeFeatures,
-        targetCustomer,
-        analysisResult,
-        selectedReasons
+      const res = await fetch("/api/deal-reasons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeName,
+          storeType,
+          storeFeatures,
+          targetCustomer,
+          analysisResult,
+          selectedReasons: selected,
+        }),
       });
-
-      setSavedData(saved);
-      notify(`✅ 成功保存${selectedReasons.length}个成交理由!\n在脚本创作和选题策划中可灵活选择2-3个重点使用`);
+      if (!res.ok) await throwApiError(res, "保存失败");
+      const data = await res.json();
+      setSaved({ reasons: data.reasons, updatedAt: new Date().toISOString(), storeName, storeType });
+      notify(`已保存 ${data.reasons.length} 个成交理由，选题、脚本、标题会自动带上`);
     } catch (error: any) {
-      notify("保存失败: " + error.message);
+      notify(error.message || "保存失败");
+    } finally {
+      setSaving(false);
     }
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(analysisResult);
-    notify("已复制到剪贴板");
   };
 
   if (isLoading) {
@@ -253,27 +215,33 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
     );
   }
 
+  const hasResult = !!analysisResult && !isAnalyzing;
+  const unsaved =
+    !saved ||
+    saved.reasons.length !== selected.length ||
+    saved.reasons.some((r) => !selected.includes(r));
+
   return (
     <WorkspaceLayout
       sidebar={
         <>
           <PageHeader
             title="成交理由"
-            subtitle="AI 逐条分析 17 个成交理由并打分，保存后可在脚本与选题里直接调用"
+            subtitle="AI 判断 17 个成交理由哪些适用，保存后选题、脚本、标题自动带上"
           />
 
-          {savedData && (
+          {saved && (
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
               <p className="text-[13px] font-medium text-emerald-500">
-                已保存 {savedData.selected_reasons?.length || 0} 个成交理由
+                已保存 {saved.reasons.length} 个：{saved.reasons.join("、")}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                {savedData.store_name}（{savedData.store_type}）· 在脚本或选题中挑 2–3 个重点使用
+                {saved.storeName}（{saved.storeType}）· 选题、脚本、标题会自动带上
               </p>
             </div>
           )}
 
-          <CollapsibleSection title="店铺信息" defaultOpen>
+          <CollapsibleSection title="店铺信息" defaultOpen={!hasResult}>
             <Field label="店铺名称" required>
               <input
                 type="text"
@@ -285,11 +253,7 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
             </Field>
 
             <Field label="店铺类型" optional>
-              <select
-                value={storeType}
-                onChange={(e) => setStoreType(e.target.value)}
-                className={SELECT_CLS}
-              >
+              <select value={storeType} onChange={(e) => setStoreType(e.target.value)} className={SELECT_CLS}>
                 {STORE_TYPES.map((type) => (
                   <option key={type}>{type}</option>
                 ))}
@@ -330,58 +294,71 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                分析 17 个成交理由
+                {analysisResult ? "重新分析" : "分析成交理由"}
               </>
             )}
           </button>
 
-          {selectedReasons.length > 0 && (
-            <CollapsibleSection title="选择成交理由" defaultOpen>
+          {hasResult && (
+            <CollapsibleSection title="选择要用的成交理由" defaultOpen>
               <Field
-                label="成交理由"
+                label={`适用的（${APPLICABLE_MIN_SCORE} 分及以上，已自动勾上）`}
                 stacked
                 hint={
-                  selectedReasons.length < 15
-                    ? `已选 ${selectedReasons.length}/17，还需 ${15 - selectedReasons.length} 个才能保存`
-                    : `已选 ${selectedReasons.length}/17，可以保存了`
+                  applicableLabels.length === 0
+                    ? "这次没有分析出适用的，可以展开下面手动选"
+                    : `已选 ${selected.length} 个 · 建议主打 2–3 个`
                 }
               >
-                <div className="grid max-h-80 grid-cols-3 gap-1.5 overflow-y-auto pr-1">
-                  {ALL_DEAL_REASONS.map((reason) => {
-                    const picked = selectedReasons.includes(reason.id);
-                    return (
-                      <button
-                        key={reason.id}
-                        onClick={() => toggleReason(reason.id)}
-                        aria-pressed={picked}
-                        className={`glass-interactive relative rounded-xl border p-2 text-center ${
-                          picked ? "glass-selected" : "glass-panel"
-                        }`}
-                      >
-                        <div className="text-base leading-none">{reason.icon}</div>
-                        <div
-                          className={`mt-1 text-[11px] font-medium leading-none ${
-                            picked ? "text-primary" : "text-muted-foreground"
-                          }`}
-                        >
-                          {reason.label}
-                        </div>
-                        {picked && (
-                          <Check className="absolute right-1 top-1 h-3 w-3 text-primary" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                {applicableLabels.length > 0 && (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {parsed.applicable.map((r) => (
+                      <ReasonChip
+                        key={r.label}
+                        label={r.label}
+                        score={r.score}
+                        picked={selected.includes(r.label)}
+                        onClick={() => toggle(r.label)}
+                      />
+                    ))}
+                  </div>
+                )}
               </Field>
+
+              {/* 不适用的收起来，只露一行。想加可以展开手动勾——判断未必全对 */}
+              <button
+                type="button"
+                onClick={() => setShowOthers((v) => !v)}
+                className="flex w-full items-center justify-between rounded-lg px-1 py-1 text-left text-[12px] text-muted-foreground hover:text-foreground"
+              >
+                <span className="truncate">
+                  其余 {otherReasons.length} 个不太适用
+                  {!showOthers && otherReasons.length > 0 && `：${otherReasons.map((r) => r.label).join("、")}`}
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${showOthers ? "rotate-180" : ""}`} />
+              </button>
+              {showOthers && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {otherReasons.map((r) => (
+                    <ReasonChip
+                      key={r.label}
+                      label={r.label}
+                      score={scoreOf.get(r.label)}
+                      picked={selected.includes(r.label)}
+                      onClick={() => toggle(r.label)}
+                      muted
+                    />
+                  ))}
+                </div>
+              )}
 
               <button
                 onClick={handleSave}
-                disabled={selectedReasons.length < 15}
+                disabled={selected.length === 0 || saving}
                 className={`${SECONDARY_BTN} w-full disabled:cursor-not-allowed disabled:opacity-50`}
               >
-                <Save className="h-4 w-4" />
-                保存到云端（{selectedReasons.length}/17）
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saved && !unsaved ? `已保存（${selected.length} 个）` : `保存到云端（${selected.length} 个）`}
               </button>
             </CollapsibleSection>
           )}
@@ -395,15 +372,51 @@ ${targetCustomer ? `目标客户：${targetCustomer}` : ''}
         showStats={false}
         emptyIcon={Award}
         emptyTitle="填好店铺信息就能开始"
-        emptyHint="AI 会逐条分析 17 个成交理由并打分"
+        emptyHint="AI 会判断 17 个成交理由哪些适用，只详细写适用的"
         emptyTips={[
-          "特色写得越具体，打分越贴合实际",
-          "分析完可以手动调整选中的理由",
-          "保存后在脚本、选题里都能直接调用",
+          "特色写得越具体，判断越准",
+          "适用的会自动勾上，也可以手动调整",
+          "保存后选题、脚本、标题都会自动带上",
         ]}
-        generatingHint="正在逐条分析 17 个成交理由…"
-        onCopy={handleCopy}
+        generatingHint="正在判断哪些成交理由适用…"
+        onCopy={(text) => {
+          navigator.clipboard.writeText(text);
+          notify("已复制到剪贴板");
+        }}
       />
     </WorkspaceLayout>
+  );
+}
+
+function ReasonChip({
+  label,
+  score,
+  picked,
+  onClick,
+  muted,
+}: {
+  label: string;
+  score?: number;
+  picked: boolean;
+  onClick: () => void;
+  muted?: boolean;
+}) {
+  const meta = DEAL_REASONS.find((r) => r.label === label);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={picked}
+      className={`glass-interactive relative flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-left ${
+        picked ? "glass-selected" : "glass-panel"
+      } ${muted && !picked ? "opacity-60" : ""}`}
+    >
+      <span className="text-sm leading-none">{meta?.icon}</span>
+      <span className={`text-[12px] font-medium ${picked ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+      {score !== undefined && (
+        <span className="ml-auto text-[10.5px] tabular-nums text-muted-foreground">{score}分</span>
+      )}
+      {picked && <Check className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-primary p-0.5 text-white" />}
+    </button>
   );
 }
