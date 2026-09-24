@@ -11,7 +11,9 @@ import {
   Trash2,
   Calendar,
   RefreshCw,
+  ExternalLink,
 } from "lucide-react";
+import { historyOpenUrl } from "@/lib/resume";
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<any[]>([]);
@@ -184,6 +186,19 @@ export default function HistoryPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {/*
+                        原来这一页每条只能复制、删除，点开没法接着做——典型的"一次性"内容。
+                        属于作品的直接回到那一条接着做；零散的回到它的板块，
+                        在那一页的历史记录里点开就能继续。
+                      */}
+                      <Link
+                        href={historyOpenUrl(item)}
+                        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm text-primary hover:bg-primary/10 transition-colors"
+                        title={item.work_id ? "回到这条作品接着做" : "去这个板块，在它的历史记录里点开"}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        {item.work_id ? "接着做" : "去板块"}
+                      </Link>
                       <button
                         onClick={() => copyToClipboard(item.result || '')}
                         className="p-2 text-green-500 hover:bg-emerald-500/10 dark:hover:bg-green-900/20 rounded-lg transition-colors"

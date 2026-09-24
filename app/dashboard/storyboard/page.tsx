@@ -22,6 +22,8 @@ import { Film, Copy, Download, Loader2, Sparkles, Wand2, Tag } from "lucide-reac
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
+import { useWorkResume } from '@/hooks/useWorkResume';
+import { latestOf, workScriptBody } from '@/lib/resume';
 
 import { readDifyStream } from '@/lib/sse-stream';
 import { getActiveProfileId } from '@/lib/active-profile';
@@ -82,6 +84,19 @@ export default function StoryboardPage() {
     if (data?.workId) setWorkId(data.workId);
     if (data?.scriptContent) setscriptContent(data.scriptContent);
   }, []);
+
+  /*
+   * 打开某个作品（地址带 ?work=）：脚本正文填进来当输入，
+   * 做过分镜的把最新一版调出来。隔多久打开都一样。
+   */
+  useWorkResume((work) => {
+    setWorkId(work.id);
+    const script = workScriptBody(work);
+    if (script) setscriptContent(script);
+    const last = latestOf(work, "分镜脚本");
+    if (last) setResult(last.result);
+    else if (!script) notify("这条作品还没有脚本，先去写脚本");
+  });
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult);
@@ -491,7 +506,11 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         items={history}
         title="历史分镜"
         showStats={false}
-        onLoad={(item) => setResult(item.result)}
+        onLoad={(item) => {
+          setResult(item.result);
+          // 连它属于哪个作品一起接上，接着送去审稿、标题时才挂得回去
+          setWorkId(item.work_id ?? null);
+        }}
         onContinue={(item) => openContinuousDialog(item.result)}
         onDelete={(id) => deleteHistory(id)}
       />

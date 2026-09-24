@@ -158,7 +158,8 @@ describe('全站数字口径统一', () => {
      * 非创作页在这里显式列出。以后再加账户类页面，往这里补，
      * 而不是让数字悄悄涨上去。
      */
-    const NON_CREATIVE = new Set(['membership', 'account']);
+    // 我的作品是把各板块的产出串起来的地方，本身不是一个创作板块
+    const NON_CREATIVE = new Set(['membership', 'account', 'works']);
     const fs = await import('node:fs');
     const path = await import('node:path');
     const root = path.join(process.cwd(), 'app', 'dashboard');

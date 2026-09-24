@@ -22,6 +22,8 @@ import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
+import { useWorkResume } from '@/hooks/useWorkResume';
+import { latestOf, workScriptBody } from '@/lib/resume';
 import { readDifyStream } from '@/lib/sse-stream';
 
 import { getActiveProfileId } from '@/lib/active-profile';
@@ -88,6 +90,19 @@ export default function ReviewPage() {
     if (data?.workId) setWorkId(data.workId);
     if (data?.scriptContent) setDraftContent(data.scriptContent);
   }, []);
+
+  /*
+   * 打开某个作品（地址带 ?work=）：脚本正文填进来当待审稿件，
+   * 审过的把最新一版审稿意见调出来。
+   */
+  useWorkResume((work) => {
+    setWorkId(work.id);
+    const script = workScriptBody(work);
+    if (script) setDraftContent(script);
+    const last = latestOf(work, "审稿优化");
+    if (last) setResult(last.result);
+    else if (!script) notify("这条作品还没有脚本，先去写脚本");
+  });
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult);
@@ -475,7 +490,11 @@ export default function ReviewPage() {
       <HistoryPanel
         items={history}
         title="历史审稿"
-        onLoad={(item) => setResult(item.result)}
+        onLoad={(item) => {
+          setResult(item.result);
+          // 连它属于哪个作品一起接上，接着送去标题、分镜时才挂得回去
+          setWorkId(item.work_id ?? null);
+        }}
         onContinue={(item) => openContinuousDialog(item.result)}
         onDelete={(id) => deleteHistory(id)}
       />

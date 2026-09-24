@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { workIdFromUrl } from "@/lib/resume";
 
 /**
  * 把云端最近一条生成结果回填到页面的结果区。
@@ -19,6 +20,12 @@ export function useRestoreLastResult(
 ) {
   useEffect(() => {
     if (!lastResult) return;
+    /*
+     * 地址上带了 ?work= 时让路：用户要看的是那一个作品，内容由 useWorkResume 填。
+     * 不让的话，打开作品 A 的分镜页、而 A 还没做分镜时，这里会把
+     * "最近一条分镜"（多半是别的作品的）塞进来——看起来像是 A 的。
+     */
+    if (workIdFromUrl()) return;
     setResult((current) => current || lastResult);
   }, [lastResult, setResult]);
 }

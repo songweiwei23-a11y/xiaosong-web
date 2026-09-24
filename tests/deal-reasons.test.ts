@@ -106,11 +106,23 @@ describe('提示词', () => {
     expect(p).toContain('## 不太适用');
   });
 
+  it('要求段与段空行、不适用写成列表——不然 Markdown 会把相邻两行挤成一段', () => {
+    // 预览时实测过："为什么成立""怎么拍"挤成一行，"不太适用"几条连成一段
+    expect(p).toMatch(/\*\*为什么成立\*\*：[^\n]*\n\n\*\*怎么拍\*\*/);
+    expect(p).toMatch(/## 不太适用\n\n- 理由名称（几分）/);
+  });
+
   it('输出格式和解析器认的格式对得上：拿提示词里的示例去解析，能解析出来', () => {
     // 提示词里示范的那一行，正是解析器要认的格式
     const example = p.slice(p.indexOf('## 适用的成交理由'));
-    const parsed = parseDealReasons(example.replace('理由名称 · 9分', '专业强 · 9分'));
+    const parsed = parseDealReasons(
+      example
+        .replace('理由名称 · 9分', '专业强 · 9分')
+        .replace('- 理由名称（几分）', '- 颜值高（2分）')
+    );
     expect(parsed.applicable.map((x) => x.label)).toContain('专业强');
+    // 不适用那一节的示例格式（列表）解析器也要认
+    expect(parsed.notApplicable.map((x) => x.label)).toContain('颜值高');
   });
 });
 

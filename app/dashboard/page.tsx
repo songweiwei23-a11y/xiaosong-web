@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
 import { listWorks, type Work } from "@/lib/works";
+import { nextStage, workStageUrl } from "@/lib/resume";
 import { getActiveProfileId } from '@/lib/active-profile';
 import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
 import {
@@ -144,19 +145,21 @@ function greeting() {
   return "晚上好";
 }
 
-/** 作品该接着做哪一步：第一个没完成的环节 */
-function nextStage(w: Work) {
-  return w.stages.find((s) => !s.done);
-}
-
+/*
+ * 作品该接着做哪一步。
+ *
+ * 这里原来自己写了一份"第一个没完成的环节"，而选题那一步从来不挂到作品上，
+ * 于是永远是"下一步：选题策划"；链接也是光秃秃的页面地址，不带作品编号——
+ * 点进去页面不知道要接着做哪一条。和侧边栏「进行中」是同一个毛病。
+ * 现在统一用 lib/resume：选题永远算已做，链接带 ?work=。
+ */
 function nextStageHref(w: Work) {
-  const s = nextStage(w);
-  return s ? TASK_ROUTES[s.name] ?? "/history" : "/history";
+  return workStageUrl(w.id, nextStage(w.stages) ?? "标题封面");
 }
 
 function nextStageLabel(w: Work) {
-  const s = nextStage(w);
-  return s ? `下一步：${s.name}` : "各环节已完成";
+  const s = nextStage(w.stages);
+  return s ? `下一步：${s}` : "各环节已完成";
 }
 
 interface RecentItem {
@@ -253,7 +256,10 @@ export default function DashboardPage() {
                 title: extractTitle(splitQualityReport(x.result || "").body),
                 taskType: x.task_type || "",
                 createdAt: x.created_at,
-                href: TASK_ROUTES[x.task_type] || "/history",
+                // 属于某个作品的，点进去带上作品编号，直接回到那一条；零散记录回到板块页
+                href: x.work_id
+                  ? workStageUrl(x.work_id, x.task_type)
+                  : TASK_ROUTES[x.task_type] || "/history",
               }))
             );
           }
@@ -449,7 +455,11 @@ export default function DashboardPage() {
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                   接着上次
                 </h2>
-                <Link href="/history" className="text-[11.5px] text-muted-foreground hover:text-foreground">
+                {/* 有作品时"全部"指向我的作品：每个环节都能点开接着做，比零散历史有用 */}
+                <Link
+                  href={works.length > 0 ? "/dashboard/works" : "/history"}
+                  className="text-[11.5px] text-muted-foreground hover:text-foreground"
+                >
                   全部
                 </Link>
               </div>

@@ -26,7 +26,7 @@ import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } from "@/lib/quality-checker";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
 import {
   Sparkles, AlertCircle, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText,
@@ -64,6 +64,8 @@ import { tacticBrief } from "@/lib/growth-standards";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
+import { useWorkResume } from "@/hooks/useWorkResume";
+import { latestOf, workIdFromUrl } from "@/lib/resume";
 import QuotaReminder from "@/components/quota-reminder";
 import QuotaExhausted from "@/components/quota-exhausted";
 import { supabase } from "@/lib/supabase/client";
@@ -157,6 +159,7 @@ export default function ScriptPage() {
     openContinuousDialog,
     closeContinuousDialog,
     lastResult,
+    lastItem,
   } = useScriptHistory();
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
@@ -184,6 +187,13 @@ export default function ScriptPage() {
    */
   const [workId, setWorkId] = useState<string | null>(null);
   /**
+   * 作品的标题（就是那条选题）。生成时用来判断用户是不是换了题：
+   * 打开作品 A 之后把主题改成别的，那已经是另一条内容，不该再记到 A 上。
+   */
+  const [workTitle, setWorkTitle] = useState("");
+  /** 这次是不是从别的板块带着内容跳过来的。是的话，别拿"上次那条"去覆盖 */
+  const handedOffRef = useRef(false);
+  /**
    * 这条脚本用的起号计。从选题页或起号页带过来，也可以在本页改。
    * 会写进历史记录，复盘按它统计「这一计测了几条」。
    */
@@ -199,17 +209,55 @@ export default function ScriptPage() {
   useEffect(() => {
     const data = takeHandoff();
     if (!data) return;
+    handedOffRef.current = true;
     setHandoffFrom(data.from || "");
     if (data.topic) setTopic(data.topic);
     if (data.topicOptions?.length) setHandoffTopics(data.topicOptions);
     if (data.note) setAdditionalInfo(data.note);
-    if (data.workId) setWorkId(data.workId);
+    if (data.workId) {
+      setWorkId(data.workId);
+      setWorkTitle(data.topic || "");
+    }
     // 选题页/起号页带过来的拍法
     if (data.tactic) setTactic(data.tactic);
     // 开篇页选定的那句开头
     if (data.openingLine) setOpeningLine(data.openingLine);
     if (data.openingCards?.length) setOpeningCard(data.openingCards[0]);
   }, []);
+
+  /*
+   * 从「进行中」「我的作品」或选题清单打开某个作品（地址带 ?work=）：
+   * 选题填进主题框，有写过的脚本就把最新一版调出来，打法也接上。
+   * 隔多久打开都一样——内容是从云端现取的，不靠一次性的交接。
+   */
+  useWorkResume((work) => {
+    setWorkId(work.id);
+    setWorkTitle(work.title);
+    setTopic(work.title);
+    setHandoffFrom("我的作品");
+    const last = latestOf(work, "脚本生成");
+    if (last) {
+      setResult(last.result);
+      setActiveHistoryId(last.id);
+      const t = last.input_data?.tactic;
+      if (typeof t === "string" && t) setTactic((cur) => cur || t);
+    }
+  });
+
+  /*
+   * 恢复上次那条脚本时，连它属于哪个作品一起接上。
+   * 不接的话，页面上看着是作品 A 的脚本，再点生成却会新建一个同名作品。
+   * 带着内容跳过来的、或者地址指定了作品的，都以那边为准，这里不插手。
+   */
+  useEffect(() => {
+    if (!lastItem || handedOffRef.current || workIdFromUrl()) return;
+    const input = lastItem.input_data && typeof lastItem.input_data === "object" ? lastItem.input_data : {};
+    if (lastItem.work_id) {
+      setWorkId((cur) => cur || lastItem.work_id);
+      setWorkTitle((cur) => cur || input.topic || "");
+    }
+    if (typeof input.topic === "string") setTopic((cur) => cur || input.topic);
+  }, [lastItem]);
 
   // 创作简报从这里来。之前这一页漏了 brief，脚本最吃的
   // 「人设与口吻」「凭什么信你」「记忆点」一个都没进提示词
@@ -854,9 +902,17 @@ ${formatRequirements}
             // 归到作品下。从选题带过来时已有作品，直接进本页的则在这里建——
             // 等生成完再建，才不会攒下一堆用户其实没写出东西的空作品。
             let currentWork = workId;
+            // 打开作品 A 之后把主题改成了别的——那是另一条内容，不能记到 A 上
+            if (currentWork && workTitle && topic.trim() && topic.trim() !== workTitle.trim()) {
+              currentWork = null;
+            }
             if (!currentWork) {
+              // 同题的进行中作品服务端会直接复用，不会再建出一个同名的
               currentWork = await createWork(topic || "未命名脚本", selectedProfileId || null);
-              if (currentWork) setWorkId(currentWork);
+              if (currentWork) {
+                setWorkId(currentWork);
+                setWorkTitle(topic || "");
+              }
             }
 
             await saveGenerationHistory("脚本生成", inputData, fullResult, currentWork);
@@ -1622,6 +1678,15 @@ ${formatRequirements}
           // 想重看一条旧脚本没有任何入口
           setResult(item.result);
           setActiveHistoryId(item.id);
+          /*
+           * 连同它属于哪个作品、当时的主题一起接上。
+           * 原来只调出正文：接着送去分镜、审稿，新内容挂不到原来那个作品上，
+           * 又成了一条"一次性"的零散记录。
+           */
+          const input = item.input_data && typeof item.input_data === "object" ? item.input_data : {};
+          setWorkId(item.work_id ?? null);
+          setWorkTitle(typeof input.topic === "string" ? input.topic : "");
+          if (typeof input.topic === "string" && input.topic) setTopic(input.topic);
         }}
         onContinue={(item) => openContinuousDialog(item.result)}
         onDelete={(id) => {

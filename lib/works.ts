@@ -12,6 +12,8 @@
  *   没带作品就作为零散记录存着——用户可能只是拿别处的稿子来审一下。
  */
 
+import { STAGE_ORDER } from "./resume";
+
 export interface WorkStage {
   name: string;
   done: boolean;
@@ -25,6 +27,8 @@ export interface Work {
   created_at: string;
   updated_at: string;
   stages: WorkStage[];
+  /** 可选环节（开篇）：能挂、能打开，不算进度 */
+  optional?: WorkStage[];
   doneCount: number;
 }
 
@@ -84,6 +88,8 @@ export async function recordStage(workId: string | null | undefined, stageName: 
       (work?.items ?? []).map((it: { task_type: string }) => it.task_type)
     );
     done.add(stageName);
+    // 选题永远算做完（作品就是挑定了选题才建的），见 lib/resume.ts 的 nextStage
+    done.add('选题策划');
 
     const allDone = STAGE_ORDER.every((s) => done.has(s));
     await touchWork(workId, allDone ? { isDone: true } : {});
@@ -93,8 +99,11 @@ export async function recordStage(workId: string | null | undefined, stageName: 
   }
 }
 
-/** 作品的五个环节，顺序即创作流程。与 app/api/works/route.ts 保持一致 */
-export const STAGE_ORDER = ['选题策划', '脚本生成', '分镜脚本', '审稿优化', '标题封面'] as const;
+/*
+ * 作品的环节清单原来在这里、app/api/works/route.ts、侧边栏各有一份，
+ * 注释里写着"保持一致"——靠人记。现在只在 lib/resume.ts 里有一份，这里转出去。
+ */
+export { STAGE_ORDER };
 
 export async function listWorks(limit = 20): Promise<Work[]> {
   try {

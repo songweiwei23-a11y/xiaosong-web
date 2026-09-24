@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/api-guard'
 import { getServerSupabase } from '@/lib/admin-auth'
+import { STAGE_ORDER, OPTIONAL_STAGES } from '@/lib/resume'
 
 export const dynamic = 'force-dynamic'
 
-/** 作品里可能出现的环节，顺序即创作流程 */
-const STAGE_ORDER = ['选题策划', '脚本生成', '分镜脚本', '审稿优化', '标题封面'] as const
+/*
+ * 环节清单从 lib/resume 取，前端画进度、算下一步用的是同一份。
+ * 这里原来自己写了一份，lib/works.ts 里又写了一份，注释里写着"保持一致"——靠人记。
+ */
+
+/**
+ * 选题这一步永远算做完：作品就是"从一批选题里挑定了这一条"才建的，标题本身就是选题。
+ * 原来按"有没有挂着选题记录"算，而选题那一批从来不挂到作品上，于是永远是"没做"——
+ * 侧边栏「进行中」每一条都显示"下一步：选题策划"，点进去永远回到选题页。
+ */
+function stageDone(stage: string, done: string[]): boolean {
+  return stage === '选题策划' || done.includes(stage)
+}
 
 export async function GET(request: Request) {
   const guard = await requireUser()
@@ -29,10 +41,12 @@ export async function GET(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!work) return NextResponse.json({ error: '作品不存在' }, { status: 404 })
 
+    // input_data 也要带上：续作时要知道当时用的打法、时长这些，不只是正文
     const { data: items } = await supabase
       .from('script_history')
-      .select('id, task_type, result, created_at')
+      .select('id, task_type, result, input_data, created_at')
       .eq('work_id', id)
+      .eq('user_id', guard.userId!)
       .order('created_at', { ascending: true })
 
     return NextResponse.json({ ...work, items: items ?? [] })
@@ -53,6 +67,7 @@ export async function GET(request: Request) {
   const { data: items } = await supabase
     .from('script_history')
     .select('id, work_id, task_type, created_at')
+    .eq('user_id', guard.userId!)
     .in('work_id', works.map((w) => w.id))
 
   const byWork = new Map<string, string[]>()
@@ -69,8 +84,10 @@ export async function GET(request: Request) {
       return {
         ...w,
         // 按流程顺序返回，前端直接照着画进度，不用自己排
-        stages: STAGE_ORDER.map((s) => ({ name: s, done: done.includes(s) })),
-        doneCount: STAGE_ORDER.filter((s) => done.includes(s)).length,
+        stages: STAGE_ORDER.map((s) => ({ name: s, done: stageDone(s, done) })),
+        doneCount: STAGE_ORDER.filter((s) => stageDone(s, done)).length,
+        // 可选环节（开篇）：能挂、能打开，但不算进度
+        optional: OPTIONAL_STAGES.map((s) => ({ name: s, done: done.includes(s) })),
       }
     })
   )
@@ -82,14 +99,44 @@ export async function POST(request: Request) {
 
   const supabase = await getServerSupabase()
   const body = await request.json()
+  const title = String(body.title || '未命名作品').trim().slice(0, 60)
+  const profileId = body.profileId || null
+
+  /*
+   * 同一个选题已经有进行中的作品，就复用它，不再新建。
+   *
+   * 线上出过：「20年前濮阳老板怎么招客？看完我笑了」06:52 建了一次、
+   * 06:57 又建了一次。原因是离开脚本页再回来，页面恢复了上次的脚本正文，
+   * 却没恢复它属于哪个作品——再点生成，就又建了一个同名作品。
+   * 页面那边也补了（恢复时连作品一起恢复），这里再兜一层：
+   * 从选题清单里对同一条点两次"写脚本"，也只会有一个作品。
+   *
+   * "未命名"不参与复用——那不是同一条内容，只是都没起名字。
+   */
+  if (title !== '未命名作品' && title !== '未命名脚本') {
+    let q = supabase
+      .from('works')
+      .select('*')
+      .eq('user_id', guard.userId!)
+      .eq('title', title)
+      .eq('is_done', false)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+    q = profileId ? q.eq('profile_id', profileId) : q.is('profile_id', null)
+    const { data: existing } = await q
+    if (existing?.[0]) {
+      await supabase
+        .from('works')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', existing[0].id)
+        .eq('user_id', guard.userId!)
+      return NextResponse.json({ ...existing[0], reused: true })
+    }
+  }
 
   const { data, error } = await supabase
     .from('works')
-    .insert({
-      user_id: guard.userId!,
-      profile_id: body.profileId || null,
-      title: (body.title || '未命名作品').slice(0, 60),
-    })
+    .insert({ user_id: guard.userId!, profile_id: profileId, title })
     .select()
     .single()
 

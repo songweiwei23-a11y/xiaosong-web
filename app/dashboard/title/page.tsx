@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { takeHandoff } from "@/lib/handoff";
+import { useWorkResume } from "@/hooks/useWorkResume";
+import { latestOf, workScriptBody, workIdFromUrl } from "@/lib/resume";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
 import { buildTitlePrompt } from "@/lib/title-standards";
@@ -112,6 +114,25 @@ export default function TitlePage() {
     if (data?.openingCards?.length) setOpeningCards(data.openingCards);
   }, []);
 
+  /*
+   * 打开某个作品（地址带 ?work=）：选题填进主题、脚本正文填进来，
+   * 做过开篇的沿用那几张开篇卡（标题和开头赌同一个钩子），
+   * 起过标题的把最新一版调出来。
+   */
+  useWorkResume((work) => {
+    setWorkId(work.id);
+    setTopic(work.title);
+    const script = workScriptBody(work);
+    if (script) setScriptContent(script);
+    const opening = latestOf(work, "开篇钩子");
+    const picked = opening?.input_data?.picked;
+    if (Array.isArray(picked) && picked.length) {
+      setOpeningCards(picked.filter((x): x is string => typeof x === "string"));
+    }
+    const last = latestOf(work, "标题封面");
+    if (last) setResult(last.result);
+  });
+
   // 加载历史记录
   useEffect(() => {
     loadTitleHistory();
@@ -128,7 +149,9 @@ export default function TitlePage() {
         // 切换页面或刷新后把最近一条取回来显示。只在结果区为空时回填，
         // 且生成结束后的刷新不会覆盖用户刚拿到的内容。
         const latest = data[0]?.result || data[0]?.content || '';
-        if (latest) setResult((current) => current || latest);
+        // 打开的是某个作品时让路：这条作品还没起过标题的话，
+        // 不能把"最近一条"（多半是别的作品的）塞进来冒充
+        if (latest && !workIdFromUrl()) setResult((current) => current || latest);
       }
     } catch (error) {
       console.error('❌ 加载标题历史失败:', error);
@@ -154,6 +177,8 @@ export default function TitlePage() {
   const viewTitle = (title: any) => {
     setSelectedHistory(title);
     setResult(title.result);
+    // 连它属于哪个作品一起接上
+    if (title.work_id !== undefined) setWorkId(title.work_id ?? null);
   };
 
   const openHistoryDialog = (title: any, e: React.MouseEvent) => {

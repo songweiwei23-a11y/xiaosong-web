@@ -26,6 +26,9 @@ import {
   type TacticTestStat,
 } from '@/lib/growth-standards'
 import { takeHandoff, putHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
+import { createWork, recordStage } from '@/lib/works'
+import { useWorkResume } from '@/hooks/useWorkResume'
+import { latestOf, workScriptBody, workIdFromUrl, workStageUrl } from '@/lib/resume'
 import { useRouter } from 'next/navigation'
 
 /**
@@ -74,6 +77,18 @@ export default function GrowthPage() {
   const [handoffFrom, setHandoffFrom] = useState('')
   // 选题页整批带过来的选题。优先于从历史里捞的那批
   const [handoffTopics, setHandoffTopics] = useState<string[]>([])
+  /*
+   * 开篇属于哪个作品。
+   *
+   * 原来开篇生成完只存成一条零散记录、不挂任何作品——从选题带着作品过来，
+   * 写完开头再去写脚本，作品这条线在开篇这一步就断了；隔几天想找回某条选题
+   * 当时写的几个开头，也无从找起。现在跟脚本一样挂到作品上。
+   * openingWorkTitle 用来判断用户是不是换了题：换了就是另一条内容。
+   */
+  const [openingWorkId, setOpeningWorkId] = useState<string | null>(null)
+  const [openingWorkTitle, setOpeningWorkTitle] = useState('')
+  /** 当前主题还对得上那个作品时，才算"这条作品的开篇" */
+  const currentOpeningWork = openingWorkId && openingWorkTitle.trim() === topic.trim() ? openingWorkId : null
   // 每一计已经写过几条脚本。没有它，知识库的测试规则就只是一句话
   const [tested, setTested] = useState<TacticTestStat[]>([])
 
@@ -105,6 +120,10 @@ export default function GrowthPage() {
     if (!data) return
     if (data.tab === 'opening') setTab('opening')
     if (data.topic) setTopic(data.topic)
+    if (data.workId) {
+      setOpeningWorkId(data.workId)
+      setOpeningWorkTitle(data.topic || '')
+    }
     if (data.currentOpening) setCurrentOpening(data.currentOpening)
     if (data.from) setHandoffFrom(data.from)
     // 选题页整批带过来的。单独存一份，不要和历史里捞的混在一起——
@@ -142,9 +161,20 @@ export default function GrowthPage() {
         setTested(summarizeTacticTests(rows))
 
         const plan = rows.find((x: any) => x.task_type === '起号方案')
-        const open = rows.find((x: any) => x.task_type === '开篇钩子')
+        /*
+         * 打开的是某个作品（?work=）时，开篇这一侧由 useWorkResume 填，这里让路——
+         * 不然会把"最近一条开篇"（多半是别的作品的）塞进来冒充。
+         */
+        const open = workIdFromUrl() ? null : rows.find((x: any) => x.task_type === '开篇钩子')
         if (plan?.result) setPlanResult((c) => c || plan.result)
         if (open?.result) setOpeningResult((c) => c || open.result)
+        // 恢复上次的开篇时，连它属于哪个作品一起接上
+        if (open?.work_id) {
+          setOpeningWorkId((c) => c || open.work_id)
+          if (typeof open.input_data?.topic === 'string') {
+            setOpeningWorkTitle((c) => c || open.input_data.topic)
+          }
+        }
 
         /*
          * 连当时的输入一起恢复。
@@ -204,7 +234,12 @@ export default function GrowthPage() {
     taskType: string,
     query: string,
     setResult: (s: string) => void,
-    inputs: Record<string, unknown>
+    inputs: Record<string, unknown>,
+    /**
+     * 生成成功后决定挂到哪个作品上。放在成功之后才调，
+     * 和脚本页一样：不会攒下一堆没生成出东西的空作品
+     */
+    resolveWork?: () => Promise<string | null>
   ) => {
     setBusy(true)
     setResult('')
@@ -218,7 +253,11 @@ export default function GrowthPage() {
       })
       if (!res.ok) await throwApiError(res)
       const full = await readDifyStream(res, { onChunk: (_p, all) => setResult(all) })
-      if (full.trim()) await saveGenerationHistory(taskType, inputs, full)
+      if (full.trim()) {
+        const workId = resolveWork ? await resolveWork() : null
+        await saveGenerationHistory(taskType, inputs, full, workId)
+        if (workId) await recordStage(workId, taskType)
+      }
     } catch (e: unknown) {
       console.error(`${taskType}失败:`, e)
       notify((e as Error)?.message || '生成失败，请重试')
@@ -287,9 +326,46 @@ export default function GrowthPage() {
         picked: pickedCards.length ? pickedCards : undefined,
       }),
       setOpeningResult,
-      { topic, currentOpening, picked: pickedCards }
+      { topic, currentOpening, picked: pickedCards },
+      /*
+       * 挂到作品上：带着作品来的、主题没换就用它；否则按这条选题建一个
+       * （同题的进行中作品服务端会直接复用，不会建出同名的第二个）。
+       */
+      async () => {
+        if (currentOpeningWork) return currentOpeningWork
+        const title = topic.trim()
+        const wid = await createWork(title, getActiveProfileId())
+        if (wid) {
+          setOpeningWorkId(wid)
+          setOpeningWorkTitle(title)
+        }
+        return wid
+      }
     )
   }
+
+  /*
+   * 打开某个作品（地址带 ?work=&tab=opening）：落在开篇标签上，选题填进来；
+   * 有脚本的截出开头那几句当"现有开头"；做过开篇的把最新一版和当时圈的卡调出来。
+   */
+  useWorkResume((work) => {
+    setTab('opening')
+    setOpeningWorkId(work.id)
+    setOpeningWorkTitle(work.title)
+    setTopic(work.title)
+    setHandoffFrom('我的作品')
+    const op = latestOf(work, '开篇钩子')
+    if (op) {
+      setOpeningResult(op.result)
+      const picked = op.input_data?.picked
+      if (Array.isArray(picked)) setPickedCards(picked.filter((x): x is string => typeof x === 'string'))
+      const cur = op.input_data?.currentOpening
+      if (typeof cur === 'string' && cur) setCurrentOpening(cur)
+    } else {
+      const script = workScriptBody(work)
+      if (script) setCurrentOpening((c) => c || extractOpening(script))
+    }
+  })
 
   const toggle = (arr: string[], set: (v: string[]) => void, v: string) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
@@ -691,8 +767,14 @@ export default function GrowthPage() {
                               // 开头许了什么、正文要兑现什么，一起带过去，
                               // 不然脚本很容易开头一套、正文另一套
                               note: o.deliver ? `开头承诺的，正文必须兑现：${o.deliver}` : undefined,
+                              // 作品一路带下去，写出来的脚本才挂得回同一条内容
+                              workId: currentOpeningWork ?? undefined,
                             })
-                            router.push('/dashboard/script')
+                            router.push(
+                              currentOpeningWork
+                                ? workStageUrl(currentOpeningWork, '脚本生成')
+                                : '/dashboard/script'
+                            )
                           }}
                           className="rounded-lg border border-primary/40 bg-primary/[0.08] px-3 py-1.5 text-[12px] font-medium text-primary"
                         >
@@ -745,8 +827,11 @@ export default function GrowthPage() {
                           from: '开篇钩子',
                           topic,
                           openingCards: cards.slice(0, 3),
+                          workId: currentOpeningWork ?? undefined,
                         })
-                        router.push('/dashboard/title')
+                        router.push(
+                          currentOpeningWork ? workStageUrl(currentOpeningWork, '标题封面') : '/dashboard/title'
+                        )
                       }}
                       className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
                     >

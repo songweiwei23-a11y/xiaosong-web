@@ -25,6 +25,10 @@ export interface HistoryItem {
   id: string;
   result: string;
   created_at: string;
+  /** 属于哪个作品。点历史调回来时要一起接上，否则接着做出来的内容挂不回去 */
+  work_id?: string | null;
+  /** 当时的输入（主题、打法等），调回来时用来把表单也填上 */
+  input_data?: Record<string, any> | null;
 }
 
 const COLLAPSED_COUNT = 4;

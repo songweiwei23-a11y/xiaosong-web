@@ -4,11 +4,13 @@ import ProfileSwitcher from '@/app/dashboard/components/ProfileSwitcher';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
-import { listWorks, type Work } from "@/lib/works";
+import { listWorks, deleteWork, type Work } from "@/lib/works";
+import { nextStage, workStageUrl } from "@/lib/resume";
+import { confirmDialog, notify } from "@/components/ui/feedback";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Sparkles, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown,
+  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen,
 } from "lucide-react";
 
 /*
@@ -26,7 +28,11 @@ const navGroups: {
   {
     id: "overview",
     label: null, // 总览不需要组标题，单独一项顶在最上面
-    items: [{ name: "工作台", href: "/dashboard", icon: Home }],
+    items: [
+      { name: "工作台", href: "/dashboard", icon: Home },
+      // 每一条内容从选题到标题的全过程都在这里，隔多久都能接着做
+      { name: "我的作品", href: "/dashboard/works", icon: FolderOpen },
+    ],
   },
   {
     id: "create",
@@ -78,14 +84,8 @@ const navGroups: {
   },
 ];
 
-/** 作品的下一个待做环节对应哪个页面 */
-const STAGE_ROUTES: Record<string, string> = {
-  选题策划: "/dashboard/topic",
-  脚本生成: "/dashboard/script",
-  分镜脚本: "/dashboard/storyboard",
-  审稿优化: "/dashboard/review",
-  标题封面: "/dashboard/title",
-};
+/** 侧边栏只露最近几条，其余去「我的作品」看 */
+const SIDEBAR_WORKS = 3;
 
 const COLLAPSE_KEY = "xiaosong-sidebar-collapsed";
 
@@ -130,13 +130,31 @@ export function Sidebar() {
   }, []);
 
   // 进行中的作品。路由变化时重新取一次——刚生成完的内容应当立刻反映在这里
+  const [moreWorks, setMoreWorks] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    listWorks(8).then((list) => {
-      if (!cancelled) setWorks(list.filter((w) => !w.is_done).slice(0, 2));
+    listWorks(12).then((list) => {
+      if (cancelled) return;
+      const active = list.filter((w) => !w.is_done);
+      setWorks(active.slice(0, SIDEBAR_WORKS));
+      setMoreWorks(active.length > SIDEBAR_WORKS || list.length > active.length);
     });
     return () => { cancelled = true; };
   }, [pathname]);
+
+  const removeWork = async (w: Work) => {
+    const ok = await confirmDialog(
+      `从「进行中」删掉「${w.title}」？\n已经写好的脚本、分镜这些内容不会删，仍然在各板块的历史记录里。`,
+      { tone: "danger", confirmText: "删除", title: "删除作品" }
+    );
+    if (!ok) return;
+    if (await deleteWork(w.id)) {
+      setWorks((prev) => prev.filter((x) => x.id !== w.id));
+      notify("已删除");
+    } else {
+      notify("删除失败，请重试");
+    }
+  };
 
   const toggleGroup = (id: string) => {
     setCollapsed((prev) => {
@@ -205,34 +223,60 @@ export function Sidebar() {
             </div>
             <div className="space-y-1">
               {works.map((w) => {
-                const next = w.stages.find((s) => !s.done);
+                /*
+                 * 原来的链接是光秃秃的页面地址（/dashboard/topic），不带作品编号——
+                 * 点进去页面不知道要接着做哪一条，看到的是空白或别的内容。
+                 * 而且"下一步"永远算成选题策划，永远把人送回选题页。
+                 * 现在带上 ?work=，目标页会把这个作品的内容取回来接着做。
+                 */
+                const next = nextStage(w.stages);
+                const href = workStageUrl(w.id, next ?? "标题封面");
                 return (
-                  <Link
-                    key={w.id}
-                    href={next ? STAGE_ROUTES[next.name] ?? "/dashboard" : "/dashboard"}
-                    className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.06]"
-                  >
-                    <p className="truncate text-[12.5px] font-medium text-foreground">{w.title}</p>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      {/* 做完的填实、没做的空心，一眼看出卡在第几步 */}
-                      <span className="flex items-center gap-1">
-                        {w.stages.map((s) => (
-                          <span
-                            key={s.name}
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              s.done ? "bg-primary" : "bg-foreground/15"
-                            }`}
-                          />
-                        ))}
-                      </span>
-                      <span className="truncate text-[11px] text-muted-foreground">
-                        {next ? next.name : "已完成"}
-                      </span>
-                    </div>
-                  </Link>
+                  <div key={w.id} className="group relative">
+                    <Link
+                      href={href}
+                      className="block rounded-xl px-3 py-2.5 pr-8 transition-colors hover:bg-foreground/[0.06]"
+                    >
+                      <p className="truncate text-[12.5px] font-medium text-foreground">{w.title}</p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        {/* 做完的填实、没做的空心，一眼看出卡在第几步 */}
+                        <span className="flex items-center gap-1">
+                          {w.stages.map((s) => (
+                            <span
+                              key={s.name}
+                              title={`${s.name}${s.done ? "（已做）" : ""}`}
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                s.done ? "bg-primary" : "bg-foreground/15"
+                              }`}
+                            />
+                          ))}
+                        </span>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          {next ? `下一步：${next}` : "都做完了"}
+                        </span>
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => removeWork(w)}
+                      aria-label={`删除作品：${w.title}`}
+                      title="删除这条作品（内容不会删）"
+                      className="absolute right-1.5 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
+            {moreWorks && (
+              <Link
+                href="/dashboard/works"
+                className="mt-1 block px-3 text-[11.5px] text-muted-foreground hover:text-primary"
+              >
+                全部作品 →
+              </Link>
+            )}
           </div>
         )}
 

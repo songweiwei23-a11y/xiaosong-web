@@ -6,7 +6,9 @@ import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from "@/lib/viral-elements";
 import { tacticBrief } from "@/lib/growth-standards";
 import { throwApiError } from "@/lib/api-error";
-import { createWork } from "@/lib/works";
+import { createWork, listWorks, type Work } from "@/lib/works";
+import { stageRoute, workStageUrl } from "@/lib/resume";
+import { TopicList } from "@/components/workspace/TopicList";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -101,6 +103,11 @@ export default function TopicPage() {
    * 从起号页「按这一计去选题」带过来，也可以在这一页直接选。
    */
   const [tactic, setTactic] = useState("");
+  /** 已有的作品，给选题清单标出"已在做"的那几条 */
+  const [works, setWorks] = useState<Work[]>([]);
+  useEffect(() => {
+    listWorks(50).then(setWorks);
+  }, []);
   const [personalRequirement, setPersonalRequirement] = useState("");
 
   // 生成状态
@@ -1230,11 +1237,38 @@ export default function TopicPage() {
         ]}
       />
 
+      {/* 每一条选题单独送去下一个板块。新生成的、从历史里打开的旧批次都能用 */}
+      {!isGenerating && (
+        <TopicList
+          topics={parseTopicOptions(result)}
+          works={works}
+          onAction={async (title, stage) => {
+            // 挑定了这一条：建作品（同题已有进行中的会直接复用），带着编号跳过去。
+            // 编号在地址里，之后隔多久都能从「我的作品」接着做
+            const workId = await createWork(title, selectedProfileId || null);
+            putHandoff({
+              from: "选题策划",
+              topic: title,
+              workId: workId ?? undefined,
+              tab: stage === "开篇钩子" ? "opening" : undefined,
+              // 打法跟着选题一路走，脚本才能按这一计的结构公式排
+              tactic: tactic || undefined,
+            });
+            router.push(workId ? workStageUrl(workId, stage) : stageRoute(stage));
+          }}
+        />
+      )}
+
       <HistoryPanel
         items={history}
         title="历史选题"
         showStats={false}
-        onLoad={(item) => setResult(item.result)}
+        onLoad={(item) => {
+          setResult(item.result);
+          // 那一批当时用的打法也接上，从里面挑一条去写脚本时才带得过去
+          const t = item.input_data?.tactic;
+          if (typeof t === "string" && t) setTactic(t);
+        }}
         onContinue={(item) => openContinuousDialog(item.result)}
         onDelete={(id) => deleteHistory(id)}
       />

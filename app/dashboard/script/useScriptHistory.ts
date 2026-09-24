@@ -20,6 +20,14 @@ export function useScriptHistory() {
    * 一直在云端历史里，只是界面没把它取回来。
    */
   const [lastResult, setLastResult] = useState("");
+  /**
+   * 最近一条的整行（不只是正文）。
+   *
+   * 原来只回填正文，丢了它属于哪个作品。离开再回来、页面恢复了上次的脚本，
+   * 再点生成就又建了一个同名作品——线上「20年前濮阳老板怎么招客」
+   * 就是这样 06:52、06:57 各建了一次。页面拿它把作品也接上。
+   */
+  const [lastItem, setLastItem] = useState<any>(null);
   // 只在首次加载时回填。生成结束、删除记录后也会调 loadScriptHistory，
   // 那时若再回填，就会用旧内容盖掉用户当前正在看的东西。
   const restoredRef = useRef(false);
@@ -39,7 +47,10 @@ export function useScriptHistory() {
         if (!restoredRef.current) {
           restoredRef.current = true;
           const latest = data[0]?.result || data[0]?.script_content || "";
-          if (latest) setLastResult(latest);
+          if (latest) {
+            setLastResult(latest);
+            setLastItem(data[0]);
+          }
         }
       }
     } catch (error) {
@@ -113,5 +124,6 @@ export function useScriptHistory() {
     closeContinuousDialog,
     isDeleting,
     lastResult,
+    lastItem,
   };
 }
