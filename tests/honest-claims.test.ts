@@ -160,6 +160,72 @@ describe('对外承诺兑现得了', () => {
 });
 
 /**
+ * 套餐权益只能写真做了的。
+ *
+ * 2026-09 扫描时，各档位卡片上卖着一串代码里一行都没有的东西：
+ * API 接口调用、团队协作、数据导出、数据报表 / 分析报告、高级 / 定制化模板、
+ * 多版本对比、最高优先级、社区功能。人工服务类的「1v1 专属顾问」
+ * 「专属客服」本人确认做不到；「邮件客服」那个邮箱根本不存在。
+ * 选题卡片还写着「AI 实时分析热点趋势」「爆款概率预测」——
+ * 系统没有任何热点数据源，也没有任何预测。
+ *
+ * 而对外政策是"虚拟商品不支持无理由退款"。卖不存在的权益、又不退款，
+ * 是最容易变成纠纷的组合。这组用例把撤掉的说法钉死。
+ */
+describe('套餐里不卖没做的权益', () => {
+  const FILES = [
+    'app/page.tsx',
+    'app/pricing/page.tsx',
+    'app/login/page.tsx',
+    'app/dashboard/membership/page.tsx',
+    'components/quota-exhausted.tsx',
+    'lib/config/plans.ts',
+  ];
+
+  /** [正则, 为什么不能写] —— 查的是渲染出来的代码，注释里解释当初为什么撤可以留着 */
+  const UNBUILT: [RegExp, string][] = [
+    [/API\s*接口/, 'API 接口没有做'],
+    [/团队协作/, '团队协作没有做'],
+    [/数据导出|批量处理/, '没有批量导出，单条下载是所有档位都有的'],
+    [/数据报表|数据分析报告/, '用户端没有任何报表'],
+    [/高级模板|定制化模板|模板支持/, '没有模板系统，更没有按档位区分'],
+    [/多版本|一键多版本/, '没有多版本生成与对比'],
+    [/最高优先级|优先响应|优先客服/, '没有优先队列'],
+    [/社区功能/, '没有社区'],
+    [/专属(顾问|客服|客户经理)|1v1/, '本人确认做不到'],
+    [/邮件客服/, '那个邮箱不存在'],
+    [/实时分析热点|热点追踪|爆款概率/, '没有热点数据源，也没有任何预测'],
+  ];
+
+  for (const f of FILES) {
+    it(`${f} 不承诺没做的东西`, () => {
+      const code = stripComments(read(f));
+      const hits = UNBUILT.filter(([re]) => re.test(code)).map(([re, why]) => `${re.source}（${why}）`);
+      expect(hits, `${f} 里还在卖：\n${hits.join('\n')}`).toEqual([]);
+    });
+  }
+
+  it('三个展示套餐的页面都只从 planSellingPoints 取权益，不自己手写', () => {
+    // 原来首页、会员页各手写一份，和价格页读的那份三方互不一致
+    for (const f of ['app/page.tsx', 'app/pricing/page.tsx', 'app/dashboard/membership/page.tsx']) {
+      expect(read(f), `${f} 没用 planSellingPoints`).toContain('planSellingPoints');
+    }
+  });
+
+  it('权益清单本身不是空的——撤光了也不行', async () => {
+    const { planSellingPoints } = await import('@/lib/config/plans');
+    for (const id of ['free', 'basic', 'pro', 'enterprise']) {
+      expect(planSellingPoints(id).length, `${id} 一条权益都没有`).toBeGreaterThan(0);
+    }
+  });
+
+  it('「九大功能」这个数字是真的', async () => {
+    const { COUNTED_FEATURES } = await import('@/lib/config/plans');
+    expect(COUNTED_FEATURES.length).toBe(9);
+  });
+});
+
+/**
  * 公示的价格对比表不能和实际额度对不上。
  *
  * 这张表原来是手写的，而且是旧数据：基础会员写 150次/月、专业写 500次/月，

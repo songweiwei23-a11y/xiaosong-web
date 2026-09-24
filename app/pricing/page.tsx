@@ -182,8 +182,9 @@ export default function PricingPage() {
               <p className="text-sm text-muted-foreground">虚拟商品开通后不支持无理由退款。购买前有疑问请先联系我们</p>
             </div>
             <div className="bg-card p-6 rounded-xl border border-border">
-              <h3 className="font-bold mb-2">企业版有什么特殊服务？</h3>
-              <p className="text-sm text-muted-foreground">提供API接口、批量处理、数据导出、定制化模板等</p>
+              {/* 原答案是「提供API接口、批量处理、数据导出、定制化模板等」，四样都没有做 */}
+              <h3 className="font-bold mb-2">企业版和专业版差在哪？</h3>
+              <p className="text-sm text-muted-foreground">企业版所有功能不限次数；专业版每个创作功能每月有固定额度。功能本身两档完全一样</p>
             </div>
           </div>
         </div>

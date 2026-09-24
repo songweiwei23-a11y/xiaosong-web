@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
-import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures } from "@/lib/config/plans";
+import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures, planSellingPoints } from "@/lib/config/plans";
 
 /*
  * 价格和额度一律从 lib/config/plans.ts 取，页面只负责好看。
@@ -23,7 +23,8 @@ const membershipPlans = [
     icon: Shield,
     color: "text-muted-foreground",
     bgColor: "bg-muted",
-    features: [...quotaSummary("free"), "历史记录保存", "社区功能"],
+    // 「社区功能」没有做，撤了。权益一律从 planSellingPoints 取，不在页面上手写
+    features: [...quotaSummary("free"), ...planSellingPoints("free")],
     limits: unsupportedFeatures("free"),
   },
   {
@@ -36,7 +37,7 @@ const membershipPlans = [
     color: "text-primary",
     bgColor: "bg-primary/15",
     popular: false,
-    features: [...quotaSummary("basic"), "全部九个功能开放", "高级模板支持", "优先客服支持"],
+    features: [...quotaSummary("basic"), ...planSellingPoints("basic")],
     limits: [],
   },
   {
@@ -49,7 +50,7 @@ const membershipPlans = [
     color: "text-accent",
     bgColor: "bg-accent/15",
     popular: true,
-    features: [...quotaSummary("pro"), "全部高级模板", "数据分析报告", "专属客服 1v1"],
+    features: [...quotaSummary("pro"), ...planSellingPoints("pro")],
     limits: [],
   },
   {
@@ -62,13 +63,7 @@ const membershipPlans = [
     color: "text-orange-500",
     bgColor: "bg-amber-500/15",
     popular: false,
-    features: [
-      ...quotaSummary("enterprise"),
-      "定制化模板",
-      "API 接口调用",
-      "数据导出权限",
-      "专属客户经理",
-    ],
+    features: [...quotaSummary("enterprise"), ...planSellingPoints("enterprise")],
     limits: [],
   },
 ];

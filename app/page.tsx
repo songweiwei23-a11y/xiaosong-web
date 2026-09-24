@@ -4,7 +4,7 @@ import {
   useState, useEffect } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
+import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/config/plans";
 import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
 import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
@@ -92,15 +92,22 @@ export default function HomePage() {
     {
       icon: Lightbulb,
       title: "选题策划",
-      desc: "AI实时分析热点趋势，推荐高潜力爆款选题",
-      benefits: ["每日热点追踪", "竞品选题分析", "爆款概率预测"],
+      /*
+       * 原来写「AI实时分析热点趋势」「每日热点追踪」「爆款概率预测」。
+       * 系统没有任何热点数据源，提示词里只是让模型"结合当前热点"——
+       * 那是模型自己训练时的旧知识，谈不上实时；"概率预测"更是完全没有。
+       * 改成真正在做的事：按八大爆款元素的句式出题、可填对标账号、每条带钩子。
+       */
+      desc: "按八大爆款元素的句式出选题，贴着你的账号定位",
+      benefits: ["八大爆款元素句式", "对标账号参考", "每条附开篇钩子"],
       color: "yellow"
     },
     {
       icon: FileText,
       title: "脚本生成",
-      desc: "一两分钟出一版完整脚本，支持多版本对比优选",
-      benefits: ["Claude AI驱动", "内置编导知识库", "一键多版本"],
+      // 「多版本对比」「一键多版本」没有做——只能重新生成、在历史里翻旧版
+      desc: `一两分钟出一版完整脚本，${FACTS.structures} 种脚本结构任选`,
+      benefits: ["Claude AI驱动", "内置编导知识库", `${FACTS.structures}种脚本结构`],
       color: "green"
     },
     {
@@ -120,7 +127,8 @@ export default function HomePage() {
     {
       icon: Zap,
       title: "标题封面",
-      desc: "一键生成10个标题+封面文案，提升点击率",
+      // 生成数量可选 3/5/8/10，默认 5，所以说"最多"
+      desc: "一次最多出 10 个标题+封面文案，方便 A/B 测试",
       benefits: ["标题公式库", "情绪钩子植入", "A/B测试建议"],
       color: "orange"
     },
@@ -164,12 +172,9 @@ export default function HomePage() {
       price: SUBSCRIPTION_PLANS.basic.price,
       period: "月",
       desc: "适合个人创作者",
-      features: [
-...quotaSummary("basic"),
-"九大功能全部开放",
-"历史记录保存",
-"邮件客服支持"
-      ],
+      // 权益只从 planSellingPoints 取。这里原来手写着「邮件客服支持」——
+      // 那个邮箱根本不存在，早先已经确认过
+      features: [...quotaSummary("basic"), ...planSellingPoints("basic")],
       highlight: false,
       cta: "选择基础版"
     },
@@ -178,13 +183,8 @@ export default function HomePage() {
       price: SUBSCRIPTION_PLANS.pro.price,
       period: "月",
       desc: "适合专业团队",
-      features: [
-...quotaSummary("pro"),
-"九大功能全部开放",
-"最高优先级",
-"多版本对比",
-"专属客服支持"
-      ],
+      // 原来还写着「最高优先级」「多版本对比」「专属客服支持」，都没有做
+      features: [...quotaSummary("pro"), ...planSellingPoints("pro")],
       highlight: true,
       cta: "选择专业版"
     },
@@ -193,14 +193,12 @@ export default function HomePage() {
       price: SUBSCRIPTION_PLANS.enterprise.price,
       period: "月",
       desc: "适合MCN机构",
-      features: [
-...quotaSummary("enterprise"),
-"知识库无限查询",
-"多账号档案切换",
-"数据报表分析",
-"团队协作功能",
-"1v1专属顾问"
-      ],
+      /*
+       * 原来这里卖着「数据报表分析」「团队协作功能」「1v1专属顾问」——前两个
+       * 代码里一行都没有，第三个本人确认做不到。「多账号档案切换」倒是做了，
+       * 但所有档位都能用，当成企业版专属卖也是说错。
+       */
+      features: [...quotaSummary("enterprise"), ...planSellingPoints("enterprise")],
       highlight: false,
       cta: "联系销售"
     }
@@ -213,7 +211,7 @@ export default function HomePage() {
     },
     {
       q: "生成的脚本质量如何？",
-      a: `我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 ${FACTS.methods} 条成体系的方法（起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种）。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。支持一键生成多个版本供您选择优化。`
+      a: `我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 ${FACTS.methods} 条成体系的方法（起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种）。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。不满意可以重新生成，历次结果都存在云端随时翻看。`
     },
     {
       q: "和其他AI工具有什么区别？",
@@ -473,7 +471,7 @@ export default function HomePage() {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">一两分钟出一版完整脚本，比手写快得多</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">自动匹配最佳叙事结构和节奏</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">支持一键优化和多版本生成</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">不满意就重新生成，历次结果都存在云端</span></li>
                 </ul>
               </div>
             </div>

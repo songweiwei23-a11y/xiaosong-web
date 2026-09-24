@@ -3,6 +3,12 @@
 import { AlertCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
+
+/** 免费版不开放的功能（额度为 0），从配置现算，改额度这里自动跟 */
+const FREE_LOCKED = COUNTED_FEATURES
+  .filter((f) => (SUBSCRIPTION_PLANS.free.quotas[f.key] as number) === 0)
+  .map((f) => f.name);
 
 interface QuotaExhaustedProps {
   planName: string;
@@ -57,17 +63,14 @@ export default function QuotaExhausted({ planName, feature }: QuotaExhaustedProp
             <span className="text-primary mt-0.5">✓</span>
             <span>更多额度，满足高频创作需求</span>
           </li>
+          {/*
+            原来还有「优先响应速度」「专属客服支持，随时解决问题」两条——
+            没有优先队列，专属客服本人确认做不到，都撤了。
+            「解锁高级功能」改成具体说是哪几个：免费版不开放的就是这四个。
+          */}
           <li className="flex items-start gap-2">
             <span className="text-primary mt-0.5">✓</span>
-            <span>解锁高级功能，提升创作效率</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>优先响应速度，节省宝贵时间</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>专属客服支持，随时解决问题</span>
+            <span>解锁{FREE_LOCKED.join("、")}</span>
           </li>
         </ul>
       </div>
