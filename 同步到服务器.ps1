@@ -184,13 +184,47 @@ if ($LASTEXITCODE -ne 0 -or ($prep | Out-String) -notmatch "PREP_OK") {
 # 之后每次构建都被"Another next build process is already running"挡住。
 # NODE_OPTIONS 限制 V8 堆上限，给系统留出余量。
 Write-Host "  在服务器上构建（后台执行，不受连接中断影响）..." -ForegroundColor Gray
-$buildCmd = "cd $serverPath; rm -f /tmp/build.log; NODE_OPTIONS=--max-old-space-size=1400 nohup npm run build > /tmp/build.log 2>&1 & echo BUILD_STARTED"
-ssh -i "$sshKey" ${serverUser}@${serverIP} $buildCmd | Out-Null
+
+<#
+  每次构建打一个唯一标记，并要求它出现在日志里才认这次构建。
+
+  【为什么必须这样】原来的写法是：清空日志 → 后台起构建 → 轮询 tail，
+  看到 "Route (app)" 或 "(Static) prerendered" 就算构建完成。
+
+  问题在于**构建没启动时，日志还是上一次成功构建留下的**，而那份旧日志的
+  末尾恰好就有这两个标志。于是脚本第一次轮询就匹配上，报告"构建完成
+  （约 15 秒）"，然后拿着旧构建去重启 pm2——
+  屏幕上一路绿字"部署成功"，线上代码一个字没变。
+
+  真实发生过：源文件 12:24 传上去了，.next 却还是 10:44 的，
+  pm2 在 12:39 拿旧构建重启。用户以为发布了，功能当然没生效。
+
+  现在：标记写在日志第一行，轮询时同时看第一行和末尾。
+  标记对不上 = 这次构建根本没起来，直接报错，绝不往下走。
+#>
+$buildTag = "BUILD_" + (Get-Date -Format "yyyyMMddHHmmss")
+$buildCmd = "cd $serverPath; rm -f /tmp/build.log; echo $buildTag > /tmp/build.log; NODE_OPTIONS=--max-old-space-size=1400 nohup npm run build >> /tmp/build.log 2>&1 & echo BUILD_STARTED"
+$startOut = (ssh -i "$sshKey" ${serverUser}@${serverIP} $buildCmd | Out-String)
+if ($startOut -notmatch "BUILD_STARTED") {
+    Write-Host "  构建命令没能在服务器上启动，线上仍是旧版本" -ForegroundColor Red
+    Write-Host "  服务器返回：$($startOut.Trim())" -ForegroundColor DarkGray
+    pause
+    exit 1
+}
 
 $built = $false
 for ($b = 1; $b -le 40; $b++) {
     Start-Sleep -Seconds 15
-    $log = (ssh -i "$sshKey" ${serverUser}@${serverIP} "tail -25 /tmp/build.log 2>/dev/null" | Out-String)
+    # 第一行是本次的标记，末尾是构建进度，一次取回来
+    $log = (ssh -i "$sshKey" ${serverUser}@${serverIP} "head -1 /tmp/build.log 2>/dev/null; tail -25 /tmp/build.log 2>/dev/null" | Out-String)
+
+    # 标记不在 = 日志不是这次构建写的，后面那些"完成"标志都是上一次留下的
+    if ($log -notmatch [regex]::Escape($buildTag)) {
+        Write-Host "  构建日志不是本次构建写的（缺少标记 $buildTag）" -ForegroundColor Red
+        Write-Host "  说明构建没真正跑起来，线上仍是旧版本。请登录服务器查看 /tmp/build.log" -ForegroundColor Yellow
+        pause
+        exit 1
+    }
 
     if ($log -match "Failed to compile|error TS\d+|Another next build process") {
         Write-Host "  构建失败：" -ForegroundColor Red
@@ -210,6 +244,28 @@ for ($b = 1; $b -le 40; $b++) {
 
 if (-not $built) {
     Write-Host "  构建超过 10 分钟仍未结束，请登录服务器查看 /tmp/build.log" -ForegroundColor Red
+    pause
+    exit 1
+}
+
+<#
+  重启前先确认 .next 真的比源码新。
+
+  这是上面那个坑的兜底：万一构建又以别的方式"假成功"，这里还能拦住。
+  判据很直接——构建产物必须晚于本次上传的源文件，否则重启的就是旧代码。
+  （find -newer 直接比 mtime，比解析时间字符串稳。）
+#>
+# 命令里不能有引号、花括号、分号——它们过不了 PowerShell 到 ssh 的参数拆分，
+# 远端会直接 "Connection closed"，而这里只会拿到空字符串，
+# 表现就是"检查通过"。这道闸本身就成了假闸，比没有还糟。
+# 已实测：正向（有新文件）能抓到、反向（没有）返回空。
+$staleCmd = "cd $serverPath && find app lib hooks -type f -newer .next/BUILD_ID -print -quit"
+$stale = ssh -i "$sshKey" ${serverUser}@${serverIP} $staleCmd
+$stale = ($stale | Out-String).Trim()
+if ($stale) {
+    Write-Host "  构建产物比源码旧，说明这次构建没有包含最新改动：" -ForegroundColor Red
+    $stale -split "`n" | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+    Write-Host "  已中止，不会拿旧构建去重启。请登录服务器查看 /tmp/build.log" -ForegroundColor Yellow
     pause
     exit 1
 }
