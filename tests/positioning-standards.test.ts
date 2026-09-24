@@ -280,8 +280,8 @@ describe('内容配比按知识库的顺序推', () => {
     expect(p).toMatch(/\*\*新号 \/ 刚起号\*\*[\s\S]{0,200}\*\*流量型必须是最大的一块\*\*/);
   });
 
-  it('作用和形式分两层给', () => {
-    expect(p).toContain('配比必须**两层都给**');
+  it('作用、形式、题材三层都给', () => {
+    expect(p).toContain('配比必须**三层都给**');
     expect(p).toMatch(/作用配比：流量型 \/ 人设型 \/ 变现型 各占多少/);
   });
 
@@ -302,6 +302,26 @@ describe('内容配比按知识库的顺序推', () => {
   it('输出里要逐条写出配比核验', () => {
     expect(p).toContain('**配比核验**');
     expect(p).toContain('3. 用户要大流量的话，行业干货是不是没当主力？');
+    expect(p).toContain('4. 题材有没有给目标人群的兴趣留出 30-40%？');
+  });
+
+  it('题材按人群垂直配（薛老师：主赛道 60-70% + 人群兴趣 30-40%）', () => {
+    expect(p).toContain('垂直是**人群垂直，不是赛道垂直**');
+    expect(p).toContain('**主赛道 60-70% + 目标人群的兴趣 30-40%**');
+  });
+
+  it('变现型的形式按成交理由选（薛老师）', () => {
+    expect(p).toContain('靠手艺、靠服务过程 → 晒过程；靠专业判断 → 教知识；靠人品、靠关系 → 讲故事');
+  });
+
+  it('账号定位也先判断内容方向', () => {
+    expect(p).toContain('### 先定内容方向：多元四类，还是单一主题');
+    expect(p).toMatch(/- \*\*内容方向\*\*：多元四类还是单一主题/);
+  });
+
+  it('变现方式排先后：普通人先引流卖货，广告不当起号期主要收入（薛老师）', () => {
+    expect(p).toContain('### 变现方式怎么排（薛老师）');
+    expect(p).toContain('当远期彩蛋，不能当起号期的主要收入');
   });
 
   it('没有知识库里不存在的"新号 60/30/10"', () => {
@@ -389,7 +409,7 @@ describe('该砍的确实砍掉了', () => {
     // 从账号定位摘掉不等于删掉——商业定位仍要内容配比，内容定位仍要系列设计
     const biz = buildPositioningPrompt({ ...base, focus: 'business' });
     const con = buildPositioningPrompt({ ...base, focus: 'content' });
-    expect(con).toContain('连续追更');       // 系列化
+    expect(con).toContain('先过"能不能立项"，再定"怎么一集集出"'); // 系列化
     expect(con).toContain('高质量口播远胜粗糙剧情'); // 呈现形式四表
     expect(biz).toContain('知识型');          // 内容五类型
   });
@@ -536,11 +556,64 @@ describe('补充说明优先于档案', () => {
   it('禁忌也管例子；不许替用户编经历和数字', () => {
     const p = buildPositioningPrompt(base);
     expect(p).toContain('**以上禁忌同样管你举的例子、示范标题和脚本**');
+    expect(p).toContain('例子里的老板、客户、同行也不能被写成反面角色');
+    expect(p).toContain('档案里没有的人数、金额、年限、播放量一律写成 X');
     expect(p).toContain('（示例，换成你自己的真实经历）');
   });
 
   it('没写补充说明时不留空段落', () => {
     const p = buildPositioningPrompt({ profileSummary: base.profileSummary });
     expect(p).not.toContain('用户自己定的方向');
+  });
+});
+
+/**
+ * 第五轮反馈：内容定位的"内容系列"没按小黄来，配比也不对。
+ * 查下来：提示词直接让模型"给 3-4 个系列"，跳过了小黄内容定位的第一个决定
+ * （多元四类还是单一主题）；系列只要名字和结构，不检验能不能撑 30 集；
+ * 薛老师的"定量+变量""人群垂直"一样没用上。
+ */
+describe('内容定位：小黄的方向和主题型 + 薛老师的定量变量', () => {
+  const con = buildPositioningPrompt({ ...base, focus: 'content' });
+
+  it('先定内容方向：多元四类还是单一主题，并说为什么不选另一条', () => {
+    expect(con).toContain('### 先定内容方向：多元四类，还是单一主题');
+    expect(con).toContain('## 内容方向：多元四类还是单一主题');
+    expect(con).toContain('**为什么不选另一条**');
+  });
+
+  it('系列 = 定量 + 变量，且要过小黄的立项检验', () => {
+    expect(con).toContain('**① 结构：定量 + 变量**（薛老师）');
+    expect(con).toContain('**撑得住 30 集**：先列出前 10 集的具体标题');
+    expect(con).toMatch(/\*\*定量 \/ 变量\*\*：每集不变的是什么、每集换的是什么/);
+    expect(con).toContain('**前 10 集标题**：列满 10 个');
+    expect(con).toContain('列不满 10 集、或者立项检验没过的系列，不要写进来');
+  });
+
+  it('编数字、揭秘这两条放在用到的地方，交稿前再自查一遍', () => {
+    // 实测放在末尾禁忌区压不住：十集标题里照样出现"坑了8000块""50岁""破了2万播放"
+    expect(con).toMatch(/\*\*前 10 集标题\*\*[^\n]*\n\s*⚠️ \*\*标题里档案没写过的数字一律写 X\*\*/);
+    expect(con).toContain('**交稿前自查**');
+    expect(con).toContain('全文没有出现"揭秘"两个字');
+  });
+
+  it('配比三层都要给，含题材', () => {
+    expect(con).toContain('### 题材配比');
+    expect(con).toContain('**人群兴趣具体是哪几类**');
+  });
+
+  it('选题来源按小黄第19节四大方向 + 九宫格', () => {
+    expect(con).toContain('### 选题从哪来（小黄第19节）');
+    expect(con).toContain('最后给一个九宫格示例');
+  });
+
+  it('行业视角只给一次（原来深挖板块重复推了两遍）', () => {
+    const n = (s: string) => s.split('### 第一步：先认准这是什么主体的账号').length - 1;
+    expect(n(con)).toBe(1);
+    expect(n(buildPositioningPrompt({ ...base, focus: 'business' }))).toBe(1);
+  });
+
+  it('内容定位不再带起号的诊断树', () => {
+    expect(con).not.toContain('### 数据诊断树');
   });
 });

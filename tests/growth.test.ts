@@ -218,3 +218,88 @@ describe('开篇钩子提示词', () => {
     expect(buildOpeningPrompt({ topic: 'x', count: 3 })).toContain('给 3 条');
   });
 });
+
+/**
+ * 第五轮反馈：起号的内容配比没按小黄来。
+ * 原来起号方案只讲"挑哪一计"，没说起号期这些打法占多大一块、什么时候补别的；
+ * 也看不到已定的内容定位，更看不到拍摄条件（借用的是脚本板块的上下文）。
+ */
+describe('起号期配比与内容定位对齐', () => {
+  it('带上小黄第40节：三十六计是流量型、到一千粉流量稳定才算起号成功', async () => {
+    const { GROWTH_MIX } = await import('@/lib/growth-standards');
+    const p = buildGrowthPlanPrompt({});
+    expect(p).toContain(GROWTH_MIX);
+    expect(GROWTH_MIX).toContain('**大多是流量型内容**');
+    expect(GROWTH_MIX).toContain('零粉做到一千粉，而且发出去的视频流量都比较稳定');
+    expect(p).toContain('## 🧮 起号期内容配比');
+  });
+
+  it('前 3 条标题叠爆款元素（薛老师八大元素）', () => {
+    expect(buildGrowthPlanPrompt({})).toContain('标题叠一个爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）');
+  });
+
+  it('已定的内容定位传进来就用上，没有就不留空段', async () => {
+    const { buildTacticPickPrompt } = await import('@/lib/growth-standards');
+    const plan = '## 内容方向：多元四类还是单一主题\n选 B：帮100个老板拍第一条';
+    for (const p of [buildGrowthPlanPrompt({ contentPlan: plan }), buildTacticPickPrompt({ contentPlan: plan })]) {
+      expect(p).toContain('## 🧭 已经定好的内容定位（起号要和它一致）');
+      expect(p).toContain('帮100个老板拍第一条');
+    }
+    expect(buildGrowthPlanPrompt({})).not.toContain('## 🧭 已经定好的内容定位');
+  });
+
+  it('从内容定位里只摘方向、配比、系列名，不要十集清单', async () => {
+    const { extractContentPlan } = await import('@/lib/growth-standards');
+    const md = [
+      '# 💎 内容定位方案',
+      '## 长期价值主张', '让老板看见',
+      '## 内容方向：多元四类还是单一主题', '选 A+B',
+      '## 内容配比', '### 作用配比', '流量 60%', '### 配比核验', '1. 是',
+      '## 内容系列（2 个）',
+      '### 系列一：帮100个老板拍第一条', '一句话：…', '定量：第一条视频', '变量：行业', '前10集：', '1. 火锅店', '2. 烧烤店',
+      '## 选题来源', '客户提问',
+    ].join('\n');
+    const out = extractContentPlan(md);
+    expect(out).toContain('选 A+B');
+    expect(out).toContain('流量 60%');
+    expect(out).not.toContain('配比核验');
+    expect(out).toContain('### 系列一：帮100个老板拍第一条');
+    expect(out).toContain('变量：行业');
+    expect(out).not.toContain('火锅店');
+    expect(out).not.toContain('客户提问');
+    expect(extractContentPlan('')).toBe('');
+  });
+
+  it('旧格式的内容定位也认（「内容类型配比」「内容系列（4个）」）', async () => {
+    const { extractContentPlan } = await import('@/lib/growth-standards');
+    const out = extractContentPlan('## 内容类型配比\n晒过程 50%\n## 内容系列（4个）\n### 系列一：「这个老板我觉得行」\n**形式**：晒过程型');
+    expect(out).toContain('晒过程 50%');
+    expect(out).toContain('这个老板我觉得行');
+  });
+});
+
+describe('和禁忌冲突的打法，交给 AI 之前就剔掉', () => {
+  // 实测：禁忌写着"不揭秘行业内幕"，起号方案照样把「内幕揭秘」列成备选
+  const R = '不揭秘行业内幕、不诋毁同行';
+
+  it('认得出冲突', async () => {
+    const { tacticsBlockedBy } = await import('@/lib/growth-standards');
+    expect(tacticsBlockedBy(R)).toEqual(['内幕揭秘']);
+    expect(tacticsBlockedBy('')).toEqual([]);
+  });
+
+  it('推荐候选和完整方案的清单里都没有它，并说明为什么', async () => {
+    const { buildTacticPickPrompt } = await import('@/lib/growth-standards');
+    for (const p of [buildGrowthPlanPrompt({ restrictions: R }), buildTacticPickPrompt({ restrictions: R })]) {
+      expect(p).not.toMatch(/- \*\*内幕揭秘\*\*/);
+      expect(p).toContain('⛔ 这几计和他档案里的禁忌冲突');
+    }
+    expect(buildGrowthPlanPrompt({})).toMatch(/- \*\*内幕揭秘\*\*/);
+  });
+
+  it('用户手动圈了也剔掉', () => {
+    const p = buildGrowthPlanPrompt({ restrictions: R, picked: ['内幕揭秘', '行业避坑'] });
+    expect(p).not.toMatch(/### \d+\. 内幕揭秘/);
+    expect(p).toMatch(/### \d+\. 行业避坑/);
+  });
+});

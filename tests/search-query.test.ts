@@ -70,3 +70,16 @@ describe('buildSearchQuery', () => {
     expect(q.length).toBeLessThanOrEqual(200);
   });
 });
+
+describe('检索词不带档案编号', () => {
+  it('profileId 是一串 UUID，拼进检索词只会干扰向量检索', () => {
+    const uuid = 'b91d9850-5bdc-4a53-9b2e-1f0c4f0f3c11';
+    const q = buildSearchQuery('内容定位', { taskType: '内容定位', profileId: uuid, profile_id: uuid, query: '长提示词' }, '长提示词');
+    expect(q).not.toContain(uuid);
+    expect(q).toContain('主题内容');
+  });
+
+  it('起号的检索词用第40节和选择矩阵的原话，不再只召回目录', () => {
+    expect(buildSearchQuery('起号方案', { taskType: '起号方案' }, '')).toContain('起号三十六计说明书');
+  });
+});

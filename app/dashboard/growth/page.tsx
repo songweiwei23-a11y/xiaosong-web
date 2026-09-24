@@ -16,6 +16,7 @@ import {
   buildGrowthPlanPrompt,
   buildOpeningPrompt,
   buildTacticPickPrompt,
+  extractContentPlan,
   parseTacticCandidates,
   detectTactics,
   detectOpeningCards,
@@ -91,6 +92,35 @@ export default function GrowthPage() {
   const currentOpeningWork = openingWorkId && openingWorkTitle.trim() === topic.trim() ? openingWorkId : null
   // 每一计已经写过几条脚本。没有它，知识库的测试规则就只是一句话
   const [tested, setTested] = useState<TacticTestStat[]>([])
+  /*
+   * 这个号已经做好的内容定位（方向、配比、系列）。
+   * 起号是把内容定位定下的方向打开——原来起号看不到它，两边各说各话：
+   * 内容定位说主力是晒过程，起号推的却是一堆情景剧。
+   */
+  const [contentPlan, setContentPlan] = useState('')
+  const profileKey = context.profile?.id || getActiveProfileId() || ''
+  // 档案禁忌：和它冲突的打法（比如"不揭秘"对「内幕揭秘」）交给 AI 之前就剔掉
+  const restrictions = [context.profile?.content_restrictions, context.profile?.avoid_content]
+    .filter(Boolean)
+    .join('；')
+
+  useEffect(() => {
+    if (!profileKey) return
+    let alive = true
+    fetch(`/api/positioning?profileId=${profileKey}&type=${encodeURIComponent('内容定位')}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((list) => {
+        if (!alive) return
+        const latest = Array.isArray(list) ? list[0] : null
+        setContentPlan(extractContentPlan(latest?.full_content || ''))
+      })
+      .catch(() => {
+        // 取不到就不带，不挡起号
+      })
+    return () => {
+      alive = false
+    }
+  }, [profileKey])
 
   useEffect(() => {
     if (!busy) return
@@ -278,7 +308,9 @@ export default function GrowthPage() {
           taskType: '起号方案',
           profileId: getActiveProfileId(),
           query: buildTacticPickPrompt({
-            contextBlock: buildContextBlock(context, 'script'),
+            contextBlock: buildContextBlock(context, 'growth'),
+            contentPlan,
+            restrictions,
             notes: planNotes,
             // 推荐要知道他已经测到哪儿了，否则每次都是重新抽签
             tested,
@@ -304,7 +336,9 @@ export default function GrowthPage() {
     run(
       '起号方案',
       buildGrowthPlanPrompt({
-        contextBlock: buildContextBlock(context, 'script'),
+        contextBlock: buildContextBlock(context, 'growth'),
+        contentPlan,
+        restrictions,
         notes: planNotes,
         picked: pickedTactics.length ? pickedTactics : undefined,
       }),

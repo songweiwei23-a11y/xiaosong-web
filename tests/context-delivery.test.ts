@@ -66,6 +66,20 @@ const ctx = (over: Partial<CreatorContext> = {}): CreatorContext => ({
   ...over,
 });
 
+describe('起号板块用自己的清单，不借脚本的', () => {
+  it('能看到拍摄条件和爆款基因——起号就是按这些挑打法的', () => {
+    const block = buildContextBlock(ctx({ brief: null }), 'growth');
+    expect(block).toMatch(/可用设备|团队规模/);
+    expect(block).toMatch(/爆款基因/);
+  });
+
+  it('起号页两处（推荐候选、完整方案）都用 growth 清单', () => {
+    const page = fs.readFileSync(path.join(process.cwd(), 'app/dashboard/growth/page.tsx'), 'utf8');
+    expect(page.match(/buildContextBlock\(context, 'growth'\)/g)?.length).toBe(2);
+    expect(page.match(/contentPlan,\s*restrictions,\s*notes: planNotes,/g)?.length).toBe(2);
+  });
+});
+
 describe('清单本身立得住', () => {
   it('每个板块都写清楚了它在干什么', () => {
     for (const m of BOARD_MANIFESTS) {

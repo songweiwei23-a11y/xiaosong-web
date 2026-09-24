@@ -51,13 +51,107 @@ ${SELECTION_MATRIX.map((m) => `| ${m.condition} | ${m.prefer.join('、')} | ${m.
 你要按他档案里的真实条件（团队几个人、有什么设备、有没有门店、
 擅长讲故事还是讲干货）去匹配，不是按哪一计更酷。`;
 
+/**
+ * 起号期的内容配比。小黄第40节原话：三十六计大多是流量型内容，作用是让新号
+ * 快速拿到正反馈；零粉做到一千粉、流量稳定，才算起号成功，之后再补观点、故事。
+ *
+ * 原来的起号方案只讲"挑哪一计"，从没说这些打法在起号期的内容里占多大一块、
+ * 什么时候该补别的——用户拿着方案不知道除了这一计之外还发什么。
+ */
+export const GROWTH_MIX = `### 起号期的内容怎么配（小黄第7、40节）
+
+- 起号打法（36 计）**大多是流量型内容**，作用是让新号快速拿到正反馈——所以起号期它们是**主力**
+- 起号期先用**一种**最擅长、反馈最明确的类型集中跑 20-30 条，不要一上来四类齐发
+- **起号成功的标准**：零粉做到一千粉，而且发出去的视频流量都比较稳定
+- 过了这条线，再逐步补观点、故事和变现内容；变现内容从第一周就可以有，但只占小头
+- 配比要和他已经定好的内容定位**对得上**（主力形式、主系列），起号打法是用来把那个方向打开的，不是另起一套`;
+
 export interface GrowthPlanParams {
   /** 账号上下文（创作简报切片 + 档案），由调用方用 buildContextBlock 拼好 */
   contextBlock?: string;
+  /**
+   * 已经做好的内容定位（方向、配比、系列那几段）。
+   * 起号是把内容定位定下的方向打开，不看它就会各说各话：
+   * 内容定位说主力是晒过程，起号却推了一堆情景剧打法。
+   */
+  contentPlan?: string;
   /** 用户补充说明 */
   notes?: string;
   /** 用户手动圈定的打法。不传就让 AI 按矩阵推荐 */
   picked?: string[];
+  /** 档案里的禁忌原文。和它冲突的打法直接从清单里拿掉，见 tacticsBlockedBy */
+  restrictions?: string;
+}
+
+/**
+ * 从内容定位全文里摘出起号要用的几段：内容方向、配比、每个系列的名字和一句话。
+ *
+ * 不整篇塞：一份内容定位七八千字，十集清单、选题来源、30 条节奏起号都用不上，
+ * 塞进去只会稀释打法那部分的指令。
+ * 新旧两种格式都认（旧版标题是「内容类型配比」「内容系列（4个）」）。
+ */
+export function extractContentPlan(md: string, max = 2500): string {
+  if (!md?.trim()) return '';
+  const sections = md.split(/\n(?=## )/);
+  const find = (re: RegExp) => sections.find((s) => re.test(s.split('\n')[0]));
+  const parts: string[] = [];
+
+  const dir = find(/^## .*内容方向/);
+  if (dir) parts.push(dir.trim());
+
+  const mix = find(/^## .*配比/);
+  if (mix) parts.push(mix.split(/\n### 配比核验/)[0].trim());
+
+  const series = find(/^## .*内容系列/);
+  if (series) {
+    const blocks = series.split(/\n(?=### )/);
+    const kept = [blocks[0].split('\n')[0]];
+    for (const b of blocks.slice(1)) {
+      // 每个系列只留标题和开头几行（一句话、定量变量），十集清单不要
+      kept.push(b.split('\n').filter((l) => l.trim()).slice(0, 4).join('\n'));
+    }
+    parts.push(kept.join('\n\n'));
+  }
+
+  const out = parts.join('\n\n');
+  return out.length > max ? `${out.slice(0, max)}\n…（后略）` : out;
+}
+
+/**
+ * 和档案禁忌直接冲突的打法。
+ *
+ * 实测：禁忌写着"不揭秘行业内幕"，起号方案照样把「内幕揭秘」列成备选，
+ * 再自己补一句"不能用揭秘两个字"——边推边打补丁。
+ * 与其指望模型自己排除，不如交给它之前就从清单里拿掉。
+ */
+const BLOCKING_RULES: Array<{ tactic: string; when: RegExp }> = [
+  { tactic: '内幕揭秘', when: /揭秘|内幕|黑料/ },
+  { tactic: '整蛊', when: /整蛊|恶搞/ },
+];
+
+export function tacticsBlockedBy(restrictions?: string): string[] {
+  const text = restrictions || '';
+  return BLOCKING_RULES.filter((r) => r.when.test(text)).map((r) => r.tactic);
+}
+
+function blockedNote(blocked: string[]): string {
+  return blocked.length
+    ? `⛔ 这几计和他档案里的禁忌冲突，已经从清单里拿掉，**不要推荐、也不要当备选**：${blocked.join('、')}`
+    : '';
+}
+
+/** 已定内容定位那一段。两个提示词共用 */
+function contentPlanBlock(plan?: string): string {
+  if (!plan?.trim()) return '';
+  return [
+    '## 🧭 已经定好的内容定位（起号要和它一致）',
+    '',
+    plan.trim(),
+    '',
+    '⚠️ 起号打法是用来把上面这个方向**打开**的：优先挑能拍它的主力形式、能喂它的主系列的打法。',
+    '真要偏离它，先用一句话说明为什么。',
+    '',
+  ].join('\n');
 }
 
 /** ① 起号打法推荐 */
@@ -74,22 +168,31 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
     parts.push(p.contextBlock.trim());
     parts.push('');
   }
+  const plan = contentPlanBlock(p.contentPlan);
+  if (plan) parts.push(plan);
   if (p.notes?.trim()) {
     parts.push('## 💡 这次的额外要求', '', p.notes.trim(), '');
   }
 
   parts.push('## 📚 判断依据', '');
+  parts.push(GROWTH_MIX, '');
   parts.push(MATRIX_TABLE, '');
 
+  const blocked = tacticsBlockedBy(p.restrictions);
+  const allowed = (name: string) => !blocked.includes(name);
+  const picked = (p.picked ?? []).filter(allowed);
+
   // 用户圈定了就只发那几计的完整内容；没圈定就发全部的一行摘要
-  if (p.picked?.length) {
+  if (picked.length) {
     parts.push('### 用户已经圈定了这几计，就在这里面做深', '');
-    parts.push(p.picked.map(full).filter(Boolean).join('\n\n'), '');
+    parts.push(picked.map(full).filter(Boolean).join('\n\n'), '');
     parts.push('⚠️ 不要推荐清单之外的打法——用户已经选好了。', '');
   } else {
     parts.push('### 37 计速览（挑 3-4 计，然后去下面要完整内容）', '');
-    parts.push(GROWTH_TACTICS.map((t) => brief(t.name)).filter(Boolean).join('\n'), '');
+    parts.push(GROWTH_TACTICS.filter((t) => allowed(t.name)).map((t) => brief(t.name)).filter(Boolean).join('\n'), '');
   }
+  const note = blockedNote(blocked);
+  if (note) parts.push(note, '');
 
   parts.push('### 测试规则', '', TEST_RULE, '');
   parts.push(THIRTY_DAY_PLAN, '');
@@ -104,13 +207,21 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 - **建议主攻**：哪 1 计，为什么是它
 - **备选**：2-3 计，什么情况下切过去
 - **明确不做**：2 条，说明为什么（多半是资源撑不住）
-- **多久能看出跑没跑通**
+- **多久能看出跑没跑通**：用"零粉到一千粉、流量稳定"这条线来说
+
+## 🧮 起号期内容配比
+
+按「起号期的内容怎么配」：
+- 起号期（到一千粉、流量稳定之前）：起号打法占多少、其余发什么，各占多少，为什么
+- 过线之后：补什么、比例怎么变
+- 和已定的内容定位怎么对上（主力形式、主系列）；没有内容定位的，按档案里数据最好的内容类型来
 
 ## 🎯 主攻打法：[计名]
 
-- **为什么是你能拍的**：对照他的真实资源逐条说，不要泛泛而谈
+- **为什么是你能拍的**：对照他的真实资源逐条说（团队几个人、设备、能在哪拍、擅长什么），不要泛泛而谈
 - **结构公式**：套到他这个号上，写成具体的
-- **前 3 条具体拍什么**：每条一句能直接当标题用的话 + 拍摄要点
+- **前 3 条具体拍什么**：每条一句能直接当标题用的话 + 拍摄要点；
+  标题叠一个爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙），在后面用括号标出是哪个
 - **边界**：什么不能碰（从这一计的边界里挑对他适用的）
 
 ## 🔄 备选打法（2-3 计）
@@ -137,7 +248,15 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 - **所有建议必须在他的真实资源之内**：团队几个人、有什么设备、能在哪拍
 - **每一计都要说"为什么是你能拍的"**，说不出来就别推荐
 - 具体到能开机，不要写"可以尝试…"这类话
-- 不要把 37 计罗列一遍——只讲你选中的那几计`);
+- 不要把 37 计罗列一遍——只讲你选中的那几计
+- 档案里的禁忌同样管你举的例子和示范标题；例子里的老板、客户、同行也不能写成反面角色（赖账、坑人、难缠）
+- **不要替他编数字和经历**：档案里没有的人数、金额、年限、播放量一律写成 X（如《帮X个老板拍了第一条》）；
+  档案里没写过的具体经历，标"（示例，换成你自己的真实经历）"
+
+**交稿前自查**（不过关就改完再交，自查过程不用写出来）：
+1. 标题和话术里，档案没写过的数字都换成了 X
+2. 全文没有出现"揭秘"两个字
+3. 例子里没有把哪个老板、客户、同行写成反面角色`);
 
   return parts.join('\n');
 }
@@ -154,6 +273,10 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
  */
 export function buildTacticPickPrompt(p: {
   contextBlock?: string;
+  /** 已定的内容定位，见 GrowthPlanParams.contentPlan */
+  contentPlan?: string;
+  /** 档案禁忌原文，见 GrowthPlanParams.restrictions */
+  restrictions?: string;
   notes?: string;
   /** 已经测过的打法及条数，来自 summarizeTacticTests */
   tested?: TacticTestStat[];
@@ -168,6 +291,8 @@ export function buildTacticPickPrompt(p: {
   parts.push('');
 
   if (p.contextBlock?.trim()) parts.push(p.contextBlock.trim(), '');
+  const plan = contentPlanBlock(p.contentPlan);
+  if (plan) parts.push(plan);
   if (p.notes?.trim()) parts.push('## 💡 额外要求', '', p.notes.trim(), '');
 
   /*
@@ -193,9 +318,15 @@ export function buildTacticPickPrompt(p: {
     parts.push('');
   }
 
+  const blocked = tacticsBlockedBy(p.restrictions);
   parts.push('## 📚 判断依据', '', MATRIX_TABLE, '');
   parts.push('### 37 计速览', '');
-  parts.push(GROWTH_TACTICS.map((t) => brief(t.name)).filter(Boolean).join('\n'), '');
+  parts.push(
+    GROWTH_TACTICS.filter((t) => !blocked.includes(t.name)).map((t) => brief(t.name)).filter(Boolean).join('\n'),
+    ''
+  );
+  const note = blockedNote(blocked);
+  if (note) parts.push(note, '');
 
   parts.push(`## 📤 输出格式
 

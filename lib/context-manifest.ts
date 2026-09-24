@@ -26,7 +26,8 @@ export type Board =
   | 'review'
   | 'title'
   | 'dealReason'
-  | 'freeChat';
+  | 'freeChat'
+  | 'growth';
 
 /** 档案里可以切出来的几块 */
 export type ProfileSlice =
@@ -100,6 +101,19 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     profile: ['account', 'audience', 'selling', 'monetize', 'restrictions'],
     brief: ['oneline', 'audience', 'trust', 'forbidden'],
     dealReasons: false, // 它本身就是产出成交理由的，不该拿旧的当输入
+  },
+  {
+    board: 'growth',
+    label: '起号方案',
+    /*
+     * 原来借用的是脚本那一套，没有拍摄条件、没有爆款基因——
+     * 而起号的核心就是「按真实资源挑他拍得出来的打法」，
+     * 提示词让模型对照团队、设备、场地去选，模型却一样都看不到。
+     */
+    job: '挑"他拍得出来的"打法。要真实拍摄条件、擅长什么、数据最好的内容类型、变现方式',
+    profile: ['account', 'audience', 'tone', 'shooting', 'monetize', 'viral', 'restrictions'],
+    brief: ['oneline', 'persona', 'audience', 'direction', 'shooting', 'forbidden'],
+    dealReasons: false,
   },
   {
     board: 'freeChat',
