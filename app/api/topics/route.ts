@@ -1,6 +1,8 @@
 ﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { getServiceSupabase } from '@/lib/admin-auth'
+import { removeTopicSection, deletedTopicsOf } from '@/lib/topic-library'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,6 +94,44 @@ export async function DELETE(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+    const topic = searchParams.get('topic')
+
+    /*
+     * 删一条选题（不是删整批）。
+     *
+     * 同一条可能在好几批里都出现过——撞车的那几条就是这样。只从一批里删，
+     * 它会从别的批次"复活"回选题库。所以按指纹在这个账号所有批次里一起删。
+     *
+     * 删掉的标题记进那一批的 input_data.deletedTopics：删掉多半是因为不喜欢，
+     * 生成新选题时它照样算"已经出过"，不能让 AI 再推回来。
+     * 用 service_role 写：这张表的行级更新权限开没开不确定，显式按本人过滤。
+     */
+    if (topic) {
+      const db = getServiceSupabase()
+      const { data: batches, error: readError } = await db
+        .from('script_history')
+        .select('id, result, input_data')
+        .eq('user_id', user.id)
+        .eq('task_type', '选题策划')
+      if (readError) throw readError
+
+      let removed = 0
+      for (const b of batches ?? []) {
+        const r = removeTopicSection(b.result || '', topic)
+        if (r.removed.length === 0) continue
+        const input = b.input_data && typeof b.input_data === 'object' ? b.input_data : {}
+        const deletedTopics = Array.from(new Set([...deletedTopicsOf(input), ...r.removed]))
+        const { error: upError } = await db
+          .from('script_history')
+          .update({ result: r.markdown, input_data: { ...input, deletedTopics } })
+          .eq('id', b.id)
+          .eq('user_id', user.id)
+        if (upError) throw upError
+        removed += r.removed.length
+      }
+      if (removed === 0) return NextResponse.json({ error: '没找到这条选题' }, { status: 404 })
+      return NextResponse.json({ success: true, removed })
+    }
 
     if (!id) {
       return NextResponse.json({ error: '缺少 id' }, { status: 400 })

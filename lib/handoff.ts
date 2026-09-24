@@ -12,6 +12,8 @@
  * 数据是一次性的：取出即清除，避免用户下次自己进这个页面时又被填一遍。
  */
 
+import { splitTopicSections } from "./topic-library";
+
 const KEY = "xiaosong-handoff";
 
 /** 各功能页用来接收的字段名，与页面里的 state 对应 */
@@ -118,18 +120,11 @@ export function takeHandoff(): HandoffPayload | null {
  * 只要是「选题 + 数字」开头的标题行就算。
  */
 export function parseTopicOptions(markdown: string): string[] {
-  if (!markdown) return [];
-
-  const out: string[] = [];
-  for (const line of markdown.split("\n")) {
-    const m = line.match(/^#{1,4}\s*\**\s*选题\s*\d+\s*[：:\-—、.]\s*(.+)$/);
-    if (m) {
-      const title = m[1]
-        .replace(/\*\*/g, "")
-        .replace(/\s*[（(].*?[）)]\s*$/, "") // 去掉结尾的括号备注
-        .trim();
-      if (title) out.push(title);
-    }
-  }
-  return out;
+  /*
+   * 解析交给 lib/topic-library 的 splitTopicSections，只留一份规则。
+   * 这里原来自己写了一条正则，只认「## 选题1：标题」这一种写法；
+   * 线上 79 批里还有两种它认不出：「## 📌 选题1：【类别】」+ 下一行「**标题**：《…》」，
+   * 以及按类别分组的「### 1. 《…》」。认不出的批次，选题清单就是空的。
+   */
+  return splitTopicSections(markdown).map((s) => s.title);
 }

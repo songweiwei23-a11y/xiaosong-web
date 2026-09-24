@@ -8,6 +8,14 @@ import {
   startNewWindow,
   isInvalidConversationError,
 } from '@/lib/dify-conversation'
+import {
+  buildNoRepeatBlock,
+  ISOLATED_TASKS,
+  NO_REPEAT_LIMIT,
+  NO_REPEAT_TASKS,
+  wantsNewTopics,
+} from '@/lib/topic-library'
+import { loadPriorTopicTitles, saveFollowUpTopics } from '@/lib/topic-library-server'
 
 /*
  * 自由对话与所有「追问」都走这个路由。
@@ -27,8 +35,17 @@ const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { query, conversationId, profileData, initialContent, freshWindow } = body
+    const { query, conversationId, profileData, initialContent, freshWindow, taskType } = body
     const profileId = body.profileId || profileData?.id || null
+    /*
+     * 选题的追问不接共用窗口，也不写回去——和生成时一样（见 ISOLATED_TASKS）。
+     * 生成选题时没进共用窗口，窗口里压根没有这批选题；追问要是接进去，
+     * 问"第 3 条展开讲讲"模型根本不知道第 3 条是什么。
+     * 所以第一次追问开自己的会话、把整批选题贴进去，之后接着这个会话聊。
+     */
+    const isolated = ISOLATED_TASKS.has(taskType)
+    /** 用户这句是在要一批新选题（"再来 10 条""换一批"），不是追问某一条 */
+    const askingNewTopics = NO_REPEAT_TASKS.has(taskType) && wantsNewTopics(query || '')
 
     // 追问走的是自由对话额度。不传 feature 会导致免费版限额失效，
     // 且下方扣减必须用同一个 key，否则查得到额度却扣不掉。
@@ -56,7 +73,7 @@ export async function POST(request: NextRequest) {
      * 没给就接入这个档案的主工作窗口——这样在自由对话里问
      * 「刚才那条脚本怎么改」时，模型是真的见过那条脚本的。
      */
-    const sharedConversationId = freshWindow
+    const sharedConversationId = freshWindow || isolated
       ? null
       : await getDifyConversationId(guard.userId!, profileId)
     const useConversationId = conversationId || sharedConversationId || ''
@@ -73,8 +90,21 @@ export async function POST(request: NextRequest) {
     // 会话是全新的（既没指定也没主窗口）才需要把刚生成的内容贴进去；
     // 接入主窗口时模型已经见过它了，再贴一遍是白花 token
     if (!useConversationId && initialContent) {
-      fullQuery = `【刚才生成的内容】\n${initialContent.substring(0, 1500)}\n\n---\n\n【用户的追问】\n${query}`
+      // 一批选题十来条、每条带拍法，1500 字只够前三四条，
+      // 后面的"第 8 条怎么拍"就没法答了
+      const limit = isolated ? 8000 : 1500
+      fullQuery = `【刚才生成的内容】\n${initialContent.substring(0, limit)}\n\n---\n\n【用户的追问】\n${query}`
       console.log('✅ 全新窗口，附带初始内容')
+    }
+
+    /*
+     * "再来 10 条"：和生成时一样，把这个账号出过的所有选题列给模型、禁止重复。
+     * 光靠这个会话的记忆不够——它只见过眼前这一批，没见过以前的。
+     */
+    if (askingNewTopics) {
+      const prior = await loadPriorTopicTitles(guard.userId!)
+      fullQuery += buildNoRepeatBlock(prior)
+      console.log(`[no-repeat] 追问要新选题：附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`)
     }
 
     // 如果有档案数据，添加到查询中
@@ -153,6 +183,7 @@ export async function POST(request: NextRequest) {
         try {
           let conversationIdFromResponse = ''
           let hasContent = false
+          let answerText = ''
           /*
            * 跨数据块的行缓冲。
            *
@@ -175,10 +206,16 @@ export async function POST(request: NextRequest) {
                 // 此处曾传 'chat'，映射不到列名，扣减被静默跳过，用了不计次。
                 await incrementUsageServer(guard.userId, 'freeChat')
 
+                // 追问出的新一批选题存进选题库：能单独拿去写脚本，下次也不会再出
+                if (askingNewTopics) {
+                  await saveFollowUpTopics(guard.userId, query || '', answerText, profileId)
+                }
+
                 // 把这轮的会话记为该档案的主工作窗口，下次别的板块生成时
                 // 会接着它——这是「所有板块同一个窗口」的另一半：
                 // 不只是读，聊出来的上下文也要能被生成板块继承。
-                if (conversationIdFromResponse) {
+                // 选题的独立会话不写回去（见上面 isolated）。
+                if (conversationIdFromResponse && !isolated) {
                   await saveDifyConversationId(
                     guard.userId,
                     conversationIdFromResponse,
@@ -224,6 +261,9 @@ export async function POST(request: NextRequest) {
 
               if (data.answer) {
                 hasContent = true
+                if (data.event === 'message' || data.event === 'agent_message') {
+                  answerText += data.answer
+                }
               }
 
               controller.enqueue(encoder.encode(`data: ${jsonStr}\n\n`))

@@ -8,10 +8,16 @@ import {
   clearDifyConversationId,
   isInvalidConversationError,
 } from '@/lib/dify-conversation';
+import {
+  buildNoRepeatBlock,
+  NO_REPEAT_LIMIT,
+  NO_REPEAT_TASKS,
+  ISOLATED_TASKS,
+} from '@/lib/topic-library';
+import { loadPriorTopicTitles } from '@/lib/topic-library-server';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
-
 
 export async function POST(req: NextRequest) {
   try {
@@ -409,6 +415,24 @@ export async function POST(req: NextRequest) {
     // 由 Dify 工作流的 5 个知识检索节点消费（start.search_query）
     const searchQuery = buildSearchQuery(body.taskType, body, originalQuery);
 
+    /*
+     * 选题：把"已经出过的"明明白白告诉模型，禁止重出。
+     *
+     * 线上实测：同样的输入连生成两次，10 条里 6 条是同一个选题，
+     * 只是换了顺序、把全角标点换成了半角。原因在下面的会话记忆——
+     * 模型看到"上次同样的问题我答了这 10 条"，就照着再写一遍。
+     * 光靠记忆防不了重复，反而会制造重复。
+     *
+     * 清单从数据库取，覆盖这个账号出过的**所有**选题，
+     * 不受 Dify 那个 100 轮记忆窗口的限制——这才是真正的"记得"。
+     * 拼在检索短查询算好之后，不污染知识库检索。
+     */
+    if (NO_REPEAT_TASKS.has(body.taskType)) {
+      const prior = await loadPriorTopicTitles(guard.userId!);
+      query += buildNoRepeatBlock(prior);
+      console.log(`[no-repeat] ${body.taskType}：附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`);
+    }
+
     // 【方案6：工作流 + 手动记忆】
     // 构建 Dify 请求体：query 在顶层，conversation_history 在 inputs
     const difyRequestBody: any = {
@@ -439,7 +463,16 @@ export async function POST(req: NextRequest) {
     // 带上该作用域的历史会话，让 Dify 把多次生成串成一轮对话。
     // 作用域 = 用户 + 账号档案 + 功能，见 lib/dify-conversation.ts。
     const profileId = body.profileId || body.profile_id || null;
-    const existingConversationId = await getDifyConversationId(guard.userId!, profileId);
+    /*
+     * 出新点子的任务不接共用会话。
+     *
+     * 共用会话里躺着上一次同样问题的完整回答，模型会被它带着走——
+     * 这正是选题撞车的根源。它需要的"记忆"（账号是谁、出过哪些选题）
+     * 都已经明确写进这一次的提示词里了，不需要会话来带。
+     * 返回的新会话 id 也不存：存了会把其他板块共用的那个窗口顶掉。
+     */
+    const isolated = ISOLATED_TASKS.has(body.taskType);
+    const existingConversationId = isolated ? null : await getDifyConversationId(guard.userId!, profileId);
     if (existingConversationId) {
       difyRequestBody.conversation_id = existingConversationId;
       console.log('🔗 延续已有会话:', existingConversationId);
@@ -553,7 +586,8 @@ export async function POST(req: NextRequest) {
 
           // 持久化会话 id，使下一次同作用域的生成延续本轮对话。
           // 仅在确有内容产出时保存，避免把失败的空会话记下来。
-          if (totalChunks > 0 && guard.userId && capturedConversationId) {
+          // 独立会话不写回共用窗口（见上面 isolated 的说明）
+          if (!isolated && totalChunks > 0 && guard.userId && capturedConversationId) {
             await saveDifyConversationId(
               guard.userId,
               capturedConversationId,

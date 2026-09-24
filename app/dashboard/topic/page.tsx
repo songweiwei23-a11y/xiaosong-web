@@ -8,7 +8,9 @@ import { tacticBrief } from "@/lib/growth-standards";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, listWorks, type Work } from "@/lib/works";
 import { stageRoute, workStageUrl } from "@/lib/resume";
-import { TopicList } from "@/components/workspace/TopicList";
+import { TopicList, type TopicStage } from "@/components/workspace/TopicList";
+import { TopicLibrary } from "@/components/workspace/TopicLibrary";
+import { splitTopicSections, removeTopicSection } from "@/lib/topic-library";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -108,6 +110,30 @@ export default function TopicPage() {
   useEffect(() => {
     listWorks(50).then(setWorks);
   }, []);
+
+  /**
+   * 挑定了一条选题：建作品（同题已有进行中的会直接复用），带着编号跳过去。
+   * 编号在地址里，之后隔多久都能从「我的作品」接着做。
+   *
+   * 写脚本时把这条选题当时的方案（内容方向、开篇钩子、拍法）一起带过去——
+   * 原来只带标题，选题策划时想好的东西到脚本页就丢了，等于白想。
+   */
+  const sendTopic = async (title: string, stage: TopicStage, body?: string) => {
+    const workId = await createWork(title, selectedProfileId || null);
+    putHandoff({
+      from: "选题策划",
+      topic: title,
+      workId: workId ?? undefined,
+      tab: stage === "开篇钩子" ? "opening" : undefined,
+      // 打法跟着选题一路走，脚本才能按这一计的结构公式排
+      tactic: tactic || undefined,
+      note:
+        stage === "脚本生成" && body
+          ? `选题策划时定下的方案，照这个方向写：\n${body.slice(0, 1500)}`
+          : undefined,
+    });
+    router.push(workId ? workStageUrl(workId, stage) : stageRoute(stage));
+  };
   const [personalRequirement, setPersonalRequirement] = useState("");
 
   // 生成状态
@@ -1242,25 +1268,43 @@ export default function TopicPage() {
         <TopicList
           topics={parseTopicOptions(result)}
           works={works}
-          onAction={async (title, stage) => {
-            // 挑定了这一条：建作品（同题已有进行中的会直接复用），带着编号跳过去。
-            // 编号在地址里，之后隔多久都能从「我的作品」接着做
-            const workId = await createWork(title, selectedProfileId || null);
-            putHandoff({
-              from: "选题策划",
-              topic: title,
-              workId: workId ?? undefined,
-              tab: stage === "开篇钩子" ? "opening" : undefined,
-              // 打法跟着选题一路走，脚本才能按这一计的结构公式排
-              tactic: tactic || undefined,
-            });
-            router.push(workId ? workStageUrl(workId, stage) : stageRoute(stage));
+          onAction={(title, stage) =>
+            sendTopic(title, stage, splitTopicSections(result).find((s) => s.title === title)?.body)
+          }
+        />
+      )}
+
+      {/*
+        选题库：出过的每一条都在这里，不只是这一批。
+        数据就是历史面板那份（进页面时已经整批取回），不多发请求
+      */}
+      {!isGenerating && (
+        <TopicLibrary
+          batches={history}
+          works={works}
+          onAction={sendTopic}
+          onDelete={async (title) => {
+            const ok = await confirmDialog(
+              `删掉「${title}」？\n它在哪一批里出现过都会一起删掉。删掉的会被记住，生成新选题时不会再推荐给你。`,
+              { tone: "danger", confirmText: "删除", title: "删除选题" }
+            );
+            if (!ok) return;
+            const res = await fetch(`/api/topics?topic=${encodeURIComponent(title)}`, { method: "DELETE" });
+            if (!res.ok) {
+              notify("删除失败，请重试");
+              return;
+            }
+            // 结果区正显示着这一批的话，也把这条拿掉，免得删了还看得见
+            setResult((r) => removeTopicSection(r, title).markdown);
+            await loadHistory();
+            notify("已删除");
           }}
         />
       )}
 
       <HistoryPanel
-        items={history}
+        // 一批里的选题全被删光的，不再占着历史列表
+        items={history.filter((h: any) => splitTopicSections(h.result || "").length > 0)}
         title="历史选题"
         showStats={false}
         onLoad={(item) => {
@@ -1275,7 +1319,11 @@ export default function TopicPage() {
 
       <ContinuousDialog
         isOpen={showDialog}
-        onClose={closeContinuousDialog}
+        onClose={() => {
+          closeContinuousDialog();
+          // 追问里"再来 10 条"出的选题服务端已存进选题库，关掉对话就能在库里看到
+          loadHistory();
+        }}
         initialContent={dialogInitialContent}
         taskType="选题策划"
       />

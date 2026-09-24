@@ -185,6 +185,8 @@ export default function ContinuousDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: userInput,
+          // 服务端据此判断：在选题结果上说"再来 10 条"时，要附上已经出过的选题防重复
+          taskType: taskType,
           conversationId: conversationId || undefined,
           initialContent: !conversationId ? initialContent : undefined, // ✅ 首次对话时传递
           // 没有自己的会话时，服务端会接入该档案的主工作窗口，

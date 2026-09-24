@@ -5,6 +5,7 @@ import { FileText, Sparkles, Type, ArrowRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
+import { topicKey } from "@/lib/topic-library";
 
 /**
  * 选题清单：一批选题里的每一条，都能单独送去下一个板块。
@@ -20,7 +21,8 @@ import { nextStage, workStageUrl } from "@/lib/resume";
 
 export type TopicStage = "脚本生成" | "开篇钩子" | "标题封面";
 
-const ACTIONS: { stage: TopicStage; label: string; icon: typeof FileText }[] = [
+/** 选题清单和选题库共用这三个出口 */
+export const TOPIC_ACTIONS: { stage: TopicStage; label: string; icon: typeof FileText }[] = [
   { stage: "脚本生成", label: "写脚本", icon: FileText },
   { stage: "开篇钩子", label: "设计开篇", icon: Sparkles },
   { stage: "标题封面", label: "起标题", icon: Type },
@@ -40,7 +42,8 @@ export function TopicList({
 
   if (topics.length === 0) return null;
 
-  const byTitle = new Map(works.filter((w) => !w.is_done).map((w) => [w.title.trim(), w]));
+  // 按指纹对：这次撞车的就是标点半角全角不同，按原文对会漏
+  const byTitle = new Map(works.filter((w) => !w.is_done).map((w) => [topicKey(w.title), w]));
 
   return (
     <section className="glass-panel mt-4 rounded-2xl border border-border p-4">
@@ -53,7 +56,7 @@ export function TopicList({
 
       <ol className="divide-y divide-border/50">
         {topics.map((t, i) => {
-          const work = byTitle.get(t.trim());
+          const work = byTitle.get(topicKey(t));
           const next = work ? nextStage(work.stages) : null;
           return (
             <li key={`${i}-${t}`} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center">
@@ -73,7 +76,7 @@ export function TopicList({
                     <ArrowRight className="h-3 w-3" />
                   </Link>
                 )}
-                {ACTIONS.map((a) => {
+                {TOPIC_ACTIONS.map((a) => {
                   const key = `${t}|${a.stage}`;
                   return (
                     <button
