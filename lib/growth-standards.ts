@@ -20,6 +20,7 @@ import { GROWTH_TACTICS, SELECTION_MATRIX, TEST_RULE, tacticByName } from './gro
 import { OPENING_CARDS, type OpeningCard } from './opening-cards';
 import { THIRTY_DAY_PLAN, DIAGNOSIS_TREE } from './positioning-standards';
 import { roleInferRule, roleOfTactic, rolesGuide } from './content-roles';
+import { ROUTES_GUIDE, tacticsBlockedBy } from './creative-routes';
 
 /** 一计压缩成一行，用于「候选清单」那一段 */
 const brief = (name: string) => {
@@ -127,22 +128,8 @@ export function extractContentPlan(md: string, max = 2500): string {
   return out.length > max ? `${out.slice(0, max)}\n…（后略）` : out;
 }
 
-/**
- * 和档案禁忌直接冲突的打法。
- *
- * 实测：禁忌写着"不揭秘行业内幕"，起号方案照样把「内幕揭秘」列成备选，
- * 再自己补一句"不能用揭秘两个字"——边推边打补丁。
- * 与其指望模型自己排除，不如交给它之前就从清单里拿掉。
- */
-const BLOCKING_RULES: Array<{ tactic: string; when: RegExp }> = [
-  { tactic: '内幕揭秘', when: /揭秘|内幕|黑料/ },
-  { tactic: '整蛊', when: /整蛊|恶搞/ },
-];
-
-export function tacticsBlockedBy(restrictions?: string): string[] {
-  const text = restrictions || '';
-  return BLOCKING_RULES.filter((r) => r.when.test(text)).map((r) => r.tactic);
-}
+// 和禁忌冲突的计：实现挪到 lib/creative-routes（定位也要用，放这里会和定位互相 import）
+export { tacticsBlockedBy };
 
 function blockedNote(blocked: string[]): string {
   return blocked.length
@@ -188,6 +175,8 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
   parts.push(GROWTH_MIX, '');
   // 三种视频各怎么拍（方向、结构、结尾指令）——起号方案要按它给出每一种的拍法
   parts.push(rolesGuide(), '');
+  // 计管事件怎么走，四大脚本管话怎么讲——起号方案里每一计都要配上讲法，补它讲不清成交理由的短板
+  parts.push(ROUTES_GUIDE, '');
   parts.push(MATRIX_TABLE, '');
 
   const blocked = tacticsBlockedBy(p.restrictions);
@@ -234,13 +223,15 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 
 - **为什么是你能拍的**：对照他的真实资源逐条说（团队几个人、设备、能在哪拍、擅长什么），不要泛泛而谈
 - **结构公式**：套到他这个号上，写成具体的
+- **配什么脚本讲**：这一计管事件怎么走，话怎么讲从四大脚本里配一个结构（如 正确做法VS错误做法 + 教知识·解题型），
+  说明配了它补上的是什么（成交理由？人设？）
 - **前 3 条具体拍什么**：每条一句能直接当标题用的话 + 拍摄要点；
   标题叠一个爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙），在后面用括号标出是哪个
 - **边界**：什么不能碰（从这一计的边界里挑对他适用的）
 
 ## 🔄 备选打法（2-3 计）
 
-每计写：什么情况下切过去、一句话说明怎么套到他这个号上。
+每计写：什么情况下切过去、一句话说明怎么套到他这个号上、配哪个四大脚本结构讲。
 
 ## 🧪 怎么测
 

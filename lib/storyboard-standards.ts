@@ -336,6 +336,9 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   // 镜头重点跟着目的走：变现型要证据感（过程、前后对比），人设型要细节，流量型要情绪
   parts.push(roleInferRule('shots'));
   parts.push('');
+  parts.push('脚本用了起号 36 计的（策略卡里写着"用的计"），那一计公式里的每个节点都要有镜头——');
+  parts.push('比如「常规A → 反向B → 真实反应」，三段各自拍到，尤其是最后的真实反应，不能只剩口播。');
+  parts.push('');
 
   if (script) {
     parts.push(scriptFacts(script, seconds));

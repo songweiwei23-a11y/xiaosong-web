@@ -50,6 +50,12 @@ export interface HandoffPayload {
    */
   tactic?: string;
   /**
+   * 一批选题里每条各自用的计（标题 → 计名）。
+   * 选题"两种都出"时每条的计不一样，整批一个 tactic 装不下；
+   * 脚本页挑中哪条，就带上那一条的计。
+   */
+  topicTactics?: Record<string, string>;
+  /**
    * 这条内容用的开篇卡（卡名，取自 lib/opening-cards）。
    * 传给标题页时，标题会和开头赌同一个钩子，不会自己跟自己打架。
    */

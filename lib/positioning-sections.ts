@@ -87,7 +87,7 @@ export const SECTIONS: SectionDef[] = [
     label: '内容定位',
     match: /内容定位/,
     level: 3,
-    refs: ['contentMix', 'roles', 'audienceChange'],
+    refs: ['contentMix', 'roles', 'routes', 'audienceChange'],
     hint: '主打类型和配比',
   },
   {

@@ -30,6 +30,9 @@ export interface Profile {
   content_format?: string[];
   content_value?: string;
   unique_selling_point?: string;
+  /** 禁忌：和它冲突的起号计要从清单里拿掉 */
+  content_restrictions?: string | null;
+  avoid_content?: string | null;
 }
 
 export interface Positioning {

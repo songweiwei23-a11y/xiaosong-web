@@ -171,6 +171,11 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push(roleInferRule('review'));
   parts.push('');
   parts.push(
+    '稿子用了起号 36 计的（策略卡里写着"用的计"，或者一看就是某一计的拍法），再查一条：' +
+      '那一计的结构公式是不是真落在片子的事件上，还是只在开头提了一句。没落上的算问题。'
+  );
+  parts.push('');
+  parts.push(
     `目的和结构、结尾指令对不上的，列进问题清单${p.severityLabels ? '（🔴 必须改）' : '，排在最前面'}，并在优化后的脚本里改过来。`
   );
   parts.push('');

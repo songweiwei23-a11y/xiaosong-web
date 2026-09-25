@@ -60,7 +60,8 @@ import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { putHandoff, takeHandoff, extractOpening } from "@/lib/handoff";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
-import { tacticBrief } from "@/lib/growth-standards";
+import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
+import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, recordStage } from "@/lib/works";
@@ -208,7 +209,10 @@ export default function ScriptPage() {
    * 这条脚本用的起号计。从选题页或起号页带过来，也可以在本页改。
    * 会写进历史记录，复盘按它统计「这一计测了几条」。
    */
-  const [tactic, setTactic] = useState("");
+  // 默认让 AI 按这条的目的挑一计叠上——原来默认"不指定"，36 计在脚本里几乎从不出现
+  const [tactic, setTactic] = useState(AUTO_TACTIC);
+  /** 选题页"两种都出"时每条各自的计：挑中哪条就带上哪条的 */
+  const [handoffTopicTactics, setHandoffTopicTactics] = useState<Record<string, string>>({});
   /**
    * 开篇页选定的那句开头，以及它用的卡。
    * 有它时脚本的第一句被锁死——用户已经在开篇页横向比过一轮挑出来了，
@@ -231,6 +235,7 @@ export default function ScriptPage() {
     }
     // 选题页/起号页带过来的拍法
     if (data.tactic) setTactic(data.tactic);
+    if (data.topicTactics) setHandoffTopicTactics(data.topicTactics);
     // 开篇页选定的那句开头
     if (data.openingLine) setOpeningLine(data.openingLine);
     if (data.openingCards?.length) setOpeningCard(data.openingCards[0]);
@@ -251,7 +256,7 @@ export default function ScriptPage() {
       setResult(last.result);
       setActiveHistoryId(last.id);
       const t = last.input_data?.tactic;
-      if (typeof t === "string" && t) setTactic((cur) => cur || t);
+      if (typeof t === "string" && t) setTactic((cur) => (cur && cur !== AUTO_TACTIC ? cur : t));
     }
   });
 
@@ -591,8 +596,26 @@ ${getRelevantExample(scriptType, durationForCalc, scriptStructure)}
       //   脚本结构 = 时间怎么分（0-3秒钩子、3-15秒铺垫…）
       //   拍法公式 = 事件怎么走（常规A → 反向B → 真实反应）
       // 两者叠加，不是二选一。不说清楚的话模型会拿其中一个覆盖另一个。
-      const tacticText = tactic ? tacticBrief(tactic) : '';
-      const tacticSection = tacticText
+      const tacticText = tactic && tactic !== AUTO_TACTIC ? tacticBrief(tactic) : '';
+      const profileForBlock = selectedProfileId ? profiles.find((p) => p.id === selectedProfileId) : null;
+      const blockedTactics = tacticsBlockedBy(
+        [profileForBlock?.content_restrictions, profileForBlock?.avoid_content].filter(Boolean).join('\n')
+      );
+      const tacticSection = tactic === AUTO_TACTIC
+        ? `
+## 🎬 拍法：给这条叠一计起号打法（小黄 36 计）
+
+${ROUTES_GUIDE}
+
+${tacticIndex({ exclude: blockedTactics })}
+
+**硬要求**：
+1. 从上面清单挑**一计**，优先标了【${effectiveRole}】的；挑他拍得出来的
+2. 在脚本策略卡第一条写：**用的计：36计·第N计 计名**，再用一句话说这一计的公式套到这条上是什么事件
+3. 片子的事件走向落在那一计的公式上，话怎么讲仍按上面的脚本结构——两者叠加，不要只在开头提一句
+4. 实在没有合适的（比如讲自己真实经历的人设型，硬套会显得假），策略卡第一条写"用的计：不叠计"并说明为什么，按四大脚本写
+`
+        : tacticText
         ? `
 ## 🎬 本条用的拍法：${tactic}
 
@@ -926,7 +949,8 @@ ${formatRequirements}
                   : duration,
               // 复盘要按打法数样本：知识库的测试规则是「每种打法至少测 3-5 条」，
               // 不记这一条，那条规则就永远只是纸上的
-              tactic: tactic || undefined,
+              // 让 AI 挑的，记它实际挑中的那一计（策略卡里写着），不记"AI 挑"这个占位
+              tactic: (tactic === AUTO_TACTIC ? tacticInText(fullResult) : tactic) || undefined,
             };
             // 归到作品下。从选题带过来时已有作品，直接进本页的则在这里建——
             // 等生成完再建，才不会攒下一堆用户其实没写出东西的空作品。
@@ -1095,7 +1119,10 @@ ${formatRequirements}
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setTopic(t)}
+                      onClick={() => {
+                        setTopic(t);
+                        if (handoffTopicTactics[t]) setTactic(handoffTopicTactics[t]);
+                      }}
                       className="glass-panel glass-interactive w-full rounded-lg px-3 py-2 text-left text-[12px] leading-relaxed text-foreground"
                     >
                       {t}
@@ -1314,9 +1341,11 @@ ${formatRequirements}
               label="拍法（起号 36+1 计）"
               optional
               hint={
-                tactic
-                  ? GROWTH_TACTICS.find((t) => t.name === tactic)?.formula
-                  : '不选就不限形式。选了会写进历史，复盘按它统计这一计测了几条'
+                tactic === AUTO_TACTIC
+                  ? `AI 按这条的目的（${effectiveRole}）挑一计叠在四大脚本上，挑不出合适的就不叠`
+                  : tactic
+                    ? GROWTH_TACTICS.find((t) => t.name === tactic)?.formula
+                    : '只按四大脚本写，不叠起号打法'
               }
             >
               <select
@@ -1324,7 +1353,8 @@ ${formatRequirements}
                 onChange={(e) => setTactic(e.target.value)}
                 className={SELECT_CLS}
               >
-                <option value="">不指定</option>
+                <option value={AUTO_TACTIC}>AI 按目的挑一计（推荐）</option>
+                <option value="">不用，只按四大脚本</option>
                 {GROWTH_TACTICS.map((t) => (
                   <option key={t.no} value={t.name}>
                     {t.no}. {t.name}

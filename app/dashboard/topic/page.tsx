@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { putHandoff, takeHandoff, parseTopicOptions } from "@/lib/handoff";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from "@/lib/viral-elements";
-import { tacticBrief } from "@/lib/growth-standards";
+import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, rolesGuide, roleBrief, type ContentRole } from "@/lib/content-roles";
+import { ROUTE_LIST, ROUTE_HINTS, ROUTES_GUIDE, routeAssignment, tacticIndex, tacticInText, topicTacticsOf, type CreativeRoute } from "@/lib/creative-routes";
 import { throwApiError } from "@/lib/api-error";
 import { createWork, listWorks, type Work } from "@/lib/works";
 import { stageRoute, workStageUrl } from "@/lib/resume";
@@ -112,6 +113,11 @@ export default function TopicPage() {
    * 从起号页「按这一计去选题」带过来，也可以在这一页直接选。
    */
   const [tactic, setTactic] = useState("");
+  /**
+   * 这批用哪套打法。原来默认全走四大脚本 + 爆款元素，36 计只有手动挑了某一计才用得上——
+   * 产出里几乎看不见 36 计。现在默认两套都出；指定了某一计时整批都用那一计。
+   */
+  const [route, setRoute] = useState<CreativeRoute>('两种都出');
   /** 已有的作品，给选题清单标出"已在做"的那几条 */
   const [works, setWorks] = useState<Work[]>([]);
   useEffect(() => {
@@ -132,8 +138,9 @@ export default function TopicPage() {
       topic: title,
       workId: workId ?? undefined,
       tab: stage === "开篇钩子" ? "opening" : undefined,
-      // 打法跟着选题一路走，脚本才能按这一计的结构公式排
-      tactic: tactic || undefined,
+      // 打法跟着选题一路走，脚本才能按这一计的结构公式排。
+      // 没整批指定时，看这一条自己标的是哪一计
+      tactic: tactic || tacticInText(body ?? "") || undefined,
       note:
         stage === "脚本生成" && body
           ? `选题策划时定下的方案，照这个方向写：\n${body.slice(0, 1500)}`
@@ -569,6 +576,7 @@ export default function TopicPage() {
         mode: mode,
         topicType: topicType,
         topicRole: topicRole,
+        route: tactic ? undefined : route,
         // 传递完整的档案和定位信息，而不是ID
         profileInfo: profileInfo ? JSON.stringify(profileInfo) : "",
         positioningInfo: positioningInfo ? JSON.stringify(positioningInfo) : "",
@@ -730,6 +738,16 @@ export default function TopicPage() {
           query += `- 拍不出来的选题就别给——宁可换个角度，也不要凑数\n`;
           query += `- 上面的「边界」是红线，碰线的选题直接不要\n\n`;
         }
+      } else {
+        // 没整批指定某一计：按用户选的路子分配，36 计连公式一起给，只给计名模型不知道怎么拍
+        query += `${routeAssignment(route, topicCount)}\n\n${ROUTES_GUIDE}\n\n`;
+        if (route !== '四大脚本') {
+          const blocked = tacticsBlockedBy(
+            [selectedProfile?.content_restrictions, selectedProfile?.avoid_content].filter(Boolean).join('\n')
+          );
+          query += `${tacticIndex({ roles: topicRole === '按配比' ? undefined : [topicRole], exclude: blocked })}\n\n`;
+          if (blocked.length) query += `⛔ 这几计和账号禁忌冲突，已从清单拿掉，不要用：${blocked.join('、')}\n\n`;
+        }
       }
 
       query += `【创新要求】🎨 重要！\n`;
@@ -744,6 +762,11 @@ export default function TopicPage() {
       query += `## 选题X：[标题]\n\n`;
       query += `**0️⃣ 视频目的**\n`;
       query += `流量型 / 人设型 / 变现型，只写一个，后面一句话说为什么\n\n`;
+      // 这一行的写法固定，页面要从它认出用的哪一计，带到脚本页
+      query += `**🅰 打法**\n`;
+      query += `二选一照这个格式写：\n`;
+      query += `- 36计·第N计 计名：把这一计的结构公式套到这条上，写成具体的事件（如「常规A → 反向B → 真实反应」写成这条里真正发生的事）\n`;
+      query += `- 四大脚本·脚本类型（聊观点 / 晒过程 / 教知识 / 讲故事）：一句话说这条怎么讲\n\n`;
       query += `**1️⃣ 爆款元素**\n`;
       if (selectedElements.length > 0) {
         // 用全名（「最差选题」而不是「最差」），和上面那段句式对得上
@@ -752,7 +775,7 @@ export default function TopicPage() {
           .join('、');
         query += `注明用了哪个元素（限 ${elementsText}）以及套的是哪一条句式\n\n`;
       } else {
-        query += `使用2-3个元素及应用方式\n\n`;
+        query += `四大脚本的选题用2-3个元素及应用方式；36计的选题叠1个就够，不叠写"无"\n\n`;
       }
       query += `**2️⃣ 开篇钩子（重要！）**\n`;
       query += `⚠️ 必须结合本地知识库和现有知识库优化，3秒内抓住注意力\n`;
@@ -773,7 +796,8 @@ export default function TopicPage() {
        * 时间线/问答/情景剧/测评/挑战/教程/反转/盘点/采访/观察——大半是知识库里没有的
        * 通用词，而且跟这条视频的目的无关。现在从目的对应的结构里挑（知识库原文）。
        */
-      query += `从这条目的对应的结构里挑 1 个最合适的（见上面「三种视频」），写出骨架套到这条上是什么样（每段最多10字）\n\n`;
+      query += `从这条目的对应的结构里挑 1 个最合适的（见上面「三种视频」），写出骨架套到这条上是什么样（每段最多10字）。\n`;
+      query += `用 36 计的：计的公式管事件怎么走，这里的结构管话怎么讲，两者叠加；纯按计的公式拍、不另套结构的，写"按计的公式走"\n\n`;
       query += `**5️⃣ 结尾行动指令**\n`;
       query += `只写一个，按目的来：流量型要关注或评论，人设型要关注或看主页，变现型要私信、到店或留资中的一个\n\n`;
       query += `**6️⃣ 执行要点**\n`;
@@ -795,7 +819,7 @@ export default function TopicPage() {
       query += `📋 具体要求：\n`;
       query += `1. 开篇钩子：只写文案，不要画面描述！必须结合知识库优化\n`;
       query += `2. 内容方向及目的是重中之重：核心方向一句话，用户价值要明确\n`;
-      query += `3. 每条选题必须包含2-3个爆款元素\n`;
+      query += `3. 每条都写「🅰 打法」；用 36 计的，计名和清单一字不差，公式要落在事件上，不是只在标题提一句\n`;
       query += `4. 每条只担一个目的；脚本结构和结尾行动指令都按目的来，结尾指令只要一个\n`;
       query += `5. 变现型选题必须写成交理由和转化路径（最多15字）\n`;
       query += `6. 每条选题严格控制在220字以内！去废话！\n`;
@@ -995,15 +1019,42 @@ export default function TopicPage() {
             拍法。爆款元素管"讲什么内容"，拍法管"用什么形式拍"，两件事。
             37 计平铺出来太多，这里只做一个下拉；真要挑还是去起号页看完整说明。
           */}
-          <CollapsibleSection title="拍法（起号 36+1 计）" defaultOpen={!!tactic}>
+          <CollapsibleSection title="打法（四大脚本 / 起号 36 计）" defaultOpen>
             <Field
-              label="用哪一计拍"
+              label="用哪套打法"
+              stacked
+              hint={tactic ? `已指定第 ${GROWTH_TACTICS.find((t) => t.name === tactic)?.no} 计，整批都按它拍` : ROUTE_HINTS[route]}
+            >
+              <div className="grid grid-cols-3 gap-1.5">
+                {ROUTE_LIST.map((r) => {
+                  const picked = !tactic && route === r;
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => {
+                        setRoute(r);
+                        setTactic("");
+                      }}
+                      aria-pressed={picked}
+                      className={`glass-interactive rounded-xl border px-2 py-1.5 text-center text-[11px] ${
+                        picked ? "glass-selected text-primary" : "glass-panel text-muted-foreground"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+            <Field
+              label="指定某一计"
               optional
               stacked
               hint={
                 tactic
                   ? '这一批选题都会按这一计的结构公式来想'
-                  : '不选就是不限形式。想看每一计的详细说明，去「起号方案」'
+                  : '不指定就按上面的打法，由 AI 按每条的目的挑计。想看每一计的详细说明，去「起号方案」'
               }
             >
               <select
@@ -1275,7 +1326,9 @@ export default function TopicPage() {
                 topic: options.length === 1 ? options[0] : undefined,
                 workId,
                 // 打法跟着选题一路走到脚本，脚本才能按这一计的结构公式排
-                tactic: tactic || undefined,
+                tactic: tactic || (options.length === 1 ? tacticInText(body) : undefined),
+                // 每条各自标的是哪一计：到脚本页挑中哪条，就自动带上那一条的计
+                topicTactics: tactic ? undefined : topicTacticsOf(body),
               });
               router.push("/dashboard/script");
             },
