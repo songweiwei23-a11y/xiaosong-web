@@ -57,6 +57,28 @@ export function shortDue(dueAt: string | null, now: Date = new Date()): string {
   return `${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
+/** 规则说明，写在待办底部：让人知道东西不会丢、也不会越堆越多 */
+export const TODO_RULE_NOTE = '没做完的会一直记着，做完的第二天自动清掉';
+
+/**
+ * 打开首页时的一句提醒：之前留下来没做完的、过了时间还没做的。
+ * 什么都没有就返回 null，不为了提醒而提醒。
+ */
+export function carryOverNote(open: Todo[], now: Date = new Date()): string | null {
+  const today = startOfDay(now);
+  const carried = open.filter((t) => startOfDay(new Date(t.created_at)) < today);
+  const isOverdue = (t: Todo) => !!t.due_at && new Date(t.due_at).getTime() < now.getTime();
+  if (carried.length === 0) {
+    const overdue = open.filter(isOverdue).length;
+    return overdue ? `有 ${overdue} 件过了时间还没做` : null;
+  }
+  const allYesterday = carried.every((t) => startOfDay(new Date(t.created_at)) === today - DAY_MS);
+  const head = `${allYesterday ? '昨天' : '之前'}没做完的 ${carried.length} 件，帮你留着了`;
+  // "其中"说的是留下来的那几件里过期的，今天新加的不算
+  const carriedOverdue = carried.filter(isOverdue).length;
+  return carriedOverdue ? `${head}，其中 ${carriedOverdue} 件已经过了时间` : head;
+}
+
 /**
  * 截止时间怎么说。说人话、分轻重：过期的要看得出来，但不用刺眼的红——
  * 首页是每天打开的地方，满屏报警只会让人不想看。

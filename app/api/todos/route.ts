@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/api-guard'
 import { getServerSupabase } from '@/lib/admin-auth'
 import { normalizeTodoInput, TODO_MAX_LEN } from '@/lib/todos'
+import { dayStartShanghai } from '@/lib/usage-month'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,13 +24,22 @@ export async function GET() {
   const guard = await requireUser()
   if (!guard.ok) return guard.response!
   const supabase = await getServerSupabase()
+  const today = dayStartShanghai().toISOString()
 
-  // 没做完的全要；做完的只留最近几条，给"刚划掉"一点回看的余地
+  /*
+   * 做完的第二天自动清掉：今天之前做完的直接删，首页每天打开都是清爽的。
+   * 没做完的一直留着，不删——那是用户还要做的事，丢了比堆着更糟。
+   * 清理失败不影响列表，下次打开再清。
+   */
+  await supabase.from('user_todos').delete()
+    .eq('user_id', guard.userId!).eq('done', true).lt('done_at', today)
+
+  // 没做完的全要；做完的只剩今天的
   const [open, done] = await Promise.all([
     supabase.from('user_todos').select('*').eq('user_id', guard.userId!).eq('done', false)
-      .order('created_at', { ascending: false }).limit(50),
+      .order('created_at', { ascending: false }).limit(100),
     supabase.from('user_todos').select('*').eq('user_id', guard.userId!).eq('done', true)
-      .order('done_at', { ascending: false }).limit(5),
+      .gte('done_at', today).order('done_at', { ascending: false }).limit(50),
   ])
   if (open.error) return failed(open.error)
   if (done.error) return failed(done.error)

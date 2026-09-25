@@ -8,8 +8,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { monthStartShanghai } from '@/lib/usage-month';
-import { describeDue, normalizeTodoInput, shortDue, sortTodos, TODO_MAX_LEN, type Todo } from '@/lib/todos';
+import { dayStartShanghai, monthStartShanghai } from '@/lib/usage-month';
+import { carryOverNote, describeDue, normalizeTodoInput, shortDue, sortTodos, TODO_MAX_LEN, type Todo } from '@/lib/todos';
 import { dayProgress, festivalOf, lunarDayName, lunarOf, periodOf } from '@/lib/clock';
 import { readCode } from './helpers/source';
 
@@ -139,5 +139,44 @@ describe('待办时间线', () => {
     expect(shortDue(at(24, 12), now)).toBe('昨天 12:00');
     expect(shortDue(at(28, 10), now)).toBe('9月28日');
     expect(shortDue(null, now)).toBe('');
+  });
+});
+
+describe('待办的记忆和清理', () => {
+  const now = new Date(2026, 8, 26, 9, 0); // 9 月 26 日早上
+  const at = (d: number, h: number) => new Date(2026, 8, d, h).toISOString();
+  const t = (id: string, created: string, due: string | null = null): Todo =>
+    ({ id, content: id, due_at: due, done: false, done_at: null, created_at: created });
+
+  it('昨天没做完的留着，并说一声；过期的单独点出来', () => {
+    expect(carryOverNote([t('a', at(25, 10)), t('b', at(25, 11))], now)).toBe('昨天没做完的 2 件，帮你留着了');
+    expect(carryOverNote([t('a', at(25, 10), at(25, 18)), t('b', at(25, 11))], now))
+      .toBe('昨天没做完的 2 件，帮你留着了，其中 1 件已经过了时间');
+    expect(carryOverNote([t('a', at(20, 10))], now)).toBe('之前没做完的 1 件，帮你留着了');
+  });
+
+  it('今天新加的不算"留下来的"；今天的过期单独说；什么都没有就不提醒', () => {
+    expect(carryOverNote([t('a', at(26, 7))], now)).toBeNull();
+    expect(carryOverNote([t('a', at(26, 7), at(26, 8))], now)).toBe('有 1 件过了时间还没做');
+    // 今天新加又过期的，不算进"其中"
+    expect(carryOverNote([t('a', at(25, 10)), t('b', at(26, 7), at(26, 8))], now)).toBe('昨天没做完的 1 件，帮你留着了');
+    expect(carryOverNote([], now)).toBeNull();
+  });
+
+  it('北京时间今天零点', () => {
+    expect(dayStartShanghai(new Date('2026-09-25T20:00:00Z')).toISOString()).toBe('2026-09-25T16:00:00.000Z');
+    expect(dayStartShanghai(new Date('2026-09-25T15:00:00Z')).toISOString()).toBe('2026-09-24T16:00:00.000Z');
+  });
+
+  it('接口：今天之前做完的删掉，没做完的不动；界面写明规则', () => {
+    const src = readCode('app/api/todos/route.ts');
+    expect(src).toMatch(/\.delete\(\)\s*\.eq\('user_id', guard\.userId!\)\.eq\('done', true\)\.lt\('done_at', today\)/);
+    // 删除只针对做完的：逐条取出 .delete() 的调用链，没有一条带 done=false
+    const chains = src.match(/\.delete\(\)(?:\s*\.\w+\([^)]*\))*/g) ?? [];
+    expect(chains.length).toBeGreaterThanOrEqual(2); // 自动清理 + 用户手动删
+    for (const c of chains) expect(c).not.toMatch(/eq\('done', false\)/);
+    const ui = readCode('components/dashboard/TodayBoard.tsx');
+    expect(ui).toContain('{TODO_RULE_NOTE}');
+    expect(ui).toMatch(/carryOverNote\(t\.open, now\)/);
   });
 });

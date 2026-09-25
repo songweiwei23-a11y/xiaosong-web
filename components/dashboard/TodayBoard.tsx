@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Check, ChevronDown, Clock as ClockIcon, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, Clock as ClockIcon, History, Plus, X } from "lucide-react";
 import { useTodos } from "@/hooks/useTodos";
 import { useNow } from "@/hooks/useNow";
-import { describeDue, shortDue, TODO_MAX_LEN, type Todo } from "@/lib/todos";
+import { carryOverNote, describeDue, shortDue, TODO_MAX_LEN, TODO_RULE_NOTE, type Todo } from "@/lib/todos";
 import { Clock } from "./Clock";
 
 /**
@@ -190,10 +190,28 @@ function Timeline({
   );
 }
 
+/** 今天点掉过提醒就不再出现；换一天重新提醒。读写失败（隐私模式）就当没点过 */
+function noteKey(d: Date) {
+  return `kaiwu:todo-note-hidden:${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
 function Todos() {
   const t = useTodos();
   const now = useNow() ?? new Date();
   const [showDone, setShowDone] = useState(false);
+  const [noteHidden, setNoteHidden] = useState(false);
+  useEffect(() => {
+    try {
+      setNoteHidden(localStorage.getItem(noteKey(new Date())) === "1");
+    } catch {}
+  }, []);
+  const note = t.loading ? null : carryOverNote(t.open, now);
+  const hideNote = () => {
+    setNoteHidden(true);
+    try {
+      localStorage.setItem(noteKey(new Date()), "1");
+    } catch {}
+  };
 
   return (
     <div>
@@ -210,6 +228,22 @@ function Todos() {
         </p>
       ) : (
         <>
+          {/* 记忆：之前没做完的都留着，打开时说一声 */}
+          {note && !noteHidden && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-primary/[0.06] px-3 py-2">
+              <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
+              <p className="flex-1 text-[12px] leading-relaxed text-foreground/75">{note}</p>
+              <button
+                type="button"
+                onClick={hideNote}
+                aria-label="知道了"
+                title="知道了，今天不再提醒"
+                className="rounded-md p-0.5 text-muted-foreground/60 hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
           <div className="mt-3">
             <TodoInput onAdd={t.add} />
           </div>
@@ -245,6 +279,7 @@ function Todos() {
               </>
             )}
           </div>
+          <p className="mt-2 text-right text-[11px] text-muted-foreground/60">{TODO_RULE_NOTE}</p>
         </>
       )}
     </div>

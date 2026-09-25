@@ -6,6 +6,12 @@
  */
 const OFFSET_MS = 8 * 60 * 60 * 1000;
 
+/** 北京时间今天零点（做完的待办过了这个点就清掉） */
+export function dayStartShanghai(now: Date = new Date()): Date {
+  const local = new Date(now.getTime() + OFFSET_MS);
+  return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - OFFSET_MS);
+}
+
 export function monthStartShanghai(now: Date = new Date()): Date {
   const local = new Date(now.getTime() + OFFSET_MS);
   return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - OFFSET_MS);
