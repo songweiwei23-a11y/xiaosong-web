@@ -97,11 +97,14 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
   const planId = effectivePlanId(subscription);
   const plan = getPlan(planId);
 
-  // 企业版无限使用
-  if (planId === 'enterprise') {
-    return { ok: true, userId: user.id };
-  }
-
+  /*
+   * 企业版不限量，但周期照样要滚。
+   *
+   * 这里原来一进来就对企业版 return，下面"周期到期就重置"那段永远走不到：
+   * 线上企业版用户的周期 9 月 9 日到期后再没重置过，计数器从 8 月一路累加，
+   * 首页接口又把"周期已结束"当成 0 显示——本月用了六十多次，首页写着 0。
+   * 改成：建记录、滚周期对所有套餐都做，企业版只是跳过限额判定。
+   */
   const quota = quotaRow;
 
   if (!quota) {
@@ -151,6 +154,11 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     return { ok: true, userId: user.id };
   }
 
+  // 企业版无限使用
+  if (planId === 'enterprise') {
+    return { ok: true, userId: user.id };
+  }
+
   // 判定交给 lib/config/plans.ts 的 judgeQuota：
   // 免费版按功能分别限额，付费版按总量。此前这里只有分功能分支，
   // 而调用方每次都传了 feature，付费版的总量校验从未执行过，
@@ -180,7 +188,7 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
  * 使用 service_role 客户端直接原子操作，无竞态风险。
  * 若扣减失败仅记录日志，不影响已返回的流式内容。
  */
-export async function incrementUsageServer(userId: string, feature: string): Promise<void> {
+export async function incrementUsageServer(userId: string, feature: string, taskType?: string): Promise<void> {
   try {
     const supabase = getServiceSupabase();
 
@@ -189,6 +197,13 @@ export async function incrementUsageServer(userId: string, feature: string): Pro
       console.error('[api-guard] 未知的功能类型:', feature);
       return;
     }
+
+    // 记一条使用记录：首页「本月已用」按它按自然月数，删历史记录也不会少。
+    // 表还没建（迁移没跑）时只记日志，不影响计数器
+    const { error: eventError } = await supabase
+      .from('usage_events')
+      .insert({ user_id: userId, feature, task_type: taskType ?? null });
+    if (eventError) console.error('[api-guard] 使用记录写入失败:', eventError.message);
 
     // 获取当前值
     const { data: quota } = await supabase

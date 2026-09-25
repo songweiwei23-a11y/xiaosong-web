@@ -2,6 +2,31 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { getPlan, COUNTED_FEATURES, sumCountedUsage, judgeQuota, effectivePlanId } from '@/lib/config/plans';
+import { monthStartShanghai } from '@/lib/usage-month';
+
+/**
+ * 本月（北京时间自然月）实际生成了几次。
+ *
+ * 读 usage_events：每次成功生成记一条、只增不删。计数器 totalUsed 跟着订阅周期滚，
+ * 和"本月"对不上，而且企业版的周期曾经一直没重置过（见 api-guard），首页因此长期显示 0。
+ * 表还没建（迁移没跑）时退回数本月的生成记录——删过记录会少算，但总比 0 接近真相。
+ */
+async function countMonthUsage(supabase: ReturnType<typeof getServiceSupabase>, userId: string): Promise<number> {
+  const since = monthStartShanghai().toISOString();
+  const events = await supabase
+    .from('usage_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', since);
+  if (!events.error) return events.count ?? 0;
+
+  const history = await supabase
+    .from('script_history')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', since);
+  return history.count ?? 0;
+}
 
 /**
  * 当前登录用户的额度概况：已用多少、还剩多少、哪些功能快见底了。
@@ -44,6 +69,7 @@ export async function GET() {
     // 与 api-guard 共用同一份到期判定，两边不能各写各的
     const planId = effectivePlanId(subscription);
     const plan = getPlan(planId);
+    const monthUsed = await countMonthUsage(supabase, userId);
 
     const empty = {
       warnings: [] as unknown[],
@@ -52,6 +78,7 @@ export async function GET() {
       planName: plan.name,
       totalUsed: 0,
       totalLimit: plan.totalQuota === -1 ? 0 : plan.totalQuota ?? 0,
+      monthUsed,
     };
 
     if (!quota) return NextResponse.json(empty);
@@ -74,6 +101,7 @@ export async function GET() {
           planName: plan.name,
           periodEnd: quota.current_period_end,
           totalUsed,
+          monthUsed,
           totalLimit: 0, // 0 表示不限量，前端只显示用量
         });
       }
@@ -99,6 +127,7 @@ export async function GET() {
         planName: plan.name,
         periodEnd: quota.current_period_end,
         totalUsed,
+        monthUsed,
         totalLimit: plan.totalQuota,
       });
     }
@@ -152,6 +181,7 @@ export async function GET() {
       planName: plan.name,
       periodEnd: quota.current_period_end,
       totalUsed,
+      monthUsed,
       /*
        * 分功能制下不给总分母。
        *

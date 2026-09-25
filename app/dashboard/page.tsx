@@ -8,6 +8,7 @@ import { listWorks, type Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
 import { getActiveProfileId } from '@/lib/active-profile';
 import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
+import { TodoCard } from '@/components/dashboard/TodoCard';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
@@ -172,6 +173,9 @@ interface RecentItem {
 
 export default function DashboardPage() {
   const [quota, setQuota] = useState<{
+    /** 本月（北京时间自然月）实际生成了几次，按使用记录数，删历史记录也不会少 */
+    monthUsed: number;
+    /** 本期额度已用（跟着订阅周期滚，管限额） */
     used: number;
     limit: number;
     plan: string;
@@ -192,6 +196,37 @@ export default function DashboardPage() {
   const [posTypes, setPosTypes] = useState<string[]>([]);
   const [profileCount, setProfileCount] = useState(0);
 
+  const applyQuota = (d: any) =>
+    setQuota({
+      monthUsed: d.monthUsed ?? d.totalUsed ?? 0,
+      used: d.totalUsed ?? 0,
+      limit: d.totalLimit ?? 0,
+      plan: d.planName || "免费版",
+      tightest: d.tightest ?? null,
+    });
+
+  /*
+   * 「本月已用」要跟得上：在别的板块生成完切回来、或者页面一直开着，都该是新数。
+   * 切回这个标签页时刷一次，开着的时候每分钟刷一次；后台标签页不刷，省请求。
+   */
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      fetch("/api/quota/check")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && !d.error && applyQuota(d))
+        .catch(() => {});
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -209,15 +244,7 @@ export default function DashboardPage() {
         // 只展示还没做完的：做完的作品留在「全部」里，不占首页
         setWorks(workList.filter((w) => !w.is_done).slice(0, 4));
 
-        if (quotaRes?.ok) {
-          const d = await quotaRes.json();
-          setQuota({
-            used: d.totalUsed ?? 0,
-            limit: d.totalLimit ?? 0,
-            plan: d.planName || "免费版",
-            tightest: d.tightest ?? null,
-          });
-        }
+        if (quotaRes?.ok) applyQuota(await quotaRes.json());
 
         if (profileRes?.ok) {
           const list = await profileRes.json();
@@ -540,19 +567,24 @@ export default function DashboardPage() {
                   <span className="h-6 w-16 animate-pulse rounded bg-muted" />
                 ) : (
                   <span className="text-[22px] font-semibold tabular-nums text-foreground">
-                    {quota?.used ?? 0}
-                    {quota?.limit ? (
-                      <span className="ml-1 text-[12px] font-normal text-muted-foreground">
-                        / {quota.limit}
-                      </span>
-                    ) : null}
+                    {quota?.monthUsed ?? 0}
+                    <span className="ml-1 text-[12px] font-normal text-muted-foreground">次</span>
                   </span>
                 )}
               </div>
 
+              {/* 本月已用按自然月数；限额跟着订阅周期走，两个数说的不是一回事，分开写 */}
               {quota?.limit ? (
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${usedPct}%` }} />
+                <div className="mt-3">
+                  <div className="flex items-baseline justify-between text-[12px] text-muted-foreground">
+                    <span>本期额度</span>
+                    <span className="tabular-nums">
+                      {quota.used} / {quota.limit}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${usedPct}%` }} />
+                  </div>
                 </div>
               ) : null}
 
@@ -606,6 +638,8 @@ export default function DashboardPage() {
                 </span>
               </div>
             </section>
+
+            <TodoCard />
           </aside>
         </div>
       </div>

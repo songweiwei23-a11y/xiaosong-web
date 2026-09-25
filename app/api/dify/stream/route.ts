@@ -340,7 +340,7 @@ export async function POST(req: NextRequest) {
 
           // 生成成功（有内容）后，服务端扣减一次配额
           if (outcome.kind === 'done' && totalChunks > 0) {
-            await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType));
+            await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType);
           }
 
           // 持久化会话 id，使下一次同作用域的生成延续本轮对话。
