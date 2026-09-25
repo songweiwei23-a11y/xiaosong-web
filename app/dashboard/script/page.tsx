@@ -30,7 +30,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
 import {
   Sparkles, AlertCircle, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText,
-  BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package, CheckCircle, Tag,
+  BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package, CheckCircle, Tag, Copy,
 } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 
@@ -59,6 +59,7 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { putHandoff, takeHandoff, extractOpening } from "@/lib/handoff";
+import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
@@ -682,7 +683,13 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
 - 用3-5条说明本条脚本的核心策略：视频目的（${effectiveRole}）、目标用户、核心痛点、主钩子、情绪推进、唯一的结尾行动指令
 - 不写空泛定位，必须和主题、行业、账号信息直接相关
 
-### 第2步：正文脚本
+### 第2步：纯文字文案
+- 把这条视频要**念出来的话**按顺序整理成一段纯文案，方便直接复制去提词器、配音或发给出镜的人
+- 只要口播内容：**不写**秒数、镜头、画面、字幕、音效、动作，不要【】标注、emoji、加粗、序号、列表符号
+- 按说话的自然停顿分段，一句一行；结尾金句也写进去（不加"金句"两个字，也不加引号）
+- 先定好这段文案，第3步再把它拆进镜头：**第3步的口播台词必须和这段逐字一致**，不要两边各写一版${openingLine.trim() ? "\n- 开头已经定了，这段文案的第一句就是那句开头，一字不改" : ""}
+
+### 第3步：正文脚本
 - ${isAiDuration
   ? "请根据主题复杂度、平台调性与内容节奏，自行判断最合适的视频总时长（并在脚本开头用一行标注：建议时长：XX秒），再据此完整输出可直接拍摄的脚本"
   : `按${finalDuration}完整输出可直接拍摄的脚本`}
@@ -696,7 +703,7 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
 3. 每个镜头标注时间区间（如 8-15秒）和【镜头X】编号
 4. 至少标注3处情绪波点（可用 ⚡😰😓💕🤝 等符号或“波点”字样）
 
-### 第3步：优化建议（只写建议，不要打分）
+### 第4步：优化建议（只写建议，不要打分）
 - 用3-5条指出正文脚本还能加强的地方（钩子、节奏、画面、转化）
 - ⚠️ 禁止输出任何自评分数、“X分/10分”“综合评分”“MCN级”等字样，最终分数由系统质检统一给出
 `;
@@ -1707,6 +1714,20 @@ ${formatRequirements}
         // workId 一并带走，下一个环节生成出来才会挂到同一条内容下
         nextActions={[
           {
+            // 只要念出来的话：去提词器、配音、发给出镜的人。取的是结果里的「第2步：纯文字文案」
+            label: "复制纯文案",
+            icon: Copy,
+            onClick: (body) => {
+              const plain = extractPlainCopy(body);
+              if (!plain) {
+                notify("这条结果里没有纯文字文案（旧的结果没有这一段），重新生成一次就有了");
+                return;
+              }
+              navigator.clipboard.writeText(plain);
+              notify("✅ 纯文案已复制");
+            },
+          },
+          {
             label: "拆分镜",
             icon: Film,
             onClick: (body) => {
@@ -1731,7 +1752,10 @@ ${formatRequirements}
               putHandoff({
                 from: "脚本生成",
                 topic,
-                currentOpening: extractOpening(body),
+                // 有纯文案就取它的头两句——那就是要念的开头；旧结果没有这段，再从正文里截
+                currentOpening:
+                  extractPlainCopy(body).split("\n").filter((l) => l.trim()).slice(0, 2).join("") ||
+                  extractOpening(body),
                 tab: "opening",
                 workId: workId ?? undefined,
               });

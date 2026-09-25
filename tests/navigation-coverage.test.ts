@@ -143,7 +143,8 @@ describe('跨板块交接', () => {
     const src = read('app/dashboard/script/page.tsx');
     expect(src).toContain('换个开头');
     // 脚本两三千字，让用户自己从里面找开头是多余的
-    expect(src).toMatch(/currentOpening:\s*extractOpening\(body\)/);
+    // 先取「纯文字文案」的头两句（那就是要念的开头），旧结果没有这段再从正文里截
+    expect(src).toMatch(/currentOpening:\s*extractPlainCopy\(body\)[\s\S]{0,120}\|\|\s*extractOpening\(body\)/);
   });
 
   it('起号页接得住交接，并能列出最近的选题和脚本', () => {
