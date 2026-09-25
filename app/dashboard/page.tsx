@@ -8,7 +8,7 @@ import { listWorks, type Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
 import { getActiveProfileId } from '@/lib/active-profile';
 import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
-import { TodoCard } from '@/components/dashboard/TodoCard';
+import { TodayBoard } from '@/components/dashboard/TodayBoard';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
@@ -350,6 +350,11 @@ export default function DashboardPage() {
           </Link>
         </header>
 
+        {/* 今日看板：时钟 + 待办，进来第一眼看到的就是现在几点、今天要做什么 */}
+        <div className="mb-5">
+          <TodayBoard />
+        </div>
+
         <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
           {/* 左：开始创作 */}
           <section>
@@ -638,8 +643,6 @@ export default function DashboardPage() {
                 </span>
               </div>
             </section>
-
-            <TodoCard />
           </aside>
         </div>
       </div>

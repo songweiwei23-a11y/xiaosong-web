@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { monthStartShanghai } from '@/lib/usage-month';
-import { describeDue, normalizeTodoInput, sortTodos, TODO_MAX_LEN, type Todo } from '@/lib/todos';
+import { describeDue, normalizeTodoInput, shortDue, sortTodos, TODO_MAX_LEN, type Todo } from '@/lib/todos';
+import { dayProgress, festivalOf, lunarDayName, lunarOf, periodOf } from '@/lib/clock';
 import { readCode } from './helpers/source';
 
 describe('本月按北京时间的自然月算', () => {
@@ -51,7 +52,9 @@ describe('额度：企业版也要滚周期', () => {
     const src = readCode('app/dashboard/page.tsx');
     expect(src).toMatch(/\{quota\?\.monthUsed \?\? 0\}/);
     expect(src).toMatch(/addEventListener\("visibilitychange", refresh\)/);
-    expect(src).toContain('<TodoCard />');
+    // 今日看板放在问候语下面、「开始创作」之前——进来第一眼就看到
+    expect(src).toContain('<TodayBoard />');
+    expect(src.indexOf('<TodayBoard />')).toBeLessThan(src.indexOf('lg:grid-cols-[1.35fr_1fr]'));
   });
 
   it('迁移：两张表都开了 RLS，用户只能动自己的', () => {
@@ -104,5 +107,37 @@ describe('待办', () => {
     const src = readCode('app/api/todos/route.ts');
     expect(src).toContain("code: 'TABLE_MISSING'");
     expect(src.match(/\.eq\('user_id', guard\.userId!\)/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe('时钟', () => {
+  it('农历日的叫法', () => {
+    expect([1, 10, 15, 20, 21, 30].map(lunarDayName)).toEqual(['初一', '初十', '十五', '二十', '廿一', '三十']);
+  });
+
+  it('2026 年 9 月 25 日是农历八月十五，中秋', () => {
+    const d = new Date(2026, 8, 25, 12, 0);
+    expect(lunarOf(d)?.text).toBe('八月十五');
+    expect(festivalOf(d)).toBe('中秋');
+    expect(festivalOf(new Date(2026, 9, 1, 12))).toBe('国庆');
+    expect(festivalOf(new Date(2026, 8, 24, 12))).toBeNull();
+  });
+
+  it('今天过了多少、钟点怎么说', () => {
+    expect(dayProgress(new Date(2026, 8, 25, 12, 0))).toBeCloseTo(0.5, 5);
+    expect(periodOf(new Date(2026, 8, 25, 23, 30))).toBe('深夜');
+    expect(periodOf(new Date(2026, 8, 25, 9, 0))).toBe('上午');
+  });
+});
+
+describe('待办时间线', () => {
+  const now = new Date(2026, 8, 25, 14, 0);
+  const at = (d: number, h: number, m = 0) => new Date(2026, 8, d, h, m).toISOString();
+  it('短时间：今天只写钟点，明天/昨天带前缀，更远写日期', () => {
+    expect(shortDue(at(25, 18), now)).toBe('18:00');
+    expect(shortDue(at(26, 9, 30), now)).toBe('明天 09:30');
+    expect(shortDue(at(24, 12), now)).toBe('昨天 12:00');
+    expect(shortDue(at(28, 10), now)).toBe('9月28日');
+    expect(shortDue(null, now)).toBe('');
   });
 });

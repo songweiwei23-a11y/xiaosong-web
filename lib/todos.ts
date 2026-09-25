@@ -36,6 +36,27 @@ export function sortTodos(list: Todo[]): Todo[] {
   });
 }
 
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const DAY_MS = 24 * 60 * 60 * 1000;
+const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+/** 离今天差几天（负数是过去） */
+function dayDiff(dueAt: string, now: Date): number {
+  return Math.round((startOfDay(new Date(dueAt)) - startOfDay(now)) / DAY_MS);
+}
+
+/** 短时间：今天的只写钟点，明天写"明天 09:30"，更远写"9月28日" */
+export function shortDue(dueAt: string | null, now: Date = new Date()): string {
+  if (!dueAt) return '';
+  const d = new Date(dueAt);
+  if (Number.isNaN(d.getTime())) return '';
+  const diff = dayDiff(dueAt, now);
+  if (diff === 0) return hhmm(d);
+  if (diff === 1) return `明天 ${hhmm(d)}`;
+  if (diff === -1) return `昨天 ${hhmm(d)}`;
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
 /**
  * 截止时间怎么说。说人话、分轻重：过期的要看得出来，但不用刺眼的红——
  * 首页是每天打开的地方，满屏报警只会让人不想看。
