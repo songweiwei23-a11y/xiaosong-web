@@ -350,3 +350,66 @@ export const SCORED_FIELDS = [
   'equipment', 'team_structure', 'shooting_location', 'video_duration',
   'monetization_model', 'price_range',
 ] as const;
+
+export type ScoredField = (typeof SCORED_FIELDS)[number];
+
+/** 提示"还差哪几项"时用的叫法，跟档案表单上的说法对得上 */
+export const SCORED_FIELD_LABELS: Record<ScoredField, string> = {
+  account_platform: '发布平台',
+  account_track: '赛道',
+  account_stage: '账号阶段',
+  fans_level: '粉丝量级',
+  target_age: '年龄段',
+  target_occupation: '职业标签',
+  target_pain_points: '客人最担心什么',
+  target_needs: '客人真正想要什么',
+  unique_selling_point: '凭什么选你',
+  content_value: '观众看完的变化',
+  content_tone: '说话语气',
+  content_style: '内容风格',
+  content_format: '呈现形式',
+  fan_common_questions: '客人常问什么',
+  content_restrictions: '不能说的话',
+  conversion_barriers: '犹豫没下单的原因',
+  // 别用带顿号的说法：列出"还差哪几项"时是用顿号连的，会被看成两项
+  conversion_path: '成交路径',
+  unique_resources: '独有资源',
+  competitive_weakness: '最大短板',
+  viral_content_pattern: '数据最好的内容',
+  equipment: '设备条件',
+  team_structure: '团队配置',
+  shooting_location: '拍摄场地',
+  video_duration: '视频时长偏好',
+  monetization_model: '变现方式',
+  price_range: '价格区间',
+};
+
+function isFilled(v: unknown): boolean {
+  if (v == null) return false;
+  if (typeof v === 'string') return v.trim().length > 0;
+  if (Array.isArray(v)) return v.some((x) => (typeof x === 'string' ? x.trim().length > 0 : x != null));
+  return true;
+}
+
+/**
+ * 档案完整度——全站只有这一份算法。
+ *
+ * 原来有四份各算各的：侧边栏数 5 项，其中 target_audience、content_category
+ * 两列表里根本没有，所以永远卡在 60%（真实是 96%）；档案库组件直接 filled += 6，
+ * 什么都没填也有 60%；另外两份一份 18 项、一份 26 项。
+ * 现在统一按表单上对生成有用的 26 项算，并告诉用户还差哪几项。
+ */
+export function profileCompletion(p: object | null | undefined): {
+  percent: number;
+  filled: number;
+  total: number;
+  /** 还没填的项（表单上的叫法），按表单顺序 */
+  missing: string[];
+} {
+  const total = SCORED_FIELDS.length;
+  if (!p) return { percent: 0, filled: 0, total, missing: SCORED_FIELDS.map((f) => SCORED_FIELD_LABELS[f]) };
+  const row = p as Record<string, unknown>;
+  const missing = SCORED_FIELDS.filter((f) => !isFilled(row[f]));
+  const filled = total - missing.length;
+  return { percent: Math.round((filled / total) * 100), filled, total, missing: missing.map((f) => SCORED_FIELD_LABELS[f]) };
+}

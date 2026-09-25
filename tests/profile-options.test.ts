@@ -6,7 +6,10 @@ import {
   joinSelections,
   splitSelections,
   SCORED_FIELDS,
+  SCORED_FIELD_LABELS,
+  profileCompletion,
 } from '@/lib/profile-options';
+import { readCode } from './helpers/source';
 
 /**
  * 生产库 17 份档案的填写率：选择题字段一律 47%，填空题 6%-41%。
@@ -161,5 +164,42 @@ describe('完整度按「对产出有用」来算', () => {
     for (const g of OPTION_GROUPS) {
       expect(SCORED_FIELDS as readonly string[], `${g.field} 没算进完整度`).toContain(g.field);
     }
+  });
+
+  it('每个计分字段都有给人看的叫法', () => {
+    for (const f of SCORED_FIELDS) {
+      expect(SCORED_FIELD_LABELS[f], f).toBeTruthy();
+      // "还差哪几项"用顿号连，叫法里再带顿号就会被看成两项
+      expect(SCORED_FIELD_LABELS[f], f).not.toMatch(/[、,，]/);
+    }
+  });
+
+  it('按真实填写算：只差「职业标签」的档案是 96%，并说出差哪项', () => {
+    const full = Object.fromEntries(SCORED_FIELDS.map((f) => [f, ['已填']]));
+    const r = profileCompletion({ ...full, target_occupation: [], id: 'x', profile_name: '实体获客编导' });
+    expect(r).toEqual({ percent: 96, filled: 25, total: 26, missing: ['职业标签'] });
+    expect(profileCompletion(full).percent).toBe(100);
+  });
+
+  it('空字符串、空数组、全是空白的都算没填；什么都没填是 0', () => {
+    const r = profileCompletion({ account_platform: [], account_track: ['  '], fans_level: '   ', profile_name: '只有名字' });
+    expect(r.percent).toBe(0);
+    expect(profileCompletion(null).percent).toBe(0);
+  });
+
+  it('全站只有这一份算法：侧边栏用它；不再数表里不存在的列、不再白送分', () => {
+    const sidebar = readCode('app/dashboard/components/ProfileSwitcher.tsx');
+    expect(sidebar).toMatch(/profileCompletion\(/);
+    expect(sidebar).not.toMatch(/target_audience|content_category/);
+    expect(readCode('lib/creator-context.ts')).toMatch(/return profileCompletion\(p\)\.percent/);
+    // 那个 filled += 6 白送 60% 的组件已经删了，别再长出来
+    for (const f of ['app/dashboard/components/ProfileSwitcher.tsx', 'lib/creator-context.ts', 'lib/profile-options.ts']) {
+      expect(readCode(f), f).not.toMatch(/filled \+= \d/);
+    }
+  });
+
+  it('保存档案后侧边栏会刷新', () => {
+    expect(readCode('app/dashboard/components/ProfileSwitcher.tsx')).toMatch(/onActiveProfileChange\(handleProfileUpdate\)/);
+    expect(readCode('app/dashboard/profiles/[id]/edit/page.tsx')).toMatch(/dispatchEvent\(new Event\('profileUpdated'\)\)/);
   });
 });

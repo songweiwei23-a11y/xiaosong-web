@@ -24,6 +24,7 @@
 
 import { briefBlockFor } from './creative-brief';
 import { manifestOf, type Board, type ProfileSlice } from './context-manifest';
+import { profileCompletion } from './profile-options';
 
 export interface CreatorProfile {
   id: string;
@@ -295,14 +296,6 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
 
 /** 档案填了多少，用于在界面上提示「补全档案能让产出更准」 */
 export function profileCompleteness(p: CreatorProfile | null): number {
-  if (!p) return 0;
-  const tracked = [
-    'account_platform', 'account_track', 'account_stage', 'fans_level',
-    'target_gender', 'target_age', 'target_occupation', 'target_pain_points',
-    'target_needs', 'content_style', 'content_tone', 'content_value',
-    'unique_selling_point', 'content_restrictions', 'equipment',
-    'team_structure', 'shooting_location', 'conversion_hooks',
-  ] as const;
-  const filled = tracked.filter((k) => text((p as unknown as Record<string, unknown>)[k])).length;
-  return Math.round((filled / tracked.length) * 100);
+  // 算法只留一份，在 lib/profile-options；这里原来自己数 18 项，和侧边栏各说各的
+  return profileCompletion(p).percent;
 }

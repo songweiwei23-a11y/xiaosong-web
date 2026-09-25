@@ -78,6 +78,8 @@ export default function EditProfilePage() {
       invalidateCreatorContext()
       // 改的正是当前在用的档案时，广播一下让各页面重新取
       if (getActiveProfileId() === id) setActiveProfileId(id, updated)
+      // 改的不是当前档案时，侧边栏下拉里那一行的完整度也要跟着变
+      else window.dispatchEvent(new Event('profileUpdated'))
 
       notify('已保存')
       router.push('/dashboard/profiles')

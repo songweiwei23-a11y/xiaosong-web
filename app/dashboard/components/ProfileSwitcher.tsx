@@ -3,15 +3,20 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, User, RefreshCw, Plus, Settings } from 'lucide-react'
-import { getActiveProfileId, setActiveProfileId } from '@/lib/active-profile'
+import { getActiveProfileId, onActiveProfileChange, setActiveProfileId } from '@/lib/active-profile'
+import { profileCompletion } from '@/lib/profile-options'
 
+/*
+ * 这里原来声明了 content_category、target_audience 两个字段，表里根本没有这两列——
+ * 完整度拿它们算，永远少两项，卡在 60%。接口返回的是整行，完整度按整行算。
+ */
 interface Profile {
   id: string
   profile_name: string
   account_platform: string[]
+  account_track?: string[] | null
   fans_level: string
-  content_category: string[]
-  target_audience: string[]
+  [key: string]: unknown
 }
 
 export default function ProfileSwitcher() {
@@ -30,7 +35,12 @@ export default function ProfileSwitcher() {
     }
     
     window.addEventListener('profileUpdated', handleProfileUpdate)
-    return () => window.removeEventListener('profileUpdated', handleProfileUpdate)
+    // 编辑、新建档案保存后走的是这个广播；原来没接，改完档案侧边栏的完整度要刷新页面才变
+    const off = onActiveProfileChange(handleProfileUpdate)
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate)
+      off()
+    }
   }, [])
 
   const fetchProfiles = async () => {
@@ -66,18 +76,8 @@ export default function ProfileSwitcher() {
     setActiveProfileId(profile.id, profile)
   }
 
-  const calculateCompleteness = (profile: Profile) => {
-    const fields = [
-      profile.profile_name,
-      profile.account_platform?.length,
-      profile.fans_level,
-      profile.content_category?.length,
-      profile.target_audience?.length,
-    ]
-    
-    const filledCount = fields.filter(f => f && (Array.isArray(f) ? f.length > 0 : true)).length
-    return Math.round((filledCount / fields.length) * 100)
-  }
+  // 全站同一份算法：按档案表单上对生成有用的 26 项
+  const calculateCompleteness = (profile: Profile) => profileCompletion(profile).percent
 
   if (loading) {
     return (
@@ -111,7 +111,8 @@ export default function ProfileSwitcher() {
     )
   }
 
-  const completeness = calculateCompleteness(activeProfile)
+  const completion = profileCompletion(activeProfile)
+  const completeness = completion.percent
 
   return (
     <div className="px-3 py-3">
@@ -164,13 +165,25 @@ export default function ProfileSwitcher() {
               style={{ width: `${completeness}%` }}
             />
           </div>
+          {/* 只说百分比没用，要说差什么；点一下直接去补 */}
+          {completion.missing.length > 0 && (
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/profiles/${activeProfile.id}/edit`)}
+              title={`还没填：${completion.missing.join('、')}`}
+              className="mt-1.5 block w-full truncate text-left text-[10px] text-muted-foreground hover:text-primary"
+            >
+              还差 {completion.missing.length} 项：{completion.missing.slice(0, 3).join('、')}
+              {completion.missing.length > 3 ? ' 等' : ''} · 去补
+            </button>
+          )}
         </div>
 
-        {/* 档案信息标签 */}
-        {activeProfile.content_category && activeProfile.content_category.length > 0 && (
+        {/* 赛道标签 */}
+        {activeProfile.account_track && activeProfile.account_track.length > 0 && (
           <div className="text-[10px] text-muted-foreground bg-white/40 dark:bg-white/5 px-2 py-1 rounded">
-            🎬 {activeProfile.content_category.slice(0, 2).join('、')}
-            {activeProfile.content_category.length > 2 && '...'}
+            🎬 {activeProfile.account_track.slice(0, 2).join('、')}
+            {activeProfile.account_track.length > 2 && '...'}
           </div>
         )}
       </div>
