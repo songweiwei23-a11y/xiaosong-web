@@ -6,6 +6,7 @@ import { useTodos } from "@/hooks/useTodos";
 import { useNow } from "@/hooks/useNow";
 import { carryOverNote, describeDue, shortDue, TODO_MAX_LEN, TODO_RULE_NOTE, type Todo } from "@/lib/todos";
 import { Clock } from "./Clock";
+import { AmbientMixer } from "@/components/ambient/AmbientMixer";
 
 /**
  * 首页「今日看板」：左边时钟，右边待办（时间线样式，用户从四版里选的）。
@@ -295,6 +296,10 @@ export function TodayBoard() {
     <section className="glass-panel grid gap-6 rounded-2xl p-6 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:items-center md:gap-0">
       <div className="md:pr-6">
         <Clock />
+        {/* 白噪音：写东西时放点背景声，切到别的页面也不会断 */}
+        <div className="mt-5 border-t border-border/50 pt-4">
+          <AmbientMixer />
+        </div>
       </div>
       <div className="border-t border-border/50 pt-5 md:self-stretch md:border-l md:border-t-0 md:pl-6 md:pt-0">
         <Todos />

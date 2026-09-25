@@ -3,6 +3,7 @@
 import { Sidebar, SidebarProvider, useSidebar } from "@/components/dashboard/Sidebar";
 import { UserProfile } from "@/components/auth/UserProfile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { AmbientPill } from "@/components/ambient/AmbientPill";
 import { Menu } from "lucide-react";
 
 function TopBar() {
@@ -19,6 +20,7 @@ function TopBar() {
         <Menu className="h-5 w-5" />
       </button>
       <div className="flex items-center gap-3">
+        <AmbientPill />
         <ThemeToggle />
         <UserProfile />
       </div>
