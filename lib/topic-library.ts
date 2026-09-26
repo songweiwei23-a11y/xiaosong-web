@@ -174,6 +174,36 @@ export function collectTopics(
   return out;
 }
 
+/**
+ * 这一批选题是不是这个档案出的。
+ *
+ * 防重复清单原来按"用户"取：四个档案的选题混在一起，给家具城出选题时，
+ * 代运营号的选题也被当成"这个账号出过的"发给 AI，上限 100 条还被别的号挤占。
+ *
+ * 新记录存了 profile_id，直接比；旧记录没存 id，但 profileInfo 里有档案名称，按名字认；
+ * 两样都没有的（极少）算进来——宁可多防一点重复，也不要漏。
+ */
+export function batchBelongsToProfile(
+  inputData: unknown,
+  profileId: string,
+  profileName?: string | null
+): boolean {
+  const d = inputData && typeof inputData === 'object' ? (inputData as Record<string, unknown>) : {};
+  const pid = d.profile_id ?? d.profileId;
+  if (typeof pid === 'string' && pid) return pid === profileId;
+  let info: unknown = d.profileInfo;
+  if (typeof info === 'string') {
+    try {
+      info = JSON.parse(info);
+    } catch {
+      info = null;
+    }
+  }
+  const name = info && typeof info === 'object' ? (info as Record<string, unknown>)['档案名称'] : undefined;
+  if (typeof name === 'string' && name.trim()) return !!profileName && name.trim() === profileName.trim();
+  return true;
+}
+
 /** 生成前要附上"已经出过的"清单、禁止重复的任务 */
 export const NO_REPEAT_TASKS = new Set(['选题策划']);
 

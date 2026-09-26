@@ -9,6 +9,8 @@ interface GenerationHistory {
   task_type: string;
   result: string;
   created_at: string;
+  /** 生成时的参数（接口返回整行）。选题库按它认这批属于哪个档案 */
+  input_data?: Record<string, any> | null;
 }
 
 interface UseGenerationPageOptions {

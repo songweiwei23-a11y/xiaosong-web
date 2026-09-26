@@ -103,7 +103,8 @@ export async function POST(request: NextRequest) {
      * 光靠这个会话的记忆不够——它只见过眼前这一批，没见过以前的。
      */
     if (askingNewTopics) {
-      const prior = await loadPriorTopicTitles(guard.userId!)
+      // 按档案取：只防这个号自己出过的
+      const prior = await loadPriorTopicTitles(guard.userId!, profileId)
       fullQuery += buildNoRepeatBlock(prior)
       console.log(`[no-repeat] 追问要新选题：附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`)
     }

@@ -1,5 +1,5 @@
 import { getServiceSupabase } from '@/lib/admin-auth';
-import { collectTopics, deletedTopicsOf, splitTopicSections, topicKey } from '@/lib/topic-library';
+import { batchBelongsToProfile, collectTopics, deletedTopicsOf, splitTopicSections, topicKey } from '@/lib/topic-library';
 
 /** 追问的回答里至少认出这么多条选题，才当成"新的一批"存进选题库 */
 export const FOLLOW_UP_MIN_TOPICS = 3;
@@ -42,19 +42,32 @@ export async function saveFollowUpTopics(
  *
  * 取不到就当没有，不挡生成——防重复是加分项，不该让生成因此失败。
  */
-export async function loadPriorTopicTitles(userId: string): Promise<string[]> {
+export async function loadPriorTopicTitles(userId: string, profileId?: string | null): Promise<string[]> {
   try {
-    const { data, error } = await getServiceSupabase()
+    const db = getServiceSupabase();
+    const { data: all, error } = await db
       .from('script_history')
       .select('id, result, input_data, created_at')
       .eq('user_id', userId)
       .eq('task_type', '选题策划')
       .order('created_at', { ascending: false })
-      // 一批 10-20 条，40 批足够凑满清单上限，不必把几百批全拉回来
-      .limit(40);
+      // 一批 10-20 条；要按档案筛，多取一些，筛完仍够凑满清单上限
+      .limit(80);
     if (error) {
       console.error('[no-repeat] 读取历史选题失败:', error.message);
       return [];
+    }
+
+    // 只看这个档案出过的——别的号的选题跟它无关，混进来只会挤掉它自己的
+    let data = all ?? [];
+    if (profileId) {
+      const { data: prof } = await db
+        .from('user_profiles')
+        .select('profile_name')
+        .eq('id', profileId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      data = data.filter((b) => batchBelongsToProfile(b.input_data, profileId, prof?.profile_name));
     }
 
     const out: string[] = [];

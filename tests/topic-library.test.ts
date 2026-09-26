@@ -190,7 +190,8 @@ describe('接线：生成和追问都用上', () => {
 
   it('生成选题前附上出过的清单', () => {
     expect(stream).toMatch(
-      /if \(NO_REPEAT_TASKS\.has\(body\.taskType\)\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!\);\s*query \+= buildNoRepeatBlock\(prior\)/
+      // 第二个参数是档案：清单只取这个档案出过的（见 tests/profile-memory）
+      /if \(NO_REPEAT_TASKS\.has\(body\.taskType\)\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!, [^;]+\);\s*query \+= buildNoRepeatBlock\(prior\)/
     );
   });
 
@@ -218,7 +219,7 @@ describe('接线：生成和追问都用上', () => {
 
   it('追问要新选题时附清单，出的新一批存进选题库', () => {
     expect(chat).toMatch(/NO_REPEAT_TASKS\.has\(taskType\) && wantsNewTopics\(/);
-    expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!\)\s*fullQuery \+= buildNoRepeatBlock\(prior\)/);
+    expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!, profileId\)\s*fullQuery \+= buildNoRepeatBlock\(prior\)/);
     expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*await saveFollowUpTopics\(guard\.userId, query \|\| '', answerText, profileId\)/);
     expect(chat).toMatch(/answerText \+= data\.answer/);
     expect(server).toMatch(/splitTopicSections\(answer\)\.length < FOLLOW_UP_MIN_TOPICS\) return false/);
@@ -243,7 +244,8 @@ describe('接线：删除与选题库', () => {
   });
 
   it('页面挂上选题库，每条都能送出、删除', () => {
-    expect(page).toMatch(/<TopicLibrary[\s\S]{0,200}batches=\{history\}/);
+    // 选题库只列当前档案的；没选档案时列全部
+    expect(page).toMatch(/<TopicLibrary[\s\S]{0,400}batches=\{\s*selectedProfileId\s*\?\s*history\.filter[\s\S]{0,300}:\s*history\s*\}/);
     expect(page).toMatch(/onAction=\{sendTopic\}/);
     expect(page).toMatch(/fetch\(`\/api\/topics\?topic=\$\{encodeURIComponent\(title\)\}`, \{ method: "DELETE" \}\)/);
   });

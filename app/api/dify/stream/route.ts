@@ -85,7 +85,8 @@ export async function POST(req: NextRequest) {
      * 拼在检索短查询算好之后，不污染知识库检索。
      */
     if (NO_REPEAT_TASKS.has(body.taskType)) {
-      const prior = await loadPriorTopicTitles(guard.userId!);
+      // 按档案取：只防这个号自己出过的，别的号的选题不相干
+      const prior = await loadPriorTopicTitles(guard.userId!, body.profileId || body.profile_id || null);
       query += buildNoRepeatBlock(prior);
       console.log(`[no-repeat] ${body.taskType}：附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`);
     }

@@ -12,7 +12,7 @@ import { createWork, listWorks, type Work } from "@/lib/works";
 import { stageRoute, workStageUrl } from "@/lib/resume";
 import { TopicList, type TopicStage } from "@/components/workspace/TopicList";
 import { TopicLibrary } from "@/components/workspace/TopicLibrary";
-import { splitTopicSections, removeTopicSection } from "@/lib/topic-library";
+import { splitTopicSections, removeTopicSection, batchBelongsToProfile } from "@/lib/topic-library";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
@@ -573,6 +573,8 @@ export default function TopicPage() {
         : '';
 
       const requestData = {
+        // 这批选题属于哪个档案：防重复清单按档案取，没有它就只能靠档案名称去猜
+        profile_id: selectedProfileId || null,
         mode: mode,
         topicType: topicType,
         topicRole: topicRole,
@@ -1372,7 +1374,18 @@ export default function TopicPage() {
       */}
       {!isGenerating && (
         <TopicLibrary
-          batches={history}
+          // 只列当前档案出过的选题，和防重复清单同一个口径；没选档案就全列
+          batches={
+            selectedProfileId
+              ? history.filter((b) =>
+                  batchBelongsToProfile(
+                    b.input_data,
+                    selectedProfileId,
+                    profiles.find((p) => p.id === selectedProfileId)?.profile_name
+                  )
+                )
+              : history
+          }
           works={works}
           onAction={sendTopic}
           onDelete={async (title) => {
