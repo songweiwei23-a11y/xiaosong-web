@@ -4,6 +4,19 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Eye, KeyRound, Copy } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
+import { SUBSCRIPTION_PLANS, getPlan } from '@/lib/config/plans';
+
+/** 改套餐下拉里的说明：名字 + 价格 + 各板块次数范围，全部从配置读 */
+function planOptionLabel(id: string): string {
+  const p = getPlan(id);
+  const price = p.price ? ` ${p.price}元/月` : '';
+  if (p.totalQuota === -1) return `${p.name}${price}（无限使用）`;
+  if (p.totalQuota !== null) return `${p.name}${price}（所有功能合计 ${p.totalQuota} 次/月）`;
+  const n = Object.values(p.quotas).filter((v) => v >= 0);
+  const lo = Math.min(...n);
+  const hi = Math.max(...n);
+  return `${p.name}${price}（各板块 ${lo === hi ? lo : `${lo}-${hi}`} 次）`;
+}
 
 type User = {
   user_id: string;
@@ -524,10 +537,10 @@ export default function UsersPage() {
                     onChange={(e) => setEditPlan(e.target.value)}
                     className="w-full px-3 py-2 border border-border dark:border-border rounded-lg glass-panel text-foreground focus:ring-2 focus:ring-primary"
                   >
-                    <option value="free">免费版（定位1次 + 选题3次 + 脚本20次）</option>
-                    <option value="basic">基础版 30元/月（所有功能150次）</option>
-                    <option value="pro">专业版 99元/月（所有功能500次）</option>
-                    <option value="enterprise">企业版 199元/月（无限使用）</option>
+                    {/* 从套餐配置现算：这里原来写死，四项全过时了（写着 30 元 150 次、500 次） */}
+                    {Object.keys(SUBSCRIPTION_PLANS).map((id) => (
+                      <option key={id} value={id}>{planOptionLabel(id)}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

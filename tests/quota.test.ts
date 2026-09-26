@@ -49,10 +49,27 @@ describe('免费版：按功能分别限额', () => {
   });
 
   it('额度为 0 的功能提示的是「会员功能」而不是「已用完」', () => {
-    const verdict = judgeQuota('free', 'storyboard', usage());
-    expect(verdict.allowed).toBe(false);
-    expect(verdict.message).toContain('会员功能');
-    expect(verdict.message).not.toContain('已用完');
+    // 免费版现在各板块都 ≥10，没有额度为 0 的了；机制还要留着，临时设一个 0 来验
+    const quotas = SUBSCRIPTION_PLANS.free.quotas as Record<string, number>;
+    const saved = quotas.storyboard;
+    quotas.storyboard = 0;
+    try {
+      const verdict = judgeQuota('free', 'storyboard', usage());
+      expect(verdict.allowed).toBe(false);
+      expect(verdict.message).toContain('会员功能');
+      expect(verdict.message).not.toContain('已用完');
+    } finally {
+      quotas.storyboard = saved;
+    }
+  });
+
+  it('免费版每个板块至少 10 次（2026-09-26 定），分镜、审稿、标题、成交理由也能用', () => {
+    for (const [k, v] of Object.entries(SUBSCRIPTION_PLANS.free.quotas)) {
+      expect(v as number, `免费版 ${k}`).toBeGreaterThanOrEqual(10);
+    }
+    for (const f of ['storyboard', 'review', 'title', 'dealReason']) {
+      expect(judgeQuota('free', f, usage()).allowed, f).toBe(true);
+    }
   });
 
   it('用完时的提示写明了是哪个功能、上限多少', () => {
@@ -179,8 +196,18 @@ describe('额度文案由配置现算', () => {
   });
 
   it('免费档不把额度为 0 的功能写成「0 次」，而是归入不支持', () => {
-    expect(quotaSummary('free').join(' ')).not.toContain('：0 次');
-    expect(unsupportedFeatures('free').join(' ')).toContain('分镜脚本');
+    // 同上：临时设一个 0 验证机制
+    const quotas = SUBSCRIPTION_PLANS.free.quotas as Record<string, number>;
+    const saved = quotas.storyboard;
+    quotas.storyboard = 0;
+    try {
+      expect(quotaSummary('free').join(' ')).not.toContain('：0 次');
+      expect(unsupportedFeatures('free').join(' ')).toContain('分镜脚本');
+    } finally {
+      quotas.storyboard = saved;
+    }
+    // 现在的免费版：没有不支持的功能
+    expect(unsupportedFeatures('free')).toEqual([]);
   });
 
   it('企业版直接写不限次数', () => {
