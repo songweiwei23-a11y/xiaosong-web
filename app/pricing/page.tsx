@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Check, X, Crown, Zap, Rocket } from "lucide-react";
 import {
   SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints,
-  COUNTED_FEATURES, FREE_ONE_TIME_FEATURES,
+  COUNTED_FEATURES, PAID_PERIOD_NOTE,
 } from "@/lib/config/plans";
 import { toneSoft } from "@/lib/ui-tokens";
 
@@ -67,11 +67,10 @@ export default function PricingPage() {
                     <span className="text-4xl font-extrabold">¥{plan.price}</span>
                     {plan.price > 0 && <span className="text-muted-foreground">/月</span>}
                   </div>
-                  {plan.yearlyPrice > 0 && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      年付 ¥{plan.yearlyPrice} (省 ¥{plan.price * 12 - plan.yearlyPrice})
-                    </p>
-                  )}
+                  {/* 年付撤了：2026-09-27 起所有会员一律按月收费 */}
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {plan.price > 0 ? "按月付费" : "一次性体验"}
+                  </p>
                 </div>
 
                 <ul className="space-y-3 mb-8">
@@ -92,7 +91,7 @@ export default function PricingPage() {
                   </Link>
                 ) : (
                   <Link
-                    href={`/payment?plan=${plan.id}&cycle=monthly`}
+                    href={`/payment?plan=${plan.id}`}
                     className={`block w-full text-center py-3 rounded-lg font-semibold transition-colors ${
                       isPopular
                         ? "bg-accent text-white hover:bg-accent"
@@ -145,7 +144,8 @@ export default function PricingPage() {
                             '无限'
                           ) : n === 0 ? (
                             <X className="w-5 h-5 text-destructive mx-auto" />
-                          ) : planId === 'free' && FREE_ONE_TIME_FEATURES.includes(feat.key) ? (
+                          ) : planId === 'free' ? (
+                            // 免费版是一次性体验额度，不按月重置，写「次/月」就是说错
                             `${n} 次`
                           ) : (
                             `${n} 次/月`
@@ -172,7 +172,7 @@ export default function PricingPage() {
           <div className="grid md:grid-cols-2 gap-6 text-left max-w-4xl mx-auto">
             <div className="bg-card p-6 rounded-xl border border-border">
               <h3 className="font-bold mb-2">额度什么时候重置？</h3>
-              <p className="text-sm text-muted-foreground">每月自动重置，从开通日期起算30天为一个周期</p>
+              <p className="text-sm text-muted-foreground">{PAID_PERIOD_NOTE}。续费后开始新的一期，额度回满；不续费的话会员到期后剩余次数清零。免费版是新账号的一次性体验额度，用完不再重置</p>
             </div>
             <div className="bg-card p-6 rounded-xl border border-border">
               <h3 className="font-bold mb-2">可以随时升级吗？</h3>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
-import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures, planSellingPoints } from "@/lib/config/plans";
+import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures, planSellingPoints, PAID_PERIOD_NOTE } from "@/lib/config/plans";
 
 /*
  * 价格和额度一律从 lib/config/plans.ts 取，页面只负责好看。
@@ -19,8 +19,7 @@ const membershipPlans = [
     id: "free",
     name: SUBSCRIPTION_PLANS.free.name,
     price: SUBSCRIPTION_PLANS.free.price,
-    yearlyPrice: SUBSCRIPTION_PLANS.free.yearlyPrice,
-    period: "永久",
+    period: "一次性体验",
     icon: Shield,
     color: "text-muted-foreground",
     bgColor: "bg-muted",
@@ -32,7 +31,6 @@ const membershipPlans = [
     id: "basic",
     name: SUBSCRIPTION_PLANS.basic.name,
     price: SUBSCRIPTION_PLANS.basic.price,
-    yearlyPrice: SUBSCRIPTION_PLANS.basic.yearlyPrice,
     period: "月",
     icon: Star,
     color: "text-primary",
@@ -45,7 +43,6 @@ const membershipPlans = [
     id: "pro",
     name: SUBSCRIPTION_PLANS.pro.name,
     price: SUBSCRIPTION_PLANS.pro.price,
-    yearlyPrice: SUBSCRIPTION_PLANS.pro.yearlyPrice,
     period: "月",
     icon: Crown,
     color: "text-accent",
@@ -58,7 +55,6 @@ const membershipPlans = [
     id: "enterprise",
     name: SUBSCRIPTION_PLANS.enterprise.name,
     price: SUBSCRIPTION_PLANS.enterprise.price,
-    yearlyPrice: SUBSCRIPTION_PLANS.enterprise.yearlyPrice,
     period: "月",
     icon: Zap,
     color: "text-orange-500",
@@ -83,7 +79,6 @@ const fmtDate = (s: string) =>
 
 export default function MembershipPage() {
   const router = useRouter();
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
   /*
    * 当前套餐原来是写死的：`const currentPlan = "free"; // 从用户数据获取`。
@@ -105,7 +100,7 @@ export default function MembershipPage() {
     // 免费版不用买；当前的付费套餐可以点——那是续费。
     // 续费从原到期日往后顺延，不会吞掉剩余天数（见 activationPlan）
     if (planId === "free") return;
-    router.push(`/payment?plan=${planId}&cycle=${billingCycle}`);
+    router.push(`/payment?plan=${planId}`);
   };
 
   return (
@@ -146,44 +141,20 @@ export default function MembershipPage() {
           </div>
         )}
 
-        {/* 计费周期切换 */}
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <button
-            onClick={() => setBillingCycle("monthly")}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              billingCycle === "monthly"
-                ? "bg-primary text-white"
-                : "bg-muted text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            月付
-          </button>
-          <button
-            onClick={() => setBillingCycle("yearly")}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              billingCycle === "yearly"
-                ? "bg-primary text-white"
-                : "bg-muted text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            年付
-            <span className="ml-2 text-xs bg-emerald-500 text-white px-2 py-1 rounded">
-              省 20%
-            </span>
-          </button>
-        </div>
+        {/*
+          原来这里有月付/年付切换。2026-09-27 起所有会员一律按月收费，切换撤掉，
+          换成一句规则——没用完的不累计，付钱之前就得说清楚。
+        */}
+        <p className="mx-auto mt-6 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
+          {PAID_PERIOD_NOTE}。免费版是新账号的一次性体验额度，用完不再重置。
+        </p>
       </div>
 
       {/* 会员套餐卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {membershipPlans.map((plan) => {
           const Icon = plan.icon;
-          // 年付价直接取配置里的 yearlyPrice，不再当场按 12×0.8 算。
-          // 当场算出来的数和 plans.ts 里写的对不上时（比如 49×12×0.8=470.4），
-          // 页面显示一个价、收款按另一个价，用户会以为被多收了。
-          const finalPrice = billingCycle === "yearly" ? plan.yearlyPrice : plan.price;
-          const listPrice = plan.price * 12;
-          
+
           return (
             <div
               key={plan.id}
@@ -226,14 +197,9 @@ export default function MembershipPage() {
                 ) : (
                   <>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-foreground">¥{finalPrice}</span>
-                      <span className="text-muted-foreground">/{billingCycle === "yearly" ? "年" : plan.period}</span>
+                      <span className="text-3xl font-bold text-foreground">¥{plan.price}</span>
+                      <span className="text-muted-foreground">/{plan.period}</span>
                     </div>
-                    {billingCycle === "yearly" && plan.price > 0 && (
-                      <div className="text-sm text-muted-foreground mt-1">
-                        原价 ¥{listPrice}，省 ¥{listPrice - plan.yearlyPrice}
-                      </div>
-                    )}
                   </>
                 )}
               </div>
@@ -301,7 +267,7 @@ export default function MembershipPage() {
           <div>
             <h3 className="font-semibold text-foreground mb-2">如何支付？</h3>
             <p className="text-muted-foreground text-sm">
-              支持支付宝、微信支付、银行卡等多种支付方式，安全便捷。
+              支付宝或微信扫码付款，付完上传付款截图，我们核对后开通。
             </p>
           </div>
           <div>
@@ -313,8 +279,9 @@ export default function MembershipPage() {
           <div>
             <h3 className="font-semibold text-foreground mb-2">额度什么时候重置？</h3>
             <p className="text-muted-foreground text-sm">
-              按订阅周期每 30 天重置一次，重置后额度回到满额。
-              未用完的次数不会累积到下个周期。
+              会员按月计费，每期一个月。当期没用完的次数到期清零，不累计到下一期；
+              续费后开始新的一期，额度回满。不续费的话，会员到期后剩余次数清零。
+              免费版是一次性体验额度，用完不再重置。
             </p>
           </div>
           <div>

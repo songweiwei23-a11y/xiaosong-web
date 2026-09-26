@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { supabase } from "@/lib/supabase/client";
-import { getPlan, SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
+import { getPlan, SUBSCRIPTION_PLANS, quotaSummary, PAID_PERIOD_NOTE } from "@/lib/config/plans";
 
 /*
  * 付款页。
@@ -48,11 +48,11 @@ function PaymentContent() {
   const searchParams = useSearchParams();
 
   const planId = searchParams?.get("plan") || "basic";
-  const cycle = searchParams?.get("cycle") === "yearly" ? "yearly" : "monthly";
+  // 所有会员一律按月收费。老链接上带着 cycle=yearly 也按月付，下单接口同样只开月付
 
   const plan = getPlan(planId);
   const isPayable = planId !== "free" && planId in SUBSCRIPTION_PLANS;
-  const amount = cycle === "yearly" ? plan.yearlyPrice : plan.price;
+  const amount = plan.price;
 
   const [method, setMethod] = useState<"alipay" | "wechat">("alipay");
   const [step, setStep] = useState<Step>("confirm");
@@ -80,7 +80,7 @@ function PaymentContent() {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, billingCycle: cycle, paymentMethod: method }),
+        body: JSON.stringify({ planId, paymentMethod: method }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "下单失败");
@@ -91,7 +91,7 @@ function PaymentContent() {
     } finally {
       setBusy(false);
     }
-  }, [planId, cycle, method]);
+  }, [planId, method]);
 
   const uploadProof = async (file: File) => {
     if (!order) return;
@@ -149,10 +149,7 @@ function PaymentContent() {
 
           <dl className="space-y-3 text-[13px]">
             <Row label="套餐" value={plan.name} />
-            <Row label="计费周期" value={cycle === "yearly" ? "年付" : "月付"} />
-            {cycle === "yearly" && (
-              <Row label="原价" value={`¥${plan.price * 12}`} muted strike />
-            )}
+            <Row label="计费周期" value="月付（一期一个月）" />
             <div className="flex items-baseline justify-between border-t border-border/60 pt-3">
               <dt className="text-muted-foreground">应付金额</dt>
               <dd className="text-[24px] font-semibold tabular-nums text-foreground">¥{amount}</dd>
@@ -169,6 +166,10 @@ function PaymentContent() {
                 </li>
               ))}
             </ul>
+            {/* 付钱之前就说清楚：没用完的不累计。事后才知道，就是纠纷 */}
+            <p className="mt-2 border-t border-border/60 pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+              {PAID_PERIOD_NOTE}。
+            </p>
           </div>
         </section>
 

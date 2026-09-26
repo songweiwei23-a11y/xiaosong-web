@@ -152,9 +152,12 @@ describe('后台概览的数字和标签', () => {
 describe('条款写的规则和系统执行的一致', () => {
   const terms = readCode('app/terms/page.tsx');
 
-  it('额度周期从配置取，不手写天数', () => {
-    expect(terms).toContain('QUOTA_PERIOD_DAYS');
+  it('额度规则从配置取同一句话，不手写；写明到期清零、免费一次性', () => {
+    expect(terms).toContain('PAID_PERIOD_NOTE');
     expect(terms, '条款里手写了天数').not.toMatch(/每\s*30\s*天/);
+    expect(terms).toContain('剩余次数清零');
+    expect(terms).toContain('一次性体验额度');
+    expect(terms, '条款里还在说年付').not.toContain('年付');
   });
 
   it('写明了不支持无理由退款、不开发票', () => {

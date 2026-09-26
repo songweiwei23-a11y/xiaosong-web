@@ -26,12 +26,18 @@
 //   专业 300（2.5 倍，约每天 10 次）／企业 无限
 // 改数字只改下面 quotas 里的那一个值，文案、价格对比表、用量提醒、
 // 管理后台统计全都跟着走。
+//
+// 【额度怎么发、怎么收】（2026-09-27 产品方定）
+//   - 免费版：新账号一次性体验额度，用完就没了，不按月重置。
+//   - 会员：一律按月收费（不再有年付）。每一期一个月，这一期没用完的次数
+//     到期清零、不累计到下一期；续费了开新的一期，额度回满；
+//     不续费，会员到期后剩余次数清零，也不会再回到免费体验额度。
+//   判定都在 quotaRollover() 里，服务端拦截和首页显示共用它。
 export const SUBSCRIPTION_PLANS = {
   free: {
     id: "free",
     name: "免费版",
     price: 0,
-    yearlyPrice: 0,
     totalQuota: null as number | null, // 按功能分别限额
     // 这里原来还有一份手写的 features 文案，和下面的 quotas 是同一件事写两遍。
     // 已删除——额度文案一律由 quotaSummary() 现算，卖点由 SELLING_POINTS 提供。
@@ -43,16 +49,16 @@ export const SUBSCRIPTION_PLANS = {
        * 2026-09-26 起：各板块至少 10 次（产品方定的），分镜、审稿、标题、成交理由
        * 原来免费版是 0（不能用），现在也放开 10 次——让免费用户把一条内容从选题走到标题。
        * 自由对话和知识库本来就是 20，不往下调。
+       * 2026-09-27 起：这些都是一次性体验额度，不按月重置（见文件头）。
        *
        * positioning 这个桶是四个板块共用的：账号定位、商业定位、内容定位、创作简报。
-       * 免费版的它是一次性额度，不按月重置（见 FREE_ONE_TIME_FEATURES）。
        *
        * script 这个桶也是三个板块共用：脚本生成、起号方案、开篇钩子。
        */
       positioning: 10,
-      topic: 10,           // 每月
-      script: 10,          // 每月
-      freeChat: 20,        // 每月
+      topic: 10,
+      script: 10,
+      freeChat: 20,
       storyboard: 10,
       review: 10,
       title: 10,
@@ -63,7 +69,6 @@ export const SUBSCRIPTION_PLANS = {
     id: "basic",
     name: "基础会员",
     price: 49,
-    yearlyPrice: 470,     // 49 * 12 * 0.8 ≈ 470
     totalQuota: null as number | null, // 按功能分别限额，每个功能各 50 次
     quotas: {
       knowledge: 100,      // 创作额度的 2 倍，查资料不会先于出内容用完
@@ -81,7 +86,6 @@ export const SUBSCRIPTION_PLANS = {
     id: "pro",
     name: "专业会员",
     price: 99,
-    yearlyPrice: 950,     // 99 * 12 * 0.8 ≈ 950
     totalQuota: null as number | null, // 按功能分别限额，每个功能各 120 次
     quotas: {
       knowledge: 300,      // 2.5 倍，约每天 10 次
@@ -101,7 +105,6 @@ export const SUBSCRIPTION_PLANS = {
     // 改造前这里有两个价：首页和配置写 199，会员页和收款页写 599，
     // 用户在首页看到 199 点进去要付 599。已确认以 199 为准。
     price: 199,
-    yearlyPrice: 1910,    // 199 * 12 * 0.8 ≈ 1910
     totalQuota: -1 as number | null, // 无限
     quotas: {
       knowledge: -1,       // 企业版是唯一还无限的档位
@@ -166,19 +169,6 @@ export const FEATURE_NAMES: Record<string, string> = Object.fromEntries(
 );
 
 /**
- * 免费版里不按月重置的功能。
- *
- * api-guard 重置配额时有这么一行：
- *     positioning_used: planId === 'free' ? quota.positioning_used : 0
- * 也就是说免费版的账号定位是**一次性**额度，用掉就没了，下个月也不回来。
- * 而 quotaSummary 一律按「N 次/月」渲染，页面上写着「账号定位：3 次/月」——
- * 说的和跑的又对不上。
- *
- * 收敛成一份数据：文案和重置逻辑都读它，不会再各说各话。
- */
-export const FREE_ONE_TIME_FEATURES: readonly string[] = ['positioning'];
-
-/**
  * 功能代码 → user_quotas 的列名。驼峰转下划线的写法散落多处，统一到这里。
  *
  * 这里原来有一句 `?? (feature === 'knowledge' ? 'knowledge_used' : undefined)`，
@@ -231,15 +221,23 @@ export function quotaSummary(planId: string): string[] {
     return [`每个创作功能各 ${[...unique][0]} 次/月`, knowledgeLine(planId)];
   }
 
+  /*
+   * 免费版的额度是一次性体验，不按月重置，所以每一行写「N 次」而不是「N 次/月」，
+   * 开头再点明一句——写成「次/月」，用户会以为下个月还有，是另一种形式的说错。
+   */
+  const free = planId === 'free';
   return [
-    ...usable.map((f) =>
-      planId === 'free' && FREE_ONE_TIME_FEATURES.includes(f.key as string)
-        ? `${f.name}：${f.limit} 次（一次性，不按月重置）`
-        : `${f.name}：${f.limit} 次/月`
-    ),
+    ...(free ? [FREE_TRIAL_NOTE] : []),
+    ...usable.map((f) => `${f.name}：${f.limit} 次${free ? '' : '/月'}`),
     knowledgeLine(planId),
   ];
 }
+
+/** 免费版额度卡片的第一行 */
+export const FREE_TRIAL_NOTE = '新账号一次性体验，用完不按月重置';
+
+/** 会员额度的规则，价格页、会员页、服务条款共用这一句 */
+export const PAID_PERIOD_NOTE = '会员按月计费，每期一个月；当期没用完的次数到期清零，不累计到下一期';
 
 /**
  * 知识库那一行。
@@ -249,7 +247,7 @@ export function quotaSummary(planId: string): string[] {
  */
 function knowledgeLine(planId: string): string {
   const n = getPlan(planId).quotas.knowledge as number;
-  return n === -1 ? '知识库：不限次数' : `知识库查询：${n} 次/月`;
+  return n === -1 ? '知识库：不限次数' : `知识库查询：${n} 次${planId === 'free' ? '' : '/月'}`;
 }
 
 /**
@@ -373,8 +371,78 @@ export function membershipStatus(
   };
 }
 
-/** 额度按月重置，与订阅周期无关。年付也是每 30 天一轮额度 */
-export const QUOTA_PERIOD_DAYS = 30;
+/**
+ * 往后推一个自然月（9 月 27 日 → 10 月 27 日）。
+ * 会员按月收费，一期额度和一期会员对齐，都用它，不再用"30 天"——
+ * 两个都按 30 天算的话，大月小月一累积，额度周期和会员到期日就错开了。
+ */
+export function addOneMonth(ms: number): string {
+  const d = new Date(ms);
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+}
+
+/** 用量计数的那几列之外，这里关心的 user_quotas 字段 */
+type QuotaRow = Record<string, any> & { current_period_end?: string | null };
+
+export type Rollover =
+  /** 什么都不用动 */
+  | { kind: 'none' }
+  /** 会员进入新的一期：计数清零（额度回满），开新一期 */
+  | { kind: 'renew'; patch: Record<string, unknown> }
+  /** 会员到期没续：剩余次数清零（计数抬到上限），也不回到免费体验额度 */
+  | { kind: 'expire'; patch: Record<string, unknown> };
+
+/**
+ * 到了该换期的时候，额度该怎么处理。
+ *
+ * 服务端（api-guard 拦截前把结果写回库）和显示端（首页、各板块的剩余次数，
+ * 只在内存里套用、不写库）共用这一个函数——两边各写一份的话，
+ * 就会出现"首页写着还剩 10 次、一点生成被拒"这种对不上。
+ *
+ * 规则：
+ *   - 免费版：一次性体验，永不重置。
+ *   - 会员（还在有效期内）：当期结束了就开新一期，计数清零。
+ *     新一期到下个月同一天，但不超过会员到期日——按月续费的人，额度的一期
+ *     和会员的一期就对得上。
+ *   - 会员到期没续（订阅还在、到期日过了）：剩余次数清零——每个计数抬到
+ *     免费版的上限，于是"免费版"这一档也是 0 次可用。不这样做的话，
+ *     过期会员会掉回免费版、又白拿一份体验额度，还可能带着上一期的
+ *     低计数多用好几次。已经抬过的不会重复写（没有变化就返回 none）。
+ */
+export function quotaRollover(
+  sub: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined,
+  quota: QuotaRow | null | undefined,
+  now: number = Date.now()
+): Rollover {
+  if (!quota) return { kind: 'none' };
+  const planId = effectivePlanIdAt(sub, now);
+
+  if (planId === 'free') {
+    if (!membershipStatus(sub, now).expired) return { kind: 'none' };
+    const free = SUBSCRIPTION_PLANS.free.quotas;
+    const patch: Record<string, unknown> = {};
+    for (const f of COUNTED_FEATURES) {
+      const limit = free[f.key] as number;
+      if ((Number(quota[f.column]) || 0) < limit) patch[f.column] = limit;
+    }
+    return Object.keys(patch).length ? { kind: 'expire', patch } : { kind: 'none' };
+  }
+
+  const end = quota.current_period_end ? new Date(quota.current_period_end).getTime() : NaN;
+  if (!Number.isNaN(end) && now <= end) return { kind: 'none' };
+
+  const subEnd = sub?.end_date ? new Date(sub.end_date).getTime() : NaN;
+  const nextMonth = new Date(addOneMonth(now)).getTime();
+  const periodEnd = !Number.isNaN(subEnd) && subEnd > now ? Math.min(nextMonth, subEnd) : nextMonth;
+  const patch: Record<string, unknown> = {
+    current_period_start: new Date(now).toISOString(),
+    current_period_end: new Date(periodEnd).toISOString(),
+    updated_at: new Date(now).toISOString(),
+  };
+  for (const f of COUNTED_FEATURES) patch[f.column] = 0;
+  return { kind: 'renew', patch };
+}
 
 export interface ActivationPlan {
   /** 新的订阅到期日；null 表示保持长期有效 */
@@ -403,9 +471,10 @@ export interface ActivationPlan {
  * 规则：
  *   - 同款、还在有效期内 → 从原到期日顺延；额度不动，按原来的月度节奏走
  *   - 同款、且原本长期有效 → 保持长期有效，不能因为又付了一次钱反而变成会过期
- *   - 新开、升级、降级、已过期 → 从现在起算；额度清零，开新一轮 30 天
+ *   - 新开、升级、降级、已过期 → 从现在起算；额度清零，开新的一期（一个月）
  *     （价格页 FAQ 写明"升级后立即生效，未使用的天数不退款"，与此一致）
- *   - 额度周期永远是 30 天，与月付年付无关
+ *   - 额度一期永远是一个月。现在只卖月付，一期额度正好对上一期会员；
+ *     cycle 参数留着，是为了改规则之前已经提交、还没审的年付单照样能按年开通
  */
 export function activationPlan(
   current: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined,
@@ -413,7 +482,7 @@ export function activationPlan(
   cycle: 'monthly' | 'yearly',
   now: number = Date.now()
 ): ActivationPlan {
-  const quotaPeriodEnd = new Date(now + QUOTA_PERIOD_DAYS * 86_400_000).toISOString();
+  const quotaPeriodEnd = addOneMonth(now);
   const addCycle = (base: number) => {
     const d = new Date(base);
     if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
@@ -495,7 +564,7 @@ export function judgeQuota(
       used,
       message: remaining > 0
         ? undefined
-        : `${plan.name}本月额度已用完（所有功能合计 ${plan.totalQuota} 次），请升级会员或等待下月重置`,
+        : `${plan.name}本期额度已用完（所有功能合计每月 ${plan.totalQuota} 次），可以升级套餐，或等下一期开始`,
     };
   }
 
@@ -515,7 +584,10 @@ export function judgeQuota(
       ? undefined
       : limit === 0
         ? `${featureName}是会员功能，${plan.name}暂不支持，升级后即可使用`
-        : `${featureName}的额度已用完（${plan.name} ${limit} 次/月），请升级会员或等待下月重置`,
+        : planId === 'free'
+          // 免费版不会再"下月重置"，不能让人等
+          ? `${featureName}的可用次数已用完（免费体验共 ${limit} 次，不按月重置），开通会员后继续使用`
+          : `${featureName}本期额度已用完（${plan.name}每月 ${limit} 次），可以升级套餐，或等下一期开始`,
   };
 }
 

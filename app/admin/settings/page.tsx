@@ -67,7 +67,7 @@ export default function AdminSettingsPage() {
                     <span className="text-[12.5px] text-muted-foreground">
                       {plan.price === 0
                         ? "免费"
-                        : `¥${plan.price}/月 · ¥${plan.yearlyPrice}/年（省 ¥${plan.price * 12 - plan.yearlyPrice}）`}
+                        : `¥${plan.price}/月（只卖月付）`}
                     </span>
                   </div>
                   <ul className="mt-2 space-y-0.5">

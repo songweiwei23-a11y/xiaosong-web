@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
 import {
-  getPlan, judgeQuota, usedColumnOf, effectivePlanId,
-  FREE_ONE_TIME_FEATURES, COUNTED_FEATURES,
+  getPlan, judgeQuota, usedColumnOf, effectivePlanId, quotaRollover,
 } from '@/lib/config/plans';
 
 export interface GuardResult {
@@ -121,37 +120,21 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     return { ok: true, userId: user.id };
   }
 
-  // 检查是否需要重置配额（周期已结束）
-  const now = new Date();
-  const periodEnd = new Date(quota.current_period_end || now);
-  
-  if (now > periodEnd) {
-    /*
-     * 自动重置配额。
-     *
-     * 这里原来手写了九个列名。手写的问题在知识库这次改动上刚好会暴露：
-     * 加一个计费功能就要记得回来补一行，漏了的后果是那个功能的用量
-     * 永远不清零——用户第一个月用满，此后每个月一进来就是"已用完"，
-     * 而且不报错。改成从 COUNTED_FEATURES 派生，加功能不用回来改。
-     */
-    const reset: Record<string, unknown> = {
-      current_period_start: now.toISOString(),
-      current_period_end: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      updated_at: now.toISOString(),
-    };
-    for (const f of COUNTED_FEATURES) reset[f.column] = 0;
-
-    // 免费版的定位是一次性额度，不随月重置。这条规则同时决定了价格页
-    // 上的文案，所以两边都从 FREE_ONE_TIME_FEATURES 读，别再各写一份
-    for (const key of FREE_ONE_TIME_FEATURES) {
-      const column = usedColumnOf(key);
-      if (planId === 'free' && column) reset[column] = quota[column];
-    }
-
-    await serviceSupabase.from('user_quotas').update(reset).eq('user_id', user.id);
-
-    // 重置后允许继续
-    return { ok: true, userId: user.id };
+  /*
+   * 换期：会员进入新的一期就清零计数，会员到期没续就把剩余次数清零；
+   * 免费版一次性体验，永不重置。规则在 quotaRollover 里，首页显示也用它。
+   *
+   * 写回库之后不直接放行，而是拿换期后的数字接着判——
+   * 原来这里重置完就 return 放行，这对"清零"是错的：过期会员会被放过一次。
+   */
+  const roll = quotaRollover(subscription, quota);
+  if (roll.kind !== 'none') {
+    const { error: rollError } = await serviceSupabase
+      .from('user_quotas')
+      .update(roll.patch)
+      .eq('user_id', user.id);
+    if (rollError) console.error('[api-guard] 额度换期写入失败:', rollError.message);
+    Object.assign(quota, roll.patch);
   }
 
   // 企业版无限使用

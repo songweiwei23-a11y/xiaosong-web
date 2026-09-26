@@ -52,7 +52,8 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const planId = String(body.planId || '');
-  const cycle = body.billingCycle === 'yearly' ? 'yearly' : 'monthly';
+  // 所有会员一律按月收费（2026-09-27 起不再卖年付）。请求里带 yearly 也按月付下单
+  const cycle = 'monthly';
   const method = body.paymentMethod === 'wechat' ? 'wechat' : 'alipay';
 
   if (!(planId in SUBSCRIPTION_PLANS) || planId === 'free') {
@@ -60,13 +61,16 @@ export async function POST(request: Request) {
   }
 
   const plan = getPlan(planId);
-  const amount = cycle === 'yearly' ? plan.yearlyPrice : plan.price;
+  const amount = plan.price;
 
-  // 已有未完成的同款订单就复用，避免用户反复点「立即购买」攒出一堆待审订单
+  // 已有未完成的同款订单就复用，避免用户反复点「立即购买」攒出一堆待审订单。
+  // 必须按本人过滤：和上面 GET 一样，不赌行级权限一直开着——
+  // 否则会把别人的待审订单当成自己的返回回来
   const supabase = await getServerSupabase();
   const { data: existing } = await supabase
     .from('payment_orders')
     .select('*')
+    .eq('user_id', guard.userId!)
     .eq('plan_id', planId)
     .eq('billing_cycle', cycle)
     .in('status', ['pending', 'reviewing'])

@@ -204,7 +204,7 @@ export default function TitlePage() {
     // 于是本页额度明明是 0 也会放行，等服务端拒绝后用户只看到一句失败。
     const remainingQuota = await checkQuota("title");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("标题封面的额度已用完，请升级会员或等待下月重置");
+      notify("标题封面的额度已用完，开通、续费或升级会员后继续使用");
       return;
     }
 

@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
 import { LegalPage, SUPPORT_WECHAT } from "@/components/legal/LegalPage";
-import { QUOTA_PERIOD_DAYS, FREE_ONE_TIME_FEATURES, FEATURE_NAMES } from "@/lib/config/plans";
+import { PAID_PERIOD_NOTE } from "@/lib/config/plans";
 
 export const metadata: Metadata = { title: "服务条款 - 开物" };
 
 /*
  * 这里的每一条规则，都必须和代码实际执行的一致：
- *   - 额度周期：QUOTA_PERIOD_DAYS（从配置取，不手写天数）
- *   - 免费版一次性额度：FREE_ONE_TIME_FEATURES
+ *   - 会员一期一个月、到期清零、免费版一次性：lib/config/plans.ts 的 quotaRollover
+ *   - 只卖月付：app/api/orders 只开月付单
  *   - 续费顺延 / 升级立即生效：lib/config/plans.ts 的 activationPlan
  *   - 不支持无理由退款、不开发票：本人确认过的政策
  * 条款说一套、系统跑一套，比没有条款更容易出纠纷。
  */
 export default function TermsPage() {
-  const oneTime = FREE_ONE_TIME_FEATURES.map((k) => FEATURE_NAMES[k] ?? k).join("、");
-
   return (
-    <LegalPage title="服务条款">
+    <LegalPage title="服务条款" updated="2026 年 9 月 27 日">
       <section>
         <p>
           欢迎使用开物（以下简称"我们"）。注册或使用本服务，即表示你同意以下条款。
@@ -36,8 +34,9 @@ export default function TermsPage() {
         <h2>二、会员与付款</h2>
         <ul>
           <li>付费方式为扫码转账并上传转账凭证，经人工核对后开通会员。</li>
-          <li>各功能的使用额度每 {QUOTA_PERIOD_DAYS} 天重置一次，未用完的次数不累积到下个周期。月付和年付都按这个节奏重置。</li>
-          <li>免费版的{oneTime}额度是一次性的，用完不会按周期重置。</li>
+          <li>{PAID_PERIOD_NOTE}。续费后开始新的一期，额度回满。</li>
+          <li>会员到期未续费的，剩余次数清零，不会恢复为免费体验额度。</li>
+          <li>免费版为新账号的一次性体验额度，用完不会按月重置。</li>
           <li>在会员有效期内续费同一档套餐，新的有效期从原到期日往后顺延，剩余天数不会损失。</li>
           <li>升级到其他档位立即生效，新的有效期从升级当天起算，原套餐未使用的天数不退款。</li>
         </ul>

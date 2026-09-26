@@ -10,7 +10,16 @@ import { ArrowLeft } from "lucide-react";
 export const LEGAL_UPDATED = "2026 年 9 月 24 日";
 export const SUPPORT_WECHAT = "13240286600";
 
-export function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
+/** updated：这一份自己的更新日期。两份不一定同时改，改了哪份就只动哪份的日期 */
+export function LegalPage({
+  title,
+  updated = LEGAL_UPDATED,
+  children,
+}: {
+  title: string;
+  updated?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-background px-4 py-12">
       <article className="mx-auto max-w-3xl">
@@ -20,7 +29,7 @@ export function LegalPage({ title, children }: { title: string; children: React.
           返回首页
         </Link>
         <h1 className="mb-2 text-3xl font-bold text-foreground">{title}</h1>
-        <p className="mb-10 text-sm text-muted-foreground">最后更新：{LEGAL_UPDATED}</p>
+        <p className="mb-10 text-sm text-muted-foreground">最后更新：{updated}</p>
         <div className="space-y-8 text-[15px] leading-relaxed text-foreground/90 [&_h2]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-foreground [&_li]:ml-5 [&_li]:list-disc [&_li]:mb-1.5 [&_p]:mb-3">
           {children}
         </div>

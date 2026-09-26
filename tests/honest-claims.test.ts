@@ -257,7 +257,7 @@ describe('价格对比表和实际额度一致', () => {
   });
 
   it('免费版的一次性额度标成「次」而不是「次/月」', () => {
-    // 账号定位在免费版不按月重置，写成「次/月」是另一种形式的说错
-    expect(code).toContain('FREE_ONE_TIME_FEATURES.includes');
+    // 免费版是一次性体验、不按月重置，写成「次/月」是另一种形式的说错
+    expect(code).toMatch(/planId === 'free' \? \([\s\S]{0,120}`\$\{n\} 次`/);
   });
 });

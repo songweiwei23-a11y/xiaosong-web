@@ -188,11 +188,13 @@ describe('额度文案由配置现算', () => {
   it('免费档逐条列出，说得清哪些能用', () => {
     const lines = quotaSummary('free').join(' ');
     // 同样从配置取数，避免调额度时这里跟着红
-    expect(lines).toContain(`脚本生成：${SUBSCRIPTION_PLANS.free.quotas.script} 次/月`);
-    expect(lines).toContain(`选题策划：${SUBSCRIPTION_PLANS.free.quotas.topic} 次/月`);
-    // 定位在免费版是一次性额度（api-guard 重置时不清零），
-    // 所以文案不能写「次/月」——详见 payment-flow.test.ts 里那组用例
-    expect(lines).toContain(`账号定位：${SUBSCRIPTION_PLANS.free.quotas.positioning} 次（一次性`);
+    // 免费版是新账号一次性体验（2026-09-27 起全部功能都不按月重置），
+    // 所以写「N 次」不写「N 次/月」——详见 payment-flow.test.ts 里那组用例
+    expect(lines).toContain(`脚本生成：${SUBSCRIPTION_PLANS.free.quotas.script} 次`);
+    expect(lines).toContain(`选题策划：${SUBSCRIPTION_PLANS.free.quotas.topic} 次`);
+    expect(lines).toContain(`账号定位：${SUBSCRIPTION_PLANS.free.quotas.positioning} 次`);
+    expect(lines).not.toContain('次/月');
+    expect(quotaSummary('free')[0]).toContain('一次性');
   });
 
   it('免费档不把额度为 0 的功能写成「0 次」，而是归入不支持', () => {
@@ -338,12 +340,18 @@ describe('配置本身的一致性', () => {
     }
   });
 
-  it('年付价必须真的比月付十二个月便宜，且是整数', () => {
+  it('月付价是正整数（2026-09-27 起只卖月付）', () => {
     for (const id of ['basic', 'pro', 'enterprise'] as const) {
       const p = SUBSCRIPTION_PLANS[id];
-      expect(Number.isInteger(p.yearlyPrice), `${id} 年付价不是整数`).toBe(true);
-      expect(p.yearlyPrice, `${id} 年付比月付×12 还贵`).toBeLessThan(p.price * 12);
+      expect(Number.isInteger(p.price) && p.price > 0, `${id} 月付价不对`).toBe(true);
     }
+  });
+
+  it('额度用完的提示：免费版不叫人"等下月"（它不会重置）', () => {
+    const full = { script_used: 999 };
+    expect(judgeQuota('free', 'script', full).message).toContain('不按月重置');
+    expect(judgeQuota('free', 'script', full).message).not.toContain('下月');
+    expect(judgeQuota('basic', 'script', full).message).toContain('本期');
   });
 });
 

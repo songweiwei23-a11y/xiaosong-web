@@ -450,7 +450,7 @@ export default function ScriptPage() {
     // 0. 检查配额
     const remainingQuota = await checkQuota("script");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("脚本生成的额度已用完，请升级会员或等待下月重置");
+      notify("脚本生成的额度已用完，开通、续费或升级会员后继续使用");
       return;
     }
 

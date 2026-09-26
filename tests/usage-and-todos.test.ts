@@ -25,8 +25,8 @@ describe('本月按北京时间的自然月算', () => {
 describe('额度：企业版也要滚周期', () => {
   const guard = readCode('lib/api-guard.ts');
 
-  it('"周期到期就重置"排在企业版放行之前', () => {
-    const reset = guard.indexOf('now > periodEnd');
+  it('"周期到期就换期"排在企业版放行之前', () => {
+    const reset = guard.indexOf('quotaRollover(subscription, quota)');
     const enterprise = guard.indexOf("planId === 'enterprise'");
     expect(reset).toBeGreaterThan(0);
     expect(enterprise).toBeGreaterThan(0);
@@ -43,7 +43,8 @@ describe('额度：企业版也要滚周期', () => {
     const src = readCode('app/api/quota/check/route.ts');
     const returns = src.match(/NextResponse\.json\(\{[\s\S]*?\}\)/g) ?? [];
     const withTotal = returns.filter((r) => /totalUsed/.test(r) || /\.\.\.empty/.test(r));
-    expect(withTotal.length).toBeGreaterThanOrEqual(4);
+    // 企业版、总量制、分功能制三种返回（原来还有一种"周期已结束"的早退，已并进换期规则）
+    expect(withTotal.length).toBeGreaterThanOrEqual(3);
     for (const r of withTotal) expect(r).toMatch(/monthUsed|\.\.\.empty/);
     expect(src).toMatch(/const empty = \{[\s\S]*?monthUsed/);
     expect(src).toMatch(/monthStartShanghai\(\)/);

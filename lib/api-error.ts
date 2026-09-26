@@ -9,6 +9,13 @@
  * 必须原样告诉用户。
  */
 
+/**
+ * 额度用完时各板块提示的后半句。
+ * 原来写的是「请升级会员或等待下月重置」——免费版现在是一次性体验、不会下月重置，
+ * 会员也是按期清零，"等下月"对谁都不准。各板块生成前的预检查都用这一句。
+ */
+export const QUOTA_EXHAUSTED_HINT = "额度已用完，开通、续费或升级会员后继续使用";
+
 /** 读取响应体里的错误文案；读不出来就按状态码给一句能指导行动的话 */
 export async function readApiError(response: Response, fallback = "生成失败"): Promise<string> {
   let serverMessage = "";
@@ -28,7 +35,7 @@ export async function readApiError(response: Response, fallback = "生成失败"
     case 401:
       return "登录已过期，请重新登录";
     case 402:
-      return "额度已用完，请升级会员或等待下月重置";
+      return QUOTA_EXHAUSTED_HINT;
     case 403:
       return "账户已被封禁，请联系管理员";
     case 429:

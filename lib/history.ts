@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
-import { getPlan, judgeQuota, sumCountedUsage, effectivePlanId } from '@/lib/config/plans';
+import { getPlan, judgeQuota, sumCountedUsage, effectivePlanId, quotaRollover } from '@/lib/config/plans';
 
 /**
  * 保存生成历史记录到数据库
@@ -108,15 +108,15 @@ export async function checkQuota(feature?: string): Promise<number | null> {
       .eq('user_id', userId)
       .maybeSingle();
 
-    // 周期已过的话前端按满额显示，实际重置由服务端在下次请求时完成
-    const periodOver = quota?.current_period_end
-      ? new Date() > new Date(quota.current_period_end)
-      : false;
+    // 换期按服务端同一个规则在内存里套一遍：会员新一期满额、过期会员清零、
+    // 免费版一次性不重置。原来是"周期过了就当满额"，免费版和过期会员都会算错
+    const roll = quotaRollover(subscription, quota);
+    const current = quota && roll.kind !== 'none' ? { ...quota, ...roll.patch } : quota;
 
     // 与服务端 requireUserWithQuota 用的是同一个判定函数，
     // 此前两边各写一套（前端按总量、服务端按单功能），结论会互相矛盾
     if (feature) {
-      const verdict = judgeQuota(planId, feature, periodOver ? null : quota);
+      const verdict = judgeQuota(planId, feature, current);
       return verdict.remaining === -1 ? Number.POSITIVE_INFINITY : verdict.remaining;
     }
 
@@ -127,14 +127,14 @@ export async function checkQuota(feature?: string): Promise<number | null> {
 
     if (plan.totalQuota !== null) {
       if (plan.totalQuota === -1) return Number.POSITIVE_INFINITY;
-      if (periodOver || !quota) return plan.totalQuota;
-      return Math.max(0, plan.totalQuota - sumCountedUsage(quota));
+      if (!current) return plan.totalQuota;
+      return Math.max(0, plan.totalQuota - sumCountedUsage(current));
     }
 
     const scriptLimit = plan.quotas.script;
     if (scriptLimit === -1) return Number.POSITIVE_INFINITY;
-    if (periodOver || !quota) return scriptLimit;
-    return Math.max(0, scriptLimit - (Number(quota.script_used) || 0));
+    if (!current) return scriptLimit;
+    return Math.max(0, scriptLimit - (Number(current.script_used) || 0));
 
   } catch (error) {
     console.error("检查配额异常:", error);

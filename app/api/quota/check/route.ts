@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
 import { getServiceSupabase } from '@/lib/admin-auth';
-import { getPlan, COUNTED_FEATURES, sumCountedUsage, judgeQuota, effectivePlanId } from '@/lib/config/plans';
+import { getPlan, COUNTED_FEATURES, sumCountedUsage, judgeQuota, effectivePlanId, quotaRollover } from '@/lib/config/plans';
 import { monthStartShanghai } from '@/lib/usage-month';
 
 /**
@@ -83,10 +83,13 @@ export async function GET() {
 
     if (!quota) return NextResponse.json(empty);
 
-    // 周期已结束 = 额度即将在下次请求时重置，此刻不该报警
-    if (quota.current_period_end && new Date() > new Date(quota.current_period_end)) {
-      return NextResponse.json({ ...empty, periodEnd: quota.current_period_end });
-    }
+    /*
+     * 换期按服务端同一个规则在内存里套一遍（不写库，写库归 api-guard）。
+     * 原来这里是"周期过了就当满额"——免费版现在永不重置、过期会员要清零，
+     * 再这么写，首页会显示还有次数，一点生成却被拒。
+     */
+    const roll = quotaRollover(subscription, quota);
+    if (roll.kind !== 'none') Object.assign(quota, roll.patch);
 
     const totalUsed = sumCountedUsage(quota);
 

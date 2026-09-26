@@ -3,7 +3,9 @@ import {
   effectivePlanId,
   SUBSCRIPTION_PLANS,
   quotaSummary,
-  FREE_ONE_TIME_FEATURES,
+  quotaRollover,
+  activationPlan,
+  COUNTED_FEATURES,
 } from '@/lib/config/plans';
 
 import { readSource as read, readCode, stripComments } from './helpers/source';
@@ -112,27 +114,109 @@ describe('订阅到期判定', () => {
 });
 
 describe('额度文案与重置逻辑一致', () => {
-  it('免费版的定位标明是一次性，不写成「次/月」', () => {
+  /*
+   * 2026-09-27 起：免费版是新账号一次性体验，全部功能都不按月重置；
+   * 会员按月收费，当期没用完的到期清零。
+   */
+  it('免费版标明一次性，没有一行写成「次/月」', () => {
     const text = quotaSummary('free').join(' ');
     expect(text).toContain('一次性');
-    expect(text).not.toMatch(/账号定位：\d+ 次\/月/);
+    expect(text).not.toContain('次/月');
+    expect(text).toMatch(/脚本生成：\d+ 次/);
   });
 
-  it('会按月重置的功能仍然写「次/月」', () => {
-    const text = quotaSummary('free').join(' ');
-    expect(text).toMatch(/脚本生成：\d+ 次\/月/);
-    expect(text).toMatch(/选题策划：\d+ 次\/月/);
-  });
-
-  it('付费版没有一次性额度，全部按月', () => {
+  it('会员全部按月，没有「一次性」', () => {
     for (const id of ['basic', 'pro'] as const) {
       expect(quotaSummary(id).join(' ')).not.toContain('一次性');
+      expect(quotaSummary(id).join(' ')).toContain('次/月');
     }
   });
 
-  it('重置逻辑读的是同一份名单', () => {
-    expect(read('lib/api-guard.ts')).toContain('FREE_ONE_TIME_FEATURES');
-    expect(FREE_ONE_TIME_FEATURES).toContain('positioning');
+  it('服务端拦截和首页显示用同一个换期函数', () => {
+    for (const f of ['lib/api-guard.ts', 'app/api/quota/check/route.ts', 'lib/history.ts']) {
+      expect(readCode(f), f).toContain('quotaRollover(subscription, quota)');
+    }
+    // 原来"周期过了就当满额"的写法不许再出现
+    expect(readCode('app/api/quota/check/route.ts')).not.toMatch(/new Date\(\) > new Date\(quota\.current_period_end\)/);
+    expect(readCode('lib/history.ts')).not.toContain('periodOver');
+  });
+
+  it('api-guard 换期后不直接放行，拿换期后的数字接着判（过期会员不能被放过一次）', () => {
+    const src = readCode('lib/api-guard.ts');
+    const roll = src.indexOf('quotaRollover(subscription, quota)');
+    // 换期之后第一个放行只能是企业版的"不限量"，不能是换期本身
+    const enterprise = src.indexOf("if (planId === 'enterprise')");
+    const judge = src.indexOf('judgeQuota(planId, feature, quota)');
+    expect(roll).toBeGreaterThan(0);
+    expect(enterprise).toBeGreaterThan(roll);
+    expect(judge).toBeGreaterThan(enterprise);
+    expect(src.slice(roll, enterprise)).not.toMatch(/return \{ ok: true/);
+    expect(src).toMatch(/Object\.assign\(quota, roll\.patch\)/);
+  });
+});
+
+describe('换期规则（quotaRollover）', () => {
+  const DAY = 864e5;
+  const NOW = Date.UTC(2026, 8, 27, 4, 0, 0);
+  const iso = (t: number) => new Date(t).toISOString();
+  const used = (n: number) => Object.fromEntries(COUNTED_FEATURES.map((f) => [f.column, n]));
+  const free = SUBSCRIPTION_PLANS.free.quotas;
+
+  it('免费版：周期早就过了也不重置——一次性体验', () => {
+    const q = { ...used(10), current_period_end: iso(NOW - 90 * DAY) };
+    expect(quotaRollover(null, q, NOW)).toEqual({ kind: 'none' });
+    expect(quotaRollover({ plan: 'free', status: 'active', end_date: null }, q, NOW)).toEqual({ kind: 'none' });
+  });
+
+  it('会员在有效期内、当期结束了：开新一期，计数清零', () => {
+    const sub = { plan: 'basic', status: 'active', end_date: iso(NOW + 20 * DAY) };
+    const r = quotaRollover(sub, { ...used(37), current_period_end: iso(NOW - DAY) }, NOW);
+    expect(r.kind).toBe('renew');
+    if (r.kind !== 'renew') return;
+    for (const f of COUNTED_FEATURES) expect(r.patch[f.column], f.column).toBe(0);
+    // 新一期不超过会员到期日：按月续费的人，额度的一期和会员的一期对得上
+    expect(r.patch.current_period_end).toBe(sub.end_date);
+  });
+
+  it('会员当期还没结束：什么都不动（没用完的也不提前清）', () => {
+    const sub = { plan: 'pro', status: 'active', end_date: iso(NOW + 20 * DAY) };
+    expect(quotaRollover(sub, { ...used(5), current_period_end: iso(NOW + 3 * DAY) }, NOW)).toEqual({ kind: 'none' });
+  });
+
+  it('长期有效的会员（手动开的企业版等）：一期一个自然月', () => {
+    const r = quotaRollover({ plan: 'enterprise', status: 'active', end_date: null }, { ...used(60), current_period_end: iso(NOW - DAY) }, NOW);
+    expect(r.kind).toBe('renew');
+    if (r.kind === 'renew') expect(r.patch.current_period_end).toBe('2026-10-27T04:00:00.000Z');
+  });
+
+  it('会员到期没续：剩余次数清零，也不回到免费体验额度', () => {
+    const sub = { plan: 'basic', status: 'active', end_date: iso(NOW - DAY) };
+    const r = quotaRollover(sub, { ...used(3), current_period_end: iso(NOW - DAY) }, NOW);
+    expect(r.kind).toBe('expire');
+    if (r.kind !== 'expire') return;
+    // 每个计数抬到免费版上限 → 免费版这一档也是 0 次可用
+    for (const f of COUNTED_FEATURES) {
+      expect(r.patch[f.column], f.column).toBe(free[f.key]);
+    }
+  });
+
+  it('到期清零只写一次：已经抬满的不再重复写库', () => {
+    const sub = { plan: 'pro', status: 'active', end_date: iso(NOW - DAY) };
+    const full = Object.fromEntries(COUNTED_FEATURES.map((f) => [f.column, free[f.key] as number]));
+    expect(quotaRollover(sub, { ...full, current_period_end: iso(NOW - DAY) }, NOW)).toEqual({ kind: 'none' });
+    // 本来就用得比免费上限多的，不往回改小
+    const over = { ...full, script_used: 99 };
+    expect(quotaRollover(sub, over, NOW)).toEqual({ kind: 'none' });
+  });
+
+  it('封禁的不算"到期"，不动额度', () => {
+    const sub = { plan: 'pro', status: 'inactive', end_date: iso(NOW - DAY) };
+    expect(quotaRollover(sub, { ...used(0), current_period_end: iso(NOW - DAY) }, NOW)).toEqual({ kind: 'none' });
+  });
+
+  it('开通会员时新一期到下个月同一天，和月付的会员到期日一致', () => {
+    const p = activationPlan(null, 'basic', 'monthly', NOW);
+    expect(p.quotaPeriodEnd).toBe(p.endDate);
   });
 });
 
@@ -149,7 +233,7 @@ describe('订单状态机', () => {
 
   it('金额由服务端按套餐算，不采信前端传的价', () => {
     // 否则改个请求体就能 1 块钱开企业版
-    expect(orders).toMatch(/const amount = cycle === 'yearly' \? plan\.yearlyPrice : plan\.price/);
+    expect(orders).toMatch(/const amount = plan\.price;/);
     expect(orders).not.toMatch(/body\.amount|body\.price/);
   });
 
@@ -249,13 +333,28 @@ describe('开通与续费', () => {
     expect(p.endDate).toBeNull();
   });
 
-  it('年付：订阅一年，但额度周期仍然是 30 天', async () => {
-    const { activationPlan, QUOTA_PERIOD_DAYS } = await import('@/lib/config/plans');
+  it('改规则前提交的年付单照样按年开通，但额度一期仍是一个月', async () => {
+    // 现在只卖月付；这条守的是已经付了年费、还没审的老单
+    const { activationPlan, addOneMonth } = await import('@/lib/config/plans');
     const p = activationPlan(null, 'basic', 'yearly', NOW);
     expect(Date.parse(p.endDate!)).toBeGreaterThan(NOW + 360 * DAY);
-    // 这就是那个坑：额度周期若跟着订阅走，年付用户一年只有一个月额度
-    const quotaDays = (Date.parse(p.quotaPeriodEnd) - NOW) / DAY;
-    expect(quotaDays, `年付的额度周期是 ${quotaDays} 天`).toBe(QUOTA_PERIOD_DAYS);
+    // 额度周期若跟着订阅走，年付用户一年只有一个月额度
+    expect(p.quotaPeriodEnd).toBe(addOneMonth(NOW));
+  });
+
+  it('只卖月付：下单接口和支付页都不再开年付', () => {
+    const orders = readCode('app/api/orders/route.ts');
+    expect(orders).toMatch(/const cycle = 'monthly';/);
+    expect(orders).not.toMatch(/yearlyPrice/);
+    for (const f of ['app/payment/page.tsx', 'app/dashboard/membership/page.tsx', 'app/pricing/page.tsx', 'app/admin/settings/page.tsx']) {
+      expect(readCode(f), f).not.toMatch(/yearlyPrice|setBillingCycle|年付 ¥/);
+    }
+    expect(Object.values(SUBSCRIPTION_PLANS).some((p) => 'yearlyPrice' in p)).toBe(false);
+  });
+
+  it('复用待付订单时按本人过滤（不赌行级权限一直开着）', () => {
+    const orders = readCode('app/api/orders/route.ts');
+    expect(orders).toMatch(/\.from\('payment_orders'\)\s*\.select\('\*'\)\s*\.eq\('user_id', guard\.userId!\)\s*\.eq\('plan_id', planId\)/);
   });
 
   it('审核代码用的是 activationPlan，没有再自己算"现在 + 一个月"', () => {
