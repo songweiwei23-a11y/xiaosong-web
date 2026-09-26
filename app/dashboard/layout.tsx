@@ -10,7 +10,7 @@ function TopBar() {
   const { toggle } = useSidebar();
   return (
     // 真玻璃：常驻且高度固定，模糊开销可控；只留下边框，避免和侧边栏形成双线
-    <div className="glass sticky top-0 z-20 flex h-[72px] shrink-0 items-center justify-between gap-4 border-x-0 border-t-0 px-4 md:justify-end md:px-8">
+    <div className="glass sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-x-0 border-t-0 px-3 sm:gap-4 sm:px-4 md:h-[72px] md:justify-end md:px-8">
       <button
         type="button"
         onClick={toggle}
@@ -19,7 +19,7 @@ function TopBar() {
       >
         <Menu className="h-5 w-5" />
       </button>
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
         <AmbientPill />
         <ThemeToggle />
         <UserProfile />
@@ -40,7 +40,7 @@ export default function DashboardLayout({
         AmbientBackground 的光晕整个盖住——玻璃组件下面没有颜色可透，
         质感就无从谈起。背景由全站的氛围层统一提供。
       */}
-      <div className="flex h-screen overflow-hidden text-foreground">
+      <div className="flex h-screen h-dvh overflow-hidden text-foreground">
         <Sidebar />
         <div className="flex flex-1 flex-col min-w-0">
           <TopBar />

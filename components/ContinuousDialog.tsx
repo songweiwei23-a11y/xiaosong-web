@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Loader2, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
@@ -296,11 +296,12 @@ export default function ContinuousDialog({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className={`bg-card rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ${
-        isMinimized ? 'w-96 h-16' : 'w-[90vw] max-w-4xl h-[80vh]'
+    // 手机上全屏（原来是屏幕中间一个小窗，对话挤在里面）；电脑上照旧居中
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className={`bg-card shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+        isMinimized ? 'm-4 w-[calc(100%-2rem)] max-w-sm h-16 rounded-2xl' : 'h-[100dvh] w-full rounded-none sm:h-[80vh] sm:w-[90vw] sm:max-w-4xl sm:rounded-2xl'
       }`}>
-        <div className="flex items-center justify-between p-4 border-b-2 border-border bg-primary/10">
+        <div className="flex items-center justify-between gap-2 border-b-2 border-border bg-primary/10 p-3 sm:p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 brand-gradient rounded-lg flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-white" />
@@ -340,14 +341,14 @@ export default function ContinuousDialog({
 
         {!isMinimized && (
           <>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/40">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-4 bg-muted/40 sm:p-6">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    className={`min-w-0 max-w-[90%] break-words rounded-2xl px-3.5 py-3 sm:max-w-[80%] sm:px-4 ${
                       msg.role === 'user'
                         ? 'brand-gradient text-white'
                         : 'bg-card border-2 border-border text-foreground'
@@ -380,8 +381,8 @@ export default function ContinuousDialog({
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="border-t border-border p-4 bg-card">
-              <div className="flex gap-3">
+            <div className="border-t border-border bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
+              <div className="flex gap-2 sm:gap-3">
                 <textarea
                   ref={inputRef}
                   value={inputValue}
@@ -389,13 +390,13 @@ export default function ContinuousDialog({
                   onKeyDown={handleKeyDown}
                   placeholder="继续对话... (Enter发送，Shift+Enter换行)"
                   rows={2}
-                  className="flex-1 px-4 py-3 border-2 border-border bg-background text-foreground rounded-xl focus:border-accent/50 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:outline-none resize-none"
+                  className="min-w-0 flex-1 px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border bg-background text-foreground rounded-xl focus:border-accent/50 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:outline-none resize-none"
                   disabled={isLoading}
                 />
                 <button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isLoading}
-                  className="px-6 py-3 brand-gradient text-white rounded-xl hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-medium shadow-lg"
+                  className="shrink-0 px-4 py-3 sm:px-6 brand-gradient text-white rounded-xl hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-medium shadow-lg"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -406,7 +407,7 @@ export default function ContinuousDialog({
                 </button>
               </div>
               
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="mt-2 hidden text-xs text-muted-foreground sm:block">
                 💡 记忆 + 知识库 • 可以持续追问、展开、优化 • 内容已存云端，刷新后再打开还在
               </p>
             </div>

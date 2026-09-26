@@ -41,22 +41,27 @@ export function UserProfile() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      {/* 点自己的名字进账户设置，是大多数人找"改密码/看会员"的第一反应 */}
+    <div className="flex items-center gap-1 sm:gap-3">
+      {/*
+        点自己的名字进账户设置，是大多数人找"改密码/看会员"的第一反应。
+        手机上只留图标：完整邮箱 + "退出"两个字 + 主题按钮 + 菜单按钮，一排放不下，顶栏会被挤变形
+      */}
       <Link
         href="/dashboard/account"
         title="我的账户：会员状态、订单、修改密码"
-        className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors hover:bg-muted"
+        aria-label="我的账户"
+        className="flex items-center gap-2 rounded-lg p-2 text-sm transition-colors hover:bg-muted sm:px-2 sm:py-1"
       >
         <UserIcon className="h-4 w-4 text-muted-foreground" />
-        <span className="text-foreground">{user.email}</span>
+        <span className="hidden max-w-[14rem] truncate text-foreground sm:inline">{user.email}</span>
       </Link>
       <button
         onClick={handleLogout}
-        className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+        aria-label="退出登录"
+        className="flex items-center gap-1 rounded-lg p-2 text-sm text-destructive transition-colors hover:bg-destructive/10 sm:px-3 sm:py-1.5"
       >
         <LogOut className="h-4 w-4" />
-        退出
+        <span className="hidden sm:inline">退出</span>
       </button>
     </div>
   );

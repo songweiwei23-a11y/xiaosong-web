@@ -77,6 +77,65 @@ describe('侧栏：手机上收起、浮在上面', () => {
   });
 });
 
+describe('弹出层：手机上从底部升起、自己能滚', () => {
+  it('公共弹层：手机上挂到 body（躲开顶栏毛玻璃），限高、能滚、点遮罩关闭', () => {
+    const src = readCode('components/ui/AdaptivePopover.tsx');
+    expect(src).toMatch(/createPortal\(/);
+    expect(src).toMatch(/document\.body\s*\)/);
+    expect(src).toMatch(/max-h-\[80dvh\] overflow-y-auto/);
+    expect(src).toMatch(/onClick=\{onClose\}/);
+  });
+
+  it('外观设置和首页切换档案都用它；"点外面关闭"把手机上的面板也算作里面', () => {
+    for (const f of ['components/theme/ThemeToggle.tsx', 'components/dashboard/ProfileQuickSwitch.tsx']) {
+      const src = readCode(f);
+      expect(src, f).toMatch(/<AdaptivePopover/);
+      expect(src, f).toMatch(/panelRef\.current\?\.contains\(t\)/);
+    }
+  });
+
+  it('追问窗口：手机上全屏，最小化不再定宽 384px', () => {
+    const src = readCode('components/ContinuousDialog.tsx');
+    expect(src).toMatch(/h-\[100dvh\] w-full rounded-none sm:h-\[80vh\]/);
+    expect(src).not.toMatch(/'w-96 h-16'/);
+  });
+
+  it('提示条：手机上左右留边，不再从右往左伸出屏幕', () => {
+    expect(readCode('components/ui/feedback.tsx')).toMatch(/fixed inset-x-4 top-4 z-\[100\][^"]*sm:left-auto sm:right-4/);
+  });
+});
+
+describe('顶栏与整体高度', () => {
+  it('顶栏：手机上只留图标（邮箱和"退出"两个字在手机上藏起来）', () => {
+    const src = readCode('components/auth/UserProfile.tsx');
+    expect(src).toMatch(/hidden max-w-\[14rem\] truncate text-foreground sm:inline">\{user\.email\}/);
+    expect(src).toMatch(/<span className="hidden sm:inline">退出<\/span>/);
+  });
+
+  it('后台整体高度用 dvh：手机浏览器的 100vh 会被地址栏挡住一截', () => {
+    expect(readCode('app/dashboard/layout.tsx')).toMatch(/h-screen h-dvh/);
+    expect(readCode('components/dashboard/Sidebar.tsx')).toMatch(/h-screen h-dvh/);
+  });
+
+  it('扫描：可点的按钮不能只在鼠标悬停时出现（手机没有悬停）', () => {
+    const files = [...listFiles('app'), ...listFiles('components')];
+    const bad: string[] = [];
+    for (const f of files) {
+      readCode(f).split('\n').forEach((line, i) => {
+        if (!/(^|[\s"`])opacity-0(\s|")/.test(line) || !/group-hover:opacity-100/.test(line)) return;
+        // 纯装饰（光晕、箭头动效、分组折叠小三角）不算
+        if (/blur|ArrowRight|h-3 w-3 shrink-0/.test(line)) return;
+        bad.push(`${f}:${i + 1}`);
+      });
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('正文长链接、长英文串自动折行', () => {
+    expect(fs.readFileSync(path.join(process.cwd(), 'app/globals.css'), 'utf8')).toMatch(/\.prose\s*\{\s*overflow-wrap: anywhere;/);
+  });
+});
+
 describe('细节', () => {
   it('手机上输入框至少 16px，iPhone 点进去不会放大', () => {
     const css = fs.readFileSync(path.join(process.cwd(), 'app/globals.css'), 'utf8');

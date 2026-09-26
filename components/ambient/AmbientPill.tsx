@@ -14,7 +14,7 @@ export function AmbientPill() {
   const names = AMBIENT_SOUNDS.filter((x) => s.mix[x.id] !== undefined).map((x) => x.name);
   if (!s.started || names.length === 0) return null;
 
-  const btn = "rounded-full p-1 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground";
+  const btn = "rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground";
   return (
     <div className="glass-panel flex items-center gap-1 rounded-full py-1 pl-3 pr-1 text-[12px] text-muted-foreground">
       <span className={`kw-eq flex h-3 items-end gap-[2px] ${s.playing ? "" : "kw-eq-paused"}`} aria-hidden>

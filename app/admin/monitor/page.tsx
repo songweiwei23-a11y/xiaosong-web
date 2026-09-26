@@ -514,7 +514,7 @@ export default function MonitorPage() {
       {/* 新事件弹一下，声音之外再给个眼睛能看到的信号 */}
       {flash && (
         <div
-          className={`fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border px-5 py-4 shadow-2xl backdrop-blur ${
+          className={`fixed inset-x-4 bottom-4 z-50 rounded-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:max-w-sm border px-5 py-4 shadow-2xl backdrop-blur ${
             flash.level === "urgent"
               ? "border-rose-400/60 bg-rose-500/20"
               : flash.level === "good"

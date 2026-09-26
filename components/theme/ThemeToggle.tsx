@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Moon, Sun, Check, Palette } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import { PALETTES, usePalette, type PaletteId } from "./palettes";
+import { AdaptivePopover } from "@/components/ui/AdaptivePopover";
 
 /**
  * 外观设置入口：明暗 + 配色，两个维度自由组合。
@@ -19,6 +20,7 @@ export function ThemeToggle() {
   const { palette, setPalette } = usePalette();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const isDark = theme === "dark";
   const current = PALETTES.find((p) => p.id === palette) ?? PALETTES[0];
@@ -27,7 +29,9 @@ export function ThemeToggle() {
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      // 手机上面板挂在 body 上，不在按钮那棵树里，也要算"里面"
+      const t = e.target as Node;
+      if (!rootRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -66,8 +70,15 @@ export function ThemeToggle() {
         />
       </button>
 
-      {open && (
-        <div className="glass absolute right-0 top-11 z-50 w-[272px] rounded-2xl p-3 shadow-2xl">
+      {/* 电脑上挂在按钮下面；手机上从底部升起、自己能滚（原来比屏幕高，下半截够不着） */}
+      <AdaptivePopover
+        open={open}
+        onClose={() => setOpen(false)}
+        panelRef={panelRef}
+        title="外观设置"
+        desktopClassName="glass absolute right-0 top-11 z-50 max-h-[calc(100dvh-6rem)] w-[272px] overflow-y-auto rounded-2xl p-3 shadow-2xl"
+      >
+        <div>
           {/* 明暗 */}
           <div className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
             明暗
@@ -149,7 +160,7 @@ export function ThemeToggle() {
             })}
           </div>
         </div>
-      )}
+      </AdaptivePopover>
     </div>
   );
 }

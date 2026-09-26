@@ -185,7 +185,7 @@ function HistoryRow({
 
         {/* 悬停或键盘聚焦时才显形：平时露着会让列表显得吵，
             但纯键盘用户必须能看到焦点所在 */}
-        <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+        <div className="flex shrink-0 gap-0.5 [@media(hover:hover)]:opacity-0 transition-opacity focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100">
           {onContinue && (
             <IconButton
               label="继续对话"

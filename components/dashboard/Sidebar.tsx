@@ -183,7 +183,7 @@ export function Sidebar() {
         且背景光晕正好从它下面透上来，是最能体现质感的位置。
       */}
       <aside
-        className={`glass fixed inset-y-0 left-0 z-40 flex h-screen w-[272px] flex-col border-y-0 border-l-0 transition-transform duration-300 md:static md:translate-x-0 ${
+        className={`glass fixed inset-y-0 left-0 z-40 flex h-screen h-dvh w-[272px] flex-col border-y-0 border-l-0 transition-transform duration-300 md:static md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -260,7 +260,7 @@ export function Sidebar() {
                       onClick={() => removeWork(w)}
                       aria-label={`删除作品：${w.title}`}
                       title="删除这条作品（内容不会删）"
-                      className="absolute right-1.5 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+                      className="absolute right-1.5 top-2 rounded-md p-1 text-muted-foreground [@media(hover:hover)]:opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>

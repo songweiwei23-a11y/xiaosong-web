@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, ChevronDown, Plus, Settings, User } from "lucide-react";
 import { getActiveProfileId, onActiveProfileChange, setActiveProfileId } from "@/lib/active-profile";
 import { profileCompletion } from "@/lib/profile-options";
+import { AdaptivePopover } from "@/components/ui/AdaptivePopover";
 
 /**
  * 首页右上角的「切换档案」：点开就是档案列表，点哪个切哪个。
@@ -25,6 +26,7 @@ export function ProfileQuickSwitch({ loading, hasProfile }: { loading: boolean; 
   const [profiles, setProfiles] = useState<ProfileRow[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // 当前是哪个：打开时读，别处切了也跟着变
   useEffect(() => {
@@ -45,7 +47,9 @@ export function ProfileQuickSwitch({ loading, hasProfile }: { loading: boolean; 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      // 手机上列表挂在 body 上，不在按钮那棵树里，也要算"里面"
+      const t = e.target as Node;
+      if (boxRef.current && !boxRef.current.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDown);
@@ -88,9 +92,19 @@ export function ProfileQuickSwitch({ loading, hasProfile }: { loading: boolean; 
         <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open && (
-        <div className="glass-panel absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl p-2 shadow-xl">
-          <p className="px-2 pb-1.5 pt-1 text-[11px] text-muted-foreground">选择工作档案</p>
+      {/*
+        电脑上挂在按钮下面；手机上从底部升起。原来手机上按钮被挤到左边，
+        以按钮右缘为基准往左展开的列表大半截伸到屏幕外
+      */}
+      <AdaptivePopover
+        open={open}
+        onClose={() => setOpen(false)}
+        panelRef={panelRef}
+        title="切换档案"
+        desktopClassName="glass-panel absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl p-2 shadow-xl"
+      >
+        <div>
+          <p className="px-2 pb-1.5 pt-1 text-[11px] text-muted-foreground max-sm:hidden">选择工作档案</p>
           {profiles === null ? (
             <div className="space-y-1.5 p-1">
               <div className="h-10 animate-pulse rounded-lg bg-muted/60" />
@@ -152,7 +166,7 @@ export function ProfileQuickSwitch({ loading, hasProfile }: { loading: boolean; 
             </Link>
           </div>
         </div>
-      )}
+      </AdaptivePopover>
     </div>
   );
 }

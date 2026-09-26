@@ -164,7 +164,7 @@ function Timeline({
               onClick={() => onToggle(todo)}
               aria-label={todo.done ? "标记为没做完" : "标记为做完"}
               aria-pressed={todo.done}
-              className={`relative z-10 mx-auto mt-[3px] flex h-3 w-3 items-center justify-center rounded-full border-2 transition-colors hover:border-primary ${dot}`}
+              className={`relative z-10 mx-auto mt-[3px] flex h-3 w-3 items-center justify-center rounded-full border-2 transition-colors hover:border-primary before:absolute before:-inset-3 before:content-[''] ${dot}`}
             >
               {todo.done && <Check className="h-2 w-2 text-primary" strokeWidth={3.5} />}
             </button>
@@ -180,7 +180,7 @@ function Timeline({
               onClick={() => onRemove(todo)}
               aria-label="删除"
               // 有鼠标的悬停才出现；手机没有悬停，一直淡淡地显示着
-              className="rounded-md p-0.5 text-muted-foreground/50 transition-opacity hover:text-foreground focus:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+              className="-m-1 rounded-md p-1.5 text-muted-foreground/50 transition-opacity hover:text-foreground focus:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
             >
               <X className="h-3.5 w-3.5" />
             </button>

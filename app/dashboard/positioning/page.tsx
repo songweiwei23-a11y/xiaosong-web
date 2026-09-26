@@ -573,7 +573,7 @@ export default function PositioningPage() {
                             )}
                           </div>
                         </div>
-                        <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                        <div className="flex shrink-0 gap-0.5 [@media(hover:hover)]:opacity-0 transition-opacity focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100">
                           <button
                             type="button"
                             aria-label="查看选题摘要"

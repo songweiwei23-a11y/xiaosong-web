@@ -475,7 +475,7 @@ export default function UsersPage() {
         {/* Edit Modal */}
         {tempPw && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="glass-panel w-full max-w-md rounded-2xl border border-border p-6 shadow-2xl">
+            <div className="glass-panel max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-border p-5 shadow-2xl sm:p-6">
               <h3 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
                 <KeyRound className="h-5 w-5 text-amber-500" />
                 密码已重置
@@ -520,7 +520,7 @@ export default function UsersPage() {
 
         {showEditModal && selectedUser && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="glass-panel rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="glass-panel max-h-[90dvh] overflow-y-auto rounded-xl p-5 sm:p-6 max-w-md w-full mx-4 shadow-2xl">
               <h3 className="text-xl font-bold text-foreground mb-4">修改会员等级</h3>
               <div className="space-y-4">
                 <div>
@@ -576,7 +576,7 @@ export default function UsersPage() {
         {/* Detail Modal */}
         {showDetailModal && selectedUser && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="glass-panel rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl">
+            <div className="glass-panel max-h-[90dvh] overflow-y-auto rounded-xl p-5 sm:p-6 max-w-2xl w-full mx-4 shadow-2xl">
               <h3 className="text-xl font-bold text-foreground mb-4">用户详细信息</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
