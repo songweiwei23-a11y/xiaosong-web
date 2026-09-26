@@ -62,7 +62,7 @@ export function HistoryPanel({
   const rest = items.length - shown.length;
 
   return (
-    <section className="glass-panel rounded-2xl p-5">
+    <section className="glass-panel rounded-2xl p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-2">
         <History className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-[13px] font-medium text-foreground">{title}</h3>

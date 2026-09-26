@@ -150,7 +150,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className="glass-panel rounded-2xl p-8 shadow-xl">
+        <div className="glass-panel rounded-2xl p-6 sm:p-8 shadow-xl">
           {/* 登录/注册切换 */}
           <div className="flex gap-2 mb-6">
             <button

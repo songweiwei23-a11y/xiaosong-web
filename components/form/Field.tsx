@@ -175,7 +175,7 @@ export function FieldGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="glass-panel rounded-2xl p-5">
+    <div className="glass-panel rounded-2xl p-4 sm:p-5">
       {title && (
         <div className="mb-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
           {title}

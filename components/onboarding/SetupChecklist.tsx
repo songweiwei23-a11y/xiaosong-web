@@ -52,7 +52,7 @@ export function SetupChecklist({ steps }: { steps: SetupStep[] }) {
           return (
             <div
               key={s.key}
-              className={`rounded-2xl border p-5 transition-colors ${
+              className={`rounded-2xl border p-4 sm:p-5 transition-colors ${
                 s.done
                   ? 'border-border bg-foreground/[0.02]'
                   : isNext

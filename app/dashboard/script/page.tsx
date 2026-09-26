@@ -1017,11 +1017,17 @@ ${formatRequirements}
 
   return (
     // 容器透明，让全站的背景光晕透上来；面板各自用玻璃质感分层
-    <div className="flex h-full">
+    /*
+     * 手机上下排、电脑（lg 以上）左右排。
+     * 原来写死左右两栏、左栏 470px：手机屏幕才 375 宽，左栏比屏幕还宽，
+     * 右边的结果栏被挤成 64px——生成出来的脚本在手机上根本看不了。
+     * 手机上也不要里外两层滚动：整页一起往下滚，结果接在表单下面。
+     */
+    <div className="flex flex-col lg:h-full lg:flex-row">
       {/* Left Panel - Form */}
-      {/* 加宽到 470：标签左置后要留出 88px 的标签列，按原先 420 的宽度，
+      {/* 电脑上宽 470：标签左置后要留出 88px 的标签列，按原先 420 的宽度，
           剩给控件的空间不足，两列的选项卡片会被挤扁 */}
-      <div className="w-[470px] shrink-0 overflow-y-auto border-r border-border/60 px-6 py-7">
+      <div className="w-full border-b border-border/60 px-4 py-6 sm:px-6 lg:w-[470px] lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:py-7">
         <div className="mb-6">
           <h1 className="text-[22px] font-semibold tracking-tight text-foreground">脚本生成</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -1620,7 +1626,7 @@ ${formatRequirements}
           </CollapsibleSection>
 
           {/* Generate Button - 移动端固定在底部 */}
-          <div className="md:static md:mt-0 sticky bottom-0 left-0 right-0 glass border-x-0 border-b-0 md:border-0 md:bg-transparent md:backdrop-blur-none p-4 md:p-0 -mx-5 md:mx-0 z-10">
+          <div className="lg:static lg:mt-0 sticky bottom-0 left-0 right-0 glass border-x-0 border-b-0 lg:border-0 lg:bg-transparent lg:backdrop-blur-none p-4 lg:p-0 -mx-4 sm:-mx-6 lg:mx-0 z-10">
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !topic.trim()}
@@ -1644,7 +1650,7 @@ ${formatRequirements}
       </div>
 
       {/* Right Panel - Result */}
-      <div className="flex-1 overflow-y-auto px-8 py-7">
+      <div id="workspace-result" className="min-w-0 flex-1 scroll-mt-4 px-4 py-6 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7">
         <div className="mx-auto max-w-4xl space-y-5">
 
         {/* 额度用尽提示条 */}

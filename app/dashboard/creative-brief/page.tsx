@@ -238,14 +238,14 @@ export default function CreativeBriefPage() {
 
         {/* 前置条件：没有定位就先去做定位 */}
         {!profileId ? (
-          <div className="glass-panel rounded-2xl p-6 text-[13px] text-destructive">
+          <div className="glass-panel rounded-2xl p-4 sm:p-6 text-[13px] text-destructive">
             还没有账号档案。
             <button onClick={() => router.push('/dashboard/profiles/new')} className="ml-1 underline">
               去创建
             </button>
           </div>
         ) : !positioning ? (
-          <div className="glass-panel rounded-2xl p-6">
+          <div className="glass-panel rounded-2xl p-4 sm:p-6">
             <p className="text-[13px] text-amber-500">
               这个档案还没有生成过账号定位。简报是基于定位转译出来的，**必须先有定位**。
             </p>
@@ -258,7 +258,7 @@ export default function CreativeBriefPage() {
           </div>
         ) : (
           <>
-            <div className="glass-panel mb-6 rounded-2xl p-6">
+            <div className="glass-panel mb-6 rounded-2xl p-4 sm:p-6">
               <div className="mb-4 space-y-1.5 rounded-xl border border-border bg-foreground/[0.03] p-4 text-[12.5px]">
                 <p className="text-foreground">
                   当前档案：<span className="font-medium">{profileName || '未命名'}</span>
@@ -318,7 +318,7 @@ export default function CreativeBriefPage() {
             </div>
 
             {hasAny && (
-              <div className="glass-panel rounded-2xl p-6">
+              <div className="glass-panel rounded-2xl p-4 sm:p-6">
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <h2 className="text-[15px] font-semibold text-foreground">简报内容</h2>

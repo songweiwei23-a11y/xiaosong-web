@@ -15,7 +15,7 @@ import { TopicLibrary } from "@/components/workspace/TopicLibrary";
 import { splitTopicSections, removeTopicSection, batchBelongsToProfile } from "@/lib/topic-library";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
-import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, GENERATE_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
@@ -1273,7 +1273,7 @@ export default function TopicPage() {
             </Field>
           </CollapsibleSection>
 
-          <button onClick={handleGenerate} disabled={isGenerating} className={PRIMARY_BTN}>
+          <button onClick={handleGenerate} disabled={isGenerating} className={GENERATE_BTN}>
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

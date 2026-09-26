@@ -293,7 +293,7 @@ function Todos() {
  */
 export function TodayBoard() {
   return (
-    <section className="glass-panel grid gap-6 rounded-2xl p-6 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:items-center md:gap-0">
+    <section className="glass-panel grid gap-6 rounded-2xl p-4 sm:p-6 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:items-center md:gap-0">
       <div className="md:pr-6">
         <Clock />
         {/* 白噪音：写东西时放点背景声，切到别的页面也不会断 */}

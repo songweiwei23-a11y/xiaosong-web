@@ -124,7 +124,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-4">
               <div className="text-5xl">🏆</div>
               <div>
-                <h1 className="text-3xl font-extrabold brand-gradient bg-clip-text text-transparent">
+                <h1 className="text-2xl sm:text-3xl font-extrabold brand-gradient bg-clip-text text-transparent">
                   管理后台
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground">全面掌控系统运营</p>

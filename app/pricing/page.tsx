@@ -29,7 +29,7 @@ export default function PricingPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-extrabold brand-gradient bg-clip-text text-transparent mb-4">
+          <h1 className="text-3xl sm:text-5xl font-extrabold brand-gradient bg-clip-text text-transparent mb-4">
             选择适合你的套餐
           </h1>
           <p className="text-xl text-muted-foreground">
@@ -108,18 +108,19 @@ export default function PricingPage() {
         </div>
 
         {/* Feature Comparison Table */}
-        <div className="bg-card rounded-2xl shadow-xl p-8 border border-border">
-          <h2 className="text-3xl font-bold text-center mb-8">功能详细对比</h2>
+        <div className="bg-card rounded-2xl shadow-xl p-4 sm:p-8 border border-border">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8">功能详细对比</h2>
           
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          {/* 手机上表格保持自然宽度、在框里横滑，功能名一列钉在左边；原来被挤成一个字一行 */}
+          <div className="-mx-4 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[34rem] whitespace-nowrap text-sm sm:text-base">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-4 px-4 font-semibold">功能模块</th>
-                  <th className="text-center py-4 px-4 font-semibold">免费版</th>
-                  <th className="text-center py-4 px-4 font-semibold">基础会员</th>
-                  <th className="text-center py-4 px-4 font-semibold">专业会员</th>
-                  <th className="text-center py-4 px-4 font-semibold">企业版</th>
+                  <th className="sticky left-0 z-10 bg-card text-left py-3 px-4 font-semibold sm:py-4">功能模块</th>
+                  <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">免费版</th>
+                  <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">基础会员</th>
+                  <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">专业会员</th>
+                  <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">企业版</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,11 +136,11 @@ export default function PricingPage() {
                 */}
                 {COUNTED_FEATURES.map((feat) => (
                   <tr key={feat.key} className="border-b border-border hover:bg-muted/50">
-                    <td className="py-4 px-4">{feat.name}</td>
+                    <td className="sticky left-0 z-10 bg-card py-3 px-4 sm:py-4">{feat.name}</td>
                     {(['free', 'basic', 'pro', 'enterprise'] as const).map((planId) => {
                       const n = SUBSCRIPTION_PLANS[planId].quotas[feat.key] as number;
                       return (
-                        <td key={planId} className="text-center py-4 px-4">
+                        <td key={planId} className="text-center py-3 px-3 sm:py-4 sm:px-4">
                           {n === -1 ? (
                             '无限'
                           ) : n === 0 ? (

@@ -130,7 +130,7 @@ function PaymentContent() {
   if (!isPayable) {
     return (
       <Shell>
-        <div className="glass-panel rounded-2xl p-8 text-center">
+        <div className="glass-panel rounded-2xl p-5 sm:p-8 text-center">
           <p className="text-[14px] text-foreground">这个套餐不需要付费</p>
           <Link href="/dashboard/membership" className="mt-3 inline-block text-[13px] text-primary">
             回去选套餐

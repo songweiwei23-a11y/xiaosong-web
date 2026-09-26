@@ -126,7 +126,7 @@ export default function EditProfilePage() {
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div className="glass-panel rounded-2xl p-8">
+        <div className="glass-panel rounded-2xl p-4 sm:p-8">
           <div className="mb-8">
             <h1 className="text-2xl font-semibold text-foreground">
               编辑档案：{String(profile?.profile_name || '未命名')}

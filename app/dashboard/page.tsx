@@ -340,7 +340,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto px-8 py-9">
+    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-9">
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -491,7 +491,7 @@ export default function DashboardPage() {
           <aside className="space-y-5">
             {/* 进行中的作品：一条内容的各个环节串在一起，
                 比一堆零散记录更接近「我做到哪了」这个真实问题 */}
-            <section className="glass-panel rounded-2xl p-5">
+            <section className="glass-panel rounded-2xl p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
@@ -574,7 +574,7 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="glass-panel rounded-2xl p-5">
+            <section className="glass-panel rounded-2xl p-4 sm:p-5">
               <div className="flex items-baseline justify-between">
                 <span className="text-[13px] text-muted-foreground">本月已用</span>
                 {/* 额度没回来前别显示 0——那会被当成"我一次都没用过" */}

@@ -57,7 +57,9 @@ export function Markdown({ children, className }: MarkdownProps) {
         th: (props: ComponentProps<"th">) => (
           <th className={`${td} whitespace-nowrap font-semibold`} {...clean(props)} />
         ),
-        td: (props: ComponentProps<"td">) => <td className={td} {...clean(props)} />,
+        // 单元格给个最小宽度：列多的表（分镜 5-7 列）在手机上会被挤成一个字一行，
+        // 有了最小宽度就在表格框里左右滑，而不是挤扁；列少的表照样铺满
+        td: (props: ComponentProps<"td">) => <td className={`${td} min-w-[5.5rem]`} {...clean(props)} />,
       }}
     >
       {children}

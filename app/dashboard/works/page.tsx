@@ -89,7 +89,7 @@ export default function WorksPage() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : shown.length === 0 ? (
-        <div className="glass-panel rounded-2xl border border-border p-10 text-center text-sm text-muted-foreground">
+        <div className="glass-panel rounded-2xl border border-border p-6 sm:p-10 text-center text-sm text-muted-foreground">
           {filter === "done" ? "还没有做完的作品" : "还没有作品。"}
           {filter !== "done" && (
             <>

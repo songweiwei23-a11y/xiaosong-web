@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { throwApiError } from "@/lib/api-error";
@@ -8,7 +8,7 @@ import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { buildContextBlock } from '@/lib/creator-context';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
-  Menu, X, Copy, Check, Bot, User as UserIcon,
+  PanelLeft, X, Copy, Check, Bot, User as UserIcon,
 } from "lucide-react";
 import {
   listConversations,
@@ -132,6 +132,10 @@ export default function FreeChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [profile, setProfile] = useState<ActiveProfile | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // 手机上会话列表默认收起：它浮在对话上面，一进来就挡住对话不合适
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, []);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -422,10 +426,19 @@ export default function FreeChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    /*
+     * 高度扣掉顶栏（72px）；用 dvh：手机浏览器的地址栏会伸缩，100vh 会多出一截，输入框被顶到屏幕外。
+     * 会话列表：电脑上并排；手机上浮在对话上面（原来并排占 256px，手机屏幕才 375，
+     * 对话区被挤得只剩一条缝，字都被切掉）。
+     */
+    <div className="relative flex h-[calc(100dvh-72px)] overflow-hidden">
+      {/* 手机上列表打开时，点对话区空白处收起 */}
+      {sidebarOpen && (
+        <div className="absolute inset-0 z-20 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden />
+      )}
       {/* 左侧：会话列表 */}
       {sidebarOpen && (
-        <div className="flex w-64 flex-col border-r bg-card">
+        <div className="absolute inset-y-0 left-0 z-30 flex w-64 max-w-[80%] flex-col border-r bg-card shadow-xl md:static md:z-auto md:max-w-none md:shadow-none">
           <div className="p-3">
             <button
               onClick={() => createConversation(true)}
@@ -442,7 +455,11 @@ export default function FreeChatPage() {
             {conversations.map((c) => (
               <div
                 key={c.id}
-                onClick={() => setActiveId(c.id)}
+                onClick={() => {
+                  setActiveId(c.id);
+                  // 手机上选完就收起，直接看对话
+                  if (window.innerWidth < 768) setSidebarOpen(false);
+                }}
                 className={`group mb-1 flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
                   c.id === activeId ? "bg-accent/10 text-accent" : "text-foreground hover:bg-muted"
                 }`}
@@ -451,7 +468,8 @@ export default function FreeChatPage() {
                 <span className="flex-1 truncate">{c.title || "新对话"}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
-                  className="opacity-0 transition-opacity group-hover:opacity-100"
+                  // 有鼠标的悬停才出现；手机没有悬停，一直显示
+                  className="transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                   title="删除对话"
                 >
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
@@ -469,15 +487,15 @@ export default function FreeChatPage() {
       )}
 
       {/* 右侧：对话主区 */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* 顶部栏 */}
-        <div className="flex items-center gap-3 border-b bg-card px-5 py-3">
+        <div className="flex items-center gap-3 border-b bg-card px-3 py-3 sm:px-5">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             className="rounded-xl p-1.5 text-muted-foreground hover:bg-muted"
             title={sidebarOpen ? "收起列表" : "展开列表"}
           >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {sidebarOpen ? <X className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
           </button>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl brand-gradient">

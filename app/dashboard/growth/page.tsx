@@ -444,7 +444,7 @@ export default function GrowthPage() {
         <ContextBadge board="script" className="mb-5" />
 
         {tab === 'plan' ? (
-          <div className="glass-panel mb-6 rounded-2xl p-6">
+          <div className="glass-panel mb-6 rounded-2xl p-4 sm:p-6">
             {/* 默认让 AI 按矩阵推荐。想自己挑再展开——
                 直接摆 37 计出来，用户会挑最有意思的而不是拍得出来的 */}
             <div className="mb-4 rounded-xl border border-border bg-foreground/[0.03] p-4">
@@ -591,7 +591,7 @@ export default function GrowthPage() {
             </button>
           </div>
         ) : (
-          <div className="glass-panel mb-6 rounded-2xl p-6">
+          <div className="glass-panel mb-6 rounded-2xl p-4 sm:p-6">
             {handoffFrom && (
               <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] px-3.5 py-2.5 text-[12px] text-emerald-500">
                 内容来自「{handoffFrom}」，已经替你填好了 ✓

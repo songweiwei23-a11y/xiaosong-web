@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Crown, Edit, Save, X, Calendar, Zap, RefreshCw, Search } from "lucide-react";
@@ -172,9 +172,9 @@ export default function SubscriptionsManagement() {
     <div className="min-h-screen">
       <div className="border-b glass-panel shadow-sm">
         <div className="container mx-auto px-8 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold brand-gradient bg-clip-text text-transparent flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold brand-gradient bg-clip-text text-transparent flex items-center gap-2">
                 <Crown className="w-8 h-8 text-accent" />
                 会员管理
               </h1>
@@ -193,7 +193,7 @@ export default function SubscriptionsManagement() {
 
       <div className="container mx-auto px-8 py-10">
         {/* 统计卡片 */}
-        <div className="grid grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-3 sm:gap-4 md:grid-cols-5">
           <div className="bg-card border rounded-lg p-4">
             <div className="text-sm text-muted-foreground">总会员</div>
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -242,8 +242,8 @@ export default function SubscriptionsManagement() {
         </div>
 
         {/* 用户列表 */}
-        <div className="bg-card border rounded-lg overflow-hidden">
-          <table className="w-full">
+        <div className="bg-card border rounded-lg overflow-x-auto">
+          <table className="w-full min-w-[44rem]">
             <thead className="bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold">用户</th>

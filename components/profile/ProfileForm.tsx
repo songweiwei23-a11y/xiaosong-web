@@ -421,17 +421,18 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
   return (
     <>
       {/* 步骤条：点一下能直接跳过去，编辑时常常只想改某一步 */}
-      <div className="mb-8 flex items-center justify-center">
+      {/* 连接线按宽度伸缩：原来每段定宽 40px，六步加起来 416px，手机上首尾两步被切掉 */}
+      <div className="mx-auto mb-8 flex max-w-md items-center">
         {steps.map((s, i) => {
           const n = i + 1
           const done = n < currentStep
           return (
-            <div key={s.title} className="flex items-center">
+            <div key={s.title} className={`flex items-center ${n < steps.length ? 'flex-1' : ''}`}>
               <button
                 type="button"
                 onClick={() => setCurrentStep(n)}
                 title={s.title}
-                className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-medium transition-colors ${
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-medium transition-colors sm:h-9 sm:w-9 ${
                   n === currentStep
                     ? 'bg-primary text-primary-foreground'
                     : done
@@ -442,7 +443,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
                 {done ? '✓' : n}
               </button>
               {n < steps.length && (
-                <div className={`h-0.5 w-10 ${done ? 'bg-emerald-500/80' : 'bg-foreground/[0.08]'}`} />
+                <div className={`mx-1 h-0.5 min-w-2 flex-1 ${done ? 'bg-emerald-500/80' : 'bg-foreground/[0.08]'}`} />
               )}
             </div>
           )
@@ -461,7 +462,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
           type="button"
           onClick={() => currentStep > 1 && setCurrentStep(currentStep - 1)}
           disabled={currentStep === 1}
-          className="rounded-xl px-5 py-2 text-[13px] text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground/50 enabled:hover:bg-foreground/[0.06]"
+          className="rounded-xl px-3 py-2 text-[13px] text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground/50 enabled:hover:bg-foreground/[0.06] sm:px-5"
         >
           上一步
         </button>
@@ -470,7 +471,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
           <button
             type="button"
             onClick={onCancel}
-            className="glass-panel rounded-xl px-5 py-2 text-[13px] text-foreground"
+            className="glass-panel rounded-xl px-3 py-2 text-[13px] text-foreground sm:px-5"
           >
             取消
           </button>
@@ -478,7 +479,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
             <button
               type="button"
               onClick={() => setCurrentStep(currentStep + 1)}
-              className="rounded-xl bg-foreground/[0.08] px-5 py-2 text-[13px] text-foreground hover:bg-foreground/[0.14]"
+              className="rounded-xl bg-foreground/[0.08] px-3 py-2 text-[13px] text-foreground hover:bg-foreground/[0.14] sm:px-5"
             >
               下一步
             </button>
@@ -488,7 +489,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
             type="button"
             onClick={submit}
             disabled={loading}
-            className="rounded-xl bg-primary px-6 py-2 text-[13px] font-medium text-primary-foreground disabled:opacity-50"
+            className="rounded-xl bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground disabled:opacity-50 sm:px-6"
           >
             {loading ? submittingLabel : submitLabel}
           </button>

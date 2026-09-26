@@ -10,7 +10,7 @@ import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { buildContextBlock } from "@/lib/creator-context";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
-import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, GENERATE_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
@@ -409,7 +409,7 @@ export default function TitlePage() {
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !topic.trim()}
-            className={PRIMARY_BTN}
+            className={GENERATE_BTN}
           >
             {isGenerating ? (
               <>

@@ -28,7 +28,7 @@ export function CollapsibleSection({
 
   return (
     // p-5 与 FieldGroup 一致：内边距是「不紧凑」最直接的来源
-    <div className="glass-panel rounded-2xl p-5">
+    <div className="glass-panel rounded-2xl p-4 sm:p-5">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}

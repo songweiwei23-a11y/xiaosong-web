@@ -87,9 +87,9 @@ export default function AdminQRCodesPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">收款二维码管理</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">收款二维码管理</h1>
           <p className="text-muted-foreground mt-1">上传和管理支付宝、微信收款二维码</p>
         </div>
         <Button onClick={loadQRCodes} variant="outline" size="sm">

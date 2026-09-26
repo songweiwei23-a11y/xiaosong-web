@@ -26,7 +26,7 @@ export default function AdminSettingsPage() {
   const planIds = Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[];
 
   return (
-    <div className="h-full overflow-y-auto px-8 py-9">
+    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-9">
       <div className="mx-auto max-w-3xl">
         <header className="mb-6">
           <h1 className="text-[22px] font-semibold text-foreground">系统设置</h1>

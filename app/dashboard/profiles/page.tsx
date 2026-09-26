@@ -86,16 +86,17 @@ export default function ProfilesPage() {
     <div className="py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 头部 */}
-        <div className="flex justify-between items-center mb-8">
+        {/* 手机上标题和按钮上下排：并排时按钮被挤成两行 */}
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">用户档案管理</h1>
+            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">用户档案管理</h1>
             <p className="mt-2 text-muted-foreground">
               创建和管理您的账号档案，让AI更懂您的需求
             </p>
           </div>
           <Link
             href="/dashboard/profiles/new"
-            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent transition-colors font-medium"
+            className="shrink-0 whitespace-nowrap rounded-xl bg-accent px-6 py-3 text-center font-medium text-white transition-colors hover:bg-accent"
           >
             + 创建新档案
           </Link>
@@ -123,16 +124,18 @@ export default function ProfilesPage() {
             {profiles.map((profile) => (
               <div
                 key={profile.id}
-                className="bg-card rounded-xl shadow-sm hover:shadow-md transition-shadow p-6"
+                className="bg-card rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 sm:p-6"
               >
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-lg font-semibold text-foreground">
                     {profile.profile_name}
                   </h3>
-                  <div className="flex gap-2">
+                  {/* 图标 20px，四周补一圈可点区域，手指点得准 */}
+                  <div className="-m-2 flex">
                     <Link
                       href={`/dashboard/profiles/${profile.id}/edit`}
-                      className="text-primary hover:text-primary"
+                      aria-label="编辑档案"
+                      className="rounded-lg p-2 text-primary hover:bg-foreground/[0.05]"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -140,7 +143,8 @@ export default function ProfilesPage() {
                     </Link>
                     <button
                       onClick={() => handleDelete(profile.id)}
-                      className="text-destructive hover:text-destructive"
+                      aria-label="删除档案"
+                      className="rounded-lg p-2 text-destructive hover:bg-foreground/[0.05]"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

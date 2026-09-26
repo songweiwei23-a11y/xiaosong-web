@@ -3,7 +3,7 @@
 import { formatRelativeTime } from "@/lib/script-result-utils";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
-import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, GENERATE_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
@@ -392,7 +392,7 @@ export default function PositioningPage() {
   if (!activeProfile) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-center max-w-md bg-card rounded-2xl shadow-xl p-8">
+        <div className="text-center max-w-md bg-card rounded-2xl shadow-xl p-6 sm:p-8">
           <User className="w-20 h-20 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-foreground mb-2">还没有用户档案</h2>
           <p className="text-muted-foreground mb-6">
@@ -489,7 +489,7 @@ export default function PositioningPage() {
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !activeProfile}
-            className={PRIMARY_BTN}
+            className={GENERATE_BTN}
           >
             {isGenerating ? (
               <>
@@ -635,7 +635,7 @@ export default function PositioningPage() {
         和直接问 AI 没区别。所以把它放在定位结果的正下方，一点就走。
       */}
       {result && !isGenerating && (
-        <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/[0.06] p-5">
+        <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/[0.06] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[14px] font-medium text-foreground">

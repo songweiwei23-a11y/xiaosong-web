@@ -461,6 +461,19 @@
   100% { left: 100%; opacity: 0; }
 }
 
+/*
+ * 手机上输入框字号至少 16px：iPhone 的 Safari 遇到小于 16px 的输入框，
+ * 一点进去就把整页放大，还得手动缩回来。全站输入框是 13px，每点一次都放大一次。
+ * 只在手机宽度生效，电脑上照旧。
+ */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* 顶栏"正在放白噪音"的三根小音柱：慢慢起伏，不抢眼 */
 .kw-eq > span {
   height: 100%;

@@ -108,7 +108,7 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
   }
 
   return (
-    <div className="glass-panel mt-6 rounded-2xl p-6">
+    <div className="glass-panel mt-6 rounded-2xl p-4 sm:p-6">
       <div className="mb-4">
         <h2 className="text-[15px] font-semibold text-foreground">逐节调整</h2>
         <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">

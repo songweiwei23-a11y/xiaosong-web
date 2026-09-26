@@ -112,7 +112,7 @@ export default function MembershipPage() {
     <div className="max-w-7xl mx-auto p-6">
       {/* 页头 */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-foreground mb-4">
+        <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-4">
           升级会员，解锁全部功能
         </h1>
         <p className="text-lg text-muted-foreground">
@@ -187,7 +187,7 @@ export default function MembershipPage() {
           return (
             <div
               key={plan.id}
-              className={`relative rounded-2xl border-2 p-6 transition-all hover:shadow-xl ${
+              className={`relative rounded-2xl border-2 p-4 sm:p-6 transition-all hover:shadow-xl ${
                 plan.popular
                   ? "border-accent/50 shadow-lg scale-105"
                   : "border-border hover:border-primary/30"
@@ -295,7 +295,7 @@ export default function MembershipPage() {
       </div>
 
       {/* 常见问题 */}
-      <div className="mt-16 bg-muted rounded-2xl p-8">
+      <div className="mt-10 sm:mt-16 bg-muted rounded-2xl p-5 sm:p-8">
         <h2 className="text-2xl font-bold text-foreground mb-6 text-center">常见问题</h2>
         <div className="grid md:grid-cols-2 gap-6">
           <div>

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
-  UserCog, ScrollText,
+  UserCog, ScrollText, Menu,
 } from "lucide-react";
 
 /*
@@ -58,6 +59,14 @@ const navGroups: {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  // 点了菜单项跳过去，菜单自己收起
+  useEffect(() => setMenuOpen(false), [pathname]);
+  const currentName =
+    navGroups
+      .flatMap((g) => g.items)
+      .filter((i) => pathname === i.href || (i.href !== "/admin" && pathname.startsWith(i.href)))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.name ?? "管理后台";
 
   /*
    * 整个管理后台固定深色，不跟随用户的浅色/深色偏好。
@@ -84,7 +93,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         现在统一成同一套语言：同样的网格底纹、同样的青色、
         选中态用 HUD 那种带辉光的指示条，右侧边缘做成渐隐而不是硬线。
       */}
-      <aside className="admin-rail relative flex h-full w-64 shrink-0 flex-col">
+      {/*
+        手机上侧栏收起，从左上角的按钮滑出来：原来固定 256px 宽，
+        手机屏幕才 375，右边的内容只剩一百来像素，表格和数字全挤成一团。
+      */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
+      )}
+      <aside
+        className={`admin-rail fixed inset-y-0 left-0 z-40 flex h-full w-64 shrink-0 flex-col bg-[#070b12] transition-transform duration-300 md:relative md:z-auto md:translate-x-0 ${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         {/* 网格底纹，和大屏同一套 */}
         <div
           aria-hidden
@@ -204,7 +224,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      <main className="relative flex-1 overflow-auto">
+      <main className="relative min-w-0 flex-1 overflow-auto">
+        {/* 手机上的顶栏：打开菜单 + 当前是哪一页 */}
+        <div className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-[#070b12]/90 px-4 backdrop-blur md:hidden">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="打开菜单"
+            className="rounded-lg p-2 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <span className="truncate text-[14px] font-medium text-foreground">{currentName}</span>
+        </div>
         <FloatingThemeToggle />
         {children}
       </main>

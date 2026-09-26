@@ -17,7 +17,7 @@ interface QuotaExhaustedProps {
 
 export default function QuotaExhausted({ planName, feature }: QuotaExhaustedProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
+    <div className="flex flex-col items-center justify-center min-h-[400px] p-6 sm:p-8 text-center">
       <div className="mb-6">
         <div className="relative">
           <div className="absolute inset-0 bg-destructive/15 dark:bg-red-900/20 rounded-full blur-xl" />

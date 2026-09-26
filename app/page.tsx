@@ -300,7 +300,7 @@ export default function HomePage() {
               <span className="text-sm font-medium text-primary">Claude AI驱动 · 专业编导知识库 · 全流程打通爆款脚本</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
               <span className="brand-gradient bg-clip-text text-transparent">
                 AI编导助手
               </span>
@@ -403,7 +403,7 @@ export default function HomePage() {
               >
                 {tiles.map((t) => (
                   <div key={t.key} className="text-center group hover:scale-105 transition-transform">
-                    <div className="text-5xl md:text-6xl font-extrabold brand-gradient bg-clip-text text-transparent mb-2">
+                    <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold brand-gradient bg-clip-text text-transparent mb-2">
                       {(t.value as number).toLocaleString()}
                       {t.suffix}
                     </div>
@@ -428,7 +428,7 @@ export default function HomePage() {
               <Crown className="w-4 h-4 text-accent" />
               <span className="text-sm font-medium text-accent">为什么选择我们</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="brand-gradient bg-clip-text text-transparent">三大核心优势</span>
             </h2>
             <p className="text-xl text-muted-foreground dark:text-foreground max-w-2xl mx-auto">专业编导知识 + AI技术 + 持续迭代，让您的创作始终领先一步</p>
@@ -521,7 +521,7 @@ export default function HomePage() {
               <BookOpen className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">这是我们和通用 AI 的区别</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="brand-gradient bg-clip-text text-transparent">拍法是有公式的</span>
             </h2>
             <p className="text-xl text-muted-foreground dark:text-foreground max-w-3xl mx-auto">
@@ -678,7 +678,7 @@ export default function HomePage() {
               <Star className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">{FACTS.boards} 个板块 · 这是最常用的 8 个</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="brand-gradient bg-clip-text text-transparent">
                 全流程AI创作支持
               </span>
@@ -736,7 +736,7 @@ export default function HomePage() {
               <Crown className="w-4 h-4 text-accent" />
               <span className="text-sm font-medium text-accent">价格方案</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="brand-gradient bg-clip-text text-transparent">
                 选择适合您的方案
               </span>
@@ -748,38 +748,38 @@ export default function HomePage() {
 
           {/* 传统方式 vs 开物对比 */}
           <div className="max-w-5xl mx-auto mb-16 overflow-x-auto">
-            <div className="glass-panel rounded-2xl border-2 border-border overflow-hidden shadow-xl">
+            <div className="glass-panel min-w-[32rem] rounded-2xl border-2 border-border overflow-hidden shadow-xl text-sm sm:text-base">
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="bg-muted dark:bg-muted p-4 font-bold text-center">对比项</div>
-                <div className="bg-muted dark:bg-muted p-4 font-bold text-center">传统方式</div>
-                <div className="bg-primary/10 p-4 text-center text-primary"><BrandWordmark /></div>
-                <div className="bg-emerald-500/10 p-4 font-bold text-center text-green-500">提升幅度</div>
+                <div className="bg-muted dark:bg-muted p-3 sm:p-4 font-bold text-center">对比项</div>
+                <div className="bg-muted dark:bg-muted p-3 sm:p-4 font-bold text-center">传统方式</div>
+                <div className="bg-primary/10 p-3 sm:p-4 text-center text-primary"><BrandWordmark /></div>
+                <div className="bg-emerald-500/10 p-3 sm:p-4 font-bold text-center text-green-500">提升幅度</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-4">脚本创作时间</div>
-                <div className="glass-panel p-4 text-center text-muted-foreground">2-4小时</div>
-                <div className="glass-panel p-4 text-center font-semibold text-primary">约 2 分钟</div>
-                <div className="glass-panel p-4 text-center font-bold text-green-500">↑99%</div>
+                <div className="glass-panel p-3 sm:p-4">脚本创作时间</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">2-4小时</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">约 2 分钟</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">↑99%</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-4">学习门槛</div>
-                <div className="glass-panel p-4 text-center text-muted-foreground">3-6个月</div>
-                <div className="glass-panel p-4 text-center font-semibold text-primary">即用即会</div>
-                <div className="glass-panel p-4 text-center font-bold text-green-500">零门槛</div>
+                <div className="glass-panel p-3 sm:p-4">学习门槛</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">3-6个月</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">即用即会</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">零门槛</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-4">月度成本</div>
-                <div className="glass-panel p-4 text-center text-muted-foreground">¥8000+</div>
-                <div className="glass-panel p-4 text-center font-semibold text-primary">
+                <div className="glass-panel p-3 sm:p-4">月度成本</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">¥8000+</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">
                   ¥{SUBSCRIPTION_PLANS.basic.price}-{SUBSCRIPTION_PLANS.enterprise.price}
                 </div>
-                <div className="glass-panel p-4 text-center font-bold text-green-500">省95%</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">省95%</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-4">爆款命中率</div>
-                <div className="glass-panel p-4 text-center text-muted-foreground">10-15%</div>
-                <div className="glass-panel p-4 text-center font-semibold text-primary">30-40%</div>
-                <div className="glass-panel p-4 text-center font-bold text-green-500">↑3倍</div>
+                <div className="glass-panel p-3 sm:p-4">爆款命中率</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">10-15%</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">30-40%</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">↑3倍</div>
               </div>
             </div>
           </div>
@@ -864,7 +864,7 @@ export default function HomePage() {
               <MessageCircle className="w-4 h-4 text-green-500" />
               <span className="text-sm font-medium text-green-500">常见问题</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
                 您可能关心的问题
               </span>
@@ -917,7 +917,7 @@ export default function HomePage() {
         </div>
         
         <div className="container mx-auto text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
             准备好开始创作了吗？
           </h2>
           <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">

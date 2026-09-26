@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
@@ -153,8 +153,8 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="container mx-auto px-8 py-10">
-      <h1 className="text-3xl font-bold mb-8">订单审核</h1>
+    <div className="container mx-auto px-4 py-6 sm:px-8 sm:py-10">
+      <h1 className="text-2xl font-bold mb-6 sm:text-3xl sm:mb-8">订单审核</h1>
 
       {/* 搜索和筛选 */}
       <div className="mb-6 flex gap-4">
@@ -188,7 +188,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-3 mb-6 sm:gap-4 sm:mb-8 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-sm text-muted-foreground mb-1">总订单</div>

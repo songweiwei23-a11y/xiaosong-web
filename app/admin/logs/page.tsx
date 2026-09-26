@@ -100,7 +100,7 @@ export default function AdminLogsPage() {
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
-    <div className="h-full overflow-y-auto px-8 py-9">
+    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-9">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -156,7 +156,7 @@ export default function AdminLogsPage() {
               {action ? "这类操作还没有记录" : "还没有任何操作记录"}
             </p>
           ) : (
-            <table className="w-full text-[13px]">
+            <div className="overflow-x-auto"><table className="w-full min-w-[40rem] text-[13px]">
               <thead className="border-b border-border/60 text-left text-[11.5px] text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">时间</th>
@@ -209,7 +209,7 @@ export default function AdminLogsPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
 

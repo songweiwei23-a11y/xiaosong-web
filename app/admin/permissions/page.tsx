@@ -93,7 +93,7 @@ export default function AdminPermissionsPage() {
   if (loading) return <Loading />;
 
   return (
-    <div className="h-full overflow-y-auto px-8 py-9">
+    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-9">
       <div className="mx-auto max-w-3xl">
         <header className="mb-8">
           <h1 className="text-[22px] font-semibold text-foreground">权限管理</h1>

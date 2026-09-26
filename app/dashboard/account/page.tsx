@@ -88,7 +88,7 @@ export default function AccountPage() {
 
 function Card({ icon: Icon, title, children }: { icon: typeof Crown; title: string; children: React.ReactNode }) {
   return (
-    <section className="glass-panel mb-4 rounded-2xl border border-border p-5">
+    <section className="glass-panel mb-4 rounded-2xl border border-border p-4 sm:p-5">
       <h2 className="mb-4 flex items-center gap-2 text-[15px] font-semibold text-foreground">
         <Icon className="h-4 w-4 text-primary" />
         {title}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Markdown } from "@/components/markdown";
 import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, type LucideIcon } from "lucide-react";
 import {
@@ -85,6 +85,18 @@ export function ResultPanel({
     };
   }, [result]);
 
+  /*
+   * 手机上结果在表单下面：点了生成，得把人带到结果那儿，
+   * 不然看到的还是表单，以为"点了没反应"。电脑上左右排，结果本来就看得见，不动。
+   */
+  const wasGenerating = useRef(false);
+  useEffect(() => {
+    if (isGenerating && !wasGenerating.current && window.innerWidth < 1024) {
+      document.getElementById("workspace-result")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    wasGenerating.current = isGenerating;
+  }, [isGenerating]);
+
   if (!result && !isGenerating) {
     return (
       <EmptyState icon={emptyIcon} title={emptyTitle} hint={emptyHint} tips={emptyTips} />
@@ -124,7 +136,7 @@ export function ResultPanel({
       </div>
 
       {body ? (
-        <article className="glass-panel rounded-2xl px-7 py-6">
+        <article className="glass-panel rounded-2xl px-4 py-5 sm:px-7 sm:py-6">
           <div
             className="prose prose-slate dark:prose-invert max-w-none
                        prose-headings:tracking-tight prose-headings:font-semibold
@@ -156,7 +168,7 @@ export function ResultPanel({
       {/* 接下来：放在正文之后，因为它是「读完再决定」的动作，
           摆在顶部会和复制下载抢位置，也不符合阅读顺序 */}
       {body && !isGenerating && nextActions && nextActions.length > 0 && (
-        <div className="glass-panel rounded-2xl p-5">
+        <div className="glass-panel rounded-2xl p-4 sm:p-5">
           <p className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
             接下来
           </p>
@@ -237,7 +249,7 @@ function QualityCard({
   }[tone];
 
   return (
-    <div className="glass-panel rounded-2xl p-5">
+    <div className="glass-panel rounded-2xl p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <span className="text-[13px] font-medium text-foreground">脚本质量</span>
         {score !== null && (

@@ -219,7 +219,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
           <p className="mt-2 text-[13px] text-muted-foreground">{subtitle}</p>
         </div>
 
-        <div className="glass-panel mb-6 rounded-2xl p-6">
+        <div className="glass-panel mb-6 rounded-2xl p-4 sm:p-6">
           <ul className="mb-5 space-y-1.5">
             {bullets.map((b) => (
               <li key={b} className="text-[13px] text-muted-foreground">

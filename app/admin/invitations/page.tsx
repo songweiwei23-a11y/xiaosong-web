@@ -183,7 +183,7 @@ export default function AdminInvitationsPage() {
   if (loading) return <Loading />;
 
   return (
-    <div className="h-full overflow-y-auto px-8 py-9">
+    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-9">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6">
           <h1 className="text-[22px] font-semibold text-foreground">邀请码</h1>

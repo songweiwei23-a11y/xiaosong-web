@@ -302,9 +302,9 @@ export default function UsersPage() {
     <div className="p-8 bg-muted dark:bg-muted min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">用户管理</h1>
+            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">用户管理</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               管理所有注册用户、会员等级和配额（共 {total} 个用户）
             </p>
@@ -327,7 +327,7 @@ export default function UsersPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+              <table className="min-w-[48rem] w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-muted">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">用户信息</th>
