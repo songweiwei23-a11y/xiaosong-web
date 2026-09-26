@@ -963,12 +963,12 @@ export default function HomePage() {
             
             <div>
               <h4 className="font-semibold text-white mb-4">产品</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#features" className="hover:text-white transition-colors">核心功能</a></li>
-                <li><a href="#pricing" className="hover:text-white transition-colors">价格方案</a></li>
+              <ul className="space-y-0.5 text-sm">
+                <li><a href="#features" className="inline-block py-1.5 hover:text-white transition-colors">核心功能</a></li>
+                <li><a href="#pricing" className="inline-block py-1.5 hover:text-white transition-colors">价格方案</a></li>
                 {/* /pricing 有一张逐项的功能对比表，原来全站没有任何入口能走到 */}
-                <li><Link href="/pricing" className="hover:text-white transition-colors">完整功能对比</Link></li>
-                <li><Link href="/dashboard" className="hover:text-white transition-colors">立即使用</Link></li>
+                <li><Link href="/pricing" className="inline-block py-1.5 hover:text-white transition-colors">完整功能对比</Link></li>
+                <li><Link href="/dashboard" className="inline-block py-1.5 hover:text-white transition-colors">立即使用</Link></li>
               </ul>
             </div>
 
@@ -979,8 +979,8 @@ export default function HomePage() {
             */}
             <div>
               <h4 className="font-semibold text-white mb-4">支持</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#faq" className="hover:text-white transition-colors">常见问题</a></li>
+              <ul className="space-y-0.5 text-sm">
+                <li><a href="#faq" className="inline-block py-1.5 hover:text-white transition-colors">常见问题</a></li>
                 <li>客服微信：<span className="select-all text-white">13240286600</span></li>
               </ul>
             </div>
@@ -988,9 +988,9 @@ export default function HomePage() {
             {/* 原来三个都是 href="#"。「关于我们」没有内容可放，撤掉 */}
             <div>
               <h4 className="font-semibold text-white mb-4">关于</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/privacy" className="hover:text-white transition-colors">隐私政策</Link></li>
-                <li><Link href="/terms" className="hover:text-white transition-colors">服务条款</Link></li>
+              <ul className="space-y-0.5 text-sm">
+                <li><Link href="/privacy" className="inline-block py-1.5 hover:text-white transition-colors">隐私政策</Link></li>
+                <li><Link href="/terms" className="inline-block py-1.5 hover:text-white transition-colors">服务条款</Link></li>
               </ul>
             </div>
           </div>

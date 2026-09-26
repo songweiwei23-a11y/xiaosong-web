@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { getActiveProfileId } from '@/lib/active-profile'
 import { setupSteps, type SetupStep } from '@/lib/setup-progress'
@@ -83,7 +85,21 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-12">
+    <div className="min-h-screen px-4 pb-12 pt-4 sm:pt-8">
+      {/*
+        顶上给个出口。这一页不在工作台的框架里，没有侧栏也没有顶栏，
+        原来只有清单最底下一行小字能走——手机上要翻到底才找得到，
+        全部做完时连那行都没有。
+      */}
+      <div className="mx-auto mb-4 max-w-2xl sm:mb-8">
+        <Link
+          href="/dashboard"
+          className="-ml-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-[13px] text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          进入工作台
+        </Link>
+      </div>
       <SetupChecklist steps={steps} />
     </div>
   )

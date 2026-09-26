@@ -42,7 +42,7 @@ export function LandingNavCTA() {
     <>
       <Link 
         href="/login" 
-        className="text-foreground/80 hover:text-primary transition-colors font-medium"
+        className="-mx-1 px-1 py-2 text-foreground/80 hover:text-primary transition-colors font-medium"
       >
         登录
       </Link>

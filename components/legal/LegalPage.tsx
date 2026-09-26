@@ -14,7 +14,8 @@ export function LegalPage({ title, children }: { title: string; children: React.
   return (
     <div className="min-h-screen bg-background px-4 py-12">
       <article className="mx-auto max-w-3xl">
-        <Link href="/" className="mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+        {/* 上下留出点击范围：手机上 20px 高的一行字很难点中 */}
+        <Link href="/" className="-my-2 mb-6 inline-flex items-center gap-1 py-2 text-sm text-muted-foreground hover:text-primary">
           <ArrowLeft className="h-4 w-4" />
           返回首页
         </Link>

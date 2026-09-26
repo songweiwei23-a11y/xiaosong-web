@@ -182,8 +182,12 @@ export function Sidebar() {
         侧边栏用真玻璃（.glass 带模糊）：它常驻、面积固定，模糊开销可控，
         且背景光晕正好从它下面透上来，是最能体现质感的位置。
       */}
+      {/*
+        手机上整个抽屉一起滚：「进行中」的作品、菜单、底部的档案切换叠起来比矮屏还高，
+        原来只有中间的菜单能滚，被挤得只剩两三项；电脑上照旧只滚菜单。
+      */}
       <aside
-        className={`glass fixed inset-y-0 left-0 z-40 flex h-screen h-dvh w-[272px] flex-col border-y-0 border-l-0 transition-transform duration-300 md:static md:translate-x-0 ${
+        className={`glass fixed inset-y-0 left-0 z-40 flex h-screen h-dvh w-[272px] flex-col overflow-y-auto overscroll-contain border-y-0 border-l-0 transition-transform duration-300 md:static md:overflow-visible md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -279,7 +283,7 @@ export function Sidebar() {
           </div>
         )}
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        <nav className="flex-[1_0_auto] px-3 pb-4 md:flex-1 md:overflow-y-auto">
           {navGroups.map((group, gi) => {
             const isCollapsed = group.label !== null && collapsed.includes(group.id);
             return (

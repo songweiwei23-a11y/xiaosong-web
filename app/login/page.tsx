@@ -111,7 +111,14 @@ export default function LoginPage() {
   return (
     // 背景交给全站的 AmbientBackground。这里原本自带一层写死的渐变和光斑，
     // 会盖住氛围层，且颜色不跟随配色方案切换。
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+    /*
+     * 顶栏占自己的一行，内容在下面剩余的空间里居中。
+     * 原来顶栏是浮在上面的（absolute），内容在整屏里垂直居中且裁掉溢出：
+     * 手机屏幕矮一点、或切到注册多出邀请码那一栏，内容就往上顶，
+     * Logo 那一块盖住了「返回首页」和外观按钮——点上去没反应，
+     * 上面被裁掉的部分也滚不回来。
+     */
+    <div className="relative flex min-h-screen min-h-dvh flex-col">
 
       {/* 验证通过之后到工作台出现之前，全程盖住——这段原来是完全没有反馈的 */}
       <AuthTransition
@@ -124,20 +131,21 @@ export default function LoginPage() {
       />
 
       {/* 顶部导航 */}
-      <div className="absolute top-0 left-0 right-0 z-10">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link 
-            href="/" 
-            className="flex items-center gap-2 text-foreground/80 hover:text-primary transition-colors"
+      <header className="relative z-20 shrink-0">
+        <div className="container mx-auto px-2 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-lg px-2 py-2.5 text-foreground/80 hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">返回首页</span>
           </Link>
           <ThemeToggle />
         </div>
-      </div>
+      </header>
 
-      <div className="w-full max-w-md relative z-10 px-4">
+      <main className="flex flex-1 items-center justify-center px-4 pb-10 pt-2 sm:py-10">
+      <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3.5 mb-4 transition-opacity hover:opacity-90">
@@ -218,7 +226,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowForgot((v) => !v)}
-                    className="text-xs text-primary hover:underline"
+                    className="-my-2 py-2 pl-3 text-xs text-primary hover:underline"
                   >
                     忘记密码？
                   </button>
@@ -308,7 +316,7 @@ export default function LoginPage() {
                 setIsLogin(!isLogin);
                 setMessage("");
               }}
-              className="ml-1 text-primary hover:opacity-80 font-semibold transition-opacity"
+              className="ml-1 py-2 text-primary hover:opacity-80 font-semibold transition-opacity"
             >
               {isLogin ? "立即注册" : "立即登录"}
             </button>
@@ -351,13 +359,14 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <Link 
             href="/"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
+            className="inline-flex items-center gap-1 py-2 text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             <Home className="w-4 h-4" />
             返回首页了解更多
           </Link>
         </div>
       </div>
+      </main>
     </div>
   );
 }

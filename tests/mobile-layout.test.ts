@@ -136,6 +136,65 @@ describe('顶栏与整体高度', () => {
   });
 });
 
+describe('登录注册页与独立页面：手机上一定有路可走', () => {
+  it('登录页：顶栏占自己一行，内容在下面居中，不再浮在上面被 Logo 盖住', () => {
+    /*
+     * 实测：375×640 的屏幕上切到注册，内容比屏幕高，整屏居中把 Logo 顶上去，
+     * 盖住了「返回首页」和外观按钮，点了没反应；外层 overflow-hidden 还让上面那截滚不回来。
+     */
+    const src = readCode('app/login/page.tsx');
+    expect(src).toMatch(/className="relative flex min-h-screen min-h-dvh flex-col"/);
+    expect(src).toMatch(/<header className="relative z-20 shrink-0">/);
+    expect(src).toMatch(/<main className="flex flex-1 items-center justify-center/);
+    expect(src).not.toMatch(/absolute top-0 left-0 right-0/);
+  });
+
+  it('扫描：没有页面把整屏内容垂直居中又裁掉溢出（手机上内容一高，上面那截就看不到、点不到）', () => {
+    const files = [...listFiles('app'), ...listFiles('components')];
+    expect(files.length).toBeGreaterThan(100); // 自证不是空转
+    const bad: string[] = [];
+    for (const f of files) {
+      for (const m of readCode(f).matchAll(/className="([^"]*)"/g)) {
+        const c = m[1].split(/\s+/);
+        if (c.includes('min-h-screen') && c.includes('items-center') && c.includes('overflow-hidden')) bad.push(`${f}: ${m[1]}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('不在工作台框架里的页面，每一页都有出口链接（手机上没有侧栏可点）', () => {
+    const pages = fs
+      .readdirSync(path.join(process.cwd(), 'app'), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && fs.existsSync(path.join(process.cwd(), 'app', e.name, 'page.tsx')))
+      .map((e) => e.name)
+      .filter((n) => !['dashboard', 'admin'].includes(n));
+    expect(pages.length).toBeGreaterThan(6); // 自证不是空转
+    const noExit: string[] = [];
+    for (const n of pages) {
+      const src = readCode(`app/${n}/page.tsx`);
+      if (/redirect\(/.test(src)) continue; // 旧地址直接跳走的
+      const legal = /LegalPage/.test(src) ? readCode('components/legal/LegalPage.tsx') : '';
+      if (!/href="\/(dashboard[^"]*)?"/.test(src + legal)) noExit.push(n);
+    }
+    expect(noExit).toEqual([]);
+  });
+
+  it('上手引导：顶上就有进工作台的出口（原来只在清单最底下一行小字，全做完时连这行都没有）', () => {
+    expect(readCode('app/onboarding/page.tsx')).toMatch(/href="\/dashboard"[\s\S]{0,300}进入工作台[\s\S]{0,200}<SetupChecklist/);
+  });
+
+  it('通用对话框：手机上限高、能滚、左右留边', () => {
+    const src = readCode('components/ui/dialog.tsx');
+    expect(src).toMatch(/max-h-\[90dvh\] w-\[calc\(100%-2rem\)\][^"]*overflow-y-auto/);
+  });
+
+  it('侧栏抽屉：手机上整个一起滚，电脑上只滚菜单', () => {
+    const src = readCode('components/dashboard/Sidebar.tsx');
+    expect(src).toMatch(/flex-col overflow-y-auto overscroll-contain[^`]*md:overflow-visible/);
+    expect(src).toMatch(/<nav className="flex-\[1_0_auto\] px-3 pb-4 md:flex-1 md:overflow-y-auto">/);
+  });
+});
+
 describe('细节', () => {
   it('手机上输入框至少 16px，iPhone 点进去不会放大', () => {
     const css = fs.readFileSync(path.join(process.cwd(), 'app/globals.css'), 'utf8');

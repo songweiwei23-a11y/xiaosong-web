@@ -339,7 +339,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-3xl px-6">
         <Link
           href="/dashboard/membership"
-          className="mb-6 inline-flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground"
+          className="-my-2 mb-4 inline-flex items-center gap-2 py-2 text-[13px] text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           返回套餐选择
