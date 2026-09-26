@@ -6,9 +6,10 @@ import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
 import { listWorks, type Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
-import { getActiveProfileId } from '@/lib/active-profile';
+import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
 import { TodayBoard } from '@/components/dashboard/TodayBoard';
+import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
@@ -227,6 +228,46 @@ export default function DashboardPage() {
     };
   }, []);
 
+  /** 档案列表回来后：定出当前档案，再取它的定位进度 */
+  const applyProfiles = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    setProfileCount(list.length);
+    if (list.length === 0) {
+      setProfile(null);
+      setPosTypes([]);
+      return;
+    }
+    const savedId = getActiveProfileId();
+    const active = list.find((p: any) => p.id === savedId) || list[0];
+    setProfile(active);
+
+    /*
+     * 顺带把这个档案的定位类型取回来，用于「先打地基」的进度。
+     * 它依赖档案 id，必须等档案回来才能发；也刻意不 await 进主流程——
+     * 地基进度晚一点出来无所谓，不该为它把整页的加载态拖长。
+     */
+    fetch(`/api/positioning?profileId=${active.id}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: any) => {
+        if (Array.isArray(rows)) setPosTypes(rows.map((x: any) => x.positioning_type ?? ""));
+      })
+      .catch(() => {});
+  };
+
+  /*
+   * 在侧边栏切了档案，首页要跟着变。
+   * 原来首页只在打开时读一次档案、从不听"档案切换了"的广播：侧边栏切过去了，
+   * 首页的「当前档案」和「先打地基」还停在上一个号上，看着就是"点了没反应"。
+   */
+  useEffect(() => {
+    return onActiveProfileChange(() => {
+      fetch("/api/profiles")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((list) => list && applyProfiles(list))
+        .catch(() => {});
+    });
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -246,32 +287,7 @@ export default function DashboardPage() {
 
         if (quotaRes?.ok) applyQuota(await quotaRes.json());
 
-        if (profileRes?.ok) {
-          const list = await profileRes.json();
-          if (Array.isArray(list)) {
-            setProfileCount(list.length);
-            if (list.length > 0) {
-              const savedId = getActiveProfileId();
-              const active = list.find((p: any) => p.id === savedId) || list[0];
-              setProfile(active);
-
-              /*
-               * 顺带把这个档案的定位类型取回来，用于「先打地基」的进度。
-               * 这条不并进上面那一批：它依赖档案 id，必须等档案回来才能发。
-               * 也刻意不 await 进主流程——地基进度晚一点出来无所谓，
-               * 不该为它把整页的加载态拖长。
-               */
-              fetch(`/api/positioning?profileId=${active.id}`)
-                .then((r) => (r.ok ? r.json() : []))
-                .then((rows: any) => {
-                  if (Array.isArray(rows)) {
-                    setPosTypes(rows.map((x: any) => x.positioning_type ?? ""));
-                  }
-                })
-                .catch(() => {});
-            }
-          }
-        }
+        if (profileRes?.ok) applyProfiles(await profileRes.json());
 
         if (historyRes?.ok) {
           const list = await historyRes.json();
@@ -341,13 +357,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <Link
-            href="/dashboard/profiles"
-            className="glass-panel glass-interactive flex items-center gap-2 rounded-xl px-4 py-2 text-[13px]"
-          >
-            <User className="h-4 w-4 text-muted-foreground" />
-            {loading ? "档案" : profile ? "切换档案" : "创建档案"}
-          </Link>
+          <ProfileQuickSwitch loading={loading} hasProfile={!!profile} />
         </header>
 
         {/* 今日看板：时钟 + 待办，进来第一眼看到的就是现在几点、今天要做什么 */}

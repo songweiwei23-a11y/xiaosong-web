@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { notify, confirmDialog } from '@/components/ui/feedback';
+import { getActiveProfileId, onActiveProfileChange, setActiveProfileId } from '@/lib/active-profile';
 
 interface UserProfile {
   id: string
@@ -23,10 +24,20 @@ export default function ProfilesPage() {
   const router = useRouter()
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
+  // 哪个是当前在用的。原来这一页只能编辑、删除，没法切换——首页"切换档案"跳过来就卡住了
+  const [activeId, setActiveId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchProfiles()
+    setActiveId(getActiveProfileId())
+    return onActiveProfileChange(() => setActiveId(getActiveProfileId()))
   }, [])
+
+  const activate = (profile: UserProfile) => {
+    // 统一入口：写存储 + 广播，侧边栏、首页、各板块一起跟着变
+    setActiveProfileId(profile.id, profile)
+    notify(`已切换到「${profile.profile_name}」`)
+  }
 
   const fetchProfiles = async () => {
     try {
@@ -177,10 +188,21 @@ export default function ProfilesPage() {
                     <span className="ml-2 text-sm text-foreground">{profile.fans_level}</span>
                   </div>
 
-                  <div className="pt-3 border-t border-border">
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
                     <span className="text-xs text-muted-foreground">
                       创建于 {new Date(profile.created_at).toLocaleDateString('zh-CN')}
                     </span>
+                    {profile.id === activeId ? (
+                      <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">✓ 当前在用</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => activate(profile)}
+                        className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                      >
+                        设为当前
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
