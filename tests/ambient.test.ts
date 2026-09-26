@@ -6,7 +6,14 @@
 import { describe, it, expect } from 'vitest';
 import { AMBIENT_SOUNDS, SYNTH_RATE, synthesize, type AmbientId } from '@/lib/ambient/synth';
 import { DEFAULT_MASTER, DEFAULT_VOLUME } from '@/lib/ambient/engine';
+import fs from 'node:fs';
+import path from 'node:path';
 import { readCode } from './helpers/source';
+
+const listTsx = (dir: string): string[] =>
+  fs.readdirSync(path.join(process.cwd(), dir), { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? listTsx(path.join(dir, e.name)) : e.name.endsWith('.tsx') ? [path.join(dir, e.name)] : []
+  );
 
 const rms = (a: Float32Array, from = 0, to = a.length) => {
   let s = 0;
@@ -104,8 +111,26 @@ describe('播放器和界面', () => {
     const pill = readCode('components/ambient/AmbientPill.tsx');
     expect(pill).toMatch(/onClick=\{\(\) => next\(\)\}/);
     expect(pill).toMatch(/onClick=\{\(\) => toggle\(\)\}/);
-    // 暂停了也留着，才能在别的页面接着放
-    expect(pill).toMatch(/if \(!s\.started \|\| names\.length === 0\) return null/);
+    // 一直都在：原来要先在首页放过才出现，在别的板块开不了
+    expect(pill).not.toMatch(/return null/);
+    // 点名字展开和首页同一块完整面板，手机上从底部升起
+    expect(pill).toMatch(/<AdaptivePopover[\s\S]*<AmbientMixer \/>[\s\S]*<\/AdaptivePopover>/);
+    expect(pill).toMatch(/panelRef\.current\?\.contains\(t\)/);
+  });
+
+  it('站内跳转不整页刷新（整页刷新会把正在放的白噪音掐断）', () => {
+    const files = [
+      ...listTsx('app/dashboard'),
+      ...listTsx('components'),
+    ];
+    expect(files.length).toBeGreaterThan(60); // 自证不是空转
+    const bad: string[] = [];
+    for (const f of files) {
+      const src = readCode(f);
+      for (const m of src.matchAll(/window\.location\.(?:href\s*=|assign\(|replace\()\s*['"`]\/(?!api\/)/g)) bad.push(`${f}: ${m[0]}`);
+      for (const m of src.matchAll(/<a\b[^>]*\bhref=["'`{]+\/(?!api\/)/g)) bad.push(`${f}: ${m[0]}`);
+    }
+    expect(bad).toEqual([]);
   });
 
   it('首页面板：切换、播放暂停、定时、总音量都在', () => {

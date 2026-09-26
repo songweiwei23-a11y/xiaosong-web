@@ -400,7 +400,8 @@ export default function PositioningPage() {
             请先创建一个用户档案。
           </p>
           <button
-            onClick={() => window.location.href = '/dashboard/profiles/new'}
+            // 站内跳转走路由，不整页刷新——整页刷新会把正在放的白噪音掐断
+            onClick={() => router.push('/dashboard/profiles/new')}
             className="px-6 py-3 brand-gradient text-white rounded-xl font-medium transition-all flex items-center gap-2 mx-auto"
           >
             <Plus className="w-5 h-5" />
