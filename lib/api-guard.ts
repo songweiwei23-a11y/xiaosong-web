@@ -188,7 +188,13 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
  * 使用 service_role 客户端直接原子操作，无竞态风险。
  * 若扣减失败仅记录日志，不影响已返回的流式内容。
  */
-export async function incrementUsageServer(userId: string, feature: string, taskType?: string): Promise<void> {
+export async function incrementUsageServer(
+  userId: string,
+  feature: string,
+  taskType?: string,
+  /** 这次做了什么（自由对话的提问和回答），给管理后台的实时监控看 */
+  detail?: Record<string, unknown>
+): Promise<void> {
   try {
     const supabase = getServiceSupabase();
 
@@ -200,9 +206,13 @@ export async function incrementUsageServer(userId: string, feature: string, task
 
     // 记一条使用记录：首页「本月已用」按它按自然月数，删历史记录也不会少。
     // 表还没建（迁移没跑）时只记日志，不影响计数器
-    const { error: eventError } = await supabase
-      .from('usage_events')
-      .insert({ user_id: userId, feature, task_type: taskType ?? null });
+    const base = { user_id: userId, feature, task_type: taskType ?? null };
+    const row: Record<string, unknown> = detail ? { ...base, detail } : base;
+    let { error: eventError } = await supabase.from('usage_events').insert(row);
+    // detail 列是后加的：迁移没跑时整条插入会失败，那样连"本月已用"都少记一次。退回不带它再写
+    if (eventError && detail) {
+      ({ error: eventError } = await supabase.from('usage_events').insert(base));
+    }
     if (eventError) console.error('[api-guard] 使用记录写入失败:', eventError.message);
 
     // 获取当前值

@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Activity, Bell, BellOff, Users, Zap, Wallet, AlertTriangle,
-  Wifi, WifiOff, TrendingUp,
+  Wifi, WifiOff, TrendingUp, Eye, EyeOff, X, ChevronDown,
 } from "lucide-react";
 import {
-  relativeTime, soundFor, newEventsSince, rememberSeen,
-  ONLINE_WINDOW_MIN,
-  type MonitorEvent,
+  relativeTime, soundFor, newEventsSince, rememberSeen, maskEmail,
+  ONLINE_WINDOW_MIN, ACTIVE_WINDOW_HOURS,
+  type MonitorEvent, type ActiveUser, type RecordRef,
 } from "@/lib/monitor";
 
 /**
@@ -28,7 +28,9 @@ import {
 
 type Snapshot = {
   now: string;
-  online: { name: string; minutesAgo: number }[];
+  /** 24 小时内有动静的人，带完整邮箱、档案、最后做了什么、今天用了几次 */
+  active: ActiveUser[];
+  onlineCount: number;
   today: { generations: number; newUsers: number; orders: number; revenue: number };
   totals: { users: number; generations: number; pendingReview: number; pendingPay: number };
   pulse: number[];
@@ -110,6 +112,28 @@ export default function MonitorPage() {
   const [live, setLive] = useState(false);
   const [flash, setFlash] = useState<MonitorEvent | null>(null);
   const [clock, setClock] = useState("");
+  /*
+   * 投屏打码。默认不打——管理员要看清是谁、做了什么；
+   * 大屏投到会议室或要截图外发时，自己点一下遮住邮箱和内容。记在本机。
+   */
+  const [privacy, setPrivacy] = useState(false);
+  /** 点了某个活跃用户：动态只看他的 */
+  const [focusUser, setFocusUser] = useState<{ id: string; email: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      setPrivacy(localStorage.getItem("monitor-privacy") === "1");
+    } catch {}
+  }, []);
+  const togglePrivacy = () => {
+    setPrivacy((p) => {
+      try {
+        localStorage.setItem("monitor-privacy", p ? "0" : "1");
+      } catch {}
+      return !p;
+    });
+  };
+  const showEmail = (email: string) => (privacy ? maskEmail(email) : email);
 
   const sound = useSound();
   const seenRef = useRef<Set<string>>(new Set());
@@ -243,7 +267,7 @@ export default function MonitorPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="text-right">
                 <div className="font-mono text-[28px] leading-none tabular-nums tracking-[0.08em] text-cyan-200">
                   {clock || "--:--:--"}
@@ -252,6 +276,18 @@ export default function MonitorPage() {
                   {new Date().toLocaleDateString("zh-CN")}
                 </div>
               </div>
+              <button
+                onClick={togglePrivacy}
+                title="投屏或截图外发前点一下：遮住邮箱和生成内容"
+                className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[12.5px] transition-colors ${
+                  privacy
+                    ? "border-amber-400/50 bg-amber-400/10 text-amber-300"
+                    : "border-slate-500/40 bg-white/[0.03] text-slate-300"
+                }`}
+              >
+                {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {privacy ? "已打码" : "投屏打码"}
+              </button>
               <button
                 onClick={() => (sound.enabled ? sound.disable() : sound.unlock())}
                 className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[12.5px] transition-colors ${
@@ -304,8 +340,8 @@ export default function MonitorPage() {
 
         {/* KPI */}
         <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Kpi icon={Users} label="最近活跃" value={snap?.online.length ?? 0}
-               hint={`${ONLINE_WINDOW_MIN} 分钟内登录过`} tone="cyan" />
+          <Kpi icon={Users} label="正在用" value={snap?.onlineCount ?? 0}
+               hint={`${ONLINE_WINDOW_MIN} 分钟内有操作 · ${ACTIVE_WINDOW_HOURS} 小时内 ${snap?.active.length ?? 0} 人`} tone="cyan" />
           <Kpi icon={Zap} label="今日生成" value={snap?.today.generations ?? 0}
                hint={`累计 ${snap?.totals.generations ?? 0} 次`} tone="violet" />
           <Kpi icon={TrendingUp} label="今日新注册" value={snap?.today.newUsers ?? 0}
@@ -315,8 +351,7 @@ export default function MonitorPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-          {/* 左：脉搏 + 功能分布 */}
-          <div className="space-y-4">
+          {/* 上排：脉搏 + 功能分布 */}
             <Panel
               title="最近一小时活跃脉搏"
               icon={Activity}
@@ -429,57 +464,69 @@ export default function MonitorPage() {
                 </div>
               )}
             </Panel>
-          </div>
+        </div>
 
-          {/* 右：在线 + 事件流 */}
-          <div className="space-y-4">
-            <Panel title={`最近活跃用户（${snap?.online.length ?? 0}）`} icon={Wifi}>
-              {(snap?.online ?? []).length === 0 ? (
-                <EmptyBox text={`${ONLINE_WINDOW_MIN} 分钟内没有人登录`} height={96} />
+        {/*
+          下排：谁在用、做了什么。
+          原来挤在右边窄栏里，只有打了码的邮箱和"有人在用「脚本生成」"——
+          看不出是谁、哪个号、写的什么，管理员没法据此判断产品的真实状况。
+          现在单独一整排，写全：完整邮箱、套餐、档案、输入、结果，点开看全文。
+        */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.35fr]">
+          <Panel
+            title={`最近活跃用户（${snap?.active.length ?? 0}）`}
+            icon={Wifi}
+            right={<span className="text-[11px] text-slate-500">{ACTIVE_WINDOW_HOURS} 小时内 · 点一个人只看他的动态</span>}
+          >
+            {(snap?.active ?? []).length === 0 ? (
+              <EmptyBox text={`${ACTIVE_WINDOW_HOURS} 小时内没有人用过`} height={120} />
+            ) : (
+              <div className="space-y-2 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1">
+                {snap!.active.map((u) => (
+                  <ActiveUserCard
+                    key={u.id}
+                    u={u}
+                    email={showEmail(u.email)}
+                    hideContent={privacy}
+                    selected={focusUser?.id === u.id}
+                    onSelect={() => setFocusUser(focusUser?.id === u.id ? null : { id: u.id, email: u.email })}
+                  />
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel
+            title="实时动态"
+            icon={Activity}
+            right={
+              focusUser ? (
+                <button
+                  onClick={() => setFocusUser(null)}
+                  className="flex min-w-0 items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-400/10 px-2.5 py-1 text-[11px] text-cyan-200"
+                >
+                  <span className="truncate">只看 {showEmail(focusUser.email)}</span>
+                  <X className="h-3 w-3 shrink-0" />
+                </button>
               ) : (
-                <div className="space-y-1.5">
-                  {snap!.online.slice(0, 8).map((u) => (
-                    <div key={u.name} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
-                      <span className="flex items-center gap-2 text-[12.5px] text-slate-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.9)]" />
-                        {u.name}
-                      </span>
-                      <span className="text-[11px] text-slate-500">
-                        {u.minutesAgo < 1 ? "刚刚" : `${u.minutesAgo} 分钟前`}
-                      </span>
-                    </div>
+                <span className="text-[11px] text-slate-500">谁 · 哪个档案 · 输入了什么 · 生成了什么</span>
+              )
+            }
+          >
+            {(() => {
+              const list = (snap?.events ?? []).filter((e) => !focusUser || e.user?.id === focusUser.id);
+              if (list.length === 0) {
+                return <EmptyBox text={focusUser ? "最近的动态里没有这个人的记录" : "暂无动态"} height={120} />;
+              }
+              return (
+                <div className="space-y-2 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1">
+                  {list.map((e) => (
+                    <EventCard key={e.id} e={e} email={e.user ? showEmail(e.user.email) : ""} hideContent={privacy} />
                   ))}
                 </div>
-              )}
-            </Panel>
-
-            <Panel title="实时动态" icon={Activity}>
-              <div className="max-h-[360px] space-y-1.5 overflow-y-auto pr-1">
-                {(snap?.events ?? []).length === 0 ? (
-                  <EmptyBox text="暂无动态" height={120} />
-                ) : (
-                  snap!.events.map((e) => (
-                    <div
-                      key={e.id}
-                      className={`rounded-lg border-l-2 px-3 py-2 ${
-                        e.level === "urgent"
-                          ? "border-rose-400 bg-rose-500/[0.10]"
-                          : e.level === "good"
-                            ? "border-emerald-400 bg-emerald-500/[0.08]"
-                            : "border-cyan-400/50 bg-white/[0.025]"
-                      }`}
-                    >
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-[12.5px] text-slate-100">{e.title}</span>
-                        <span className="shrink-0 text-[11px] text-slate-500">{relativeTime(e.at)}</span>
-                      </div>
-                      {e.detail && <div className="mt-0.5 text-[11px] text-slate-400">{e.detail}</div>}
-                    </div>
-                  ))
-                )}
-              </div>
-            </Panel>
-          </div>
+              );
+            })()}
+          </Panel>
         </div>
 
         {/*
@@ -522,8 +569,221 @@ export default function MonitorPage() {
                 : "border-cyan-400/50 bg-cyan-500/15"
           }`}
         >
-          <div className="text-[14px] font-medium text-white">{flash.title}</div>
-          {flash.detail && <div className="mt-1 text-[12px] text-white/75">{flash.detail}</div>}
+          <div className="break-all text-[14px] font-medium text-white">
+            {privacy && flash.user ? flash.title.replace(flash.user.email, maskEmail(flash.user.email)) : flash.title}
+          </div>
+          {flash.detail && !(privacy && flash.type === "usage") && (
+            <div className="mt-1 line-clamp-2 break-all text-[12px] text-white/75">
+              {privacy && flash.user ? flash.detail.replace(flash.user.email, maskEmail(flash.user.email)) : flash.detail}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 「09-26 14:03」：相对时间旁边给个绝对时间，对账时用得上 */
+function stamp(at: string) {
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+const HIDDEN = "（已打码）";
+
+/** 一个活跃用户：是谁、什么套餐、名下几个号、最后在做什么、今天用了多少 */
+function ActiveUserCard({
+  u, email, hideContent, selected, onSelect,
+}: {
+  u: ActiveUser; email: string; hideContent: boolean; selected: boolean; onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`block w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+        selected ? "border-cyan-400/60 bg-cyan-400/[0.08]" : "border-white/[0.06] bg-white/[0.03] hover:border-cyan-400/30"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${
+              u.online ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.9)]" : "bg-slate-600"
+            }`}
+            title={u.online ? `${ONLINE_WINDOW_MIN} 分钟内有操作` : ""}
+          />
+          <span className="break-all text-[13px] font-medium text-slate-100">{email}</span>
+        </span>
+        <span className="shrink-0 text-right text-[11px] leading-tight text-slate-500">
+          {relativeTime(u.lastAt)}
+          <br />
+          <span className="text-slate-600">{stamp(u.lastAt)}</span>
+        </span>
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+        <span className="rounded-full border border-violet-400/40 bg-violet-400/10 px-2 py-0.5 text-violet-200">{u.plan}</span>
+        {u.profiles.length ? (
+          u.profiles.map((p, i) => (
+            <span key={`${p}-${i}`} className="rounded-full border border-cyan-400/25 bg-cyan-400/[0.06] px-2 py-0.5 text-cyan-200/90">
+              {p}
+            </span>
+          ))
+        ) : (
+          <span className="text-slate-500">还没建档案</span>
+        )}
+      </div>
+
+      <div className="mt-1.5 break-all text-[12px] text-slate-300">
+        <span className="text-slate-500">最后：</span>
+        {hideContent ? u.lastAction.split(" · ")[0] : u.lastAction}
+      </div>
+
+      <div className="mt-1 text-[11.5px] text-slate-400">
+        <span className="text-slate-500">今天 </span>
+        <span className="font-mono tabular-nums text-cyan-300">{u.todayCount}</span>
+        <span className="text-slate-500"> 次</span>
+        {u.todayFeatures.length > 0 && (
+          <span className="text-slate-400"> · {u.todayFeatures.map((f) => `${f.name}×${f.count}`).join("、")}</span>
+        )}
+        {u.registeredAt && <span className="text-slate-600"> · 注册于 {stamp(u.registeredAt)}</span>}
+      </div>
+    </button>
+  );
+}
+
+type RecordDetail = {
+  at: string;
+  feature: string;
+  user?: { email: string; plan: string };
+  profiles: string[];
+  profile: string;
+  work: string;
+  fields: { label: string; value: string }[];
+  result: string;
+  truncated: boolean;
+  note?: string;
+};
+
+/** 一条动态：谁、哪个档案、用了什么、输入、结果开头；能点开看全文 */
+function EventCard({ e, email, hideContent }: { e: MonitorEvent; email: string; hideContent: boolean }) {
+  const [open, setOpen] = useState(false);
+  const tone =
+    e.level === "urgent"
+      ? "border-rose-400 bg-rose-500/[0.10]"
+      : e.level === "good"
+        ? "border-emerald-400 bg-emerald-500/[0.08]"
+        : "border-cyan-400/50 bg-white/[0.025]";
+  const isUsage = e.type === "usage";
+  // 下面一行已经写了是谁，标题里就不再重复邮箱（弹窗提示里的标题仍然带着）
+  const heading = isUsage ? e.feature : e.user ? e.title.replace(`${e.user.email} `, "") : e.title;
+
+  return (
+    <div className={`rounded-xl border-l-2 px-3 py-2.5 ${tone}`}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="min-w-0 break-all text-[13px] font-medium text-slate-100">{heading}</span>
+        <span className="shrink-0 text-right text-[11px] leading-tight text-slate-500">
+          {relativeTime(e.at)}
+          <br />
+          <span className="text-slate-600">{stamp(e.at)}</span>
+        </span>
+      </div>
+
+      {(e.user || e.profile) && (
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
+          {e.user && <span className="break-all text-slate-200">{email}</span>}
+          {e.user && <span className="text-violet-300/90">{e.user.plan}</span>}
+          {e.profile && (
+            <span className="rounded-full border border-cyan-400/25 bg-cyan-400/[0.06] px-2 py-0.5 text-cyan-200/90">
+              档案：{e.profile}
+            </span>
+          )}
+          {e.work && !hideContent && <span className="text-slate-400">作品：{e.work}</span>}
+        </div>
+      )}
+
+      {isUsage ? (
+        hideContent ? (
+          <div className="mt-1 text-[11.5px] text-slate-500">{HIDDEN}</div>
+        ) : (
+          <>
+            {e.summary && <div className="mt-1 break-all text-[12px] text-slate-300">{e.summary}</div>}
+            {e.excerpt && (
+              <div className="mt-1 line-clamp-2 break-all text-[11.5px] text-slate-400">
+                <span className="text-slate-500">结果：</span>
+                {e.excerpt}
+              </div>
+            )}
+          </>
+        )
+      ) : (
+        e.detail && !e.user?.email.includes(e.detail) && (
+          <div className="mt-0.5 break-all text-[11.5px] text-slate-400">{e.detail}</div>
+        )
+      )}
+
+      {e.ref && !hideContent && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="mt-1.5 flex items-center gap-1 text-[11.5px] text-cyan-300 hover:text-cyan-200"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+          {open ? "收起" : "看完整记录"}
+        </button>
+      )}
+      {open && e.ref && !hideContent && <RecordView refInfo={e.ref} />}
+    </div>
+  );
+}
+
+/** 点开后才去取这一条的全文——列表每 5 秒轮询一次，不能每次都带几十条全文 */
+function RecordView({ refInfo }: { refInfo: RecordRef }) {
+  const [rec, setRec] = useState<RecordDetail | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/monitor/record?kind=${refInfo.kind}&id=${encodeURIComponent(refInfo.id)}`, { cache: "no-store" })
+      .then(async (r) => {
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(body.error || `接口返回 ${r.status}`);
+        if (alive) setRec(body);
+      })
+      .catch((err: unknown) => alive && setError(err instanceof Error ? err.message : String(err)));
+    return () => {
+      alive = false;
+    };
+  }, [refInfo.kind, refInfo.id]);
+
+  if (error) return <div className="mt-2 text-[12px] text-rose-300">{error}</div>;
+  if (!rec) return <div className="mt-2 text-[12px] text-slate-500">正在取完整记录…</div>;
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-white/[0.08] bg-black/30 p-3 text-[12px]">
+      {rec.note && <div className="text-amber-200/80">{rec.note}</div>}
+      {rec.profiles.length > 0 && (
+        <div className="text-slate-400">
+          <span className="text-slate-500">他名下的档案：</span>
+          {rec.profiles.join("、")}
+        </div>
+      )}
+      {rec.fields.length > 0 && (
+        <dl className="space-y-1">
+          {rec.fields.map((f, i) => (
+            <div key={`${f.label}-${i}`} className="grid grid-cols-[5.5rem_1fr] gap-2">
+              <dt className="text-slate-500">{f.label}</dt>
+              <dd className="whitespace-pre-wrap break-all text-slate-200">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {rec.result && (
+        <div>
+          <div className="mb-1 text-slate-500">生成结果{rec.truncated ? "（太长，只显示前 2 万字）" : ""}</div>
+          <div className="whitespace-pre-wrap break-all leading-relaxed text-slate-200">{rec.result}</div>
         </div>
       )}
     </div>

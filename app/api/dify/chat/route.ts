@@ -206,7 +206,11 @@ export async function POST(request: NextRequest) {
               if (hasContent && guard.userId) {
                 // key 必须与 api-guard 的 featureMap 完全一致（驼峰 freeChat）。
                 // 此处曾传 'chat'，映射不到列名，扣减被静默跳过，用了不计次。
-                await incrementUsageServer(guard.userId, 'freeChat', '自由对话')
+                await incrementUsageServer(guard.userId, 'freeChat', '自由对话', {
+                  question: (query || '').slice(0, 2000),
+                  answer: answerText.slice(0, 4000),
+                  profile_id: profileId ?? null,
+                })
 
                 // 追问出的新一批选题存进选题库：能单独拿去写脚本，下次也不会再出
                 if (askingNewTopics) {

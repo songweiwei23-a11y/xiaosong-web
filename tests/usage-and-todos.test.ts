@@ -34,7 +34,8 @@ describe('额度：企业版也要滚周期', () => {
   });
 
   it('每次扣减都记一条使用记录，带上任务名', () => {
-    expect(guard).toMatch(/from\('usage_events'\)\s*\.insert\(\{ user_id: userId, feature, task_type/);
+    expect(guard).toMatch(/const base = \{ user_id: userId, feature, task_type: taskType \?\? null \}/);
+    expect(guard).toMatch(/from\('usage_events'\)\.insert\(row\)/);
     expect(readCode('app/api/dify/stream/route.ts')).toMatch(/incrementUsageServer\(userId, getFeatureFromTaskType\(body\.taskType\), body\.taskType\)/);
   });
 

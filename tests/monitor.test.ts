@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  parseTime, minutesAgo, maskEmail, onlineUsers, isToday,
+  parseTime, minutesAgo, maskEmail, activeUsers, buildDirectory, inputFields, inputSummary, isToday,
   pulseByMinute, featureBreakdown, buildEvents, newEventsSince,
-  soundFor, relativeTime, effectiveRevenue, ONLINE_WINDOW_MIN, rememberSeen, SEEN_CAP,
+  soundFor, relativeTime, effectiveRevenue, ONLINE_WINDOW_MIN, ACTIVE_WINDOW_HOURS, rememberSeen, SEEN_CAP,
 } from '@/lib/monitor';
+import { readCode } from './helpers/source';
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
 
@@ -38,8 +39,8 @@ describe('时间解析要吃得下真实数据', () => {
   });
 });
 
-describe('邮箱脱敏', () => {
-  it('大屏可能被投屏或截图，不显示完整邮箱', () => {
+describe('投屏打码（只在管理员自己打开开关时用）', () => {
+  it('打码规则', () => {
     expect(maskEmail('songweiwei@example.com')).toBe('so****@example.com');
     expect(maskEmail('ab@qq.com')).toBe('ab*@qq.com');
   });
@@ -51,26 +52,89 @@ describe('邮箱脱敏', () => {
   });
 });
 
-describe('最近活跃用户', () => {
+/*
+ * 管理员要知道具体是谁、在哪个号上、做了什么内容（产品方明确要求不隐藏）。
+ * 原来只有打了码的邮箱和"有人在用「脚本生成」"，看不出项目的真实状况。
+ */
+const users = [
+  { id: 'u1', email: 'aaa@x.com', created_at: '2026-09-01T00:00:00Z', last_sign_in_at: null as string | null },
+  { id: 'u2', email: 'bbb@x.com', created_at: '2026-09-01T00:00:00Z', last_sign_in_at: null as string | null },
+  { id: 'u3', email: 'ccc@x.com', created_at: '2026-09-01T00:00:00Z', last_sign_in_at: null as string | null },
+];
+const dir = buildDirectory({
+  users,
+  profiles: [
+    { id: 'p1', user_id: 'u1', profile_name: '宠物店老板号' },
+    { id: 'p2', user_id: 'u1', profile_name: '个人IP号' },
+  ],
+  subscriptions: [{ user_id: 'u1', plan: 'pro', status: 'active', end_date: null }],
+  works: [{ id: 'w1', title: '猫粮避坑', profile_id: 'p2' }],
+});
+
+describe('最近活跃用户：谁、什么套餐、哪几个号、最后做了什么', () => {
   const now = Date.now();
 
-  it('只算窗口内登录过的，按最近排前面', () => {
-    const list = onlineUsers(
-      [
-        { email: 'aaa@x.com', last_sign_in_at: T(10, now) },
-        { email: 'bbb@x.com', last_sign_in_at: T(2, now) },
-        { email: 'ccc@x.com', last_sign_in_at: T(ONLINE_WINDOW_MIN + 5, now) },
-        { email: 'ddd@x.com', last_sign_in_at: null },
+  it('登录、生成、使用三种动静取最近的；只列 24 小时内的，按最近排', () => {
+    const list = activeUsers({
+      users: [
+        { ...users[0], last_sign_in_at: T(60 * 24 * 20, now) }, // 20 天前登录，但刚刚在用
+        { ...users[1], last_sign_in_at: T(10, now) },
+        { ...users[2], last_sign_in_at: T(60 * (ACTIVE_WINDOW_HOURS + 1), now) },
       ],
-      now
-    );
-    expect(list.map((u) => u.minutesAgo)).toEqual([2, 10]);
-    expect(list[0].name).toContain('@x.com');
+      generations: [
+        { id: 'g1', user_id: 'u1', task_type: '脚本生成', created_at: T(2, now), input_data: { topic: '猫粮怎么选', profile_id: 'p1' } },
+      ],
+      usage: [{ id: 'e1', user_id: 'u1', feature: 'script', task_type: '脚本生成', created_at: T(2, now) }],
+      dir,
+      now,
+    });
+    expect(list.map((u) => u.email)).toEqual(['aaa@x.com', 'bbb@x.com']);
+    const a = list[0];
+    // 完整邮箱，不打码
+    expect(a.email).toBe('aaa@x.com');
+    expect(a.plan).toBe('专业会员');
+    expect(a.profiles).toEqual(['宠物店老板号', '个人IP号']);
+    expect(a.lastAction).toBe('脚本生成 · 主题：猫粮怎么选');
+    expect(a.online).toBe(true);
+    expect(a.todayCount).toBe(1);
+    expect(list[1].lastAction).toBe('登录');
+    expect(list[1].plan).toBe('免费版');
+  });
+
+  it('只在自由对话里聊天的人也算活跃，最后做了什么写出提问', () => {
+    const list = activeUsers({
+      users,
+      usage: [{ id: 'e1', user_id: 'u2', feature: 'freeChat', task_type: '自由对话', created_at: T(1, now), detail: { question: '直播间怎么留人' } }],
+      dir,
+      now,
+    });
+    expect(list[0].email).toBe('bbb@x.com');
+    expect(list[0].lastAction).toBe('自由对话 · 提问：直播间怎么留人');
   });
 
   it('空输入不炸', () => {
-    expect(onlineUsers([], now)).toEqual([]);
-    expect(onlineUsers(undefined as never, now)).toEqual([]);
+    expect(activeUsers({ dir, now })).toEqual([]);
+  });
+
+  it('套餐名来自套餐表，不是手写', () => {
+    expect(activeUsers({ users: [{ ...users[0], last_sign_in_at: T(1, now) }], dir, now })[0].plan).toBe('专业会员');
+  });
+});
+
+describe('输入内容翻成人话', () => {
+  it('字段翻中文名、内部 id 不显示、没列到的字段照原名保留', () => {
+    const f = inputFields({ topic: '猫粮', platform: '抖音', profile_id: 'p1', newThing: 'x', empty: '' });
+    expect(f).toEqual([
+      { label: '主题', value: '猫粮' },
+      { label: '平台', value: '抖音' },
+      { label: 'newThing', value: 'x' },
+    ]);
+  });
+
+  it('摘要挑最能说明在做什么的字段，一行、截断', () => {
+    expect(inputSummary({ platform: '抖音', topic: '猫粮\n怎么选' })).toBe('主题：猫粮 怎么选');
+    expect(inputSummary({ draftContent: '字'.repeat(100) }, 10)).toBe(`初稿：${'字'.repeat(10)}…`);
+    expect(inputSummary(null)).toBe('');
   });
 });
 
@@ -166,6 +230,74 @@ describe('事件流', () => {
 
   it('时间是脏数据的记录直接跳过', () => {
     expect(buildEvents({ generations: [{ id: 'g', created_at: '坏数据' }], now })).toEqual([]);
+  });
+});
+
+describe('事件流写全：谁、哪个档案、输入了什么、生成了什么', () => {
+  const now = Date.now();
+
+  it('生成记录：完整邮箱、套餐、档案、输入摘要、结果开头、能点开', () => {
+    const [e] = buildEvents({
+      generations: [{
+        id: 'g1', user_id: 'u1', task_type: '脚本生成', created_at: T(1, now),
+        input_data: { topic: '猫粮怎么选', platform: '抖音', profile_id: 'p1' },
+        result: '## 策略卡\n**开场**：先说结论', work_id: 'w1',
+      }],
+      dir,
+      now,
+    });
+    expect(e.user).toEqual({ id: 'u1', email: 'aaa@x.com', plan: '专业会员' });
+    expect(e.title).toContain('aaa@x.com');
+    expect(e.profile).toBe('宠物店老板号');
+    expect(e.feature).toBe('脚本生成');
+    expect(e.summary).toBe('主题：猫粮怎么选');
+    expect(e.excerpt).toBe('策略卡 开场：先说结论');
+    expect(e.work).toBe('猫粮避坑');
+    expect(e.ref).toEqual({ kind: 'history', id: 'g1' });
+  });
+
+  it('输入里没记档案时，按所属作品挂在哪个档案下认', () => {
+    const [e] = buildEvents({
+      generations: [{ id: 'g1', user_id: 'u1', task_type: '审稿优化', created_at: T(1, now), input_data: { draftContent: 'x' }, work_id: 'w1' }],
+      dir,
+      now,
+    });
+    expect(e.profile).toBe('个人IP号');
+  });
+
+  it('查不到邮箱也给出能对上号的 id，不写"匿名"', () => {
+    const [e] = buildEvents({ generations: [{ id: 'g1', user_id: 'abcdef1234567', task_type: 'x', created_at: T(1, now) }], dir, now });
+    expect(e.user?.email).toBe('未知用户（abcdef12）');
+  });
+
+  it('自由对话只在使用记录里有，要单独变成事件并带上提问；别的功能不重复出现', () => {
+    const events = buildEvents({
+      usage: [
+        { id: 1, user_id: 'u2', feature: 'freeChat', task_type: '自由对话', created_at: T(1, now), detail: { question: '直播怎么留人', answer: '先给钩子', profile_id: 'p1' } },
+        { id: 2, user_id: 'u2', feature: 'script', task_type: '脚本生成', created_at: T(1, now) },
+      ],
+      dir,
+      now,
+    });
+    expect(events.length).toBe(1);
+    expect(events[0].id).toBe('chat:1');
+    expect(events[0].user?.email).toBe('bbb@x.com');
+    expect(events[0].summary).toBe('提问：直播怎么留人');
+    expect(events[0].excerpt).toBe('先给钩子');
+    expect(events[0].profile).toBe('宠物店老板号');
+    expect(events[0].ref).toEqual({ kind: 'usage', id: '1' });
+  });
+
+  it('注册和订单写出完整邮箱、订单写出套餐周期和当前状态', () => {
+    const events = buildEvents({
+      users: [{ id: 'u3', email: 'ccc@x.com', created_at: T(3, now) }],
+      orders: [{ id: 'o1', user_id: 'u1', plan_id: 'pro', amount: 99, billing_cycle: 'yearly', status: 'reviewing', created_at: T(2, now) }],
+      dir,
+      now,
+    });
+    expect(events[0].title).toBe('aaa@x.com 要充值');
+    expect(events[0].detail).toBe('专业会员（年付） ¥99 · 当前：待审核');
+    expect(events[1].detail).toBe('ccc@x.com');
   });
 });
 
@@ -281,6 +413,39 @@ describe('页面本身的几条硬要求', () => {
 
   it('后台导航里有入口', () => {
     expect(read('app/admin/layout.tsx')).toContain('/admin/monitor');
+  });
+
+  it('接口不打码：取了用户、输入和结果，也没有调用打码', () => {
+    const route = readCode('app/api/admin/monitor/route.ts');
+    expect(route).toMatch(/select\('id, user_id, task_type, created_at, work_id, input_data, result'\)/);
+    expect(route).toMatch(/from\('user_profiles'\)/);
+    expect(route).toMatch(/from\('subscriptions'\)/);
+    expect(route).toMatch(/billing_cycle/);
+    expect(route).not.toMatch(/maskEmail/);
+    expect(readCode('lib/monitor.ts').match(/maskEmail\(/g)?.length).toBe(1); // 只剩定义本身
+  });
+
+  it('点开看全文的接口也要管理员权限', () => {
+    const rec = readCode('app/api/admin/monitor/record/route.ts');
+    expect(rec).toContain('requireAdmin');
+    expect(rec).toMatch(/if \(!admin\)/);
+  });
+
+  it('页面默认不打码，打码是管理员自己开的开关', () => {
+    const page = readCode('app/admin/monitor/page.tsx');
+    expect(page).toMatch(/const \[privacy, setPrivacy\] = useState\(false\)/);
+    expect(page).toContain('投屏打码');
+    expect(page).toContain('ActiveUserCard');
+    expect(page).toContain('/api/admin/monitor/record');
+    // 旧的"只有打码邮箱 + 几分钟前"那版不在了
+    expect(page).not.toMatch(/snap\??!?\.online\b/);
+  });
+
+  it('自由对话把提问和回答记进使用记录；detail 列没建时退回不带它写，不少记次数', () => {
+    expect(readCode('app/api/dify/chat/route.ts')).toMatch(/incrementUsageServer\(guard\.userId, 'freeChat', '自由对话', \{\s*question:/);
+    const guard = readCode('lib/api-guard.ts');
+    expect(guard).toMatch(/if \(eventError && detail\)[\s\S]{0,120}insert\(base\)/);
+    expect(read('supabase/migrations/20260926_usage_events_detail.sql')).toMatch(/add column if not exists detail jsonb/);
   });
 });
 
