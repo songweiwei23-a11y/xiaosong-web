@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Flag, PartyPopper, Rocket } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Flag, PartyPopper, Rocket } from "lucide-react";
 import { LAUNCH_DAYS, LAUNCH_TOTAL, currentLaunchDay } from "@/lib/launch-plan";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 
@@ -10,6 +10,8 @@ interface Plan {
   startedAt: string;
   doneDays: number[];
 }
+
+const COLLAPSE_KEY = "kaiwu:launch-plan-collapsed";
 
 async function post(body: object): Promise<Plan | null | undefined> {
   const r = await fetch("/api/launch-plan", {
@@ -31,6 +33,23 @@ export function LaunchPlanCard({ className = "" }: { className?: string }) {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  /*
+   * 可以折叠（产品方要的）：展开时整张卡占首页一大块，天天看的人会嫌挡路。
+   * 收起后只剩一行"第几天 · 完成几天"和进度条；收没收记在本机，下次进来保持原样。
+   */
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {}
+  }, []);
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
+      } catch {}
+      return !c;
+    });
 
   useEffect(() => {
     fetch("/api/launch-plan", { cache: "no-store" })
@@ -79,19 +98,30 @@ export function LaunchPlanCard({ className = "" }: { className?: string }) {
       <section className={`glass-panel rounded-2xl p-5 ${className}`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[16px] font-semibold text-foreground">
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-expanded={!collapsed}
+              className="flex items-center gap-2 text-left text-[16px] font-semibold text-foreground"
+            >
               <Rocket className="h-5 w-5 text-primary" />7 天起号计划
-            </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-              不知道从哪开始？每天做一件小事，7 天发出 7 条视频。不考核播放量，做完就打勾。
-            </p>
-            <div className="mt-3 flex gap-1.5" aria-hidden>
-              {LAUNCH_DAYS.map((d) => (
-                <span key={d.day} className="flex h-6 w-6 items-center justify-center rounded-full border border-border/70 text-[11px] text-muted-foreground">
-                  {d.day}
-                </span>
-              ))}
-            </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${collapsed ? "" : "rotate-180"}`} />
+              <span className="sr-only">{collapsed ? "展开" : "收起"}</span>
+            </button>
+            {!collapsed && (
+              <>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                  不知道从哪开始？每天做一件小事，7 天发出 7 条视频。不考核播放量，做完就打勾。
+                </p>
+                <div className="mt-3 flex gap-1.5" aria-hidden>
+                  {LAUNCH_DAYS.map((d) => (
+                    <span key={d.day} className="flex h-6 w-6 items-center justify-center rounded-full border border-border/70 text-[11px] text-muted-foreground">
+                      {d.day}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <button
             type="button"
@@ -115,19 +145,27 @@ export function LaunchPlanCard({ className = "" }: { className?: string }) {
 
   return (
     <section className={`glass-panel rounded-2xl p-5 ${className}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[16px] font-semibold text-foreground">
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-expanded={!collapsed}
+        className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
+      >
+        <span className="flex items-center gap-2 text-[16px] font-semibold text-foreground">
           <Rocket className="h-5 w-5 text-primary" />7 天起号计划
           {!allDone && !over && <span className="text-[13px] font-normal text-muted-foreground">· 今天第 {today} 天</span>}
-        </div>
-        <span className="text-[12.5px] tabular-nums text-muted-foreground">
-          已完成 {doneCount} / {LAUNCH_TOTAL}
         </span>
-      </div>
+        <span className="flex items-center gap-2 text-[12.5px] tabular-nums text-muted-foreground">
+          已完成 {doneCount} / {LAUNCH_TOTAL}
+          <ChevronDown className={`h-4 w-4 transition-transform ${collapsed ? "" : "rotate-180"}`} />
+          <span className="sr-only">{collapsed ? "展开" : "收起"}</span>
+        </span>
+      </button>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10">
         <div className="brand-gradient h-full rounded-full transition-all" style={{ width: `${(doneCount / LAUNCH_TOTAL) * 100}%` }} />
       </div>
 
+      {!collapsed && (<>
       {allDone ? (
         <div className="mt-4 rounded-xl bg-primary/[0.07] p-4">
           <div className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
@@ -206,6 +244,7 @@ export function LaunchPlanCard({ className = "" }: { className?: string }) {
           );
         })}
       </ol>
+      </>)}
     </section>
   );
 }
