@@ -14,13 +14,12 @@ const story = readCode('components/landing/hero/PhoneStory.tsx');
 const loop = readCode('components/landing/hero/loop.ts');
 
 describe('首页动画', () => {
-  it('首页首屏真的用上了它', () => {
-    const home = readCode('app/page.tsx');
-    expect(home).toMatch(/import \{ PhoneStory \} from "@\/components\/landing\/hero\/PhoneStory"/);
-    expect(home).toContain('<PhoneStory />');
-    // 左右两栏，动画那一栏允许收缩（不被内容撑宽）
-    expect(home).toMatch(/lg:grid-cols-\[1fr_1\.05fr\]/);
-    expect(home).toMatch(/<div className="min-w-0">\s*<PhoneStory \/>/);
+  it('首页首屏真的用上了它（在「一句话开始」的右栏，没试之前放它）', () => {
+    expect(readCode('app/page.tsx')).toContain('<TryHero />');
+    const hero = readCode('components/landing/hero/TryHero.tsx');
+    // 左右两栏，右栏允许收缩（不被内容撑宽）
+    expect(hero).toMatch(/lg:grid-cols-\[1fr_1\.05fr\]/);
+    expect(hero).toMatch(/<div className="min-w-0">[\s\S]{0,2500}<PhoneStory \/>/);
   });
 
   it('场景是餐饮店（拍短视频引客需求最大的一类，产品方定）', () => {

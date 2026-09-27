@@ -8,12 +8,13 @@ import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/confi
 import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
 import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
-import { PhoneStory } from "@/components/landing/hero/PhoneStory";
+import { TryHero } from "@/components/landing/hero/TryHero";
+import { REGISTER_URL } from "@/lib/landing";
 import { BRAND_NAME, BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import { 
   Zap, CheckCircle, TrendingUp, ArrowRight, 
   FileText, Lightbulb, Film, Target, Star,
-  Crown, Check, BarChart3, Award, Rocket, BookOpen,
+  Crown, Check, BarChart3, Award, BookOpen,
   Brain, Layers, Clock, Shield, Quote, ChevronRight,
   MessageCircle, Activity, ChevronDown, X
 } from "lucide-react";
@@ -264,9 +265,10 @@ export default function HomePage() {
       {/* Navigation */}
       <header className="fixed top-0 w-full border-b border-border bg-white/80 dark:bg-muted/80 backdrop-blur-xl z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
+          {/* 窄屏（320 宽）时顶栏放不下会把"开物""登录""免费试用"都折成两行：字不许折行，间距收紧 */}
+          <Link href="/" className="flex shrink-0 items-center gap-2 whitespace-nowrap transition-opacity hover:opacity-90 sm:gap-2.5">
             <BrandSeal size={32} />
-            <span className="text-[21px] text-foreground">
+            <span className="hidden text-[21px] text-foreground min-[360px]:inline">
               <BrandWordmark />
             </span>
           </Link>
@@ -279,7 +281,7 @@ export default function HomePage() {
             <a href="#method" className="text-sm font-medium hover:text-primary transition-colors">编导方法</a>
             <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">价格方案</a>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 whitespace-nowrap sm:gap-4">
             <ThemeToggle />
             <LandingNavCTA />
           </div>
@@ -295,70 +297,14 @@ export default function HomePage() {
         </div>
 
         {/*
-          首屏左右两栏：左边标题和按钮，右边「一句话变爆款」的动画。
-          动画是给完全不懂的小白看的——演给他看"说一句你是做什么的，剩下的交给开物"，
-          让他觉得换成自己也能做。手机上动画排在按钮下面。
+          首屏「一句话开始」（产品方从三个版本里选的）：给完全不懂的小白。
+          原来的首屏是"AI编导助手 · 专业编导知识库 · Claude AI 驱动"——
+          说的是我们是谁，小白不知道"编导"是什么，也不在乎知识库多少字。
+          现在标题讲他能得到什么，首屏第一个动作是"就在这儿试"，看完再注册。
+          方法库、知识库这些给懂行的人看的，挪到下面几屏。
         */}
         <div className="container mx-auto relative z-10">
-          <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-12">
-          <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-6">
-              <Rocket className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Claude AI驱动 · 专业编导知识库 · 全流程打通爆款脚本</span>
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-extrabold mb-6 leading-tight">
-              <span className="brand-gradient bg-clip-text text-transparent">
-                AI编导助手
-              </span>
-              <br />
-              <span className="text-foreground">让短视频创作</span>
-              <br />
-              <span className="relative inline-block">
-                <span className="text-foreground">更专业、更高效</span>
-                <svg className="absolute -bottom-2 left-0 w-full" height="12" viewBox="0 0 300 12" fill="none">
-                  <path d="M2 10C50 5,100 2,150 3C200 4,250 7,298 10" stroke="url(#g)" strokeWidth="4" strokeLinecap="round"/>
-                  <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#3b82f6"/><stop offset="50%" stopColor="#a855f7"/><stop offset="100%" stopColor="#ec4899"/>
-                  </linearGradient></defs>
-                </svg>
-              </span>
-            </h1>
-
-            <p className="text-xl md:text-2xl text-muted-foreground dark:text-foreground mb-8 max-w-3xl mx-auto lg:mx-0">
-              基于<span className="font-semibold text-primary">专业编导知识库</span>，
-              结合<span className="font-semibold text-accent">Claude AI</span>大模型，
-              为您提供<span className="font-semibold text-accent">智能化</span>的短视频创作解决方案
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-10 lg:mb-12">
-              <Link href="/dashboard" className="group relative px-8 py-4 brand-gradient text-white rounded-xl font-semibold text-lg shadow-2xl hover:shadow-blue-500/50 transition-all hover:scale-105">
-                <span className="relative z-10 flex items-center gap-2">
-                  立即免费体验 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </Link>
-              {/*
-                原来是「▶ 观看演示」，带播放图标，点了却是跳到页内的方法区——
-                并没有演示视频，用户会以为页面坏了。按它实际去的地方命名。
-              */}
-              <a href="#method" className="px-8 py-4 glass-panel text-foreground rounded-xl font-semibold text-lg border-2 border-border hover:border-primary/40 transition-all hover:scale-105 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-primary" /> 看看方法库
-              </a>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-sm">
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">免费试用·无需信用卡</span></div>
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">一两分钟出一版脚本</span></div>
-              {/* 原来是「98%用户好评」。系统里没有任何评价数据，这个数字是编的。
-                  换成一句确实为真的：知识库和方法都是内置的，不是通用模型现编 */}
-              <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">内置编导知识库</span></div>
-            </div>
-          </div>
-
-          <div className="min-w-0">
-            <PhoneStory />
-          </div>
-          </div>
+          <TryHero />
         </div>
       </section>
 
@@ -730,7 +676,7 @@ export default function HomePage() {
 
           <div className="text-center mt-12">
             <Link 
-              href="/dashboard" 
+              href={REGISTER_URL} 
               className="inline-flex items-center gap-2 px-8 py-4 brand-gradient text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg"
             >
               立即体验全部功能
@@ -938,7 +884,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
-              href="/dashboard" 
+              href={REGISTER_URL} 
               className="group px-10 py-5 bg-white text-primary rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-2xl flex items-center gap-2"
             >
               立即免费开始
@@ -980,7 +926,7 @@ export default function HomePage() {
                 <li><a href="#pricing" className="inline-block py-1.5 hover:text-white transition-colors">价格方案</a></li>
                 {/* /pricing 有一张逐项的功能对比表，原来全站没有任何入口能走到 */}
                 <li><Link href="/pricing" className="inline-block py-1.5 hover:text-white transition-colors">完整功能对比</Link></li>
-                <li><Link href="/dashboard" className="inline-block py-1.5 hover:text-white transition-colors">立即使用</Link></li>
+                <li><Link href={REGISTER_URL} className="inline-block py-1.5 hover:text-white transition-colors">立即使用</Link></li>
               </ul>
             </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
@@ -24,7 +24,31 @@ export default function LoginPage() {
   /** 验证通过、正在把人交接给工作台。这期间全屏过渡层不撤 */
   const [handingOff, setHandingOff] = useState(false);
   const [message, setMessage] = useState("");
+  /** 码是从首页链接带过来的（公开体验码）：输入框下面换一句话，告诉他不用管 */
+  const [codeFromLink, setCodeFromLink] = useState(false);
   const router = useRouter();
+
+  /*
+   * 从首页点"免费试用 / 注册送 10 次"进来：地址是 /login?mode=register&code=体验码。
+   * 直接打开注册、码已填好——完全不懂的小白手上没有邀请码，看到要填码就走了。
+   * 读地址用 window.location 而不是 useSearchParams：后者要求整页包一层 Suspense。
+   *
+   * 已经登录的人点了同样的按钮，直接送回工作台，不让他对着注册表单发愣。
+   */
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("mode") === "register") setIsLogin(false);
+    const code = (q.get("code") || "").trim().toUpperCase();
+    if (code) {
+      setInviteCode(code);
+      setCodeFromLink(true);
+    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace("/dashboard");
+    });
+    // 只在进页面时读一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * 跳转到工作台，并全程保持过渡层。
@@ -272,7 +296,9 @@ export default function LoginPage() {
                   />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  目前为邀请制，需要邀请码才能注册。没有的话请联系我们获取。
+                  {codeFromLink
+                    ? "体验码已经帮你填好了，填上邮箱和密码就能注册。"
+                    : "目前为邀请制，需要邀请码才能注册。没有的话请联系我们获取。"}
                 </p>
               </div>
             )}

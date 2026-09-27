@@ -26,6 +26,9 @@ interface Code {
   created_at: string;
   used_at: string | null;
   used_by_email: string | null;
+  /** 多人共用的码（首页公开体验码）：最多几次、已用几次。迁移前没有这两列 */
+  max_uses?: number;
+  use_count?: number;
 }
 
 interface Stats {
@@ -342,6 +345,12 @@ export default function AdminInvitationsPage() {
                       {c.plan_type !== "free" && (
                         <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] text-primary">
                           {SUBSCRIPTION_PLANS[c.plan_type as keyof typeof SUBSCRIPTION_PLANS]?.name}
+                        </span>
+                      )}
+                      {/* 公开码：一眼看到有多少人是从首页注册进来的 */}
+                      {(c.max_uses ?? 1) > 1 && (
+                        <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                          公开码 · 已用 {c.use_count ?? 0} / {c.max_uses}
                         </span>
                       )}
                     </div>

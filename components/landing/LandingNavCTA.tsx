@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { REGISTER_URL } from "@/lib/landing";
 
 export function LandingNavCTA() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
@@ -46,9 +47,10 @@ export function LandingNavCTA() {
       >
         登录
       </Link>
+      {/* 直接进注册、首页体验码已填好：小白手上没有邀请码，看到要填码就走了 */}
       <Link 
-        href="/login" 
-        className="brand-gradient text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all font-medium"
+        href={REGISTER_URL} 
+        className="brand-gradient text-white px-4 sm:px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all font-medium"
       >
         免费试用
       </Link>
