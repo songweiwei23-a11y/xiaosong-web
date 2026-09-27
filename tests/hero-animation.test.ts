@@ -23,6 +23,11 @@ describe('首页动画', () => {
     expect(home).toMatch(/<div className="min-w-0">\s*<PhoneStory \/>/);
   });
 
+  it('场景是餐饮店（拍短视频引客需求最大的一类，产品方定）', () => {
+    expect(story).toMatch(/const PROMPT = "我在县城开了家面馆/);
+    expect(story).not.toMatch(/宠物|猫粮|PawPrint/);
+  });
+
   it('画面与数字标明是示意；不承诺收益', () => {
     expect(story).toContain('画面与数字为示意');
     expect(story).not.toMatch(/月入|年入|赚了|收入翻|保证/);

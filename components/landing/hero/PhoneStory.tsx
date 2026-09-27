@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Check, Heart, MessageCircle, PawPrint, Play, Share2, Sparkles } from "lucide-react";
+import { Check, Heart, MessageCircle, Play, Share2, Soup, Sparkles } from "lucide-react";
 import { easeInOut, easeOut, seg, useFitScale, useLoopClock } from "./loop";
 
 /**
  * 首页动画·「一镜到底的手机」：一句话，是怎么变成一条爆款的。
  *
- * 一台悬浮的手机。左边打出一句"我在县城开了家宠物店"，这句话化成光粒飞进手机，
+ * 一台悬浮的手机。左边打出一句"我在县城开了家面馆"，这句话化成光粒飞进手机，
  * 手机里一步步排出选题、开篇、脚本、分镜，然后整块屏幕变成一条正在播放的视频，
  * 爱心往上飘，身后一条增长曲线画到百万。最后落一句"说一句你是做什么的，剩下的交给开物"。
  *
@@ -18,8 +18,9 @@ import { easeInOut, easeOut, seg, useFitScale, useLoopClock } from "./loop";
 const LOOP = 14;
 const W = 560;
 const H = 440;
-const PROMPT = "我在县城开了家宠物店，想拍短视频";
-const STEPS = ["选题：新手养猫避坑", "开篇：反常识钩子", "脚本：60 秒口播", "分镜：6 个镜头"];
+// 用餐饮店：拍短视频引客的需求里它最多，小白一看就能代入（产品方定）
+const PROMPT = "我在县城开了家面馆，想拍短视频";
+const STEPS = ["选题：一碗汤熬 8 小时", "开篇：反常识钩子", "脚本：60 秒口播", "分镜：6 个镜头"];
 const HEARTS = Array.from({ length: 12 }, (_, i) => ({ at: 7.6 + i * 0.32, sway: ((i * 37) % 11) - 5, size: 12 + ((i * 7) % 8) }));
 // 光粒：从那句话飞进手机屏幕
 const PARTICLES = Array.from({ length: 30 }, (_, i) => ({
@@ -30,7 +31,11 @@ const PARTICLES = Array.from({ length: 30 }, (_, i) => ({
   d: i * 0.018,
 }));
 
-/** freezeAt：定格在第几秒，逐帧检查画面用；首页不传 */
+/**
+ * freezeAt：定格在第几秒，逐帧检查画面用；首页不传。
+ * 要放在有确定宽度的容器里（首页是网格的一栏）：舞台故意不撑宽度，
+ * 放进"按内容收缩"的容器（flex 居中之类）会缩成 0。
+ */
 export function PhoneStory({ freezeAt }: { freezeAt?: number } = {}) {
   const { ref, t } = useLoopClock(LOOP, 10.8, freezeAt);
   const { box, scale } = useFitScale(W);
@@ -170,7 +175,7 @@ export function PhoneStory({ freezeAt }: { freezeAt?: number } = {}) {
                     })}
                   </div>
                   <div className="mt-3 rounded-lg bg-primary/10 px-2 py-1.5 text-[10.5px] leading-snug text-foreground" style={{ opacity: seg(t, 5.2, 5.6) }}>
-                    开头：90% 的人买猫粮，只看价格
+                    开头：同样 15 块一碗，凭什么他家排队
                   </div>
                   <div className="mt-2 space-y-1.5">
                     {[92, 78, 86, 64, 70].map((wd, i) => (
@@ -183,9 +188,10 @@ export function PhoneStory({ freezeAt }: { freezeAt?: number } = {}) {
 
                 {/* 屏幕 2：视频在播 */}
                 <div className="absolute inset-0" style={{ opacity: video, transform: `scale(${1.05 - seg(t, 6.6, 7.3) * 0.05})` }}>
-                  <div className="brand-gradient absolute inset-0 opacity-80" />
+                  {/* 暖色：拍的是一碗面，蓝紫色的画面没有食欲 */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-600 opacity-90" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                  <PawPrint className="absolute left-1/2 top-[38%] h-16 w-16 -translate-x-1/2 -translate-y-1/2 text-white/35" />
+                  <Soup className="absolute left-1/2 top-[38%] h-16 w-16 -translate-x-1/2 -translate-y-1/2 text-white/35" />
                   <Play className="absolute left-1/2 top-[38%] h-7 w-7 -translate-x-1/2 -translate-y-1/2 fill-white/90 text-white/90" style={{ opacity: 1 - seg(t, 7.3, 7.8) }} />
                   {/* 右侧互动栏 */}
                   <div className="absolute bottom-16 right-2 flex flex-col items-center gap-3 text-white">
@@ -220,8 +226,8 @@ export function PhoneStory({ freezeAt }: { freezeAt?: number } = {}) {
                     );
                   })}
                   <div className="absolute bottom-6 left-3 right-12 text-white">
-                    <div className="text-[11px] font-semibold">@县城宠物店</div>
-                    <div className="mt-0.5 text-[10px] leading-snug text-white/85">新手养猫，猫粮这样选才不踩坑</div>
+                    <div className="text-[11px] font-semibold">@县城老面馆</div>
+                    <div className="mt-0.5 text-[10px] leading-snug text-white/85">凌晨四点起锅熬的骨汤，来晚了就没了</div>
                   </div>
                   <div className="absolute bottom-3 left-3 right-3 h-[2px] rounded-full bg-white/25">
                     <div className="h-full rounded-full bg-white" style={{ width: `${((t - 7.2 + 30) % 3) / 3 * 100}%` }} />
