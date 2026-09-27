@@ -8,6 +8,7 @@ import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/confi
 import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
 import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
+import { PhoneStory } from "@/components/landing/hero/PhoneStory";
 import { BRAND_NAME, BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import { 
   Zap, CheckCircle, TrendingUp, ArrowRight, 
@@ -293,14 +294,20 @@ export default function HomePage() {
           <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay:'2s'}} />
         </div>
 
+        {/*
+          首屏左右两栏：左边标题和按钮，右边「一句话变爆款」的动画。
+          动画是给完全不懂的小白看的——演给他看"说一句你是做什么的，剩下的交给开物"，
+          让他觉得换成自己也能做。手机上动画排在按钮下面。
+        */}
         <div className="container mx-auto relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-12">
+          <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-6">
               <Rocket className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">Claude AI驱动 · 专业编导知识库 · 全流程打通爆款脚本</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-extrabold mb-6 leading-tight">
               <span className="brand-gradient bg-clip-text text-transparent">
                 AI编导助手
               </span>
@@ -318,13 +325,13 @@ export default function HomePage() {
               </span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-muted-foreground dark:text-foreground mb-8 max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl text-muted-foreground dark:text-foreground mb-8 max-w-3xl mx-auto lg:mx-0">
               基于<span className="font-semibold text-primary">专业编导知识库</span>，
               结合<span className="font-semibold text-accent">Claude AI</span>大模型，
               为您提供<span className="font-semibold text-accent">智能化</span>的短视频创作解决方案
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-10 lg:mb-12">
               <Link href="/dashboard" className="group relative px-8 py-4 brand-gradient text-white rounded-xl font-semibold text-lg shadow-2xl hover:shadow-blue-500/50 transition-all hover:scale-105">
                 <span className="relative z-10 flex items-center gap-2">
                   立即免费体验 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -339,13 +346,18 @@ export default function HomePage() {
               </a>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-sm">
               <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">免费试用·无需信用卡</span></div>
               <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">一两分钟出一版脚本</span></div>
               {/* 原来是「98%用户好评」。系统里没有任何评价数据，这个数字是编的。
                   换成一句确实为真的：知识库和方法都是内置的，不是通用模型现编 */}
               <div className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-muted-foreground dark:text-foreground">内置编导知识库</span></div>
             </div>
+          </div>
+
+          <div className="min-w-0">
+            <PhoneStory />
+          </div>
           </div>
         </div>
       </section>
