@@ -110,7 +110,7 @@ export default function HomePage() {
       title: "脚本生成",
       // 「多版本对比」「一键多版本」没有做——只能重新生成、在历史里翻旧版
       desc: `一两分钟出一版完整脚本，${FACTS.structures} 种脚本结构任选`,
-      benefits: ["Claude AI驱动", "内置编导知识库", `${FACTS.structures}种脚本结构`],
+      benefits: ["AI 智能生成", "内置编导知识库", `${FACTS.structures}种脚本结构`],
       color: "green"
     },
     {
@@ -214,7 +214,7 @@ export default function HomePage() {
     },
     {
       q: "生成的脚本质量如何？",
-      a: `我们基于Anthropic Claude最新AI模型，结合内置的编导知识库和 ${FACTS.methods} 条成体系的方法（起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种）。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。不满意可以重新生成，历次结果都存在云端随时翻看。`
+      a: `我们用 AI 智能生成，结合内置的编导知识库和 ${FACTS.methods} 条成体系的方法（起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种）。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。不满意可以重新生成，历次结果都存在云端随时翻看。`
     },
     {
       q: "和其他AI工具有什么区别？",
@@ -426,9 +426,9 @@ export default function HomePage() {
                 <div className="w-16 h-16 bg-accent/15 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Brain className="w-8 h-8 text-accent" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Claude AI 智能引擎</h3>
+                <h3 className="text-2xl font-bold mb-4">AI 智能生成</h3>
                 <p className="text-muted-foreground dark:text-foreground mb-6">
-                  基于<span className="font-semibold text-accent">Anthropic Claude</span>最新模型，
+                  <span className="font-semibold text-accent">AI 智能生成</span>，
                   结合编导知识库，智能理解您的需求，生成专业级脚本
                 </p>
                 <ul className="space-y-3">
@@ -915,7 +915,7 @@ export default function HomePage() {
                 </span>
               </div>
               <p className="text-sm leading-relaxed">
-                基于Claude AI的专业短视频创作助手，让创作更简单、更高效。
+                AI 智能生成的短视频创作助手，让创作更简单、更高效。
               </p>
             </div>
             
@@ -954,7 +954,7 @@ export default function HomePage() {
           </div>
 
           <div className="border-t border-border pt-8 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} {BRAND_NAME}. All rights reserved. Powered by Claude AI</p>
+            <p>&copy; {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.</p>
           </div>
         </div>
       </footer>

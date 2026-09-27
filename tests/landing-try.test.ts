@@ -58,6 +58,20 @@ describe('首屏', () => {
     expect(home).toContain('<TryHero />');
   });
 
+  it('扫描：对外宣传不点名境外大模型（隐私政策里"数据交给了谁"的披露除外）', () => {
+    // 生成式 AI 备案的合规风险：宣传写"AI 智能生成"，数据去向在隐私政策里照实写
+    const list = (dir: string): string[] =>
+      fs.readdirSync(path.join(process.cwd(), dir), { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? list(path.join(dir, e.name)) : /\.tsx$/.test(e.name) ? [path.join(dir, e.name)] : []
+      );
+    const files = [...list('app'), ...list('components')].filter((f) => !f.includes(path.join('app', 'privacy')));
+    expect(files.length).toBeGreaterThan(100); // 自证不是空转
+    const bad = files.filter((f) => /Claude|Anthropic/.test(readCode(f)));
+    expect(bad).toEqual([]);
+    // 隐私政策里的披露还在
+    expect(fs.readFileSync(path.join(process.cwd(), 'app/privacy/page.tsx'), 'utf8')).toContain('Anthropic 的 Claude 模型');
+  });
+
   it('样例标明示意；认不出行业时说清楚给的是别的行业', () => {
     expect(hero).toContain('示意样例');
     expect(hero).toContain('先给你看餐饮店的样例');
