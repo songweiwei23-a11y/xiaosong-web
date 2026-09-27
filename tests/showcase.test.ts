@@ -159,7 +159,8 @@ describe('全站数字口径统一', () => {
      * 而不是让数字悄悄涨上去。
      */
     // 我的作品是把各板块的产出串起来的地方，本身不是一个创作板块
-    const NON_CREATIVE = new Set(['membership', 'account', 'works']);
+    // 新手课堂是学习页（教抖音怎么推荐、怎么拍），不产出内容，也不是创作板块
+    const NON_CREATIVE = new Set(['membership', 'account', 'works', 'course']);
     const fs = await import('node:fs');
     const path = await import('node:path');
     const root = path.join(process.cwd(), 'app', 'dashboard');

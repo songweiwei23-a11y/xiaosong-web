@@ -95,7 +95,7 @@ export function LaunchPlanCard({ className = "" }: { className?: string }) {
 
   if (!plan) {
     return (
-      <section className={`glass-panel rounded-2xl p-5 ${className}`}>
+      <section id="launch-plan" className={`scroll-mt-4 glass-panel rounded-2xl p-5 ${className}`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <button
@@ -144,7 +144,7 @@ export function LaunchPlanCard({ className = "" }: { className?: string }) {
   const focusDay = over ? LAUNCH_DAYS.find((d) => !plan.doneDays.includes(d.day)) : LAUNCH_DAYS[today - 1];
 
   return (
-    <section className={`glass-panel rounded-2xl p-5 ${className}`}>
+    <section id="launch-plan" className={`scroll-mt-4 glass-panel rounded-2xl p-5 ${className}`}>
       <button
         type="button"
         onClick={toggleCollapsed}

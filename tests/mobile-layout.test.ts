@@ -180,7 +180,8 @@ describe('登录注册页与独立页面：手机上一定有路可走', () => {
   });
 
   it('上手引导：顶上就有进工作台的出口（原来只在清单最底下一行小字，全做完时连这行都没有）', () => {
-    expect(readCode('app/onboarding/page.tsx')).toMatch(/href="\/dashboard"[\s\S]{0,300}进入工作台[\s\S]{0,200}<SetupChecklist/);
+    // 出口在清单上面（中间隔着新手课的入口卡片）
+    expect(readCode('app/onboarding/page.tsx')).toMatch(/href="\/dashboard"[\s\S]{0,300}进入工作台[\s\S]{0,1500}<SetupChecklist/);
   });
 
   it('通用对话框：手机上限高、能滚、左右留边', () => {

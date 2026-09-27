@@ -10,6 +10,7 @@ import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
 import { TodayBoard } from '@/components/dashboard/TodayBoard';
 import { LaunchPlanCard } from '@/components/dashboard/LaunchPlanCard';
+import { CourseCard } from '@/components/dashboard/CourseCard';
 import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
@@ -365,6 +366,9 @@ export default function DashboardPage() {
         <div className="mb-5">
           <TodayBoard />
         </div>
+
+        {/* 先学后做：抖音新手课（懂道理）→ 7 天起号计划（动手）。两张都能折叠 */}
+        <CourseCard className="mb-5" />
 
         {/* 7 天起号计划：给不知道从哪开始的新手一条照着走的路（表没建时整张卡不出现，间距也跟着没） */}
         <LaunchPlanCard className="mb-5" />

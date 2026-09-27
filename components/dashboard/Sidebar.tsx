@@ -11,7 +11,7 @@ import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen,
+  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen, GraduationCap,
 } from "lucide-react";
 
 /*
@@ -31,6 +31,8 @@ const navGroups: {
     label: null, // 总览不需要组标题，单独一项顶在最上面
     items: [
       { name: "工作台", href: "/dashboard", icon: Home },
+      // 给压根不了解抖音的新手：6 关学会抖音怎么推荐、怎么拍、怎么发。放最上面，新人一眼能看到
+      { name: "新手课堂", href: "/dashboard/course", icon: GraduationCap },
       // 每一条内容从选题到标题的全过程都在这里，隔多久都能接着做
       { name: "我的作品", href: "/dashboard/works", icon: FolderOpen },
     ],

@@ -35,8 +35,21 @@ const NOT_A_BOARD = new Set([
 
 describe('每个板块都进得去', () => {
   const sidebar = read('components/dashboard/Sidebar.tsx');
-  const home = read('app/dashboard/page.tsx');
+  /*
+   * 首页 = 页面本身 + 它直接摆出来的首页卡片。
+   * 新手课堂的入口在「抖音新手课」卡片里（components/dashboard/CourseCard），
+   * 只读 page.tsx 会漏掉这种写在卡片组件里的入口。
+   */
+  const homePage = read('app/dashboard/page.tsx');
+  const homeCards = [...homePage.matchAll(/from ['"]@\/components\/dashboard\/(\w+)['"]/g)].map((m) =>
+    read(`components/dashboard/${m[1]}.tsx`)
+  );
+  const home = [homePage, ...homeCards].join('\n');
   const routes = boardRoutes().filter((r) => !NOT_A_BOARD.has(r));
+
+  it('首页卡片确实被读进来了（防空转）', () => {
+    expect(homeCards.length).toBeGreaterThanOrEqual(2);
+  });
 
   it('扫到了足够多的板块', () => {
     expect(routes.length).toBeGreaterThan(8);

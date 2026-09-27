@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ArrowRight, GraduationCap } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { getActiveProfileId } from '@/lib/active-profile'
 import { setupSteps, type SetupStep } from '@/lib/setup-progress'
@@ -100,6 +100,25 @@ export default function OnboardingPage() {
           进入工作台
         </Link>
       </div>
+
+      {/*
+        新手课入口：很多人注册时压根不了解抖音。先懂"抖音怎么推荐、怎么拍、怎么发"，
+        后面建档案、做定位才知道为什么要做。放在清单上面，但不挡清单——想直接开干的照样往下走。
+      */}
+      <Link
+        href="/dashboard/course"
+        className="glass-panel mx-auto mb-6 flex max-w-2xl items-center gap-4 rounded-2xl border border-primary/30 p-4 transition-colors hover:border-primary/60"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+          <GraduationCap className="h-6 w-6 text-primary" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold text-foreground">完全不了解抖音？先花 20 分钟上新手课</span>
+          <span className="mt-0.5 block text-[12.5px] text-muted-foreground">6 关闯完，就知道抖音怎么推荐、怎么拍、怎么发</span>
+        </span>
+        <ArrowRight className="h-5 w-5 shrink-0 text-primary" />
+      </Link>
+
       <SetupChecklist steps={steps} />
     </div>
   )
