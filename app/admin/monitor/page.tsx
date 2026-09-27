@@ -529,6 +529,9 @@ export default function MonitorPage() {
           </Panel>
         </div>
 
+        {/* 转化漏斗：每次改首页、改引导，看这里知道有没有用 */}
+        <FunnelPanel />
+
         {/*
           底部状态条。
           原来页面下半屏是一大片空白——不是因为没东西可放，
@@ -579,6 +582,101 @@ export default function MonitorPage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+interface FunnelStepView {
+  key: string;
+  label: string;
+  count: number;
+  fromPrev: number | null;
+}
+
+/**
+ * 转化漏斗（规则见 lib/funnel.ts）：首页 → 试用 → 注册页 → 注册 → 出第一条 → 付费。
+ * 一分钟刷一次就够——它回答的是"这周改的东西有没有用"，不是"此刻谁在用"。
+ */
+function FunnelPanel() {
+  const [days, setDays] = useState<7 | 30>(7);
+  const [data, setData] = useState<{ steps: FunnelStepView[]; anonymousReady: boolean } | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch(`/api/admin/funnel?days=${days}`, { cache: "no-store" })
+        .then(async (r) => {
+          const body = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(body.error || `接口返回 ${r.status}`);
+          if (alive) {
+            setData(body);
+            setError("");
+          }
+        })
+        .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : String(e)));
+    load();
+    const t = setInterval(load, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [days]);
+
+  const top = Math.max(1, ...(data?.steps ?? []).map((s) => s.count));
+
+  return (
+    <div className="mt-4">
+      <Panel
+        title="转化漏斗"
+        icon={TrendingUp}
+        right={
+          <div className="flex gap-1">
+            {([7, 30] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] ${days === d ? "bg-cyan-400/15 text-cyan-200" : "text-slate-500 hover:text-slate-300"}`}
+              >
+                近 {d} 天
+              </button>
+            ))}
+          </div>
+        }
+      >
+        {error ? (
+          <div className="text-[12.5px] text-rose-300">读取失败：{error}</div>
+        ) : !data ? (
+          <EmptyBox text="正在统计…" height={120} />
+        ) : (
+          <>
+            <div className="space-y-2">
+              {data.steps.map((s, i) => (
+                <div key={s.key} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-3 sm:grid-cols-[8rem_1fr_7rem]">
+                  <span className="truncate text-[12.5px] text-slate-300">{s.label}</span>
+                  <div className="h-5 overflow-hidden rounded-md bg-slate-500/10">
+                    <div
+                      className="h-full rounded-md"
+                      style={{
+                        width: `${Math.max(s.count > 0 ? 2 : 0, (s.count / top) * 100)}%`,
+                        background: i < 3 ? "rgba(34,211,238,.55)" : "linear-gradient(90deg,rgba(139,92,246,.85),rgba(34,211,238,.9))",
+                      }}
+                    />
+                  </div>
+                  <span className="text-right font-mono text-[12.5px] tabular-nums text-cyan-200">
+                    {s.count}
+                    {s.fromPrev !== null && <span className="ml-1.5 text-[11px] text-slate-500">{s.fromPrev}%</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+              前三步按访客去重（匿名，一人一天记一次）；后三步是这 {days} 天里注册的那批人，往下走了多少。百分比是占上一步的比例。
+              {!data.anonymousReady && " 前三步的统计表还没建好，暂时是 0。"}
+            </p>
+          </>
+        )}
+      </Panel>
     </div>
   );
 }

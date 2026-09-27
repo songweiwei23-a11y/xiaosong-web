@@ -11,6 +11,7 @@ import { AuthTransition } from "@/components/auth/AuthTransition";
 // 数字走 FACTS 统一口径。原来这里 import 整套方法库只为数一个 length——
 // 900 多行数据被打进登录页的包，访客还没登录就先下载一份完整知识资产
 import { FACTS } from "@/lib/showcase";
+import { track } from "@/lib/funnel";
 
 
 export default function LoginPage() {
@@ -49,6 +50,11 @@ export default function LoginPage() {
     // 只在进页面时读一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 转化漏斗：打开了注册页（从首页链接进来的，或者自己切到注册的；匿名，一天记一次）
+  useEffect(() => {
+    if (!isLogin) track("register_view");
+  }, [isLogin]);
 
   /**
    * 跳转到工作台，并全程保持过渡层。

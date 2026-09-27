@@ -143,8 +143,9 @@ describe('全仓库缺陷模式扫描', () => {
     for (const { file, code } of sources) {
       if (!/app\/api\/.*route\.ts$/.test(rel(file))) continue;
       const name = rel(file).replace('app/api/', '/api/').replace('/route.ts', '');
-      // 公开入口：站点统计、注册（注册本身靠邀请码把关）
-      if (/\/api\/(public|auth\/register)/.test(name)) continue;
+      // 公开入口：站点统计、注册（注册本身靠邀请码把关）、
+      // 转化漏斗的匿名事件（记的就是还没登录的访客；白名单 + 格式 + 限速，见 tests/funnel.test.ts）
+      if (/\/api\/(public|auth\/register|funnel$)/.test(name)) continue;
       if (!/requireAdmin|requireUserWithQuota|requireUser\b|getUser\(\)/.test(code)) {
         bad.push(name);
       }

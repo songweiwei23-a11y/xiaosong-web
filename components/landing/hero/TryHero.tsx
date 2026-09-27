@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Sparkles, Wand2 } from "lucide-react";
 import { INDUSTRY_SAMPLES, REGISTER_URL, matchIndustry, type IndustrySample } from "@/lib/landing";
+import { track } from "@/lib/funnel";
 import { PhoneStory } from "./PhoneStory";
 
 /**
@@ -23,6 +24,9 @@ export function TryHero() {
   const [shown, setShown] = useState<{ ind: IndustrySample; guessed: boolean } | null>(null);
   const [empty, setEmpty] = useState(false);
 
+  // 转化漏斗第一步：打开了首页（匿名，同一访客一天记一次，见 lib/funnel）
+  useEffect(() => track("landing_view"), []);
+
   // 输入框的提示语轮换：让人一眼知道"就写这种话"
   useEffect(() => {
     const t = setInterval(() => setPh((p) => (p + 1) % INDUSTRY_SAMPLES.length), 2400);
@@ -37,12 +41,14 @@ export function TryHero() {
     const hit = matchIndustry(text);
     // 认不出是哪一行就先给餐饮的看，并且说清楚——不假装"这就是给你写的"
     setShown({ ind: hit ?? INDUSTRY_SAMPLES[0], guessed: !hit });
+    track("landing_try");
   };
 
   const pick = (ind: IndustrySample) => {
     setText(ind.who);
     setEmpty(false);
     setShown({ ind, guessed: false });
+    track("landing_try");
   };
 
   return (
