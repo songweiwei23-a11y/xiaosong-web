@@ -9,6 +9,7 @@ import { nextStage, workStageUrl } from "@/lib/resume";
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
 import { TodayBoard } from '@/components/dashboard/TodayBoard';
+import { LaunchPlanCard } from '@/components/dashboard/LaunchPlanCard';
 import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
@@ -364,6 +365,9 @@ export default function DashboardPage() {
         <div className="mb-5">
           <TodayBoard />
         </div>
+
+        {/* 7 天起号计划：给不知道从哪开始的新手一条照着走的路（表没建时整张卡不出现，间距也跟着没） */}
+        <LaunchPlanCard className="mb-5" />
 
         <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
           {/* 左：开始创作 */}
