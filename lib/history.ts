@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 import { getPlan, judgeQuota, sumCountedUsage, effectivePlanId, quotaRollover } from '@/lib/config/plans';
+import { notifyGenerated } from '@/lib/upgrade';
 
 /**
  * 保存生成历史记录到数据库
@@ -47,6 +48,8 @@ export async function saveGenerationHistory(
     }
 
     console.log("✅ 历史记录已保存");
+    // 生成成功：看看是不是快用完了，要不要轻轻提醒一次（见 lib/upgrade）
+    notifyGenerated();
     return true;
   } catch (error) {
     console.error("❌ 保存历史记录异常:", error);

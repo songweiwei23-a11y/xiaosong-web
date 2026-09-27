@@ -178,7 +178,8 @@ describe('套餐里不卖没做的权益', () => {
     'app/pricing/page.tsx',
     'app/login/page.tsx',
     'app/dashboard/membership/page.tsx',
-    'components/quota-exhausted.tsx',
+    // 额度用完时的付费引导（原来是 components/quota-exhausted.tsx，已换成全站统一的这一个）
+    'components/upgrade/UpgradePrompt.tsx',
     'lib/config/plans.ts',
   ];
 

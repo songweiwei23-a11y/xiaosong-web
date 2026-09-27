@@ -3,6 +3,7 @@
 import { takeHandoff, putHandoff } from "@/lib/handoff";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
+import { openUpgrade } from "@/lib/upgrade";
 import { buildStoryboardPrompt, auditStoryboard } from "@/lib/storyboard-standards";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { buildContextBlock } from "@/lib/creator-context";
@@ -203,7 +204,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
     // 检查配额
     const remainingQuota = await checkQuota("storyboard");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("分镜脚本的额度已用完，开通、续费或升级会员后继续使用");
+      openUpgrade("storyboard");
       return;
     }
 

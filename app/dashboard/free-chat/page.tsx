@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { throwApiError } from "@/lib/api-error";
+import { notifyGenerated } from "@/lib/upgrade";
 import { Markdown } from "@/components/markdown";
 import { getActiveProfileId } from '@/lib/active-profile';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
@@ -407,6 +408,9 @@ export default function FreeChatPage() {
           ],
         });
       }
+
+      // 这一轮真有回答才算用了一次：快用完了就轻轻提醒一次（见 lib/upgrade）
+      if (assistantText) notifyGenerated();
 
       setTimeout(() => inputRef.current?.focus(), 50);
     }

@@ -5,6 +5,7 @@ import { useWorkResume } from "@/hooks/useWorkResume";
 import { latestOf, workScriptBody, workIdFromUrl } from "@/lib/resume";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
+import { openUpgrade } from "@/lib/upgrade";
 import { buildTitlePrompt } from "@/lib/title-standards";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { buildContextBlock } from "@/lib/creator-context";
@@ -204,7 +205,7 @@ export default function TitlePage() {
     // 于是本页额度明明是 0 也会放行，等服务端拒绝后用户只看到一句失败。
     const remainingQuota = await checkQuota("title");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("标题封面的额度已用完，开通、续费或升级会员后继续使用");
+      openUpgrade("title");
       return;
     }
 

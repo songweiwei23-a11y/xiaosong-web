@@ -2,7 +2,6 @@
 import ContinuousDialog from "@/components/ContinuousDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { extractScriptContext } from "@/lib/positioning-utils";
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { buildContextBlock, type CreatorProfile } from "@/lib/creator-context";
@@ -29,7 +28,7 @@ import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } 
 import { useState, useEffect, useCallback, useRef } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
 import {
-  Sparkles, AlertCircle, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText,
+  Sparkles, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText,
   BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package, CheckCircle, Tag, Copy,
 } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
@@ -65,12 +64,11 @@ import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError } from "@/lib/api-error";
+import { openUpgrade } from "@/lib/upgrade";
 import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import { useWorkResume } from "@/hooks/useWorkResume";
 import { latestOf, workIdFromUrl } from "@/lib/resume";
-import QuotaReminder from "@/components/quota-reminder";
-import QuotaExhausted from "@/components/quota-exhausted";
 import { supabase } from "@/lib/supabase/client";
 import { Field, OptionCard } from "@/components/form/Field";
 
@@ -286,12 +284,8 @@ export default function ScriptPage() {
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const [selectedPositioningId, setSelectedPositioningId] = useState("");
 
-  // 额度提醒相关状态
-  const [quotaWarnings, setQuotaWarnings] = useState<any[]>([]);
-  const [showQuotaReminder, setShowQuotaReminder] = useState(false);
-  const [quotaExhausted, setQuotaExhausted] = useState(false);
-  const [showQuotaBanner, setShowQuotaBanner] = useState(false);
-  const [planName, setPlanName] = useState("免费版");
+  // 额度快用完 / 用完的提醒改由全站统一的付费引导负责（lib/upgrade + 工作台框架里的 UpgradePrompt）。
+  // 这一页原来单独有一套：进页面就查、"任何一个功能用完"都说成"脚本额度用完了"。
 
 
   // 加载档案和定位
@@ -303,79 +297,6 @@ export default function ScriptPage() {
       const id = getActiveProfileId();
       if (id) setSelectedProfileId(id);
     });
-  }, []);
-
-  // 检查额度
-  useEffect(() => {
-    const checkQuota = async () => {
-      try {
-        await checkQuotaStatus();
-      } catch (error) {
-        console.error("额度检查初始化失败:", error);
-      }
-    };
-    checkQuota();
-  }, []);
-
-  const checkQuotaStatus = useCallback(async () => {
-    console.log("🔍 开始检查用户额度...");
-    
-    // 检查是否在24小时内已经提醒过
-    const lastReminderTime = localStorage.getItem('quota_reminder_time');
-    if (lastReminderTime) {
-      const timeDiff = Date.now() - parseInt(lastReminderTime);
-      const hours = timeDiff / (1000 * 60 * 60);
-      if (hours < 24) {
-        console.log(`✓ ${hours.toFixed(1)}小时内已提醒过，跳过额度检查`);
-        return;
-      }
-    }
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log("用户未登录，跳过额度检查");
-        return;
-      }
-
-      const userId = session.user.id;
-      const res = await fetch(`/api/quota/check?userId=${userId}`);
-      
-      if (!res.ok) {
-        console.error("额度检查API返回错误:", res.status);
-        return;
-      }
-      
-      const data = await res.json();
-      
-      if (data.planName) {
-        setPlanName(data.planName);
-      }
-      
-      if (data.exhausted) {
-        // 检查本次会话是否已经看过额度用尽提示
-        const lastExhaustedTime = localStorage.getItem('quota_exhausted_time');
-        let shouldShow = true;
-        if (lastExhaustedTime) {
-          const timeDiff = Date.now() - parseInt(lastExhaustedTime);
-          const hours = timeDiff / (1000 * 60 * 60);
-          shouldShow = hours >= 24;
-          console.log(`⏰ 距离上次提示已过 ${hours.toFixed(1)} 小时`);
-        }
-        if (shouldShow) {
-          setQuotaExhausted(true);
-          console.log("⚠️ 额度已用尽，显示提示页面");
-        } else {
-          console.log("✓ 24小时内已看过额度用尽提示，允许继续浏览");
-        }
-      } else if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
-        setQuotaWarnings(data.warnings);
-        setShowQuotaReminder(true);
-      }
-    } catch (error) {
-      console.error("检查额度失败:", error);
-      // 不阻塞页面正常使用
-    }
   }, []);
 
   const loadProfiles = async () => {
@@ -450,7 +371,7 @@ export default function ScriptPage() {
     // 0. 检查配额
     const remainingQuota = await checkQuota("script");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("脚本生成的额度已用完，开通、续费或升级会员后继续使用");
+      openUpgrade("script");
       return;
     }
 
@@ -1653,39 +1574,6 @@ ${formatRequirements}
       <div id="workspace-result" className="min-w-0 flex-1 scroll-mt-4 px-4 py-6 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7">
         <div className="mx-auto max-w-4xl space-y-5">
 
-        {/* 额度用尽提示条 */}
-      {quotaExhausted && showQuotaBanner && (
-        <div className="glass-panel border-destructive/30 bg-destructive/[0.06] rounded-2xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-            <div>
-              <p className="font-medium text-foreground">脚本生成额度已用完</p>
-              <p className="text-[13px] text-muted-foreground mt-1">
-                您当前使用的是 <span className="font-semibold">{planName}</span>，升级套餐解锁更多额度
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/membership">
-              <Button size="sm" className="bg-destructive hover:opacity-90">
-                立即升级
-              </Button>
-            </Link>
-            <Button 
-              size="sm" 
-              variant="ghost"
-              onClick={() => {
-                setShowQuotaBanner(false);
-                localStorage.setItem('quota_banner_closed_time', Date.now().toString());
-                console.log("✓ 用户关闭提示条，24小时内不再显示");
-              }}
-            >
-              我知道了
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* 结果区在上、历史在下：原先历史卡片占着顶部，每次进页面先看到的
           是旧记录而不是刚生成的内容 */}
       <ResultPanel
@@ -1815,22 +1703,6 @@ ${formatRequirements}
         initialContent={dialogInitialContent}
         taskType="脚本生成"
       />
-
-      {/* 额度提醒弹窗 */}
-      {showQuotaReminder && quotaWarnings.length > 0 && (
-        <QuotaReminder
-          open={showQuotaReminder}
-          onClose={() => {
-            setShowQuotaReminder(false);
-            // 记录本次会话已提醒过
-            localStorage.setItem('quota_reminder_time', Date.now().toString());
-            console.log("✓ 已记录提醒时间，24小时内不再提醒");
-          }}
-          warnings={quotaWarnings}
-          planName={planName}
-        />
-      )}
-
 
     </div>
   );

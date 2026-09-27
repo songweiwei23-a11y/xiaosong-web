@@ -137,6 +137,8 @@ export async function GET() {
 
     // ---- 分功能制（免费版、基础版、专业版）----
     const warnings = [];
+    /** 每个功能的剩余次数，全列。付费引导"剩 3 次以内提醒一次"要用——warnings 只收 80% 以上的，10 次的免费额度剩 3 次时才 70% */
+    const features: { feature: string; featureName: string; used: number; total: number; remaining: number }[] = [];
     let hasExhausted = false;
     /** 用得最紧的那个功能，用于在首页点名，而不是只给一个没意义的总数 */
     let tightest: { featureName: string; used: number; total: number; remaining: number; percentage: number } | null = null;
@@ -158,6 +160,7 @@ export async function GET() {
         remaining: verdict.remaining,
         percentage: Math.min(100, percentage),
       };
+      features.push({ feature: row.feature, featureName: row.featureName, used: row.used, total: row.total, remaining: row.remaining });
 
       if (!tightest || percentage > tightest.percentage) {
         tightest = {
@@ -179,6 +182,7 @@ export async function GET() {
 
     return NextResponse.json({
       warnings,
+      features,
       exhausted: hasExhausted,
       plan: planId,
       planName: plan.name,

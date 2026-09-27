@@ -8,6 +8,7 @@ import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, rolesGuide, roleBrief, type ContentRole } from "@/lib/content-roles";
 import { ROUTE_LIST, ROUTE_HINTS, ROUTES_GUIDE, routeAssignment, tacticIndex, tacticInText, topicTacticsOf, type CreativeRoute } from "@/lib/creative-routes";
 import { throwApiError } from "@/lib/api-error";
+import { notifyGenerated } from "@/lib/upgrade";
 import { createWork, listWorks, type Work } from "@/lib/works";
 import { stageRoute, workStageUrl } from "@/lib/resume";
 import { TopicList, type TopicStage } from "@/components/workspace/TopicList";
@@ -876,6 +877,8 @@ export default function TopicPage() {
         if (response.ok) {
           await loadHistory();
         }
+        // 生成成功：快用完了就轻轻提醒一次（这一页不走 saveGenerationHistory，单独发）
+        notifyGenerated();
       }
 
     } catch (error: any) {

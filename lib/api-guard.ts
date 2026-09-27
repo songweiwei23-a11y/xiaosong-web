@@ -156,6 +156,8 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
             error: verdict.message,
             used: verdict.used,
             limit: verdict.limit,
+            // 前端据此弹付费引导，并知道是哪个功能用完了（见 lib/upgrade）
+            feature,
           },
           { status: 402 }
         ),

@@ -9,6 +9,8 @@
  * 必须原样告诉用户。
  */
 
+import { openUpgrade } from "@/lib/upgrade";
+
 /**
  * 额度用完时各板块提示的后半句。
  * 原来写的是「请升级会员或等待下月重置」——免费版现在是一次性体验、不会下月重置，
@@ -19,15 +21,20 @@ export const QUOTA_EXHAUSTED_HINT = "额度已用完，开通、续费或升级�
 /** 读取响应体里的错误文案；读不出来就按状态码给一句能指导行动的话 */
 export async function readApiError(response: Response, fallback = "生成失败"): Promise<string> {
   let serverMessage = "";
+  let feature: string | undefined;
 
   try {
     // 出错时后端返回的是 JSON（正常时才是 SSE 流），克隆一份读，
     // 避免万一调用方还想读原始 body
     const data = await response.clone().json();
     serverMessage = data?.error || data?.message || "";
+    feature = typeof data?.feature === "string" ? data.feature : undefined;
   } catch {
     // 不是 JSON 或已被读过，走下面的状态码兜底
   }
+
+  // 额度用完：全站统一弹付费引导。所有板块的生成出错都走这里，一处接住就全接住了
+  if (isQuotaError(response.status)) openUpgrade(feature);
 
   if (serverMessage) return serverMessage;
 

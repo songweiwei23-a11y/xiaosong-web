@@ -4,6 +4,7 @@ import { Sidebar, SidebarProvider, useSidebar } from "@/components/dashboard/Sid
 import { UserProfile } from "@/components/auth/UserProfile";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AmbientPill } from "@/components/ambient/AmbientPill";
+import { UpgradePrompt } from "@/components/upgrade/UpgradePrompt";
 import { Menu } from "lucide-react";
 
 function TopBar() {
@@ -47,6 +48,8 @@ export default function DashboardLayout({
           <main className="flex-1 overflow-y-auto">
             {children}
           </main>
+          {/* 全站付费引导：任何板块额度用完 / 快用完都由它接（见 lib/upgrade） */}
+          <UpgradePrompt />
         </div>
       </div>
     </SidebarProvider>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { takeHandoff, putHandoff } from "@/lib/handoff";
 import { recordStage } from "@/lib/works";
 import { throwApiError } from "@/lib/api-error";
+import { openUpgrade } from "@/lib/upgrade";
 import { buildReviewPrompt } from "@/lib/review-standards";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { buildContextBlock } from "@/lib/creator-context";
@@ -181,7 +182,7 @@ export default function ReviewPage() {
     // 检查配额
     const remainingQuota = await checkQuota("review");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("审稿优化的额度已用完，开通、续费或升级会员后继续使用");
+      openUpgrade("review");
       return;
     }
 

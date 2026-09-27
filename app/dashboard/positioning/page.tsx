@@ -26,6 +26,7 @@ import {
 import { SectionEditor } from '@/components/positioning/SectionEditor';
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext';
 import { throwApiError } from "@/lib/api-error";
+import { openUpgrade } from "@/lib/upgrade";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
@@ -210,7 +211,7 @@ export default function PositioningPage() {
     // 检查配额
     const remainingQuota = await checkQuota("positioning");
     if (remainingQuota !== null && remainingQuota <= 0) {
-      notify("账号定位的额度已用完，开通、续费或升级会员后继续使用");
+      openUpgrade("positioning");
       return;
     }
 
