@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { AMBIENT_SOUNDS, SYNTH_RATE, synthesize, type AmbientId } from '@/lib/ambient/synth';
-import { DEFAULT_MASTER, DEFAULT_VOLUME, OUTPUT_BOOST, isDefaultVolume } from '@/lib/ambient/engine';
+import { DEFAULT_MASTER, DEFAULT_VOLUME, isDefaultVolume } from '@/lib/ambient/engine';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readCode } from './helpers/source';
@@ -112,33 +112,23 @@ describe('六种声音', () => {
 
 describe('播放器和界面', () => {
   it('默认音量偏小：白噪音是背景，不能一开就吓人', () => {
-    // 2026-09-28 产品方两次反馈"偏小"：0.35×0.4=0.14 → 0.35×0.6=0.21 → 0.5×0.8=0.4
-    expect(DEFAULT_VOLUME * DEFAULT_MASTER).toBeLessThanOrEqual(0.45);
-    expect(DEFAULT_VOLUME * DEFAULT_MASTER).toBeGreaterThan(0.3);
+    // 2026-09-28 曾调大到 0.5×0.8 并加 3.5 倍输出放大，查明是产品方喇叭的问题，退回最初的 0.35×0.4
+    expect(DEFAULT_VOLUME).toBe(0.35);
+    expect(DEFAULT_MASTER).toBe(0.4);
   });
 
-  it('调大默认音量后，老用户本机存着的旧默认值也跟着变大（自己调过的不动）', () => {
+  it('退回默认音量后，本机存着的调大版默认值也跟着退回（自己调过的不动）', () => {
     const src = readCode('lib/ambient/engine.ts');
-    expect(src).toMatch(/const PREVIOUS_DEFAULT_MASTERS = \[0\.4, 0\.6\]/);
-    expect(src).toMatch(/const PREVIOUS_DEFAULT_VOLUMES = \[0\.35\]/);
+    expect(src).toMatch(/const PREVIOUS_DEFAULT_MASTERS = \[0\.6, 0\.8\]/);
+    expect(src).toMatch(/const PREVIOUS_DEFAULT_VOLUMES = \[0\.5\]/);
     expect(src).toMatch(/if \(PREVIOUS_DEFAULT_MASTERS\.includes\(master\)\) master = DEFAULT_MASTER/);
     expect(src).toMatch(/PREVIOUS_DEFAULT_VOLUMES\.includes\(v\) \? DEFAULT_VOLUME : v/);
   });
 
-  it('输出先放大、再过限幅器：默认就够响，叠几种、都拉满也不爆音', () => {
+  it('输出不额外放大：总音量直接到扬声器', () => {
     const src = readCode('lib/ambient/engine.ts');
-    expect(src).toMatch(/createDynamicsCompressor\(\)/);
-    // 放大必须在限幅器前面——反过来就是先压再放，照样爆
-    expect(src).toMatch(/masterGain\.connect\(boost\)\.connect\(limiter\)\.connect\(ctx\.destination\)/);
-    expect(src).not.toMatch(/masterGain\.connect\(ctx\.destination\)/);
-  });
-
-  it('默认响度够得着：放大后的平均输出接近普通视频（产品方反馈"风扇都能盖住"）', () => {
-    // 雨声合成出来平均约 0.12；默认音量下经放大后的平均输出
-    const L = synthesize('rain').left;
-    const out = rms(L) * DEFAULT_VOLUME * DEFAULT_MASTER * OUTPUT_BOOST;
-    expect(out, `默认输出平均 ${out.toFixed(3)}`).toBeGreaterThan(0.12);
-    expect(out, `默认输出平均 ${out.toFixed(3)}`).toBeLessThan(0.3);
+    expect(src).toMatch(/masterGain\.connect\(ctx\.destination\)/);
+    expect(src).not.toMatch(/OUTPUT_BOOST|boost/);
   });
 
   it('恢复默认音量：改过音量才出现按钮，点了各声音和总音量都回默认', () => {

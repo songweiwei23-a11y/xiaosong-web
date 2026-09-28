@@ -30,22 +30,19 @@ export interface AmbientState {
 
 const PREF_KEY = "kaiwu:ambient";
 /**
- * 默认音量：白噪音是背景，盖过说话、盖过视频声就错了，但也不能小到听不清。
- * 产品方两次反馈"听着偏小"（2026-09-28）：
- *   第一次 总 0.4 → 0.6；第二次 每种声音 0.35 → 0.5、总 0.6 → 0.8。
- *   合起来比最初响将近 3 倍。输出端有限幅器兜底，叠几种、都拉满也不会爆音。
+ * 默认音量偏小：白噪音是背景，盖过说话、盖过视频声就错了。
+ * 用户要大声自己往上拉，比一点开就被吓一跳好。
+ * （2026-09-28 曾三次调大、还加过输出放大，后来查明是产品方喇叭的问题，全部退回这个值。）
  */
-export const DEFAULT_VOLUME = 0.5;
-export const DEFAULT_MASTER = 0.8;
+export const DEFAULT_VOLUME = 0.35;
+export const DEFAULT_MASTER = 0.4;
 /**
- * 以前各版的默认值。音量存在本机，只改默认值的话，老用户本机里存着的旧默认不会变，
- * 他们听到的还是原来那么小。存着的正好是旧默认 = 从没动过（或点过"恢复默认"），
- * 读回来时换成新的默认；自己调过的别的数照样保留。
+ * 调大那几版的默认值。音量存在本机，只改默认值的话，那段时间打开过的人本机里存着的
+ * 大默认值不会变。存着的正好是这些值 = 从没动过（或点过"恢复默认"），
+ * 读回来时换成现在的默认；自己调过的别的数照样保留。
  */
-const PREVIOUS_DEFAULT_MASTERS = [0.4, 0.6];
-const PREVIOUS_DEFAULT_VOLUMES = [0.35];
-/** 输出端的固定放大倍数（见 audio() 里的说明） */
-export const OUTPUT_BOOST = 3.5;
+const PREVIOUS_DEFAULT_MASTERS = [0.6, 0.8];
+const PREVIOUS_DEFAULT_VOLUMES = [0.5];
 const FADE = 0.8;
 
 let state: AmbientState = {
@@ -113,25 +110,7 @@ function audio() {
     ctx = new AC();
     masterGain = ctx.createGain();
     masterGain.gain.value = 0;
-    /*
-     * 输出端的限幅器。默认音量调大之后，几种声音叠着放、又都拉满时，
-     * 合起来会超过上限，直接出去就是破音。它只在快顶到头时才压，平时基本不动声音。
-     */
-    const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -6;
-    limiter.knee.value = 6;
-    limiter.ratio.value = 20;
-    limiter.attack.value = 0.001;
-    limiter.release.value = 0.25;
-    /*
-     * 输出放大一级。产品方第三次反馈"还是小，电脑风扇都能盖住"——
-     * 算下来就算每种声音和总音量都拉满，原来的输出也只有普通视频响度的一半左右：
-     * 合成出来的声音本身偏轻（为了留余量不削波），后面又没有放大，滑块怎么调都不够。
-     * 放大后默认响度接近普通视频/音乐；叠几种、都拉满时由后面的限幅器压住，不爆音。
-     */
-    const boost = ctx.createGain();
-    boost.gain.value = OUTPUT_BOOST;
-    masterGain.connect(boost).connect(limiter).connect(ctx.destination);
+    masterGain.connect(ctx.destination);
   }
   return { ctx, master: masterGain! };
 }
