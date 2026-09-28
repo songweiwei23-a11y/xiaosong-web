@@ -1,10 +1,10 @@
 "use client";
 
-import { BookOpen, AudioLines, CloudRain, Coffee, Flame, Pause, Play, SkipForward, Timer, Volume2, Waves } from "lucide-react";
+import { BookOpen, AudioLines, CloudRain, Coffee, Flame, Pause, Play, RotateCcw, SkipForward, Timer, Volume2, Waves } from "lucide-react";
 import { useAmbient } from "@/hooks/useAmbient";
 import { useNow } from "@/hooks/useNow";
 import { AMBIENT_SOUNDS, type AmbientId } from "@/lib/ambient/synth";
-import { next, setMaster, setTimer, setVolume, toggle, toggleSound } from "@/lib/ambient/engine";
+import { isDefaultVolume, next, resetVolumes, setMaster, setTimer, setVolume, toggle, toggleSound } from "@/lib/ambient/engine";
 
 const ICONS: Record<AmbientId, React.ComponentType<{ className?: string }>> = {
   rain: CloudRain,
@@ -135,6 +135,17 @@ export function AmbientMixer() {
                 className="h-1 flex-1 cursor-pointer accent-primary"
               />
             </label>
+          )}
+          {/* 音量会记住。拖乱了一键回去——只在确实改过时才出现，不改就不占地方 */}
+          {!isDefaultVolume(s) && (
+            <button
+              type="button"
+              onClick={() => resetVolumes()}
+              className="ml-auto flex w-fit items-center gap-1 rounded-full px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" />
+              恢复默认音量
+            </button>
           )}
         </div>
       )}

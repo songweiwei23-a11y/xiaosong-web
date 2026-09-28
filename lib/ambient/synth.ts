@@ -252,13 +252,15 @@ function pages(fs: number, r: Rand): [Float32Array, Float32Array] {
       if (k % 32 === 0) bp.set('bp', 1200 + 2400 * x, 0.9);
       let env = 0;
       for (const b of bumps) env += b.a * Math.exp(-((x - b.c) ** 2) / (2 * b.w * b.w));
-      // 纸面的细碎颗粒感
-      const crinkle = r() < 0.04 ? 1.6 : 1;
+      // 几下沙沙声挨得近时会叠成一个尖峰；封个顶，整体调响时才不会顶到头
+      env = Math.min(env, 1);
+      // 纸面的细碎颗粒感。原来是 1.6 倍：整体调响之后这几下尖刺会顶到头、被限幅压得发毛
+      const crinkle = r() < 0.04 ? 1.25 : 1;
       return bp.run(r() * 2 - 1) * env * crinkle * 0.5;
     });
     const thumpLen = Math.round(fs * 0.08);
     const lp = new Biquad(fs, 'lp', 260);
-    addGrain(L, R, start + D - Math.round(fs * 0.04), thumpLen, pan, (k) => lp.run(r() * 2 - 1) * 0.45 * Math.exp(-k / (thumpLen * 0.25)));
+    addGrain(L, R, start + D - Math.round(fs * 0.04), thumpLen, pan, (k) => lp.run(r() * 2 - 1) * 0.3 * Math.exp(-k / (thumpLen * 0.25)));
     t += fs * (7 + r() * 5);
   }
   return makeLoop(L, R, n, f);
@@ -389,9 +391,16 @@ function brown(fs: number, r: Rand): [Float32Array, Float32Array] {
   return makeLoop(L, R, n, f);
 }
 
-/** 各声音的目标响度：稀疏的（翻书）要轻，连续的（雨、浪）可以满一些，混在一起才平衡 */
+/**
+ * 各声音的目标响度（整段的平均）。
+ *
+ * 翻书原来是 0.035，想着它和雨声叠着放时不要抢。可单独放翻书的人一听就是"声音变小了"——
+ * 它是稀疏的声音：大部分时间是安静房间，隔几秒翻一页；按整段平均定响度，平均被静音段拉低，
+ * 真正翻页那一下也跟着被压小了。现在抬到和其它几种接近，单放时不再忽大忽小；
+ * 叠着放嫌它抢，各自的音量滑块可以单独往下拉。
+ */
 const LOUDNESS: Record<AmbientId, number> = {
-  rain: 0.12, cafe: 0.1, fire: 0.11, pages: 0.035, waves: 0.12, brown: 0.12,
+  rain: 0.12, cafe: 0.1, fire: 0.11, pages: 0.065, waves: 0.12, brown: 0.12,
 };
 
 const GENERATORS: Record<AmbientId, (fs: number, r: Rand) => [Float32Array, Float32Array]> = {

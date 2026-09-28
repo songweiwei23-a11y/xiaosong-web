@@ -242,6 +242,26 @@ export function setMaster(v: number) {
   if (masterGain && state.playing) ramp(masterGain.gain, v, 0.1);
 }
 
+/** 音量是不是都还是默认的（面板据此决定显不显示"恢复默认音量"） */
+export function isDefaultVolume(s: Pick<AmbientState, 'mix' | 'master'> = state): boolean {
+  return s.master === DEFAULT_MASTER && Object.values(s.mix).every((v) => v === DEFAULT_VOLUME);
+}
+
+/**
+ * 恢复默认音量：选着的每种声音回到默认音量，总音量也回到默认。
+ * 音量会记住（存在本机），拖乱了以后用户往往以为是"声音变小了、是不是改坏了"——给个一键回去的地方。
+ * 渐变过去，不是一下跳变。
+ */
+export function resetVolumes() {
+  const mix: AmbientState['mix'] = {};
+  for (const id of Object.keys(state.mix) as AmbientId[]) mix[id] = DEFAULT_VOLUME;
+  emit({ mix, master: DEFAULT_MASTER });
+  for (const [id, v] of voices) {
+    if (mix[id] !== undefined) ramp(v.gain.gain, DEFAULT_VOLUME, 0.3);
+  }
+  if (masterGain && state.playing) ramp(masterGain.gain, DEFAULT_MASTER, 0.3);
+}
+
 function clearTimer() {
   if (timer !== null) window.clearTimeout(timer);
   timer = null;

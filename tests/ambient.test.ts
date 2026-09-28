@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { AMBIENT_SOUNDS, SYNTH_RATE, synthesize, type AmbientId } from '@/lib/ambient/synth';
-import { DEFAULT_MASTER, DEFAULT_VOLUME } from '@/lib/ambient/engine';
+import { DEFAULT_MASTER, DEFAULT_VOLUME, isDefaultVolume } from '@/lib/ambient/engine';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readCode } from './helpers/source';
@@ -84,11 +84,46 @@ describe('六种声音', () => {
     expect(swing('waves')).toBeGreaterThan(3);
     expect(swing('rain')).toBeLessThan(1.3);
   });
+
+  it('换声音不忽大忽小：每种声音"最响的时候"都和雨声差不多（翻书原来只有雨声的一半多）', () => {
+    /*
+     * 用户反馈"声音变小了"：点了顶栏的"切换"换到翻书，一下小了一大截。
+     * 翻书是稀疏的声音（大半时间是安静房间），按整段平均定响度，翻页那一下也被压小了。
+     * 所以这里不比整段平均，比"最响的那 10% 时刻"——人耳感觉的是这个。
+     */
+    const loudest = (id: AmbientId) => {
+      const L = synthesize(id).left;
+      const W = Math.round(SYNTH_RATE * 0.1);
+      const win: number[] = [];
+      for (let s = 0; s + W <= L.length; s += W) win.push(rms(L, s, s + W));
+      win.sort((a, b) => b - a);
+      const top = win.slice(0, Math.max(1, Math.floor(win.length * 0.1)));
+      return top.reduce((a, c) => a + c, 0) / top.length;
+    };
+    const ref = loudest('rain');
+    for (const s of AMBIENT_SOUNDS) {
+      if (s.id === 'waves') continue; // 海浪本来就是一涨一落，涨起来那下比雨大是它的性格
+      const ratio = loudest(s.id) / ref;
+      expect(ratio, `${s.name} 最响时是雨声的 ${ratio.toFixed(2)} 倍`).toBeGreaterThan(0.8);
+      expect(ratio, `${s.name} 最响时是雨声的 ${ratio.toFixed(2)} 倍`).toBeLessThan(1.3);
+    }
+  });
 });
 
 describe('播放器和界面', () => {
   it('默认音量偏小：白噪音是背景，不能一开就吓人', () => {
     expect(DEFAULT_VOLUME * DEFAULT_MASTER).toBeLessThanOrEqual(0.15);
+  });
+
+  it('恢复默认音量：改过音量才出现按钮，点了各声音和总音量都回默认', () => {
+    expect(isDefaultVolume({ mix: { rain: DEFAULT_VOLUME }, master: DEFAULT_MASTER })).toBe(true);
+    expect(isDefaultVolume({ mix: { rain: 0.1 }, master: DEFAULT_MASTER })).toBe(false);
+    expect(isDefaultVolume({ mix: { rain: DEFAULT_VOLUME }, master: 0.1 })).toBe(false);
+    const mixer = readCode('components/ambient/AmbientMixer.tsx');
+    expect(mixer).toMatch(/\{!isDefaultVolume\(s\) && \([\s\S]{0,200}onClick=\{\(\) => resetVolumes\(\)\}/);
+    const engine = readCode('lib/ambient/engine.ts');
+    expect(engine).toMatch(/mix\[id\] = DEFAULT_VOLUME/);
+    expect(engine).toMatch(/emit\(\{ mix, master: DEFAULT_MASTER \}\)/);
   });
 
   it('不会自动播放：读回上次搭配、有人订阅状态时都不出声', () => {
