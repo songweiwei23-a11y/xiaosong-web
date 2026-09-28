@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { AMBIENT_SOUNDS, SYNTH_RATE, synthesize, type AmbientId } from '@/lib/ambient/synth';
-import { DEFAULT_MASTER, DEFAULT_VOLUME, isDefaultVolume } from '@/lib/ambient/engine';
+import { DEFAULT_MASTER, DEFAULT_VOLUME, OUTPUT_BOOST, isDefaultVolume } from '@/lib/ambient/engine';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readCode } from './helpers/source';
@@ -125,11 +125,20 @@ describe('播放器和界面', () => {
     expect(src).toMatch(/PREVIOUS_DEFAULT_VOLUMES\.includes\(v\) \? DEFAULT_VOLUME : v/);
   });
 
-  it('输出端有限幅器：调大音量后叠几种、都拉满也不爆音', () => {
+  it('输出先放大、再过限幅器：默认就够响，叠几种、都拉满也不爆音', () => {
     const src = readCode('lib/ambient/engine.ts');
     expect(src).toMatch(/createDynamicsCompressor\(\)/);
-    expect(src).toMatch(/masterGain\.connect\(limiter\)\.connect\(ctx\.destination\)/);
+    // 放大必须在限幅器前面——反过来就是先压再放，照样爆
+    expect(src).toMatch(/masterGain\.connect\(boost\)\.connect\(limiter\)\.connect\(ctx\.destination\)/);
     expect(src).not.toMatch(/masterGain\.connect\(ctx\.destination\)/);
+  });
+
+  it('默认响度够得着：放大后的平均输出接近普通视频（产品方反馈"风扇都能盖住"）', () => {
+    // 雨声合成出来平均约 0.12；默认音量下经放大后的平均输出
+    const L = synthesize('rain').left;
+    const out = rms(L) * DEFAULT_VOLUME * DEFAULT_MASTER * OUTPUT_BOOST;
+    expect(out, `默认输出平均 ${out.toFixed(3)}`).toBeGreaterThan(0.12);
+    expect(out, `默认输出平均 ${out.toFixed(3)}`).toBeLessThan(0.3);
   });
 
   it('恢复默认音量：改过音量才出现按钮，点了各声音和总音量都回默认', () => {

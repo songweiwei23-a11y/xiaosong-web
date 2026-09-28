@@ -44,6 +44,8 @@ export const DEFAULT_MASTER = 0.8;
  */
 const PREVIOUS_DEFAULT_MASTERS = [0.4, 0.6];
 const PREVIOUS_DEFAULT_VOLUMES = [0.35];
+/** 输出端的固定放大倍数（见 audio() 里的说明） */
+export const OUTPUT_BOOST = 3.5;
 const FADE = 0.8;
 
 let state: AmbientState = {
@@ -118,10 +120,18 @@ function audio() {
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -6;
     limiter.knee.value = 6;
-    limiter.ratio.value = 12;
-    limiter.attack.value = 0.003;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
     limiter.release.value = 0.25;
-    masterGain.connect(limiter).connect(ctx.destination);
+    /*
+     * 输出放大一级。产品方第三次反馈"还是小，电脑风扇都能盖住"——
+     * 算下来就算每种声音和总音量都拉满，原来的输出也只有普通视频响度的一半左右：
+     * 合成出来的声音本身偏轻（为了留余量不削波），后面又没有放大，滑块怎么调都不够。
+     * 放大后默认响度接近普通视频/音乐；叠几种、都拉满时由后面的限幅器压住，不爆音。
+     */
+    const boost = ctx.createGain();
+    boost.gain.value = OUTPUT_BOOST;
+    masterGain.connect(boost).connect(limiter).connect(ctx.destination);
   }
   return { ctx, master: masterGain! };
 }
