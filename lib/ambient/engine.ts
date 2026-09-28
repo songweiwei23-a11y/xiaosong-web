@@ -31,17 +31,19 @@ export interface AmbientState {
 const PREF_KEY = "kaiwu:ambient";
 /**
  * 默认音量：白噪音是背景，盖过说话、盖过视频声就错了，但也不能小到听不清。
- * 总音量原来是 0.4，产品方反馈"听着都偏小"，2026-09-28 调到 0.6（大约响 1.5 倍）。
- * 滑块上限是 1，嫌小还能再往上拉。
+ * 产品方两次反馈"听着偏小"（2026-09-28）：
+ *   第一次 总 0.4 → 0.6；第二次 每种声音 0.35 → 0.5、总 0.6 → 0.8。
+ *   合起来比最初响将近 3 倍。输出端有限幅器兜底，叠几种、都拉满也不会爆音。
  */
-export const DEFAULT_VOLUME = 0.35;
-export const DEFAULT_MASTER = 0.6;
+export const DEFAULT_VOLUME = 0.5;
+export const DEFAULT_MASTER = 0.8;
 /**
- * 上一版的默认总音量。音量存在本机，只改默认值的话，老用户本机里存着的 0.4 不会变，
- * 他们听到的还是原来那么小。存着的正好是 0.4 = 从没动过（或点过"恢复默认"），
+ * 以前各版的默认值。音量存在本机，只改默认值的话，老用户本机里存着的旧默认不会变，
+ * 他们听到的还是原来那么小。存着的正好是旧默认 = 从没动过（或点过"恢复默认"），
  * 读回来时换成新的默认；自己调过的别的数照样保留。
  */
-const PREVIOUS_DEFAULT_MASTERS = [0.4];
+const PREVIOUS_DEFAULT_MASTERS = [0.4, 0.6];
+const PREVIOUS_DEFAULT_VOLUMES = [0.35];
 const FADE = 0.8;
 
 let state: AmbientState = {
@@ -70,7 +72,7 @@ function restore() {
       const mix: AmbientState["mix"] = {};
       for (const s of AMBIENT_SOUNDS) {
         const v = saved.mix?.[s.id];
-        if (typeof v === "number" && v >= 0 && v <= 1) mix[s.id] = v;
+        if (typeof v === "number" && v >= 0 && v <= 1) mix[s.id] = PREVIOUS_DEFAULT_VOLUMES.includes(v) ? DEFAULT_VOLUME : v;
       }
       let master = typeof saved.master === "number" && saved.master >= 0 && saved.master <= 1 ? saved.master : state.master;
       if (PREVIOUS_DEFAULT_MASTERS.includes(master)) master = DEFAULT_MASTER;
@@ -109,7 +111,17 @@ function audio() {
     ctx = new AC();
     masterGain = ctx.createGain();
     masterGain.gain.value = 0;
-    masterGain.connect(ctx.destination);
+    /*
+     * 输出端的限幅器。默认音量调大之后，几种声音叠着放、又都拉满时，
+     * 合起来会超过上限，直接出去就是破音。它只在快顶到头时才压，平时基本不动声音。
+     */
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.25;
+    masterGain.connect(limiter).connect(ctx.destination);
   }
   return { ctx, master: masterGain! };
 }

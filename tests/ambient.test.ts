@@ -112,15 +112,24 @@ describe('六种声音', () => {
 
 describe('播放器和界面', () => {
   it('默认音量偏小：白噪音是背景，不能一开就吓人', () => {
-    // 2026-09-28 产品方反馈"都偏小"，总音量 0.4 → 0.6（约 1.5 倍）；上限放到 0.22，还是背景音的量
-    expect(DEFAULT_VOLUME * DEFAULT_MASTER).toBeLessThanOrEqual(0.22);
-    expect(DEFAULT_VOLUME * DEFAULT_MASTER).toBeGreaterThan(0.15);
+    // 2026-09-28 产品方两次反馈"偏小"：0.35×0.4=0.14 → 0.35×0.6=0.21 → 0.5×0.8=0.4
+    expect(DEFAULT_VOLUME * DEFAULT_MASTER).toBeLessThanOrEqual(0.45);
+    expect(DEFAULT_VOLUME * DEFAULT_MASTER).toBeGreaterThan(0.3);
   });
 
   it('调大默认音量后，老用户本机存着的旧默认值也跟着变大（自己调过的不动）', () => {
     const src = readCode('lib/ambient/engine.ts');
-    expect(src).toMatch(/const PREVIOUS_DEFAULT_MASTERS = \[0\.4\]/);
+    expect(src).toMatch(/const PREVIOUS_DEFAULT_MASTERS = \[0\.4, 0\.6\]/);
+    expect(src).toMatch(/const PREVIOUS_DEFAULT_VOLUMES = \[0\.35\]/);
     expect(src).toMatch(/if \(PREVIOUS_DEFAULT_MASTERS\.includes\(master\)\) master = DEFAULT_MASTER/);
+    expect(src).toMatch(/PREVIOUS_DEFAULT_VOLUMES\.includes\(v\) \? DEFAULT_VOLUME : v/);
+  });
+
+  it('输出端有限幅器：调大音量后叠几种、都拉满也不爆音', () => {
+    const src = readCode('lib/ambient/engine.ts');
+    expect(src).toMatch(/createDynamicsCompressor\(\)/);
+    expect(src).toMatch(/masterGain\.connect\(limiter\)\.connect\(ctx\.destination\)/);
+    expect(src).not.toMatch(/masterGain\.connect\(ctx\.destination\)/);
   });
 
   it('恢复默认音量：改过音量才出现按钮，点了各声音和总音量都回默认', () => {
