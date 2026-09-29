@@ -12,6 +12,17 @@
 import { openUpgrade } from "@/lib/upgrade";
 
 /**
+ * 请求根本没到服务器（网络断了一下、代理掐了连接）。浏览器给的是一句英文
+ * "Failed to fetch"（Safari 是 "Load failed"），直接显示出来用户看不懂，还以为是功能坏了。
+ * 线上实测过：从编导的网络发几十 KB 的请求，会时不时被半路掐断，服务器那头一条记录都没有。
+ */
+export function isNetworkError(e: unknown): boolean {
+  return e instanceof TypeError && /fetch|network|load failed/i.test(e.message);
+}
+
+export const NETWORK_ERROR_HINT = "网络断了一下，请求没发出去，再试一次就好";
+
+/**
  * 额度用完时各板块提示的后半句。
  * 原来写的是「请升级会员或等待下月重置」——免费版现在是一次性体验、不会下月重置，
  * 会员也是按期清零，"等下月"对谁都不准。各板块生成前的预检查都用这一句。

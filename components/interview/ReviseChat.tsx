@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Loader2, MessageSquareText, Send } from "lucide-react";
 import { MAX_INSTRUCTION_CHARS, type Revision, type RevisionInput } from "@/lib/interview-import";
 import { PROFILE_FIELDS } from "@/lib/profile-fields";
-import { throwApiError } from "@/lib/api-error";
+import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
 import { readSseResult } from "@/lib/sse-result";
 
 const LABEL = new Map(PROFILE_FIELDS.map((f) => [f.key, f.label]));
@@ -24,30 +24,44 @@ interface Turn {
  * 前采记录会记漏、记错，客户也会改口；一项项手改太慢，编导一句话让 AI 改对应的几项。
  * 改动怎么合进确认页由页面的 onApply 做，这里只管对话。
  */
+/** 网络断了自动再发几次：修改不扣次数，重发没有代价 */
+const RETRIES = 2;
+
 export function ReviseChat({
   current,
   source,
+  importId,
   onApply,
 }: {
   /** 确认页此刻的结果（含手动改过的） */
   current: Omit<RevisionInput, "instruction">;
   source: string;
+  /** 历史记录里的这一条。有它就不发原文，服务端自己取——请求小，不容易被网络掐断 */
+  importId: string | null;
   onApply: (r: Revision) => void;
 }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
 
   const send = async () => {
     const ask = input.trim();
     if (!ask || busy) return;
     setBusy(true);
+    setRetrying(false);
     try {
-      const res = await fetch("/api/interview/revise", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...current, source, instruction: ask }),
-      });
+      const body = JSON.stringify({ ...current, instruction: ask, ...(importId ? { importId } : { source }) });
+      let res: Response | null = null;
+      for (let attempt = 0; !res; attempt++) {
+        try {
+          res = await fetch("/api/interview/revise", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+        } catch (e) {
+          if (!isNetworkError(e) || attempt >= RETRIES) throw e;
+          setRetrying(true);
+          await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        }
+      }
       if (!res.ok) await throwApiError(res, "修改失败");
       const { revision } = await readSseResult<{ revision: Revision }>(res);
       onApply(revision);
@@ -60,9 +74,11 @@ export function ReviseChat({
       setTurns((t) => [...t, { ask, reply: revision.reply || (changed.length ? "改好了" : "没有需要改的"), changed }]);
       setInput("");
     } catch (e) {
-      setTurns((t) => [...t, { ask, reply: (e as Error).message || "修改失败，请重试", changed: [], failed: true }]);
+      const reply = isNetworkError(e) ? `${NETWORK_ERROR_HINT}（你的话还在输入框里，直接点发送）` : (e as Error).message || "修改失败，请重试";
+      setTurns((t) => [...t, { ask, reply, changed: [], failed: true }]);
     } finally {
       setBusy(false);
+      setRetrying(false);
     }
   };
 
@@ -128,7 +144,8 @@ export function ReviseChat({
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </button>
       </div>
-      {busy && <p className="mt-1.5 text-[12px] text-muted-foreground">正在改，二三十秒…</p>}
+      {busy && <p className="mt-1.5 text-[12px] text-muted-foreground">{retrying ? "网络不稳，正在重试…" : "正在改，二三十秒…"}</p>}
+      <p className="mt-1.5 text-[11.5px] text-muted-foreground/80">可以一直接着说，改到满意为止。</p>
     </section>
   );
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRight, CheckCircle2, FileText, FileUp, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { MAX_SOURCE_CHARS, MIN_SOURCE_CHARS, type Extraction, type Revision } from "@/lib/interview-import";
-import { throwApiError } from "@/lib/api-error";
+import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
 import { readSseResult } from "@/lib/sse-result";
 import { notifyGenerated } from "@/lib/upgrade";
 import { setActiveProfileId } from "@/lib/active-profile";
@@ -89,7 +89,7 @@ export default function InterviewPage() {
       openReview(row.extraction as Extraction, String(row.source ?? ""), targetId, row.id);
       window.scrollTo({ top: 0 });
     } catch (e) {
-      notify((e as Error).message || "这条记录打不开", "error");
+      notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "这条记录打不开", "error");
     }
   };
 
@@ -142,7 +142,13 @@ export default function InterviewPage() {
       setHistoryKey((k) => k + 1);
       notifyGenerated();
     } catch (e) {
-      setError((e as Error).message || "提取失败，请重试");
+      // 网络断了的话，服务端可能已经收到、正在提取——不能只说"再试一次"，那样可能白花一次次数
+      setError(
+        isNetworkError(e)
+          ? "网络断了一下。过一两分钟看看下面的历史记录：出现了这次的结果就直接点开，没出现再点一次开始提取"
+          : (e as Error).message || "提取失败，请重试"
+      );
+      setHistoryKey((k) => k + 1);
       setStep("input");
     }
   };
@@ -203,7 +209,7 @@ export default function InterviewPage() {
       setSaved({ id: data.id, name: existing ? String(existing.profile_name ?? "") : profileName.trim(), count: patchCount, notesSaved: !!data.notesSaved });
       setStep("done");
     } catch (e) {
-      notify((e as Error).message || "写入档案失败", "error");
+      notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "写入档案失败", "error");
     } finally {
       setSaving(false);
     }
@@ -405,6 +411,7 @@ export default function InterviewPage() {
                   profileName: existing ? String(existing.profile_name ?? "") : profileName,
                 }}
                 source={source}
+                importId={importId}
                 onApply={onRevised}
               />
             }

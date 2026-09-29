@@ -37,6 +37,7 @@ import {
 } from '@/components/interview/ReviewPanel';
 import { documentToText, decodeText, readZipEntry, wordXmlToText, UnsupportedDocument } from '@/lib/document-text';
 import { EMPTY_PROFILE, PROFILE_CHOICES, PROFILE_FIELDS } from '@/lib/profile-fields';
+import { isNetworkError } from '@/lib/api-error';
 import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import { PROFILE_SUMMARY_FIELDS } from '@/lib/profile-summary';
 import { readCode } from './helpers/source';
@@ -551,6 +552,32 @@ describe('接口', () => {
     expect(revise).toMatch(/MAX_INSTRUCTION_CHARS/);
     // 发给 AI 的"现在的结果"也只收档案字段
     expect(revise).toMatch(/FIELD_KEYS\.has\(k\)/);
+  });
+
+  it('对话修改的请求要小：有历史记录就只发记录 id，原文由服务端按 id 取（只取自己的）', () => {
+    // 线上实测：几十 KB 的 POST 会被编导那边的网络半路掐断，页面上一句 Failed to fetch，服务器一条记录都没有
+    const chat = readCode('components/interview/ReviseChat.tsx');
+    expect(chat).toMatch(/\.\.\.\(importId \? \{ importId \} : \{ source \}\)/);
+    expect(revise).toMatch(/\.from\('interview_imports'\)\s*\.select\('source'\)\s*\.eq\('id', importId\)\s*\.eq\('user_id', userId\)/);
+    expect(readCode('app/dashboard/interview/page.tsx')).toMatch(/importId=\{importId\}/);
+  });
+
+  it('网络断了：对话修改自动重发（不扣次数，重发没代价）；提示用中文，不显示 Failed to fetch', () => {
+    const chat = readCode('components/interview/ReviseChat.tsx');
+    expect(chat).toMatch(/if \(!isNetworkError\(e\) \|\| attempt >= RETRIES\) throw e/);
+    expect(chat).toMatch(/网络不稳，正在重试/);
+    expect(chat).toMatch(/NETWORK_ERROR_HINT/);
+    // 提取不自动重发：可能已经在服务端跑了，重发会多扣一次；让人去历史记录里看
+    const page = readCode('app/dashboard/interview/page.tsx');
+    expect(page).toMatch(/isNetworkError\(e\)\s*\?\s*"网络断了一下。过一两分钟看看下面的历史记录/);
+  });
+
+  it('认得出"请求没发出去"', () => {
+    expect(isNetworkError(new TypeError('Failed to fetch'))).toBe(true);
+    expect(isNetworkError(new TypeError('Load failed'))).toBe(true);
+    expect(isNetworkError(new TypeError('NetworkError when attempting to fetch resource.'))).toBe(true);
+    expect(isNetworkError(new Error('额度已用完'))).toBe(false);
+    expect(isNetworkError(new TypeError('Cannot read properties of undefined'))).toBe(false);
   });
 
   it('确认页挂着对话框，改完合进确认页', () => {

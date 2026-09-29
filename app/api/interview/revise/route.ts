@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
 import { askDify, sseTask } from '@/lib/dify-task';
 import { normalizeSource } from '@/lib/document-text';
+import { getServiceSupabase } from '@/lib/admin-auth';
+import { UUID_RE } from '@/lib/interview-history';
 import { PROFILE_FIELDS } from '@/lib/profile-fields';
 import {
   buildRevisionPrompt,
@@ -59,7 +61,26 @@ export async function POST(req: NextRequest) {
   if (!instruction) return json({ error: '先说说哪里不对' }, 400);
   if (instruction.length > MAX_INSTRUCTION_CHARS) return json({ error: `一次说 ${MAX_INSTRUCTION_CHARS} 字以内，分几次说` }, 400);
 
-  const source = normalizeSource(typeof body?.source === 'string' ? body.source : '').slice(0, MAX_SOURCE_CHARS);
+  /*
+   * 原文优先从历史记录里取，浏览器只发记录 id。
+   * 线上实测：从编导的网络发到服务器，几十 KB 的 POST 会时不时被半路掐断
+   * （服务器本机发同样的请求 3 毫秒回、从不失败），页面上就是一句 "Failed to fetch"，
+   * 请求根本没到服务器。原文动辄上万字，随每次修改发一遍，请求又大又容易断。
+   * 历史表没建、或者没有记录 id 时，才退回用浏览器发来的原文。
+   */
+  let source = '';
+  const importId = typeof body?.importId === 'string' && UUID_RE.test(body.importId) ? body.importId : null;
+  if (importId) {
+    const { data } = await getServiceSupabase()
+      .from('interview_imports')
+      .select('source')
+      .eq('id', importId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (typeof data?.source === 'string') source = data.source;
+  }
+  if (!source) source = typeof body?.source === 'string' ? body.source : '';
+  source = normalizeSource(source).slice(0, MAX_SOURCE_CHARS);
 
   // 现在的结果：只收档案字段，值一律转成短字符串 / 字符串数组
   const fields: RevisionInput['fields'] = {};
