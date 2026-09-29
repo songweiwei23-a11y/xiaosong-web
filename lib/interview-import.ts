@@ -32,6 +32,8 @@ export interface ExtractedField {
   evidence: string;
   /** 依据在原文里找不到——多半是模型归纳或编的，页面上标"需核对" */
   unverified: boolean;
+  /** 编导在确认页跟 AI 说了之后改的：以编导为准，不再标"需核对" */
+  byUser?: boolean;
 }
 
 export interface Extraction {
@@ -253,6 +255,105 @@ function toStringList(v: unknown): string[] {
   if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean);
   if (typeof v === 'string') return v.split('\n').map((x) => x.replace(/^[-•\d.、\s]+/, '').trim()).filter(Boolean);
   return [];
+}
+
+// ---------------------------------------------------------------- 对话修改
+
+/** 编导一次说的话最多这么长：够说清"哪里不对"，又不至于被拿来当免费的聊天机器人 */
+export const MAX_INSTRUCTION_CHARS = 300;
+
+export interface RevisionInput {
+  /** 确认页此刻的结果（含编导手动改过的） */
+  fields: Partial<Record<FieldKey, string | string[]>>;
+  highlights: string[];
+  profileName: string;
+  instruction: string;
+}
+
+export interface Revision {
+  /** 给编导的一句话：改了什么 */
+  reply: string;
+  set: ExtractedField[];
+  remove: FieldKey[];
+  /** 只有要改要点时才有，是改完后的完整列表 */
+  highlights: string[] | null;
+  profileName: string | null;
+}
+
+/**
+ * 确认页的"跟 AI 说哪里不对"：编导一句话，AI 只改他说到的几项。
+ *
+ * 编导比前采记录更清楚客户的情况（记录可能记漏、记错，客户后来又改口），
+ * 所以他说的以他为准；他让回原文找的，才去原文里找。
+ * 原文照样带上，要求放在最后——离输出最近，模型最不容易忘。
+ */
+export function buildRevisionPrompt(input: RevisionInput, source: string): string {
+  const fields = PROFILE_SECTIONS.map((s) => `【${s.title}】\n${s.fields.map(fieldLine).join('\n')}`).join('\n\n');
+  const current = JSON.stringify({ profile_name: input.profileName, fields: input.fields, highlights: input.highlights });
+  return `【任务：修改前采建档的提取结果】这一次不写文案、不做分析，只按编导的要求改档案。
+
+编导看了从前采记录里提取出的档案，指出了问题（见最后「编导的要求」）。请按要求修改。
+
+## 规则（必须遵守）
+1. **只改编导说到的**，没提到的字段一律不动、不要出现在输出里。
+2. 编导说的就是事实，以他为准——他比前采记录更清楚客户的情况。
+3. 编导让你回原文找、核对的，去下面的前采记录里找，evidence 写原文片段（双引号换成「」）；不是从原文来的，evidence 留空。
+4. 先看现在的值是不是**已经符合**编导说的：符合就不改，在 reply 里说"已经是××了"。
+   比如编导说"团队就两个人"，现在是「2-3人小团队」，那就不用改。
+5. 单选题只能原样填给定选项之一；编导说的对不上任何选项，就按字面选最接近的那个（两个人 → 2-3人小团队，不是一人全包），并在 reply 里说明。
+6. 要清空某一项，把字段 key 放进 remove。
+7. 要改前采要点，就在 highlights 里给出改完后的**完整**列表；不改就不要输出 highlights。
+8. 要改档案名称才输出 profile_name。
+9. 编导的话如果和修改档案无关（让你写文案、聊别的），什么都不改，reply 里说明"这里只能修改档案内容"。
+10. reply：一句大白话告诉编导你改了哪几项、改成了什么。
+
+## 档案字段（key 必须一字不差）
+${fields}
+
+## 现在的提取结果
+${current}
+
+## 输出格式
+只输出一个 JSON 对象，不要任何解释、不要 Markdown 代码块：
+{"reply":"…","set":{"字段key":{"value":…,"evidence":"原文片段或空"}},"remove":["字段key"]}
+
+## 前采记录（到"前采记录结束"为止）
+${source}
+前采记录结束
+
+## 编导的要求
+${input.instruction}`;
+}
+
+export function parseRevision(raw: string, source: string): Revision {
+  const data = extractJson(raw) as Record<string, unknown>;
+  const rawSet = (data?.set && typeof data.set === 'object' && !Array.isArray(data.set) ? data.set : {}) as Record<string, unknown>;
+
+  const set: ExtractedField[] = [];
+  for (const [key, entry] of Object.entries(rawSet)) {
+    const spec = SPEC.get(key as FieldKey);
+    if (!spec) continue;
+    const obj = entry && typeof entry === 'object' && !Array.isArray(entry) ? (entry as Record<string, unknown>) : { value: entry };
+    const value = cleanValue(spec, obj.value);
+    if (value == null) continue;
+    const ev = clip(scrubSensitive(typeof obj.evidence === 'string' ? obj.evidence.trim() : ''), 120);
+    // 依据对得上原文才留；对不上就不留——这一项是按编导说的改的，不需要"原文依据"
+    const evidence = ev && evidenceInSource(ev, source) ? ev : '';
+    set.push({ key: spec.key, value, evidence, unverified: false, byUser: true });
+  }
+
+  const setKeys = new Set(set.map((f) => f.key));
+  const remove = (Array.isArray(data?.remove) ? data.remove : [])
+    .filter((k): k is FieldKey => typeof k === 'string' && SPEC.has(k as FieldKey) && !setKeys.has(k as FieldKey));
+
+  const highlights = Array.isArray(data?.highlights)
+    ? toStringList(data.highlights).map((h) => clip(scrubSensitive(h), 150)).slice(0, 8)
+    : null;
+  const profileName =
+    typeof data?.profile_name === 'string' && data.profile_name.trim() ? clip(scrubSensitive(data.profile_name.trim()), 30) : null;
+  const reply = typeof data?.reply === 'string' ? clip(scrubSensitive(data.reply.trim()), 200) : '';
+
+  return { reply, set, remove: Array.from(new Set(remove)), highlights, profileName };
 }
 
 // ---------------------------------------------------------------- 和已有档案对比、合并

@@ -4,13 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, FileText, FileUp, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
-import { MAX_SOURCE_CHARS, MIN_SOURCE_CHARS, type Extraction } from "@/lib/interview-import";
+import { MAX_SOURCE_CHARS, MIN_SOURCE_CHARS, type Extraction, type Revision } from "@/lib/interview-import";
 import { throwApiError } from "@/lib/api-error";
+import { readSseResult } from "@/lib/sse-result";
 import { notifyGenerated } from "@/lib/upgrade";
 import { setActiveProfileId } from "@/lib/active-profile";
 import { invalidateCreatorContext } from "@/hooks/useCreatorContext";
 import { notify } from "@/components/ui/feedback";
-import { ReviewPanel, MissingList, buildPatch, initialDrafts, type FieldDraft } from "@/components/interview/ReviewPanel";
+import {
+  ReviewPanel,
+  MissingList,
+  applyRevision,
+  buildPatch,
+  currentValues,
+  initialDrafts,
+  type FieldDraft,
+} from "@/components/interview/ReviewPanel";
+import { ReviseChat } from "@/components/interview/ReviseChat";
 
 type Step = "input" | "working" | "review" | "done";
 type ProfileRow = Record<string, unknown> & { id: string; profile_name?: string };
@@ -90,7 +100,7 @@ export default function InterviewPage() {
       }
       if (!res.ok) await throwApiError(res, "提取失败");
 
-      const result = await readResult(res);
+      const result = await readSseResult<{ extraction: Extraction; source: string }>(res);
       const ex = result.extraction;
       setExtraction(ex);
       setSource(result.source);
@@ -103,6 +113,16 @@ export default function InterviewPage() {
       setError((e as Error).message || "提取失败，请重试");
       setStep("input");
     }
+  };
+
+  /** 编导跟 AI 说了哪里不对，AI 改完合进确认页 */
+  const onRevised = (rev: Revision) => {
+    if (!extraction) return;
+    const next = applyRevision(extraction, drafts, rev, existing);
+    setExtraction(next.extraction);
+    setDrafts(next.drafts);
+    if (rev.highlights) setHighlightOn(rev.highlights.map(() => true));
+    if (rev.profileName && !existing) setProfileName(rev.profileName);
   };
 
   const patch = extraction ? buildPatch(extraction, drafts, existing) : {};
@@ -284,6 +304,16 @@ export default function InterviewPage() {
             )}
           </div>
 
+          <ReviseChat
+            current={{
+              fields: currentValues(extraction, drafts),
+              highlights: extraction.highlights,
+              profileName: existing ? String(existing.profile_name ?? "") : profileName,
+            }}
+            source={source}
+            onApply={onRevised}
+          />
+
           <ReviewPanel
             extraction={extraction}
             existing={existing}
@@ -345,27 +375,4 @@ export default function InterviewPage() {
       )}
     </div>
   );
-}
-
-/** 读提取接口的 SSE：心跳行跳过，等最后那条结果或错误 */
-async function readResult(res: Response): Promise<{ extraction: Extraction; source: string }> {
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("读取结果失败，请重试");
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (value) buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
-    buffer = events.pop() || "";
-    for (const ev of events) {
-      const line = ev.split("\n").find((l) => l.startsWith("data: "));
-      if (!line) continue;
-      const data = JSON.parse(line.slice(6));
-      if (data.event === "error") throw new Error(data.message || "提取失败，请重试");
-      if (data.event === "result") return { extraction: data.extraction, source: data.source };
-    }
-    if (done) break;
-  }
-  throw new Error("和服务器的连接断了，请重试");
 }

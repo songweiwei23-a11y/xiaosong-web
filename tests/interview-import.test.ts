@@ -20,8 +20,11 @@ import {
   mergeValue,
   appendNotes,
   mergeHighlights,
+  buildRevisionPrompt,
+  parseRevision,
   MAX_STORED_NOTES,
 } from '@/lib/interview-import';
+import { applyRevision, buildPatch, currentValues, initialDrafts } from '@/components/interview/ReviewPanel';
 import { documentToText, decodeText, readZipEntry, wordXmlToText, UnsupportedDocument } from '@/lib/document-text';
 import { EMPTY_PROFILE, PROFILE_CHOICES, PROFILE_FIELDS } from '@/lib/profile-fields';
 import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
@@ -115,6 +118,56 @@ describe('解析模型的回复', () => {
   it('连 JSON 都没有才报错', () => {
     expect(() => parseExtraction('抱歉，我无法完成', SOURCE)).toThrow();
     expect(extractJson('好的：{"a":1} 以上')).toEqual({ a: 1 });
+  });
+});
+
+describe('对话修改：编导一句话，AI 改对应的几项', () => {
+  const input = {
+    fields: { fans_level: '0-1万', team_structure: '2-3人小团队', equipment: ['手机'] },
+    highlights: ['每天早上六点现拉黄牛'],
+    profileName: '阿强潮汕牛肉火锅',
+    instruction: '粉丝其实有3万了；目标人群兴趣那一项不要了',
+  };
+  const prompt = buildRevisionPrompt(input, SOURCE);
+
+  it('提示词：只改说到的、编导为准、先看是不是已经符合、跑题不改；编导的话放在最后', () => {
+    expect(prompt).toMatch(/只改编导说到的/);
+    expect(prompt).toMatch(/以他为准/);
+    expect(prompt).toMatch(/已经符合/);
+    expect(prompt).toMatch(/这里只能修改档案内容/);
+    expect(prompt.trimEnd().endsWith(input.instruction)).toBe(true);
+    expect(prompt.indexOf(SOURCE)).toBeLessThan(prompt.indexOf('## 编导的要求'));
+    // 现在的结果带上了（含手动改过的值）
+    expect(prompt).toContain('"team_structure":"2-3人小团队"');
+    for (const f of PROFILE_FIELDS) expect(prompt, f.key).toContain(`- ${f.key}（`);
+  });
+
+  // 照着线上实测的回复写的
+  const RAW_REV = `{"reply":"改了2项","set":{"fans_level":{"value":"1-5万","evidence":""},"team_structure":{"value":"老板一个人"},"equipment":{"value":["手机","稳定器"],"evidence":"我自己拿手机拍"},"bogus":{"value":"x"}},"remove":["target_interests","fans_level","nope"]}`;
+  const rev = parseRevision(RAW_REV, SOURCE);
+
+  it('解析：单选仍只收选项原文，对不上的不改；不认识的字段丢掉', () => {
+    expect(rev.set.map((f) => f.key)).toEqual(['fans_level', 'equipment']);
+    expect(rev.set[0].value).toBe('1-5万');
+    expect(rev.set.every((f) => f.byUser && !f.unverified)).toBe(true);
+  });
+
+  it('解析：依据对得上原文才留；同一项又改又清空，以"改"为准', () => {
+    expect(rev.set.find((f) => f.key === 'equipment')?.evidence).toBe('我自己拿手机拍');
+    expect(rev.remove).toEqual(['target_interests']);
+  });
+
+  it('解析：不改要点、不改名字时就是 null（不能把要点清空）', () => {
+    expect(rev.highlights).toBeNull();
+    expect(rev.profileName).toBeNull();
+    expect(parseRevision('{"reply":"x","highlights":["新的"],"profile_name":"新名字"}', SOURCE)).toMatchObject({ highlights: ['新的'], profileName: '新名字' });
+  });
+
+  it('跑题的回复：什么都不改', () => {
+    const r = parseRevision('{"reply":"这里只能修改档案内容","set":{},"remove":[]}', SOURCE);
+    expect(r.set).toEqual([]);
+    expect(r.remove).toEqual([]);
+    expect(r.reply).toBe('这里只能修改档案内容');
   });
 });
 
@@ -212,6 +265,53 @@ describe('和已有档案合并', () => {
     expect(long.endsWith('新的一轮')).toBe(true);
   });
 
+  it('对话改完合进确认页：改的项勾上、清空的项拿掉、补上的不再补问；编导说的不一样项直接用新的', () => {
+    const ex = {
+      profileName: '阿强',
+      fields: [
+        { key: 'fans_level' as const, value: '0-1万', evidence: '', unverified: false },
+        { key: 'target_interests' as const, value: ['火锅'], evidence: '', unverified: false },
+      ],
+      highlights: ['a'],
+      missing: [
+        { key: 'content_tone' as const, label: '语言风格', question: '?' },
+        { key: 'budget_per_video' as const, label: '单条预算', question: '?' },
+      ],
+    };
+    const existing = { fans_level: '5-10万', equipment: ['手机', '灯光'] };
+    const drafts = initialDrafts(ex, existing);
+    expect(drafts.fans_level).toMatchObject({ include: false, mode: 'keep' }); // 刚提取：不一样的先保留原来的
+    const rev = {
+      reply: '',
+      set: [
+        { key: 'fans_level' as const, value: '1-5万', evidence: '', unverified: false, byUser: true },
+        { key: 'content_tone' as const, value: '亲切朋友式', evidence: '', unverified: false, byUser: true },
+        { key: 'equipment' as const, value: ['手机', '稳定器'], evidence: '', unverified: false, byUser: true },
+      ],
+      remove: ['target_interests' as const],
+      highlights: null,
+      profileName: null,
+    };
+    const out = applyRevision(ex, drafts, rev, existing);
+    expect(out.extraction.fields.map((f) => f.key)).toEqual(['fans_level', 'content_tone', 'equipment']); // 按档案顺序
+    expect(out.drafts.fans_level).toMatchObject({ include: true, mode: 'new', text: '1-5万' }); // 编导说的：用新的
+    expect(out.drafts.equipment).toMatchObject({ include: true, mode: 'merge' }); // 多选：合并，不把「灯光」冲掉
+    expect(out.drafts.target_interests).toBeUndefined();
+    expect(out.extraction.missing.map((m) => m.key)).toEqual(['budget_per_video']);
+    expect(out.extraction.highlights).toEqual(['a']);
+    // 合完以后写进档案的
+    expect(buildPatch(out.extraction, out.drafts, existing)).toEqual({
+      fans_level: '1-5万',
+      content_tone: '亲切朋友式',
+      equipment: ['手机', '灯光', '稳定器'],
+    });
+  });
+
+  it('发给 AI 的"现在的结果"以编辑框为准（手动改过的也带上）', () => {
+    const ex = { profileName: '', fields: [{ key: 'equipment' as const, value: ['手机'], evidence: '', unverified: false }], highlights: [], missing: [] };
+    expect(currentValues(ex, { equipment: { include: true, mode: 'new', text: '手机、灯光' } })).toEqual({ equipment: ['手机', '灯光'] });
+  });
+
   it('要点去重，新的在前，最多 12 条', () => {
     expect(mergeHighlights('a\nb', ['c', 'a'])).toBe('c\na\nb');
     expect(mergeHighlights(null, Array.from({ length: 20 }, (_, i) => `第${i}条`)).split('\n')).toHaveLength(12);
@@ -306,6 +406,7 @@ describe('读上传的文档', () => {
 describe('接口', () => {
   const extract = readCode('app/api/interview/extract/route.ts');
   const save = readCode('app/api/interview/save/route.ts');
+  const revise = readCode('app/api/interview/revise/route.ts');
 
   it('提取按「前采建档」查额度，只在真提取出东西后才扣', () => {
     expect(extract).toMatch(/requireUserWithQuota\('interview'\)/);
@@ -314,14 +415,35 @@ describe('接口', () => {
     expect((extract.match(/incrementUsageServer\(/g) ?? []).length).toBe(1);
   });
 
-  it('提取不接共用会话（不带 conversation_id，也不存）', () => {
-    expect(extract).not.toMatch(/conversation_id/);
-    expect(extract).not.toMatch(/saveDifyConversationId|getDifyConversationId/);
+  it('提取、修改都不接共用会话（不带 conversation_id，也不存）', () => {
+    for (const src of [extract, revise, readCode('lib/dify-task.ts')]) {
+      expect(src).not.toMatch(/conversation_id/);
+      expect(src).not.toMatch(/saveDifyConversationId|getDifyConversationId/);
+    }
   });
 
   it('长任务有心跳，免得链路上哪一层把连接掐掉', () => {
-    expect(extract).toMatch(/setInterval\(\(\) => write\(': ping\\n\\n'\)/);
-    expect(extract).toMatch(/X-Accel-Buffering/);
+    const task = readCode('lib/dify-task.ts');
+    expect(task).toMatch(/setInterval\(\(\) => write\(': ping\\n\\n'\)/);
+    expect(task).toMatch(/X-Accel-Buffering/);
+    expect(extract).toMatch(/return sseTask\(/);
+    expect(revise).toMatch(/return sseTask\(/);
+  });
+
+  it('对话修改：要登录、不扣前采次数、但每人每小时有上限，一次说的话有长度上限', () => {
+    expect(revise).toMatch(/requireUser\(\)/);
+    expect(revise).not.toMatch(/requireUserWithQuota|incrementUsageServer/);
+    expect(revise).toMatch(/if \(limited\(userId\)\)/);
+    expect(revise).toMatch(/MAX_INSTRUCTION_CHARS/);
+    // 发给 AI 的"现在的结果"也只收档案字段
+    expect(revise).toMatch(/FIELD_KEYS\.has\(k\)/);
+  });
+
+  it('确认页挂着对话框，改完合进确认页', () => {
+    const page = readCode('app/dashboard/interview/page.tsx');
+    expect(page).toMatch(/<ReviseChat[\s\S]*onApply=\{onRevised\}/);
+    expect(page).toMatch(/applyRevision\(extraction, drafts, rev, existing\)/);
+    expect(readCode('components/interview/ReviseChat.tsx')).toMatch(/fetch\("\/api\/interview\/revise"/);
   });
 
   it('写入只收白名单里的列，不把请求体整个塞进库（user_id 不能被改）', () => {

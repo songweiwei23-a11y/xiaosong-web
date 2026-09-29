@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Check, Copy, MessageCircleQuestion, Quote } from "lucide-react";
 import { PROFILE_FIELDS, PROFILE_SECTIONS, splitToArray, type ProfileFieldSpec } from "@/lib/profile-fields";
-import { canMerge, compareField, mergeValue, type Extraction, type ExtractedField, type FieldStatus } from "@/lib/interview-import";
+import { canMerge, compareField, mergeValue, type Extraction, type ExtractedField, type FieldStatus, type Revision } from "@/lib/interview-import";
 import { notify } from "@/components/ui/feedback";
 
 export type Mode = "new" | "merge" | "keep";
@@ -45,6 +45,57 @@ export function buildPatch(
     patch[f.key] = d.mode === "merge" ? mergeValue(f.key, existing?.[f.key], value) : value;
   }
   return patch;
+}
+
+/** 确认页此刻的结果（手动改过的以编辑框为准），发给"跟 AI 说"用 */
+export function currentValues(ex: Extraction, drafts: Record<string, FieldDraft>): Record<string, string | string[]> {
+  const out: Record<string, string | string[]> = {};
+  for (const f of ex.fields) {
+    const text = drafts[f.key]?.text ?? show(f.value);
+    out[f.key] = SPEC.get(f.key)?.kind === "multi" ? splitToArray(text) : text;
+  }
+  return out;
+}
+
+/**
+ * 把 AI 按编导的话改出来的结果合进确认页。
+ * 编导明确说了的项直接勾上：原来空着的写进去；和档案不一样的，多选合并、单选和填空用新的
+ * （和刚提取时"先保留原来的"不同——这回是编导自己说的）。
+ */
+export function applyRevision(
+  ex: Extraction,
+  drafts: Record<string, FieldDraft>,
+  rev: Revision,
+  existing: Record<string, unknown> | null
+): { extraction: Extraction; drafts: Record<string, FieldDraft> } {
+  const byKey = new Map(ex.fields.map((f) => [f.key, f]));
+  const nextDrafts = { ...drafts };
+  for (const k of rev.remove) {
+    byKey.delete(k);
+    delete nextDrafts[k];
+  }
+  for (const f of rev.set) {
+    byKey.set(f.key, f);
+    const status = compareField(f, existing);
+    const text = show(f.value);
+    nextDrafts[f.key] =
+      status === "same"
+        ? { include: false, mode: "keep", text }
+        : { include: true, mode: status === "different" && canMerge(f.key) ? "merge" : "new", text };
+  }
+  const order = new Map(PROFILE_FIELDS.map((f, i) => [f.key, i]));
+  const fields = [...byKey.values()].sort((a, b) => order.get(a.key)! - order.get(b.key)!);
+  return {
+    extraction: {
+      ...ex,
+      fields,
+      profileName: rev.profileName ?? ex.profileName,
+      highlights: rev.highlights ?? ex.highlights,
+      // 补上了的就不用再补问
+      missing: ex.missing.filter((m) => !byKey.has(m.key)),
+    },
+    drafts: nextDrafts,
+  };
 }
 
 interface Props {
@@ -153,7 +204,12 @@ function FieldRow({
         )}
         <span className="text-[13.5px] font-medium text-foreground">{spec.label}</span>
         <span className={`rounded-full px-2 py-0.5 text-[11px] ${badge.cls}`}>{badge.text}</span>
-        {field.unverified && (
+        {field.byUser && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[11px] text-primary">
+            <Check className="h-3 w-3" /> 按你说的改了
+          </span>
+        )}
+        {field.unverified && !field.byUser && (
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-400" title="依据在原文里对不上，可能是 AI 归纳的，请核对">
             <AlertTriangle className="h-3 w-3" /> 需核对
           </span>
