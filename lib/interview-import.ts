@@ -257,6 +257,46 @@ function toStringList(v: unknown): string[] {
   return [];
 }
 
+/**
+ * 浏览器发回来的提取结果（对话改过、要存进历史的）重新清洗一遍：
+ * 和模型的回复一样不可信——字段名、值的类型、长度都按档案定义过一遍。
+ */
+export function sanitizeExtraction(data: unknown): Extraction {
+  const d = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
+  const fields: ExtractedField[] = [];
+  const seen = new Set<string>();
+  for (const f of Array.isArray(d.fields) ? d.fields : []) {
+    const o = (f && typeof f === 'object' ? f : {}) as Record<string, unknown>;
+    const spec = SPEC.get(o.key as FieldKey);
+    if (!spec || seen.has(spec.key)) continue;
+    const value = cleanValue(spec, o.value);
+    if (value == null) continue;
+    seen.add(spec.key);
+    fields.push({
+      key: spec.key,
+      value,
+      evidence: clip(scrubSensitive(typeof o.evidence === 'string' ? o.evidence : ''), 120),
+      unverified: o.unverified === true,
+      ...(o.byUser === true ? { byUser: true } : {}),
+    });
+  }
+  const order = new Map(PROFILE_FIELDS.map((f, i) => [f.key, i]));
+  fields.sort((a, b) => order.get(a.key)! - order.get(b.key)!);
+  const missing: Extraction['missing'] = [];
+  for (const m of Array.isArray(d.missing) ? d.missing : []) {
+    const o = (m && typeof m === 'object' ? m : {}) as Record<string, unknown>;
+    const spec = SPEC.get(o.key as FieldKey);
+    if (!spec || seen.has(spec.key) || typeof o.question !== 'string' || missing.length >= 6) continue;
+    missing.push({ key: spec.key, label: spec.label, question: clip(o.question, 120) });
+  }
+  return {
+    profileName: typeof d.profileName === 'string' ? clip(scrubSensitive(d.profileName.trim()), 30) : '',
+    fields,
+    highlights: toStringList(d.highlights).map((h) => clip(scrubSensitive(h), 150)).slice(0, 12),
+    missing,
+  };
+}
+
 // ---------------------------------------------------------------- 对话修改
 
 /** 编导一次说的话最多这么长：够说清"哪里不对"，又不至于被拿来当免费的聊天机器人 */

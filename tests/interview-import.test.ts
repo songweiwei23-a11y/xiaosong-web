@@ -22,6 +22,7 @@ import {
   mergeHighlights,
   buildRevisionPrompt,
   parseRevision,
+  sanitizeExtraction,
   MAX_STORED_NOTES,
 } from '@/lib/interview-import';
 import { applyRevision, buildPatch, currentValues, initialDrafts } from '@/components/interview/ReviewPanel';
@@ -456,6 +457,71 @@ describe('接口', () => {
   it('迁移没跑时，档案字段照样写进去（只是原文存不下）', () => {
     expect(save).toMatch(/\/interview_\/\.test\(error\.message/);
     expect(save).toMatch(/notesSaved = false/);
+  });
+});
+
+describe('历史记录', () => {
+  const history = readCode('app/api/interview/history/route.ts');
+  const extract = readCode('app/api/interview/extract/route.ts');
+  const save = readCode('app/api/interview/save/route.ts');
+
+  it('建表：只对 service_role 开放（开 RLS、不建任何策略）', () => {
+    const sql = readCode('supabase/migrations/20260929_interview_imports.sql');
+    expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS interview_imports/);
+    expect(sql).toMatch(/ALTER TABLE interview_imports ENABLE ROW LEVEL SECURITY/);
+    expect(sql).not.toMatch(/CREATE POLICY/);
+    expect(sql).toMatch(/ON DELETE CASCADE/);
+  });
+
+  it('接口里每一次读、改、删都限定在自己的记录上', () => {
+    const queries = history.match(/\.from\('interview_imports'\)[\s\S]*?;/g) ?? [];
+    expect(queries.length).toBe(3); // 取一条、列表、删除（改走 updateImport）
+    for (const q of queries) expect(q, q.slice(0, 80)).toMatch(/\.eq\('user_id', guard\.userId!\)/);
+    expect(readCode('lib/interview-history.ts')).toMatch(/\.update\(row\)\.eq\('id', id\)\.eq\('user_id', userId\)/);
+  });
+
+  it('列表不带原文（可能上万字），只给提取了几项', () => {
+    const list = history.slice(history.indexOf(".select('id, profile_name"));
+    expect(list.slice(0, 120)).not.toMatch(/source/);
+    expect(history).toMatch(/field_count/);
+  });
+
+  it('提取成功就存历史（在扣次数之后），浏览器切走了也照样存', () => {
+    expect(extract.indexOf('recordImport(')).toBeGreaterThan(extract.indexOf('incrementUsageServer('));
+    expect(extract).toMatch(/return \{ event: 'result', extraction: result, source, importId \}/);
+  });
+
+  it('写入档案后标上写进了哪个档案；浏览器发回来的结果重新清洗再存', () => {
+    expect(save).toMatch(/updateImport\(userId, body\.importId/);
+    expect(save).toMatch(/savedProfileId: data\.id/);
+    expect(save).toMatch(/sanitizeExtraction\(body\.extraction\)/);
+    expect(history).toMatch(/sanitizeExtraction\(body\.extraction\)/);
+  });
+
+  it('页面：输入页下面挂历史记录；对话改完存一下；点开回到确认页', () => {
+    const page = readCode('app/dashboard/interview/page.tsx');
+    expect(page).toMatch(/<InterviewHistory refreshKey=\{historyKey\}/);
+    expect(page).toMatch(/method: "PATCH"[\s\S]{0,120}extraction: next\.extraction/);
+    expect(page).toMatch(/openReview\(row\.extraction as Extraction/);
+  });
+
+  it('清洗：不认识的字段、重复的字段丢掉，值按档案类型过一遍，手机号隐去', () => {
+    const clean = sanitizeExtraction({
+      profileName: '阿强 13812345678',
+      fields: [
+        { key: 'fans_level', value: '瞎写的', evidence: 'x' },
+        { key: 'equipment', value: '手机、灯光', evidence: '', byUser: true },
+        { key: 'equipment', value: ['别的'] },
+        { key: 'hack', value: 'x' },
+        'garbage',
+      ],
+      highlights: ['电话 13812345678', 42],
+      missing: [{ key: 'content_tone', question: '语气？' }, { key: 'equipment', question: '已填的' }],
+    });
+    expect(clean.fields).toEqual([{ key: 'equipment', value: ['手机', '灯光'], evidence: '', unverified: false, byUser: true }]);
+    expect(JSON.stringify(clean)).not.toContain('13812345678');
+    expect(clean.missing.map((m) => m.key)).toEqual(['content_tone']);
+    expect(sanitizeExtraction(null)).toEqual({ profileName: '', fields: [], highlights: [], missing: [] });
   });
 });
 

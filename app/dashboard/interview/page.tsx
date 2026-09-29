@@ -21,6 +21,7 @@ import {
   type FieldDraft,
 } from "@/components/interview/ReviewPanel";
 import { ReviseChat } from "@/components/interview/ReviseChat";
+import { InterviewHistory } from "@/components/interview/InterviewHistory";
 
 type Step = "input" | "working" | "review" | "done";
 type ProfileRow = Record<string, unknown> & { id: string; profile_name?: string };
@@ -54,9 +55,41 @@ export default function InterviewPage() {
   const [keepNotes, setKeepNotes] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ id: string; name: string; count: number; notesSaved: boolean } | null>(null);
+  /** 这次提取在历史记录里的那一条；对话改过、写入了都更新它 */
+  const [importId, setImportId] = useState<string | null>(null);
+  const [historyKey, setHistoryKey] = useState(0);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const existing = target === NEW ? null : profiles.find((p) => p.id === target) ?? null;
+  const profileNames = new Map(profiles.map((p) => [p.id, String(p.profile_name || "未命名")]));
+
+  /** 进确认页：刚提取完、从历史记录点开，都走这里 */
+  const openReview = (ex: Extraction, src: string, targetId: string, id: string | null) => {
+    const ex0 = targetId === NEW ? null : profiles.find((p) => p.id === targetId) ?? null;
+    setTarget(ex0 ? targetId : NEW);
+    setExtraction(ex);
+    setSource(src);
+    setImportId(id);
+    setDrafts(initialDrafts(ex, ex0));
+    setHighlightOn(ex.highlights.map(() => true));
+    setProfileName(ex0 ? String(ex0.profile_name ?? "") : ex.profileName);
+    setStep("review");
+  };
+
+  /** 从历史记录点开：写入过的默认接着补那个档案，没写入的回到当时选的档案 */
+  const openHistory = async (id: string) => {
+    try {
+      const res = await fetch(`/api/interview/history?id=${encodeURIComponent(id)}`);
+      if (!res.ok) await throwApiError(res, "这条记录打不开");
+      const row = await res.json();
+      const known = (pid: unknown) => typeof pid === "string" && profiles.some((p) => p.id === pid);
+      const targetId = known(row.saved_profile_id) ? row.saved_profile_id : known(row.target_profile_id) ? row.target_profile_id : NEW;
+      openReview(row.extraction as Extraction, String(row.source ?? ""), targetId, row.id);
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      notify((e as Error).message || "这条记录打不开", "error");
+    }
+  };
 
   useEffect(() => {
     // 从档案编辑页点「用前采补充」进来时带着 ?profile=，默认补充那一份
@@ -87,27 +120,24 @@ export default function InterviewPage() {
     setStep("working");
     try {
       let res: Response;
+      const profileId = target === NEW ? "" : target;
       if (file) {
         const form = new FormData();
         form.append("file", file);
+        if (profileId) form.append("profileId", profileId);
         res = await fetch("/api/interview/extract", { method: "POST", body: form });
       } else {
         res = await fetch("/api/interview/extract", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, profileId: profileId || undefined }),
         });
       }
       if (!res.ok) await throwApiError(res, "提取失败");
 
-      const result = await readSseResult<{ extraction: Extraction; source: string }>(res);
-      const ex = result.extraction;
-      setExtraction(ex);
-      setSource(result.source);
-      setDrafts(initialDrafts(ex, existing));
-      setHighlightOn(ex.highlights.map(() => true));
-      setProfileName(existing ? String(existing.profile_name ?? "") : ex.profileName);
-      setStep("review");
+      const result = await readSseResult<{ extraction: Extraction; source: string; importId?: string | null }>(res);
+      openReview(result.extraction, result.source, target, result.importId ?? null);
+      setHistoryKey((k) => k + 1);
       notifyGenerated();
     } catch (e) {
       setError((e as Error).message || "提取失败，请重试");
@@ -123,6 +153,14 @@ export default function InterviewPage() {
     setDrafts(next.drafts);
     if (rev.highlights) setHighlightOn(rev.highlights.map(() => true));
     if (rev.profileName && !existing) setProfileName(rev.profileName);
+    // 改过的存进历史，下次打开是改过的。存不上不打扰编导，确认页上的照样能写入
+    if (importId) {
+      fetch("/api/interview/history", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: importId, extraction: next.extraction }),
+      }).catch(() => {});
+    }
   };
 
   const patch = extraction ? buildPatch(extraction, drafts, existing) : {};
@@ -145,11 +183,14 @@ export default function InterviewPage() {
           fields: patch,
           highlights: extraction.highlights.filter((_, i) => highlightOn[i]),
           notes: keepNotes ? source : "",
+          importId,
+          extraction,
         }),
       });
       if (!res.ok) await throwApiError(res, "写入档案失败");
       const data = await res.json();
       invalidateCreatorContext();
+      setHistoryKey((k) => k + 1);
       setSaved({ id: data.id, name: existing ? String(existing.profile_name ?? "") : profileName.trim(), count: patchCount, notesSaved: !!data.notesSaved });
       setStep("done");
     } catch (e) {
@@ -169,6 +210,7 @@ export default function InterviewPage() {
     setStep("input");
     setExtraction(null);
     setSaved(null);
+    setImportId(null);
     setText("");
     setFile(null);
   };
@@ -268,6 +310,8 @@ export default function InterviewPage() {
             </button>
             <span className="text-[12px] text-muted-foreground">用一次「前采建档」次数，大约 40 秒。手机号、身份证号不会进档案</span>
           </div>
+
+          <InterviewHistory refreshKey={historyKey} profileNames={profileNames} onOpen={openHistory} />
         </div>
       )}
 
@@ -275,7 +319,7 @@ export default function InterviewPage() {
         <div className="glass-panel mt-6 flex flex-col items-center rounded-2xl px-6 py-14 text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="mt-4 text-[15px] font-medium text-foreground">{STAGES[Math.min(STAGES.length - 1, Math.floor(elapsed / 10))]}</p>
-          <p className="mt-1.5 text-[12.5px] tabular-nums text-muted-foreground">已用 {elapsed} 秒，一般 40 秒左右。请停在这个页面，切走了结果会收不到</p>
+          <p className="mt-1.5 text-[12.5px] tabular-nums text-muted-foreground">已用 {elapsed} 秒，一般 40 秒左右。可以先去别的页面，提取完会存进这里的历史记录</p>
         </div>
       )}
 

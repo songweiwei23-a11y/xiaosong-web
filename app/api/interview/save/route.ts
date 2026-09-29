@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
 import { getServerSupabase } from '@/lib/admin-auth';
 import { EMPTY_PROFILE, PROFILE_FIELDS, splitToArray } from '@/lib/profile-fields';
-import { appendNotes, mergeHighlights, scrubSensitive } from '@/lib/interview-import';
+import { appendNotes, mergeHighlights, sanitizeExtraction, scrubSensitive } from '@/lib/interview-import';
+import { updateImport, UUID_RE } from '@/lib/interview-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +84,15 @@ export async function POST(req: NextRequest) {
   if (error || !data) {
     console.error('[interview] 写入档案失败:', error);
     return NextResponse.json({ error: '写入档案失败，请重试' }, { status: 500 });
+  }
+
+  // 历史记录里标上"已写入哪个档案"，顺带存下最终的结果（对话改过的）
+  if (typeof body.importId === 'string' && UUID_RE.test(body.importId)) {
+    await updateImport(userId, body.importId, {
+      savedProfileId: data.id,
+      profileName: profileName || (typeof existing?.profile_name === 'string' ? existing.profile_name : ''),
+      ...(body.extraction ? { extraction: sanitizeExtraction(body.extraction) } : {}),
+    });
   }
 
   return NextResponse.json({ id: data.id, notesSaved });

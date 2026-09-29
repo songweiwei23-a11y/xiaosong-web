@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { askDify, sseTask } from '@/lib/dify-task';
+import { recordImport, UUID_RE } from '@/lib/interview-history';
 import { documentToText, normalizeSource, UnsupportedDocument, MAX_UPLOAD_BYTES } from '@/lib/document-text';
 import {
   buildExtractionPrompt,
@@ -31,14 +32,17 @@ export async function POST(req: NextRequest) {
   if (!guard.ok) return guard.response!;
   const userId = guard.userId!;
 
-  // ---- 取原文
+  // ---- 取原文（顺带取"写进哪个档案"，存进历史，回来接着做时默认还是它）
   let source = '';
+  let targetProfileId: string | null = null;
   try {
     const type = req.headers.get('content-type') || '';
     if (type.includes('multipart/form-data')) {
       const form = await req.formData();
       const file = form.get('file');
       const text = form.get('text');
+      const target = form.get('profileId');
+      if (typeof target === 'string' && UUID_RE.test(target)) targetProfileId = target;
       if (file && typeof file !== 'string') {
         if (file.size > MAX_UPLOAD_BYTES) return json({ error: '文件太大了（超过 10MB），请只保留文字部分' }, 400);
         source = documentToText(file.name, Buffer.from(await file.arrayBuffer()));
@@ -48,6 +52,7 @@ export async function POST(req: NextRequest) {
     } else {
       const body = await req.json().catch(() => ({}));
       source = typeof body?.text === 'string' ? body.text : '';
+      if (typeof body?.profileId === 'string' && UUID_RE.test(body.profileId)) targetProfileId = body.profileId;
     }
   } catch (e) {
     if (e instanceof UnsupportedDocument) return json({ error: e.message }, 400);
@@ -91,6 +96,9 @@ export async function POST(req: NextRequest) {
       chars: source.length,
       fields: result.fields.length,
     });
-    return { event: 'result', extraction: result, source };
+    // 存进历史。浏览器那头就算已经切走了，这一步照样会跑完（sseTask 往外写失败不中断任务），
+    // 回来在历史记录里点开就能接着核对——花了的次数不白花
+    const importId = await recordImport({ userId, source, extraction: result, targetProfileId, profileName: result.profileName });
+    return { event: 'result', extraction: result, source, importId };
   }, 'interview');
 }
