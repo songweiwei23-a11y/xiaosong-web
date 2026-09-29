@@ -10,6 +10,8 @@
  * 字段按"判断时用得上的顺序"排，空的不写（写一堆"未设置"只会让模型以为这些都不重要）。
  */
 
+import { PROFILE_CHOICES } from './profile-fields';
+
 type ProfileLike = Record<string, unknown> & { profile_name?: unknown };
 
 export const asText = (v: unknown, fallback = ''): string => {
@@ -91,8 +93,35 @@ export function profileSearchHints(profile: object | null | undefined): Record<s
   return out;
 }
 
+const listOf = (v: unknown): string[] =>
+  Array.isArray(v)
+    ? v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean)
+    : typeof v === 'string'
+      ? v.split(/[、,，]/).map((x) => x.trim()).filter(Boolean)
+      : [];
+
+/**
+ * 这家店具体在卖的品类：产品品类、赛道里**不是标准大类**的那些（用户自己写的）。
+ *
+ * 【为什么要单列】2026-09-29 线上：档案写着经营川味串串火锅、川味烧烤、川菜三类，
+ * 但"川菜"只是赛道里的一个标签，产品品类只有"餐饮"，而选题方向、前采要点都在说"烧烤+串串"。
+ * 账号定位的一句话就成了"川菜厨子，主打川味烧烤+一元串串火锅"——川菜被当成厨师身份，
+ * 作为在卖的品类丢了。散在各栏里的品类模型抓不住，要单独一行点名。
+ * 「餐饮」「美食烹饪」这种标准大类不算：它们说明不了具体卖什么。
+ */
+/** 摘要里这一行的开头。定位提示词靠它判断要不要加"经营品类"的硬约束 */
+export const BUSINESS_LINES_LABEL = '- 经营品类（每一个都在卖，定位里都要体现）：';
+
+export function businessLines(p: ProfileLike): string[] {
+  const generic = new Set<string>([...PROFILE_CHOICES.product_category, ...PROFILE_CHOICES.account_track]);
+  const all = [...listOf(p.product_category), ...listOf(p.account_track)].filter((x) => !generic.has(x));
+  return Array.from(new Set(all));
+}
+
 export function buildProfileSummary(p: ProfileLike): string {
   const lines = [`- 档案名称：${asText(p.profile_name, '未命名')}`];
+  const products = businessLines(p);
+  if (products.length) lines.push(`${BUSINESS_LINES_LABEL}${products.join('、')}`);
   for (const [key, label] of PROFILE_SUMMARY_FIELDS) {
     const t = asText(p[key]);
     if (t) lines.push(`- ${label}：${t}`);

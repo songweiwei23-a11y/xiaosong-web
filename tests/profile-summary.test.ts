@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildProfileSummary,
+  businessLines,
+  BUSINESS_LINES_LABEL,
   PROFILE_SUMMARY_FIELDS,
   PROFILE_SUMMARY_EXCLUDED,
 } from '@/lib/profile-summary';
 import { EMPTY_PROFILE } from '@/components/profile/ProfileForm';
 import { readCode } from './helpers/source';
+import { buildPositioningPrompt } from '@/lib/positioning-standards';
 
 /**
  * 定位用的档案摘要。
@@ -80,5 +83,57 @@ describe('赛道、地域进检索词（联网搜索才搜得到这个号相关�
     expect(readCode('app/dashboard/positioning/page.tsx')).toMatch(/\.\.\.profileSearchHints\(activeProfile\)/);
     expect(readCode('components/positioning/DeepDivePage.tsx')).toMatch(/\.\.\.profileSearchHints\(profile\)/);
     expect(readCode('app/dashboard/growth/page.tsx').match(/\.\.\.profileSearchHints\(context\.profile\)/g)?.length).toBe(2);
+  });
+});
+
+/**
+ * 经营品类：2026-09-29 线上，档案经营川味串串火锅、川味烧烤、川菜三类，
+ * 定位一句话写成"川菜厨子，主打川味烧烤+一元串串火锅"——川菜被当成厨师身份，作为品类丢了。
+ * 下面的档案值就是线上那份的原样（只取相关几栏）。
+ */
+describe('经营品类单列一行，定位里当硬约束', () => {
+  const live = {
+    profile_name: '锦园地摊串串一元火锅',
+    account_track: ['美食烹饪', '本地服务', '川味烧烤', '川味串串火锅', '川菜'],
+    product_category: ['餐饮'],
+    content_themes: '以烧烤串串和一元火锅为核心',
+  };
+
+  it('从赛道、产品品类里取出具体品类，「餐饮」「美食烹饪」这种大类不算', () => {
+    expect(businessLines(live)).toEqual(['川味烧烤', '川味串串火锅', '川菜']);
+    expect(businessLines({ ...live, product_category: ['川菜', '餐饮', '冷饮'] })).toEqual(['川菜', '冷饮', '川味烧烤', '川味串串火锅']);
+    expect(businessLines({ account_track: '美食烹饪、川菜' })).toEqual(['川菜']);
+    expect(businessLines({ account_track: ['美食烹饪'], product_category: ['餐饮'] })).toEqual([]);
+  });
+
+  it('摘要第二行就点名，名字下面紧跟着', () => {
+    const lines = buildProfileSummary(live).split('\n');
+    expect(lines[1]).toBe(`${BUSINESS_LINES_LABEL}川味烧烤、川味串串火锅、川菜`);
+    expect(buildProfileSummary({ profile_name: 'x', account_track: ['美食烹饪'] })).not.toContain('经营品类');
+  });
+
+  it('定位提示词：有品类才加硬约束——要并列写全、不能拿"××厨子"顶替品类、交稿前对一遍', () => {
+    const summary = buildProfileSummary(live);
+    const prompt = buildPositioningPrompt({ profileSummary: summary });
+    expect(prompt).toContain('### 🍽 经营品类（硬约束）');
+    expect(prompt).toContain('这家店在卖：**川味烧烤、川味串串火锅、川菜**');
+    expect(prompt).toMatch(/并列写全/);
+    expect(prompt).toMatch(/不能拿它顶替一个品类/);
+    expect(prompt).toMatch(/交稿前对一遍/);
+    // 放在档案后面、方法论前面
+    expect(prompt.indexOf('经营品类（硬约束）')).toBeGreaterThan(prompt.indexOf(summary.split('\n')[0]));
+    expect(prompt.indexOf('经营品类（硬约束）')).toBeLessThan(prompt.indexOf('## 📚 判断依据'));
+    expect(buildPositioningPrompt({ profileSummary: buildProfileSummary({ profile_name: 'x' }) })).not.toContain('经营品类（硬约束）');
+    // 最末尾再逐个点名、要求一字不差（实测只讲一遍压不住：写成"川味馆""川菜师傅"，还把川味串串火锅拆成两样）
+    const tail = prompt.slice(prompt.lastIndexOf('## ✅ 交稿前最后检查：经营品类'));
+    expect(tail.length).toBeLessThan(600); // 真的在最后
+    expect(tail).toContain('「川味烧烤」「川味串串火锅」「川菜」');
+    expect(tail).toMatch(/原样出现、一字不差/);
+    expect(tail).toMatch(/"××师傅""××厨子"不算写了"××"这个品类/);
+    expect(buildPositioningPrompt({ profileSummary: buildProfileSummary({ profile_name: 'x' }) })).not.toContain('交稿前最后检查：经营品类');
+    // 商业定位、内容定位用的是同一个函数
+    for (const focus of ['business', 'content'] as const) {
+      expect(buildPositioningPrompt({ profileSummary: summary, focus })).toContain('经营品类（硬约束）');
+    }
   });
 });

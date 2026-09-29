@@ -30,6 +30,7 @@
 
 import { rolesGuide } from './content-roles';
 import { ROUTES_GUIDE, tacticIndex, tacticsBlockedBy } from './creative-routes';
+import { BUSINESS_LINES_LABEL } from './profile-summary';
 
 export type PositioningFocus = 'full' | 'business' | 'content';
 
@@ -927,6 +928,26 @@ function restrictionSection(restrictions?: string): string {
   return `### ⛔ 硬性禁忌（违反即不可用）\n\n${rows.join('\n')}`;
 }
 
+/**
+ * 经营品类的硬约束。档案摘要里有「经营品类」那一行（见 lib/profile-summary 的 businessLines）才加。
+ *
+ * 2026-09-29 线上：档案经营川味串串火锅、川味烧烤、川菜三类，定位的一句话写成
+ * "川菜厨子，主打川味烧烤+一元串串火锅"，还自称"三个核心词全部保留"——
+ * 川菜被当成厨师身份（人设背书），作为在卖的品类丢了。
+ * 产品方定：几个品类一样重要，都要并列写出来，不许挑主次。
+ */
+function businessLinesSection(profileSummary: string): string {
+  const items = businessLineItems(profileSummary);
+  if (items.length === 0) return '';
+  return `### 🍽 经营品类（硬约束）
+
+这家店在卖：**${items.join('、')}**。每一个都在卖、同等重要：
+- **一句话定位、主打内容里要把这几个品类并列写全**，一个都不能少；内容配比里每个品类都要有位置
+- 不要只挑其中几个当"主打"，也不要把哪个降成"配角""引流款"
+- 厨师经验、手艺是人设背书，**不能拿它顶替一个品类**（写"××厨子"不等于写了"××"这个品类）
+- 交稿前对一遍：一句话定位里，上面每个品类是不是都原样出现了`;
+}
+
 export function buildPositioningPrompt(p: PositioningPromptParams): string {
   const focus = p.focus ?? 'full';
   const parts: string[] = [];
@@ -948,6 +969,11 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
   parts.push('## 📋 这个账号的情况');
   parts.push('');
   parts.push(p.profileSummary.trim());
+  const products = businessLinesSection(p.profileSummary);
+  if (products) {
+    parts.push('');
+    parts.push(products);
+  }
   if (p.additionalNotes?.trim()) {
     /*
      * 原来只写"优先级高于档案"，实测压不住：用户写了"做有影响力的IP，既有大流量又能变现"，
@@ -1130,7 +1156,37 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
   不要原样抄进方案里；要输出的是**针对这个账号的具体结论**
 - 篇幅按需要来，不要为了凑字数灌水，也不要为了简短牺牲判断过程`);
 
+  const finalCheck = businessLinesFinalCheck(p.profileSummary);
+  if (finalCheck) {
+    parts.push('');
+    parts.push(finalCheck);
+  }
+
   return parts.join('\n');
+}
+
+/**
+ * 经营品类的最后一道检查，放在整份提示词的**最末尾**。
+ *
+ * 实测只在档案后面讲一遍压不住（提示词几万字，前面的约束被冲淡）：加了硬约束后，
+ * 一句话定位写成「南乐地摊川味馆 · 9年川菜师傅 · 串串火锅烧烤一锅端」——
+ * 川菜又只以"师傅"出现，而且把「川味串串火锅」拆成了串串、火锅两样，自认为"三品类都在"。
+ * 所以最后逐个点名，要求一字不差。
+ */
+function businessLinesFinalCheck(profileSummary: string): string {
+  const items = businessLineItems(profileSummary);
+  if (items.length === 0) return '';
+  return `## ✅ 交稿前最后检查：经营品类（不过关就改完再交）
+
+这家店在卖 ${items.length} 个品类：${items.map((x) => `「${x}」`).join('')}。
+- **一句话定位里，这 ${items.length} 个词要原样出现、一字不差**——不能合并成一个统称（"川味馆""一锅端"不算），也不能拆开重组
+- **"××师傅""××厨子"不算写了"××"这个品类**：那是人设，品类要单独写出来
+- 主打内容、内容配比里，也要逐个写出这 ${items.length} 个品类`;
+}
+
+function businessLineItems(profileSummary: string): string[] {
+  const line = profileSummary.split('\n').find((l) => l.startsWith(BUSINESS_LINES_LABEL));
+  return (line?.slice(BUSINESS_LINES_LABEL.length) ?? '').split('、').map((x) => x.trim()).filter(Boolean);
 }
 
 /**

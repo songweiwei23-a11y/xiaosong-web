@@ -146,6 +146,9 @@ describe('对话修改：编导一句话，AI 改对应的几项', () => {
     expect(prompt).toMatch(/以他为准/);
     expect(prompt).toMatch(/已经符合/);
     expect(prompt).toMatch(/这里只能修改档案内容/);
+    // 一件事牵涉好几项要一起改（线上：川菜加进了赛道，选题方向却写"以烧烤串串和一元火锅为核心"）
+    expect(prompt).toMatch(/相关的每一项都要改到/);
+    expect(prompt).toMatch(/产品品类、赛道、选题方向/);
     expect(prompt.trimEnd().endsWith(input.instruction)).toBe(true);
     expect(prompt.indexOf(SOURCE)).toBeLessThan(prompt.indexOf('## 编导的要求'));
     // 现在的结果带上了（含手动改过的值）
@@ -204,6 +207,8 @@ describe('逐项核对：提取完再当一遍严格的核对员', () => {
     expect(p).toMatch(/宁可多标/);
     expect(p).toMatch(/标准说法/);
     expect(p).toMatch(/二十五到三十五岁" → 「25-30岁、31-40岁」/);
+    // 各栏之间互相矛盾、少了东西也算问题
+    expect(p).toMatch(/和档案里别的项互相矛盾/);
     for (const f of ex.fields) expect(p).toContain(`- ${f.key}（`);
     expect(p).toContain('0-1万 / 1-5万'); // 单选把选项带上，才判断得了档位对不对
     expect(p.trimEnd().endsWith('前采记录结束')).toBe(true);
@@ -320,6 +325,11 @@ describe('提示词', () => {
     expect(prompt).toMatch(/evidence/);
     expect(prompt).toMatch(/手机号/);
     expect(prompt).toMatch(/「」/);
+  });
+
+  it('产品品类要写具体卖什么，不能只写「餐饮」（线上就是只写了餐饮，定位时川菜被丢了）', () => {
+    expect(prompt).toMatch(/- product_category（[^\n]*\n  ⚠ 写具体卖什么/);
+    expect(prompt).toMatch(/不要只写「餐饮」这种大类/);
   });
 
   it('原文放在最后、有明确的结束标记', () => {

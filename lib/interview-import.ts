@@ -74,7 +74,21 @@ export function scrubSensitive(s: string): string {
 
 // ---------------------------------------------------------------- 提示词
 
+/**
+ * 个别字段光看名字和选项会填偏，补一句说明。
+ * 产品品类：选项都是「餐饮」「美妆护肤」这种大类，模型就只填个「餐饮」——
+ * 线上实测，经营三个品类的店，档案里具体卖什么一个都没记下来，定位时川菜就被丢了。
+ */
+const FIELD_HINTS: Partial<Record<FieldKey, string>> = {
+  product_category: '写具体卖什么，每个品类一项（比如 川味烧烤、川味串串火锅、川菜）；不要只写「餐饮」这种大类',
+};
+
 function fieldLine(f: ProfileFieldSpec): string {
+  const hint = FIELD_HINTS[f.key];
+  return hint ? `${fieldLineBase(f)}\n  ⚠ ${hint}` : fieldLineBase(f);
+}
+
+function fieldLineBase(f: ProfileFieldSpec): string {
   const opts = f.options?.length ? f.options.join(' / ') : '';
   switch (f.kind) {
     case 'single':
@@ -356,6 +370,8 @@ export function buildCheckPrompt(ex: Extraction, source: string): string {
   4. 把"打算做、想做"当成了"已经在做"
   5. 说得比原文重、比原文多（原文说"有时候"，写成了"一直"）
   6. 依据和这一项没关系
+  7. 和档案里别的项互相矛盾、或者比别的项少了东西（比如赛道里有三个品类，选题方向却写"以其中两个为核心"；
+     产品品类只写了「餐饮」，没写具体卖什么）
 - 宁可多标，不要放过。但原文确实说了的，不要为了挑错硬挑。
 
 ## 这些不算问题（只核意思对不对，不核措辞）
@@ -442,7 +458,9 @@ export function buildRevisionPrompt(input: RevisionInput, source: string): strin
 编导看了从前采记录里提取出的档案，指出了问题（见最后「编导的要求」）。请按要求修改。
 
 ## 规则（必须遵守）
-1. **只改编导说到的**，没提到的字段一律不动、不要出现在输出里。
+1. **只改编导说到的**，没提到的事一律不动、不要出现在输出里。
+   但编导说的一件事如果牵涉好几项，**相关的每一项都要改到**，不能只改一项、别的项还和它对不上。
+   比如编导说"我们经营川味烧烤、川味串串火锅、川菜这三类"：产品品类、赛道、选题方向里凡是讲"卖什么""以什么为核心"的，都要写全这三类。
 2. 编导说的就是事实，以他为准——他比前采记录更清楚客户的情况。
 3. 编导让你回原文找、核对的，去下面的前采记录里找，evidence 写原文片段（双引号换成「」）；不是从原文来的，evidence 留空。
 4. 先看现在的值是不是**已经符合**编导说的：符合就不改，在 reply 里说"已经是××了"。
