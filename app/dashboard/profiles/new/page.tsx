@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
 import { setActiveProfileId } from '@/lib/active-profile'
 import { ProfileForm, type ProfileFormData } from '@/components/profile/ProfileForm'
+import { InterviewEntry } from '@/components/interview/InterviewEntry'
 
 /**
  * 创建档案。表单本体在 ProfileForm 里，和编辑页共用同一份——
@@ -46,6 +47,8 @@ export default function NewProfilePage() {
               大部分是勾选，几分钟能填完。这份档案会自动用在选题、脚本、分镜和账号定位里。
             </p>
           </div>
+
+          <InterviewEntry />
 
           <ProfileForm
             submitLabel="完成创建"

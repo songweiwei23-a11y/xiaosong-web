@@ -191,7 +191,8 @@ describe('换期规则（quotaRollover）', () => {
 
   it('会员到期没续：剩余次数清零，也不回到免费体验额度', () => {
     const sub = { plan: 'basic', status: 'active', end_date: iso(NOW - DAY) };
-    const r = quotaRollover(sub, { ...used(3), current_period_end: iso(NOW - DAY) }, NOW);
+    // 用量要低于每一项的免费上限才看得出"抬上去"：最小的是前采建档 3 次
+    const r = quotaRollover(sub, { ...used(2), current_period_end: iso(NOW - DAY) }, NOW);
     expect(r.kind).toBe('expire');
     if (r.kind !== 'expire') return;
     // 每个计数抬到免费版上限 → 免费版这一档也是 0 次可用
@@ -436,12 +437,13 @@ describe('审核后写入的字段必须是库里真有的', () => {
    * （写成 current_period_start/end，而 subscriptions 表上没这两列）。
    *
    * 下面这张表是体检时从线上库 dump 出来的真实列，用它兜住。
+   * 之后加的列要有对应的迁移：interview_used ← 20260929_interview_import.sql
    */
   const LIVE_COLUMNS: Record<string, string[]> = {
     subscriptions: ['created_at', 'end_date', 'id', 'plan', 'start_date', 'status', 'updated_at', 'user_id'],
     user_quotas: [
       'created_at', 'current_period_end', 'current_period_start', 'deal_reason_used',
-      'free_chat_used', 'id', 'is_legacy_user', 'knowledge_used', 'last_reset_at',
+      'free_chat_used', 'id', 'interview_used', 'is_legacy_user', 'knowledge_used', 'last_reset_at',
       'positioning_used', 'registered_with_invitation', 'review_used', 'script_used',
       'storyboard_used', 'title_used', 'topic_used', 'updated_at', 'user_id',
     ],

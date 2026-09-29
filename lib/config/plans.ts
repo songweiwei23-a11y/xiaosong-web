@@ -61,7 +61,10 @@ export const SUBSCRIPTION_PLANS = {
       storyboard: 5,
       review: 5,
       title: 5,
-      dealReason: 5
+      dealReason: 5,
+      // 前采建档（2026-09-29 新增，单独一项额度，不挤占账号定位）。
+      // 一次要读上万字的前采记录，成本比一次创作高；免费给 3 次够建一两个档案试效果
+      interview: 3
     }
   },
   basic: {
@@ -78,7 +81,8 @@ export const SUBSCRIPTION_PLANS = {
       storyboard: 50,
       review: 50,
       title: 50,
-      dealReason: 50
+      dealReason: 50,
+      interview: 50
     }
   },
   pro: {
@@ -95,7 +99,8 @@ export const SUBSCRIPTION_PLANS = {
       storyboard: 120,
       review: 120,
       title: 120,
-      dealReason: 120
+      dealReason: 120,
+      interview: 120
     }
   },
   enterprise: {
@@ -114,7 +119,8 @@ export const SUBSCRIPTION_PLANS = {
       storyboard: -1,
       review: -1,
       title: -1,
-      dealReason: -1
+      dealReason: -1,
+      interview: -1
     }
   }
 };
@@ -149,6 +155,8 @@ export const COUNTED_FEATURES: { key: keyof typeof SUBSCRIPTION_PLANS.free.quota
   { key: 'review', column: 'review_used', name: '审稿优化' },
   { key: 'title', column: 'title_used', name: '标题封面' },
   { key: 'dealReason', column: 'deal_reason_used', name: '成交理由' },
+  // 前采建档：user_quotas.interview_used 由 20260929_interview_import.sql 加
+  { key: 'interview', column: 'interview_used', name: '前采建档' },
   { key: 'knowledge', column: 'knowledge_used', name: '知识库查询' },
 ];
 
@@ -272,9 +280,9 @@ function knowledgeLine(planId: string): string {
  */
 const SELLING_POINTS: Record<string, string[]> = {
   free: ['历史记录云端保存'],
-  basic: ['九大功能全部开放', '历史记录云端保存'],
-  pro: ['九大功能全部开放', '历史记录云端保存'],
-  enterprise: ['九大功能全部开放', '历史记录云端保存'],
+  basic: ['十大功能全部开放', '历史记录云端保存'],
+  pro: ['十大功能全部开放', '历史记录云端保存'],
+  enterprise: ['十大功能全部开放', '历史记录云端保存'],
 };
 
 export function planSellingPoints(planId: string): string[] {

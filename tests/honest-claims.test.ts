@@ -220,9 +220,10 @@ describe('套餐里不卖没做的权益', () => {
     }
   });
 
-  it('「九大功能」这个数字是真的', async () => {
-    const { COUNTED_FEATURES } = await import('@/lib/config/plans');
-    expect(COUNTED_FEATURES.length).toBe(9);
+  it('「十大功能」这个数字是真的（2026-09-29 加了前采建档）', async () => {
+    const { COUNTED_FEATURES, planSellingPoints } = await import('@/lib/config/plans');
+    expect(COUNTED_FEATURES.length).toBe(10);
+    expect(planSellingPoints('basic')).toContain('十大功能全部开放');
   });
 });
 

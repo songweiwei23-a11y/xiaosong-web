@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import { OptionPicker } from '@/components/form/OptionPicker'
 import { OPTION_GROUPS } from '@/lib/profile-options'
+import { EMPTY_PROFILE, PROFILE_CHOICES as C, splitToArray, toFormData, type ProfileFormData } from '@/lib/profile-fields'
+
+// 字段定义和选项搬到了 lib/profile-fields（前采建档也要按同一套选项填），这里转出去，老的引用照常可用
+export { EMPTY_PROFILE, toFormData }
+export type { ProfileFormData }
 
 /**
  * 账号档案表单。创建页和编辑页共用这一份。
@@ -16,73 +21,6 @@ import { OPTION_GROUPS } from '@/lib/profile-options'
  * 编辑页声明成了字符串，一旦提交就会把数组列覆盖成空字符串。
  * 两份表单各写各的，迟早会这样。所以合并成一份。
  */
-
-/** 字段与默认值。数组类型对应库里的 text[]，字符串对应 text */
-export const EMPTY_PROFILE = {
-  profile_name: '',
-  account_platform: [] as string[],
-  account_track: [] as string[],
-  account_stage: '',
-  fans_level: '',
-  target_gender: '',
-  target_age: [] as string[],
-  target_region: [] as string[],
-  target_occupation: [] as string[],
-  target_pain_points: '',
-  target_needs: '',
-  fan_common_questions: '',
-  target_interests: [] as string[],
-  content_style: [] as string[],
-  content_format: [] as string[],
-  content_tone: '',
-  content_themes: '',
-  content_value: '',
-  unique_selling_point: '',
-  viral_content_pattern: '',
-  content_restrictions: '',
-  reference_accounts: '',
-  competitive_advantage: '',
-  competitive_weakness: '',
-  unique_resources: '',
-  team_structure: '',
-  equipment: [] as string[],
-  shooting_location: [] as string[],
-  editing_capability: '',
-  video_duration: [] as string[],
-  budget_per_video: '',
-  monetization_model: [] as string[],
-  product_category: [] as string[],
-  price_range: [] as string[],
-  conversion_path: '',
-  conversion_barriers: '',
-}
-
-export type ProfileFormData = typeof EMPTY_PROFILE
-
-const splitToArray = (v: string) =>
-  v.split(/[、,，]/).map((s) => s.trim()).filter(Boolean)
-
-/**
- * 把库里的一行转成表单能用的形状。
- *
- * 必须逐字段按 EMPTY_PROFILE 的类型强制转换，不能直接 spread：
- * 库里同一个字段可能存成数组也可能存成字符串（早期手填的），
- * 类型对不上时 .includes() 会直接抛错，整个编辑页白屏。
- * 顺便也把 id / user_id / created_at 这些不该进表单的字段挡在外面。
- */
-export function toFormData(row: Record<string, unknown> | null | undefined): ProfileFormData {
-  const out = { ...EMPTY_PROFILE } as Record<string, unknown>
-  for (const key of Object.keys(EMPTY_PROFILE)) {
-    const v = row?.[key]
-    const wantArray = Array.isArray((EMPTY_PROFILE as Record<string, unknown>)[key])
-    if (wantArray) {
-      out[key] = Array.isArray(v) ? v.filter(Boolean) : typeof v === 'string' && v.trim() ? splitToArray(v) : []
-    } else {
-      out[key] = Array.isArray(v) ? v.filter(Boolean).join('、') : v == null ? '' : String(v)
-    }
-  }
-  return out as ProfileFormData
-}
 
 const SELECT_CLS =
   'w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20'
@@ -294,21 +232,21 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
           <MultiSelect
             field="account_platform"
             label="运营平台（可多选）"
-            options={['抖音', '快手', '视频号', '小红书', 'B站']}
+            options={C.account_platform}
             placeholder="自定义平台，如：知乎、微博"
           />
           <MultiSelect
             field="account_track"
             label="内容赛道（可多选）"
-            options={['美食烹饪', '时尚穿搭', '美妆护肤', '健身运动', '知识教育', '职场成长', '情感生活', '旅游探店', '家居装修', '母婴育儿', '数码科技', '本地服务']}
+            options={C.account_track}
             placeholder="自定义赛道，如：汽车、宠物、三农"
           />
           <Select
             field="account_stage"
             label="账号阶段"
-            options={['刚起号，定位未确定', '有定位，需要内容方向', '稳定运营，需要新选题', '成熟期，需要突破']}
+            options={C.account_stage}
           />
-          <Select field="fans_level" label="粉丝量级" options={['0-1万', '1-5万', '5-10万', '10-50万', '50万+']} />
+          <Select field="fans_level" label="粉丝量级" options={C.fans_level} />
         </>
       ),
     },
@@ -319,7 +257,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
           <div>
             <label className="mb-2 block text-[13px] font-medium text-foreground">主要性别</label>
             <div className="grid grid-cols-3 gap-1.5">
-              {['男性为主', '女性为主', '不限'].map((g) => (
+              {C.target_gender.map((g) => (
                 <button
                   key={g}
                   type="button"
@@ -334,9 +272,9 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
               ))}
             </div>
           </div>
-          <MultiSelect field="target_age" label="年龄段（可多选）" options={['18-24岁', '25-30岁', '31-40岁', '41岁以上']} columns={2} />
-          <MultiSelect field="target_region" label="地域分布（可多选）" options={['一二线城市', '三四线城市', '全国', '本地同城']} placeholder="自定义地域，如：江浙沪" />
-          <MultiSelect field="target_occupation" label="职业标签（可多选）" options={['白领', '学生', '宝妈', '自由职业', '企业主', '蓝领技工']} placeholder="自定义职业" />
+          <MultiSelect field="target_age" label="年龄段（可多选）" options={C.target_age} columns={2} />
+          <MultiSelect field="target_region" label="地域分布（可多选）" options={C.target_region} placeholder="自定义地域，如：江浙沪" />
+          <MultiSelect field="target_occupation" label="职业标签（可多选）" options={C.target_occupation} placeholder="自定义职业" />
           {pick('target_pain_points')}
           {pick('target_needs')}
           {pick('fan_common_questions')}
@@ -347,9 +285,9 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
       title: '内容定位',
       body: (
         <>
-          <MultiSelect field="content_style" label="内容风格（可多选）" options={['专业', '轻松', '幽默', '情感', '励志', '实用', '高级', '接地气']} columns={4} />
-          <MultiSelect field="content_format" label="内容形式（可多选）" options={['口播', '剧情', '教程', 'Vlog', '测评', '采访', '混剪', '图文']} columns={4} />
-          <Select field="content_tone" label="语言风格" options={['亲切朋友式', '专业权威式', '幽默搞笑式', '温暖治愈式', '直率犀利式']} />
+          <MultiSelect field="content_style" label="内容风格（可多选）" options={C.content_style} columns={4} />
+          <MultiSelect field="content_format" label="内容形式（可多选）" options={C.content_format} columns={4} />
+          <Select field="content_tone" label="语言风格" options={C.content_tone} />
           <div>
             <label className="mb-2 block text-[13px] font-medium text-foreground">主要选题方向</label>
             <textarea
@@ -393,12 +331,12 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
       title: '资源配置',
       body: (
         <>
-          <Select field="team_structure" label="团队配置" options={['一人全包', '2-3人小团队', '完整团队(编导/摄影/剪辑)', '专业MCN']} />
-          <MultiSelect field="equipment" label="设备条件（可多选）" options={['手机', '相机', '专业摄像机', '灯光', '收音设备', '稳定器']} placeholder="自定义设备，如：无人机、三脚架" />
-          <MultiSelect field="shooting_location" label="拍摄场地（可多选）" options={['家', '工作室', '外景', '店铺', '办公室']} placeholder="自定义场地" />
-          <Select field="editing_capability" label="后期能力" options={['基础剪辑', '中级特效', '专业制作']} />
-          <MultiSelect field="video_duration" label="视频时长偏好（可多选）" options={['15-30秒', '30-60秒', '1-3分钟', '3-5分钟', '5分钟以上']} />
-          <Select field="budget_per_video" label="单条预算" options={['0-500元', '500-2000元', '2000-5000元', '5000元以上']} />
+          <Select field="team_structure" label="团队配置" options={C.team_structure} />
+          <MultiSelect field="equipment" label="设备条件（可多选）" options={C.equipment} placeholder="自定义设备，如：无人机、三脚架" />
+          <MultiSelect field="shooting_location" label="拍摄场地（可多选）" options={C.shooting_location} placeholder="自定义场地" />
+          <Select field="editing_capability" label="后期能力" options={C.editing_capability} />
+          <MultiSelect field="video_duration" label="视频时长偏好（可多选）" options={C.video_duration} />
+          <Select field="budget_per_video" label="单条预算" options={C.budget_per_video} />
         </>
       ),
     },
@@ -406,9 +344,9 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
       title: '变现路径',
       body: (
         <>
-          <MultiSelect field="monetization_model" label="变现方式（可多选）" options={['到店消费', '带货佣金', '知识付费', '私域引流', '直播打赏', '品牌合作', '线下服务', '暂不考虑']} columns={4} />
-          <MultiSelect field="product_category" label="产品品类（可多选）" options={['餐饮', '美妆护肤', '服装配饰', '生活用品', '食品饮料', '数码家电', '本地服务']} />
-          <MultiSelect field="price_range" label="价格区间（可多选）" options={['50元以下', '50-200元', '200-500元', '500元以上']} columns={4} />
+          <MultiSelect field="monetization_model" label="变现方式（可多选）" options={C.monetization_model} columns={4} />
+          <MultiSelect field="product_category" label="产品品类（可多选）" options={C.product_category} />
+          <MultiSelect field="price_range" label="价格区间（可多选）" options={C.price_range} columns={4} />
           {pick('conversion_path', 1)}
           {pick('conversion_barriers')}
         </>

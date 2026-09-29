@@ -6,6 +6,7 @@ import { notify } from '@/components/ui/feedback'
 import { ProfileForm, type ProfileFormData } from '@/components/profile/ProfileForm'
 import { getActiveProfileId, setActiveProfileId } from '@/lib/active-profile'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
+import { InterviewEntry, InterviewNotesCard } from '@/components/interview/InterviewEntry'
 
 /**
  * 编辑已有档案。
@@ -135,6 +136,14 @@ export default function EditProfilePage() {
               改哪一步都行，随时可以保存，不必一路点到最后。
             </p>
           </div>
+
+          <InterviewEntry profileId={id} />
+          {profile && (
+            <InterviewNotesCard
+              profile={profile}
+              onCleared={() => setProfile({ ...profile, interview_notes: null, interview_highlights: null })}
+            />
+          )}
 
           <ProfileForm
             initial={profile}

@@ -57,6 +57,9 @@ export const PROFILE_SUMMARY_FIELDS: [string, string][] = [
   ['conversion_hooks', '转化钩子'],
   ['conversion_barriers', '成交障碍'],
   ['avoid_content', '不想拍的内容'],
+  // 前采建档提取出来、档案字段装不下的：老板经历、招牌产品、真实数据、客户原话。
+  // 放最后：前面的字段是"是什么"，这里是"凭什么信"的素材
+  ['interview_highlights', '前采要点（客户原话和真实细节，写内容时优先用）'],
 ];
 
 /**

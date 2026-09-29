@@ -25,7 +25,8 @@ export type FeatureCode =
   | 'storyboard'
   | 'review'
   | 'title'
-  | 'dealReason';
+  | 'dealReason'
+  | 'interview';
 
 export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   脚本生成: 'script',
@@ -49,6 +50,8 @@ export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   成交理由: 'dealReason',
   自由对话: 'freeChat',
   知识库查询: 'knowledge',
+  // 前采建档（interview）不在这张表里：它不走 /api/dify/stream，有自己的接口
+  // （app/api/interview/extract），直接按 'interview' 扣次数，也没有历史记录可点回去
 };
 
 /**

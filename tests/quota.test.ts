@@ -63,9 +63,10 @@ describe('免费版：按功能分别限额', () => {
     }
   });
 
-  it('免费版：自由对话、知识库各 10 次，其余每个板块 5 次（2026-09-29 定），分镜、审稿、标题、成交理由也能用', () => {
+  it('免费版：自由对话、知识库各 10 次，前采建档 3 次，其余每个板块 5 次（2026-09-29 定），分镜、审稿、标题、成交理由也能用', () => {
     for (const [k, v] of Object.entries(SUBSCRIPTION_PLANS.free.quotas)) {
-      expect(v as number, `免费版 ${k}`).toBe(k === 'freeChat' || k === 'knowledge' ? 10 : 5);
+      const want = k === 'freeChat' || k === 'knowledge' ? 10 : k === 'interview' ? 3 : 5;
+      expect(v as number, `免费版 ${k}`).toBe(want);
     }
     for (const f of ['storyboard', 'review', 'title', 'dealReason']) {
       expect(judgeQuota('free', f, usage()).allowed, f).toBe(true);

@@ -15,7 +15,7 @@ import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
-  ClipboardList, Rocket, Wallet, LayoutList, Sparkles,
+  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -472,6 +472,15 @@ export default function DashboardPage() {
                 );
               })}
             </div>
+            {/* 档案的快捷填法。不放进上面三步：那三步和 setup-progress 按下标一一对应 */}
+            <Link
+              href="/dashboard/interview"
+              className="mt-2 flex items-center gap-1.5 px-1 text-[11.5px] text-muted-foreground transition-colors hover:text-primary"
+            >
+              <FileSearch className="h-3.5 w-3.5 shrink-0" />
+              有前采资料？用「前采建档」一键填好档案
+              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+            </Link>
 
             <h2 className="mb-3 mt-7 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
               更多工具

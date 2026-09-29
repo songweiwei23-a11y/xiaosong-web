@@ -11,7 +11,7 @@ import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen, GraduationCap,
+  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen, GraduationCap, FileSearch,
 } from "lucide-react";
 
 /*
@@ -53,6 +53,8 @@ const navGroups: {
     id: "operate",
     label: "账号运营",
     items: [
+      // 定位的原料：编导的前采记录 → 档案。排在账号定位前面，先有准的档案再做定位
+      { name: "前采建档", href: "/dashboard/interview", icon: FileSearch },
       // 先定地基（六维），再按需深挖变现和内容两维
       { name: "账号定位", href: "/dashboard/positioning", icon: Target },
       { name: "商业定位", href: "/dashboard/business-positioning", icon: Wallet },
