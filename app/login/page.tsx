@@ -30,7 +30,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   /*
-   * 从首页点"免费试用 / 注册送 10 次"进来：地址是 /login?mode=register&code=体验码。
+   * 从首页点"免费试用 / 免费注册体验"进来：地址是 /login?mode=register&code=体验码。
    * 直接打开注册、码已填好——完全不懂的小白手上没有邀请码，看到要填码就走了。
    * 读地址用 window.location 而不是 useSearchParams：后者要求整页包一层 Suspense。
    *

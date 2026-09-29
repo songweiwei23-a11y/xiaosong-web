@@ -137,7 +137,7 @@ export async function GET() {
 
     // ---- 分功能制（免费版、基础版、专业版）----
     const warnings = [];
-    /** 每个功能的剩余次数，全列。付费引导"剩 3 次以内提醒一次"要用——warnings 只收 80% 以上的，10 次的免费额度剩 3 次时才 70% */
+    /** 每个功能的剩余次数，全列。付费引导"快用完提醒一次"要用——warnings 只收 80% 以上的，和提醒线对不上 */
     const features: { feature: string; featureName: string; used: number; total: number; remaining: number }[] = [];
     let hasExhausted = false;
     /** 用得最紧的那个功能，用于在首页点名，而不是只给一个没意义的总数 */

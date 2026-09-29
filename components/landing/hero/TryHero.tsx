@@ -111,7 +111,7 @@ export function TryHero() {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
-          {["不用下载", "不会剪辑也能用", "新账号送 10 次"].map((x) => (
+          {["不用下载", "不会剪辑也能用", "新账号免费体验"].map((x) => (
             <span key={x} className="flex items-center gap-1.5">
               <Check className="h-4 w-4 text-emerald-500" />
               {x}
@@ -151,7 +151,7 @@ export function TryHero() {
             <Link href={REGISTER_URL} className="brand-gradient flex items-center justify-between gap-3 rounded-2xl px-5 py-4 text-white transition-transform hover:scale-[1.01]">
               <span className="text-[14px]">想要完整口播稿、分镜和标题？</span>
               <span className="flex shrink-0 items-center gap-1 font-semibold">
-                注册送 10 次 <ArrowRight className="h-4 w-4" />
+                免费注册体验 <ArrowRight className="h-4 w-4" />
               </span>
             </Link>
           </div>

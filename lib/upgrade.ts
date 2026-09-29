@@ -68,10 +68,15 @@ export function valueRecap(counts: Record<string, number>): string[] {
     .map((x) => `${x.n} ${UNITS[x.key] ?? `次${FEATURE_NAMES[x.key] ?? x.key}`}`);
 }
 
-/** 快用完的提醒线：剩 3 次以内提醒一次。上限太小（比如 3 次）的功能不提醒，不然一用就提醒 */
+/**
+ * 快用完的提醒线：剩 3 次以内提醒一次。
+ * 上限小的功能（免费版大多是 5 次）剩 3 次就提醒等于刚用两次就催，改成剩最后 1 次时提醒；
+ * 上限只有一两次的不提醒，不然一用就提醒。
+ */
 export const NUDGE_REMAINING = 3;
 export function shouldNudge(remaining: number, limit: number): boolean {
-  return limit > NUDGE_REMAINING * 2 && remaining > 0 && remaining <= NUDGE_REMAINING;
+  const line = limit > NUDGE_REMAINING * 2 ? NUDGE_REMAINING : limit >= 3 ? 1 : 0;
+  return remaining > 0 && remaining <= line;
 }
 
 /** 推荐那一档的卖点：价格 + 这一档的额度，从配置现算，不手写 */

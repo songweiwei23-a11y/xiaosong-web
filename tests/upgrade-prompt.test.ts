@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { readCode } from './helpers/source';
 import { recommendPlan, shouldNudge, valueRecap } from '@/lib/upgrade';
+import { SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import fs from 'node:fs';
 
 describe('推荐哪一档', () => {
@@ -29,12 +30,22 @@ describe('回顾"你已经用开物做了什么"', () => {
 });
 
 describe('快用完的提醒', () => {
-  it('剩 3 次以内提醒；用完的不提醒（那时弹窗）；上限很小的功能不提醒', () => {
+  it('剩 3 次以内提醒；用完的不提醒（那时弹窗）；上限小的剩最后 1 次才提醒，只有一两次的不提醒', () => {
     expect(shouldNudge(3, 10)).toBe(true);
     expect(shouldNudge(1, 10)).toBe(true);
     expect(shouldNudge(4, 10)).toBe(false);
     expect(shouldNudge(0, 10)).toBe(false);
+    // 免费版大多数功能是 5 次：刚用两次不催，剩最后一次提醒
     expect(shouldNudge(2, 5)).toBe(false);
+    expect(shouldNudge(1, 5)).toBe(true);
+    expect(shouldNudge(0, 5)).toBe(false);
+    expect(shouldNudge(1, 2)).toBe(false);
+  });
+
+  it('免费版每个功能都够得着提醒（不会因为上限小就永远不提醒）', () => {
+    for (const [k, limit] of Object.entries(SUBSCRIPTION_PLANS.free.quotas)) {
+      expect(shouldNudge(1, limit as number), `免费版 ${k}（${limit} 次）剩 1 次`).toBe(true);
+    }
   });
 
   it('同一个功能同一期只提醒一次（记在本机）', () => {
