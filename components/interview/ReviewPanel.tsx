@@ -12,6 +12,26 @@ export interface FieldDraft {
   mode: Mode;
   /** 编辑框里的文字；多选题用顿号隔开 */
   text: string;
+  /** 有疑问的项，编导已经处理过了（按建议改了，或者确认没问题） */
+  resolved?: boolean;
+}
+
+/**
+ * 这一项有没有疑问：AI 逐项核对标出来的；核对没跑成时，退回看"依据对不对得上"。
+ * 编导自己跟 AI 说了改的，以编导为准，不算。
+ */
+export function isFlagged(f: ExtractedField, checked: boolean | undefined): boolean {
+  if (f.byUser) return false;
+  if (f.check) return !f.check.ok;
+  return !checked && f.unverified;
+}
+
+/**
+ * 还要编导看的项：有疑问、要写进去、还没处理。
+ * 产品方要求"核对没问题再建档"——这里不为空，写入按钮就不让写。
+ */
+export function unresolvedKeys(ex: Extraction, drafts: Record<string, FieldDraft>): string[] {
+  return ex.fields.filter((f) => isFlagged(f, ex.checked) && drafts[f.key]?.include && !drafts[f.key]?.resolved).map((f) => f.key);
 }
 
 const SPEC = new Map(PROFILE_FIELDS.map((f) => [f.key, f]));
@@ -105,9 +125,11 @@ interface Props {
   onDraft: (key: string, d: FieldDraft) => void;
   highlights: boolean[];
   onHighlight: (i: number, on: boolean) => void;
+  /** 接在各项后面、要点前面的东西（跟 AI 说哪里不对）——顺序是先核对、再改 */
+  afterFields?: React.ReactNode;
 }
 
-export function ReviewPanel({ extraction, existing, drafts, onDraft, highlights, onHighlight }: Props) {
+export function ReviewPanel({ extraction, existing, drafts, onDraft, highlights, onHighlight, afterFields }: Props) {
   const byKey = new Map(extraction.fields.map((f) => [f.key, f]));
 
   return (
@@ -123,6 +145,7 @@ export function ReviewPanel({ extraction, existing, drafts, onDraft, highlights,
                 <FieldRow
                   key={f.key}
                   field={f}
+                  flagged={isFlagged(f, extraction.checked)}
                   spec={SPEC.get(f.key)!}
                   status={compareField(f, existing)}
                   current={show(existing?.[f.key])}
@@ -134,6 +157,8 @@ export function ReviewPanel({ extraction, existing, drafts, onDraft, highlights,
           </section>
         );
       })}
+
+      {afterFields}
 
       {extraction.highlights.length > 0 && (
         <section className="glass-panel rounded-2xl p-4 sm:p-5">
@@ -172,6 +197,7 @@ const STATUS_BADGE: Record<FieldStatus, { text: string; cls: string }> = {
 
 function FieldRow({
   field,
+  flagged,
   spec,
   status,
   current,
@@ -179,6 +205,8 @@ function FieldRow({
   onDraft,
 }: {
   field: ExtractedField;
+  /** 有疑问（AI 核对标出来的，或依据对不上） */
+  flagged: boolean;
   spec: ProfileFieldSpec;
   status: FieldStatus;
   current: string;
@@ -189,9 +217,12 @@ function FieldRow({
   const badge = STATUS_BADGE[status];
   const inputCls =
     "w-full rounded-xl border border-border bg-background/50 px-3 py-2 text-[13.5px] text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50";
+  // 要编导看的：有疑问、要写进去、还没处理
+  const pending = flagged && draft.include && !draft.resolved;
+  const fix = field.check?.fix;
 
   return (
-    <div className="py-3.5 first:pt-1 last:pb-1">
+    <div id={`field-${field.key}`} className={`scroll-mt-24 py-3.5 first:pt-1 last:pb-1 ${pending ? "-mx-2 rounded-xl bg-amber-500/[0.06] px-2" : ""}`}>
       <div className="flex flex-wrap items-center gap-2">
         {status !== "same" && (
           <input
@@ -209,12 +240,67 @@ function FieldRow({
             <Check className="h-3 w-3" /> 按你说的改了
           </span>
         )}
-        {field.unverified && !field.byUser && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-400" title="依据在原文里对不上，可能是 AI 归纳的，请核对">
+        {pending && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-400">
             <AlertTriangle className="h-3 w-3" /> 需核对
           </span>
         )}
+        {flagged && draft.resolved && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+            <Check className="h-3 w-3" /> 你已核对
+          </span>
+        )}
+        {!flagged && field.check?.ok && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600/80 dark:text-emerald-400/80" title="AI 已对照原文逐项核对过">
+            <Check className="h-3 w-3" /> 已核对
+          </span>
+        )}
       </div>
+
+      {pending && (
+        <div className="mt-2 rounded-xl border border-amber-500/30 bg-background/60 px-3 py-2.5 text-[12.5px]">
+          <p className="text-foreground">
+            <span className="font-medium text-amber-700 dark:text-amber-400">AI 核对：</span>
+            {field.check?.reason || "这一项的依据在原文里对不上，可能是 AI 归纳或推测的"}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {fix !== undefined && fix !== null && (
+              <button
+                type="button"
+                onClick={() => onDraft({ ...draft, text: show(fix), include: true, resolved: true, mode: draft.mode === "keep" ? "new" : draft.mode })}
+                className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-primary hover:bg-primary/15"
+              >
+                改成「{show(fix)}」
+              </button>
+            )}
+            {fix === null && (
+              <button
+                type="button"
+                onClick={() => onDraft({ ...draft, include: false, resolved: true })}
+                className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-primary hover:bg-primary/15"
+              >
+                原文没说，这项不填
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onDraft({ ...draft, resolved: true })}
+              className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground"
+            >
+              我核对过，没问题
+            </button>
+            {fix === undefined && (
+              <button
+                type="button"
+                onClick={() => onDraft({ ...draft, include: false, resolved: true })}
+                className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground"
+              >
+                这项先不填
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {status === "same" ? (
         <p className="mt-1.5 text-[13px] text-muted-foreground">{current}</p>
@@ -224,7 +310,7 @@ function FieldRow({
             <select
               value={draft.text}
               disabled={!draft.include}
-              onChange={(e) => onDraft({ ...draft, text: e.target.value })}
+              onChange={(e) => onDraft({ ...draft, text: e.target.value, resolved: draft.resolved || flagged })}
               className={inputCls}
             >
               {(spec.options ?? []).map((o) => (
@@ -237,7 +323,7 @@ function FieldRow({
             <input
               value={draft.text}
               disabled={!draft.include}
-              onChange={(e) => onDraft({ ...draft, text: e.target.value })}
+              onChange={(e) => onDraft({ ...draft, text: e.target.value, resolved: draft.resolved || flagged })}
               className={inputCls}
             />
           )}

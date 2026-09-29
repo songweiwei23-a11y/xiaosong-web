@@ -4,6 +4,8 @@ import { askDify, sseTask } from '@/lib/dify-task';
 import { recordImport, UUID_RE } from '@/lib/interview-history';
 import { documentToText, normalizeSource, UnsupportedDocument, MAX_UPLOAD_BYTES } from '@/lib/document-text';
 import {
+  applyCheck,
+  buildCheckPrompt,
   buildExtractionPrompt,
   parseExtraction,
   INTERVIEW_TASK_TYPE,
@@ -90,6 +92,19 @@ export async function POST(req: NextRequest) {
     if (result.fields.length === 0) {
       // 一项都没提取出来，多半贴的不是前采记录。不扣次数
       return { event: 'error', message: '没从这段内容里找到客户的信息。确认贴的是前采记录（问答、聊天记录或录音转写）再试' };
+    }
+
+    // 逐项核对：再让模型当一遍严格的核对员（见 buildCheckPrompt）。
+    // 核对没跑成不耽误结果——页面上照旧按"依据对不对得上"标需核对，只是少了这一层
+    const check = await askDify(buildCheckPrompt(result, source), userId, '前采 账号档案 核对');
+    if (check.ok) {
+      try {
+        result = applyCheck(result, check.text);
+      } catch (e) {
+        console.warn('[interview] 核对结果解析失败，不带核对给结果:', (e as Error).message);
+      }
+    } else {
+      console.warn('[interview] 核对没跑成，不带核对给结果:', check.message);
     }
     await incrementUsageServer(userId, 'interview', INTERVIEW_TASK_TYPE, {
       profileName: result.profileName,

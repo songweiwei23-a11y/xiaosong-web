@@ -23,9 +23,18 @@ import {
   buildRevisionPrompt,
   parseRevision,
   sanitizeExtraction,
+  buildCheckPrompt,
+  applyCheck,
   MAX_STORED_NOTES,
 } from '@/lib/interview-import';
-import { applyRevision, buildPatch, currentValues, initialDrafts } from '@/components/interview/ReviewPanel';
+import {
+  applyRevision,
+  buildPatch,
+  currentValues,
+  initialDrafts,
+  isFlagged,
+  unresolvedKeys,
+} from '@/components/interview/ReviewPanel';
 import { documentToText, decodeText, readZipEntry, wordXmlToText, UnsupportedDocument } from '@/lib/document-text';
 import { EMPTY_PROFILE, PROFILE_CHOICES, PROFILE_FIELDS } from '@/lib/profile-fields';
 import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
@@ -169,6 +178,110 @@ describe('对话修改：编导一句话，AI 改对应的几项', () => {
     expect(r.set).toEqual([]);
     expect(r.remove).toEqual([]);
     expect(r.reply).toBe('这里只能修改档案内容');
+  });
+});
+
+describe('逐项核对：提取完再当一遍严格的核对员', () => {
+  const ex = {
+    profileName: '阿强',
+    fields: [
+      { key: 'account_stage' as const, value: '稳定运营，需要新选题', evidence: '拍过，抖音号叫「阿强切牛肉」', unverified: false },
+      { key: 'fans_level' as const, value: '0-1万', evidence: '现在八千多粉', unverified: false },
+      { key: 'target_interests' as const, value: ['火锅'], evidence: '', unverified: true },
+      { key: 'content_format' as const, value: ['Vlog', '教程'], evidence: '', unverified: false },
+      { key: 'content_restrictions' as const, value: '不能用绝对化用语（全长沙最好吃）', evidence: '', unverified: false },
+      { key: 'price_range' as const, value: ['50-200元'], evidence: '人均大概120块左右', unverified: false },
+    ],
+    highlights: [],
+    missing: [],
+  };
+
+  it('提示词：点名"依据是真的、结论是猜的"这类；标准说法归对了不算问题；原文在最后', () => {
+    const p = buildCheckPrompt(ex, SOURCE);
+    expect(p).toMatch(/推测/);
+    expect(p).toMatch(/打算做/);
+    expect(p).toMatch(/宁可多标/);
+    expect(p).toMatch(/标准说法/);
+    expect(p).toMatch(/二十五到三十五岁" → 「25-30岁、31-40岁」/);
+    for (const f of ex.fields) expect(p).toContain(`- ${f.key}（`);
+    expect(p).toContain('0-1万 / 1-5万'); // 单选把选项带上，才判断得了档位对不对
+    expect(p.trimEnd().endsWith('前采记录结束')).toBe(true);
+  });
+
+  // 照着线上实测的回复写的
+  const RAW_CHECK = `{"checks":{
+    "account_stage":{"ok":false,"reason":"原文只说拍过视频、八千多粉，没说定位定没定，阶段是猜的"},
+    "fans_level":{"ok":true},
+    "target_interests":{"ok":false,"reason":"原文没说客人的兴趣","fix":null},
+    "content_format":{"ok":false,"reason":"只说拍切牛肉，没说是教程","fix":["Vlog"]},
+    "content_restrictions":{"ok":false,"reason":"不能扩大范围","fix":"不能用绝对化用语(全长沙最好吃)"},
+    "made_up":{"ok":false,"reason":"x"}
+  }}`;
+  const out = applyCheck(ex, RAW_CHECK);
+  const get = (k: string) => out.fields.find((f) => f.key === k)!;
+
+  it('挂上结论：有问题的带原因；fix 给值、给 null（建议不填）、不给，三种都认', () => {
+    expect(out.checked).toBe(true);
+    expect(get('fans_level').check).toEqual({ ok: true, reason: '' });
+    expect(get('account_stage').check).toMatchObject({ ok: false, reason: expect.stringContaining('阶段是猜的') });
+    expect(get('account_stage').check).not.toHaveProperty('fix');
+    expect(get('target_interests').check?.fix).toBeNull();
+    expect(get('content_format').check?.fix).toEqual(['Vlog']);
+  });
+
+  it('"建议"和现在的值只差全角半角括号：等于没问题（实测模型会这样）', () => {
+    expect(get('content_restrictions').check?.ok).toBe(true);
+  });
+
+  it('没核到的项不挂结论；不认识的字段不会多出来', () => {
+    expect(get('price_range').check).toBeUndefined();
+    expect(out.fields).toHaveLength(ex.fields.length);
+  });
+
+  it('有疑问 = AI 标的；没核对成时退回看依据；编导自己说了改的不算', () => {
+    expect(isFlagged(get('account_stage'), true)).toBe(true);
+    expect(isFlagged(get('fans_level'), true)).toBe(false);
+    // 依据对不上但 AI 核对说没问题：以核对为准
+    expect(isFlagged({ ...get('fans_level'), unverified: true }, true)).toBe(false);
+    // 核对没跑成
+    expect(isFlagged(ex.fields[2], false)).toBe(true);
+    expect(isFlagged(ex.fields[0], false)).toBe(false);
+    expect(isFlagged({ ...get('account_stage'), byUser: true }, true)).toBe(false);
+  });
+
+  it('还要看的：有疑问、要写进去、没处理的；按建议改了、确认了、不填了都算处理过', () => {
+    const drafts = initialDrafts(out, null);
+    expect(unresolvedKeys(out, drafts).sort()).toEqual(['account_stage', 'content_format', 'target_interests']);
+    drafts.account_stage = { ...drafts.account_stage, resolved: true };
+    drafts.target_interests = { ...drafts.target_interests, include: false };
+    expect(unresolvedKeys(out, drafts)).toEqual(['content_format']);
+  });
+
+  it('存历史时核对结论跟着存下来', () => {
+    const back = sanitizeExtraction(JSON.parse(JSON.stringify(out)));
+    expect(back.checked).toBe(true);
+    expect(back.fields.find((f) => f.key === 'target_interests')?.check).toEqual({ ok: false, reason: '原文没说客人的兴趣', fix: null });
+    expect(back.fields.find((f) => f.key === 'content_format')?.check?.fix).toEqual(['Vlog']);
+  });
+
+  it('接口：提取完先核对、再扣次数存历史；核对没跑成照样给结果', () => {
+    const extract = readCode('app/api/interview/extract/route.ts');
+    const c = extract.indexOf('buildCheckPrompt(result, source)');
+    expect(c).toBeGreaterThan(extract.indexOf('parseExtraction('));
+    expect(c).toBeLessThan(extract.indexOf('incrementUsageServer('));
+    expect(extract).toMatch(/核对没跑成，不带核对给结果/);
+  });
+
+  it('页面：核对没完不让写入，写入按钮换成"还有 N 项没核对"，点了带去下一项；顺序是 核对 → 跟 AI 改 → 写入', () => {
+    const page = readCode('app/dashboard/interview/page.tsx');
+    expect(page).toMatch(/pending\.length > 0 \? \([\s\S]{0,200}onClick=\{goNextPending\}[\s\S]{0,300}还有 \{pending\.length\} 项没核对/);
+    expect(page).toMatch(/onClick=\{save\}/);
+    expect(page).toMatch(/逐项核对[\s\S]{0,300}跟 AI 说哪里不对[\s\S]{0,100}写入档案/);
+    // 对话框在各项后面（先核对再改）
+    expect(page).toMatch(/afterFields=\{\s*<ReviseChat/);
+    const panel = readCode('components/interview/ReviewPanel.tsx');
+    expect(panel).toMatch(/我核对过，没问题/);
+    expect(panel).toMatch(/id=\{`field-\$\{field\.key\}`\}/);
   });
 });
 

@@ -34,6 +34,16 @@ export interface ExtractedField {
   unverified: boolean;
   /** 编导在确认页跟 AI 说了之后改的：以编导为准，不再标"需核对" */
   byUser?: boolean;
+  /** AI 逐项核对的结论（见 buildCheckPrompt）。没有 = 这一项没核对到 */
+  check?: FieldCheck;
+}
+
+export interface FieldCheck {
+  ok: boolean;
+  /** 有问题时：原文是怎么说的、错在哪 */
+  reason: string;
+  /** 建议改成什么；null = 原文根本没说，建议不填；undefined = 没给建议 */
+  fix?: string | string[] | null;
 }
 
 export interface Extraction {
@@ -44,6 +54,8 @@ export interface Extraction {
   highlights: string[];
   /** 前采没问到、但定位很需要的：下次回访可以这样问 */
   missing: { key: FieldKey; label: string; question: string }[];
+  /** 逐项核对跑过了（没跑成时为 false，页面上照旧只看"依据对不对得上"） */
+  checked?: boolean;
 }
 
 const SPEC = new Map(PROFILE_FIELDS.map((f) => [f.key, f]));
@@ -272,12 +284,23 @@ export function sanitizeExtraction(data: unknown): Extraction {
     const value = cleanValue(spec, o.value);
     if (value == null) continue;
     seen.add(spec.key);
+    const c = o.check && typeof o.check === 'object' ? (o.check as Record<string, unknown>) : null;
+    let check: FieldCheck | undefined;
+    if (c) {
+      const fix = c.fix === null ? null : c.fix !== undefined ? cleanValue(spec, c.fix) ?? undefined : undefined;
+      check = {
+        ok: c.ok === true,
+        reason: clip(scrubSensitive(typeof c.reason === 'string' ? c.reason : ''), 150),
+        ...(fix !== undefined ? { fix } : {}),
+      };
+    }
     fields.push({
       key: spec.key,
       value,
       evidence: clip(scrubSensitive(typeof o.evidence === 'string' ? o.evidence : ''), 120),
       unverified: o.unverified === true,
       ...(o.byUser === true ? { byUser: true } : {}),
+      ...(check ? { check } : {}),
     });
   }
   const order = new Map(PROFILE_FIELDS.map((f, i) => [f.key, i]));
@@ -294,7 +317,91 @@ export function sanitizeExtraction(data: unknown): Extraction {
     fields,
     highlights: toStringList(d.highlights).map((h) => clip(scrubSensitive(h), 150)).slice(0, 12),
     missing,
+    ...(d.checked === true ? { checked: true } : {}),
   };
+}
+
+// ---------------------------------------------------------------- 逐项核对
+
+/**
+ * 提取完再让模型当一遍"严格的核对员"，逐项对照原文挑错。
+ *
+ * 【为什么光比对依据不够】evidenceInSource 只能查"依据是不是原文里的话"，
+ * 查不出"依据是真的、结论是猜的"：线上实测，原文只有「拍过，现在八千多粉」，
+ * 提取出了「账号阶段：稳定运营，需要新选题」——依据确实在原文里，但这个阶段是推测的。
+ * 产品方要求"核对要仔细"，这一类得靠读懂原文才挑得出来。
+ *
+ * 提取时模型在"尽量多填"，核对时换成"宁可多标"，两个方向互相制衡。
+ */
+export function buildCheckPrompt(ex: Extraction, source: string): string {
+  const rows = ex.fields
+    .map((f) => {
+      const spec = SPEC.get(f.key)!;
+      const opts = spec.options?.length
+        ? `（${spec.kind === 'single' ? '单选' : '标准说法'}：${spec.options.join(' / ')}）`
+        : '';
+      return `- ${f.key}（${spec.label}）${opts}：${Array.isArray(f.value) ? f.value.join('、') : f.value}\n  依据：${f.evidence || '（没给）'}`;
+    })
+    .join('\n');
+  return `【任务：前采建档·逐项核对】这一次不写文案、不做分析，只核对。
+
+下面是从一份前采记录里提取出来的账号档案。你是一个严格的核对员：逐项对照原文，判断每一项提取得对不对。
+
+## 核对标准
+- **没问题**：原文明确说到，值和原文一致。
+- 以下都算**有问题**：
+  1. 原文没说，是推测、按行业常识补的（比如只说"拍过视频"，就填了账号处在什么阶段）
+  2. 值和原文对不上：数字、档位、人群、价格（"八千多粉"应该是 0-1万；"人均120"应该是 50-200元）
+  3. 把别人的情况（同行、客人、对标账号）当成了这个客户的
+  4. 把"打算做、想做"当成了"已经在做"
+  5. 说得比原文重、比原文多（原文说"有时候"，写成了"一直"）
+  6. 依据和这一项没关系
+- 宁可多标，不要放过。但原文确实说了的，不要为了挑错硬挑。
+
+## 这些不算问题（只核意思对不对，不核措辞）
+- 档案很多栏用的是固定的**标准说法**（每项后面括号里列着）：把原文的意思归到对应的标准说法上是对的，不算"加工"。
+  比如原文"最常问牛肉是不是当天的" → 「怕质量有问题」；"二十五到三十五岁" → 「25-30岁、31-40岁」；"人均120" → 「50-200元」。
+  只有归错了（意思对不上）才算问题。
+- 不要因为"可以写得更具体"就标（原文说在店里切牛肉，写「店铺」就是对的）。
+- fix 要用这一项的标准说法，不要改回原文的大白话。
+
+## 有问题的怎么写
+- reason：一句大白话，说原文是怎么说的、错在哪。比如"原文只说拍过视频、八千多粉，没说定位定没定，阶段是猜的"
+- fix：建议改成什么（单选题只能是选项原文）；原文根本没说这件事，fix 写 null，意思是建议不填
+
+## 提取结果
+${rows}
+
+## 输出格式
+每一项都要给结论。只输出一个 JSON 对象，不要任何解释、不要 Markdown 代码块：
+{"checks":{"字段key":{"ok":true},"另一个key":{"ok":false,"reason":"…","fix":…或null}}}
+
+## 前采记录（到"前采记录结束"为止）
+${source}
+前采记录结束`;
+}
+
+/** 把核对结论挂到每一项上。解析不了就抛错，由调用方决定要不要不带核对照样给结果 */
+export function applyCheck(ex: Extraction, raw: string): Extraction {
+  const data = extractJson(raw) as Record<string, unknown>;
+  const checks = (data?.checks && typeof data.checks === 'object' ? data.checks : {}) as Record<string, unknown>;
+  const fields = ex.fields.map((f) => {
+    const c = checks[f.key];
+    if (!c || typeof c !== 'object') return f;
+    const o = c as Record<string, unknown>;
+    if (o.ok !== false) return { ...f, check: { ok: true, reason: '' } };
+    const spec = SPEC.get(f.key)!;
+    const reason = clip(scrubSensitive(typeof o.reason === 'string' ? o.reason.trim() : ''), 150) || '这一项和原文对不上，请核对';
+    // fix：null 是"建议不填"；给了值的，按档案类型清洗，洗完是空的（比如单选给了个选项外的）就当没给建议
+    let fix: FieldCheck['fix'];
+    if (o.fix === null) fix = null;
+    else if (o.fix !== undefined) fix = cleanValue(spec, o.fix) ?? undefined;
+    // 建议改成的和现在一样（只差全角半角括号、标点），等于没问题——实测模型会给出这种"建议"
+    const flat = (v: string | string[]) => norm(Array.isArray(v) ? v.join('、') : v);
+    if (fix !== undefined && fix !== null && flat(fix) === flat(f.value)) return { ...f, check: { ok: true, reason: '' } };
+    return { ...f, check: { ok: false, reason, ...(fix !== undefined ? { fix } : {}) } };
+  });
+  return { ...ex, fields, checked: true };
 }
 
 // ---------------------------------------------------------------- 对话修改

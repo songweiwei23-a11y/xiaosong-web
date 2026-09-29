@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, FileText, FileUp, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, FileText, FileUp, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { MAX_SOURCE_CHARS, MIN_SOURCE_CHARS, type Extraction, type Revision } from "@/lib/interview-import";
 import { throwApiError } from "@/lib/api-error";
 import { readSseResult } from "@/lib/sse-result";
@@ -18,6 +18,8 @@ import {
   buildPatch,
   currentValues,
   initialDrafts,
+  isFlagged,
+  unresolvedKeys,
   type FieldDraft,
 } from "@/components/interview/ReviewPanel";
 import { ReviseChat } from "@/components/interview/ReviseChat";
@@ -29,8 +31,8 @@ type ProfileRow = Record<string, unknown> & { id: string; profile_name?: string 
 const NEW = "__new__";
 const ACCEPT = ".docx,.txt,.md";
 
-/** 等待时轮流显示的进度，实测一次 40 秒上下 */
-const STAGES = ["正在读前采记录…", "正在对照档案的 34 个字段…", "正在核对每一项的原文依据…", "正在整理补问清单…"];
+/** 等待时轮流显示的进度。实测提取 40 秒上下，逐项核对再 25～30 秒 */
+const STAGES = ["正在读前采记录…", "正在对照档案的 34 个字段…", "正在整理补问清单…", "正在逐项核对：有没有推测的、档位选错的…", "还在核对，快好了…"];
 
 /**
  * 前采建档：编导把前采记录贴进来（或传 Word），AI 提取成档案字段，
@@ -165,6 +167,13 @@ export default function InterviewPage() {
 
   const patch = extraction ? buildPatch(extraction, drafts, existing) : {};
   const patchCount = Object.keys(patch).length;
+  /** 有疑问、还没处理的项。不为空不让写入（产品方：核对没问题再建档） */
+  const pending = extraction ? unresolvedKeys(extraction, drafts) : [];
+  const flaggedCount = extraction ? extraction.fields.filter((f) => isFlagged(f, extraction.checked)).length : 0;
+  const goNextPending = () => {
+    const key = pending[0];
+    if (key) document.getElementById(`field-${key}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   const save = async () => {
     if (!extraction) return;
@@ -308,7 +317,7 @@ export default function InterviewPage() {
             >
               <Sparkles className="h-4 w-4" /> 开始提取
             </button>
-            <span className="text-[12px] text-muted-foreground">用一次「前采建档」次数，大约 40 秒。手机号、身份证号不会进档案</span>
+            <span className="text-[12px] text-muted-foreground">用一次「前采建档」次数，大约一分钟（提取 + 逐项核对）。手机号、身份证号不会进档案</span>
           </div>
 
           <InterviewHistory refreshKey={historyKey} profileNames={profileNames} onOpen={openHistory} />
@@ -318,21 +327,54 @@ export default function InterviewPage() {
       {step === "working" && (
         <div className="glass-panel mt-6 flex flex-col items-center rounded-2xl px-6 py-14 text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="mt-4 text-[15px] font-medium text-foreground">{STAGES[Math.min(STAGES.length - 1, Math.floor(elapsed / 10))]}</p>
-          <p className="mt-1.5 text-[12.5px] tabular-nums text-muted-foreground">已用 {elapsed} 秒，一般 40 秒左右。可以先去别的页面，提取完会存进这里的历史记录</p>
+          <p className="mt-4 text-[15px] font-medium text-foreground">{STAGES[Math.min(STAGES.length - 1, Math.floor(elapsed / 14))]}</p>
+          <p className="mt-1.5 text-[12.5px] tabular-nums text-muted-foreground">已用 {elapsed} 秒，一般一分钟左右（提取完还要逐项核对）。可以先去别的页面，提取完会存进这里的历史记录</p>
         </div>
       )}
 
       {step === "review" && extraction && (
         <div className="mt-6 space-y-5">
           <div className="glass-panel rounded-2xl p-4 sm:p-5">
-            <div className="text-[13.5px] text-foreground">
-              提取出 <b>{extraction.fields.length}</b> 项
-              {extraction.fields.some((f) => f.unverified) && (
-                <>，其中 <b className="text-amber-600 dark:text-amber-400">{extraction.fields.filter((f) => f.unverified).length}</b> 项需要核对</>
+            {/* 产品方定的顺序：先核对 → 核对没问题、跟 AI 改完 → 再写入建档 */}
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px]">
+              {[
+                { n: 1, label: pending.length > 0 ? `逐项核对（还剩 ${pending.length} 项）` : "逐项核对", done: pending.length === 0 },
+                { n: 2, label: "跟 AI 说哪里不对", done: false },
+                { n: 3, label: "写入档案", done: false },
+              ].map((s, i) => (
+                <li key={s.n} className="flex items-center gap-2">
+                  {i > 0 && <span className="text-muted-foreground/40">→</span>}
+                  <span className={`flex items-center gap-1.5 ${s.done ? "text-emerald-600 dark:text-emerald-400" : i === 0 || pending.length === 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${s.done ? "bg-emerald-500/15" : "bg-primary/12 text-primary"}`}>
+                      {s.done ? "✓" : s.n}
+                    </span>
+                    {s.label}
+                  </span>
+                </li>
+              ))}
+            </ol>
+
+            <div className="mt-3 text-[13.5px] leading-relaxed text-foreground">
+              提取出 <b>{extraction.fields.length}</b> 项。
+              {extraction.checked ? (
+                <>
+                  AI 已对照原文逐项核对：<b className="text-emerald-600 dark:text-emerald-400">{extraction.fields.filter((f) => f.check?.ok).length}</b> 项没问题，
+                  <b className="text-amber-600 dark:text-amber-400">{flaggedCount}</b> 项有疑问。
+                </>
+              ) : (
+                <>
+                  这次没能逐项核对，其中 <b className="text-amber-600 dark:text-amber-400">{flaggedCount}</b> 项的依据在原文里对不上。
+                </>
               )}
-              。检查一下，不对的改掉或取消勾选。
+              {pending.length > 0
+                ? "有疑问的每一项都要你看一眼：按建议改、确认没问题，或者不填。看完才能写入档案。"
+                : "有疑问的都看过了。没问题的项也建议扫一眼。"}
             </div>
+            {pending.length > 0 && (
+              <button type="button" onClick={goNextPending} className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1.5 text-[12.5px] font-medium text-amber-700 dark:text-amber-400">
+                去看下一项需核对的 <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            )}
             {existing ? (
               <p className="mt-2 text-[13px] text-muted-foreground">写入档案：「{String(existing.profile_name ?? "")}」</p>
             ) : (
@@ -348,16 +390,6 @@ export default function InterviewPage() {
             )}
           </div>
 
-          <ReviseChat
-            current={{
-              fields: currentValues(extraction, drafts),
-              highlights: extraction.highlights,
-              profileName: existing ? String(existing.profile_name ?? "") : profileName,
-            }}
-            source={source}
-            onApply={onRevised}
-          />
-
           <ReviewPanel
             extraction={extraction}
             existing={existing}
@@ -365,6 +397,17 @@ export default function InterviewPage() {
             onDraft={(key, d) => setDrafts((prev) => ({ ...prev, [key]: d }))}
             highlights={highlightOn}
             onHighlight={(i, on) => setHighlightOn((prev) => prev.map((x, j) => (j === i ? on : x)))}
+            afterFields={
+              <ReviseChat
+                current={{
+                  fields: currentValues(extraction, drafts),
+                  highlights: extraction.highlights,
+                  profileName: existing ? String(existing.profile_name ?? "") : profileName,
+                }}
+                source={source}
+                onApply={onRevised}
+              />
+            }
           />
 
           <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-foreground">
@@ -379,15 +422,27 @@ export default function InterviewPage() {
             <button type="button" onClick={restart} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground">
               <RotateCcw className="h-4 w-4" /> 重新导入
             </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving || (patchCount === 0 && !keepNotes && !highlightOn.some(Boolean))}
-              className="brand-gradient inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              写入档案（{patchCount} 项）
-            </button>
+            {pending.length > 0 ? (
+              // 核对没完不让写：点一下带去下一项要看的
+              <button
+                type="button"
+                onClick={goNextPending}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 px-5 py-2.5 text-[14px] font-semibold text-amber-700 dark:text-amber-400"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                还有 {pending.length} 项没核对
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving || (patchCount === 0 && !keepNotes && !highlightOn.some(Boolean))}
+                className="brand-gradient inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                写入档案（{patchCount} 项）
+              </button>
+            )}
           </div>
         </div>
       )}
