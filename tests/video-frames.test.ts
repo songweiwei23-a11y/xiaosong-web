@@ -8,6 +8,8 @@ import {
   confirmCut,
   dedupeCuts,
   sheetLayout,
+  sheetByteBudget,
+  SHEETS_BYTE_BUDGET,
   shotsFromCuts,
   pickFrames,
   audioSegments,
@@ -16,6 +18,7 @@ import {
   fmtTime,
   MAX_FRAMES,
 } from '@/lib/video-frames';
+import { readCode } from './helpers/source';
 
 /** 造一串差值：平时在 base 附近抖，指定时刻突然跳高 */
 const series = (duration: number, cutsAt: number[], base = 6, jump = 60) =>
@@ -91,6 +94,20 @@ describe('挑帧', () => {
   it('不到 3 秒的短视频：只取开头那几张', () => {
     const frames = pickFrames(shotsFromCuts([], 2), 2);
     expect(frames.map((f) => f.time)).toEqual([0, 0.5, 1, 1.5]);
+  });
+});
+
+describe('拼图大小', () => {
+  it('所有拼图加起来压在 2.4MB 以内：base64 后约 3.2MB，远低于 Dify 一次调用 5MB 的上限（线上实测 8.2MB 被拒）', () => {
+    expect(SHEETS_BYTE_BUDGET * (4 / 3)).toBeLessThan(5 * 1024 * 1024 * 0.7);
+    for (const n of [1, 3, 5, 6]) expect(sheetByteBudget(n) * n).toBeLessThanOrEqual(SHEETS_BYTE_BUDGET);
+    expect(sheetByteBudget(0)).toBe(SHEETS_BYTE_BUDGET);
+  });
+
+  it('拼图不再用固定质量，而是压到预算以内', () => {
+    const src = readCode('lib/video-frames.ts');
+    expect(src).toMatch(/sheets\.push\(await encodeWithinBudget\(canvas, budget\)\)/);
+    expect(src).not.toMatch(/'image\/jpeg', 0\.85/);
   });
 });
 

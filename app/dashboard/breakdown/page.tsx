@@ -25,11 +25,18 @@ import {
   audioSegments,
   extractAudio,
   prepareVideo,
+  type VideoBreakdownInput,
 } from "@/lib/video-frames";
 import { transcribeSegments, uploadSheets } from "@/lib/breakdown-client";
-import { BREAKDOWN_TASK_TYPE, buildBreakdownPrompt, type VideoMeta } from "@/lib/viral-breakdown";
+import { BREAKDOWN_TASK_TYPE, buildBreakdownPrompt, type TranscriptSegment, type VideoMeta } from "@/lib/viral-breakdown";
 
 type Stage = "frames" | "audio" | "upload" | "ai";
+
+interface Prepared {
+  file: File;
+  input: VideoBreakdownInput;
+  transcript: TranscriptSegment[];
+}
 const STAGES: { id: Stage; label: string }[] = [
   { id: "frames", label: "拆画面：找镜头切换、截图" },
   { id: "audio", label: "识别口播" },
@@ -68,6 +75,9 @@ export default function BreakdownPage() {
   const [sheetUrls, setSheetUrls] = useState<string[]>([]);
   const [showSheets, setShowSheets] = useState(false);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  /** 拆好的画面和口播：AI 拆解那一步失败了，重试不用再拆一遍 */
+  const [prepared, setPrepared] = useState<Prepared | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   // 切页面回来，把最近一次拆解取回来显示
@@ -94,7 +104,93 @@ export default function BreakdownPage() {
     setMeta((m) => ({ ...m, [key]: Number.isFinite(n) ? n : undefined }));
   };
 
-  const start = async () => {
+  /**
+   * 第一段：拆画面、识别口播——慢（一条 3 分钟的要一两分钟），做完存起来。
+   * 后面那段（传图、AI 拆解）失败了，重试不用再做这一段。
+   */
+  const prepare = async (f: File): Promise<Prepared> => {
+    let video: HTMLVideoElement | null = null;
+    try {
+      setStage("frames");
+      setProgress("");
+      const res = await prepareVideo(f, (s, p) => setProgress(p === undefined ? s : `${s} ${Math.round(p * 100)}%`));
+      video = res.video;
+      const input = res.input;
+      setSheetUrls(input.sheets.map((b) => URL.createObjectURL(b)));
+      if (input.truncated) {
+        setNotice(`这条视频有 ${Math.round(input.fullDuration / 60)} 分多钟，只拆了前 ${MAX_DURATION_SEC / 60} 分钟——决定留不留人的就是开头这一段`);
+      }
+
+      setStage("audio");
+      setProgress("解出音轨");
+      const audio = await extractAudio(f, audioSegments(input.shots, input.duration));
+      const transcript = audio.length ? await transcribeSegments(audio, (d, t) => setProgress(`${d}/${t} 段`)) : [];
+      if (!transcript.some((t) => t.text.trim()) && !pastedScript.trim()) {
+        setNotice((n) => [n, "没识别出口播（可能是纯画面 + 音乐）。有文案的话，贴到左边「视频文案」里再拆一次会更准"].filter(Boolean).join("；"));
+      }
+      return { file: f, input, transcript };
+    } finally {
+      if (video?.src) URL.revokeObjectURL(video.src);
+    }
+  };
+
+  /** 第二段：传截图、让 AI 拆。失败了可以只重来这一段 */
+  const generate = async (p: Prepared) => {
+    setStage("upload");
+    setProgress("");
+    const ids = await uploadSheets(p.input.sheets, (d, t) => setProgress(`${d}/${t} 张`));
+
+    setStage("ai");
+    setProgress("");
+    const profileSummary = withProfile && profile ? buildProfileSummary(profile) : undefined;
+    const query = buildBreakdownPrompt({
+      duration: p.input.duration,
+      fullDuration: p.input.fullDuration,
+      truncated: p.input.truncated,
+      width: p.input.width,
+      height: p.input.height,
+      shots: p.input.shots,
+      frames: p.input.frames,
+      sheetCount: ids.length,
+      transcript: p.transcript,
+      pastedScript,
+      meta,
+      profileSummary,
+    });
+    const res = await fetch("/api/dify/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        taskType: BREAKDOWN_TASK_TYPE,
+        query,
+        imageFileIds: ids,
+        profileId: withProfile ? (profile?.id as string | undefined) ?? null : null,
+      }),
+    });
+    if (!res.ok) await throwApiError(res, "拆解失败");
+    const full = await readDifyStream(res, {
+      onChunk: (_p, text) => setResult(text),
+      onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
+    });
+    if (full.trim()) {
+      await saveGenerationHistory(
+        BREAKDOWN_TASK_TYPE,
+        {
+          fileName: p.file.name,
+          duration: Math.round(p.input.duration),
+          fullDuration: Math.round(p.input.fullDuration),
+          shots: p.input.shots.length,
+          meta,
+          withProfile: !!profileSummary,
+        },
+        full
+      );
+      loadHistory();
+    }
+  };
+
+  /** retry=true：用上次拆好的画面和口播，只重来传图和 AI 拆解 */
+  const start = async (retry = false) => {
     if (!file || running) return;
     const left = await checkQuota("breakdown");
     if (left !== null && left <= 0) {
@@ -103,86 +199,20 @@ export default function BreakdownPage() {
     }
     setRunning(true);
     setResult("");
-    setNotice("");
-    sheetUrls.forEach((u) => URL.revokeObjectURL(u));
-    setSheetUrls([]);
-    let video: HTMLVideoElement | null = null;
+    setError("");
+    if (!retry) {
+      setNotice("");
+      sheetUrls.forEach((u) => URL.revokeObjectURL(u));
+      setSheetUrls([]);
+    }
     try {
-      setStage("frames");
-      setProgress("");
-      const prepared = await prepareVideo(file, (s, p) => setProgress(p === undefined ? s : `${s} ${Math.round(p * 100)}%`));
-      video = prepared.video;
-      const input = prepared.input;
-      setSheetUrls(input.sheets.map((b) => URL.createObjectURL(b)));
-      if (input.truncated) {
-        setNotice(`这条视频有 ${Math.round(input.fullDuration / 60)} 分多钟，只拆了前 ${MAX_DURATION_SEC / 60} 分钟——决定留不留人的就是开头这一段`);
-      }
-
-      setStage("audio");
-      setProgress("解出音轨");
-      const audio = await extractAudio(file, audioSegments(input.shots, input.duration));
-      const transcript = audio.length ? await transcribeSegments(audio, (d, t) => setProgress(`${d}/${t} 段`)) : [];
-      const heard = transcript.some((t) => t.text.trim());
-      if (!heard && !pastedScript.trim()) {
-        setNotice((n) => [n, "没识别出口播（可能是纯画面 + 音乐）。有文案的话，贴到左边「视频文案」里再拆一次会更准"].filter(Boolean).join("；"));
-      }
-
-      setStage("upload");
-      const ids = await uploadSheets(input.sheets, (d, t) => setProgress(`${d}/${t} 张`));
-
-      setStage("ai");
-      setProgress("");
-      const profileSummary = withProfile && profile ? buildProfileSummary(profile) : undefined;
-      const query = buildBreakdownPrompt({
-        duration: input.duration,
-        fullDuration: input.fullDuration,
-        truncated: input.truncated,
-        width: input.width,
-        height: input.height,
-        shots: input.shots,
-        frames: input.frames,
-        sheetCount: ids.length,
-        transcript,
-        pastedScript,
-        meta,
-        profileSummary,
-      });
-      const res = await fetch("/api/dify/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskType: BREAKDOWN_TASK_TYPE,
-          query,
-          imageFileIds: ids,
-          profileId: withProfile ? (profile?.id as string | undefined) ?? null : null,
-        }),
-      });
-      if (!res.ok) await throwApiError(res, "拆解失败");
-      const full = await readDifyStream(res, {
-        onChunk: (_p, text) => setResult(text),
-        onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
-      });
-      if (full.trim()) {
-        await saveGenerationHistory(
-          BREAKDOWN_TASK_TYPE,
-          {
-            fileName: file.name,
-            duration: Math.round(input.duration),
-            fullDuration: Math.round(input.fullDuration),
-            shots: input.shots.length,
-            meta,
-            withProfile: !!profileSummary,
-          },
-          full
-        );
-        loadHistory();
-      }
+      const p = retry && prepared?.file === file ? prepared : await prepare(file);
+      setPrepared(p);
+      await generate(p);
     } catch (e) {
-      const msg =
-        e instanceof VideoInputError ? e.message : isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "拆解失败，请重试";
-      notify(msg, "error");
+      // 错误留在结果区，不只是一闪而过的提示——线上实测提示 3 秒就没了，用户只看到"一直转圈然后没了"
+      setError(e instanceof VideoInputError ? e.message : isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "拆解失败，请重试");
     } finally {
-      if (video?.src) URL.revokeObjectURL(video.src);
       setRunning(false);
       setStage(null);
       setProgress("");
@@ -270,7 +300,7 @@ export default function BreakdownPage() {
             </label>
           )}
 
-          <button type="button" onClick={start} disabled={!file || running} className={GENERATE_BTN}>
+          <button type="button" onClick={() => start()} disabled={!file || running} className={GENERATE_BTN}>
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
             {running ? "拆解中…" : "开始拆解"}
           </button>
@@ -291,6 +321,16 @@ export default function BreakdownPage() {
       }
     >
       {notice && <p className="mb-3 rounded-xl bg-amber-500/10 px-3.5 py-2.5 text-[12.5px] text-amber-700 dark:text-amber-400">{notice}</p>}
+      {error && !running && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/[0.06] px-4 py-3">
+          <p className="text-[13px] text-destructive">拆解没完成：{error}</p>
+          {prepared && prepared.file === file && (
+            <button type="button" onClick={() => start(true)} className="rounded-lg bg-destructive/10 px-3 py-1.5 text-[12.5px] font-medium text-destructive hover:bg-destructive/15">
+              重新拆解（不用重新识别，次数没扣）
+            </button>
+          )}
+        </div>
+      )}
 
       <ResultPanel
         result={result}

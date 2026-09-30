@@ -31,6 +31,42 @@ export function sheetLayout(width: number, height: number): { cols: number; cell
 /** 竖屏时最多能放多少张（给没有视频尺寸时兜底用） */
 export const MAX_FRAMES = 4 * SHEET_ROWS * MAX_SHEETS;
 
+/**
+ * 所有拼图加起来最多多大（JPEG 原始字节）。
+ *
+ * 线上实测：Dify 云端调一次模型，请求体上限 5MB（ServerlessPayloadTooLarge: max_request_bytes=5242880），
+ * 图片是 base64 塞进去的，要再胀三分之一。验证用的样片画面暗、压得小（5 张共 1.2MB），
+ * 产品方拿一条明亮的餐饮视频一跑，5 张拼图 base64 后 8.2MB，直接被拒。
+ * 定 2.4MB：base64 后约 3.2MB，给系统提示词、知识库检索结果留足余量。
+ */
+export const SHEETS_BYTE_BUDGET = Math.floor(2.4 * 1024 * 1024);
+
+/** 每张拼图的字节上限：总预算平分 */
+export function sheetByteBudget(sheetCount: number): number {
+  return Math.floor(SHEETS_BYTE_BUDGET / Math.max(1, sheetCount));
+}
+
+/** 质量一档档往下试，还超就缩小画布再试。返回压到预算以内的 JPEG（实在压不下就给最小的那个） */
+export async function encodeWithinBudget(canvas: HTMLCanvasElement, maxBytes: number): Promise<Blob> {
+  const toBlob = (c: HTMLCanvasElement, q: number) => new Promise<Blob>((r) => c.toBlob((b) => r(b!), 'image/jpeg', q));
+  let src = canvas;
+  let best: Blob | null = null;
+  for (let round = 0; round < 3; round++) {
+    for (const q of [0.82, 0.72, 0.62, 0.52]) {
+      const b = await toBlob(src, q);
+      if (!best || b.size < best.size) best = b;
+      if (b.size <= maxBytes) return b;
+    }
+    // 缩到 85% 再来：字会变小，但总比被拒强
+    const next = document.createElement('canvas');
+    next.width = Math.round(src.width * 0.85);
+    next.height = Math.round(src.height * 0.85);
+    next.getContext('2d')!.drawImage(src, 0, 0, next.width, next.height);
+    src = next;
+  }
+  return best!;
+}
+
 /** 检测镜头切换时的取样间隔 */
 const SCAN_STEP = 0.5;
 /** 缩略图尺寸（只用来比较前后两帧差多少） */
@@ -311,6 +347,8 @@ export async function buildSheets(video: HTMLVideoElement, frames: KeyFrame[], s
   const cellH = Math.round((cellW * video.videoHeight) / Math.max(1, video.videoWidth));
   const labelH = 34;
   const sheets: Blob[] = [];
+  const sheetCount = Math.min(MAX_SHEETS, Math.ceil(frames.length / perSheet));
+  const budget = sheetByteBudget(sheetCount);
   for (let s = 0; s * perSheet < frames.length && s < MAX_SHEETS; s++) {
     const chunk = frames.slice(s * perSheet, (s + 1) * perSheet);
     const rows = Math.ceil(chunk.length / cols);
@@ -339,7 +377,7 @@ export async function buildSheets(video: HTMLVideoElement, frames: KeyFrame[], s
       ctx.lineWidth = 4;
       ctx.strokeRect(x, y, cellW, cellH + labelH);
     }
-    sheets.push(await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), 'image/jpeg', 0.85)));
+    sheets.push(await encodeWithinBudget(canvas, budget));
   }
   return sheets;
 }

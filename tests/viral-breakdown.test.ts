@@ -17,6 +17,7 @@ import { TASK_TYPE_TO_FEATURE } from '@/lib/task-type';
 import { ISOLATED_TASKS } from '@/lib/topic-library';
 import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import { readCode } from './helpers/source';
+import { friendlyDifyError } from '@/lib/dify-errors';
 
 const shots = shotsFromCuts([8.6, 10.9, 12.3, 29.3], 40);
 const base = {
@@ -153,6 +154,17 @@ describe('接到全站', () => {
     expect(page).toMatch(/useRestoreLastResult\(lastResult, setResult\)/);
     // 视频不上传：页面里不能有把视频文件本身发出去的请求
     expect(page).not.toMatch(/append\("file", file\)/);
+  });
+
+  it('失败了错误留在结果区（不只是一闪而过的提示），可以只重来传图和 AI 拆解', () => {
+    const page = readCode('app/dashboard/breakdown/page.tsx');
+    expect(page).toMatch(/\{error && !running && \(/);
+    expect(page).toMatch(/onClick=\{\(\) => start\(true\)\}/);
+    expect(page).toMatch(/const p = retry && prepared\?\.file === file \? prepared : await prepare\(file\)/);
+  });
+
+  it('截图太大被 Dify 拒：给人话，不是"生成失败"', () => {
+    expect(friendlyDifyError('PluginDaemonInternalServerError: ServerlessPayloadTooLarge: action=invoke_llm payload_bytes=8165757 max_request_bytes=5242880')).toMatch(/截图太大/);
   });
 
   it('识别和上传：网络断了自动重发（不扣次数，重发没代价）；没额度直接报', () => {

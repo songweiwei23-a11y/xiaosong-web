@@ -33,6 +33,8 @@ export function difyEventError(data: any): string | null {
 /** 给用户看的说法。原文是英文堆栈，用户看不懂也没法处理 */
 export function friendlyDifyError(message: string): string {
   if (isContextOverflowError(message)) return '这次要处理的内容太长了，已经为你换了一个新窗口，请再点一次生成';
+  // 拆解爆款的截图太大：Dify 云端一次调用 5MB 上限（线上实测踩过）
+  if (/PayloadTooLarge|payload_bytes|request entity too large|413/i.test(message)) return '这次发给 AI 的截图太大了，请点「重新拆解」再试一次';
   if (/rate limit|429|overloaded|529|too many requests/i.test(message)) return 'AI 这会儿太忙了，请过半分钟再试';
   if (/timeout|timed out/i.test(message)) return 'AI 响应超时了，请再试一次';
   return '生成失败，请稍后重试';
