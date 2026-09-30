@@ -64,7 +64,10 @@ export const SUBSCRIPTION_PLANS = {
       dealReason: 5,
       // 前采建档（2026-09-29 新增，单独一项额度，不挤占账号定位）。
       // 一次要读上万字的前采记录，成本比一次创作高；免费给 3 次够建一两个档案试效果
-      interview: 3
+      interview: 3,
+      // 拆解爆款（2026-09-30 新增，单独一项）：一次要看 5～6 张截图拼图 + 整段口播，比一次创作贵；
+      // 免费给 3 次，够拆两三条对标试效果
+      breakdown: 3
     }
   },
   basic: {
@@ -82,7 +85,8 @@ export const SUBSCRIPTION_PLANS = {
       review: 50,
       title: 50,
       dealReason: 50,
-      interview: 50
+      interview: 50,
+      breakdown: 50
     }
   },
   pro: {
@@ -100,7 +104,8 @@ export const SUBSCRIPTION_PLANS = {
       review: 120,
       title: 120,
       dealReason: 120,
-      interview: 120
+      interview: 120,
+      breakdown: 120
     }
   },
   enterprise: {
@@ -120,7 +125,8 @@ export const SUBSCRIPTION_PLANS = {
       review: -1,
       title: -1,
       dealReason: -1,
-      interview: -1
+      interview: -1,
+      breakdown: -1
     }
   }
 };
@@ -157,6 +163,8 @@ export const COUNTED_FEATURES: { key: keyof typeof SUBSCRIPTION_PLANS.free.quota
   { key: 'dealReason', column: 'deal_reason_used', name: '成交理由' },
   // 前采建档：user_quotas.interview_used 由 20260929_interview_import.sql 加
   { key: 'interview', column: 'interview_used', name: '前采建档' },
+  // 拆解爆款：user_quotas.breakdown_used 由 20260930_breakdown.sql 加
+  { key: 'breakdown', column: 'breakdown_used', name: '拆解爆款' },
   { key: 'knowledge', column: 'knowledge_used', name: '知识库查询' },
 ];
 
@@ -280,9 +288,9 @@ function knowledgeLine(planId: string): string {
  */
 const SELLING_POINTS: Record<string, string[]> = {
   free: ['历史记录云端保存'],
-  basic: ['十大功能全部开放', '历史记录云端保存'],
-  pro: ['十大功能全部开放', '历史记录云端保存'],
-  enterprise: ['十大功能全部开放', '历史记录云端保存'],
+  basic: ['十一大功能全部开放', '历史记录云端保存'],
+  pro: ['十一大功能全部开放', '历史记录云端保存'],
+  enterprise: ['十一大功能全部开放', '历史记录云端保存'],
 };
 
 export function planSellingPoints(planId: string): string[] {

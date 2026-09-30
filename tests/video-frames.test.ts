@@ -4,7 +4,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  detectCuts,
+  cutCandidates,
+  confirmCut,
+  dedupeCuts,
+  sheetLayout,
   shotsFromCuts,
   pickFrames,
   audioSegments,
@@ -23,22 +26,32 @@ const series = (duration: number, cutsAt: number[], base = 6, jump = 60) =>
   });
 
 describe('切镜头', () => {
-  it('差值明显高出平常水平才算切', () => {
-    expect(detectCuts(series(20, [3, 7.5, 12]))).toEqual([3, 7.5, 12]);
-  });
-
-  it('口播人一直在动（平常差值就高）：不能切出一堆假镜头', () => {
-    const talking = series(30, [], 22).map((d, i) => ({ ...d, diff: d.diff + (i % 3) * 3 }));
-    expect(detectCuts(talking)).toEqual([]);
-  });
-
-  it('两个切点至少隔 0.8 秒（转场的前后两帧都会跳，只算一次）', () => {
-    expect(detectCuts(series(10, [4, 4.5]))).toEqual([4]);
+  it('粗扫：高出这条视频平常水平的窗口都拿去细看（宁多勿漏）', () => {
+    expect(cutCandidates(series(20, [3, 7.5, 12])).map((d) => d.time)).toEqual([3, 7.5, 12]);
+    // 大切换不会把阈值抬高到盖住小切换（第一版按均值+2.5倍标准差，实测漏掉了同一场景里的机位切换）
+    const mixed = series(40, [5, 10, 15, 20, 25], 6, 90).map((d) => (d.time === 30 ? { ...d, diff: 20 } : d));
+    expect(cutCandidates(mixed).map((d) => d.time)).toContain(30);
   });
 
   it('全是一样的画面、空数组：不崩', () => {
-    expect(detectCuts([])).toEqual([]);
-    expect(detectCuts(series(10, [], 0).map((d) => ({ ...d, diff: 0 })))).toEqual([]);
+    expect(cutCandidates([])).toEqual([]);
+    expect(cutCandidates(series(10, [], 0).map((d) => ({ ...d, diff: 0 })))).toEqual([]);
+  });
+
+  it('细看：变化集中在最后那一瞬间才是切换；人在动、镜头在摇是一点点变，不算', () => {
+    expect(confirmCut(40, 38)).toBe(true); // 一瞬间全变了
+    expect(confirmCut(40, 6)).toBe(false); // 0.5 秒里慢慢变过去的
+    expect(confirmCut(12, 8)).toBe(false); // 变化太小，不算
+  });
+
+  it('同一个转场被判两次只算一个', () => {
+    expect(dedupeCuts([4.1, 4.3, 9, 2])).toEqual([2, 4.1, 9]);
+  });
+
+  it('横屏格子更大（实测横屏按竖屏的格子拼，字幕看不清，模型开始猜字）', () => {
+    expect(sheetLayout(1280, 720)).toMatchObject({ cols: 3, cellW: 512 });
+    expect(sheetLayout(720, 1280)).toMatchObject({ cols: 4, cellW: 384 });
+    expect(sheetLayout(1280, 720).maxFrames).toBe(54);
   });
 
   it('切点变成镜头：首尾补齐，编号从 1 开始，贴得太近的丢掉', () => {

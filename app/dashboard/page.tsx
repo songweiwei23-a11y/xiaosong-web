@@ -15,7 +15,7 @@ import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
-  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch,
+  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -113,6 +113,7 @@ const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; 
 
 const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }[] = [
   { name: "审稿优化", icon: CheckCircle, href: "/dashboard/review" },
+  { name: "拆解爆款", icon: Clapperboard, href: "/dashboard/breakdown", tip: "传视频，逐镜头拆" },
   // 开篇那一半已经提到主流程里了，这里留的是「挑哪一计拍」这一半
   { name: "起号打法", icon: Rocket, href: "/dashboard/growth?tab=plan", tip: "37计，按你的条件推荐" },
   { name: "商业定位", icon: Wallet, href: "/dashboard/business-positioning", tip: "靠什么赚钱" },
@@ -136,6 +137,7 @@ const TASK_ROUTES: Record<string, string> = {
   商业定位: "/dashboard/business-positioning",
   内容定位: "/dashboard/content-positioning",
   创作简报: "/dashboard/creative-brief",
+  拆解爆款: "/dashboard/breakdown",
   起号方案: "/dashboard/growth",
   开篇钩子: "/dashboard/growth",
 };

@@ -12,11 +12,24 @@
 
 export const MAX_DURATION_SEC = 180;
 export const MAX_FILE_MB = 100;
-/** 拼图：每张几列几行、最多几张 */
-export const SHEET_COLS = 4;
+/** 拼图：每张几行、最多几张 */
 export const SHEET_ROWS = 3;
 export const MAX_SHEETS = 6;
-export const MAX_FRAMES = SHEET_COLS * SHEET_ROWS * MAX_SHEETS;
+
+/**
+ * 拼图的格子多大。竖屏 4 列、每格 384 宽；横屏 3 列、每格 512 宽。
+ *
+ * 实测横屏样片按 4 列拼，每格太小，字幕看不清，模型就开始猜：
+ * 墙上的「我是河南人」被看成墓碑、「当服务员」被读成「当厨房门」。
+ * 横屏画面本来就扁，同样的宽度里字更小，得给大一点。
+ */
+export function sheetLayout(width: number, height: number): { cols: number; cellW: number; perSheet: number; maxFrames: number } {
+  const landscape = width > height;
+  const cols = landscape ? 3 : 4;
+  return { cols, cellW: landscape ? 512 : 384, perSheet: cols * SHEET_ROWS, maxFrames: cols * SHEET_ROWS * MAX_SHEETS };
+}
+/** 竖屏时最多能放多少张（给没有视频尺寸时兜底用） */
+export const MAX_FRAMES = 4 * SHEET_ROWS * MAX_SHEETS;
 
 /** 检测镜头切换时的取样间隔 */
 const SCAN_STEP = 0.5;
@@ -43,7 +56,12 @@ export interface KeyFrame {
 }
 
 export interface VideoBreakdownInput {
+  /** 拆的这一段有多长（超过 3 分钟的只拆前 3 分钟） */
   duration: number;
+  /** 视频本身多长 */
+  fullDuration: number;
+  /** 只拆了前面一段 */
+  truncated: boolean;
   width: number;
   height: number;
   shots: Shot[];
@@ -70,27 +88,38 @@ export function frameDiff(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
 }
 
 /**
- * 从相邻帧的差值里找镜头切换点。
- * 阈值自适应：差值明显高于这条视频自己的平常水平（均值 + 2.5 倍标准差）才算切，
- * 同时不低于一个绝对下限——口播视频人一直在动，固定阈值会切出一堆假镜头。
- * 两个切点至少隔 0.8 秒（快切会漏，但假切更伤：一个镜头被切成三截，结构全乱）。
+ * 粗扫之后，哪些 0.5 秒的窗口值得细看：差值高于这条视频自己中位数的 1.5 倍、且不低于下限。
+ * 这一步宁多勿漏——真假由 confirmCut 细看后判。
+ *
+ * 【为什么不直接按阈值切】第一版用"均值 + 2.5 倍标准差"一刀切，拿真实样片（采访 + 空镜穿插）一跑，
+ * 一个"镜头"长达 72 秒：同一个紫色包间里换机位，和人说话时的动作，隔 0.5 秒看差值差不多大，
+ * 阈值被大切换抬高后，这些机位切换全漏了。
  */
-export function detectCuts(diffs: { time: number; diff: number }[], opts: { minGap?: number; floor?: number } = {}): number[] {
-  const minGap = opts.minGap ?? 0.8;
-  const floor = opts.floor ?? 18;
+export function cutCandidates(diffs: { time: number; diff: number }[], floor = 6): { time: number; diff: number }[] {
   if (diffs.length === 0) return [];
-  const vals = diffs.map((d) => d.diff);
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  const std = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
-  const threshold = Math.max(floor, mean + 2.5 * std);
-  const cuts: number[] = [];
-  for (const d of diffs) {
-    if (d.diff < threshold) continue;
-    const last = cuts[cuts.length - 1];
-    if (last !== undefined && d.time - last < minGap) continue;
-    cuts.push(d.time);
+  const sorted = diffs.map((d) => d.diff).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const threshold = Math.max(floor, median * 1.5);
+  return diffs.filter((d) => d.diff >= threshold);
+}
+
+/**
+ * 细看之后是不是真切：把 0.5 秒的窗口二分到 1/16 秒左右，
+ * 切换是"一瞬间全变了"——变化几乎全集中在最后那一小段；
+ * 人在动、镜头在摇是"一点一点变"——最后那一小段只占总变化的一小份。
+ */
+export function confirmCut(total: number, final: number, floor = 10): boolean {
+  return final >= floor && final >= total * 0.55;
+}
+
+/** 切点去重：两个切点至少隔 minGap 秒（同一个转场前后被判两次） */
+export function dedupeCuts(times: number[], minGap = 0.4): number[] {
+  const out: number[] = [];
+  for (const t of [...times].sort((a, b) => a - b)) {
+    if (out.length && t - out[out.length - 1] < minGap) continue;
+    out.push(t);
   }
-  return cuts;
+  return out;
 }
 
 export function shotsFromCuts(cuts: number[], duration: number): Shot[] {
@@ -192,8 +221,16 @@ export async function openVideo(file: File): Promise<HTMLVideoElement> {
     video.onerror = () => reject(new VideoInputError('这个视频打不开：请用 mp4 格式（抖音"保存本地"下来的就是）'));
   });
   if (!Number.isFinite(video.duration) || video.duration <= 0) throw new VideoInputError('读不出视频时长，请换一个文件');
-  if (video.duration > MAX_DURATION_SEC + 1) throw new VideoInputError(`视频有 ${Math.round(video.duration)} 秒，只支持 ${MAX_DURATION_SEC / 60} 分钟以内的`);
   return video;
+}
+
+/**
+ * 拆哪一段：超过 3 分钟的只拆前 3 分钟。
+ * 不整条拒掉——长视频的前 3 分钟正是决定留不留人的部分，拆这一段照样有用；
+ * 再长，镜头多到拼图装不下，逐镜头表也没法看。
+ */
+export function analysisSpan(duration: number): { until: number; truncated: boolean } {
+  return duration > MAX_DURATION_SEC + 1 ? { until: MAX_DURATION_SEC, truncated: true } : { until: duration, truncated: false };
 }
 
 function seek(video: HTMLVideoElement, t: number): Promise<void> {
@@ -207,45 +244,78 @@ function seek(video: HTMLVideoElement, t: number): Promise<void> {
   });
 }
 
-/** 逐 0.5 秒取灰度缩略图，算前后差值，找出镜头切换 */
-export async function detectShots(video: HTMLVideoElement, onProgress?: (p: number) => void): Promise<Shot[]> {
+/** 取当前画面的灰度缩略图 */
+function thumbGrabber(video: HTMLVideoElement) {
   const canvas = document.createElement('canvas');
   canvas.width = THUMB_W;
   canvas.height = THUMB_H;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  const gray = () => {
+  return async (t: number) => {
+    await seek(video, t);
     ctx.drawImage(video, 0, 0, THUMB_W, THUMB_H);
     const d = ctx.getImageData(0, 0, THUMB_W, THUMB_H).data;
     const g = new Uint8ClampedArray(THUMB_W * THUMB_H);
     for (let i = 0; i < g.length; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
     return g;
   };
+}
+
+/**
+ * 找镜头切换（只看前 until 秒）：
+ *   1. 粗扫：每 0.5 秒一张缩略图，算前后差值
+ *   2. 挑出可疑窗口（cutCandidates）
+ *   3. 每个窗口二分 3 次到 1/16 秒，变化集中在那一瞬间的才算切（confirmCut）
+ */
+export async function detectShots(video: HTMLVideoElement, until: number, onProgress?: (p: number) => void): Promise<Shot[]> {
+  const grab = thumbGrabber(video);
   const diffs: { time: number; diff: number }[] = [];
   let prev: Uint8ClampedArray | null = null;
-  const steps = Math.ceil(video.duration / SCAN_STEP);
+  const steps = Math.ceil(until / SCAN_STEP);
   for (let i = 0; i <= steps; i++) {
-    const t = Math.min(i * SCAN_STEP, video.duration - 0.05);
-    await seek(video, t);
-    const g = gray();
+    const t = Math.min(i * SCAN_STEP, until - 0.05);
+    const g = await grab(t);
     if (prev) diffs.push({ time: t, diff: frameDiff(prev, g) });
     prev = g;
-    onProgress?.(i / steps);
+    onProgress?.((i / steps) * 0.7);
   }
-  return shotsFromCuts(detectCuts(diffs), video.duration);
+
+  const candidates = cutCandidates(diffs);
+  const cuts: number[] = [];
+  for (let k = 0; k < candidates.length; k++) {
+    const c = candidates[k];
+    let a = Math.max(0, c.time - SCAN_STEP);
+    let b = c.time;
+    let ga = await grab(a);
+    let gb = await grab(b);
+    const total = frameDiff(ga, gb);
+    for (let i = 0; i < 3; i++) {
+      const m = (a + b) / 2;
+      const gm = await grab(m);
+      if (frameDiff(ga, gm) >= frameDiff(gm, gb)) {
+        b = m;
+        gb = gm;
+      } else {
+        a = m;
+        ga = gm;
+      }
+    }
+    if (confirmCut(total, frameDiff(ga, gb))) cuts.push(+b.toFixed(2));
+    onProgress?.(0.7 + ((k + 1) / candidates.length) * 0.3);
+  }
+  return shotsFromCuts(dedupeCuts(cuts), until);
 }
 
 /** 按原比例截图，拼成带时间码的拼图（JPEG） */
 export async function buildSheets(video: HTMLVideoElement, frames: KeyFrame[], shots: Shot[]): Promise<Blob[]> {
-  const cellW = 384;
+  const { cols, cellW, perSheet } = sheetLayout(video.videoWidth, video.videoHeight);
   const cellH = Math.round((cellW * video.videoHeight) / Math.max(1, video.videoWidth));
   const labelH = 34;
-  const perSheet = SHEET_COLS * SHEET_ROWS;
   const sheets: Blob[] = [];
   for (let s = 0; s * perSheet < frames.length && s < MAX_SHEETS; s++) {
     const chunk = frames.slice(s * perSheet, (s + 1) * perSheet);
-    const rows = Math.ceil(chunk.length / SHEET_COLS);
+    const rows = Math.ceil(chunk.length / cols);
     const canvas = document.createElement('canvas');
-    canvas.width = cellW * SHEET_COLS;
+    canvas.width = cellW * cols;
     canvas.height = (cellH + labelH) * rows;
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = '#000';
@@ -253,8 +323,8 @@ export async function buildSheets(video: HTMLVideoElement, frames: KeyFrame[], s
     for (let i = 0; i < chunk.length; i++) {
       const f = chunk[i];
       await seek(video, f.time);
-      const x = (i % SHEET_COLS) * cellW;
-      const y = Math.floor(i / SHEET_COLS) * (cellH + labelH);
+      const x = (i % cols) * cellW;
+      const y = Math.floor(i / cols) * (cellH + labelH);
       ctx.drawImage(video, x, y + labelH, cellW, cellH);
       const shot = shots.find((sh) => sh.no === f.shot);
       ctx.fillStyle = f.opening ? '#b45309' : '#1f2937';
@@ -285,7 +355,9 @@ export async function extractAudio(file: File, segs: { start: number; end: numbe
     const decoded = await ctx.decodeAudioData(await file.arrayBuffer());
     await ctx.close();
     const rate = 16000;
-    const off = new OfflineAudioContext(1, Math.ceil(decoded.duration * rate), rate);
+    // 只渲染要拆的那一段（长视频只拆前 3 分钟，后面的不必转）
+    const until = Math.min(decoded.duration, segs.length ? segs[segs.length - 1].end : decoded.duration);
+    const off = new OfflineAudioContext(1, Math.ceil(until * rate), rate);
     const src = off.createBufferSource();
     src.buffer = decoded;
     src.connect(off.destination);
@@ -305,13 +377,23 @@ export async function extractAudio(file: File, segs: { start: number; end: numbe
 export async function prepareVideo(file: File, onStage?: (stage: string, p?: number) => void): Promise<{ input: VideoBreakdownInput; video: HTMLVideoElement }> {
   onStage?.('打开视频');
   const video = await openVideo(file);
+  const { until, truncated } = analysisSpan(video.duration);
   onStage?.('找镜头切换', 0);
-  const shots = await detectShots(video, (p) => onStage?.('找镜头切换', p));
-  const frames = pickFrames(shots, video.duration);
+  const shots = await detectShots(video, until, (p) => onStage?.('找镜头切换', p));
+  const frames = pickFrames(shots, until, sheetLayout(video.videoWidth, video.videoHeight).maxFrames);
   onStage?.('截图拼图');
   const sheets = await buildSheets(video, frames, shots);
   return {
     video,
-    input: { duration: video.duration, width: video.videoWidth, height: video.videoHeight, shots, frames, sheets },
+    input: {
+      duration: until,
+      fullDuration: video.duration,
+      truncated,
+      width: video.videoWidth,
+      height: video.videoHeight,
+      shots,
+      frames,
+      sheets,
+    },
   };
 }

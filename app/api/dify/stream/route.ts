@@ -21,6 +21,21 @@ import { waitForDifyMessage } from '@/lib/dify-recover';
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
+const UPLOAD_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Dify 应用设置里每条消息最多 6 个文件 */
+const MAX_IMAGE_FILES = 6;
+
+/**
+ * 随消息发给模型看的图（拆解爆款的截图拼图）。
+ * 图先经 /api/breakdown/upload 传到 Dify，这里只收那边返回的文件 id：
+ * 格式不对的一律丢掉，最多 6 张——请求体是浏览器发来的，不能原样转给 Dify。
+ */
+function difyImageFiles(ids: unknown): { files?: { type: 'image'; transfer_method: 'local_file'; upload_file_id: string }[] } {
+  if (!Array.isArray(ids)) return {};
+  const ok = ids.filter((x): x is string => typeof x === 'string' && UPLOAD_ID_RE.test(x)).slice(0, MAX_IMAGE_FILES);
+  return ok.length ? { files: ok.map((id) => ({ type: 'image', transfer_method: 'local_file', upload_file_id: id })) } : {};
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -101,6 +116,7 @@ export async function POST(req: NextRequest) {
         dealReasons: body.dealReasons || '' // 成交理由（如果有的话）
       },
       query: query, // API 必需的顶层字段
+      ...difyImageFiles(body.imageFileIds),
       response_mode: 'streaming',
       // 传真实用户 id：Dify 以此隔离会话与统计用量。
       // 此前写死为固定值，所有用户在 Dify 侧是同一个人，

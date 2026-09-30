@@ -38,7 +38,11 @@ export interface VideoMeta {
 }
 
 export interface BreakdownPromptInput {
+  /** 拆的这一段有多长 */
   duration: number;
+  /** 视频本身多长；超过 3 分钟的只拆了前面一段 */
+  fullDuration?: number;
+  truncated?: boolean;
   width: number;
   height: number;
   shots: Shot[];
@@ -70,7 +74,8 @@ export function shotStats(shots: Shot[]): ShotStats {
   };
 }
 
-const n = (v?: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined);
+/** 用户填的数：填 0 或者乱填的当没填（0 粉丝、0 点赞说明不了任何事） */
+const n = (v?: number) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined);
 
 /** 用户填了多少就写多少；点赞和粉丝都有时，顺手算好比例（模型算数不可靠） */
 export function metaLines(m: VideoMeta): string[] {
@@ -101,15 +106,17 @@ export function metaLines(m: VideoMeta): string[] {
 function taxonomy(): string {
   const byCat = new Map<string, string[]>();
   for (const c of OPENING_CARDS) byCat.set(c.category, [...(byCat.get(c.category) ?? []), c.name]);
-  return `## 拆解用的分类（名字要和这里一字不差，好和其他板块对上）
-- 八大爆款元素：${VIRAL_ELEMENTS.map((e) => e.name).join('、')}
+  return `## 拆解用的分类（名字要和这里一字不差，好和其他板块对上；**按这里的意思用，不要自己重新定义**）
+- 八大爆款元素（名字：它利用的是什么）：
+${VIRAL_ELEMENTS.map((e) => `  - ${e.name}：${e.hook}`).join('\n')}
+  实测模型会把"荷尔蒙"说成"情感浓度"——不对，荷尔蒙就是颜值和异性吸引。对不上哪个元素，就说"没有明显用到"
 - 四大脚本：${SCRIPT_FAMILIES.map((s) => s.name).join('、')}
 - 三种作用：${CONTENT_ROLE_LIST.join('、')}
 - 开篇 36 计（按心理机制分类）：${[...byCat].map(([k, v]) => `【${k}】${v.join('、')}`).join('；')}
 - 起号 36 计：${GROWTH_TACTICS.map((t) => t.name).join('、')}
 - 六大钩子：金钱、盲盒、对抗、验证解密、送温暖、荷尔蒙
 - 情绪曲线：反转型（期待→意外骤降→反转再升）、盲盒型（好奇→半揭晓→更好奇→全揭晓）、共鸣爆发型（认同→更认同→爆发）、情感渗透型（平稳→细节温暖→最后一句击中）
-- 人设：崇拜者、教导者、分享者、陪伴者、衬托者、搞笑者
+- 人设：崇拜者（靠人格魅力）、教导者（靠专业能力）、分享者（不是专家但有实操经验）、陪伴者（记录成长过程）、衬托者（展示自己的弱点引发共鸣）、搞笑者（段子逗乐）
 - 呈现方式：口播（自拍/偷拍/聊天/采访视角）、vlog、剧情、图文
 - 景别：远景、全景、中景、近景、特写；运镜：推、拉、横移、摇、跟随、环绕、固定
 - 置景：素背景、包装型背景（行业现场）、生活化背景`;
@@ -133,7 +140,9 @@ export function buildBreakdownPrompt(p: BreakdownPromptInput): string {
   return `【任务：拆解爆款】你是做了十年短视频的编导老师，现在带学员逐帧拆一条爆款。目的不是夸它，是拆出**能学走的东西**。
 
 ## 这条视频
-- 时长 ${p.duration.toFixed(1)} 秒，${orientation}（${p.width}×${p.height}）
+- ${p.truncated && p.fullDuration
+    ? `整条 ${Math.round(p.fullDuration)} 秒，**这次只拆前 ${Math.round(p.duration)} 秒**（后面的画面和口播你都没看到——结构、兑现、结尾这些判断要说明"只看了前 ${Math.round(p.duration / 60)} 分钟"，不要替后面编）`
+    : `时长 ${p.duration.toFixed(1)} 秒`}，${orientation}（${p.width}×${p.height}）
 - 一共 ${st.count} 个镜头，平均每个 ${st.avgLen.toFixed(1)} 秒，最长 ${st.longest.toFixed(1)} 秒；前 3 秒切了 ${st.cutsInOpening} 刀（这些数是程序算的，准的，直接用）
 ${meta.length ? meta.join('\n') : '- 用户没填标题和数据'}
 
@@ -150,9 +159,14 @@ ${transcript || (p.pastedScript?.trim() ? `（没识别出声音，下面是用�
 ${taxonomy()}
 
 ## 你看不到、听不到的（必须老实）
-- **听不到**背景音乐、音效、语气语速：只能从画面、字幕、口播内容推断，推断的写「（推测）」
+- **画面上的字（字幕、花字、招牌、墙上的字）只写看得清的**：有一个字看不清，这一句就写「看不清」，**绝对不要猜着补**。
+  说了什么以上面的语音识别为准，不要从画面上的字幕去猜口播。
+  （实测：拼图里字小，模型把墙上的「我是河南人」看成墓碑、把「当服务员」读成「当厨房门」，编出了原片没有的情节）
+- **分清谁在说**：人物对着镜头说的是同期声；用第三人称讲"她/他"的是旁白。语音识别分不清"他"和"她"，按画面判断
+- **看清道具属于哪个镜头**：这个镜头里人物拿着什么就写什么，不要把别的镜头里的东西（话筒、酒瓶）挪过来
+- **声音**：识别结果里带 🎼 的那一段有背景音乐，可以直接写"有背景音乐"；具体什么曲风、有没有音效、语气语速，听不到，推断的写「（推测）」
 - 大部分镜头只截了一张图，**运镜**只能从同一镜头的前后几张图判断；判断不了写「固定/看不出」，不要编
-- 看不清的字幕、看不清的细节，写「看不清」，不要猜内容
+- 看不清的细节写「看不清」，不要猜内容
 
 ## 输出（Markdown，按下面的顺序和标题，一节都不能少）
 
@@ -183,7 +197,9 @@ ${taxonomy()}
 - 情绪曲线：四种里哪种；情绪起伏点在第几秒、靠什么；按时长看起伏点够不够（15 秒 1 个、1 分钟 2～3 个、3 分钟 3～5 个）
 
 ### 五、逐镜头拆解
-一个镜头一行（开头 3 秒那几张合成对应的镜头，不要每张一行）：
+**一个镜头一行，不要把几个镜头合成一行**（开头 3 秒那几张属于同一个镜头，合成那个镜头的一行）。
+只有你看图确认前后两个镜头其实是同一个画面，才合并，并在"画面内容"里写明"和镜头 X 是同一个画面"——
+实测模型把 7 个镜头合成一行、说"程序切碎了"，结果把中间一段唱歌的空镜漏了：
 | 镜头 | 时间 | 时长 | 画面内容 | 景别 | 运镜 | 构图/光线 | 写实/写意 | 置景 | 口播/字幕 | 声音 | 这一镜的作用 | 情绪(1-5) |
 表后面写 3～5 条**镜头层面的发现**：节奏（平均时长、前 3 秒切得够不够快）、景别怎么跟着情绪变、画面和口播是"说什么拍什么"还是互相补充、置景对内容有没有加分
 

@@ -55,6 +55,7 @@ const UNITS: Record<string, string> = {
   dealReason: '份成交理由',
   knowledge: '次知识库查询',
   interview: '份前采建档',
+  breakdown: '条爆款拆解',
 };
 
 /**

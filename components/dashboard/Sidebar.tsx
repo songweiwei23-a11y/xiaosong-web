@@ -11,7 +11,7 @@ import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen, GraduationCap, FileSearch,
+  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen, GraduationCap, FileSearch, Clapperboard,
 } from "lucide-react";
 
 /*
@@ -41,7 +41,8 @@ const navGroups: {
     id: "create",
     label: "内容创作",
     items: [
-      // 顺序即创作链路：定选题 → 写脚本 → 拆分镜 → 审稿 → 起标题
+      // 顺序即创作链路：先拆别人的爆款 → 定选题 → 写脚本 → 拆分镜 → 审稿 → 起标题
+      { name: "拆解爆款", href: "/dashboard/breakdown", icon: Clapperboard },
       { name: "选题策划", href: "/dashboard/topic", icon: Lightbulb },
       { name: "脚本生成", href: "/dashboard/script", icon: FileText },
       { name: "分镜脚本", href: "/dashboard/storyboard", icon: Film },
