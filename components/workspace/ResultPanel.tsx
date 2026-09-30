@@ -45,6 +45,7 @@ export function ResultPanel({
   onContinue,
   nextActions,
   footer,
+  bodyClassName,
 }: {
   result: string;
   isGenerating: boolean;
@@ -73,6 +74,8 @@ export function ResultPanel({
    * 做成插槽而不是写死在这里：别的板块的核对项各不相同。
    */
   footer?: React.ReactNode;
+  /** 给正文额外的排版（接在 prose 后面）。拆解爆款用它把每个镜头的四级标题排成卡片头 */
+  bodyClassName?: string;
 }) {
   // 拆分与统计只依赖 result，用 memo 避免流式输出时逐字符重算
   const { body, report, stats, quality } = useMemo(() => {
@@ -138,11 +141,11 @@ export function ResultPanel({
       {body ? (
         <article className="glass-panel rounded-2xl px-4 py-5 sm:px-7 sm:py-6">
           <div
-            className="prose prose-slate dark:prose-invert max-w-none
+            className={`prose prose-slate dark:prose-invert max-w-none
                        prose-headings:tracking-tight prose-headings:font-semibold
                        prose-h1:text-xl prose-h2:text-[17px] prose-h3:text-[15px]
                        prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px]
-                       prose-strong:text-foreground prose-hr:border-border/60"
+                       prose-strong:text-foreground prose-hr:border-border/60 ${bodyClassName ?? ""}`}
           >
             <Markdown>{body}</Markdown>
           </div>

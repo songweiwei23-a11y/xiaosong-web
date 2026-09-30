@@ -46,6 +46,14 @@ const STAGES: { id: Stage; label: string }[] = [
   { id: "ai", label: "AI 逐镜头拆解" },
 ];
 
+/**
+ * 逐镜头那一节：每个镜头是一个四级标题（镜头 3｜时间｜时长｜情绪）+ 5 行列表。
+ * 标题排成带左边色条的卡片头，列表收紧——原来是一张 13 列的大表，产品方反馈"太挤、不美观"。
+ */
+const SHOT_CARD_CLS =
+  "prose-h4:mt-6 prose-h4:mb-1.5 prose-h4:rounded-lg prose-h4:border-l-[3px] prose-h4:border-primary prose-h4:bg-primary/[0.06] prose-h4:px-3 prose-h4:py-2 prose-h4:text-[14px] prose-h4:font-semibold prose-h4:tabular-nums " +
+  "prose-ul:my-1.5 prose-li:my-0.5 prose-li:leading-[1.75]";
+
 const NUM_FIELDS: { key: keyof VideoMeta; label: string }[] = [
   { key: "likes", label: "点赞" },
   { key: "comments", label: "评论" },
@@ -363,6 +371,7 @@ export default function BreakdownPage() {
         emptyHint="拆开篇怎么留人、结构怎么搭、每个镜头拍了什么，最后告诉你能学走什么"
         emptyTips={["挑和你同行业、或者你想学的那一类", "点赞是粉丝的几倍才算真爆——填上数据拆得更准", "拆完可以结合你的档案，直接给 3 个能拍的选题"]}
         generatingHint="AI 正在逐镜头拆解…"
+        bodyClassName={SHOT_CARD_CLS}
         onCopy={(text) => {
           navigator.clipboard.writeText(text);
           notify("已复制到剪贴板");
