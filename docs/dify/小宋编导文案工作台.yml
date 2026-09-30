@@ -324,10 +324,7 @@ workflow:
             variable_selector: []
           desc: Claude 根据知识库内容生成结果
           memory:
-            query_prompt_template: |-
-              {{#sys.query#}}
-
-              {{#sys.files#}}
+            query_prompt_template: '{{#sys.query#}}'
             role_prefix:
               assistant: ''
               user: ''

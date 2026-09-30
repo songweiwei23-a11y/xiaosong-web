@@ -16,7 +16,7 @@ import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import { checkQuota, saveGenerationHistory } from "@/lib/history";
 import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
-import { readDifyStream } from "@/lib/sse-stream";
+import { DifyStreamError, readDifyStream } from "@/lib/sse-stream";
 import { buildProfileSummary } from "@/lib/profile-summary";
 import {
   MAX_DURATION_SEC,
@@ -25,6 +25,8 @@ import {
   audioSegments,
   extractAudio,
   prepareVideo,
+  shrinkSheets,
+  SHEETS_BYTE_BUDGET,
   type VideoBreakdownInput,
 } from "@/lib/video-frames";
 import { transcribeSegments, uploadSheets } from "@/lib/breakdown-client";
@@ -134,11 +136,30 @@ export default function BreakdownPage() {
     }
   };
 
-  /** 第二段：传截图、让 AI 拆。失败了可以只重来这一段 */
+  /**
+   * 第二段：传截图、让 AI 拆。失败了可以只重来这一段。
+   * Dify 嫌请求太大（payload_too_large）时，自动把截图压小一半再试一次——
+   * 线上踩过两次（见 lib/video-frames 的 SHEETS_BYTE_BUDGET），这是最后一道兜底，不用用户动手。
+   */
   const generate = async (p: Prepared) => {
+    let sheets = p.input.sheets;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await generateWith(p, sheets);
+        return;
+      } catch (e) {
+        if (attempt > 0 || !(e instanceof DifyStreamError) || e.code !== "payload_too_large") throw e;
+        setStage("upload");
+        setProgress("截图压小一点再试");
+        sheets = await shrinkSheets(sheets, SHEETS_BYTE_BUDGET / 2);
+      }
+    }
+  };
+
+  const generateWith = async (p: Prepared, sheets: Blob[]) => {
     setStage("upload");
     setProgress("");
-    const ids = await uploadSheets(p.input.sheets, (d, t) => setProgress(`${d}/${t} 张`));
+    const ids = await uploadSheets(sheets, (d, t) => setProgress(`${d}/${t} 张`));
 
     setStage("ai");
     setProgress("");

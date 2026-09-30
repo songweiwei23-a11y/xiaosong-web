@@ -109,6 +109,16 @@ if (JSON.stringify(llm.data.vision) !== JSON.stringify(vision)) {
   note('模型节点打开视觉（读 sys.files，高清）——拆解爆款要看视频截图');
   llm.data.vision = vision;
 }
+/*
+ * 图片别发两遍：记忆的用户提示词模板里原来带着 {{#sys.files#}}，
+ * 视觉打开之后，同一批图既走视觉、又被模板塞进消息里一遍。
+ * 线上实测 4 张共 2.8MB 的图，请求体 7.7MB（base64 算两遍），撞上 Dify 云端 5MB 上限被拒。
+ * 图只走视觉这一条路，模板只留问题本身。
+ */
+if (llm.data.memory && /sys\.files/.test(llm.data.memory.query_prompt_template || '')) {
+  note('记忆的用户提示词模板去掉 {{#sys.files#}}：图片已经走视觉了，再塞一遍请求体翻倍（撞 5MB 上限）');
+  llm.data.memory.query_prompt_template = '{{#sys.query#}}';
+}
 const fu = doc.workflow.features.file_upload;
 if (!fu.image.enabled || fu.image.number_limits < 6 || fu.number_limits < 6) {
   note(`应用文件上传：图片 ${fu.image.enabled ? '开' : '关'} → 开；每条消息上限 ${fu.number_limits} → 6`);

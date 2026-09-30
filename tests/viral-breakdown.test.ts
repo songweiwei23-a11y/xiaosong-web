@@ -17,7 +17,7 @@ import { TASK_TYPE_TO_FEATURE } from '@/lib/task-type';
 import { ISOLATED_TASKS } from '@/lib/topic-library';
 import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import { readCode } from './helpers/source';
-import { friendlyDifyError } from '@/lib/dify-errors';
+import { difyErrorCode, friendlyDifyError } from '@/lib/dify-errors';
 
 const shots = shotsFromCuts([8.6, 10.9, 12.3, 29.3], 40);
 const base = {
@@ -163,8 +163,30 @@ describe('接到全站', () => {
     expect(page).toMatch(/const p = retry && prepared\?\.file === file \? prepared : await prepare\(file\)/);
   });
 
-  it('截图太大被 Dify 拒：给人话，不是"生成失败"', () => {
-    expect(friendlyDifyError('PluginDaemonInternalServerError: ServerlessPayloadTooLarge: action=invoke_llm payload_bytes=8165757 max_request_bytes=5242880')).toMatch(/截图太大/);
+  it('截图太大被 Dify 拒：给人话，并带上错误码让页面自动压小再试一次', () => {
+    const raw = 'PluginDaemonInternalServerError: ServerlessPayloadTooLarge: action=invoke_llm payload_bytes=8165757 max_request_bytes=5242880';
+    expect(friendlyDifyError(raw)).toMatch(/截图太大/);
+    expect(difyErrorCode(raw)).toBe('payload_too_large');
+    expect(difyErrorCode('rate limit')).toBeUndefined();
+    expect(readCode('app/api/dify/stream/route.ts')).toMatch(/send\(\{ event: 'error', message: friendlyDifyError\(outcome\.message\), code: difyErrorCode\(outcome\.message\) \}\)/);
+    expect(readCode('lib/sse-stream.ts')).toMatch(/new DifyStreamError\(String\(data\.message[^)]*\), typeof data\.code === 'string' \? data\.code : undefined\)/);
+    const page = readCode('app/dashboard/breakdown/page.tsx');
+    expect(page).toMatch(/e\.code !== "payload_too_large"\) throw e/);
+    expect(page).toMatch(/sheets = await shrinkSheets\(sheets, SHEETS_BYTE_BUDGET \/ 2\)/);
+    // 只兜一次，不会无限压
+    expect(page).toMatch(/if \(attempt > 0 \|\|/);
+  });
+
+  it('Dify 工作流：图片只发一遍——开了视觉，记忆模板里就不能再带 sys.files（实测 2.8MB 的图变成 7.7MB 请求）', async () => {
+    const fs = await import('node:fs');
+    const dsl = fs.readFileSync('docs/dify/小宋编导文案工作台.yml', 'utf8');
+    // 模型节点的视觉是开的（拆解爆款要看图）
+    expect(dsl).toMatch(/vision:\s*\n\s*enabled: true\s*\n\s*configs:/);
+    // 记忆模板只留问题本身：取模板那一段（到下一个键为止）看有没有 sys.files
+    const tpl = dsl.match(/query_prompt_template:([\s\S]*?)\n\s+role_prefix:/);
+    expect(tpl, '找不到记忆模板').not.toBeNull();
+    expect(tpl![1]).not.toMatch(/sys\.files/);
+    expect(readCode('scripts/dify-dsl-apply.cjs')).toMatch(/query_prompt_template = '\{\{#sys\.query#\}\}'/);
   });
 
   it('识别和上传：网络断了自动重发（不扣次数，重发没代价）；没额度直接报', () => {

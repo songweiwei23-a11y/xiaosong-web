@@ -98,8 +98,12 @@ describe('挑帧', () => {
 });
 
 describe('拼图大小', () => {
-  it('所有拼图加起来压在 2.4MB 以内：base64 后约 3.2MB，远低于 Dify 一次调用 5MB 的上限（线上实测 8.2MB 被拒）', () => {
-    expect(SHEETS_BYTE_BUDGET * (4 / 3)).toBeLessThan(5 * 1024 * 1024 * 0.7);
+  it('预算按"最坏被发两遍"定：1.6MB 的图 base64 两遍 + 提示词，仍在 Dify 一次调用 5MB 以内（线上两次被拒：8.2MB、6.0MB）', () => {
+    const LIMIT = 5242880; // Dify 报的 max_request_bytes
+    const TEXT_OVERHEAD = 0.45 * 1024 * 1024; // 探针实测提示词 + 检索结果约 0.26MB，拆解提示词更长，按 0.45MB 算
+    expect(SHEETS_BYTE_BUDGET * (4 / 3) * 2 + TEXT_OVERHEAD).toBeLessThan(LIMIT);
+    // 也不能压得太狠：验证时效果好的那一版 5 张共 1.2MB
+    expect(SHEETS_BYTE_BUDGET).toBeGreaterThan(1.2 * 1024 * 1024);
     for (const n of [1, 3, 5, 6]) expect(sheetByteBudget(n) * n).toBeLessThanOrEqual(SHEETS_BYTE_BUDGET);
     expect(sheetByteBudget(0)).toBe(SHEETS_BYTE_BUDGET);
   });

@@ -15,7 +15,7 @@ import {
   ISOLATED_TASKS,
 } from '@/lib/topic-library';
 import { loadPriorTopicTitles } from '@/lib/topic-library-server';
-import { difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
+import { difyErrorCode, difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
 import { waitForDifyMessage } from '@/lib/dify-recover';
 
 export const maxDuration = 60;
@@ -332,7 +332,7 @@ export async function POST(req: NextRequest) {
 
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
-            send({ event: 'error', message: friendlyDifyError(outcome.message) });
+            send({ event: 'error', message: friendlyDifyError(outcome.message), code: difyErrorCode(outcome.message) });
           } else if (outcome.kind === 'broken') {
             console.error('Stream error:', outcome.error);
             send({ event: 'error', message: '和 AI 的连接断了，请重试' });

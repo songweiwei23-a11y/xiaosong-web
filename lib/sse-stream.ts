@@ -24,8 +24,15 @@ export interface ReadDifyStreamOptions {
   onRecovering?: () => void;
 }
 
-/** Dify 明确报的错：不再尝试续取，直接把话告诉用户 */
-export class DifyStreamError extends Error {}
+/**
+ * Dify 明确报的错：不再尝试续取，直接把话告诉用户。
+ * code 是给页面判断"要不要自动换个办法再试"用的（比如 payload_too_large：拆解爆款会压小截图再试一次）。
+ */
+export class DifyStreamError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+  }
+}
 
 /** 断线后最多等多久。账号定位全文约 5 分钟，留足余量 */
 export const RECOVER_TIMEOUT_MS = 6 * 60_000;
@@ -113,7 +120,7 @@ export async function readDifyStream(
         if (!messageId && data.message_id) messageId = data.message_id;
 
         if (data.event === 'error') {
-          throw new DifyStreamError(String(data.message || '生成失败，请稍后重试'));
+          throw new DifyStreamError(String(data.message || '生成失败，请稍后重试'), typeof data.code === 'string' ? data.code : undefined);
         }
         if (data.event === 'message_end') {
           ended = true;

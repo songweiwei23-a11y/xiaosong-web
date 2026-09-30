@@ -37,9 +37,15 @@ export const MAX_FRAMES = 4 * SHEET_ROWS * MAX_SHEETS;
  * 线上实测：Dify 云端调一次模型，请求体上限 5MB（ServerlessPayloadTooLarge: max_request_bytes=5242880），
  * 图片是 base64 塞进去的，要再胀三分之一。验证用的样片画面暗、压得小（5 张共 1.2MB），
  * 产品方拿一条明亮的餐饮视频一跑，5 张拼图 base64 后 8.2MB，直接被拒。
- * 定 2.4MB：base64 后约 3.2MB，给系统提示词、知识库检索结果留足余量。
+ *
+ * 第二次还被拒（4 张、6.0MB）：「开物」工作流把同一批图发了两遍——视觉一遍、
+ * 记忆模板里的 {{#sys.files#}} 又一遍（探针实测：2.8MB 的图 → 请求体 7.7MB）。
+ * 模板已经改掉（scripts/dify-dsl-apply.cjs ⑦），但工作流是在 Dify 网页上改的，哪天重新导入、
+ * 有人手动改回去，翻倍就又回来了。所以预算按"最坏被发两遍"来定：
+ * 1.6MB × 4/3 × 2 ≈ 4.3MB，加上提示词和检索结果（实测约 0.3～0.4MB）仍在 5MB 以内。
+ * 1.6MB 比验证时效果好的那一版（5 张共 1.2MB）还宽，画质不受影响。
  */
-export const SHEETS_BYTE_BUDGET = Math.floor(2.4 * 1024 * 1024);
+export const SHEETS_BYTE_BUDGET = Math.floor(1.6 * 1024 * 1024);
 
 /** 每张拼图的字节上限：总预算平分 */
 export function sheetByteBudget(sheetCount: number): number {
@@ -339,6 +345,29 @@ export async function detectShots(video: HTMLVideoElement, until: number, onProg
     onProgress?.(0.7 + ((k + 1) / candidates.length) * 0.3);
   }
   return shotsFromCuts(dedupeCuts(cuts), until);
+}
+
+/**
+ * 已经做好的拼图再压一遍，压到总共 totalBudget 以内。
+ * 兜底用：万一 Dify 还是嫌大（配置又被改回发两遍、提示词变长了），页面自动压小一半再试一次。
+ */
+export async function shrinkSheets(sheets: Blob[], totalBudget: number): Promise<Blob[]> {
+  const per = Math.floor(totalBudget / Math.max(1, sheets.length));
+  const out: Blob[] = [];
+  for (const b of sheets) {
+    if (b.size <= per) {
+      out.push(b);
+      continue;
+    }
+    const bmp = await createImageBitmap(b);
+    const c = document.createElement('canvas');
+    c.width = bmp.width;
+    c.height = bmp.height;
+    c.getContext('2d')!.drawImage(bmp, 0, 0);
+    bmp.close();
+    out.push(await encodeWithinBudget(c, per));
+  }
+  return out;
 }
 
 /** 按原比例截图，拼成带时间码的拼图（JPEG） */
