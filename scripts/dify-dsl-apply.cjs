@@ -98,6 +98,25 @@ if (sys.text.trim() !== newSys) {
   sys.text = newSys;
 }
 
+/*
+ * ⑥ 看图：拆解爆款要把视频截图（拼成带时间码的拼图）发给模型看。
+ *    原来模型节点的视觉是关的，发了图也会被丢掉；应用级每条消息最多 3 个文件。
+ *    打开节点视觉（读用户消息带的文件），应用级图片放开、上限提到 6 张。
+ *    另外模型本身要在 Dify「模型供应商」里勾上视觉支持，那一步在网页上做。
+ */
+const vision = { enabled: true, configs: { detail: 'high', variable_selector: ['sys', 'files'] } };
+if (JSON.stringify(llm.data.vision) !== JSON.stringify(vision)) {
+  note('模型节点打开视觉（读 sys.files，高清）——拆解爆款要看视频截图');
+  llm.data.vision = vision;
+}
+const fu = doc.workflow.features.file_upload;
+if (!fu.image.enabled || fu.image.number_limits < 6 || fu.number_limits < 6) {
+  note(`应用文件上传：图片 ${fu.image.enabled ? '开' : '关'} → 开；每条消息上限 ${fu.number_limits} → 6`);
+  fu.image.enabled = true;
+  fu.image.number_limits = Math.max(6, fu.image.number_limits);
+  fu.number_limits = Math.max(6, fu.number_limits);
+}
+
 // ⑤ 自检：提示词里引用的节点都存在；连线两端都存在；没有孤立节点
 const ids = new Set(g.nodes.map((n) => n.id));
 const problems = [];
