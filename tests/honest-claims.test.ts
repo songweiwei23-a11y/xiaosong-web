@@ -220,10 +220,10 @@ describe('套餐里不卖没做的权益', () => {
     }
   });
 
-  it('「十一大功能」这个数字是真的（09-29 加了前采建档、09-30 加了拆解爆款）', async () => {
+  it('「十二大功能」这个数字是真的（09-29 加了前采建档、09-30 加了拆解爆款和跨行业二创）', async () => {
     const { COUNTED_FEATURES, planSellingPoints } = await import('@/lib/config/plans');
-    expect(COUNTED_FEATURES.length).toBe(11);
-    expect(planSellingPoints('basic')).toContain('十一大功能全部开放');
+    expect(COUNTED_FEATURES.length).toBe(12);
+    expect(planSellingPoints('basic')).toContain('十二大功能全部开放');
   });
 });
 

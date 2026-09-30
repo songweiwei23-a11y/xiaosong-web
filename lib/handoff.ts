@@ -68,6 +68,11 @@ export interface HandoffPayload {
    * 而不是让模型再自由发挥一个开头——用户已经在开篇页挑过了。
    */
   openingLine?: string;
+  /**
+   * 拆解爆款 → 跨行业二创：整份拆解报告和原片名字。
+   * 报告动辄上万字，走这里（sessionStorage）而不是地址栏。
+   */
+  remixSource?: { title?: string; text: string };
 }
 
 /**

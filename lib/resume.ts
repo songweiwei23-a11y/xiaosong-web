@@ -59,6 +59,7 @@ const OTHER_ROUTES: Record<string, string> = {
   内容定位: '/dashboard/content-positioning',
   创作简报: '/dashboard/creative-brief',
   拆解爆款: '/dashboard/breakdown',
+  跨行业二创: '/dashboard/remix',
   起号方案: '/dashboard/growth',
   成交理由: '/dashboard/deal-reason',
   知识库查询: '/dashboard/knowledge',

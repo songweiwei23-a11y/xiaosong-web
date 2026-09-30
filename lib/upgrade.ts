@@ -56,6 +56,7 @@ const UNITS: Record<string, string> = {
   knowledge: '次知识库查询',
   interview: '份前采建档',
   breakdown: '条爆款拆解',
+  remix: '次跨行业二创',
 };
 
 /**

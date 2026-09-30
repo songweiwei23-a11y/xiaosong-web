@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Clapperboard, FileVideo, Loader2, ScanSearch, X } from "lucide-react";
+import { Check, ChevronDown, Clapperboard, FileVideo, Loader2, ScanSearch, Shuffle, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { putHandoff } from "@/lib/handoff";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, TEXTAREA_CLS, GENERATE_BTN } from "@/components/form/controls";
@@ -70,6 +72,7 @@ const NUM_FIELDS: { key: keyof VideoMeta; label: string }[] = [
  * 拆解维度（八层 + 逐镜头表）见 lib/viral-breakdown。
  */
 export default function BreakdownPage() {
+  const router = useRouter();
   const { history, loadHistory, deleteHistory, lastResult } = useGenerationPage({ taskType: BREAKDOWN_TASK_TYPE });
   const { context } = useCreatorContext();
   const profile = context.profile as Record<string, unknown> | null;
@@ -372,6 +375,17 @@ export default function BreakdownPage() {
         emptyTips={["挑和你同行业、或者你想学的那一类", "点赞是粉丝的几倍才算真爆——填上数据拆得更准", "拆完可以结合你的档案，直接给 3 个能拍的选题"]}
         generatingHint="AI 正在逐镜头拆解…"
         bodyClassName={SHOT_CARD_CLS}
+        nextActions={[
+          {
+            // 拆完直接接二创：整份报告带过去（走 sessionStorage，不走地址栏），不用复制粘贴
+            label: "拿去二创到我的店",
+            icon: Shuffle,
+            onClick: (body) => {
+              putHandoff({ from: BREAKDOWN_TASK_TYPE, remixSource: { title: file?.name, text: body } });
+              router.push("/dashboard/remix");
+            },
+          },
+        ]}
         onCopy={(text) => {
           navigator.clipboard.writeText(text);
           notify("已复制到剪贴板");
