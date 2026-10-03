@@ -46,7 +46,10 @@ describe('让 AI 改', () => {
     expect(p).toContain('【要改的这一段】\n中段：牛肉现切现穿。');
     expect(p).toContain('只输出改好的这一段');
     expect(p.startsWith('## 账号背景')).toBe(true);
-    expect(p).toMatch(/不要编原文和账号背景里没有的数字/);
+    // 实测"口语一点"改出了原文没有的「李师傅早上五点开始熬」：点名不许加的几类，并给占位写法
+    expect(p).toMatch(/只换说法，不加事实/);
+    expect(p).toMatch(/人名、称呼、时间、地点、数量、原料、做法、经历/);
+    expect(p).toContain('【换成你的：……】');
   });
 
   it('不选：整篇改、输出完整稿', () => {

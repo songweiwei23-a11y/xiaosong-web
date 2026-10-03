@@ -49,7 +49,16 @@ export function addVersion(versions: CanvasVersion[], content: string, note: str
  */
 export function buildRewritePrompt(p: { doc: string; selection?: string; instruction: string; context?: string }): string {
   const ctx = p.context?.trim() ? `${p.context.trim()}\n\n` : '';
-  const rules = '- 不要编原文和账号背景里没有的数字、经历；原文有的事实不要改\n- 不要解释你改了什么，不要加"改写如下"这类开场白，不要用代码块包起来';
+  /*
+   * 2026-10-03 实测：只写"不要编数字"压不住——"口语一点"改出了「李师傅早上五点开始熬」「牛骨加番茄熬三小时」，
+   * 原文一个字都没有。所以点名哪几类不许加，并给出替代写法（占位），模型才有路可走
+   */
+  const rules = [
+    '- **只换说法，不加事实**：原文和账号背景里没有的人名、称呼、时间、地点、数量、原料、做法、经历，一个都不要加',
+    '- 想写得更具体、原文又没给的，就用【换成你的：……】占位（如「锅底熬了【换成你的：几个小时】」），让编导自己填',
+    '- 原文有的事实不要改',
+    '- 不要解释你改了什么，不要加"改写如下"这类开场白，不要用代码块包起来',
+  ].join('\n');
   if (p.selection?.trim()) {
     return `${ctx}【任务】下面是一份完整的稿子，编导选中了其中一段，要你**只改这一段**。
 
