@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useCreatorContext } from '@/hooks/useCreatorContext'
 import { parseBrief, BRIEF_FIELDS } from '@/lib/creative-brief'
 import { manifestOf, type Board } from '@/lib/context-manifest'
+import { briefOlderThanProfile } from '@/lib/creator-context'
+import { activeTaboos, countTaboos } from '@/lib/taboos'
 
 /**
  * 各板块顶部的「已自动带上什么」状态条。
@@ -61,10 +63,31 @@ export function ContextBadge({ board, className = '' }: Props) {
         </Link>
       </p>
 
+      {manifest.profile.includes('restrictions') && (() => {
+        const a = activeTaboos(context.profile)
+        const names = a.industries.map((x) => x.industry.name).join('、')
+        return (
+          <p className="text-muted-foreground">
+            已避开 {countTaboos(a)} 条禁忌（平台红线{names ? ` + ${names}` : ''}）
+            <Link href="/dashboard/profiles" className="ml-1 underline">在档案里调整</Link>
+          </p>
+        )
+      })()}
+
       {used.length > 0 ? (
-        <p className="text-emerald-500">
-          创作简报已带上：{used.join('、')} ✓
-        </p>
+        <>
+          <p className="text-emerald-500">
+            创作简报已带上：{used.join('、')} ✓
+          </p>
+          {briefOlderThanProfile(context) && (
+            <p className="text-amber-500">
+              档案在简报之后改过，简报里的人设、年限可能是旧的（生成时会以档案为准）。
+              <Link href="/dashboard/creative-brief" className="ml-1 underline">
+                重新生成简报
+              </Link>
+            </p>
+          )}
+        </>
       ) : (
         <p className="text-muted-foreground">
           还没生成创作简报，这次只能用档案里的字段。

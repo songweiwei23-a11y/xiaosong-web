@@ -28,7 +28,8 @@ export type FeatureCode =
   | 'dealReason'
   | 'interview'
   | 'breakdown'
-  | 'remix';
+  | 'remix'
+  | 'direction';
 
 export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   脚本生成: 'script',
@@ -56,6 +57,8 @@ export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   拆解爆款: 'breakdown',
   // 跨行业二创：拿拆解报告（或别的行业的文案）换成自己的行业来拍；产品方定单独一项额度
   跨行业二创: 'remix',
+  // 创作方向（2026-10-02）：说目的 → 铺开方向和思路 → 推荐一个；单独一项额度
+  创作方向: 'direction',
   // 前采建档（interview）不在这张表里：它不走 /api/dify/stream，有自己的接口
   // （app/api/interview/extract），直接按 'interview' 扣次数，也没有历史记录可点回去
 };

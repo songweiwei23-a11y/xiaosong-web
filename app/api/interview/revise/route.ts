@@ -14,6 +14,7 @@ import {
   type Revision,
   type RevisionInput,
 } from '@/lib/interview-import';
+import { readJsonBody } from '@/lib/read-body';
 
 export const runtime = 'nodejs';
 export const maxDuration = 180;
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
   if (!guard.ok) return guard.response!;
   const userId = guard.userId!;
 
-  const body = await req.json().catch(() => null);
+  const body = await readJsonBody(req).catch(() => null);
   const instruction = typeof body?.instruction === 'string' ? body.instruction.trim() : '';
   if (!instruction) return json({ error: '先说说哪里不对' }, 400);
   if (instruction.length > MAX_INSTRUCTION_CHARS) return json({ error: `一次说 ${MAX_INSTRUCTION_CHARS} 字以内，分几次说` }, 400);

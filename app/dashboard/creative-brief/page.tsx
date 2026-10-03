@@ -1,23 +1,31 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
-import { throwApiError } from '@/lib/api-error'
+import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { takeHandoff } from '@/lib/handoff'
+import { CreationLinks } from '@/components/workspace/CreationLinks'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import {
   BRIEF_FIELDS,
   BRIEF_TYPE,
+  profileFactsFingerprint,
+  briefFactsChanged,
   buildBriefPrompt,
   parseBrief,
   serializeBrief,
   briefCompleteness,
   readerLabels,
 } from '@/lib/creative-brief'
+import { postSafely } from '@/lib/safe-post'
+import { buildProfileSummary } from '@/lib/profile-summary'
+import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
+import { taboosPromptBlock } from '@/lib/taboos'
+import { ContentMixBar } from '@/components/workspace/ContentMix'
 
 /**
  * 创作简报。
@@ -36,6 +44,8 @@ interface Row {
   positioning_type: string
   full_content: string
   created_at: string
+  /** 生成 / 保存时档案事实的指纹（lib/creative-brief 的 profileFactsFingerprint） */
+  positioning_description?: string | null
 }
 
 export default function CreativeBriefPage() {
@@ -43,6 +53,9 @@ export default function CreativeBriefPage() {
   const [profileName, setProfileName] = useState('')
   const [profileId, setProfileId] = useState<string | null>(null)
   const [profileSummary, setProfileSummary] = useState('')
+  // 内容配比按哪个档案算；这次临时改的（null = 跟档案 / 系统推荐）
+  const [profileRow, setProfileRow] = useState<Record<string, unknown> | null>(null)
+  const [mixOverride, setMixOverride] = useState<MixSetting | null>(null)
   const [positioning, setPositioning] = useState<Row | null>(null)
   const [brief, setBrief] = useState<Row | null>(null)
   const [business, setBusiness] = useState<Row | null>(null)
@@ -64,14 +77,14 @@ export default function CreativeBriefPage() {
       const p = Array.isArray(list) && list.length ? list.find((x: any) => x.id === id) || list[0] : null
       setProfileId(p?.id ?? null)
       setProfileName(p?.profile_name || '')
-      setProfileSummary(
-        p
-          ? Object.entries(p)
-              .filter(([k, v]) => !['id', 'user_id', 'created_at', 'updated_at'].includes(k) && v && (!Array.isArray(v) || v.length))
-              .map(([k, v]) => `- ${k}：${Array.isArray(v) ? v.join('、') : v}`)
-              .join('\n')
-          : ''
-      )
+      setProfileRow(p || null)
+      /*
+       * 用和定位板块同一份档案摘要。原来是把档案每一栏原样倒进去，
+       * 连前采原始记录（interview_notes）也在里面——2026-10-02 线上：前采原文写着
+       * 「南乐定居 18 年」，后来档案改成了「9 年川菜厨师」，简报照样按原文写成
+       * 「在南乐扎根 18 年」，全站跟着错。原始记录不是档案结论，不该喂给简报
+       */
+      setProfileSummary(p ? buildProfileSummary(p) : '')
 
       if (p) {
         // 商业定位和内容定位也取回来。它们生成完原本躺在库里没人读，
@@ -140,13 +153,18 @@ export default function CreativeBriefPage() {
   /** 定位比简报新 = 简报过期。提醒，但旧的继续用 */
   const stale =
     !!brief && !!positioning && new Date(positioning.created_at) > new Date(brief.created_at)
+  /**
+   * 简报是按旧档案写的：人设、经历、品类、人群这些事实在简报之后改过。
+   * 原来比档案更新时间，成交理由同步一下卖点就误报（2026-10-02），改成比内容指纹
+   */
+  const profileNewer = !!brief && briefFactsChanged(brief.positioning_description, profileRow)
 
   const generate = async () => {
     if (!positioning) return
     setIsGenerating(true)
     let full = ''
     try {
-      const res = await fetch('/api/dify/stream', {
+      const res = await fetchGeneration('/api/dify/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,6 +176,8 @@ export default function CreativeBriefPage() {
             contentPositioning: contentPos?.full_content,
             profileSummary,
             notes,
+            mixBlock: mixPromptBlock(resolveMix(profileRow, mixOverride, notes)),
+            taboos: profileRow ? taboosPromptBlock(profileRow) : undefined,
           }),
         }),
       })
@@ -169,7 +189,7 @@ export default function CreativeBriefPage() {
 
       if (full) {
         await save(full)
-        await saveGenerationHistory('创作简报', { notes }, full)
+        await saveGenerationHistory('创作简报', { notes, profileId }, full)
         notify('简报已生成，各板块马上就会用上')
       }
     } catch (e: unknown) {
@@ -182,13 +202,15 @@ export default function CreativeBriefPage() {
 
   const save = async (content: string) => {
     if (!profileId) return
-    const res = await fetch('/api/positioning', {
+    const res = await postSafely('/api/positioning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         profile_id: profileId,
         positioning_type: BRIEF_TYPE,
         positioning_name: `${profileName || '账号'}的创作简报`,
+        // 记下此刻档案事实的指纹：之后只有这些事实真变了，各板块才提示简报过时
+        positioning_description: profileRow ? profileFactsFingerprint(profileRow) : null,
         full_content: content,
         is_active: false,
       }),
@@ -286,6 +308,12 @@ export default function CreativeBriefPage() {
                     ⚠️ 账号定位在这份简报之后更新过。旧简报仍在生效，建议重新生成一份。
                   </p>
                 )}
+                {profileNewer && (
+                  <p className="text-amber-500">
+                    ⚠️ 账号档案在这份简报之后改过，简报里的人设、年限、经历可能还是旧的。
+                    各板块生成时会以档案为准；想让简报也跟上，重新生成一份，或者直接在下面改。
+                  </p>
+                )}
               </div>
 
               <label className="mb-2 block text-[13px] font-medium text-foreground">
@@ -298,6 +326,8 @@ export default function CreativeBriefPage() {
                 placeholder="比如：这阵子主攻餐饮客户、口吻再放松一点"
                 className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
+              {/* 简报「三种视频的配比」按它写 */}
+              <ContentMixBar className="mt-3" profile={profileRow} override={mixOverride} onOverride={setMixOverride} goal={notes} />
 
               <button
                 onClick={generate}
@@ -367,6 +397,14 @@ export default function CreativeBriefPage() {
                     {saving ? '保存中…' : '保存修改'}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* 原来生成完没有下一步。简报本身会自动进各板块，这里是让人顺手接着去出选题、写脚本；
+                也可以只勾「内容方向」那一段带过去 */}
+            {hasAny && !isGenerating && (
+              <div className="mt-6">
+                <CreationLinks body={serializeBrief(values)} heading="简报好了，接着创作 · 内容自动带入" />
               </div>
             )}
           </>

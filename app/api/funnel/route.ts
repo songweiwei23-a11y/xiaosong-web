@@ -31,7 +31,7 @@ function limited(ip: string): boolean {
 
 export async function POST(request: Request) {
   const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || request.headers.get('x-real-ip') || 'unknown';
-  if (limited(ip)) return new NextResponse(null, { status: 204 });
+  if (limited(ip)) return new NextResponse(null, { status: 429 });
 
   let body: { kind?: unknown; vid?: unknown };
   try {
@@ -46,5 +46,5 @@ export async function POST(request: Request) {
   const { error } = await getServiceSupabase().from('funnel_events').insert({ kind: body.kind, visitor_id: body.vid });
   // 表还没建（迁移没跑）时只记日志
   if (error) console.error('[funnel] 记录失败:', error.message);
-  return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, { status: error ? 503 : 204 });
 }

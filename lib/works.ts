@@ -19,11 +19,17 @@ export interface WorkStage {
   done: boolean;
 }
 
+/** 落地状态：还没拍 / 已拍摄 / 已发布（迁移没跑时字段不存在，按还没拍算） */
+export type ShootStatus = 'none' | 'shot' | 'published';
+
 export interface Work {
   id: string;
   title: string;
   profile_id: string | null;
   is_done: boolean;
+  shoot_status?: ShootStatus;
+  shot_at?: string | null;
+  published_at?: string | null;
   created_at: string;
   updated_at: string;
   stages: WorkStage[];
@@ -114,6 +120,45 @@ export async function listWorks(limit = 20): Promise<Work[]> {
   } catch {
     return [];
   }
+}
+
+/** 标记拍没拍、发没发。失败抛出带中文的错误 */
+export async function setShootStatus(id: string, status: ShootStatus): Promise<Work> {
+  const res = await fetch(`/api/works?id=${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ shootStatus: status }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "保存失败，请重试");
+  return data;
+}
+
+/**
+ * 这条作品现在该提醒什么（2026-10-02，产品方："进行中的内容要显示进度环节，提醒用户时刻注意"）。
+ * 返回 null 表示不用提醒；tone 决定颜色。
+ */
+export function workReminder(w: Work, now: number = Date.now()): { text: string; tone: 'info' | 'warn' | 'done' } | null {
+  const days = (iso?: string | null) => (iso ? Math.floor((now - Date.parse(iso)) / 86400_000) : 0);
+  const status = w.shoot_status ?? 'none';
+  if (status === 'published') return { text: `已发布${w.published_at ? `（${new Date(w.published_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}）` : ''}，记得回来看数据、复盘`, tone: 'done' };
+  if (status === 'shot') {
+    const d = days(w.shot_at);
+    return { text: d >= 2 ? `拍完 ${d} 天了还没发，剪好就发吧` : '已拍摄，剪辑好记得发布', tone: d >= 2 ? 'warn' : 'info' };
+  }
+  const idle = days(w.updated_at);
+  if (w.is_done) return { text: idle >= 2 ? `内容都做好 ${idle} 天了，还没拍——安排拍摄吧` : '内容都做好了，可以安排拍摄', tone: idle >= 2 ? 'warn' : 'info' };
+  if (idle >= 3) return { text: `已经 ${idle} 天没动了`, tone: 'warn' };
+  return null;
+}
+
+/** 顶部汇总和筛选用的分组 */
+export type ProgressGroup = 'active' | 'toShoot' | 'shot' | 'published';
+export function progressGroup(w: Work): ProgressGroup {
+  const s = w.shoot_status ?? 'none';
+  if (s === 'published') return 'published';
+  if (s === 'shot') return 'shot';
+  return w.is_done ? 'toShoot' : 'active';
 }
 
 export async function deleteWork(id: string): Promise<boolean> {

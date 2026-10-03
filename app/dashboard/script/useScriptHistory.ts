@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { profileHistoryQuery } from '@/lib/profile-history';
 import { confirmDialog, notify } from "@/components/ui/feedback";
 
 /**
@@ -8,6 +10,12 @@ import { confirmDialog, notify } from "@/components/ui/feedback";
  * 从 ScriptPage 抽离，负责历史的加载、删除与"继续对话"弹窗开关。
  */
 export function useScriptHistory() {
+  const { context, loading } = useCreatorContext();
+  const resultScope = loading ? undefined : context.profile?.id || 'default';
+  const currentScopeRef = useRef(resultScope);
+  currentScopeRef.current = resultScope;
+  const scopeRef = useRef<string>();
+  const requestRef = useRef(0);
   const [scriptHistory, setScriptHistory] = useState<any[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [dialogInitialContent, setDialogInitialContent] = useState("");
@@ -33,16 +41,26 @@ export function useScriptHistory() {
   const restoredRef = useRef(false);
 
   const loadScriptHistory = useCallback(async () => {
+    if (!resultScope || resultScope !== currentScopeRef.current) return;
+    if (scopeRef.current !== resultScope) {
+      scopeRef.current = resultScope;
+      restoredRef.current = false;
+      setLastResult('');
+      setShowDialog(false);
+      setDialogInitialContent('');
+      setLastItem(null);
+      setScriptHistory([]);
+    }
+    const request = ++requestRef.current;
     try {
       // 显式传参。这一页靠的正好是接口的默认值（脚本生成），碰巧是对的，
       // 但"碰巧"不该是依赖——别的页栽在同一个默认值上
-      const response = await fetch("/api/script-history?taskType=脚本生成");
+      const response = await fetch(`/api/script-history?taskType=脚本生成${profileHistoryQuery(context.profile?.id || null)}`);
       if (!response.ok) return;
       const data = await response.json();
+      if (request !== requestRef.current) return;
       if (Array.isArray(data)) {
-        requestAnimationFrame(() => {
-          setScriptHistory(data);
-        });
+        setScriptHistory(data);
 
         if (!restoredRef.current) {
           restoredRef.current = true;
@@ -56,7 +74,7 @@ export function useScriptHistory() {
     } catch (error) {
       console.error("加载历史记录失败:", error);
     }
-  }, []);
+  }, [resultScope, context.profile?.id]);
 
   const deleteHistory = useCallback(
     async (id: string) => {
@@ -112,6 +130,7 @@ export function useScriptHistory() {
 
   useEffect(() => {
     loadScriptHistory();
+    return () => { ++requestRef.current; };
   }, [loadScriptHistory]);
 
   return {
@@ -124,6 +143,7 @@ export function useScriptHistory() {
     closeContinuousDialog,
     isDeleting,
     lastResult,
+    resultScope,
     lastItem,
   };
 }

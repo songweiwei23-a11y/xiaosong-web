@@ -106,11 +106,10 @@ describe('首页公开体验码', () => {
     expect(readCode('components/landing/LandingNavCTA.tsx')).toMatch(/href=\{REGISTER_URL\}[\s\S]{0,200}免费试用/);
   });
 
-  it('登录页认这个链接：直接打开注册、码填好；已登录的直接回工作台', () => {
+  it('登录页保留首页注册链接的参数：直接打开注册、码填好', () => {
     const login = readCode('app/login/page.tsx');
     expect(login).toMatch(/q\.get\("mode"\) === "register"\) setIsLogin\(false\)/);
     expect(login).toMatch(/setInviteCode\(code\)/);
-    expect(login).toMatch(/if \(session\) router\.replace\("\/dashboard"\)/);
     expect(login).toContain('体验码已经帮你填好了');
   });
 });

@@ -21,7 +21,7 @@ export async function askDify(
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.DIFY_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      inputs: { query, search_query: searchQuery, conversation_history: '', dealReasons: '' },
+      inputs: { query, search_query: searchQuery, conversation_history: '', dealReasons: '', web_search_enabled: '0', web_search_note: '本轮仅整理和核对用户提供的前采资料，不执行联网搜索。' },
       query,
       response_mode: 'streaming',
       user: userId,

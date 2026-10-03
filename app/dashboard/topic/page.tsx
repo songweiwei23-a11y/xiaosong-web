@@ -1,13 +1,23 @@
 ﻿"use client";
+import type { HandoffPayload } from '@/lib/handoff';
+import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
+import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, scriptTypeForLabel, topicReasonIds, normalizeCreationReasons } from '@/lib/creation-settings';
+
 
 import { useRouter } from "next/navigation";
 import { putHandoff, takeHandoff, parseTopicOptions } from "@/lib/handoff";
+import { creationReference, originForResult, continuationRules } from '@/lib/creation-continuation';
+import { buildCreationHandoff } from '@/lib/creation-flow';
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from "@/lib/viral-elements";
 import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, rolesGuide, roleBrief, type ContentRole } from "@/lib/content-roles";
+import { resolveMix, mixPromptBlock, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
+import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
+import { taboosPromptBlock } from "@/lib/taboos";
 import { ROUTE_LIST, ROUTE_HINTS, ROUTES_GUIDE, routeAssignment, tacticIndex, tacticInText, topicTacticsOf, type CreativeRoute } from "@/lib/creative-routes";
-import { throwApiError } from "@/lib/api-error";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { notifyGenerated } from "@/lib/upgrade";
 import { createWork, listWorks, type Work } from "@/lib/works";
 import { stageRoute, workStageUrl } from "@/lib/resume";
@@ -24,6 +34,7 @@ import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock, describeExecutionConstraints, describeRestrictions, type CreatorProfile } from '@/lib/creator-context';
 import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 
@@ -41,8 +52,11 @@ import { ALL_DEAL_REASONS } from './constants';
 import type { TopicHistory, Profile, Positioning } from './types';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
+import { postSafely } from '@/lib/safe-post';
 
 export default function TopicPage() {
+  const beginProfileRequest = useProfileRequestGuard();
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
   // 模式控制
   
   // 统一生成页基础能力
@@ -58,13 +72,14 @@ export default function TopicPage() {
     copyToClipboard,
     downloadAsFile,
     lastResult,
+    resultScope,
   } = useGenerationPage({ taskType: '选题策划', historyApiPath: '/api/topics' });
 
   const router = useRouter();
 
   // 创作简报从这里来。之前这一页自己手拼 ctx，漏了 brief，
   // 结果注入字数最多、有用的最少
-  const { context: creatorContext } = useCreatorContext();
+  const { context: creatorContext, loading: contextLoading } = useCreatorContext();
 
   const [mode, setMode] = useState("custom"); // "quick" 或 "custom"
 
@@ -99,6 +114,9 @@ export default function TopicPage() {
    * 代运营 SOP：每条视频只选一个主目的，目的决定选题、脚本结构和结尾指令。
    */
   const [topicRole, setTopicRole] = useState<'按配比' | ContentRole>('按配比');
+  // 按配比时：这次临时改的配比（null = 跟档案）；以及上一次生成实际用的，结果下面拿它核对
+  const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
+  const [mixUsed, setMixUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
 
   // 高级设置
   const [keyword1, setKeyword1] = useState("");
@@ -135,6 +153,7 @@ export default function TopicPage() {
   const sendTopic = async (title: string, stage: TopicStage, body?: string) => {
     const workId = await createWork(title, selectedProfileId || null);
     putHandoff({
+      ...buildCreationHandoff('topic', stage === '脚本生成' ? 'script' : stage === '标题封面' ? 'title' : 'growth', body || title, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title }), originContent: originForResult(result, history, originContent || sourceReference) }),
       from: "选题策划",
       topic: title,
       workId: workId ?? undefined,
@@ -144,19 +163,22 @@ export default function TopicPage() {
       tactic: tactic || tacticInText(body ?? "") || undefined,
       note:
         stage === "脚本生成" && body
-          ? `选题策划时定下的方案，照这个方向写：\n${body.slice(0, 1500)}`
+          ? buildCreationHandoff('topic', 'script', body, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title }), originContent: originForResult(result, history, originContent || sourceReference) }).note
           : undefined,
     });
     router.push(workId ? workStageUrl(workId, stage) : stageRoute(stage));
   };
   const [personalRequirement, setPersonalRequirement] = useState("");
+  const [sourceReference, setSourceReference] = useState("");
+  const [originContent, setOriginContent] = useState('');
+  const [sourceFrom, setSourceFrom] = useState("");
 
   // 生成状态
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
-  useRestoreLastResult(lastResult, setResult);
+  useRestoreLastResult(lastResult, setResult, resultScope);
 
   // 折叠状态
   const [isBasicOpen, setIsBasicOpen] = useState(true);
@@ -405,13 +427,13 @@ export default function TopicPage() {
     if (profile && mode === "quick") {
       // 自动填充
       if (profile.account_track && profile.account_track.length > 0) {
-        setSelectedTracks(profile.account_track);
+        setSelectedTracks(cur => cur.length ? cur : profile.account_track || []);
       }
       if (profile.content_style && profile.content_style.length > 0) {
-        setSelectedStyles(profile.content_style);
+        setSelectedStyles(cur => cur.length ? cur : profile.content_style || []);
       }
       if (profile.account_platform && profile.account_platform.length > 0) {
-        setSelectedPlatforms(profile.account_platform);
+        setSelectedPlatforms(cur => cur.length ? cur : profile.account_platform || []);
       }
       if (profile.account_stage) {
         setAccountStage(profile.account_stage);
@@ -489,16 +511,50 @@ export default function TopicPage() {
     loadHistory();
     // 起号页带过来的打法
     const handed = takeHandoff();
+    if (handed) setIncomingSetup(handed);
+    if (handed) setOriginContent(handed.originContent || handed.sourceContent || '');
     if (handed?.tactic) setTactic(handed.tactic);
+    if (handed?.sourceContent) {
+      setSourceReference(creationReference(handed));
+      setSourceFrom(handed.from);
+      setMode('quick');
+    }
     // 用户在侧边栏切了档案，这一页不刷新也要跟上
     return onActiveProfileChange(() => {
+      setSourceReference(''); setSourceFrom(''); setOriginContent('');
       const id = getActiveProfileId();
       if (id) setSelectedProfileId(id);
     });
   }, []);
 
+  const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
+    setMode('quick'); setAccountStage(creatorContext.profile?.account_stage || '有定位，需要内容方向');
+    // 只填原内容写明的和档案里有的；没写的保持页面默认（目的「按配比」、类型和元素空着），不猜（2026-10-03）
+    setFansLevel(creatorContext.profile?.fans_level || '0-1000'); setSelectedPlatforms([s.platform!]);
+    setSelectedTracks(s.industry ? s.industry.split('、').map((x) => x.trim()).filter(Boolean) : []);
+    setSelectedContentTypes(s.scriptType && REVIEW_SCRIPT_TYPES[s.scriptType] ? [REVIEW_SCRIPT_TYPES[s.scriptType]] : []);
+    setSelectedStyles(s.style ? [s.style] : []);
+    setTopicRole(s.purpose ?? '按配比'); setTopicCount(Math.min(30, Math.max(1, s.topicCount || 5)));
+    setSelectedElements(s.elements || []); if (s.tactic) setTactic(s.tactic);
+    setSelectedDealReasons(topicReasonIds(s.dealReasons || []));
+    setKeyword1(s.topic ?? ''); setPersonalRequirement(s.direction ?? '');
+  });
+  const currentSettings = resolveCreationSettings({ from: '选题策划', sourceContent: sourceReference || keyword1 || personalRequirement, settings: mergeCreationSettings(autoSetup.settings, {
+    topic: keyword1, direction: personalRequirement, platform: selectedPlatforms[0], industry: selectedTracks.join('、'),
+    scriptType: REVIEW_SCRIPT_TYPES[autoSetup.settings.scriptType!] === selectedContentTypes[0] ? autoSetup.settings.scriptType : scriptTypeForLabel(selectedContentTypes[0]), style: selectedStyles.join('、'),
+    purpose: topicRole === '按配比' ? undefined : topicRole, elements: selectedElements, topicCount, tactic,
+    dealReasons: normalizeCreationReasons([...autoSetup.settings.dealReasons || [], ...selectedDealReasons]),
+  }) }, creatorContext);
+
+  // 配比按哪个档案算：快速模式选的那个，没有就用侧边栏当前档案
+  const mixProfile = (profiles.find((p) => p.id === selectedProfileId) ?? creatorContext.profile ?? null) as Record<string, unknown> | null;
+  const resolvedMix = resolveMix(mixProfile, mixOverride, personalRequirement);
+
   // 生成选题函数
   const handleGenerate = async () => {
+    if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    const isCurrent = beginProfileRequest();
     if (!accountStage && mode === "custom") {
       notify("请选择账号阶段");
       return;
@@ -605,6 +661,10 @@ export default function TopicPage() {
         withHook: withHook,
         // 复盘要按打法统计样本数，所以每条记录都要留下用的是哪一计
         tactic: tactic || undefined,
+        sourceReference,
+        creationSettings: currentSettings,
+        originContent,
+        sourceFrom,
       };
 
       // 构建详细的prompt
@@ -688,11 +748,16 @@ export default function TopicPage() {
         .map((id) => ALL_DEAL_REASONS.find((r) => r.id === id)?.label ?? id)
         .join('、');
       if (topicRole === '按配比') {
-        query += `\n【这批选题的目的】流量型、人设型、变现型按配比搭配\n`;
-        query += `- 按上面账号定位里定好的配比分配这 ${topicCount} 条；没有定位的，按账号阶段来（起号期流量型最多，变现型从第一周就有但占小头）\n`;
-        query += `- 每条只担一个主目的，在选题里标明\n\n`;
+        /*
+         * 原来是一句"按上面账号定位里定好的配比分配"——配比只在定位文字里，模型每次理解不一样，
+         * 也没人核对。现在由 lib/content-mix 算出确定的条数（档案设置 / 这次临时改的 / 系统按阶段推荐）
+         */
+        query += `\n【这批选题的目的】流量型、人设型、变现型按配比搭配\n\n`;
+        query += `${mixPromptBlock(resolvedMix, { count: topicCount })}\n\n`;
         query += `${rolesGuide()}\n\n`;
+        setMixUsed({ resolved: resolvedMix, count: topicCount });
       } else {
+        setMixUsed(null);
         query += `\n【这批选题的目的】全部是${topicRole}\n\n${roleBrief(topicRole)}\n\n`;
       }
       if (topicRole === '流量型') {
@@ -710,6 +775,9 @@ export default function TopicPage() {
       // 高级设置
       
       // 个人要求
+      if (sourceReference.trim()) {
+        query += `\n【来自${sourceFrom || '前一步'}的创作参考】\n${sourceReference}${continuationRules('topic')}\n\n`;
+      }
       if (personalRequirement) {
         query += `\n【🎯 个人要求】\n`;
         query += `${personalRequirement}\n`;
@@ -746,7 +814,7 @@ export default function TopicPage() {
         query += `${routeAssignment(route, topicCount)}\n\n${ROUTES_GUIDE}\n\n`;
         if (route !== '四大脚本') {
           const blocked = tacticsBlockedBy(
-            [selectedProfile?.content_restrictions, selectedProfile?.avoid_content].filter(Boolean).join('\n')
+            [selectedProfile?.content_restrictions, selectedProfile?.avoid_content, selectedProfile ? taboosPromptBlock(selectedProfile) : ''].filter(Boolean).join('\n')
           );
           query += `${tacticIndex({ roles: topicRole === '按配比' ? undefined : [topicRole], exclude: blocked })}\n\n`;
           if (blocked.length) query += `⛔ 这几计和账号禁忌冲突，已从清单拿掉，不要用：${blocked.join('、')}\n\n`;
@@ -841,16 +909,17 @@ export default function TopicPage() {
       // 现在定位不再截断到 300 字、内容长了 6 倍，这颗雷只会更容易踩到，
       // 所以直接拆掉——该过滤的在源头过滤，不该拿整条提示词去冒险。
 
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // 见 script 页同处说明：taskType 决定检索提示词、会话隔离与用量归属。
           // 后端检测到已有 query 时会沿用这里拼好的完整提示词，不再自行拼装。
           taskType: "选题策划",
+          creationSettings: currentSettings,
           // 记忆按档案隔离，避免代运营时多个账号的上下文互相串台。
           profileId: selectedProfileId || null,
-          query: query,
+          query: query + creationSettingsBlock(currentSettings),
           inputs: requestData
         })
       });
@@ -861,12 +930,12 @@ export default function TopicPage() {
       // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
       // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
       const accumulatedText = await readDifyStream(response, {
-        onChunk: (_piece, full) => setResult(full),
+        onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
       });
 
       // 保存到历史记录
       if (accumulatedText) {
-        const response = await fetch("/api/topics", {
+        const response = await postSafely("/api/topics", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -894,6 +963,10 @@ export default function TopicPage() {
       sidebar={
         <>
           <PageHeader title="选题策划" subtitle="结合账号定位与爆款元素，一次给出多条可直接拍的选题" />
+          {sourceReference && <CollapsibleSection title={`来自${sourceFrom}的参考内容`} defaultOpen>
+            <textarea aria-label="创作参考内容" value={sourceReference} onChange={e => setSourceReference(e.target.value)} rows={5} className={TEXTAREA_CLS} />
+            <button onClick={() => setSourceReference('')} className="mt-2 text-xs text-muted-foreground hover:text-foreground">清除参考内容</button>
+          </CollapsibleSection>}
 
           {/* 模式切换：分段控件比两个并排按钮干净，选中的那个才有实体感 */}
           <div className="glass-panel flex gap-1 rounded-2xl p-1">
@@ -923,6 +996,7 @@ export default function TopicPage() {
             不必再选——留着反而会和侧边栏选的那个打架。
           */}
           <ContextBadge board="topic" />
+          <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
 
           {mode === "custom" && (
             <>
@@ -974,7 +1048,7 @@ export default function TopicPage() {
 
                 <Field label="赛道" optional stacked>
                   <div className="flex flex-wrap gap-1.5">
-                    {tracks.map((t) => (
+                    {Array.from(new Set([...tracks, ...selectedTracks])).map((t) => (
                       <button
                         key={t}
                         onClick={() => toggleSelection(t, selectedTracks, setSelectedTracks)}
@@ -1004,7 +1078,7 @@ export default function TopicPage() {
 
                 <Field label="风格" optional stacked>
                   <div className="flex flex-wrap gap-1.5">
-                    {styles.map((s) => (
+                    {Array.from(new Set([...styles, ...selectedStyles])).map((s) => (
                       <button
                         key={s}
                         onClick={() => toggleSelection(s, selectedStyles, setSelectedStyles)}
@@ -1151,6 +1225,16 @@ export default function TopicPage() {
                   );
                 })}
               </div>
+              {topicRole === '按配比' && (
+                <ContentMixBar
+                  className="mt-2"
+                  profile={mixProfile}
+                  override={mixOverride}
+                  onOverride={setMixOverride}
+                  count={topicCount}
+                  goal={personalRequirement}
+                />
+              )}
             </Field>
 
             <Field
@@ -1276,7 +1360,7 @@ export default function TopicPage() {
             </Field>
           </CollapsibleSection>
 
-          <button onClick={handleGenerate} disabled={isGenerating} className={GENERATE_BTN}>
+          <button onClick={handleGenerate} disabled={autoSetup.preparing || contextLoading || isGenerating} className={GENERATE_BTN}>
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1296,6 +1380,7 @@ export default function TopicPage() {
         result={result}
         isGenerating={isGenerating}
         title="选题方案"
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, originContent || sourceReference) }}
         showStats={false}
         emptyIcon={Lightbulb}
         emptyTitle="填好条件就能出选题"
@@ -1306,6 +1391,7 @@ export default function TopicPage() {
           "每条选题只担一个目的：流量、人设或变现",
         ]}
         generatingHint="正在策划选题…"
+        footer={mixUsed ? <MixCheckLine text={result} resolved={mixUsed.resolved} count={mixUsed.count} /> : undefined}
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `选题方案-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}

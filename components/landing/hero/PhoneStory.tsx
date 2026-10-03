@@ -239,7 +239,7 @@ export function PhoneStory({ freezeAt }: { freezeAt?: number } = {}) {
 
           {/* 播放量：放在左下的空处（放右上会压住手机的角） */}
           <div className="absolute bottom-10 left-7" style={{ opacity: seg(t, 7.3, 7.8) * out }}>
-            <div className="text-[10.5px] tracking-[0.2em] text-muted-foreground">播放量</div>
+            <div className="text-[10.5px] tracking-[0.2em] text-muted-foreground">模拟播放量</div>
             <div className="font-mono text-[34px] font-semibold leading-tight tabular-nums text-foreground">
               {views >= 1_000_000 ? "1,000,000+" : views.toLocaleString("en-US")}
             </div>
@@ -255,7 +255,7 @@ export function PhoneStory({ freezeAt }: { freezeAt?: number } = {}) {
             <div className="mt-3 text-[13px] leading-relaxed text-muted-foreground">不会写脚本、不懂镜头都没关系</div>
           </div>
 
-          <div className="absolute bottom-3 left-5 text-[10.5px] text-muted-foreground/60">画面与数字为示意</div>
+          <div className="absolute bottom-3 left-5 text-[10.5px] text-muted-foreground/60">虚构场景与数据，仅作演示</div>
         </div>
       </div>
     </div>

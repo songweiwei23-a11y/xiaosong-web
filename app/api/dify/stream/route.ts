@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
+import { requireUser, requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
+import { readJsonBody, BodyError } from '@/lib/read-body';
 import { buildSearchQuery } from '@/lib/search-query';
 import { getFeatureFromTaskType } from '@/lib/task-type';
 import {
@@ -17,6 +18,12 @@ import {
 import { loadPriorTopicTitles } from '@/lib/topic-library-server';
 import { difyErrorCode, difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
 import { waitForDifyMessage } from '@/lib/dify-recover';
+import { getServiceSupabase } from '@/lib/admin-auth';
+import { DURABLE_CREATIVE_TASKS, loadCreativeMemory, ownsCreativeProfile, persistCreativeHistory } from '@/lib/creative-history';
+import { PROFILE_UUID } from '@/lib/profile-history';
+import { prepareWebSearch } from '@/lib/web-search-quota';
+import { difyWebStatus } from '@/lib/dify-web-status';
+import { mergeCreationSettings, creationSettingsBlock } from '@/lib/creation-settings';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -38,13 +45,34 @@ function difyImageFiles(ids: unknown): { files?: { type: 'image'; transfer_metho
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    /*
+     * 请求体可能是压缩 / 分块发来的（lib/safe-post：用户线路差时超过约 8KB 的 POST 会被切断）。
+     * 分块的要先知道是谁才能取，所以这种情况先验一次登录
+     */
+    let owner: string | null = null;
+    if (req.headers.get('x-body-ref')) {
+      const who = await requireUser();
+      if (!who.ok) return who.response!;
+      owner = who.userId!;
+    }
+    let body: any;
+    try { body = await readJsonBody(req, owner); }
+    catch (e) { return Response.json({ error: e instanceof BodyError ? e.message : '请求格式不正确' }, { status: 400 }); }
 
     // 必须按具体功能校验额度。requireUserWithQuota() 不传 feature 时只会
     // 检查 basic/pro 的总量，免费版的分功能限额（各板块次数见 lib/config/plans）
     // 完全不生效——用量照常累加却拦不住，等于免费用户可以无限使用。
     const guard = await requireUserWithQuota(getFeatureFromTaskType(body.taskType));
     if (!guard.ok) return guard.response!;
+    if (body.historyOwnerId && body.historyOwnerId !== guard.userId) return Response.json({ error: '账号已经切换，请回原账号生成' }, { status: 403 });
+    // 新版拆解/二创由服务端落库，关页不会阻止保存。旧版客户端仍走原保存流程。
+    const creativeTask = DURABLE_CREATIVE_TASKS.has(body.taskType);
+    const durableHistory = creativeTask && typeof body.historyId === 'string' && PROFILE_UUID.test(body.historyId);
+    const historyProfileId = body.profileId ?? body.profile_id ?? null;
+    const historyDb = creativeTask ? getServiceSupabase() : null;
+    if (historyDb && !await ownsCreativeProfile(historyDb, guard.userId!, historyProfileId)) {
+      return Response.json({ error: '不能使用其他账号的档案' }, { status: 403 });
+    }
     let query = '';
 
     // 原始用户输入必须在任何改写之前固定下来。
@@ -86,6 +114,7 @@ export async function POST(req: NextRequest) {
     // 知识库检索用的短查询，与发给模型的长指令分离，
     // 由 Dify 工作流的 5 个知识检索节点消费（start.search_query）
     const searchQuery = buildSearchQuery(body.taskType, body, originalQuery);
+    if (historyDb) query += await loadCreativeMemory(historyDb, guard.userId!, body.taskType, historyProfileId);
 
     /*
      * 选题：把"已经出过的"明明白白告诉模型，禁止重出。
@@ -105,6 +134,9 @@ export async function POST(req: NextRequest) {
       query += buildNoRepeatBlock(prior);
       console.log(`[no-repeat] ${body.taskType}：附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`);
     }
+
+    const creationSettings = mergeCreationSettings(body.creationSettings || body.historyInput?.creationSettings);
+    if (Object.keys(creationSettings).length) query += creationSettingsBlock(creationSettings) + '\n本轮以当前带入的原稿、当前版本和这些设置为准；历史中的其他选题、方案、人群和时长不得替换本轮选择。旧 AI 稿不是已核实经营事实。';
 
     // 【方案6：工作流 + 手动记忆】
     // 构建 Dify 请求体：query 在顶层，conversation_history 在 inputs
@@ -152,8 +184,16 @@ export async function POST(req: NextRequest) {
       console.log('🔗 延续已有会话:', existingConversationId);
     }
 
-    const callDify = () =>
-      fetch('https://api.dify.ai/v1/chat-messages', {
+    let webSession: Awaited<ReturnType<typeof prepareWebSearch>>;
+    const callDify = async () => {
+      /*
+       * 这里的 originalQuery 是各板块拼好的整段提示词，不是用户的一句话。
+       * 拿它做「按需联网」判断，提示词里出现「热点」「最新」就会触发付费搜索、扣联网额度。
+       * 这些板块界面上都没有联网开关，所以不传就是不联网（2026-10-02）。
+       */
+      webSession = await prepareWebSearch(guard.userId!, originalQuery, body.webSearchMode ?? 'off');
+      Object.assign(difyRequestBody.inputs, webSession.inputs);
+      const result = await fetch(`${process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1'}/chat-messages`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + process.env.DIFY_API_KEY,
@@ -161,6 +201,9 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify(difyRequestBody)
       });
+      if (!result.ok) await webSession.rejected(result.status);
+      return result;
+    };
 
     let response = await callDify();
 
@@ -234,10 +277,11 @@ export async function POST(req: NextRequest) {
           if (!reader) return { kind: 'broken', error: new Error('无法读取响应') };
           const decoder = new TextDecoder();
           let buffer = '';
+          let receivedEnd = false;
           try {
             while (true) {
               const { done, value } = await reader.read();
-              if (done) return { kind: 'done' };
+              if (done) return creativeTask && !receivedEnd ? { kind: 'broken', error: new Error('上游缺少完成标记') } : { kind: 'done' };
               buffer += decoder.decode(value, { stream: true });
               const lines = buffer.split('\n');
               buffer = lines.pop() || '';
@@ -262,7 +306,11 @@ export async function POST(req: NextRequest) {
                 }
 
                 const failure = difyEventError(data);
+                await webSession.observe(data);
+                const webStatus = difyWebStatus(data);
+                if (webStatus) send({ event: 'web_search', ...webStatus, quota: webSession.quota });
                 if (failure) return { kind: 'error', message: failure };
+                if (data.event === 'message_end' || data.event === 'workflow_finished') receivedEnd = true;
 
                 // 支持两种事件类型：Chatbot 的 message 和工作流的 text_chunk
                 const text = data.answer || data.text || '';
@@ -289,7 +337,9 @@ export async function POST(req: NextRequest) {
         };
 
         try {
+          if (webSession.initialEvent) send(webSession.initialEvent);
           let outcome = await pump(response);
+          await webSession.finish();
 
           /*
            * 会话塞满了（超出模型上下文）：一个字还没出，就换新会话重来一次。
@@ -308,9 +358,11 @@ export async function POST(req: NextRequest) {
             capturedConversationId = '';
             capturedMessageId = '';
             const retry = await callDify();
+            if (webSession.initialEvent) send(webSession.initialEvent);
             outcome = retry.ok
               ? await pump(retry)
               : { kind: 'error', message: `重试失败 ${retry.status}: ${(await retry.text()).slice(0, 200)}` };
+            await webSession.finish();
           }
 
           /*
@@ -342,6 +394,17 @@ export async function POST(req: NextRequest) {
             send({ event: 'error', message: '这次没有生成出内容，请重试' });
           } else {
             console.log('Stream done. Total chunks:', totalChunks);
+            if (historyDb && durableHistory) {
+              let saved = false;
+              try {
+                saved = await persistCreativeHistory(historyDb, userId, {
+                  id: body.historyId, taskType: body.taskType, profileId: historyProfileId,
+                  inputData: body.historyInput && typeof body.historyInput === 'object' && !Array.isArray(body.historyInput) ? body.historyInput : {},
+                  result: fullResponse,
+                });
+              } catch (error) { console.error('[creative-history] 存档异常', error instanceof Error ? error.message : 'unknown'); }
+              send({ event: 'history_saved', saved });
+            }
             // 结束标记：页面据此区分"写完了"和"半路断了"
             send({ event: 'message_end', conversation_id: capturedConversationId, message_id: capturedMessageId });
           }

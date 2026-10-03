@@ -10,6 +10,8 @@ import {
   ONLINE_WINDOW_MIN, ACTIVE_WINDOW_HOURS,
   type MonitorEvent, type ActiveUser, type RecordRef,
 } from "@/lib/monitor";
+import { useMonitorQuery, useRealtimeMonitor } from '@/hooks/useRealtimeMonitor';
+import { scheduleSound, createOutput, DEFAULT_VOLUME, type SoundKind } from "@/lib/monitor-sound";
 
 /**
  * 实时监控大屏。
@@ -38,12 +40,21 @@ type Snapshot = {
   events: MonitorEvent[];
 };
 
-const POLL_MS = 5000;
-
 /** 用 Web Audio 合成提示音，不引入任何音频文件 */
+const VOLUME_KEY = "kaiwu-monitor-volume";
+
 function useSound() {
   const ctxRef = useRef<AudioContext | null>(null);
+  const outRef = useRef<GainNode | null>(null);
   const [enabled, setEnabled] = useState(false);
+  // 音量记在本机浏览器里；读不到（隐私模式等）就用默认
+  const [volume, setVolumeState] = useState(DEFAULT_VOLUME);
+  useEffect(() => {
+    try {
+      const v = Number(localStorage.getItem(VOLUME_KEY));
+      if (localStorage.getItem(VOLUME_KEY) !== null && Number.isFinite(v)) setVolumeState(Math.min(1, Math.max(0, v)));
+    } catch {}
+  }, []);
 
   const unlock = useCallback(async () => {
     try {
@@ -52,64 +63,48 @@ function useSound() {
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const ctx = ctxRef.current ?? new Ctor();
       ctxRef.current = ctx;
+      if (!outRef.current) outRef.current = createOutput(ctx, volume);
       // Safari/Chrome 在没有手势时是 suspended 状态，必须显式 resume
       if (ctx.state === "suspended") await ctx.resume();
       setEnabled(true);
+      // 开声音时响一下"叮咚"：既确认真的能响，也让人知道现在多大声
+      scheduleSound(ctx, outRef.current, "chime");
       return true;
     } catch {
       setEnabled(false);
       return false;
     }
+  }, [volume]);
+
+  const play = useCallback((kind: SoundKind) => {
+    const ctx = ctxRef.current;
+    const out = outRef.current;
+    if (!ctx || !out || ctx.state !== "running") return;
+    // 三种音色差别要足够大——隔着房间也能听出是不是"有人要付钱"（音色见 lib/monitor-sound）
+    scheduleSound(ctx, out, kind);
   }, []);
 
-  const play = useCallback(
-    (kind: "ping" | "chime" | "alert") => {
-      const ctx = ctxRef.current;
-      if (!ctx || ctx.state !== "running") return;
-
-      // 三种音色差别要足够大——隔着房间也能听出是不是"有人要付钱"
-      const spec: Record<string, { notes: number[]; dur: number; gain: number; type: OscillatorType }> = {
-        ping: { notes: [880], dur: 0.09, gain: 0.05, type: "sine" },
-        chime: { notes: [660, 880], dur: 0.14, gain: 0.08, type: "triangle" },
-        alert: { notes: [988, 1319, 988, 1319], dur: 0.16, gain: 0.13, type: "square" },
-      };
-      const s = spec[kind];
-
-      s.notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = s.type;
-        osc.frequency.value = freq;
-        const t0 = ctx.currentTime + i * s.dur;
-        // 直接切断会有"咔哒"声，用包络淡入淡出
-        gain.gain.setValueAtTime(0, t0);
-        gain.gain.linearRampToValueAtTime(s.gain, t0 + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + s.dur);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(t0);
-        osc.stop(t0 + s.dur + 0.02);
-      });
-    },
-    []
-  );
+  const setVolume = useCallback((v: number) => {
+    setVolumeState(v);
+    const ctx = ctxRef.current;
+    if (ctx && outRef.current) outRef.current.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
+    try { localStorage.setItem(VOLUME_KEY, String(v)); } catch {}
+  }, []);
 
   const disable = useCallback(() => setEnabled(false), []);
 
-  /*
-   * 必须 memo。不 memo 的话每次渲染都是一个新对象，
-   * 依赖它的 tick 跟着变 → 轮询的 effect 每渲染重建一次 → 立刻又拉一次
-   * → setState → 再渲染，变成轮询风暴。实测时就是这个形态。
-   */
+  // 声音状态保持独立，不重建实时通知源或数据请求。
   return useMemo(
-    () => ({ enabled, unlock, play, disable }),
-    [enabled, unlock, play, disable]
+    () => ({ enabled, unlock, play, disable, volume, setVolume }),
+    [enabled, unlock, play, disable, volume, setVolume]
   );
 }
 
 export default function MonitorPage() {
-  const [snap, setSnap] = useState<Snapshot | null>(null);
-  const [err, setErr] = useState("");
-  const [live, setLive] = useState(false);
+  const { revision, mode, connectionError } = useRealtimeMonitor();
+  const { data: snap, error } = useMonitorQuery<Snapshot>('/api/admin/monitor', revision);
+  const err = error || connectionError;
+  const live = !!snap && !error;
   const [flash, setFlash] = useState<MonitorEvent | null>(null);
   const [clock, setClock] = useState("");
   /*
@@ -139,9 +134,7 @@ export default function MonitorPage() {
   const seenRef = useRef<Set<string>>(new Set());
   const firstLoadRef = useRef(true);
   /*
-   * play 放进 ref 再用。tick 直接依赖 sound.play 的话，
-   * 开关声音会让 tick 变身份、进而重建轮询 effect——
-   * 点一下"开启声音"就多出一条定时器。
+   * 通过 ref 读取当前播放函数；开关声音不触发历史事件重新播放。
    */
   const playRef = useRef(sound.play);
   playRef.current = sound.play;
@@ -151,19 +144,10 @@ export default function MonitorPage() {
     return () => clearInterval(t);
   }, []);
 
-  const tick = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/monitor", { cache: "no-store" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `接口返回 ${res.status}`);
-      }
-      const data: Snapshot = await res.json();
-      setSnap(data);
-      setErr("");
-      setLive(true);
-
-      const events = data.events ?? [];
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+      if (!snap) return;
+      const events = snap.events ?? [];
       const wasFirst = firstLoadRef.current;
       const fresh = newEventsSince(events, seenRef.current, wasFirst);
 
@@ -178,20 +162,11 @@ export default function MonitorPage() {
           fresh[0];
         playRef.current(soundFor(top.type));
         setFlash(top);
-        setTimeout(() => setFlash(null), 6000);
+        if (flashTimer.current) clearTimeout(flashTimer.current);
+        flashTimer.current = setTimeout(() => setFlash(null), 6000);
       }
-    } catch (e: unknown) {
-      setLive(false);
-      setErr(e instanceof Error ? e.message : String(e));
-    }
-    // 依赖为空：tick 的身份必须稳定，否则轮询 effect 会被反复重建
-  }, []);
-
-  useEffect(() => {
-    tick();
-    const t = setInterval(tick, POLL_MS);
-    return () => clearInterval(t);
-  }, [tick]);
+  }, [snap]);
+  useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current); }, []);
 
   const pulse = snap?.pulse ?? [];
   const peak = Math.max(1, ...pulse);
@@ -262,7 +237,7 @@ export default function MonitorPage() {
                 <p className="mt-1.5 flex items-center gap-2 text-[10px] tracking-[0.22em] text-cyan-400/50">
                   <span>LIVE OPS MONITOR</span>
                   <span className="h-2.5 w-px bg-cyan-400/25" />
-                  <span>{live ? `${POLL_MS / 1000}S REFRESH` : "DISCONNECTED"}</span>
+                  <span>{live ? mode === 'realtime' ? 'LIVE PUSH' : '1S REFRESH' : "DISCONNECTED"}</span>
                 </p>
               </div>
             </div>
@@ -299,6 +274,35 @@ export default function MonitorPage() {
                 {sound.enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
                 {sound.enabled ? "声音已开" : "点击开启声音"}
               </button>
+              {sound.enabled && (
+                <div className="flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-white/[0.03] px-3 py-1.5 text-[12px] text-cyan-200">
+                  <span className="shrink-0">音量</span>
+                  <input
+                    type="range"
+                    aria-label="提示音音量"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={sound.volume}
+                    onChange={(e) => sound.setVolume(Number(e.target.value))}
+                    className="w-20 accent-cyan-400"
+                  />
+                  {([
+                    ["ping", "使用"],
+                    ["chime", "上线"],
+                    ["alert", "付款"],
+                  ] as const).map(([kind, label]) => (
+                    <button
+                      key={kind}
+                      onClick={() => sound.play(kind)}
+                      title={`试听「${label}」提示音`}
+                      className="rounded-md border border-cyan-400/30 px-1.5 py-0.5 hover:bg-cyan-400/10"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -530,7 +534,7 @@ export default function MonitorPage() {
         </div>
 
         {/* 转化漏斗：每次改首页、改引导，看这里知道有没有用 */}
-        <FunnelPanel />
+        <FunnelPanel revision={revision} />
 
         {/*
           底部状态条。
@@ -540,8 +544,8 @@ export default function MonitorPage() {
         */}
         <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-cyan-400/15 bg-cyan-400/10 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { k: "数据链路", v: live ? "正常" : "中断", ok: live },
-            { k: "刷新间隔", v: `${POLL_MS / 1000} 秒`, ok: true },
+            { k: "数据链路", v: live ? mode === 'realtime' ? '实时推送' : '秒级更新' : "中断", ok: live },
+            { k: "刷新间隔", v: mode === 'realtime' ? '变更即刷新' : '1 秒', ok: live },
             { k: "声音提醒", v: sound.enabled ? "已开" : "未开", ok: sound.enabled },
             { k: "待审订单", v: String(snap?.totals.pendingReview ?? 0), ok: (snap?.totals.pendingReview ?? 0) === 0 },
             { k: "待付款", v: String(snap?.totals.pendingPay ?? 0), ok: true },
@@ -595,33 +599,11 @@ interface FunnelStepView {
 
 /**
  * 转化漏斗（规则见 lib/funnel.ts）：首页 → 试用 → 注册页 → 注册 → 出第一条 → 付费。
- * 一分钟刷一次就够——它回答的是"这周改的东西有没有用"，不是"此刻谁在用"。
+ * 与主屏共用数据库变更通知，切时间范围后立即取最新统计。
  */
-function FunnelPanel() {
-  const [days, setDays] = useState<7 | 30>(7);
-  const [data, setData] = useState<{ steps: FunnelStepView[]; anonymousReady: boolean } | null>(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let alive = true;
-    const load = () =>
-      fetch(`/api/admin/funnel?days=${days}`, { cache: "no-store" })
-        .then(async (r) => {
-          const body = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(body.error || `接口返回 ${r.status}`);
-          if (alive) {
-            setData(body);
-            setError("");
-          }
-        })
-        .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : String(e)));
-    load();
-    const t = setInterval(load, 60_000);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [days]);
+function FunnelPanel({ revision }: { revision: number }) {
+  const [days, setDays] = useState<1 | 7 | 30>(1);
+  const { data, error } = useMonitorQuery<{ now: string; steps: FunnelStepView[]; anonymousReady: boolean }>(`/api/admin/funnel?days=${days}`, revision);
 
   const top = Math.max(1, ...(data?.steps ?? []).map((s) => s.count));
 
@@ -632,13 +614,15 @@ function FunnelPanel() {
         icon={TrendingUp}
         right={
           <div className="flex gap-1">
-            {([7, 30] as const).map((d) => (
+            {([1, 7, 30] as const).map((d) => (
               <button
                 key={d}
+                type="button"
+                aria-pressed={days === d}
                 onClick={() => setDays(d)}
                 className={`rounded-full px-2.5 py-0.5 text-[11px] ${days === d ? "bg-cyan-400/15 text-cyan-200" : "text-slate-500 hover:text-slate-300"}`}
               >
-                近 {d} 天
+                {d === 1 ? '今天' : `近 ${d} 天`}
               </button>
             ))}
           </div>
@@ -665,14 +649,14 @@ function FunnelPanel() {
                   </div>
                   <span className="text-right font-mono text-[12.5px] tabular-nums text-cyan-200">
                     {s.count}
-                    {s.fromPrev !== null && <span className="ml-1.5 text-[11px] text-slate-500">{s.fromPrev}%</span>}
+                    {s.fromPrev !== null && s.key !== 'signup' && <span className="ml-1.5 text-[11px] text-slate-500">{s.fromPrev}%</span>}
                   </span>
                 </div>
               ))}
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-              前三步按访客去重（匿名，一人一天记一次）；后三步是这 {days} 天里注册的那批人，往下走了多少。百分比是占上一步的比例。
-              {!data.anonymousReady && " 前三步的统计表还没建好，暂时是 0。"}
+              数据截至 {stamp(data.now)}:{new Date(data.now).getSeconds().toString().padStart(2, '0')}（北京时间）。前三步按所选时段的匿名访客去重；后三步按{days === 1 ? '今天' : `近 ${days} 天`}注册的同一批账号统计，首次创作不含自由对话和知识库查询，付费以审核通过时间为准。
+              匿名访客与注册账号尚未关联，注册这一步不显示转化率；其余百分比为相邻阶段人数比。
             </p>
           </>
         )}
@@ -685,7 +669,7 @@ function FunnelPanel() {
 function stamp(at: string) {
   const d = new Date(at);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toLocaleString("zh-CN", { timeZone: 'Asia/Shanghai', month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 const HIDDEN = "（已打码）";

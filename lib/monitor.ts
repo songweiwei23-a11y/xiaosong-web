@@ -122,6 +122,7 @@ export interface RawOrder {
   billing_cycle?: string | null;
   created_at?: string | null;
   proof_uploaded_at?: string | null;
+  reviewed_at?: string | null;
 }
 
 export interface RawProfile {
@@ -396,13 +397,13 @@ export function activeUsers(input: {
   return out.sort((a, b) => a.minutesAgo - b.minutesAgo);
 }
 
-/** 当天 0 点（按服务器本地时区）之后算「今天」 */
+/** 北京时间当天零点到此刻，不受服务器时区影响，也不计未来记录。 */
 export function isToday(v: unknown, now = Date.now()): boolean {
   const t = parseTime(v);
   if (t === null) return false;
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  return t >= d.getTime();
+  const offset = 8 * 60 * 60 * 1000;
+  const start = Math.floor((now + offset) / 86_400_000) * 86_400_000 - offset;
+  return t >= start && t <= now;
 }
 
 /**
@@ -417,6 +418,7 @@ export function pulseByMinute(
 ): number[] {
   const out = new Array(buckets).fill(0);
   for (const r of rows ?? []) {
+    if ((parseTime(r.created_at) ?? Infinity) > now) continue;
     const m = minutesAgo(r.created_at, now);
     if (m === null || m >= buckets) continue;
     out[buckets - 1 - m] += 1;

@@ -11,7 +11,7 @@ import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, FolderOpen, GraduationCap, FileSearch, Clapperboard, Shuffle,
+  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, Bookmark, ListChecks, Compass, GraduationCap, FileSearch, Clapperboard, Shuffle,
 } from "lucide-react";
 
 /*
@@ -33,15 +33,21 @@ const navGroups: {
       { name: "工作台", href: "/dashboard", icon: Home },
       // 给压根不了解抖音的新手：6 关学会抖音怎么推荐、怎么拍、怎么发。放最上面，新人一眼能看到
       { name: "新手课堂", href: "/dashboard/course", icon: GraduationCap },
-      // 每一条内容从选题到标题的全过程都在这里，隔多久都能接着做
-      { name: "我的作品", href: "/dashboard/works", icon: FolderOpen },
+      /*
+       * 原来这里是「我的作品」。产品方要求（2026-10-02）拆成两个：
+       *   素材库：各板块收藏的好内容，按分类找、随时拿去继续创作
+       *   创作进度：原「我的作品」，每条内容做到哪一步、拍没拍、发没发
+       */
+      { name: "素材库", href: "/dashboard/library", icon: Bookmark },
+      { name: "创作进度", href: "/dashboard/works", icon: ListChecks },
     ],
   },
   {
     id: "create",
     label: "内容创作",
     items: [
-      // 顺序即创作链路：先拆别人的爆款 → 定选题 → 写脚本 → 拆分镜 → 审稿 → 起标题
+      // 顺序即创作链路：先想清楚为了什么拍、往哪个方向 → 拆别人的爆款 → 定选题 → 写脚本 → 拆分镜 → 审稿 → 起标题
+      { name: "创作方向", href: "/dashboard/direction", icon: Compass },
       { name: "拆解爆款", href: "/dashboard/breakdown", icon: Clapperboard },
       // 拆完别人的，借过来拍成自己的
       { name: "跨行业二创", href: "/dashboard/remix", icon: Shuffle },
@@ -92,7 +98,7 @@ const navGroups: {
   },
 ];
 
-/** 侧边栏只露最近几条，其余去「我的作品」看 */
+/** 侧边栏只露最近几条，其余去「创作进度」看 */
 const SIDEBAR_WORKS = 3;
 
 const COLLAPSE_KEY = "xiaosong-sidebar-collapsed";
@@ -143,7 +149,8 @@ export function Sidebar() {
     let cancelled = false;
     listWorks(12).then((list) => {
       if (cancelled) return;
-      const active = list.filter((w) => !w.is_done);
+      // 已经标了拍摄/发布的不算进行中（落地状态，2026-10-02）
+      const active = list.filter((w) => !w.is_done && (w.shoot_status ?? "none") === "none");
       setWorks(active.slice(0, SIDEBAR_WORKS));
       setMoreWorks(active.length > SIDEBAR_WORKS || list.length > active.length);
     });
@@ -284,7 +291,7 @@ export function Sidebar() {
                 href="/dashboard/works"
                 className="mt-1 block px-3 text-[11.5px] text-muted-foreground hover:text-primary"
               >
-                全部作品 →
+                全部进度 →
               </Link>
             )}
           </div>

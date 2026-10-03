@@ -145,7 +145,7 @@ describe('额度文案与重置逻辑一致', () => {
     const src = readCode('lib/api-guard.ts');
     const roll = src.indexOf('quotaRollover(subscription, quota)');
     // 换期之后第一个放行只能是企业版的"不限量"，不能是换期本身
-    const enterprise = src.indexOf("if (planId === 'enterprise')");
+    const enterprise = src.indexOf("if (plan.totalQuota === -1)");
     const judge = src.indexOf('judgeQuota(planId, feature, quota)');
     expect(roll).toBeGreaterThan(0);
     expect(enterprise).toBeGreaterThan(roll);
@@ -437,12 +437,13 @@ describe('审核后写入的字段必须是库里真有的', () => {
    * （写成 current_period_start/end，而 subscriptions 表上没这两列）。
    *
    * 下面这张表是体检时从线上库 dump 出来的真实列，用它兜住。
-   * 之后加的列要有对应的迁移：interview_used ← 20260929_interview_import.sql，breakdown_used ← 20260930_breakdown.sql，remix_used ← 20260930_remix.sql
+   * 之后加的列要有对应的迁移：interview_used ← 20260929_interview_import.sql，breakdown_used ← 20260930_breakdown.sql，remix_used ← 20260930_remix.sql，
+   * direction_used ← 20261002_direction.sql
    */
   const LIVE_COLUMNS: Record<string, string[]> = {
     subscriptions: ['created_at', 'end_date', 'id', 'plan', 'start_date', 'status', 'updated_at', 'user_id'],
     user_quotas: [
-      'breakdown_used', 'created_at', 'current_period_end', 'current_period_start', 'deal_reason_used',
+      'breakdown_used', 'created_at', 'current_period_end', 'current_period_start', 'deal_reason_used', 'direction_used',
       'free_chat_used', 'id', 'interview_used', 'is_legacy_user', 'knowledge_used', 'last_reset_at',
       'positioning_used', 'registered_with_invitation', 'remix_used', 'review_used', 'script_used',
       'storyboard_used', 'title_used', 'topic_used', 'updated_at', 'user_id',

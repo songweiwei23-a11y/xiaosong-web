@@ -6,21 +6,27 @@ import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, GENERATE_BTN, SECONDA
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
-import { useState, useEffect, useMemo } from "react";
-import { throwApiError } from "@/lib/api-error";
-import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
+import { useCreatorContext, invalidateCreatorContext } from "@/hooks/useCreatorContext";
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
 import { Award, Loader2, Sparkles, Save, Check, ChevronDown } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { saveGenerationHistory } from "@/lib/history";
+import { profileHistoryQuery } from '@/lib/profile-history';
 import { readDifyStream } from "@/lib/sse-stream";
+import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
+import { incomingNote } from "@/lib/creation-flow";
 import {
   DEAL_REASONS,
   APPLICABLE_MIN_SCORE,
   buildDealReasonPrompt,
   parseDealReasons,
   normalizeLegacyResult,
+  dealFormFromProfile,
 } from "@/lib/deal-reasons";
+import { postSafely } from '@/lib/safe-post';
 
 /*
  * 成交理由。改动的来龙去脉见 lib/deal-reasons.ts 顶部，这里只说页面：
@@ -49,7 +55,13 @@ interface Saved {
 }
 
 export default function DealReasonPage() {
-  const { context: creatorContext } = useCreatorContext();
+  const beginProfileRequest = useProfileRequestGuard();
+  const { context: creatorContext, loading: ctxLoading } = useCreatorContext();
+  /** 成交理由按档案分别存：切换档案，这一页跟着换成那个档案的 */
+  const profile = creatorContext.profile as Record<string, unknown> | null;
+  const profileId = (profile?.id as string | undefined) ?? null;
+  /** 表单是从档案带进来的（这个档案还没存过成交理由） */
+  const [fromProfile, setFromProfile] = useState(false);
 
   const [storeName, setStoreName] = useState("");
   const [storeType, setStoreType] = useState("餐饮美食");
@@ -64,6 +76,17 @@ export default function DealReasonPage() {
   const [saved, setSaved] = useState<Saved | null>(null);
   const [saving, setSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const restoredProfileRef = useRef<string>();
+  /*
+   * 别的板块「继续创作」带过来的内容（比如写好的脚本、内容定位）：
+   * 等下面把档案和已保存的表单回填完，再追加到「店铺特色」后面——先填会被回填盖掉（2026-10-02）
+   */
+  const incomingRef = useRef<HandoffPayload | null>(null);
+  const [handoffFrom, setHandoffFrom] = useState("");
+  useEffect(() => {
+    const data = takeHandoff();
+    if (data?.sourceContent) incomingRef.current = data;
+  }, []);
 
   // 从结果里现算适用 / 不适用。显示给用户的和自动勾上的是同一份
   const parsed = useMemo(() => parseDealReasons(analysisResult), [analysisResult]);
@@ -81,33 +104,52 @@ export default function DealReasonPage() {
    * 以及最近一次分析（结果区以它为准——可能分析了但还没保存）。
    */
   useEffect(() => {
+    if (ctxLoading) return;
+    const scope = profileId || "default";
+    if (restoredProfileRef.current === scope) return;
+    setIsLoading(true);
+    setAnalysisResult("");
+    setSaved(null);
+    setSelected([]);
     let cancelled = false;
     (async () => {
       try {
         const [savedRes, histRes] = await Promise.all([
-          fetch("/api/deal-reasons"),
-          fetch(`/api/script-history?taskType=${encodeURIComponent(HISTORY_TASK_TYPE)}&limit=1`),
+          fetch(`/api/deal-reasons${profileId ? `?profileId=${encodeURIComponent(profileId)}` : ""}`),
+          fetch(`/api/script-history?taskType=${encodeURIComponent(HISTORY_TASK_TYPE)}&limit=1${profileHistoryQuery(profileId)}`),
         ]);
         const s = savedRes.ok ? await savedRes.json() : null;
         const h = histRes.ok ? await histRes.json() : [];
         if (cancelled) return;
 
-        const latest = Array.isArray(h) ? h.find((x: any) => x.task_type === HISTORY_TASK_TYPE) : null;
+        // 最近一次分析：优先这个档案的；老记录没记档案，这个档案没分析过时才拿它顶上
+        const mine = Array.isArray(h) ? h.filter((x: any) => x.task_type === HISTORY_TASK_TYPE) : [];
+        const latest = mine[0] ?? null;
         const input = latest?.input_data && typeof latest.input_data === "object" ? latest.input_data : {};
+        const hasOwn = !!(s?.reasons?.length && !s?.legacy) || !!latest;
 
-        setStoreName(s?.storeName || input.storeName || "");
-        setStoreType(s?.storeType || input.storeType || "餐饮美食");
-        setStoreFeatures(s?.storeFeatures || input.storeFeatures || "");
-        setTargetCustomer(s?.targetCustomer || input.targetCustomer || "");
+        // 这个档案还没存过、也没分析过：用档案里已有的信息预填（店名、类型、特色、客人）
+        const seed = !hasOwn && profile ? dealFormFromProfile(profile) : null;
+        setFromProfile(!!seed);
+        setStoreName(seed?.storeName || s?.storeName || input.storeName || "");
+        setStoreType(seed?.storeType || s?.storeType || input.storeType || "餐饮美食");
+        const baseFeatures = seed?.storeFeatures || s?.storeFeatures || input.storeFeatures || "";
+        const incoming = incomingRef.current;
+        incomingRef.current = null;
+        // 店铺特色存库上限 2000 字，带入的那段给原有内容留出位置
+        setStoreFeatures(incoming ? [baseFeatures.slice(0, 600), incomingNote(incoming, 1200)].filter(Boolean).join("\n\n") : baseFeatures);
+        if (incoming) setHandoffFrom(incoming.from || "其他板块");
+        setTargetCustomer(seed?.targetCustomer || s?.targetCustomer || input.targetCustomer || "");
 
-        const result = normalizeLegacyResult(latest?.result || s?.analysisResult || "");
-        // 只在结果区还空着时回填，不覆盖用户这期间已经跑出来的新结果
+        const result = seed ? "" : normalizeLegacyResult(latest?.result || s?.analysisResult || "");
         setAnalysisResult((current) => current || result);
+        restoredProfileRef.current = scope;
 
-        if (s?.reasons?.length) {
+        if (s?.reasons?.length && !seed) {
           setSaved({ reasons: s.reasons, updatedAt: s.updatedAt, storeName: s.storeName, storeType: s.storeType });
           setSelected(s.reasons);
         } else {
+          setSaved(null);
           setSelected(parseDealReasons(result).applicable.map((r) => r.label));
         }
       } catch (e) {
@@ -119,9 +161,12 @@ export default function DealReasonPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // 只跟着"换了哪个档案"走；档案对象每次取回来都是新引用，放进依赖会反复重置表单
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctxLoading, profileId]);
 
   const handleAnalyze = async () => {
+    const isCurrent = beginProfileRequest();
     if (!storeName.trim() || !storeFeatures.trim()) {
       notify("请填写店铺名称和特色描述");
       return;
@@ -142,20 +187,20 @@ export default function DealReasonPage() {
         targetCustomer,
       });
 
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskType: "成交理由", category: "成交理由", topic: query }),
+        body: JSON.stringify({ taskType: "成交理由", category: "成交理由", profileId, topic: query }),
       });
       if (!response.ok) await throwApiError(response, "分析失败");
 
       const full = await readDifyStream(response, {
-        onChunk: (_piece, text) => setAnalysisResult(text),
+        onChunk: (_piece, text) => { if (isCurrent()) setAnalysisResult(text); },
       });
 
       // 只自动勾上适用的
       const applicable = parseDealReasons(full).applicable.map((r) => r.label);
-      setSelected(applicable);
+      if (isCurrent()) setSelected(applicable);
       if (applicable.length === 0) {
         notify("没有分析出适用的成交理由，可以把店铺特色写得更具体些再试");
       }
@@ -163,7 +208,7 @@ export default function DealReasonPage() {
       if (full.trim()) {
         await saveGenerationHistory(
           HISTORY_TASK_TYPE,
-          { storeName, storeType, storeFeatures, targetCustomer },
+          { storeName, storeType, storeFeatures, targetCustomer, profileId },
           full
         );
       }
@@ -178,13 +223,14 @@ export default function DealReasonPage() {
     setSelected((prev) => (prev.includes(label) ? prev.filter((x) => x !== label) : [...prev, label]));
 
   const handleSave = async () => {
+    const isCurrent = beginProfileRequest();
     if (selected.length === 0) {
       notify("至少选一个成交理由");
       return;
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/deal-reasons", {
+      const res = await postSafely("/api/deal-reasons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -194,12 +240,24 @@ export default function DealReasonPage() {
           targetCustomer,
           analysisResult,
           selectedReasons: selected,
+          profileId,
         }),
       });
       if (!res.ok) await throwApiError(res, "保存失败");
       const data = await res.json();
-      setSaved({ reasons: data.reasons, updatedAt: new Date().toISOString(), storeName, storeType });
-      notify(`已保存 ${data.reasons.length} 个成交理由，选题、脚本、标题会自动带上`);
+      if (isCurrent()) {
+        setSaved({ reasons: data.reasons, updatedAt: new Date().toISOString(), storeName, storeType });
+        setFromProfile(false);
+      }
+      // 各板块缓存的上下文作废，下次生成就用上新的成交理由
+      invalidateCreatorContext();
+      notify(
+        profileId && !data.perProfile
+          ? "已保存，但数据库尚未启用按档案保存，请先完成数据库升级"
+          : data.profileSynced
+          ? `已保存 ${data.reasons.length} 个成交理由，并同步进「${String(profile?.profile_name ?? "档案")}」的卖点；选题、脚本、标题、二创会自动带上`
+          : `已保存 ${data.reasons.length} 个成交理由，选题、脚本、标题会自动带上`
+      );
     } catch (error: any) {
       notify(error.message || "保存失败");
     } finally {
@@ -207,7 +265,7 @@ export default function DealReasonPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || ctxLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-yellow-500" />
@@ -227,7 +285,7 @@ export default function DealReasonPage() {
         <>
           <PageHeader
             title="成交理由"
-            subtitle="AI 判断 17 个成交理由哪些适用，保存后选题、脚本、标题自动带上"
+            subtitle="AI 判断 17 个成交理由哪些适用；按账号档案分别保存，并同步进档案，各板块自动带上"
           />
 
           {saved && (
@@ -236,9 +294,15 @@ export default function DealReasonPage() {
                 已保存 {saved.reasons.length} 个：{saved.reasons.join("、")}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                {saved.storeName}（{saved.storeType}）· 选题、脚本、标题会自动带上
+                {profile ? `属于「${String(profile.profile_name ?? "当前档案")}」· ` : ""}
+                {saved.storeName}（{saved.storeType}）· 选题、脚本、标题、二创会自动带上
               </p>
             </div>
+          )}
+          {fromProfile && (
+            <p className="rounded-xl bg-primary/[0.06] px-3.5 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
+              「{String(profile?.profile_name ?? "当前档案")}」还没存过成交理由，已经把档案里的店名、品类、卖点、客人带进下面，检查一下就能分析。
+            </p>
           )}
 
           <CollapsibleSection title="店铺信息" defaultOpen={!hasResult}>
@@ -260,7 +324,7 @@ export default function DealReasonPage() {
               </select>
             </Field>
 
-            <Field label="店铺特色" required hint="写得越具体，分析越准" stacked>
+            <Field label="店铺特色" required hint={handoffFrom ? `已带入来自「${handoffFrom}」的内容，直接点分析就会一并纳入` : "写得越具体，分析越准"} stacked>
               <textarea
                 value={storeFeatures}
                 onChange={(e) => setStoreFeatures(e.target.value)}

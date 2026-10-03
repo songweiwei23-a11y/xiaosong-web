@@ -1,16 +1,27 @@
 'use client'
+import type { HandoffPayload } from '@/lib/handoff';
+import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
+import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
 
-import { useEffect, useState } from 'react'
+
+import { useEffect, useState, useRef } from 'react'
 import { notify } from '@/components/ui/feedback'
-import { throwApiError } from '@/lib/api-error'
+import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId } from '@/lib/active-profile'
+import { profileHistoryQuery } from '@/lib/profile-history';
 import { useCreatorContext } from '@/hooks/useCreatorContext'
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { profileSearchHints } from '@/lib/profile-summary'
 import { buildContextBlock } from '@/lib/creator-context'
 import { ContextBadge } from '@/components/workspace/ContextBadge'
+import { ContentMixBar } from '@/components/workspace/ContentMix'
+import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
+import { taboosPromptBlock } from '@/lib/taboos'
 import { Markdown } from '@/components/markdown'
+import { CreationLinks } from '@/components/workspace/CreationLinks'
 import { GROWTH_TACTICS, SELECTION_MATRIX } from '@/lib/growth-tactics'
 import { OPENING_CARDS, OPENING_CATEGORIES } from '@/lib/opening-cards'
 import {
@@ -28,6 +39,8 @@ import {
   type TacticTestStat,
 } from '@/lib/growth-standards'
 import { takeHandoff, putHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
+import { creationReference, continuationRules } from '@/lib/creation-continuation'
+import { buildCreationHandoff } from '@/lib/creation-flow'
 import { createWork, recordStage } from '@/lib/works'
 import { useWorkResume } from '@/hooks/useWorkResume'
 import { latestOf, workScriptBody, workIdFromUrl, workStageUrl } from '@/lib/resume'
@@ -45,13 +58,18 @@ import { useRouter } from 'next/navigation'
 type Tab = 'plan' | 'opening'
 
 export default function GrowthPage() {
-  const { context } = useCreatorContext()
+  const beginProfileRequest = useProfileRequestGuard();
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
+  const { context, loading: contextLoading } = useCreatorContext()
+  const restoredProfileRef = useRef<string>()
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('plan')
 
   // 起号方案
   const [pickedTactics, setPickedTactics] = useState<string[]>([])
   const [planNotes, setPlanNotes] = useState('')
+  // 起号期配比：这次临时改的（null = 跟档案 / 系统推荐）
+  const [mixOverride, setMixOverride] = useState<MixSetting | null>(null)
   const [planResult, setPlanResult] = useState('')
 
   // 开篇钩子
@@ -77,6 +95,9 @@ export default function GrowthPage() {
   const [recentTopics, setRecentTopics] = useState<string[]>([])
   const [recentScripts, setRecentScripts] = useState<Array<{ title: string; body: string }>>([])
   const [handoffFrom, setHandoffFrom] = useState('')
+  const [originContent, setOriginContent] = useState('')
+  const [referenceContent, setReferenceContent] = useState('')
+  const incomingCreation = useRef(false)
   // 选题页整批带过来的选题。优先于从历史里捞的那批
   const [handoffTopics, setHandoffTopics] = useState<string[]>([])
   /*
@@ -101,12 +122,13 @@ export default function GrowthPage() {
   const [contentPlan, setContentPlan] = useState('')
   const profileKey = context.profile?.id || getActiveProfileId() || ''
   // 档案禁忌：和它冲突的打法（比如"不揭秘"对「内幕揭秘」）交给 AI 之前就剔掉
-  const restrictions = [context.profile?.content_restrictions, context.profile?.avoid_content]
+  // 行业禁忌也算（比如宠物行业不能整蛊 → 拿掉「整蛊」这一计）
+  const restrictions = [context.profile?.content_restrictions, context.profile?.avoid_content, context.profile ? taboosPromptBlock(context.profile) : '']
     .filter(Boolean)
     .join('；')
 
   useEffect(() => {
-    if (!profileKey) return
+    if (!profileKey) { setContentPlan(""); return }
     let alive = true
     fetch(`/api/positioning?profileId=${profileKey}&type=${encodeURIComponent('内容定位')}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -148,7 +170,11 @@ export default function GrowthPage() {
     }
 
     const data = takeHandoff()
+    if (data) setIncomingSetup(data)
+    if (data) setOriginContent(data.originContent || data.sourceContent || '')
     if (!data) return
+    incomingCreation.current = true
+    if (data.sourceContent) setReferenceContent(creationReference(data))
     if (data.tab === 'opening') setTab('opening')
     if (data.topic) setTopic(data.topic)
     if (data.workId) {
@@ -170,6 +196,17 @@ export default function GrowthPage() {
    * 是白白把已经有的东西丢掉。
    */
   useEffect(() => {
+    if (contextLoading) return
+    let cancelled = false
+    const scope = context.profile?.id || 'default'
+    if (restoredProfileRef.current && restoredProfileRef.current !== scope) {
+      setPlanResult(''); setOpeningResult(''); setPickedTactics([]); setPickedCards([])
+      setPlanNotes(''); setTopic(''); setCurrentOpening(''); setCandidates([])
+      setRecentTopics([]); setRecentScripts([]); setTested([]); setContentPlan('')
+      setOpeningWorkId(null); setOpeningWorkTitle(''); setHandoffTopics([]); setHandoffFrom('')
+      setReferenceContent(''); setOriginContent(''); incomingCreation.current = false
+    }
+    restoredProfileRef.current = scope
     const restore = async () => {
       try {
         /*
@@ -182,11 +219,11 @@ export default function GrowthPage() {
          */
         const need = ['起号方案', '开篇钩子', '选题策划', '脚本生成']
         const res = await fetch(
-          `/api/script-history?taskType=${encodeURIComponent(need.join(','))}`
+          `/api/script-history?taskType=${encodeURIComponent(need.join(','))}${profileHistoryQuery(context.profile?.id || null)}`
         )
         if (!res.ok) return
         const rows = await res.json()
-        if (!Array.isArray(rows)) return
+        if (cancelled || !Array.isArray(rows)) return
 
         // 按打法统计已拍条数，给下面的「测试进度」和 AI 推荐用
         setTested(summarizeTacticTests(rows))
@@ -196,7 +233,7 @@ export default function GrowthPage() {
          * 打开的是某个作品（?work=）时，开篇这一侧由 useWorkResume 填，这里让路——
          * 不然会把"最近一条开篇"（多半是别的作品的）塞进来冒充。
          */
-        const open = workIdFromUrl() ? null : rows.find((x: any) => x.task_type === '开篇钩子')
+        const open = workIdFromUrl() || incomingCreation.current ? null : rows.find((x: any) => x.task_type === '开篇钩子')
         if (plan?.result) setPlanResult((c) => c || plan.result)
         if (open?.result) setOpeningResult((c) => c || open.result)
         // 恢复上次的开篇时，连它属于哪个作品一起接上
@@ -225,7 +262,10 @@ export default function GrowthPage() {
           if (typeof planIn.notes === 'string') setPlanNotes((c) => c || planIn.notes)
         }
         const openIn = open?.input_data
+        if (!incomingCreation.current) setRestoredSettings(openIn?.creationSettings || {})
+        if (typeof openIn?.originContent === 'string') setOriginContent(c => c || openIn.originContent)
         if (openIn && typeof openIn === 'object') {
+          if (typeof openIn.referenceContent === 'string') setReferenceContent((c) => c || openIn.referenceContent);
           if (typeof openIn.topic === 'string') setTopic((c) => c || openIn.topic)
           if (typeof openIn.currentOpening === 'string') {
             setCurrentOpening((c) => c || openIn.currentOpening)
@@ -259,7 +299,15 @@ export default function GrowthPage() {
       }
     }
     restore()
-  }, [])
+    return () => { cancelled = true }
+  }, [contextLoading, context.profile?.id])
+
+  const [restoredSettings, setRestoredSettings] = useState({});
+  const autoSetup = useAutoCreationSetup(incomingSetup, context, contextLoading, s => {
+    setTopic(s.topic ?? ''); setPickedCards(s.openingCards || []); if (s.openingLine) setCurrentOpening(s.openingLine);
+    if (s.tactic) setPickedTactics([s.tactic]);
+  });
+  const currentSettings = resolveCreationSettings({ from: '开篇钩子', sourceContent: referenceContent || topic, settings: mergeCreationSettings(restoredSettings, autoSetup.settings, { topic, openingCards: pickedCards }) }, context);
 
   const run = async (
     taskType: string,
@@ -270,24 +318,27 @@ export default function GrowthPage() {
      * 生成成功后决定挂到哪个作品上。放在成功之后才调，
      * 和脚本页一样：不会攒下一堆没生成出东西的空作品
      */
-    resolveWork?: () => Promise<string | null>
+    resolveWork?: (profileId: string | null, isCurrent: () => boolean) => Promise<string | null>
   ) => {
+    if (contextLoading || autoSetup.preparing) { notify("正在承接原方案，请稍候"); return }
+    const isCurrent = beginProfileRequest();
+    const generationProfileId = context.profile?.id || null;
     setBusy(true)
     setResult('')
     try {
-      const res = await fetch('/api/dify/stream', {
+      const res = await fetchGeneration('/api/dify/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // 写成显式 taskType: taskType，不用简写——全仓库扫描按
         // `taskType:` 匹配，简写会被判成"没传"，误报久了就没人当回事了
         // 赛道、地域进检索词：联网搜索才能搜到这个号相关的行情，不是通用文章
-        body: JSON.stringify({ taskType: taskType, profileId: getActiveProfileId(), query, ...profileSearchHints(context.profile) }),
+        body: JSON.stringify({ taskType: taskType, profileId: generationProfileId, creationSettings: currentSettings, query: query + creationSettingsBlock(currentSettings), ...profileSearchHints(context.profile) }),
       })
       if (!res.ok) await throwApiError(res)
-      const full = await readDifyStream(res, { onChunk: (_p, all) => setResult(all) })
+      const full = await readDifyStream(res, { onChunk: (_p, all) => { if (isCurrent()) setResult(all); } })
       if (full.trim()) {
-        const workId = resolveWork ? await resolveWork() : null
-        await saveGenerationHistory(taskType, inputs, full, workId)
+        const workId = resolveWork ? await resolveWork(generationProfileId, isCurrent) : null
+        await saveGenerationHistory(taskType, { ...inputs, creationSettings: currentSettings, profileId: generationProfileId }, full, workId)
         if (workId) await recordStage(workId, taskType)
       }
     } catch (e: unknown) {
@@ -300,15 +351,17 @@ export default function GrowthPage() {
 
   /** 先要候选。30 秒，选错了成本也小 */
   const askCandidates = async () => {
+    if (contextLoading) return
+    const isCurrent = beginProfileRequest();
     setPicking(true)
     setCandidates([])
     try {
-      const res = await fetch('/api/dify/stream', {
+      const res = await fetchGeneration('/api/dify/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           taskType: '起号方案',
-          profileId: getActiveProfileId(),
+          profileId: context.profile?.id || null,
           ...profileSearchHints(context.profile),
           query: buildTacticPickPrompt({
             contextBlock: buildContextBlock(context, 'growth'),
@@ -322,10 +375,10 @@ export default function GrowthPage() {
       })
       if (!res.ok) await throwApiError(res)
       const full = await readDifyStream(res, {
-        onChunk: (_p, all) => setCandidates(parseTacticCandidates(all)),
+        onChunk: (_p, all) => { if (isCurrent()) setCandidates(parseTacticCandidates(all)); },
       })
       const parsed = parseTacticCandidates(full)
-      setCandidates(parsed)
+      if (isCurrent()) setCandidates(parsed)
       if (parsed.length === 0) notify('没解析出候选，可以直接点下面生成完整方案')
     } catch (e: unknown) {
       console.error('推荐失败:', e)
@@ -344,9 +397,10 @@ export default function GrowthPage() {
         restrictions,
         notes: planNotes,
         picked: pickedTactics.length ? pickedTactics : undefined,
+        mixBlock: mixPromptBlock(resolveMix(context.profile, mixOverride, planNotes)),
       }),
       setPlanResult,
-      { picked: pickedTactics, notes: planNotes }
+      { picked: pickedTactics, notes: planNotes, contentMix: resolveMix(context.profile, mixOverride, planNotes).mix }
     )
 
   const genOpening = () => {
@@ -361,18 +415,18 @@ export default function GrowthPage() {
         topic,
         currentOpening,
         picked: pickedCards.length ? pickedCards : undefined,
-      }),
+      }) + (referenceContent.trim() ? `\n【已有创作参考】\n${referenceContent}${continuationRules('growth')}` : ''),
       setOpeningResult,
-      { topic, currentOpening, picked: pickedCards },
+      { topic, currentOpening, picked: pickedCards, referenceContent, originContent },
       /*
        * 挂到作品上：带着作品来的、主题没换就用它；否则按这条选题建一个
        * （同题的进行中作品服务端会直接复用，不会建出同名的第二个）。
        */
-      async () => {
+      async (profileId, isCurrent) => {
         if (currentOpeningWork) return currentOpeningWork
         const title = topic.trim()
-        const wid = await createWork(title, getActiveProfileId())
-        if (wid) {
+        const wid = await createWork(title, profileId)
+        if (wid && isCurrent()) {
           setOpeningWorkId(wid)
           setOpeningWorkTitle(title)
         }
@@ -385,12 +439,15 @@ export default function GrowthPage() {
    * 打开某个作品（地址带 ?work=&tab=opening）：落在开篇标签上，选题填进来；
    * 有脚本的截出开头那几句当"现有开头"；做过开篇的把最新一版和当时圈的卡调出来。
    */
-  useWorkResume((work) => {
+  useWorkResume((work, setup) => {
+    setIncomingSetup(setup);
+    setOriginContent(setup.originContent || '');
+    setReferenceContent(creationReference(setup));
     setTab('opening')
     setOpeningWorkId(work.id)
     setOpeningWorkTitle(work.title)
     setTopic(work.title)
-    setHandoffFrom('我的作品')
+    setHandoffFrom('创作进度')
     const op = latestOf(work, '开篇钩子')
     if (op) {
       setOpeningResult(op.result)
@@ -399,7 +456,7 @@ export default function GrowthPage() {
       const cur = op.input_data?.currentOpening
       if (typeof cur === 'string' && cur) setCurrentOpening(cur)
     } else {
-      const script = workScriptBody(work)
+      const script = setup.settings?.workingScript || workScriptBody(work)
       if (script) setCurrentOpening((c) => c || extractOpening(script))
     }
   })
@@ -442,6 +499,7 @@ export default function GrowthPage() {
         </div>
 
         <ContextBadge board="script" className="mb-5" />
+        <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
 
         {tab === 'plan' ? (
           <div className="glass-panel mb-6 rounded-2xl p-4 sm:p-6">
@@ -582,9 +640,18 @@ export default function GrowthPage() {
               className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
 
+            {/* 起号期配比：方案里「起号期内容配比」那一节按它写 */}
+            <ContentMixBar
+              className="mt-3"
+              profile={context.profile as Record<string, unknown> | null}
+              override={mixOverride}
+              onOverride={setMixOverride}
+              goal={planNotes}
+            />
+
             <button
               onClick={genPlan}
-              disabled={busy}
+              disabled={autoSetup.preparing || contextLoading || busy}
               className="mt-4 w-full rounded-xl bg-primary py-2.5 text-[13.5px] font-medium text-primary-foreground disabled:opacity-50"
             >
               {busy ? `正在挑打法… ${timer}` : '生成起号方案'}
@@ -650,6 +717,10 @@ export default function GrowthPage() {
               </div>
             )}
 
+            {referenceContent && <div className="mb-4">
+              <label className="mb-2 block text-[13px] font-medium">来自{handoffFrom}的完整参考</label>
+              <textarea aria-label="开篇创作参考" value={referenceContent} onChange={e => setReferenceContent(e.target.value)} rows={4} className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px]" />
+            </div>}
             <label className="mb-2 block text-[13px] font-medium text-foreground">
               这条内容讲什么 <span className="text-destructive">*</span>
             </label>
@@ -717,7 +788,7 @@ export default function GrowthPage() {
 
             <button
               onClick={genOpening}
-              disabled={busy}
+              disabled={autoSetup.preparing || contextLoading || busy}
               className="mt-4 w-full rounded-xl bg-primary py-2.5 text-[13.5px] font-medium text-primary-foreground disabled:opacity-50"
             >
               {busy ? `正在写开头… ${timer}` : '生成开篇钩子'}
@@ -797,13 +868,14 @@ export default function GrowthPage() {
                               return
                             }
                             putHandoff({
+                              ...buildCreationHandoff('growth', 'script', o.line, { topic, settings: mergeCreationSettings(currentSettings, { openingLine: o.line, openingCards: [o.card] }), originContent: originContent || referenceContent }),
                               from: '开篇钩子',
                               topic,
                               openingLine: o.line,
                               openingCards: [o.card],
                               // 开头许了什么、正文要兑现什么，一起带过去，
                               // 不然脚本很容易开头一套、正文另一套
-                              note: o.deliver ? `开头承诺的，正文必须兑现：${o.deliver}` : undefined,
+                              note: `${buildCreationHandoff('growth', 'script', o.line, { topic, settings: mergeCreationSettings(currentSettings, { openingLine: o.line, openingCards: [o.card] }), originContent: originContent || referenceContent }).note}\n开头承诺的，正文必须兑现：${o.deliver || '承接原稿'}`,
                               // 作品一路带下去，写出来的脚本才挂得回同一条内容
                               workId: currentOpeningWork ?? undefined,
                             })
@@ -849,7 +921,7 @@ export default function GrowthPage() {
                           notify('没认出用的是哪一计，先在上面圈一个')
                           return
                         }
-                        putHandoff({ from: '起号打法', tactic: picked[0] })
+                        putHandoff({ ...buildCreationHandoff('growth', 'topic', result, { settings: currentSettings }), from: '起号打法', tactic: picked[0] })
                         router.push('/dashboard/topic')
                       }}
                       className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
@@ -861,6 +933,7 @@ export default function GrowthPage() {
                       onClick={() => {
                         const cards = pickedCards.length ? pickedCards : detectOpeningCards(result)
                         putHandoff({
+                          ...buildCreationHandoff('growth', 'title', result, { topic, settings: mergeCreationSettings(currentSettings, { openingLine: openings[0]?.line, openingCards: pickedCards }), originContent: originContent || referenceContent }),
                           from: '开篇钩子',
                           topic,
                           openingCards: cards.slice(0, 3),
@@ -876,6 +949,13 @@ export default function GrowthPage() {
                     </button>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* 继续创作 / 收藏：放在最底部（2026-10-02，原来在正文上面，用户容易看不到） */}
+            {result && !busy && (
+              <div className="mt-6">
+                <CreationLinks body={result} context={{ settings: mergeCreationSettings(currentSettings, tab === 'opening' ? { openingLine: openings[0]?.line, openingCards: openings[0] ? [openings[0].card] : pickedCards } : {}), topic: tab === 'opening' ? topic : undefined, workId: tab === 'opening' ? currentOpeningWork ?? undefined : undefined, originContent: tab === 'opening' ? originContent || referenceContent : undefined }} />
               </div>
             )}
           </div>

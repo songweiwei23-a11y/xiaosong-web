@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { checkQuota } from "@/lib/history";
+import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { profileHistoryQuery } from '@/lib/profile-history';
 
 interface GenerationHistory {
   id: string;
@@ -20,6 +22,12 @@ interface UseGenerationPageOptions {
 
 export function useGenerationPage(options: UseGenerationPageOptions) {
   const { taskType, historyApiPath = "/api/script-history" } = options;
+  const { context, loading: contextLoading } = useCreatorContext();
+  const resultScope = contextLoading ? undefined : context.profile?.id || 'default';
+  const currentScopeRef = useRef(resultScope);
+  currentScopeRef.current = resultScope;
+  const scopeRef = useRef<string>();
+  const requestRef = useRef(0);
 
   const [history, setHistory] = useState<GenerationHistory[]>([]);
   const [showDialog, setShowDialog] = useState(false);
@@ -46,9 +54,19 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
    * 之前删除那行是 `${historyApiPath}?id=`，如果调用方自己在路径上带了
    * 查询串，就会拼出两个 ?，删除直接失效。
    */
-  const listUrl = `${historyApiPath}?taskType=${encodeURIComponent(taskType)}`;
+  const listUrl = `${historyApiPath}?taskType=${encodeURIComponent(taskType)}${profileHistoryQuery(context.profile?.id || null)}`;
 
   const loadHistory = useCallback(async () => {
+    if (!resultScope || resultScope !== currentScopeRef.current) return;
+    if (scopeRef.current !== resultScope) {
+      scopeRef.current = resultScope;
+      restoredRef.current = false;
+      setLastResult('');
+      setShowDialog(false);
+      setDialogInitialContent('');
+      setHistory([]);
+    }
+    const request = ++requestRef.current;
     try {
       const response = await fetch(listUrl);
       // 404 也走这里。分镜页和审稿页就是这么栽的：它们指向
@@ -57,6 +75,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
       // 控制台干净、页面也不报错，只表现为"换页回来内容没了"。
       if (!response.ok) return;
       const data = await response.json();
+      if (request !== requestRef.current) return;
       if (Array.isArray(data)) {
         const mine = data.filter((item: any) => item.task_type === taskType);
         setHistory(mine);
@@ -69,7 +88,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
     } catch (error) {
       console.error("加载历史记录失败:", error);
     }
-  }, [listUrl, taskType]);
+  }, [listUrl, taskType, resultScope]);
 
   const deleteHistory = useCallback(
     async (id: string) => {
@@ -126,15 +145,19 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
 
   useEffect(() => {
     loadHistory();
+    return () => { ++requestRef.current; };
+  }, [loadHistory]);
+
+  useEffect(() => {
     const loadQuota = async () => {
       const q = await checkQuota();
       setQuota(q);
     };
     loadQuota();
-  }, [loadHistory]);
+  }, []);
 
   return {
-    history,
+    history: scopeRef.current === resultScope ? history : [],
     loadHistory,
     deleteHistory,
     showDialog,
@@ -144,6 +167,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
     quota,
     copyToClipboard,
     downloadAsFile,
-    lastResult,
+    lastResult: scopeRef.current === resultScope ? lastResult : '',
+    resultScope,
   };
 }

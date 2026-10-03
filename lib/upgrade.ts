@@ -57,6 +57,7 @@ const UNITS: Record<string, string> = {
   interview: '份前采建档',
   breakdown: '条爆款拆解',
   remix: '次跨行业二创',
+  direction: '份创作方向',
 };
 
 /**

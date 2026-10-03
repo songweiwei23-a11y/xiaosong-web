@@ -594,7 +594,8 @@ describe('接口', () => {
     const page = readCode('app/dashboard/interview/page.tsx');
     expect(page).toMatch(/<ReviseChat[\s\S]*onApply=\{onRevised\}/);
     expect(page).toMatch(/applyRevision\(extraction, drafts, rev, existing\)/);
-    expect(readCode('components/interview/ReviseChat.tsx')).toMatch(/fetch\("\/api\/interview\/revise"/);
+    // 走 postSafely：带着整份提取结果可能超过 8KB，线路差时会被切断（lib/safe-post）
+    expect(readCode('components/interview/ReviseChat.tsx')).toMatch(/postSafely\("\/api\/interview\/revise"/);
   });
 
   it('写入只收白名单里的列，不把请求体整个塞进库（user_id 不能被改）', () => {
@@ -605,7 +606,8 @@ describe('接口', () => {
   });
 
   it('迁移没跑时，档案字段照样写进去（只是原文存不下）', () => {
-    expect(save).toMatch(/\/interview_\/\.test\(error\.message/);
+    // 排除清单那列（taboo_settings）没建时同样退回只写档案字段（2026-10-02）
+    expect(save).toMatch(/\/interview_\|taboo_settings\/\.test\(error\.message/);
     expect(save).toMatch(/notesSaved = false/);
   });
 });
@@ -682,7 +684,7 @@ describe('接到全站', () => {
     expect(SUBSCRIPTION_PLANS.free.quotas.interview).toBe(3);
     expect(SUBSCRIPTION_PLANS.basic.quotas.interview).toBe(SUBSCRIPTION_PLANS.basic.quotas.script);
     expect(SUBSCRIPTION_PLANS.pro.quotas.interview).toBe(SUBSCRIPTION_PLANS.pro.quotas.script);
-    expect(SUBSCRIPTION_PLANS.enterprise.quotas.interview).toBe(-1);
+    expect(SUBSCRIPTION_PLANS.enterprise.quotas.interview).toBe(300);
   });
 
   it('迁移把两张表要的列都加上了', () => {

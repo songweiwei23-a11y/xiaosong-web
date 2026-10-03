@@ -71,19 +71,21 @@ describe('后台', () => {
   it('漏斗接口要管理员；后三步按同一批注册的人算', () => {
     const api = readCode('app/api/admin/funnel/route.ts');
     expect(api).toContain('requireAdmin()');
-    expect(api).toMatch(/filter\(\(id\) => signups\.has\(id\)\)/);
+    expect(api).toContain('loadFunnel');
+    expect(readCode('lib/admin-monitor-data.ts')).toMatch(/filter\(\(id\) => signups\.has\(id\)\)/);
   });
 
   it('监控大屏上有漏斗', () => {
-    expect(readCode('app/admin/monitor/page.tsx')).toContain('<FunnelPanel />');
+    expect(readCode('app/admin/monitor/page.tsx')).toContain('<FunnelPanel revision={revision} />');
   });
 });
 
 describe('隐私政策如实写了', () => {
-  it('写明匿名访客编号、不记 IP；写明运营人员能看生成内容；不再说"没有任何访问统计"', () => {
+  it('写明匿名访客编号、统计不存 IP 但接口用 IP 限速；披露运营查看与访问统计', () => {
     const privacy = readSource('app/privacy/page.tsx');
     expect(privacy).toContain('随机生成的匿名编号');
-    expect(privacy).toContain('不记录你的 IP 地址');
+    expect(privacy).toContain('统计数据不保存 IP 地址');
+    expect(privacy).toContain('接口会短暂使用 IP 限制请求频率');
     expect(privacy).toContain('运营人员可以在后台查看各账号的使用记录和生成内容');
     expect(privacy).not.toContain('本站没有使用任何访问统计');
   });

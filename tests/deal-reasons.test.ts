@@ -6,6 +6,9 @@ import {
   parseDealReasons,
   toReasonLabels,
   normalizeLegacyResult,
+  reasonsToSellingPoints,
+  mergeSellingPoints,
+  dealFormFromProfile,
 } from '@/lib/deal-reasons';
 import { readCode } from './helpers/source';
 
@@ -184,5 +187,73 @@ describe('页面与接口', () => {
 
   it('选题页用的也是同一份 17 个理由', () => {
     expect(readCode('app/dashboard/topic/constants.ts')).toContain('@/lib/deal-reasons');
+  });
+});
+
+/**
+ * 成交理由和档案同步（2026-09-30，产品方："成交理由板块的信息要与档案同步、保持记忆"）。
+ * 原来按用户存一份：两个号共用，切到另一个档案看到的是上一家店的；存了也进不了档案。
+ */
+describe('和档案同步', () => {
+  const api = readCode('app/api/deal-reasons/route.ts');
+  const page = readCode('app/dashboard/deal-reason/page.tsx');
+  const hook = readCode('hooks/useCreatorContext.ts');
+
+  it('勾的理由并进档案的「凭什么让人选你」：原来的在前、去重，性价比换成档案里的说法', () => {
+    expect(reasonsToSellingPoints(['性价比', '专业强'])).toEqual(['性价比高', '专业强']);
+    expect(mergeSellingPoints('味道好、性价比高', ['性价比高', '专业强'])).toBe('味道好、性价比高、专业强');
+    expect(mergeSellingPoints(['味道好'], ['味道好'])).toBe('味道好');
+    expect(mergeSellingPoints(null, ['专业强'])).toBe('专业强');
+  });
+
+  it('档案还没存过成交理由：用档案预填店名、类型、特色、客人', () => {
+    const f = dealFormFromProfile({
+      profile_name: '锦园地摊串串',
+      product_category: ['川味串串火锅', '川菜'],
+      account_track: ['美食烹饪'],
+      unique_selling_point: '一元一串',
+      target_age: ['25-30岁'],
+      target_region: '成都',
+      interview_highlights: '老板做了 9 年川菜\n晚上 6 点出摊',
+    });
+    expect(f.storeName).toBe('锦园地摊串串');
+    expect(f.storeType).toBe('餐饮美食');
+    expect(f.storeFeatures).toContain('卖的：川味串串火锅、川菜');
+    expect(f.storeFeatures).toContain('卖点：一元一串');
+    expect(f.storeFeatures).toContain('老板做了 9 年川菜');
+    expect(f.targetCustomer).toBe('25-30岁，成都');
+    expect(dealFormFromProfile({}).storeType).toBe('其他');
+  });
+
+  it('接口按档案读写：读自己的 → 老数据顶上；写自己的 → 认领老数据 → 新建；列没加时退回每人一条', () => {
+    expect(api).toMatch(/\.eq\('profile_id', profileId\)/);
+    expect(api).toMatch(/\.is\('profile_id', null\)/);
+    expect(api).toMatch(/missingProfileColumn/);
+    expect(readCode('supabase/migrations/20260930_deal_reasons_profile.sql')).toMatch(/add column if not exists profile_id uuid references public\.user_profiles/);
+  });
+
+  it('保存后同步进档案，写档案也按本人过滤', () => {
+    const post = api.slice(api.indexOf('export async function POST'));
+    expect(post).toMatch(/from\('user_profiles'\)\.update\(\{ unique_selling_point: merged \}\)\.eq\('id', profileId\)\.eq\('user_id', guard\.userId!\)/);
+  });
+
+  it('页面：跟着侧边栏的档案走，保存带上档案、存完让各板块重新取', () => {
+    expect(page).toMatch(/useCreatorContext\(\)/);
+    expect(page).toMatch(/fetch\(\x60\/api\/deal-reasons/);
+    expect(page).toMatch(/\?profileId=\$\{encodeURIComponent\(profileId\)\}/);
+    expect(page).toMatch(/profileId/);
+    expect(page).toMatch(/invalidateCreatorContext\(\)/);
+    expect(page).toMatch(/dealFormFromProfile\(/);
+  });
+
+  it('各板块取的是当前档案那一份成交理由，不是用户最新的一份', () => {
+    expect(hook).toMatch(/\/api\/deal-reasons\?profileId=\$\{encodeURIComponent\(profileId\)\}/);
+    expect(hook).toMatch(/\/api\/deal-reasons\?profileId=\$\{encodeURIComponent\(profile\.id\)\}/);
+    expect(hook).not.toMatch(/fetch\("\/api\/deal-reasons"\)/);
+  });
+
+  it('定位、简报也不拿别的档案的顶上（只退回没挂档案的老数据）', () => {
+    expect(hook).not.toMatch(/own \|\| list\[0\]/);
+    expect(hook.match(/list\.find\(\(x: any\) => !x\.profile_id\)/g)?.length).toBe(2);
   });
 });

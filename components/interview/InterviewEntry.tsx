@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, FileSearch, Trash2 } from "lucide-react";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { invalidateCreatorContext } from "@/hooks/useCreatorContext";
+import { postSafely } from "@/lib/safe-post";
 
 /**
  * 新建、编辑档案页顶上的入口：有前采资料的，不用一格格手填。
@@ -41,7 +42,7 @@ export function InterviewNotesCard({ profile, onCleared }: { profile: Record<str
   const clear = async () => {
     const ok = await confirmDialog("删掉这份档案里存的前采原文和要点？档案里已经填好的各项不受影响。", { confirmText: "删除", tone: "danger" });
     if (!ok) return;
-    const res = await fetch("/api/profiles", {
+    const res = await postSafely("/api/profiles", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: profile.id, interview_notes: null, interview_highlights: null }),

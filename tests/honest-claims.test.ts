@@ -220,10 +220,11 @@ describe('套餐里不卖没做的权益', () => {
     }
   });
 
-  it('「十二大功能」这个数字是真的（09-29 加了前采建档、09-30 加了拆解爆款和跨行业二创）', async () => {
+  it('13 个额度类别与全部创作板块开放的权益一致', async () => {
     const { COUNTED_FEATURES, planSellingPoints } = await import('@/lib/config/plans');
-    expect(COUNTED_FEATURES.length).toBe(12);
-    expect(planSellingPoints('basic')).toContain('十二大功能全部开放');
+    // 2026-10-02 加了创作方向（direction_used），12 → 13
+    expect(COUNTED_FEATURES.length).toBe(13);
+    expect(planSellingPoints('basic')).toContain('全部创作板块开放');
   });
 });
 

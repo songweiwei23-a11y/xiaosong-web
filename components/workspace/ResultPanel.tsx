@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { usePathname } from 'next/navigation';
 import { Markdown } from "@/components/markdown";
-import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, type LucideIcon } from "lucide-react";
+import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, ArrowDown, FileText, type LucideIcon } from "lucide-react";
+import { notify } from "@/components/ui/feedback";
+import { extractPlainCopy } from "@/lib/script-copy";
 import {
   splitQualityReport,
   parseQualitySummary,
@@ -10,6 +13,12 @@ import {
   formatDuration,
 } from "@/lib/script-result-utils";
 import { EmptyState } from "./EmptyState";
+import { CreationLinks } from './CreationLinks';
+import { RemixContinuation } from './RemixContinuation';
+import type { CreationContext } from '@/lib/creation-flow';
+import { CREATION_SOURCES } from '@/lib/creation-flow';
+import { splitRemixPlans } from '@/lib/remix-plans';
+import { TabooScan } from './TabooScan';
 
 /**
  * 工作区通用的生成结果区。
@@ -46,6 +55,8 @@ export function ResultPanel({
   nextActions,
   footer,
   bodyClassName,
+  flowContext,
+  individualPlans = false,
 }: {
   result: string;
   isGenerating: boolean;
@@ -76,8 +87,12 @@ export function ResultPanel({
   footer?: React.ReactNode;
   /** 给正文额外的排版（接在 prose 后面）。拆解爆款用它把每个镜头的四级标题排成卡片头 */
   bodyClassName?: string;
+  flowContext?: CreationContext;
+  individualPlans?: boolean;
 }) {
   // 拆分与统计只依赖 result，用 memo 避免流式输出时逐字符重算
+  const pathname = usePathname();
+  const supportsCreationLinks = Boolean(CREATION_SOURCES[pathname?.split('/')[2] || '']);
   const { body, report, stats, quality } = useMemo(() => {
     const split = splitQualityReport(result);
     return {
@@ -87,6 +102,14 @@ export function ResultPanel({
       quality: parseQualitySummary(split.report),
     };
   }, [result]);
+  const planParts = useMemo(() => individualPlans ? splitRemixPlans(body) : null, [body, individualPlans]);
+  /*
+   * 结果里有「纯文字文案」这一节（脚本生成、审稿优化都有）就在顶部给「复制纯文案」：
+   * 只要念出来的话，去提词器、配音、发给出镜的人。
+   * 原来这个按钮是脚本页传进来的 nextActions，有了「继续创作」之后 nextActions 不再显示，按钮跟着没了
+   */
+  const plainCopy = useMemo(() => (isGenerating ? '' : extractPlainCopy(body)), [body, isGenerating]);
+  const proseClassName = `prose prose-slate dark:prose-invert max-w-none prose-headings:tracking-tight prose-headings:font-semibold prose-h1:text-xl prose-h2:text-[17px] prose-h3:text-[15px] prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px] prose-strong:text-foreground prose-hr:border-border/60 ${bodyClassName ?? ''}`;
 
   /*
    * 手机上结果在表单下面：点了生成，得把人带到结果那儿，
@@ -130,15 +153,28 @@ export function ResultPanel({
 
         {body && !isGenerating && (
           <div className="flex gap-2">
+            {supportsCreationLinks && <ActionButton icon={ArrowDown} label="继续创作" onClick={() => document.getElementById(individualPlans ? "remix-continuation" : "creation-links")?.scrollIntoView({ behavior: "smooth", block: "start" })} />}
             {onContinue && <ActionButton icon={MessageCircle} label="继续对话" onClick={onContinue} />}
             {/* 复制与下载只取正文，不含质量报告 */}
+            {plainCopy && <ActionButton icon={FileText} label="复制纯文案" onClick={() => { navigator.clipboard?.writeText(plainCopy); notify("纯文案已复制：只有要念的话，可以直接贴进提词器"); }} />}
             {onCopy && <ActionButton icon={Copy} label="复制" onClick={() => onCopy(body)} />}
             {onDownload && <ActionButton icon={Download} label="下载" onClick={() => onDownload(body)} />}
           </div>
         )}
       </div>
 
-      {body ? (
+      {planParts && !isGenerating && planParts.plans.length > 0 ? (
+        <>
+          <div className="flex flex-wrap gap-2" aria-label="二创方案目录">
+            {planParts.plans.map((plan, i) => <button key={plan.id} type="button" className="glass-panel glass-interactive rounded-lg px-3 py-1.5 text-[12px] text-primary" onClick={() => document.getElementById(`remix-${plan.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>查看方案 {i + 1}</button>)}
+          </div>
+          {planParts.intro && <article className="glass-panel rounded-2xl px-4 py-5 sm:px-7 sm:py-6"><div className={proseClassName}><Markdown>{planParts.intro}</Markdown></div></article>}
+          {planParts.plans.map(plan => <article key={plan.id} id={`remix-${plan.id}`} className="glass-panel scroll-mt-4 rounded-2xl px-4 py-5 sm:px-7 sm:py-6">
+            <div className={proseClassName}><Markdown>{plan.body}</Markdown></div>
+          </article>)}
+          {planParts.footer && <article className="glass-panel rounded-2xl px-4 py-5 sm:px-7 sm:py-6"><div className={proseClassName}><Markdown>{planParts.footer}</Markdown></div></article>}
+        </>
+      ) : body ? (
         <article className="glass-panel rounded-2xl px-4 py-5 sm:px-7 sm:py-6">
           <div
             className={`prose prose-slate dark:prose-invert max-w-none
@@ -167,10 +203,19 @@ export function ResultPanel({
 
       {/* 各页面自己的核对结果。紧跟正文，因为它说的就是上面这份内容对不对 */}
       {body && !isGenerating && footer}
+      {/* 禁忌兜底：平台红线 + 行业禁忌词（lib/taboos），命中了就标出来 */}
+      {body && !isGenerating && <TabooScan body={body} onContinue={onContinue} />}
+      {/*
+       * 继续创作 / 收藏：放在正文底部（2026-10-02 产品方要求）。原来在正文上面，
+       * 用户读完往下找下一步找不到；而且顶部那时还没读内容，不知道该勾哪几条。
+       * 顶部按钮排里留了一个「继续创作 ↓」跳到这里，结果很长时也找得到。
+       */}
+      {body && !isGenerating && !individualPlans && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={body} context={flowContext} /></div>}
+      {body && !isGenerating && planParts && <RemixContinuation body={body} plans={planParts.plans} context={flowContext} />}
 
       {/* 接下来：放在正文之后，因为它是「读完再决定」的动作，
           摆在顶部会和复制下载抢位置，也不符合阅读顺序 */}
-      {body && !isGenerating && nextActions && nextActions.length > 0 && (
+      {body && !isGenerating && !individualPlans && !supportsCreationLinks && nextActions && nextActions.length > 0 && (
         <div className="glass-panel rounded-2xl p-4 sm:p-5">
           <p className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
             接下来

@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "服务条款 - 开物" };
  */
 export default function TermsPage() {
   return (
-    <LegalPage title="服务条款" updated="2026 年 9 月 27 日">
+    <LegalPage title="服务条款" updated="2026 年 9 月 30 日">
       <section>
         <p>
           欢迎使用开物（以下简称"我们"）。注册或使用本服务，即表示你同意以下条款。
@@ -34,7 +34,7 @@ export default function TermsPage() {
         <h2>二、会员与付款</h2>
         <ul>
           <li>付费方式为扫码转账并上传转账凭证，经人工核对后开通会员。</li>
-          <li>{PAID_PERIOD_NOTE}。续费后开始新的一期，额度回满。</li>
+          <li>{PAID_PERIOD_NOTE}。每期开始时额度回满，提前续费同档套餐不立即重置当期额度。</li>
           <li>会员到期未续费的，剩余次数清零，不会恢复为免费体验额度。</li>
           <li>免费版为新账号的一次性体验额度，用完不会按月重置。</li>
           <li>在会员有效期内续费同一档套餐，新的有效期从原到期日往后顺延，剩余天数不会损失。</li>

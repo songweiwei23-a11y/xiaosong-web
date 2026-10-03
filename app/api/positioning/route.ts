@@ -1,6 +1,7 @@
 ﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/read-body'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await readJsonBody(request)
     
     // 如果设置为激活，先将其他定位设为非激活
     if (body.is_active) {
@@ -130,7 +131,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await readJsonBody(request)
     const { id, ...updateData } = body
 
     if (!id) {

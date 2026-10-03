@@ -159,8 +159,9 @@ describe('接到全站', () => {
     expect(page).toMatch(/checkQuota\("breakdown"\)/);
     expect(page).toMatch(/openUpgrade\("breakdown"\)/);
     expect(page).toMatch(/taskType: BREAKDOWN_TASK_TYPE,\s*query,\s*imageFileIds: ids/);
-    expect(page).toMatch(/saveGenerationHistory\(\s*BREAKDOWN_TASK_TYPE/);
-    expect(page).toMatch(/useRestoreLastResult\(lastResult, setResult\)/);
+    expect(page).toMatch(/saveCreativeHistory\(\{ id: historyId, taskType: BREAKDOWN_TASK_TYPE/);
+    expect(page).toContain('historyInput,');
+    expect(page).toMatch(/useRestoreLastResult\(lastResult, setResult, resultScope\)/);
     // 视频不上传：页面里不能有把视频文件本身发出去的请求
     expect(page).not.toMatch(/append\("file", file\)/);
   });

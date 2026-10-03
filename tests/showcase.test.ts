@@ -118,7 +118,7 @@ describe('全站数字口径统一', () => {
   /**
    * 知识库的篇数和字数是现数出来的。
    *
-   * 「43 万字」是这一版数据带里最硬的一个数，也最容易过期——
+   * 知识资料总量会随材料增删变化，也最容易过期——
    * 删几篇资料它就不成立了。所以不能写死在文案里靠人记得改。
    */
   it('知识库的篇数和字数确实数得出来', async () => {
@@ -145,7 +145,7 @@ describe('全站数字口径统一', () => {
     const wan = chars / 10000;
     // 对外宣称的字数只能说少不能说多，所以取整后必须不大于真实值
     expect(FACTS.wordsWan, `对外说 ${FACTS.wordsWan} 万字，实际只有 ${wan.toFixed(1)} 万`).toBeLessThanOrEqual(wan);
-    // 但也不能过分保守到失去意义（比如真有 43 万却只敢说 10 万）
+    // 但也不能过分保守到失去意义，展示值应与现有资料量接近
     expect(FACTS.wordsWan).toBeGreaterThan(wan - 1);
   });
 
@@ -158,9 +158,10 @@ describe('全站数字口径统一', () => {
      * 非创作页在这里显式列出。以后再加账户类页面，往这里补，
      * 而不是让数字悄悄涨上去。
      */
-    // 我的作品是把各板块的产出串起来的地方，本身不是一个创作板块
+    // 创作进度（原我的作品）是把各板块的产出串起来的地方，本身不是一个创作板块
     // 新手课堂是学习页（教抖音怎么推荐、怎么拍），不产出内容，也不是创作板块
-    const NON_CREATIVE = new Set(['membership', 'account', 'works', 'course']);
+    // 素材库是存收藏的地方，同上
+    const NON_CREATIVE = new Set(['membership', 'account', 'works', 'course', 'library']);
     const fs = await import('node:fs');
     const path = await import('node:path');
     const root = path.join(process.cwd(), 'app', 'dashboard');
@@ -296,9 +297,9 @@ describe('对外说辞站得住', () => {
  * 所以页面上其他几个同样写法的徽章都没事——只有这一处是兄弟。
  */
 describe('浮动徽章不会被卡片盖住', () => {
-  it('落地页的「最受欢迎」带 z-index', () => {
+  it('落地页的「推荐方案」带 z-index', () => {
     const code = readCode('app/page.tsx');
-    const i = code.indexOf('最受欢迎');
+    const i = code.indexOf('推荐方案');
     expect(i, '没找到徽章').toBeGreaterThan(0);
     // 往前找它所在的那个 div 的 className
     const cls = code.slice(Math.max(0, i - 300), i);
@@ -308,7 +309,7 @@ describe('浮动徽章不会被卡片盖住', () => {
   it('和它并列的卡片确实带 backdrop-filter（这才是会盖住它的原因）', () => {
     // 如果哪天卡片不再用 glass-panel，这条会提醒上面那个 z-index 还有没有必要
     const code = readCode('app/page.tsx');
-    const i = code.indexOf('最受欢迎');
+    const i = code.indexOf('推荐方案');
     expect(code.slice(i, i + 400)).toContain('glass-panel');
   });
 });

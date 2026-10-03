@@ -13,6 +13,7 @@ import {
   MIN_SOURCE_CHARS,
   type Extraction,
 } from '@/lib/interview-import';
+import { readJsonBody } from '@/lib/read-body';
 
 export const runtime = 'nodejs';
 export const maxDuration = 180;
@@ -52,9 +53,18 @@ export async function POST(req: NextRequest) {
         source = text;
       }
     } else {
-      const body = await req.json().catch(() => ({}));
+      const body = await readJsonBody(req).catch(() => ({}));
       source = typeof body?.text === 'string' ? body.text : '';
       if (typeof body?.profileId === 'string' && UUID_RE.test(body.profileId)) targetProfileId = body.profileId;
+      /*
+       * 文件也可以编码进 JSON 发来（2026-10-02）：Word 文档几十上百 KB，直接上传在用户线路差时会被切断
+       * （超过约 8KB 的请求，见 lib/safe-post）。前端把文件转成 base64，走压缩 / 分块通道
+       */
+      if (typeof body?.fileBase64 === 'string' && typeof body?.fileName === 'string') {
+        const buf = Buffer.from(body.fileBase64, 'base64');
+        if (buf.length > MAX_UPLOAD_BYTES) return json({ error: '文件太大了（超过 10MB），请只保留文字部分' }, 400);
+        source = documentToText(body.fileName, buf);
+      }
     }
   } catch (e) {
     if (e instanceof UnsupportedDocument) return json({ error: e.message }, 400);

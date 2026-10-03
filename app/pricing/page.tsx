@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Check, X, Crown, Zap, Rocket } from "lucide-react";
 import {
   SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints,
-  COUNTED_FEATURES, PAID_PERIOD_NOTE,
+  COUNTED_FEATURES, PAID_PERIOD_NOTE, WEB_SEARCH_LIMITS,
 } from "@/lib/config/plans";
 import { toneSoft } from "@/lib/ui-tokens";
 
@@ -33,7 +33,7 @@ export default function PricingPage() {
             选择适合你的套餐
           </h1>
           <p className="text-xl text-muted-foreground">
-            从免费版开始，随时升级到更强大的功能
+            从免费版开始，按创作需求升级更多额度
           </p>
         </div>
 
@@ -52,7 +52,7 @@ export default function PricingPage() {
               >
                 {isPopular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-accent/100 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                    最受欢迎
+                    推荐方案
                   </div>
                 )}
 
@@ -119,7 +119,7 @@ export default function PricingPage() {
                   <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">免费版</th>
                   <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">基础会员</th>
                   <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">专业会员</th>
-                  <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">企业版</th>
+                  <th className="text-center py-3 px-3 font-semibold sm:py-4 sm:px-4">高频会员</th>
                 </tr>
               </thead>
               <tbody>
@@ -155,12 +155,12 @@ export default function PricingPage() {
                     })}
                   </tr>
                 ))}
-                {/*
-                  知识库原来是手写的一行「无限 / 无限 / 无限 / 无限」。
-                  现在只有企业版还是无限，其余三档都有次数——这一行已经
-                  进了 COUNTED_FEATURES，由上面的循环渲染，删掉手写的这份，
-                  免得又变成"公示的和实际执行的对不上"。
-                */}
+                <tr className="border-b border-border hover:bg-muted/50">
+                  <td className="sticky left-0 z-10 bg-card py-3 px-4 sm:py-4">联网搜索</td>
+                  {(['free', 'basic', 'pro', 'enterprise'] as const).map((id) => (
+                    <td key={id} className="text-center py-3 px-3 sm:py-4 sm:px-4">{WEB_SEARCH_LIMITS[id]} 次{id === 'free' ? '（一次性）' : '/月'}</td>
+                  ))}
+                </tr>
               </tbody>
             </table>
           </div>
@@ -172,11 +172,11 @@ export default function PricingPage() {
           <div className="grid md:grid-cols-2 gap-6 text-left max-w-4xl mx-auto">
             <div className="bg-card p-6 rounded-xl border border-border">
               <h3 className="font-bold mb-2">额度什么时候重置？</h3>
-              <p className="text-sm text-muted-foreground">{PAID_PERIOD_NOTE}。续费后开始新的一期，额度回满；不续费的话会员到期后剩余次数清零。免费版是新账号的一次性体验额度，用完不再重置</p>
+              <p className="text-sm text-muted-foreground">{PAID_PERIOD_NOTE}。每期开始时额度回满；提前续费同档套餐不立即重置当期额度。会员到期未续费，剩余次数清零。免费版为一次性体验额度</p>
             </div>
             <div className="bg-card p-6 rounded-xl border border-border">
               <h3 className="font-bold mb-2">可以随时升级吗？</h3>
-              <p className="text-sm text-muted-foreground">可以，升级后立即生效，未使用的天数不退款</p>
+              <p className="text-sm text-muted-foreground">可以，管理员核对并开通后生效，未使用的天数不退款</p>
             </div>
             <div className="bg-card p-6 rounded-xl border border-border">
               <h3 className="font-bold mb-2">支持退款吗？</h3>
@@ -184,8 +184,8 @@ export default function PricingPage() {
             </div>
             <div className="bg-card p-6 rounded-xl border border-border">
               {/* 原答案是「提供API接口、批量处理、数据导出、定制化模板等」，四样都没有做 */}
-              <h3 className="font-bold mb-2">企业版和专业版差在哪？</h3>
-              <p className="text-sm text-muted-foreground">企业版所有功能不限次数；专业版每个创作功能每月有固定额度。功能本身两档完全一样</p>
+              <h3 className="font-bold mb-2">高频会员和专业会员差在哪？</h3>
+              <p className="text-sm text-muted-foreground">高频会员每类创作额度各 {SUBSCRIPTION_PLANS.enterprise.quotas.script} 次/月、知识库查询 {SUBSCRIPTION_PLANS.enterprise.quotas.knowledge} 次/月、联网搜索 {WEB_SEARCH_LIMITS.enterprise} 次/月；专业会员分别为 {SUBSCRIPTION_PLANS.pro.quotas.script} 次、{SUBSCRIPTION_PLANS.pro.quotas.knowledge} 次、{WEB_SEARCH_LIMITS.pro} 次。四个定位板块共享定位额度，脚本、起号、开篇共享脚本额度。两档都支持全部创作功能。</p>
             </div>
           </div>
         </div>

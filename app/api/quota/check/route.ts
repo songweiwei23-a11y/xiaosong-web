@@ -42,18 +42,14 @@ export async function GET() {
   const userId = guard.userId!;
 
   try {
-    // 身份已确认，用 service_role 读自己的两张表，不受 RLS 配置差异影响
+    // 身份已确认，用 service_role 读自己的记录，不受 RLS 配置差异影响
     const supabase = getServiceSupabase();
 
     /*
-     * 两张表一起查。
-     *
-     * 原来是串行：先 await subscriptions，回来了再 await user_quotas。
-     * 这两条查询互不依赖，却要排队——实测每条往返 0.9 秒，
-     * 白白多花将近一秒。而这个接口是工作台首页四个并发请求里最慢的一条，
-     * 整个页面都在等它。
+     * 套餐、额度和本月实际用量互不依赖，同时查询。
+     * 月用量不必等前两条返回，避免首页额外等待一次数据库往返。
      */
-    const [{ data: subscription }, { data: quota }] = await Promise.all([
+    const [{ data: subscription }, { data: quota }, monthUsed] = await Promise.all([
       supabase
         .from('subscriptions')
         .select('plan, status, end_date')
@@ -64,12 +60,12 @@ export async function GET() {
         .select('*')
         .eq('user_id', userId)
         .maybeSingle(),
+      countMonthUsage(supabase, userId),
     ]);
 
     // 与 api-guard 共用同一份到期判定，两边不能各写各的
     const planId = effectivePlanId(subscription);
     const plan = getPlan(planId);
-    const monthUsed = await countMonthUsage(supabase, userId);
 
     const empty = {
       warnings: [] as unknown[],

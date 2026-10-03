@@ -92,6 +92,8 @@ export interface GrowthPlanParams {
   picked?: string[];
   /** 档案里的禁忌原文。和它冲突的打法直接从清单里拿掉，见 tacticsBlockedBy */
   restrictions?: string;
+  /** 内容配比（lib/content-mix 的 mixPromptBlock，百分比版）。有它就照它写，不再让 AI 自己定 */
+  mixBlock?: string;
 }
 
 /**
@@ -170,6 +172,7 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
   if (p.notes?.trim()) {
     parts.push('## 💡 这次的额外要求', '', p.notes.trim(), '');
   }
+  if (p.mixBlock?.trim()) parts.push(p.mixBlock.trim(), '');
 
   parts.push('## 📚 判断依据', '');
   parts.push(GROWTH_MIX, '');
@@ -213,7 +216,7 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 ## 🧮 起号期内容配比
 
 按「起号期的内容怎么配」：
-- 起号期（到一千粉、流量稳定之前）：流量型 / 人设型 / 变现型各占多少，为什么
+- 起号期（到一千粉、流量稳定之前）：流量型 / 人设型 / 变现型各占多少，为什么${p.mixBlock?.trim() ? '——**照上面「内容配比」的数写，不要另定**' : ''}
 - **每一种用哪一计来拍**：从标了对应类型的计里挑，写清"流量型用 X 计、人设型用 Y 计、变现型用 Z 计"，
   以及每种的脚本结构和结尾行动指令（只写一个）
 - 过线之后：补什么、比例怎么变

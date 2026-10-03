@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { notify } from '@/components/ui/feedback'
-import { throwApiError } from '@/lib/api-error'
+import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
 import {
   SECTIONS,
@@ -75,7 +75,7 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
     setElapsed(0)
     const timer = setInterval(() => setElapsed((n) => n + 1), 1000)
     try {
-      const res = await fetch('/api/dify/stream', {
+      const res = await fetchGeneration('/api/dify/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

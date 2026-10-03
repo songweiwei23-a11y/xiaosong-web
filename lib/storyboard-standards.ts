@@ -52,6 +52,8 @@ const RHYTHM_GUIDE = `### 景别节奏：跟着情绪走
 - 单个镜头超过 **6 秒**不切，除非画面里有持续发生的变化（动作、字幕递进）
 - 高潮段可以压到 1-1.5 秒一切，但前后必须有慢镜头衬托，全片都快等于都不快`;
 
+import { continuationRules } from './creation-continuation';
+
 /**
  * 运镜与情绪的对应，以及器材带来的现实约束。
  *
@@ -456,5 +458,6 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('**禁止**：输出纯文字描述而不给表格；说「希望对你有帮助」之类的话；');
   parts.push('反问用户要更多信息——信息不足的地方按最常见的情况假设，并在拍摄要点里注明。');
 
+  parts.push(continuationRules('storyboard'));
   return parts.join('\n');
 }

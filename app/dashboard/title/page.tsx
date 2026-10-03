@@ -1,13 +1,22 @@
 ﻿"use client";
+import type { HandoffPayload } from '@/lib/handoff';
+import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
+import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
+
 
 import { takeHandoff } from "@/lib/handoff";
+import { creationReference, originForResult } from '@/lib/creation-continuation';
 import { useWorkResume } from "@/hooks/useWorkResume";
 import { latestOf, workScriptBody, workIdFromUrl } from "@/lib/resume";
 import { recordStage } from "@/lib/works";
-import { throwApiError } from "@/lib/api-error";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import { buildTitlePrompt } from "@/lib/title-standards";
+import { useGenerationPage } from '@/hooks/useGenerationPage';
+import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -24,7 +33,6 @@ import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCirc
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
-import { getActiveProfileId } from '@/lib/active-profile';
 // 标题风格选项
 const TITLE_STYLES = [
   { id: "pain", label: "痛点型", desc: "直击用户痛点", example: "还在为...发愁？" },
@@ -74,8 +82,10 @@ const AB_TEST_COUNTS = [
 ];
 
 export default function TitlePage() {
+  const beginProfileRequest = useProfileRequestGuard();
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
   // 账号档案 + 定位 + 成交理由。以侧边栏选中的档案为准，切换时自动跟着变
-  const { context: creatorContext } = useCreatorContext();
+  const { context: creatorContext, loading: contextLoading } = useCreatorContext();
 
   const [topic, setTopic] = useState("");
   const [scriptContent, setScriptContent] = useState("");
@@ -97,20 +107,36 @@ export default function TitlePage() {
   const [isRecommending, setIsRecommending] = useState(false);
 
   // 历史记录相关
-  const [titleHistory, setTitleHistory] = useState<any[]>([]);
+  const { history: titleHistory, loadHistory: loadTitleHistory, lastResult, resultScope } = useGenerationPage({ taskType: '标题封面', historyApiPath: '/api/titles' });
+  useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setOriginContent(''); setOpeningCards([]); setSelectedHistory(null); setShowDialog(false); });
   const [selectedHistory, setSelectedHistory] = useState<any>(null);
   const [showDialog, setShowDialog] = useState(false);
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
   const [workId, setWorkId] = useState<string | null>(null);
+  const [originContent, setOriginContent] = useState('');
   // 开篇钩子页带过来的卡名。为空时让模型从 36 张里自己挑
   const [openingCards, setOpeningCards] = useState<string[]>([]);
 
 
+  const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
+    setTopic(s.topic ?? ''); setVideoTopic(s.direction || s.topic || ''); setPlatform(s.platform!); setTargetAudience(s.audience ?? '');
+    setTitleType(TITLE_TYPES.some(x => x.value === s.titleType) ? s.titleType! : 'question');
+    setTitleFormula(TITLE_FORMULAS.some(x => x.value === s.titleFormula) ? s.titleFormula! : 'why-reason');
+    setKeywordStrategy(KEYWORD_STRATEGIES.some(x => x.value === s.keywordStrategy) ? s.keywordStrategy! : 'search');
+    setAbTestCount(AB_TEST_COUNTS.some(x => x.value === s.titleCount) ? s.titleCount! : 3);
+    setOpeningCards(s.openingCards || []);
+  });
+  const currentSettings = resolveCreationSettings({ from: '标题封面', sourceContent: scriptContent || topic, settings: mergeCreationSettings(autoSetup.settings, { topic, platform, audience: targetAudience, titleType, titleFormula, keywordStrategy, titleCount: abTestCount, openingCards }) }, creatorContext);
+
   // 接收从脚本页带来的主题
   useEffect(() => {
     const data = takeHandoff();
+    if (data) setIncomingSetup(data);
+    if (data) setOriginContent(data.originContent || data.sourceContent || '');
     if (data?.workId) setWorkId(data.workId);
     if (data?.topic) setTopic(data.topic);
+    else if (data?.sourceTitle) setTopic(data.sourceTitle);
+    if (data?.scriptContent || data?.sourceContent) setScriptContent(creationReference(data) || data.scriptContent || '');
     // 从开篇钩子页带过来的卡：标题跟着用同一套钩子机制
     if (data?.openingCards?.length) setOpeningCards(data.openingCards);
   }, []);
@@ -120,7 +146,10 @@ export default function TitlePage() {
    * 做过开篇的沿用那几张开篇卡（标题和开头赌同一个钩子），
    * 起过标题的把最新一版调出来。
    */
-  useWorkResume((work) => {
+  useWorkResume((work, setup) => {
+    setIncomingSetup(setup);
+    setOriginContent(setup.originContent || '');
+    setAdditionalInfo(creationReference(setup));
     setWorkId(work.id);
     setTopic(work.title);
     const script = workScriptBody(work);
@@ -133,31 +162,6 @@ export default function TitlePage() {
     const last = latestOf(work, "标题封面");
     if (last) setResult(last.result);
   });
-
-  // 加载历史记录
-  useEffect(() => {
-    loadTitleHistory();
-  }, []);
-
-  const loadTitleHistory = async () => {
-    try {
-      const res = await fetch('/api/titles');
-      if (res.ok) {
-        const data = await res.json();
-        setTitleHistory(data);
-        console.log(`✅ 加载了 ${data.length} 个标题`);
-
-        // 切换页面或刷新后把最近一条取回来显示。只在结果区为空时回填，
-        // 且生成结束后的刷新不会覆盖用户刚拿到的内容。
-        const latest = data[0]?.result || data[0]?.content || '';
-        // 打开的是某个作品时让路：这条作品还没起过标题的话，
-        // 不能把"最近一条"（多半是别的作品的）塞进来冒充
-        if (latest && !workIdFromUrl()) setResult((current) => current || latest);
-      }
-    } catch (error) {
-      console.error('❌ 加载标题历史失败:', error);
-    }
-  };
 
   const deleteTitle = async (id: string) => {
     if (!await confirmDialog('确定要删除这个标题吗？', { tone: 'danger', confirmText: '删除', title: '确认删除' })) return;
@@ -196,6 +200,10 @@ export default function TitlePage() {
   };
 
   const handleGenerate = async () => {
+    if (isGenerating) return;
+    if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    const isCurrent = beginProfileRequest();
     if (!topic.trim()) {
       notify("请输入视频主题");
       return;
@@ -203,9 +211,12 @@ export default function TitlePage() {
 
     // 必须传功能名。不传的话 checkQuota 一律回答「脚本生成还剩几次」，
     // 于是本页额度明明是 0 也会放行，等服务端拒绝后用户只看到一句失败。
+    setIsGenerating(true);
     const remainingQuota = await checkQuota("title");
+    if (!isCurrent()) { setIsGenerating(false); return; }
     if (remainingQuota !== null && remainingQuota <= 0) {
       openUpgrade("title");
+      setIsGenerating(false);
       return;
     }
 
@@ -214,6 +225,8 @@ export default function TitlePage() {
     let fullResult = "";
 
     const inputData = {
+      creationSettings: currentSettings,
+      profileId: creatorContext.profile?.id || null,
       topic,
       titleType,
       titleFormula,
@@ -222,6 +235,8 @@ export default function TitlePage() {
       targetAudience,
       platform,
       openingCards,
+      sourceContent: scriptContent,
+      originContent: originContent || scriptContent,
     };
 
     // 页面上这些选项本来就带着示例和公式结构，原提示词只取了标签文字，
@@ -230,7 +245,7 @@ export default function TitlePage() {
     const keywordStrategyOption = KEYWORD_STRATEGIES.find(k => k.value === keywordStrategy);
     const prompt = buildTitlePrompt({
         // 账号背景随每次生成带上，不用用户在这一页重填一遍
-        contextBlock: buildContextBlock(creatorContext, "title"),
+        contextBlock: buildContextBlock(creatorContext, "title") + creationSettingsBlock(currentSettings),
       topic,
       titleTypeLabel: TITLE_TYPES.find(t => t.value === titleType)?.label || "悬念式",
       titleFormulaValue: titleFormula,
@@ -241,18 +256,20 @@ export default function TitlePage() {
       targetAudience,
       count: abTestCount,
       openingCards,
+      sourceContent: scriptContent,
     });
 
     try {
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: "标题封面",
+          creationSettings: currentSettings,
           query: prompt,
           // 记忆按档案隔离，与脚本、选题两页一致；不传的话代运营多个账号时
           // 会把 A 号起过的标题串到 B 号的生成里
-          profileId: getActiveProfileId(),
+          profileId: creatorContext.profile?.id || null,
           // 结构化字段带上，供知识库检索的短查询使用
           platform,
           titleType,
@@ -266,7 +283,7 @@ export default function TitlePage() {
       // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
       // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
       fullResult += await readDifyStream(response, {
-        onChunk: (_piece, full) => setResult(full),
+        onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
       });
 
       if (fullResult) {
@@ -274,7 +291,7 @@ export default function TitlePage() {
             // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
             await recordStage(workId, "标题封面");
         await loadTitleHistory();
-        setShowDialog(true);
+        if (isCurrent()) setShowDialog(true);
       }
     } catch (error: any) {
       console.error("❌ 生成失败:", error);
@@ -292,6 +309,10 @@ export default function TitlePage() {
 
           {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
           <ContextBadge board="title" className="mb-4" />
+          <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
+          <CollapsibleSection title="脚本 / 创作参考" defaultOpen>
+            <textarea aria-label="脚本或创作参考" value={scriptContent} onChange={e => setScriptContent(e.target.value)} placeholder="可粘贴脚本；从其他板块跳转时自动带入内容" rows={4} className={TEXTAREA_CLS} />
+          </CollapsibleSection>
 
           <CollapsibleSection title="基础信息" defaultOpen>
             <Field label="视频主题" required stacked>
@@ -409,7 +430,7 @@ export default function TitlePage() {
 
           <button
             onClick={handleGenerate}
-            disabled={isGenerating || !topic.trim()}
+            disabled={autoSetup.preparing || contextLoading || isGenerating || !topic.trim()}
             className={GENERATE_BTN}
           >
             {isGenerating ? (
@@ -431,6 +452,7 @@ export default function TitlePage() {
         result={result}
         isGenerating={isGenerating}
         title="标题方案"
+        flowContext={{ settings: settingsForResult(result, titleHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, titleHistory, originContent || scriptContent) }}
         showStats={false}
         emptyIcon={Tag}
         emptyTitle="填写主题后生成标题"

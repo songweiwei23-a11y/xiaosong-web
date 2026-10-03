@@ -64,7 +64,7 @@ export function TryHero() {
           <span className="brand-gradient bg-clip-text text-transparent">说一句你是做什么的</span>
         </h1>
         <p className="mt-4 text-[17px] leading-relaxed text-muted-foreground sm:text-lg">
-          1 分钟给你一条能直接照着拍的脚本：拍什么、第一句说什么、镜头怎么排。
+          先看行业样例，再按你的档案创作：拍什么、第一句说什么、镜头怎么排。
         </p>
 
         <form
@@ -87,7 +87,7 @@ export function TryHero() {
           />
           <button type="submit" className="brand-gradient flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5 text-[14px] font-semibold text-white">
             <Wand2 className="h-4 w-4" />
-            免费出选题
+            查看行业样例
           </button>
         </form>
         {empty && <p className="mt-2 text-[13px] text-destructive">先写一句你是做什么的，或者点下面一个行业</p>}
@@ -127,7 +127,7 @@ export function TryHero() {
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
                   <Sparkles className="h-4 w-4 text-primary" />
-                  开物给「{shown.ind.name}」写的选题
+                  「{shown.ind.name}」选题样例
                 </span>
                 <span className="shrink-0 text-[11px] text-muted-foreground/70">示意样例</span>
               </div>

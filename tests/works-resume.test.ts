@@ -178,8 +178,8 @@ describe('各板块认得 ?work= 地址', () => {
 
   it('"回填最近一条"在打开作品时让路——不能把别的作品的内容塞进来冒充', () => {
     expect(readCode('hooks/useRestoreLastResult.ts')).toMatch(/if \(workIdFromUrl\(\)\) return/);
-    expect(readCode('app/dashboard/title/page.tsx')).toMatch(/latest && !workIdFromUrl\(\)/);
-    expect(readCode('app/dashboard/growth/page.tsx')).toMatch(/workIdFromUrl\(\) \? null/);
+    expect(readCode('app/dashboard/title/page.tsx')).toMatch(/useRestoreLastResult\(lastResult, setResult, resultScope/);
+    expect(readCode('app/dashboard/growth/page.tsx')).toMatch(/workIdFromUrl\(\) \|\| incomingCreation\.current \? null/);
   });
 
   it('作品取不到时要说出来，不然页面空着像是"记忆"又坏了', () => {
@@ -224,10 +224,10 @@ describe('开篇也挂到作品上', () => {
   const code = readCode('app/dashboard/growth/page.tsx');
 
   it('生成成功后才挂作品，并登记环节', () => {
-    expect(code).toMatch(/saveGenerationHistory\(taskType, inputs, full, workId\)/);
+    expect(code).toMatch(/saveGenerationHistory\(taskType, \{ \.\.\.inputs, creationSettings: currentSettings, profileId: generationProfileId \}, full, workId\)/);
     expect(code).toMatch(/recordStage\(workId, taskType\)/);
     // 没带作品来的，按这条选题建一个（服务端同题复用）
-    expect(code).toMatch(/createWork\(title, getActiveProfileId\(\)\)/);
+    expect(code).toMatch(/createWork\(title, profileId\)/);
   });
 
   it('"用这条写脚本""起标题"把作品带下去', () => {

@@ -4,7 +4,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { extractPlainCopy } from '@/lib/script-copy';
-import { readSource } from './helpers/source';
+import { buildReviewPrompt } from '@/lib/review-standards';
+import { creationScript } from '@/lib/creation-flow';
+import { readSource, readCode } from './helpers/source';
 
 const SAMPLE = `### 第1步：脚本策略卡
 - 视频目的：变现型
@@ -60,5 +62,60 @@ describe('脚本页的输出顺序', () => {
     expect(src).toMatch(/第3步的口播台词必须和这段逐字一致/);
     expect(src).toMatch(/label: "复制纯文案"/);
     expect(src).toMatch(/extractPlainCopy\(body\)/);
+  });
+});
+
+/**
+ * 审稿优化也要有纯文字版（2026-10-02 产品方）。
+ * 「复制纯文案」挪到结果面板顶部统一给：原来是脚本页传的 nextActions，有了「继续创作」之后不显示了。
+ */
+describe('审稿优化的纯文字文案', () => {
+  const p = { draftContent: '原稿', platform: '抖音', duration: '60秒', scriptType: '教知识型' } as Parameters<typeof buildReviewPrompt>[0];
+
+  it('两种模式都在「优化后的完整脚本」之后出一节纯文字文案，规则和脚本板块一样', () => {
+    for (const compareMode of [false, true]) {
+      const prompt = buildReviewPrompt({ ...p, compareMode });
+      const opt = prompt.indexOf('优化后的完整脚本');
+      const plain = prompt.indexOf(`### ${compareMode ? 6 : 5}. 纯文字文案`);
+      expect(opt, String(compareMode)).toBeGreaterThan(0);
+      expect(plain, String(compareMode)).toBeGreaterThan(opt);
+      expect(prompt).toMatch(/不要【】标注、emoji、加粗、序号、列表符号/);
+      expect(prompt).toMatch(/必须和上面优化后脚本里的台词\*\*逐字一致\*\*/);
+    }
+  });
+
+  it('问题清单和优化稿都就近写着「不许编数字和经历」（实测编出「开车50公里」「回头客占8成」）', () => {
+    const prompt = buildReviewPrompt(p);
+    const rule = /原稿和档案里\*\*没有\*\*的数字[\s\S]*?写成 X[\s\S]*?【换成你的：……】/;
+    const list = prompt.slice(prompt.indexOf('### 3. 问题清单'), prompt.indexOf('优化后的完整脚本'));
+    const opt = prompt.slice(prompt.indexOf('优化后的完整脚本'), prompt.indexOf('纯文字文案'));
+    expect(list).toMatch(rule);
+    expect(opt).toMatch(rule);
+  });
+
+  const RESULT = '### 1. 总评\n- 8.5 分\n### 4. 优化后的完整脚本\n【开场钩子】0-3秒\n台词：你绝对想不到\n### 5. 纯文字文案\n你绝对想不到\n这家店的牛肉是现切的';
+
+  it('能从审稿结果里取出纯文案', () => {
+    expect(extractPlainCopy(RESULT)).toBe('你绝对想不到\n这家店的牛肉是现切的');
+  });
+
+  it('加了这一节之后，带去分镜、开篇的仍然是优化后的完整脚本（不是纯文案）', () => {
+    expect(creationScript('review', RESULT)).toBe('【开场钩子】0-3秒\n台词：你绝对想不到');
+  });
+
+  it('模型在「## 4. 优化后的完整脚本」下面用一级标题写段落（线上实测），也不截断；带去分镜的不能变成整份报告', () => {
+    const real = '## 3. 问题清单\n…\n## 4. 优化后的完整脚本\n# 【开场钩子】0-5秒 | 💰金钱钩子\n台词：人均30块\n# 【中段展开】5-25秒\n台词：我们1根只穿8串\n## 5. 纯文字文案\n人均30块\n我们1根只穿8串';
+    const opt = creationScript('review', real);
+    expect(opt).toContain('【开场钩子】');
+    expect(opt).toContain('【中段展开】');
+    expect(opt).not.toContain('问题清单');
+    expect(opt).not.toContain('纯文字文案');
+    expect(extractPlainCopy(real)).toBe('人均30块\n我们1根只穿8串');
+  });
+
+  it('结果面板顶部统一给「复制纯文案」：脚本、审稿都能用', () => {
+    const panel = readCode('components/workspace/ResultPanel.tsx');
+    expect(panel).toMatch(/extractPlainCopy\(body\)/);
+    expect(panel).toMatch(/label="复制纯文案"/);
   });
 });

@@ -4,6 +4,8 @@ import { getServerSupabase } from '@/lib/admin-auth';
 import { EMPTY_PROFILE, PROFILE_FIELDS, splitToArray } from '@/lib/profile-fields';
 import { appendNotes, mergeHighlights, sanitizeExtraction, scrubSensitive } from '@/lib/interview-import';
 import { updateImport, UUID_RE } from '@/lib/interview-history';
+import { readJsonBody } from '@/lib/read-body';
+import { readTabooSettings } from '@/lib/taboos';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!guard.ok) return guard.response!;
   const userId = guard.userId!;
 
-  const body = await req.json().catch(() => null);
+  const body = await readJsonBody(req).catch(() => null);
   if (!body || typeof body !== 'object') return NextResponse.json({ error: '请求格式不对' }, { status: 400 });
 
   const patch: Record<string, unknown> = {};
@@ -66,6 +68,17 @@ export async function POST(req: NextRequest) {
   const interview: Record<string, unknown> = {};
   if (notes) interview.interview_notes = appendNotes(existing?.interview_notes, notes);
   if (highlights.length) interview.interview_highlights = mergeHighlights(existing?.interview_highlights, highlights);
+  /*
+   * 编导没选的 → 档案的排除清单（taboo_settings.excluded，见 lib/interview-exclusions）。
+   * 和已有的合并、去重；关掉的禁忌、补充的禁忌原样保留
+   */
+  const excluded = Array.isArray(body.excluded)
+    ? body.excluded.filter((x: unknown): x is string => typeof x === 'string' && !!x.trim()).map((x: string) => scrubSensitive(x.trim()).slice(0, 200)).slice(0, 40)
+    : [];
+  if (excluded.length) {
+    const prev = readTabooSettings(existing?.taboo_settings);
+    interview.taboo_settings = { ...prev, excluded: Array.from(new Set([...prev.excluded, ...excluded])).slice(0, 60) };
+  }
 
   const write = (row: Record<string, unknown>) =>
     profileId
@@ -75,8 +88,9 @@ export async function POST(req: NextRequest) {
   let { data, error } = await write({ ...patch, ...interview });
   let notesSaved = Object.keys(interview).length > 0;
 
-  // 前采那两列要跑迁移（20260929_interview_import.sql）才有。没跑时档案字段照样写进去，只是原文存不下
-  if (error && /interview_/.test(error.message || '')) {
+  // 前采那两列要跑迁移（20260929_interview_import.sql）才有，排除清单那列要跑 20261002_content_mix_and_taboos.sql。
+  // 没跑时档案字段照样写进去，只是这几样存不下
+  if (error && /interview_|taboo_settings/.test(error.message || '')) {
     console.warn('[interview] 档案表还没有前采列，这次只写档案字段:', error.message);
     ({ data, error } = await write(patch));
     notesSaved = false;

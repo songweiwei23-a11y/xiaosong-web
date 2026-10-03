@@ -72,7 +72,7 @@ const dir = buildDirectory({
 });
 
 describe('最近活跃用户：谁、什么套餐、哪几个号、最后做了什么', () => {
-  const now = Date.now();
+  const now = new Date().setHours(12, 0, 0, 0); // 固定在当天中午：零点前后跑，"几分钟前"会跨到昨天，"今天"的统计就对不上
 
   it('登录、生成、使用三种动静取最近的；只列 24 小时内的，按最近排', () => {
     const list = activeUsers({
@@ -161,7 +161,7 @@ describe('活跃脉搏按分钟分桶', () => {
 
 describe('今日功能用量', () => {
   it('只统计今天的，按次数从多到少', () => {
-    const now = Date.now();
+    const now = new Date().setHours(12, 0, 0, 0); // 固定在当天中午：零点前后跑，"几分钟前"会跨到昨天，"今天"的统计就对不上
     const rows = [
       { task_type: '选题策划', created_at: T(1, now) },
       { task_type: '选题策划', created_at: T(2, now) },

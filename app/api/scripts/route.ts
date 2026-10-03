@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/api-guard'
 import { getServerSupabase } from '@/lib/admin-auth'
+import { readJsonBody } from '@/lib/read-body'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   if (!guard.ok) return guard.response!
 
   const supabase = await getServerSupabase()
-  const body = await request.json()
+  const body = await readJsonBody(request)
 
   if (!body.script_content) {
     return NextResponse.json({ error: '脚本内容不能为空' }, { status: 400 })
@@ -92,7 +93,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: '缺少脚本 ID' }, { status: 400 })
   }
 
-  const body = await request.json()
+  const body = await readJsonBody(request)
 
   const { data, error } = await supabase
     .from('scripts')

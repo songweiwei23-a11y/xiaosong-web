@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 /**
  * 「选一次，全站都知道」这件事，全靠切换档案时那一次广播。
@@ -21,6 +21,7 @@ class FakeStorage {
 let mod: typeof import('@/lib/active-profile');
 
 beforeEach(async () => {
+  vi.resetModules();
   const target = new EventTarget();
   (globalThis as any).window = {
     addEventListener: target.addEventListener.bind(target),
@@ -64,6 +65,65 @@ describe('切换档案', () => {
     expect(mod.getActiveProfileId()).toBeNull();
   });
 
+  it('存储不可用时，广播后初始化只再检查一次，不会反复选档案', () => {
+    (globalThis as any).localStorage = {
+      getItem() { throw new Error('denied'); },
+      setItem() { throw new Error('denied'); },
+      removeItem() { throw new Error('denied'); },
+    };
+    let loads = 0;
+    const initialize = () => {
+      loads++;
+      // 与档案切换器一致：接口返回第一个档案，读不到当前选择才广播。
+      if (mod.getActiveProfileId() !== 'first') mod.setActiveProfileId('first', { id: 'first' });
+    };
+    const off = mod.onActiveProfileChange(initialize);
+    initialize();
+    off();
+
+    expect(loads).toBe(2);
+    expect(mod.getActiveProfileId()).toBe('first');
+  });
+
+  it('能读却不能写时，以本次最新选择为准，清空也不会恢复旧档案', () => {
+    (globalThis as any).localStorage = {
+      getItem() { return 'old'; },
+      setItem() { throw new Error('quota exceeded'); },
+      removeItem() { throw new Error('denied'); },
+    };
+    const seen: (string | null)[] = [];
+    mod.onActiveProfileChange(() => seen.push(mod.getActiveProfileId()));
+    mod.setActiveProfileId('new');
+    mod.setActiveProfileId(null);
+    expect(seen).toEqual(['new', null]);
+    expect(mod.getActiveProfileId()).toBeNull();
+  });
+
+  it('重复选择不重复通知，但同一档案的编辑详情仍通知', () => {
+    let fired = 0;
+    mod.onActiveProfileChange(() => { fired++; });
+    mod.setActiveProfileId('abc');
+    mod.setActiveProfileId('abc');
+    expect(fired).toBe(1);
+    mod.setActiveProfileId('abc', { id: 'abc', profile_name: '新名称' });
+    expect(fired).toBe(2);
+  });
+
+  it('存储恢复可写后，下次读取恢复遵循持久化选择', () => {
+    (globalThis as any).localStorage = {
+      getItem() { throw new Error('denied'); },
+      setItem() { throw new Error('denied'); },
+      removeItem() { throw new Error('denied'); },
+    };
+    mod.setActiveProfileId('first');
+    const storage = new FakeStorage();
+    (globalThis as any).localStorage = storage;
+    mod.setActiveProfileId('second');
+    expect(storage.getItem(mod.ACTIVE_PROFILE_KEY)).toBe('second');
+    storage.setItem(mod.ACTIVE_PROFILE_KEY, 'another-tab');
+    expect(mod.getActiveProfileId()).toBe('another-tab');
+  });
+
   it('退订之后不再收到通知', () => {
     let n = 0;
     const off = mod.onActiveProfileChange(() => { n++; });
@@ -85,7 +145,7 @@ describe('切换档案', () => {
     // 存不下也不该把整页拖崩，本次会话内至少各板块是一致的
     expect(() => mod.setActiveProfileId('abc')).not.toThrow();
     expect(fired).toBe(true);
-    expect(mod.getActiveProfileId()).toBeNull();
+    expect(mod.getActiveProfileId()).toBe('abc');
   });
 });
 

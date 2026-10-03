@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { CreatorContext, CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { BRIEF_TYPE } from "@/lib/creative-brief";
@@ -20,6 +20,9 @@ import { BRIEF_TYPE } from "@/lib/creative-brief";
 const cache = new Map<string, CreatorContext>();
 /** 同一个档案的并发请求合并成一次，避免三个板块同时挂载时打三遍接口 */
 const inflight = new Map<string, Promise<CreatorContext>>();
+let cacheVersion = 0;
+const CONTEXT_CHANGED = 'creatorContextChanged';
+let lastClearedEvent: Event | undefined;
 
 const EMPTY: CreatorContext = { profile: null, positioning: null, dealReasons: [] };
 
@@ -29,15 +32,17 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
   if (hit) return hit;
   const running = inflight.get(key);
   if (running) return running;
+  const version = cacheVersion;
 
   const task = (async (): Promise<CreatorContext> => {
     // 三个来源互不依赖，并行拉。任何一个失败都不该让整块上下文消失——
     // 有档案没定位，照样比什么都没有强
-    const [profileRes, posRes, dealRes, briefRes] = await Promise.all([
+    const [profileRes, posRes, dealRes0, briefRes] = await Promise.all([
       fetch("/api/profiles").catch(() => null),
       // 只要六维地基。商业定位和内容定位是它的深挖，拿来当"账号方向"会跑偏
       fetch("/api/positioning?type=" + encodeURIComponent("账号定位")).catch(() => null),
-      fetch("/api/deal-reasons").catch(() => null),
+      // 成交理由按档案分别存（2026-09-30）：知道是哪个档案就一起并行拉
+      profileId ? fetch(`/api/deal-reasons?profileId=${encodeURIComponent(profileId)}`).catch(() => null) : Promise.resolve(null),
       // 创作简报：有它就优先用它，它是按板块切好片的，比截断定位原文有用得多
       fetch("/api/positioning?type=" + encodeURIComponent(BRIEF_TYPE)).catch(() => null),
     ]);
@@ -54,10 +59,13 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     if (posRes?.ok) {
       const list = await posRes.json().catch(() => null);
       if (Array.isArray(list) && list.length > 0) {
-        // 优先取这个档案自己的定位；没有就退回最新的一份，
-        // 总比让选题完全不知道账号方向强
+        /*
+         * 只取这个档案自己的定位；没有就只退回"没挂任何档案"的老数据。
+         * 原来退回的是"最新的一份"——一个号没做定位，就拿另一个号的定位顶上，
+         * 各板块照着别的店的方向写，用户完全看不出来（产品方要求一切以当前档案为准，2026-09-30）
+         */
         const own = profile ? list.find((x: any) => x.profile_id === profile!.id) : null;
-        const pick = own || list[0];
+        const pick = own || list.find((x: any) => !x.profile_id) || null;
         if (pick) {
           positioning = {
             name: pick.positioning_name || "账号定位",
@@ -68,6 +76,10 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       }
     }
 
+    // 没记着当前档案、或记着的已经删了（用的是列表第一个）：档案定下来之后再按它取成交理由
+    const dealRes = profile && profile.id !== profileId
+      ? await fetch(`/api/deal-reasons?profileId=${encodeURIComponent(profile.id)}`).catch(() => null)
+      : dealRes0;
     let dealReasons: string[] = [];
     if (dealRes?.ok) {
       const d = await dealRes.json().catch(() => null);
@@ -75,17 +87,22 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     }
 
     let brief: string | null = null;
+    let briefAt: string | null = null;
+    let briefFacts: string | null = null;
     if (briefRes?.ok) {
       const list = await briefRes.json().catch(() => null);
       if (Array.isArray(list) && list.length > 0) {
-        // 取这个档案自己的那份；接口已按 created_at 倒序，[0] 就是最新的
+        // 取这个档案自己的那份（接口已按 created_at 倒序）；同上，不拿别的档案的顶上
         const own = profile ? list.find((x: any) => x.profile_id === profile!.id) : null;
-        brief = (own || list[0])?.full_content || null;
+        const pick = own || list.find((x: any) => !x.profile_id);
+        brief = pick?.full_content || null;
+        briefAt = pick?.updated_at || pick?.created_at || null;
+        briefFacts = typeof pick?.positioning_description === 'string' ? pick.positioning_description : null;
       }
     }
 
-    const ctx: CreatorContext = { profile, positioning, dealReasons, brief };
-    cache.set(key, ctx);
+    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts };
+    if (version === cacheVersion) cache.set(key, ctx);
     return ctx;
   })();
 
@@ -93,24 +110,27 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
   try {
     return await task;
   } finally {
-    inflight.delete(key);
+    if (inflight.get(key) === task) inflight.delete(key);
   }
 }
 
 export function useCreatorContext() {
   const [context, setContext] = useState<CreatorContext>(EMPTY);
   const [loading, setLoading] = useState(true);
+  const requestRef = useRef(0);
 
   const load = useCallback(async () => {
     const id = getActiveProfileId();
+    const request = ++requestRef.current;
     setLoading(true);
     try {
-      setContext(await fetchContext(id));
+      const next = await fetchContext(id);
+      if (request === requestRef.current) setContext(next);
     } catch {
       // 上下文是增强项，取不到就按没有处理，不该挡住用户生成
-      setContext(EMPTY);
+      if (request === requestRef.current) setContext(EMPTY);
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
   }, []);
 
@@ -118,10 +138,20 @@ export function useCreatorContext() {
     load();
 
     // 侧边栏切换档案时立刻跟着换，不用刷新页面
-    return onActiveProfileChange(() => {
-      cache.clear();
+    const unsubscribe = onActiveProfileChange((event) => {
+      // 多个使用方订阅的是同一次切换，只清一次，后续请求才能合并。
+      if (lastClearedEvent !== event) {
+        lastClearedEvent = event;
+        clearContextCache();
+      }
       load();
     });
+    window.addEventListener(CONTEXT_CHANGED, load);
+    return () => {
+      ++requestRef.current;
+      unsubscribe();
+      window.removeEventListener(CONTEXT_CHANGED, load);
+    };
   }, [load]);
 
   return { context, loading, reload: load };
@@ -129,5 +159,12 @@ export function useCreatorContext() {
 
 /** 档案被编辑后调用，让下次取到的是新内容 */
 export function invalidateCreatorContext() {
+  clearContextCache();
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(CONTEXT_CHANGED));
+}
+
+function clearContextCache() {
+  ++cacheVersion;
   cache.clear();
+  inflight.clear();
 }

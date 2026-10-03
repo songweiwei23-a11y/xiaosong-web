@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { workIdFromUrl } from "@/lib/resume";
+import { hasPendingHandoff } from '@/lib/handoff';
+import { usePathname } from 'next/navigation';
 
 /**
  * 把云端最近一条生成结果回填到页面的结果区。
@@ -16,10 +18,27 @@ import { workIdFromUrl } from "@/lib/resume";
  */
 export function useRestoreLastResult(
   lastResult: string,
-  setResult: Dispatch<SetStateAction<string>>
+  setResult: Dispatch<SetStateAction<string>>,
+  resultScope?: string,
+  onScopeChange?: () => void
 ) {
+  const previousScope = useRef<string>();
+  // 客户端导航渲染时地址栏可能还没更新，使用新组件对应的路由。
+  const pathname = usePathname();
+  const incomingCreation = useRef(hasPendingHandoff(pathname || undefined));
   useEffect(() => {
+    if (resultScope && previousScope.current !== resultScope) {
+      const changed = previousScope.current !== undefined;
+      previousScope.current = resultScope;
+      if (changed) {
+        incomingCreation.current = false;
+        onScopeChange?.();
+        setResult('');
+        return; // 本次 lastResult 仍可能是上一档案的，等新历史到达
+      }
+    }
     if (!lastResult) return;
+    if (incomingCreation.current) return;
     /*
      * 地址上带了 ?work= 时让路：用户要看的是那一个作品，内容由 useWorkResume 填。
      * 不让的话，打开作品 A 的分镜页、而 A 还没做分镜时，这里会把
@@ -27,5 +46,5 @@ export function useRestoreLastResult(
      */
     if (workIdFromUrl()) return;
     setResult((current) => current || lastResult);
-  }, [lastResult, setResult]);
+  }, [lastResult, setResult, resultScope, onScopeChange]);
 }

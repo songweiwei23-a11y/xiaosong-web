@@ -79,3 +79,8 @@ tsconfig.tsbuildinfo
 # Dify 知识库上传进度（运行时状态，不入版本库）
 /编导知识大全/_导入Dify/_uploaded.json
 /编导知识大全/_导入Dify/_audit.json
+
+# 用户数据备份、密钥截图：不进代码库
+docs/历史归档备份_*.json
+docs/*密钥*
+

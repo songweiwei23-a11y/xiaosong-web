@@ -7,6 +7,21 @@ import { AlertTriangle, ArrowRight, CheckCircle2, FileText, FileUp, Loader2, Rot
 import { MAX_SOURCE_CHARS, MIN_SOURCE_CHARS, type Extraction, type Revision } from "@/lib/interview-import";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
 import { readSseResult } from "@/lib/sse-result";
+import { postSafely } from "@/lib/safe-post";
+import { exclusionsOf, residualMentions, dropSegment, type Residual } from "@/lib/interview-exclusions";
+
+/**
+ * 不超过这么大的文件编码进 JSON 走压缩 / 分块（lib/safe-post）。
+ * base64 会涨三分之一，服务器分块暂存上限 2MB，留出余量；前采的 Word 文档一般几十到几百 KB
+ */
+const INLINE_FILE_MAX = 1.2 * 1024 * 1024;
+
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
 import { notifyGenerated } from "@/lib/upgrade";
 import { setActiveProfileId } from "@/lib/active-profile";
 import { invalidateCreatorContext } from "@/hooks/useCreatorContext";
@@ -123,13 +138,22 @@ export default function InterviewPage() {
     try {
       let res: Response;
       const profileId = target === NEW ? "" : target;
-      if (file) {
+      if (file && file.size <= INLINE_FILE_MAX) {
+        // 文件编码进 JSON 走压缩 / 分块：直接上传在线路差时会被切断（超过约 8KB，见 lib/safe-post）
+        const fileBase64 = await fileToBase64(file);
+        res = await postSafely("/api/interview/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: file.name, fileBase64, profileId: profileId || undefined }),
+        });
+      } else if (file) {
+        // 特别大的文件（超过分块暂存的上限）还是直接上传
         const form = new FormData();
         form.append("file", file);
         if (profileId) form.append("profileId", profileId);
         res = await fetch("/api/interview/extract", { method: "POST", body: form });
       } else {
-        res = await fetch("/api/interview/extract", {
+        res = await postSafely("/api/interview/extract", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, profileId: profileId || undefined }),
@@ -163,7 +187,7 @@ export default function InterviewPage() {
     if (rev.profileName && !existing) setProfileName(rev.profileName);
     // 改过的存进历史，下次打开是改过的。存不上不打扰编导，确认页上的照样能写入
     if (importId) {
-      fetch("/api/interview/history", {
+      postSafely("/api/interview/history", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: importId, extraction: next.extraction }),
@@ -173,6 +197,14 @@ export default function InterviewPage() {
 
   const patch = extraction ? buildPatch(extraction, drafts, existing) : {};
   const patchCount = Object.keys(patch).length;
+  /** 编导没选的（见 lib/interview-exclusions）；以及别的栏里还在说这些的 */
+  const excluded = extraction ? exclusionsOf(extraction, drafts, highlightOn) : [];
+  const residuals = extraction ? residualMentions(extraction, drafts, excluded, existing ? String(existing.profile_name ?? "") : profileName) : [];
+  const dropResidual = (r: Residual) =>
+    setDrafts((prev) => {
+      const d = prev[r.key];
+      return d ? { ...prev, [r.key]: { ...d, text: dropSegment(d.text, r.segment) } } : prev;
+    });
   /** 有疑问、还没处理的项。不为空不让写入（产品方：核对没问题再建档） */
   const pending = extraction ? unresolvedKeys(extraction, drafts) : [];
   const flaggedCount = extraction ? extraction.fields.filter((f) => isFlagged(f, extraction.checked)).length : 0;
@@ -189,7 +221,7 @@ export default function InterviewPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/interview/save", {
+      const res = await postSafely("/api/interview/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -198,6 +230,8 @@ export default function InterviewPage() {
           fields: patch,
           highlights: extraction.highlights.filter((_, i) => highlightOn[i]),
           notes: keepNotes ? source : "",
+          // 没选的记进档案的排除清单，之后所有板块当它不存在
+          excluded,
           importId,
           extraction,
         }),
@@ -416,6 +450,46 @@ export default function InterviewPage() {
               />
             }
           />
+
+          {/*
+            没选的东西：别的栏里还在说的先让编导一键去掉；剩下的记成排除清单，之后所有板块当它不存在。
+            2026-10-02 线上：勾掉了「公益」「直播」那几条，选题方向、成交路径里还残留着，账号定位照样拿来当依据
+          */}
+          {excluded.length > 0 && (
+            <section className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4 sm:p-5">
+              <h3 className="text-[15px] font-semibold text-foreground">你没选的内容</h3>
+              <p className="mt-1 text-[12.5px] text-muted-foreground">
+                这 {excluded.length} 条会记进档案的「排除清单」，之后做账号定位、商业定位、内容定位、创作简报、写内容都当它不存在。
+              </p>
+              <ul className="mt-2 space-y-1 text-[12.5px] text-muted-foreground">
+                {excluded.map((x) => <li key={x} className="line-through decoration-muted-foreground/50">{x}</li>)}
+              </ul>
+              {residuals.length > 0 && (
+                <div className="mt-3 border-t border-amber-500/20 pt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">别的栏里还在说这些（{residuals.length} 处），要一起去掉吗？</p>
+                    <button type="button" onClick={() => residuals.forEach(dropResidual)} className="rounded-full border border-amber-500/40 px-3 py-1 text-[12px] text-amber-700 hover:bg-amber-500/10 dark:text-amber-400">
+                      全部去掉
+                    </button>
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {residuals.map((r) => (
+                      <li key={`${r.key}-${r.segment}`} className="flex items-start justify-between gap-2 text-[12.5px]">
+                        <span className="text-foreground">
+                          <span className="text-muted-foreground">【{r.label}】</span>{r.segment}
+                          <span className="ml-1 text-[11px] text-muted-foreground">（和你去掉的「{r.because.slice(0, 16)}…」有关）</span>
+                        </span>
+                        <button type="button" onClick={() => dropResidual(r)} className="shrink-0 rounded-full border border-border px-2.5 py-0.5 text-[12px] text-muted-foreground hover:text-foreground">
+                          去掉这句
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-[11.5px] text-muted-foreground">不去掉也没关系：排除清单会告诉 AI 忽略相关说法。去掉了档案更干净，判断更不容易跑偏。</p>
+                </div>
+              )}
+            </section>
+          )}
 
           <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-foreground">
             <input type="checkbox" checked={keepNotes} onChange={(e) => setKeepNotes(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />

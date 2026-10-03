@@ -12,10 +12,11 @@ import { TodayBoard } from '@/components/dashboard/TodayBoard';
 import { LaunchPlanCard } from '@/components/dashboard/LaunchPlanCard';
 import { CourseCard } from '@/components/dashboard/CourseCard';
 import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
+import { LibraryCard } from '@/components/dashboard/LibraryCard';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, Clock, Crown, User, History,
-  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle,
+  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,14 @@ import {
  * 埋在工具堆里等于告诉用户这条链不存在。
  */
 const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; accent: string }[] = [
+  {
+    // 2026-10-02：带着目的找方向，在选题之前。出来的方向勾选后直接去选题、脚本
+    name: "创作方向",
+    desc: "说清为了什么拍，铺开方向和思路",
+    icon: Compass,
+    href: "/dashboard/direction",
+    accent: "bg-orange-500/12 text-orange-500",
+  },
   {
     name: "选题策划",
     desc: "先想清楚拍什么",
@@ -122,6 +131,8 @@ const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }
   { name: "成交理由", icon: Award, href: "/dashboard/deal-reason" },
   { name: "高阶自由", icon: MessagesSquare, href: "/dashboard/free-chat" },
   { name: "知识库", icon: BookOpen, href: "/dashboard/knowledge" },
+  // 各板块收藏的好内容（2026-10-02）
+  { name: "素材库", icon: Bookmark, href: "/dashboard/library", tip: "收藏的好内容，随时接着用" },
 ];
 
 /** 历史记录点回它来自的功能页 */
@@ -140,6 +151,7 @@ const TASK_ROUTES: Record<string, string> = {
   创作简报: "/dashboard/creative-brief",
   拆解爆款: "/dashboard/breakdown",
   跨行业二创: "/dashboard/remix",
+  创作方向: "/dashboard/direction",
   起号方案: "/dashboard/growth",
   开篇钩子: "/dashboard/growth",
 };
@@ -385,7 +397,7 @@ export default function DashboardPage() {
             </h2>
             {/* 这条链现在是真通的，但不说用户不会知道，还会继续复制粘贴 */}
             <p className="mb-3 text-[11.5px] text-muted-foreground">
-              每一步做完都能直接带着内容进下一步，不用复制粘贴
+              每一步做完都能直接带着内容进下一步，不用复制粘贴；结果里能勾选几条带走，好的点收藏存进素材库
             </p>
             <div className="space-y-2.5">
               {MAIN_FLOW.map((m, i) => (
@@ -518,12 +530,12 @@ export default function DashboardPage() {
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                   接着上次
                 </h2>
-                {/* 有作品时"全部"指向我的作品：每个环节都能点开接着做，比零散历史有用 */}
+                {/* 有作品时"全部"指向创作进度（原我的作品）：每个环节都能点开接着做，比零散历史有用 */}
                 <Link
                   href={works.length > 0 ? "/dashboard/works" : "/history"}
                   className="text-[11.5px] text-muted-foreground hover:text-foreground"
                 >
-                  全部
+                  {works.length > 0 ? "创作进度" : "全部"}
                 </Link>
               </div>
 
@@ -594,6 +606,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </section>
+
+            {/* 收藏的好内容（2026-10-02）：放在「接着上次」下面——一个是做到一半的，一个是攒下来的 */}
+            <LibraryCard />
 
             <section className="glass-panel rounded-2xl p-4 sm:p-5">
               <div className="flex items-baseline justify-between">

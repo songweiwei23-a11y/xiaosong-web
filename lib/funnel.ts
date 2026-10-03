@@ -20,6 +20,7 @@ export function isFunnelKind(v: unknown): v is FunnelKind {
 export const VISITOR_RE = /^[a-z0-9-]{8,64}$/;
 
 const VID_KEY = 'kaiwu:vid';
+const inFlight = new Set<string>();
 
 function visitorId(): string | null {
   try {
@@ -40,19 +41,23 @@ export function track(kind: FunnelKind) {
   if (typeof window === 'undefined') return;
   const vid = visitorId();
   if (!vid) return;
-  const day = new Date().toISOString().slice(0, 10);
+  const day = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const key = `kaiwu:f:${kind}:${day}`;
   try {
-    if (localStorage.getItem(key)) return;
-    localStorage.setItem(key, '1');
+    if (localStorage.getItem(key) || inFlight.has(key)) return;
   } catch {
     return;
   }
   const body = JSON.stringify({ kind, vid });
-  try {
-    if (navigator.sendBeacon?.('/api/funnel', new Blob([body], { type: 'application/json' }))) return;
-  } catch {}
-  fetch('/api/funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+  inFlight.add(key);
+  fetch('/api/funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+    .then((response) => {
+      if (response.status === 204) {
+        try { localStorage.setItem(key, '1'); } catch {}
+      }
+    })
+    .catch(() => {})
+    .finally(() => inFlight.delete(key));
 }
 
 export interface FunnelCounts {

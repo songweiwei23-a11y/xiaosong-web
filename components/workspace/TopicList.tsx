@@ -50,7 +50,7 @@ export function TopicList({
       <div className="mb-3 flex items-baseline justify-between">
         <h3 className="text-[14px] font-semibold text-foreground">挑一条接着做</h3>
         <span className="text-[11.5px] text-muted-foreground">
-          共 {topics.length} 条 · 做过的会存进「我的作品」，隔多久都能接着做
+          共 {topics.length} 条 · 做过的会存进「创作进度」，隔多久都能接着做
         </span>
       </div>
 

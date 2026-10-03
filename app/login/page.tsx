@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { LogIn, Mail, Lock, ArrowLeft, Home, Ticket } from "lucide-react";
@@ -12,6 +11,8 @@ import { AuthTransition } from "@/components/auth/AuthTransition";
 // 900 多行数据被打进登录页的包，访客还没登录就先下载一份完整知识资产
 import { FACTS } from "@/lib/showcase";
 import { track } from "@/lib/funnel";
+import { authErrorText } from "@/lib/auth-errors";
+import { postRegistration } from "@/lib/auth-register-request";
 
 
 export default function LoginPage() {
@@ -27,7 +28,14 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   /** 码是从首页链接带过来的（公开体验码）：输入框下面换一句话，告诉他不用管 */
   const [codeFromLink, setCodeFromLink] = useState(false);
-  const router = useRouter();
+  const mounted = useRef(false);
+  // React 更新按钮前，同一轮事件里也只能提交一次。
+  const authBusy = useRef(false);
+  const authAttempt = useRef(0);
+  const navigationPending = useRef(false);
+  const handoffTarget = useRef("/dashboard");
+  const registrationAbort = useRef<AbortController | null>(null);
+  const loginTabTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /*
    * 从首页点"免费试用 / 免费注册体验"进来：地址是 /login?mode=register&code=体验码。
@@ -37,6 +45,9 @@ export default function LoginPage() {
    * 已经登录的人点了同样的按钮，直接送回工作台，不让他对着注册表单发愣。
    */
   useEffect(() => {
+    mounted.current = true;
+    let cancelled = false;
+    const initialAttempt = authAttempt.current;
     const q = new URLSearchParams(window.location.search);
     if (q.get("mode") === "register") setIsLogin(false);
     const code = (q.get("code") || "").trim().toUpperCase();
@@ -44,9 +55,22 @@ export default function LoginPage() {
       setInviteCode(code);
       setCodeFromLink(true);
     }
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.replace("/dashboard");
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        // 旧会话探测不能覆盖用户刚发起的登录或注册，也不能在卸载后跳转。
+        if (!cancelled && mounted.current && !authBusy.current && authAttempt.current === initialAttempt && session) {
+          goDashboard();
+        }
+      })
+      .catch(() => {
+        // 会话恢复失败时保留登录表单，用户仍然可以重新登录。
+      });
+    return () => {
+      cancelled = true;
+      mounted.current = false;
+      registrationAbort.current?.abort();
+      if (loginTabTimer.current) clearTimeout(loginTabTimer.current);
+    };
     // 只在进页面时读一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -59,19 +83,24 @@ export default function LoginPage() {
   /**
    * 跳转到工作台，并全程保持过渡层。
    *
-   * 这里刻意不再 setLoading(false)：原来 handleAuth 的 finally 会立刻把
-   * loading 关掉，于是按钮上的转圈在真正的等待**开始之前**就停了——
-   * 用户看到按钮变回"登录账户"、页面却不动，那几秒最像卡死。
-   * 现在从验证成功一直到新页面接管，过渡层不撤。
+   * 登录请求已经写好会话 Cookie 后，单次整页导航让服务端读取新会话。
+   * 验证成功一直到新页面接管，过渡层和提交锁都保持。
    */
   const goDashboard = (to: string = "/dashboard") => {
+    handoffTarget.current = to;
+    navigationPending.current = true;
+    authBusy.current = true;
+    setLoading(true);
     setHandingOff(true);
-    router.push(to);
-    router.refresh();
+    window.location.assign(to);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (authBusy.current) return;
+    authBusy.current = true;
+    authAttempt.current += 1;
+    if (loginTabTimer.current) clearTimeout(loginTabTimer.current);
     setLoading(true);
     setMessage("");
 
@@ -79,11 +108,12 @@ export default function LoginPage() {
       if (isLogin) {
         // 登录
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
 
         if (error) throw error;
+        if (!mounted.current) return;
 
         // 原来这里要先 setMessage 再等 500ms 才跳，纯粹是为了让人看清那句
         // "登录成功"。现在过渡层本身就在说话，这 500ms 只是白等，去掉。
@@ -98,25 +128,31 @@ export default function LoginPage() {
          * 前端加多少个输入框都拦不住。/api/auth/register 用 service_role
          * 建号，并在同一次请求里原子地占用邀请码。
          */
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, code: inviteCode }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "注册失败");
+        const controller = new AbortController();
+        registrationAbort.current = controller;
+        const data = await postRegistration(
+          { email: email.trim(), password, code: inviteCode },
+          controller.signal,
+        );
+        registrationAbort.current = null;
+        if (!mounted.current) return;
 
         setMessage(`${data.message || "注册成功"}！正在为你登录…`);
 
         // 直接把人登进去。让他注册完再手输一遍同样的账号密码，
         // 是没有必要的一道坎
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
+        if (!mounted.current) return;
         if (signInError) {
-          setMessage("注册成功！请切换到登录标签页进行登录。");
-          setTimeout(() => setIsLogin(true), 1500);
+          // 原来这里把真正的原因吞掉了，只说"请切换到登录"——登不上时谁也不知道为什么
+          setMessage(`注册成功，但自动登录没成功（${authErrorText(signInError)}）。请切换到登录标签页再试一次。`);
+          const completedAttempt = authAttempt.current;
+          loginTabTimer.current = setTimeout(() => {
+            if (mounted.current && authAttempt.current === completedAttempt) setIsLogin(true);
+          }, 1500);
         } else {
           /*
            * 刚注册完的人一步都没做过，直接送去引导清单。
@@ -127,14 +163,18 @@ export default function LoginPage() {
           return;
         }
       }
-    } catch (error: any) {
-      console.error("Auth error:", error);
-      setMessage(error.message || "操作失败，请重试");
+    } catch (error: unknown) {
+      if (!mounted.current) return;
+      navigationPending.current = false;
+      setMessage(authErrorText(error));
       setHandingOff(false);
     } finally {
-      // 只有"没走成"才收起转圈。跳转成功时页面即将被替换，
-      // 这时候把按钮恢复成可点状态反而会让人以为失败了
-      setLoading(false);
+      registrationAbort.current = null;
+      // return 仍然会执行 finally，必须显式保留成功导航的提交锁。
+      if (!navigationPending.current) {
+        authBusy.current = false;
+        if (mounted.current) setLoading(false);
+      }
     }
   };
 
@@ -156,7 +196,7 @@ export default function LoginPage() {
         name={email.includes("@") ? email.split("@")[0] : undefined}
         onRetry={() => {
           // 卡住时给个出口：整页重载比停在这里干等强
-          window.location.href = "/dashboard";
+          window.location.assign(handoffTarget.current);
         }}
       />
 
@@ -192,6 +232,7 @@ export default function LoginPage() {
           {/* 登录/注册切换 */}
           <div className="flex gap-2 mb-6">
             <button
+              disabled={loading || handingOff}
               onClick={() => {
                 setIsLogin(true);
                 setMessage("");
@@ -205,6 +246,7 @@ export default function LoginPage() {
               登录
             </button>
             <button
+              disabled={loading || handingOff}
               onClick={() => {
                 setIsLogin(false);
                 setMessage("");
@@ -323,7 +365,7 @@ export default function LoginPage() {
             {/* 提交按钮 */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || handingOff}
               className="w-full flex items-center justify-center gap-2 btn-brand py-3.5 rounded-xl font-semibold disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -344,6 +386,7 @@ export default function LoginPage() {
           <div className="mt-6 text-center text-sm text-muted-foreground">
             {isLogin ? "还没有账号？" : "已有账号？"}
             <button
+              disabled={loading || handingOff}
               onClick={() => {
                 setIsLogin(!isLogin);
                 setMessage("");
@@ -377,7 +420,7 @@ export default function LoginPage() {
             // 原来中间一格是 pipeline.length（5），三个数里最小的一个摆中间，
             // 把整排都压下去了
             { n: String(FACTS.methods), label: "条带公式的方法" },
-            { n: `${FACTS.wordsWan}万`, label: "字自有知识库" },
+            { n: `${FACTS.wordsWan}万`, label: "字符编导资料" },
             { n: String(FACTS.boards), label: "个创作板块" },
           ].map((x) => (
             <div key={x.label} className="glass-panel text-center p-4 rounded-xl">

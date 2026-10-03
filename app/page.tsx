@@ -10,13 +10,17 @@ import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
 import { TryHero } from "@/components/landing/hero/TryHero";
 import { REGISTER_URL } from "@/lib/landing";
+import { DEAL_REASONS } from "@/lib/deal-reasons";
+import { PURPOSES } from "@/lib/direction";
+import { LIBRARY_CATEGORIES } from "@/lib/library";
 import { BRAND_NAME, BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import { 
   Zap, CheckCircle, TrendingUp, ArrowRight, 
   FileText, Lightbulb, Film, Target, Star,
   Crown, Check, BarChart3, Award, BookOpen,
   Brain, Layers, Clock, Shield, Quote, ChevronRight,
-  MessageCircle, Activity, ChevronDown, X
+  MessageCircle, Activity, ChevronDown, X,
+  Clapperboard, Shuffle, FileSearch, GraduationCap, Compass, Bookmark, ListChecks, MessagesSquare,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -109,14 +113,14 @@ export default function HomePage() {
       icon: FileText,
       title: "脚本生成",
       // 「多版本对比」「一键多版本」没有做——只能重新生成、在历史里翻旧版
-      desc: `一两分钟出一版完整脚本，${FACTS.structures} 种脚本结构任选`,
+      desc: `AI 生成完整脚本，${FACTS.structures} 种脚本结构任选`,
       benefits: ["AI 智能生成", "内置编导知识库", `${FACTS.structures}种脚本结构`],
       color: "green"
     },
     {
       icon: Film,
       title: "分镜脚本",
-      desc: "可视化分镜设计，拍摄执行一目了然",
+      desc: "镜头表与拍摄清单，拍摄执行一目了然",
       benefits: ["镜头语言规划", "场景道具清单", "时长节奏把控"],
       color: "purple"
     },
@@ -129,7 +133,7 @@ export default function HomePage() {
     },
     {
       icon: Zap,
-      title: "标题封面",
+      title: "标题与封面文案",
       // 生成数量可选 3/5/8/10，默认 5，所以说"最多"
       desc: "一次最多出 10 个标题+封面文案，方便 A/B 测试",
       benefits: ["标题公式库", "情绪钩子植入", "A/B测试建议"],
@@ -137,9 +141,11 @@ export default function HomePage() {
     },
     {
       icon: TrendingUp,
-      title: "成交话术",
-      desc: "针对性成交话术，提升转化率",
-      benefits: ["痛点挖掘", "价值塑造", "促单话术"],
+      // 板块本名是「成交理由」，原来这里写"成交话术"，点进去对不上
+      title: "成交理由",
+      desc: "找出客人凭什么选你，同步进账号档案，选题、脚本、标题都会用上",
+      // 理由个数从理由表取，别手写（手写过"十五个"，实际 17 个）
+      benefits: [`${DEAL_REASONS.length} 个成交理由逐个打分`, "按档案分别保存", "选题、脚本、标题和二创共用"],
       color: "red"
     },
     {
@@ -147,10 +153,84 @@ export default function HomePage() {
       title: "知识库查询",
       // 不写「随时查阅」——知识库现在只有企业版无限，其余档位按次计费，
       // 「随时」就成了一句兑现不了的话
-      desc: `${FACTS.wordsWan} 万字编导资料，分 ${FACTS.libraries} 个专题库，问一句就能查`,
+      desc: `约 ${FACTS.wordsWan} 万字符编导资料，分 ${FACTS.libraries} 个专题库，问一句就能查`,
       benefits: ["五个专题分库", "起号36+1计", "开篇36计"],
       color: "indigo"
-    }
+    },
+    /*
+     * 2026-09-29/30 新上的四个。产品方："新上的功能首页没有的，同步到首页"。
+     * 说的都是真做到的事（见各板块的实现），不写做不到的。
+     */
+    {
+      // 2026-10-02 新上
+      icon: Compass,
+      title: "创作方向",
+      desc: "告诉 AI 你拍视频是为了什么，按你的账号铺开方向和思路，推荐最值得先做的一个",
+      benefits: [`${PURPOSES.length} 种目的可选`, "勾选方向直接去写", "推荐先做哪个"],
+      color: "orange",
+      isNew: true,
+    },
+    {
+      icon: Clapperboard,
+      title: "拆解爆款",
+      desc: "传一条参考视频，结合画面与口播拆出开篇、结构和拍法",
+      benefits: ["前3分钟切镜头、截图", "口播自动识别", "拆解卡片与档案历史"],
+      color: "purple",
+      isNew: true,
+    },
+    {
+      icon: Shuffle,
+      title: "跨行业二创",
+      desc: "借别的行业爆款的开篇、结构、拍法，换成你自己的行业来拍",
+      benefits: ["11 个层次自由选", "拆解完一键带过来", "改写自查与档案历史"],
+      color: "green",
+      isNew: true,
+    },
+    {
+      icon: FileSearch,
+      title: "前采建档",
+      desc: "贴前采记录或传 Word，AI 提取成账号档案，逐项核对后再写入",
+      benefits: ["每项标原文依据", "AI 逐项核对", "补问清单"],
+      color: "blue",
+      isNew: true,
+    },
+    {
+      icon: GraduationCap,
+      title: "新手课堂",
+      desc: "6 关学会抖音怎么推荐、怎么拍、怎么发，完全不懂也能上手",
+      benefits: ["刷视频式学习", "每关一道题", "毕业接 7 天起号"],
+      color: "yellow",
+      isNew: true,
+    },
+    /*
+     * 2026-10-02 新上的三个（产品方："把所有新上的功能同步到工作台首页和宣传页"）。
+     * 高阶自由对话原来压根没有卡片；联网、六附件、勾选带走都是真做到的（见 lib/web-query、
+     * Dify 文件上传上限 6、components/workspace/CreationLinks）
+     */
+    {
+      icon: MessagesSquare,
+      title: "高阶自由对话",
+      desc: "什么都能问：按需联网查最新信息，读图片和文档；回答里的选题、方向、脚本能勾选带去接着做",
+      benefits: ["联网结果标来源链接", "一次最多 6 个附件", "回答可勾选、可收藏"],
+      color: "blue",
+      isNew: true,
+    },
+    {
+      icon: Bookmark,
+      title: "素材库",
+      desc: "任何板块生成的好内容一键收藏，按选题、脚本、方向思路等分类，随时拿去继续创作",
+      benefits: ["勾几条存几条", `${LIBRARY_CATEGORIES.length} 个分类`, "一键继续创作"],
+      color: "pink",
+      isNew: true,
+    },
+    {
+      icon: ListChecks,
+      title: "创作进度",
+      desc: "每条内容做到哪一步、拍没拍、发没发，一眼看清；做好没拍、拍完没发会提醒",
+      benefits: ["选题到标题逐环节", "还没拍 / 已拍摄 / 已发布", "多久没动会提醒"],
+      color: "indigo",
+      isNew: true,
+    },
   ];
 
   /*
@@ -164,7 +244,7 @@ export default function HomePage() {
     {
       name: SUBSCRIPTION_PLANS.free.name,
       price: SUBSCRIPTION_PLANS.free.price,
-      period: "永久免费",
+      period: "一次性体验",
       desc: "体验核心功能",
       features: quotaSummary("free"),
       highlight: false,
@@ -203,22 +283,27 @@ export default function HomePage() {
        */
       features: [...quotaSummary("enterprise"), ...planSellingPoints("enterprise")],
       highlight: false,
-      cta: "联系销售"
+      cta: "选择高频会员"
     }
   ];
 
   const faqs = [
     {
       q: "完全不懂编导可以用吗？",
-      a: `完全可以！${BRAND_NAME}内置 ${FACTS.docs} 篇、共 ${FACTS.wordsWan} 万字的专业编导资料，AI会根据您的需求自动匹配最佳方案。无论您是新手还是专业编导，都能快速上手，几分钟就能出一版专业脚本。`
+      a: `完全可以！${BRAND_NAME}内置 ${FACTS.docs} 篇、约 ${FACTS.wordsWan} 万字符的专业编导资料，AI会结合您的需求和账号档案生成内容。无论您是新手还是专业编导，都可以从行业样例开始，逐步写出选题、脚本与镜头方案。`
     },
     {
       q: "生成的脚本质量如何？",
-      a: `我们用 AI 智能生成，结合内置的编导知识库和 ${FACTS.methods} 条成体系的方法（起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种）。生成的脚本包含完整的开场、冲突、高潮、结尾结构，并会标注每一段落在第几秒、波点落在哪里，拿到就能照着拍。不满意可以重新生成，历次结果都存在云端随时翻看。`
+      a: `我们用 AI 智能生成，结合内置的编导知识库和 ${FACTS.methods} 条公式与句式（起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种、爆款元素 ${FACTS.elements} 类）。脚本按所选结构展开，可结合拍摄条件继续细化；分镜板块提供镜头、动作与时长方案。不满意可以重新生成，已保存的结果在云端历史中查看，拆解报告和二创方案也按档案保存。`
     },
     {
       q: "和其他AI工具有什么区别？",
-      a: `我们不是简单的AI对话工具。核心优势在于：①${FACTS.wordsWan} 万字的自有编导知识库（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库），不是网上抓的通用内容；②${FACTS.methods} 条成体系的方法——四大脚本（教知识/聊观点/晒过程/讲故事）各对一个生意目的，八大爆款元素给个行业就能套出八个方向，起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种每条都带公式和不能用的边界；③${FACTS.boards} 个板块打通全流程（定位→选题→开篇→脚本→分镜→标题→成交），上一步的产出直接喂给下一步；④专为中文短视频优化的提示词工程。`
+      a: `核心优势在于：①约 ${FACTS.wordsWan} 万字符的专业编导资料（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库）；②${FACTS.methods} 条公式与句式——四大脚本各对一个生意目的，起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种、爆款元素 ${FACTS.elements} 类，其中脚本结构附情绪曲线与避坑说明；③${FACTS.boards} 个创作板块互通：任何板块的结果都能勾选几条带去别的板块，自动填好接着做；④结合账号档案组织创作背景，好内容可收藏进素材库，创作进度记着每条做到哪一步、拍没拍发没发。`
+    },
+    {
+      // 2026-10-02：板块互通、素材库、创作进度上线后加
+      q: "生成的内容怎么接着用？",
+      a: "每个板块的结果下面都有「继续创作」：结果里有好几条选题、方向或脚本时，先勾要的那几条，再点想去的板块（写脚本、拆分镜、起标题……），内容自动填好，点生成就行。好的内容点「收藏」存进素材库，按分类随时取用；每条内容做到哪一步、拍没拍、发没发，在「创作进度」里一目了然。"
     },
     {
       q: "免费版有什么限制？",
@@ -228,11 +313,11 @@ export default function HomePage() {
        * 价格页早就改成从配置现算了，只有这里还留着一份手写的。
        * 直接用 quotaSummary，配置改了这里自动跟。
        */
-      a: `免费版的额度是：${quotaSummary("free").join("、")}。功能和付费版一样，只是次数有限制，足够你把一条内容从定位做到分镜走通一遍。`
+      a: `免费版的额度是：${quotaSummary("free").join("、")}。核心创作板块均可体验，主要区别是次数。账号定位、商业定位、内容定位与创作简报共享定位额度；脚本生成、起号方案与开篇钩子共享脚本额度。`
     },
     {
       q: "如何保证数据安全？",
-      a: "数据存放在 Supabase（Postgres），传输与静态存储均加密，并按账号做了行级隔离——不同账号之间互相读不到内容。我们承诺：①数据仅用于为您生成内容，②不会用于AI训练，③支持导出所有历史记录。"
+      a: "数据存放在 Supabase（Postgres），按账号进行权限隔离。已保存的历史可查看、复制和删除；拆解报告和二创方案按档案保存，未主动删除就持续保留。生成与视频处理会使用第三方服务，具体处理范围请查看隐私政策。"
     },
     {
       q: "可以开发票吗？",
@@ -240,7 +325,7 @@ export default function HomePage() {
     },
     {
       q: "支持哪些支付方式？",
-      a: "微信和支付宝转账，扫码付款后上传转账截图，我核对后开通。企业版对公转账请加微信 13240286600 获取账号。"
+      a: "微信和支付宝转账，扫码付款后上传转账截图，我核对后开通。"
     },
     {
       q: "如何联系客服？",
@@ -324,27 +409,27 @@ export default function HomePage() {
             key: 'methods',
             value: FACTS.methods,
             label: '条带公式的方法',
-            sub: `四大脚本 · 八大爆款元素 · 起号 ${FACTS.tactics} 计 · 开篇 ${FACTS.cards} 计 · 脚本结构 ${FACTS.structures} 种，每条都写明什么情况下不能用`,
+            sub: `四大脚本 · 八大爆款元素 · 起号 ${FACTS.tactics} 计 · 开篇 ${FACTS.cards} 计 · 脚本结构 ${FACTS.structures} 种，结构附情绪曲线与避坑说明`,
             suffix: '',
           },
           {
             /*
              * 这一格原来是「5 步全流程打通」。5 是这三个数里最小的一个，
              * 摆在中间反而把整排数据压下去了，而且"5 步"听上去像流程图，
-             * 不像资产。换成知识库字数——43 万字是我们手上最硬的一个数，
+             * 不像资产。换成知识库全文字符数，数字由 FACTS 统一维护，
              * 也是通用 AI 最给不出来的东西。
              */
             key: 'words',
             value: FACTS.wordsWan,
-            label: '万字自有编导知识库',
-            sub: `${FACTS.docs} 篇 · ${FACTS.libraries} 个专题分库，不是网上抓的通用内容`,
+            label: '万字符专业编导资料',
+            sub: `${FACTS.docs} 篇 · ${FACTS.libraries} 个专题分库，全文统计含标点与排版字符`,
             suffix: '',
           },
           {
             key: 'boards',
             value: FACTS.boards,
-            label: '个创作板块打通全流程',
-            sub: `${FACTS.pipeline.join(' → ')}，一路到成交理由`,
+            label: '个创作板块，互通互联',
+            sub: `${FACTS.pipeline.join(' → ')}，每一步结果都能带去下一步`,
             suffix: '',
           },
         ].filter((t) => typeof t.value === 'number' && t.value > 0);
@@ -399,22 +484,22 @@ export default function HomePage() {
                 <div className="w-16 h-16 bg-primary/15 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <BookOpen className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">43 万字自有知识库</h3>
+                <h3 className="text-2xl font-bold mb-4">约 {FACTS.wordsWan} 万字符编导资料</h3>
                 {/*
                   原来写「150+ 篇、73 个方法」。两个数都把自己说小了：
-                  现数是 153 篇、43.2 万字，方法漏掉了 19 种脚本结构。
+                  现数是 153 篇、约 29.6 万全文字符，方法包含 19 种脚本结构。
                   数字一律从 FACTS 取，那里每一个都有测试对着源头现数。
                 */}
                 <p className="text-muted-foreground dark:text-foreground mb-6">
-                  <span className="font-semibold text-primary">{FACTS.wordsWan} 万字</span>、
-                  <span className="font-semibold text-primary">{FACTS.docs}</span> 篇自有编导资料，
+                  <span className="font-semibold text-primary">约 {FACTS.wordsWan} 万字符</span>、
+                  <span className="font-semibold text-primary">{FACTS.docs}</span> 篇专业编导资料，
                   拆成 <span className="font-semibold text-primary">{FACTS.libraries}</span> 个专题分库，
                   提炼出 <span className="font-semibold text-primary">{FACTS.methods}</span> 条带公式的方法
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">四大脚本（教知识/聊观点/晒过程/讲故事）各对一个生意目的</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">八大爆款元素、起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、脚本结构 {FACTS.structures} 种</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">每条都写明机制、结构公式、情绪曲线与适用边界</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">公式与句式可套用，脚本结构附情绪曲线与避坑说明</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">来自成体系的编导课程，不是网上抓的碎片</span></li>
                 </ul>
               </div>
@@ -432,8 +517,8 @@ export default function HomePage() {
                   结合编导知识库，智能理解您的需求，生成专业级脚本
                 </p>
                 <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">一两分钟出一版完整脚本，比手写快得多</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">自动匹配最佳叙事结构和节奏</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">结合账号档案，自动生成完整脚本</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">脚本结构可选，也可让 AI 推荐</span></li>
                   <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">不满意就重新生成，历次结果都存在云端</span></li>
                 </ul>
               </div>
@@ -445,15 +530,16 @@ export default function HomePage() {
                 <div className="w-16 h-16 bg-accent/15 dark:bg-pink-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Layers className="w-8 h-8 text-accent" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">{FACTS.boards} 个板块打通全流程</h3>
+                <h3 className="text-2xl font-bold mb-4">{FACTS.boards} 个板块协同创作</h3>
+                {/* 2026-10-02 更新：板块之间已经全通（勾选带走、自动填好），加了素材库和创作进度 */}
                 <p className="text-muted-foreground dark:text-foreground mb-6">
-                  从账号定位到成交转化，覆盖短视频创作的<span className="font-semibold text-accent">每一个环节</span>，
-                  上一步的产出直接喂给下一步，不用来回复制粘贴
+                  从创作方向、账号定位到拍摄发布，覆盖短视频创作的<span className="font-semibold text-accent">主要环节</span>，
+                  板块之间互通，内容自动带入
                 </p>
                 <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">账号定位 → 选题策划 → 脚本生成</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">分镜设计 → 标题封面 → 成交话术</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">一站式解决，无需切换多个工具</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">任何板块的结果都能勾选几条，带去别的板块接着做，自动填好</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">好内容一键收藏进素材库，按选题、脚本、方向思路分类取用</span></li>
+                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">创作进度记着每条做到哪一步、拍没拍、发没发</span></li>
                 </ul>
               </div>
             </div>
@@ -483,11 +569,11 @@ export default function HomePage() {
               <span className="brand-gradient bg-clip-text text-transparent">拍法是有公式的</span>
             </h2>
             <p className="text-xl text-muted-foreground dark:text-foreground max-w-3xl mx-auto">
-              通用 AI 给你一段文字，我们给你<span className="font-semibold text-primary">一套能照着拍的结构</span>。
+              结合编导方法，给你<span className="font-semibold text-primary">一套能照着拍的结构</span>。
               四大脚本、八大爆款元素、起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、
               脚本结构 {FACTS.structures} 种，共 <span className="font-semibold text-primary">{FACTS.methods} 条</span>，
-              每一条都写明了机制、结构公式、情绪走向、适合谁拍，以及
-              <span className="font-semibold text-primary">什么情况下不能用</span>。
+              含可套用的公式与句式，脚本结构另附情绪曲线、适用场景，以及
+              <span className="font-semibold text-primary">避坑说明</span>。
             </p>
           </div>
 
@@ -634,15 +720,16 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
               <Star className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">{FACTS.boards} 个板块 · 这是最常用的 8 个</span>
+              {/* 素材库、创作进度是整理内容的地方，不算创作板块（FACTS.boards 不数它们），所以分开说 */}
+              <span className="text-sm font-medium text-primary">{FACTS.boards} 个创作板块 + 素材库、创作进度</span>
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="brand-gradient bg-clip-text text-transparent">
-                全流程AI创作支持
+                策划与创作支持
               </span>
             </h2>
             <p className="text-xl text-muted-foreground">
-              从定位到变现，8大功能覆盖短视频创作每一个环节
+              从想方向、拆爆款、定位到拍摄发布，每一步的结果都能带去下一步
             </p>
           </div>
 
@@ -656,7 +743,12 @@ export default function HomePage() {
                     <div className={`w-14 h-14 ${colorClasses[feature.color]} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                       <Icon className="w-7 h-7" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3 text-foreground">{feature.title}</h3>
+                    <h3 className="mb-3 flex items-center gap-2 text-xl font-bold text-foreground">
+                      {feature.title}
+                      {"isNew" in feature && feature.isNew && (
+                        <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-500">新</span>
+                      )}
+                    </h3>
                     <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                       {feature.desc}
                     </p>
@@ -700,7 +792,7 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="text-xl text-muted-foreground">
-              从免费体验到企业定制，总有一款适合您
+              从免费体验到高频创作，总有一款适合您
             </p>
           </div>
 
@@ -711,33 +803,33 @@ export default function HomePage() {
                 <div className="bg-muted dark:bg-muted p-3 sm:p-4 font-bold text-center">对比项</div>
                 <div className="bg-muted dark:bg-muted p-3 sm:p-4 font-bold text-center">传统方式</div>
                 <div className="bg-primary/10 p-3 sm:p-4 text-center text-primary"><BrandWordmark /></div>
-                <div className="bg-emerald-500/10 p-3 sm:p-4 font-bold text-center text-green-500">提升幅度</div>
+                <div className="bg-emerald-500/10 p-3 sm:p-4 font-bold text-center text-green-500">创作支持</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">脚本创作时间</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">2-4小时</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">约 2 分钟</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">↑99%</div>
+                <div className="glass-panel p-3 sm:p-4">脚本产出</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">手动整理与撰写</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">AI 生成完整脚本</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">可继续细化</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">学习门槛</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">3-6个月</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">即用即会</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">零门槛</div>
+                <div className="glass-panel p-3 sm:p-4">编导方法</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">自行收集整理</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">{FACTS.methods} 条公式与句式</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">结构可选</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">月度成本</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">¥8000+</div>
+                <div className="glass-panel p-3 sm:p-4">月度订阅</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">费用依工具而定</div>
                 <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">
                   ¥{SUBSCRIPTION_PLANS.basic.price}-{SUBSCRIPTION_PLANS.enterprise.price}
                 </div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">省95%</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">按需选择</div>
               </div>
               <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">爆款命中率</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">10-15%</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">30-40%</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">↑3倍</div>
+                <div className="glass-panel p-3 sm:p-4">参考拆解</div>
+                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">手动整理画面口播</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">画面与口播分析</div>
+                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">可接跨行业二创</div>
               </div>
             </div>
           </div>
@@ -761,7 +853,7 @@ export default function HomePage() {
                 */}
                 {plan.highlight && (
                   <div className="absolute -top-4 left-1/2 z-10 -translate-x-1/2 px-4 py-1 brand-gradient text-white text-sm font-semibold rounded-full shadow-lg">
-                    最受欢迎
+                    推荐方案
                   </div>
                 )}
                 <div className={`glass-panel rounded-2xl p-6 border-2 ${plan.highlight ? 'border-accent/50 shadow-2xl' : 'border-border'} hover:shadow-xl transition-all h-full flex flex-col`}>

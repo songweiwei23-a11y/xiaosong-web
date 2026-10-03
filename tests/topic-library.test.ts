@@ -221,7 +221,7 @@ describe('接线：生成和追问都用上', () => {
     expect(chat).toMatch(/NO_REPEAT_TASKS\.has\(taskType\) && wantsNewTopics\(/);
     expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!, profileId\)\s*fullQuery \+= buildNoRepeatBlock\(prior\)/);
     expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*await saveFollowUpTopics\(guard\.userId, query \|\| '', answerText, profileId\)/);
-    expect(chat).toMatch(/answerText \+= data\.answer/);
+    expect(chat).toContain('answerText = applyChatAnswer(answerText, data)');
     expect(server).toMatch(/splitTopicSections\(answer\)\.length < FOLLOW_UP_MIN_TOPICS\) return false/);
     expect(server).toMatch(/task_type: '选题策划'/);
   });

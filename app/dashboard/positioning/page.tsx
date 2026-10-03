@@ -10,12 +10,16 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { putHandoff } from "@/lib/handoff";
+import { putHandoff, takeHandoff } from "@/lib/handoff";
+import { incomingNote } from "@/lib/creation-flow";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, Sparkles, Lightbulb, Wand2, User, CheckCircle, History, Plus, Trash2, MessageCircle, FileText } from "lucide-react";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { buildPositioningPrompt } from '@/lib/positioning-standards';
+import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix';
+import { taboosPromptBlock } from '@/lib/taboos';
+import { ContentMixBar } from '@/components/workspace/ContentMix';
 import { buildProfileSummary as summarizeProfile, profileSearchHints } from '@/lib/profile-summary';
 import {
   SECTIONS,
@@ -25,12 +29,13 @@ import {
 } from '@/lib/positioning-sections';
 import { SectionEditor } from '@/components/positioning/SectionEditor';
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext';
-import { throwApiError } from "@/lib/api-error";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
 import { getActiveProfileId } from '@/lib/active-profile';
+import { postSafely } from '@/lib/safe-post';
 interface Profile {
   id: string
   profile_name: string
@@ -72,6 +77,8 @@ export default function PositioningPage() {
   // 表单字段
   const router = useRouter();
   const [additionalNotes, setAdditionalNotes] = useState("");
+  // 内容配比：这次临时改的（null = 跟档案 / 系统推荐）
+  const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
   
   const [isGenerating, setIsGenerating] = useState(false)
   /**
@@ -109,6 +116,15 @@ export default function PositioningPage() {
     return keys.slice(0, Math.max(0, keys.length - 1));
   })();
   const [dialogConversationId, setDialogConversationId] = useState<string>();
+
+  // 别的板块「继续创作」带过来的内容（比如自由对话里聊清楚的账号方向）：填进补充说明（2026-10-02）
+  const [handoffFrom, setHandoffFrom] = useState("");
+  useEffect(() => {
+    const data = takeHandoff();
+    if (!data?.sourceContent) return;
+    setAdditionalNotes(incomingNote(data));
+    setHandoffFrom(data.from || "其他板块");
+  }, []);
 
   // 加载当前档案
   useEffect(() => {
@@ -240,10 +256,12 @@ export default function PositioningPage() {
       restrictions: activeProfile.content_restrictions || undefined,
       focus: "full",
       outputSpec: depth === "quick" ? buildQuickOutputSpec() : undefined,
+      mixBlock: mixPromptBlock(resolveMix(activeProfile as unknown as Record<string, unknown>, mixOverride, additionalNotes)),
+      taboos: taboosPromptBlock(activeProfile),
     });
 
     try {
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -277,7 +295,7 @@ export default function PositioningPage() {
         await savePositioning(fullResult)
         
         // 保存生成历史
-        await saveGenerationHistory("账号定位", { profileSummary, additionalNotes }, fullResult);
+        await saveGenerationHistory("账号定位", { profileSummary, additionalNotes, profileId: activeProfile?.id || null }, fullResult);
 
         // 增加配额使用
         // 打开持续对话，传递 conversation_id
@@ -300,7 +318,7 @@ export default function PositioningPage() {
       const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim()
       const positioningName = firstLine.substring(0, 50) || `${activeProfile.profile_name}的账号定位`
 
-      const res = await fetch('/api/positioning', {
+      const res = await postSafely('/api/positioning', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -445,7 +463,7 @@ export default function PositioningPage() {
           )}
 
           <CollapsibleSection title="补充信息" defaultOpen>
-            <Field label="补充说明" optional stacked hint="特殊要求、顾虑或期望，写了会一并纳入分析">
+            <Field label="补充说明" optional stacked hint={handoffFrom ? `已带入来自「${handoffFrom}」的内容，直接点生成就会一并纳入分析` : "特殊要求、顾虑或期望，写了会一并纳入分析"}>
               <textarea
                 value={additionalNotes}
                 onChange={(e) => setAdditionalNotes(e.target.value)}
@@ -454,6 +472,13 @@ export default function PositioningPage() {
                 className={TEXTAREA_CLS}
               />
             </Field>
+            {/* 定位里的「内容配比」按它写；设了就不再让 AI 自己推作用配比 */}
+            <ContentMixBar
+              profile={activeProfile as unknown as Record<string, unknown> | null}
+              override={mixOverride}
+              onOverride={setMixOverride}
+              goal={additionalNotes}
+            />
           </CollapsibleSection>
 
           {/*
@@ -683,7 +708,7 @@ export default function PositioningPage() {
           profileSummary={buildProfileSummary() || undefined}
           userDirection={additionalNotes || undefined}
           onSave={async (next) => {
-            const res = await fetch('/api/positioning', {
+            const res = await postSafely('/api/positioning', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

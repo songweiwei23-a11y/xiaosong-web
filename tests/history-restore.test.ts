@@ -185,13 +185,18 @@ describe('起号页的两个板块都能恢复', () => {
      * 存了、也取了，但读的是不存在的字段，结果还是空。
      */
     const src = read('app/dashboard/growth/page.tsx');
-    expect(src).toContain('{ picked: pickedTactics, notes: planNotes }');
-    expect(src).toContain('{ topic, currentOpening, picked: pickedCards }');
+    // 后面多存了一个当时用的内容配比（2026-10-02），恢复端不读它
+    expect(src).toMatch(/\{ picked: pickedTactics, notes: planNotes(, contentMix: [^}]+)? \}/);
+    expect(src).toContain('{ topic, currentOpening, picked: pickedCards, referenceContent, originContent }');
     // 恢复端读的必须是同样这几个名字
     expect(code).toContain('planIn.picked');
     expect(code).toContain('planIn.notes');
     expect(code).toContain('openIn.topic');
     expect(code).toContain('openIn.currentOpening');
     expect(code).toContain('openIn.picked');
+    expect(code).toContain('openIn.referenceContent');
+    expect(code).toContain('openIn.originContent');
+    // 档案是异步加载的，首次挂载还未就绪时不能永久跳过恢复。
+    expect(code).toContain('[contextLoading, context.profile?.id]');
   });
 });

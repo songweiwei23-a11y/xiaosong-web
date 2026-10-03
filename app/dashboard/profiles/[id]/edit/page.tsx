@@ -7,6 +7,7 @@ import { ProfileForm, type ProfileFormData } from '@/components/profile/ProfileF
 import { getActiveProfileId, setActiveProfileId } from '@/lib/active-profile'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import { InterviewEntry, InterviewNotesCard } from '@/components/interview/InterviewEntry'
+import { postSafely } from '@/lib/safe-post'
 
 /**
  * 编辑已有档案。
@@ -61,7 +62,7 @@ export default function EditProfilePage() {
 
   const handleSubmit = async (data: ProfileFormData) => {
     try {
-      const res = await fetch('/api/profiles', {
+      const res = await postSafely('/api/profiles', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         // 只发表单字段 + id。不要把整行原样回传——

@@ -6,10 +6,11 @@ import './palettes.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AmbientBackground } from '@/components/theme/AmbientBackground';
 import { FeedbackHost } from '@/components/ui/feedback';
+import { ClipboardFallback } from '@/components/ui/ClipboardFallback';
 
 export const metadata: Metadata = {
   title: '开物 - AI短视频脚本生成',
-  description: '3秒生成专业级短视频脚本，达到MCN团队水平（25/35分）',
+  description: '结合编导知识库与账号档案，从创作方向、选题、脚本、分镜到视频拆解和跨行业二创，板块互通、结果一键带去下一步，好内容收进素材库。',
 };
 
 // 在 React 接管前就把主题类名打上，否则首屏会先渲染成另一套配色再跳变。
@@ -56,6 +57,8 @@ export default function RootLayout({
             {children}
           </div>
           <FeedbackHost />
+          {/* http 访问没有剪贴板接口，不补的话全站复制按钮都失效 */}
+          <ClipboardFallback />
         </ThemeProvider>
       </body>
     </html>

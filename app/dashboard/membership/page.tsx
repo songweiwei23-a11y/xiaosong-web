@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
 import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures, planSellingPoints, PAID_PERIOD_NOTE } from "@/lib/config/plans";
+import { WebSearchQuota } from '@/components/chat/WebSearchQuota';
 
 /*
  * 价格和额度一律从 lib/config/plans.ts 取，页面只负责好看。
@@ -108,7 +109,7 @@ export default function MembershipPage() {
       {/* 页头 */}
       <div className="text-center mb-12">
         <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-4">
-          升级会员，解锁全部功能
+          升级会员，获得更多创作额度
         </h1>
         <p className="text-lg text-muted-foreground">
           选择适合你的套餐，开启高效创作之旅
@@ -148,6 +149,7 @@ export default function MembershipPage() {
         <p className="mx-auto mt-6 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
           {PAID_PERIOD_NOTE}。免费版是新账号的一次性体验额度，用完不再重置。
         </p>
+        <div className="mt-3"><WebSearchQuota /></div>
       </div>
 
       {/* 会员套餐卡片 */}
@@ -168,7 +170,7 @@ export default function MembershipPage() {
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                   <span className="brand-gradient text-white px-4 py-1 rounded-full text-sm font-medium">
-                    🔥 最受欢迎
+                    🔥 推荐方案
                   </span>
                 </div>
               )}
@@ -280,12 +282,12 @@ export default function MembershipPage() {
             <h3 className="font-semibold text-foreground mb-2">额度什么时候重置？</h3>
             <p className="text-muted-foreground text-sm">
               会员按月计费，每期一个月。当期没用完的次数到期清零，不累计到下一期；
-              续费后开始新的一期，额度回满。不续费的话，会员到期后剩余次数清零。
-              免费版是一次性体验额度，用完不再重置。
+              每期开始时额度回满，提前续费同档套餐不立即重置当期额度。免费版为一次性体验额度。
+              定位各板块共享定位额度；脚本、起号、开篇共享脚本额度。
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-foreground mb-2">企业版如何联系？</h3>
+            <h3 className="font-semibold text-foreground mb-2">购买会员遇到问题如何联系？</h3>
             <p className="text-muted-foreground text-sm">
               请添加微信：13240286600（手机同号）
             </p>

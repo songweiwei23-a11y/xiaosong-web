@@ -54,6 +54,8 @@ export interface BreakdownPromptInput {
   meta: VideoMeta;
   /** 当前账号档案摘要：有就给"套到你的店"，没有就不给 */
   profileSummary?: string;
+  /** 创作上下文（按 'breakdown' 清单切的：定位简报的方向、人群、禁忌），套选题时用 */
+  contextBlock?: string;
 }
 
 export interface ShotStats {
@@ -228,7 +230,7 @@ ${p.profileSummary?.trim()
     ? `- **套到这个账号上**：按下面的档案，给 3 个马上能拍的选题，每个写清用上面哪条骨架、开头第一句怎么说、在哪拍
 
 ## 当前账号档案（只在"套到这个账号上"时用）
-${p.profileSummary.trim()}`
+${p.profileSummary.trim()}${p.contextBlock?.trim() ? `\n\n${p.contextBlock.trim()}\n\n（以上方向和禁忌也只用在"套到这个账号上"；前面拆原片时照原片说）` : ''}`
     : '- 用户还没有选账号档案，"套到自己店上"这一步先不做，最后提醒一句：选好档案可以一键套用'}
 
 ## 要求

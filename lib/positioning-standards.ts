@@ -51,6 +51,13 @@ export interface PositioningPromptParams {
    * 由 lib/positioning-sections.ts 拼，那边有按标题切 OUTPUT_FULL 的机器。
    */
   outputSpec?: string;
+  /**
+   * 内容配比（lib/content-mix 的 mixPromptBlock，百分比版）。
+   * 有它，「内容配比」五步里的第一、二步（定作用配比）就不用 AI 推了，直接用；AI 只往下推形式和题材
+   */
+  mixBlock?: string;
+  /** 平台红线 + 行业禁忌（lib/taboos 的 taboosPromptBlock）：哪些方向不能拍、哪些话不能说 */
+  taboos?: string;
 }
 
 /**
@@ -990,6 +997,11 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
     parts.push('- **内容配比**要服务这个目标（比如他要大流量，流量型就不能是小头）');
     parts.push('- 你认为这个方向有风险，照样按它做，再用一两句话说清代价和怎么规避——不要自作主张改方向');
   }
+  if (p.mixBlock?.trim()) {
+    parts.push('');
+    parts.push(p.mixBlock.trim());
+    parts.push('- 下面「内容配比」五步里的**第一步、第二步（定作用配比）已经定好**，直接写这个数并解释为什么适合；从第三步（主力形式）往下照常推');
+  }
   parts.push('');
 
   if (p.baseline?.trim()) {
@@ -1032,7 +1044,7 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
   parts.push(
     tacticIndex({
       roles: focus === 'business' ? ['变现型'] : undefined,
-      exclude: tacticsBlockedBy(p.restrictions),
+      exclude: tacticsBlockedBy([p.restrictions, p.taboos].filter(Boolean).join('\n')),
     })
   );
   parts.push('');
@@ -1114,6 +1126,12 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
   parts.push('');
   parts.push(restrictionSection(p.restrictions));
   parts.push('');
+  if (p.taboos?.trim()) {
+    // 定位定的是方向：行业里不能拍的方向，在这里就不能出现在主打内容、系列、示例里
+    parts.push(p.taboos.trim());
+    parts.push('- 以上同样管定位里的主打内容、内容系列、选题示例和示范标题');
+    parts.push('');
+  }
 
   /*
    * 产出要求。

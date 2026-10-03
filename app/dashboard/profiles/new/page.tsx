@@ -5,6 +5,7 @@ import { notify } from '@/components/ui/feedback'
 import { setActiveProfileId } from '@/lib/active-profile'
 import { ProfileForm, type ProfileFormData } from '@/components/profile/ProfileForm'
 import { InterviewEntry } from '@/components/interview/InterviewEntry'
+import { postSafely } from '@/lib/safe-post'
 
 /**
  * 创建档案。表单本体在 ProfileForm 里，和编辑页共用同一份——
@@ -16,7 +17,7 @@ export default function NewProfilePage() {
 
   const handleSubmit = async (data: ProfileFormData) => {
     try {
-      const res = await fetch('/api/profiles', {
+      const res = await postSafely('/api/profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

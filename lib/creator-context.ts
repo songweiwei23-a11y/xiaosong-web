@@ -22,9 +22,12 @@
  * 标题要知道目标人群，不需要知道剪辑能力。各取所需。
  */
 
-import { briefBlockFor } from './creative-brief';
+import { briefBlockFor, briefFactsChanged } from './creative-brief';
 import { manifestOf, type Board, type ProfileSlice } from './context-manifest';
 import { profileCompletion } from './profile-options';
+import { resolveMix, mixContextLine } from './content-mix';
+import { taboosPromptBlock, readTabooSettings } from './taboos';
+import { scrubProfile } from './interview-exclusions';
 
 export interface CreatorProfile {
   id: string;
@@ -77,6 +80,14 @@ export interface CreatorProfile {
   conversion_path?: string | null;
   conversion_barriers?: string | null;
   conversion_hooks?: string | null;
+  // 前采建档提取的真实细节：老板/出镜人经历、年限、客户原话
+  interview_highlights?: string | null;
+  /** 内容配比设置（jsonb，见 lib/content-mix） */
+  content_mix?: unknown;
+  /** 禁忌设置：关掉的行业禁忌、自己补充的（jsonb，见 lib/taboos） */
+  taboo_settings?: unknown;
+  /** 档案最后一次保存的时间。比简报新，说明简报里的事实可能过时 */
+  updated_at?: string | null;
 }
 
 export interface CreatorPositioning {
@@ -93,6 +104,18 @@ export interface CreatorContext {
   dealReasons: string[];
   /** 创作简报的 markdown 原文。有它就优先用它，没有才退回截断定位 */
   brief?: string | null;
+  /** 这份简报的生成/保存时间 */
+  briefAt?: string | null;
+  /** 生成 / 保存简报时档案事实的指纹（lib/creative-brief 的 profileFactsFingerprint） */
+  briefFacts?: string | null;
+}
+
+/**
+ * 简报是按旧档案写的：人设、经历、品类、人群这些事实在简报之后改过。
+ * 原来比的是档案更新时间——成交理由同步一下卖点就误报（2026-10-02），改成比内容（见 briefFactsChanged）
+ */
+export function briefOlderThanProfile(ctx: Pick<CreatorContext, 'profile' | 'brief' | 'briefFacts'>): boolean {
+  return !!ctx.brief && briefFactsChanged(ctx.briefFacts, ctx.profile);
 }
 
 /**
@@ -199,7 +222,8 @@ export function describeRestrictions(p: CreatorProfile): string {
     line('绝对不能说', p.content_restrictions, 500),
     line('避免的内容', p.avoid_content, 300),
   ]);
-  return rows ? `### ⛔ 硬性禁忌（违反即不可用）\n\n${rows}` : '';
+  // 平台红线 + 按行业自动带出的禁忌（lib/taboos）：所有带 restrictions 切片的板块都会拿到，选题、方向在源头就避开
+  return `### ⛔ 硬性禁忌（违反即不可用）\n\n${rows ? `${rows}\n\n` : ''}${taboosPromptBlock(p)}`;
 }
 
 /**
@@ -207,7 +231,8 @@ export function describeRestrictions(p: CreatorProfile): string {
  * 没有档案时返回空串——调用方直接拼接即可，不用各自判空。
  */
 export function buildContextBlock(ctx: CreatorContext, module: ContextModule): string {
-  const p = ctx.profile;
+  // 建档时刻意没选的（排除清单）：相关的句子先从档案里拿掉，再拼进提示词（见 lib/interview-exclusions）
+  const p = ctx.profile ? scrubProfile(ctx.profile, readTabooSettings(ctx.profile.taboo_settings).excluded) ?? null : null;
   if (!p && !ctx.positioning && ctx.dealReasons.length === 0) return '';
 
   const parts: string[] = [];
@@ -225,6 +250,15 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
         line('账号阶段', [text(p.account_stage), text(p.fans_level)].filter(Boolean).join(' · ')),
         line('内容形式', p.content_format),
       ]), '');
+      /*
+       * 真实事实（出镜人是谁、干了几年、从哪来）。
+       * 2026-10-02 线上：档案里改成了「9 年川菜厨师」，但各板块从来没读过前采要点，
+       * 人设只能从创作简报里拿——简报还是按旧前采写的「在南乐扎根 18 年」，于是全站都写 18 年
+       */
+      const facts = line('真实情况（年限、经历、籍贯以此为准，不要改写或夸大）', p.interview_highlights?.trim().replace(/\s*\n+\s*/g, '；'), 600);
+      if (facts) parts.push(facts, '');
+      // 自由对话里也常让它出选题、排计划：告诉它这个号平时按什么配比（选题、方向等板块有自己的配比条，不走这里）
+      if (module === 'freeChat') parts.push(mixContextLine(resolveMix(p)), '');
     }
     if (want.has('audience')) parts.push(describeAudience(p, 'full'), '');
     if (want.has('tone')) {
@@ -275,6 +309,11 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
   const brief = briefBlockFor(ctx.brief, module);
   if (brief) {
     parts.push('', brief);
+    if (p) {
+      parts.push('', briefOlderThanProfile(ctx)
+        ? '⚠️ 账号档案在这份简报生成之后改过：简报里的人设事实（年限、经历、籍贯、价格、品类）可能已经过时，**和上面账号背景对不上的一律以账号背景为准**。'
+        : '简报里的事实（年限、经历、籍贯、价格、品类）如果和上面账号背景对不上，以账号背景为准。');
+    }
   } else if (ctx.positioning) {
     const body = module === 'topic' ? ctx.positioning.summary : ctx.positioning.full;
     if (body) {
@@ -284,8 +323,8 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
     }
   }
 
-  // 成交理由：只有变现相关的模块需要
-  if (ctx.dealReasons.length > 0 && ['topic', 'script', 'title'].includes(module)) {
+  // 成交理由：只有变现相关的模块需要——哪些模块要，看清单里的 dealReasons（原来这里另写了一份名单，两处会对不上）
+  if (ctx.dealReasons.length > 0 && manifestOf(module)?.dealReasons) {
     parts.push('', '## 💰 这个账号的成交理由', '', ctx.dealReasons.map((r) => `- ${r}`).join('\n'), '',
       '内容要能体现这些理由，但不是硬塞——放在具体场景里讲出来。');
   }

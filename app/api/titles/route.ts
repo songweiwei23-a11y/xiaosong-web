@@ -1,6 +1,7 @@
 ﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { historyProfileFilter } from '@/lib/profile-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,12 +34,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    let profileFilter: string | null
+    try { profileFilter = historyProfileFilter(new URL(request.url).searchParams.get('profileId')) }
+    catch { return NextResponse.json({ error: '档案编号不正确' }, { status: 400 }) }
+    let query = supabase
       .from('script_history')
       .select('*')
       .eq('user_id', user.id)
       .eq('task_type', '标题封面')
       .order('created_at', { ascending: false })
+    if (profileFilter) query = query.or(profileFilter)
+    const { data, error } = await query
 
     if (error) throw error
 

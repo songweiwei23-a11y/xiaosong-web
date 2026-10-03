@@ -1,6 +1,7 @@
 ﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { historyProfileFilter } from '@/lib/profile-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,6 +50,9 @@ export async function GET(request: Request) {
      * 现在都显式传参；tests/history-restore.test.ts 会扫描，漏传就红。
      */
     const { searchParams } = new URL(request.url)
+    let profileFilter: string | null
+    try { profileFilter = historyProfileFilter(searchParams.get('profileId')) }
+    catch { return NextResponse.json({ error: '档案编号不正确' }, { status: 400 }) }
     const raw = searchParams.get('taskType') ?? '脚本生成'
     const limitRaw = Number(searchParams.get('limit'))
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : undefined
@@ -58,6 +62,8 @@ export async function GET(request: Request) {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .lte('created_at', new Date().toISOString())
 
     if (raw !== 'all') {
       const types = raw.split(',').map((t) => t.trim()).filter(Boolean)
@@ -66,13 +72,18 @@ export async function GET(request: Request) {
       if (types.length === 1) query = query.eq('task_type', types[0])
       else if (types.length > 1) query = query.in('task_type', types)
     }
+    if (profileFilter) query = query.or(profileFilter)
     if (limit) query = query.limit(limit)
 
-    const { data, error } = await query
-
-    if (error) throw error
-
-    return NextResponse.json(data || [])
+    const all: unknown[] = []
+    const pageSize = limit || 500
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await query.range(from, from + pageSize - 1)
+      if (error) throw error
+      all.push(...(data || []))
+      if (limit || !data || data.length < pageSize) break
+    }
+    return NextResponse.json(all, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     console.error('获取脚本历史失败:', error)
     return NextResponse.json({ error: '获取失败' }, { status: 500 })

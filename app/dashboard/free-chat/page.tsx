@@ -1,15 +1,23 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { throwApiError } from "@/lib/api-error";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { notifyGenerated } from "@/lib/upgrade";
 import { Markdown } from "@/components/markdown";
-import { getActiveProfileId } from '@/lib/active-profile';
+import { resolveCreationSettings, settingsFromText, mergeCreationSettings, creationSettingsBlock, type CreationSettings } from '@/lib/creation-settings';
+import { CreationLinks } from '@/components/workspace/CreationLinks';
+import { takeHandoff } from '@/lib/handoff';
+import { creationReference, continuationRules } from '@/lib/creation-continuation';
+import { AttachmentComposer, AttachmentList } from '@/components/chat/ChatAttachments';
+import { conversationAttachments, type ChatAttachment } from '@/lib/chat-attachments';
+import { type WebSearchStatus } from '@/lib/dify-web-status';
+import { WebSearchQuota } from '@/components/chat/WebSearchQuota';
+import { applyChatAnswer } from '@/lib/chat-stream-answer';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { buildContextBlock } from '@/lib/creator-context';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
-  PanelLeft, X, Copy, Check, Bot, User as UserIcon,
+  PanelLeft, X, Copy, Check, Bot, Globe, User as UserIcon,
 } from "lucide-react";
 import {
   listConversations,
@@ -125,13 +133,22 @@ async function migrateLocalConversations(): Promise<Conversation[]> {
 }
 export default function FreeChatPage() {
   // 账号背景走统一清单，不再手拼那 5 个字段
-  const { context: creatorContext } = useCreatorContext();
+  const { context: creatorContext, loading: contextLoading } = useCreatorContext();
+  const [showLegacy, setShowLegacy] = useState(false);
+  const profile = showLegacy ? null : creatorContext.profile as ActiveProfile | null;
+  useEffect(() => { setShowLegacy(false); }, [creatorContext.profile?.id]);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [input, setInput] = useState("");
+  const [webSearchMode, setWebSearchMode] = useState<'auto' | 'on' | 'off'>('auto');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [profile, setProfile] = useState<ActiveProfile | null>(null);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const sending = useRef(false);
+  const pendingCreation = useRef<{ conversationId: string; settings: CreationSettings } | null>(null);
+  useEffect(() => { setAttachments([]); }, [activeId, profile?.id, showLegacy]);
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // 手机上会话列表默认收起：它浮在对话上面，一进来就挡住对话不合适
   useEffect(() => {
@@ -139,6 +156,7 @@ export default function FreeChatPage() {
   }, []);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const loadedScopeRef = useRef<string>();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -147,12 +165,19 @@ export default function FreeChatPage() {
 
   // 载入云端会话；首次打开时把旧的浏览器本地会话一次性搬上去
   useEffect(() => {
+    if (contextLoading) return;
+    const scope = profile?.id || "default";
+    if (loadedScopeRef.current === scope) return;
+    let cancelled = false;
+    setLoaded(false);
+    setConversations([]);
+    setActiveId("");
     const load = async () => {
-      const remote = await listConversations("free_chat");
+      const remote = await listConversations("free_chat", { profileId: profile?.id || null });
 
       // 仅在云端确实为空时才迁移，避免把已经搬过的旧数据重复上传
       let migrated: Conversation[] = [];
-      if (remote.length === 0) {
+      if (remote.length === 0 && !profile) {
         migrated = await migrateLocalConversations();
       }
 
@@ -168,30 +193,15 @@ export default function FreeChatPage() {
           updatedAt: c.updatedAt,
         })),
       ];
+      if (cancelled) return;
       setConversations(all);
       setActiveId(all[0]?.id || "");
+      loadedScopeRef.current = scope;
       setLoaded(true);
     };
     load();
-  }, []);
-
-  // 载入当前账号档案（作为对话背景）
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const res = await fetch("/api/profiles");
-        if (!res.ok) return;
-        const data: ActiveProfile[] = await res.json();
-        if (!Array.isArray(data) || data.length === 0) return;
-        const savedId = getActiveProfileId();
-        const active = data.find((x) => x.id === savedId) || data[0];
-        setProfile(active);
-      } catch (e) {
-        console.warn("载入档案失败", e);
-      }
-    };
-    loadProfile();
-  }, []);
+    return () => { cancelled = true; };
+  }, [contextLoading, profile?.id]);
 
   // 会话内容改为在 handleSend 里按轮次写云端（见下方），
   // 这里不再镜像一份到 localStorage：两份数据一旦不同步，
@@ -237,6 +247,17 @@ export default function FreeChatPage() {
     return conv;
   }, []);
 
+  const handoffApplied = useRef(false);
+  useEffect(() => {
+    if (handoffApplied.current || !loaded || contextLoading) return;
+    handoffApplied.current = true;
+    const data = takeHandoff();
+    if (!data?.sourceContent) return;
+    const conv = createConversation(true);
+    pendingCreation.current = { conversationId: conv.id, settings: resolveCreationSettings(data, creatorContext) };
+    setInput(`【来自${data.from}的创作内容】\n${creationReference(data)}${creationSettingsBlock(resolveCreationSettings(data, creatorContext))}${continuationRules('free-chat')}\n\n请保留以上主题、方向、人群和结构，基于原稿完成一版可直接使用的创作正文；已有事实、已选开头和限制必须承接，不另起炉灶。`);
+  }, [loaded, contextLoading, createConversation, creatorContext]);
+
   const deleteConversation = useCallback((id: string) => {
     let remoteId: string | undefined;
     setConversations((prev) => {
@@ -258,8 +279,10 @@ export default function FreeChatPage() {
   }, []);
 
   const handleSend = useCallback(async (text?: string) => {
-    const content = (text ?? input).trim();
-    if (!content || isStreaming) return;
+    const selectedFiles = text ? [] : [...attachments];
+    const content = (text ?? input).trim() || (selectedFiles.length ? '请分析我上传的文件，并提炼其中的关键信息。' : '');
+    if (!content || sending.current || isStreaming || uploadingFiles || !loaded || contextLoading || showLegacy) return;
+    sending.current = true;
 
     // 确保有一个当前会话
     let conv = activeConv;
@@ -269,7 +292,10 @@ export default function FreeChatPage() {
     const convId = conv.id;
     const isFirstMessage = conv.messages.length === 0;
 
-    const userMsg: ChatMessage = { role: "user", content, timestamp: Date.now() };
+    const inherited = pendingCreation.current?.conversationId === convId ? pendingCreation.current.settings : mergeCreationSettings(conv.messages.filter(m => m.role === 'user').at(-1)?.creationSettings, settingsFromText(content));
+    const creationSettings = resolveCreationSettings({ from: '自由对话', sourceContent: content, settings: inherited }, creatorContext);
+    const userMsg: ChatMessage = { role: "user", content, timestamp: Date.now(), creationSettings, ...(selectedFiles.length ? { attachments: selectedFiles } : {}) };
+    pendingCreation.current = null;
     const title = isFirstMessage ? content.slice(0, 18) : conv.title;
     // 发送前的消息快照。保存时以它为基准拼出完整记录，
     // 避免从 state 闭包里读到上一轮的旧数组。
@@ -282,6 +308,7 @@ export default function FreeChatPage() {
       updatedAt: Date.now(),
     }));
     setInput("");
+    setAttachments([]);
     setIsStreaming(true);
 
     // 用户的问题先落库：万一回答中途断网或刷新，至少问题不会丢。
@@ -309,23 +336,30 @@ export default function FreeChatPage() {
     // 首次对话把账号档案作为背景带上
     const difyConvId = conv.difyConversationId;
     let query = content;
+    if (!content.includes('【本条创作的连续设置】')) query += creationSettingsBlock(creationSettings);
     if (!difyConvId) {
       const ctx = buildProfileContext();
       if (ctx) {
-        query = ctx + "\n\n【我的问题】" + content;
+        query = ctx + "\n\n【我的问题】" + query;
       }
     }
 
     // 在 try 外声明：finally 要用它们拼出完整记录写回云端
     let assistantText = "";
     let capturedDifyId = difyConvId || "";
+    let webSearch: WebSearchStatus | undefined;
 
     try {
-      const res = await fetch("/api/dify/chat", {
+      const res = await fetchGeneration("/api/dify/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query,
+          question: content,
+          freeChat: true,
+          webSearchMode,
+          creationSettings,
+          files: conversationAttachments(baseMessages, selectedFiles),
           conversationId: difyConvId || undefined,
           // 没有自己的会话时，服务端会把这条线程接入该档案的主工作窗口，
           // 于是「刚才那条脚本怎么改」这类问题它是真的知道指的是哪条
@@ -353,15 +387,22 @@ export default function FreeChatPage() {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed.startsWith("data: ")) continue;
-          try {
-            const data = JSON.parse(trimmed.slice(6));
+          let data;
+          try { data = JSON.parse(trimmed.slice(6)); } catch { continue; }
+            if (data.event === 'error') throw new Error(data.message || data.error || '生成失败，请重试');
+            if (data.event === 'web_search') {
+              webSearch = { status: data.status, sources: data.sources || [], ...(data.message ? { message: data.message } : {}) };
+              window.dispatchEvent(new Event('web-search-quota-updated'));
+              patchConv(convId, c => ({ ...c, messages: c.messages.map((m, i) => i === c.messages.length - 1 ? { ...m, webSearch } : m) }));
+              continue;
+            }
             if (data.event === "conversation_id" && data.conversation_id) {
               capturedDifyId = data.conversation_id;
               patchConv(convId, (c) => ({ ...c, difyConversationId: data.conversation_id }));
               continue;
             }
-            if (data.answer) {
-              assistantText += data.answer;
+            if (data.answer && ['message', 'agent_message', 'message_replace'].includes(data.event)) {
+              assistantText = applyChatAnswer(assistantText, data);
               patchConv(convId, (c) => {
                 const msgs = [...c.messages];
                 const last = msgs[msgs.length - 1];
@@ -369,9 +410,6 @@ export default function FreeChatPage() {
                 return { ...c, messages: msgs, updatedAt: Date.now() };
               });
             }
-          } catch {
-            // 忽略不完整分片
-          }
         }
       }
 
@@ -394,6 +432,8 @@ export default function FreeChatPage() {
       });
     } finally {
       setIsStreaming(false);
+      sending.current = false;
+      if (webSearch?.status === 'searching') webSearch = { status: 'unavailable', sources: [] };
 
       // 本轮结束后把完整记录写回云端。以发送前的快照为基准拼接，
       // 而不是从 state 里取，后者在闭包中可能仍是上一轮的数组。
@@ -404,17 +444,17 @@ export default function FreeChatPage() {
           messages: [
             ...baseMessages,
             userMsg,
-            { role: "assistant", content: assistantText, timestamp: Date.now() },
+            { role: "assistant", content: assistantText, timestamp: Date.now(), ...(webSearch ? { webSearch } : {}) },
           ],
         });
       }
 
       // 这一轮真有回答才算用了一次：快用完了就轻轻提醒一次（见 lib/upgrade）
-      if (assistantText) notifyGenerated();
+      if (assistantText && !assistantText.startsWith('⚠️')) notifyGenerated();
 
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [input, isStreaming, activeConv, createConversation, patchConv, buildProfileContext, profile]);
+  }, [input, attachments, uploadingFiles, isStreaming, activeConv, createConversation, patchConv, buildProfileContext, profile, loaded, contextLoading, showLegacy, creatorContext]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -446,12 +486,18 @@ export default function FreeChatPage() {
           <div className="p-3">
             <button
               onClick={() => createConversation(true)}
+              disabled={showLegacy || contextLoading || !loaded}
               className="flex w-full items-center justify-center gap-2 rounded-xl brand-gradient py-3 font-medium text-white shadow-sm transition-all"
             >
               <Plus className="h-4 w-4" />
               新建对话
             </button>
           </div>
+          {creatorContext.profile && (
+            <button onClick={() => setShowLegacy((v) => !v)} className="mx-3 mb-3 rounded-lg border px-3 py-2 text-xs text-muted-foreground">
+              {showLegacy ? "返回当前档案的对话" : "查看以前未关联档案的对话"}
+            </button>
+          )}
           <div className="flex-1 overflow-y-auto px-2 pb-3">
             {conversations.length === 0 && (
               <p className="px-3 py-4 text-center text-xs text-muted-foreground">还没有对话，点上方新建开始</p>
@@ -528,7 +574,7 @@ export default function FreeChatPage() {
                 </div>
                 <h2 className="mb-2 text-xl font-bold text-foreground">想聊点什么？</h2>
                 <p className="mb-6 max-w-md text-sm text-muted-foreground">
-                  这里可以自由输入、连续追问，AI 会记住上下文。无论是找选题、写脚本还是反复打磨，直接开口就行。
+                  可以连续追问、联网查资料，也可以上传图片和文档一起分析。对话与附件随历史保存在云端。
                 </p>
                 <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
                   {QUICK_PROMPTS.map((q) => (
@@ -568,6 +614,7 @@ export default function FreeChatPage() {
                         : "border border-border bg-card text-foreground"
                     }`}
                   >
+                    {msg.attachments && <AttachmentList files={msg.attachments} />}
                     {/*
                       下面那段 prose 必须带 dark:prose-invert。
                       typography 插件的 prose 会把正文颜色写死成深灰
@@ -592,6 +639,10 @@ export default function FreeChatPage() {
                       <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                     )}
                   </div>
+                  {msg.webSearch && <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    <p className="flex items-center gap-1"><Globe className="h-3 w-3" />{msg.webSearch.status === 'searching' ? '正在联网查资料…' : msg.webSearch.status === 'done' ? '已执行联网搜索' : msg.webSearch.status === 'quota_exhausted' ? '联网额度已用完，本轮基于已有资料回答' : '本次联网搜索未成功，实时信息请稍后核实'}</p>
+                    {msg.webSearch.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="block max-w-full truncate text-primary underline" title={source.url}>{source.title}</a>)}
+                  </div>}
                   {msg.role === "assistant" && msg.content && (
                     <button
                       onClick={() => copyMessage(msg.content, idx)}
@@ -601,6 +652,7 @@ export default function FreeChatPage() {
                       {copiedIdx === idx ? "已复制" : "复制"}
                     </button>
                   )}
+                  {msg.role === 'assistant' && msg.content && !(isStreaming && idx === activeConv.messages.length - 1) && <div className="mt-3"><CreationLinks body={msg.content} context={{ originContent: activeConv.messages.find(m => m.role === 'user')?.content, settings: mergeCreationSettings(settingsFromText(activeConv.messages.find(m => m.role === 'user')?.content || ''), activeConv.messages.slice(0, idx).filter(m => m.role === 'user').at(-1)?.creationSettings) }} /></div>}
                 </div>
               </div>
             ))}
@@ -610,20 +662,27 @@ export default function FreeChatPage() {
 
         {/* 输入区 */}
         <div className="border-t bg-card px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+          <div className="mx-auto mb-2 flex max-w-3xl flex-wrap items-center justify-between gap-2">
+            <WebSearchQuota />
+            <select aria-label="联网模式" value={webSearchMode} onChange={e => setWebSearchMode(e.target.value as 'auto' | 'on' | 'off')} disabled={isStreaming} className="rounded-lg border border-border bg-background px-2 py-1 text-xs">
+              <option value="auto">按需联网</option><option value="on">本轮联网</option><option value="off">关闭联网</option>
+            </select>
+          </div>
+          <AttachmentComposer key={`${profile?.id || 'default'}:${activeId}:${showLegacy}`} files={attachments} onChange={setAttachments} onBusy={setUploadingFiles} disabled={isStreaming || showLegacy || contextLoading || !loaded} />
           <div className="mx-auto flex max-w-3xl items-end gap-2 sm:gap-3">
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="自由输入…（Enter 发送，Shift+Enter 换行）"
+              placeholder={showLegacy ? "旧对话可以查阅；继续创作请返回当前档案的对话" : "自由输入…（Enter 发送，Shift+Enter 换行）"}
               rows={2}
-              disabled={isStreaming}
+              disabled={isStreaming || showLegacy || contextLoading || !loaded}
               className="min-w-0 flex-1 resize-none rounded-xl glass-panel px-3 py-2.5 text-sm sm:px-4 sm:py-3 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted"
             />
             <button
               onClick={() => handleSend()}
-              disabled={!input.trim() || isStreaming}
+              disabled={(!input.trim() && !attachments.length) || uploadingFiles || isStreaming || showLegacy || contextLoading || !loaded}
               className="flex h-12 shrink-0 items-center gap-2 rounded-xl brand-gradient px-4 font-medium sm:px-5 text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isStreaming ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}

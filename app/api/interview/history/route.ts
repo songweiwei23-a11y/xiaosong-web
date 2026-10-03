@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/api-guard';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { updateImport, UUID_RE } from '@/lib/interview-history';
 import { sanitizeExtraction } from '@/lib/interview-import';
+import { readJsonBody } from '@/lib/read-body';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response!;
-  const body = await req.json().catch(() => null);
+  const body = await readJsonBody(req).catch(() => null);
   const id = typeof body?.id === 'string' ? body.id : '';
   if (!UUID_RE.test(id) || !body?.extraction) return NextResponse.json({ error: '请求格式不对' }, { status: 400 });
   const ok = await updateImport(guard.userId!, id, { extraction: sanitizeExtraction(body.extraction) });

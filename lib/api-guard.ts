@@ -10,27 +10,52 @@ export interface GuardResult {
   response?: Response;
 }
 
+function isInvalidSession(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const { name, code, status } = error as { name?: string; code?: string; status?: number };
+  return name === 'AuthSessionMissingError' || name === 'AuthInvalidJwtError' ||
+    status === 401 || status === 403 || [
+      'bad_jwt', 'invalid_jwt', 'no_authorization', 'user_not_found', 'user_banned',
+      'session_not_found', 'session_expired', 'refresh_token_not_found', 'refresh_token_already_used',
+    ].includes(code ?? '');
+}
+
+function authFailure(error?: unknown): GuardResult {
+  if (!error || isInvalidSession(error)) {
+    return { ok: false, response: NextResponse.json({ error: '请先登录' }, { status: 401 }) };
+  }
+  // 超时、限流或认证服务故障不代表会话失效。拒绝本次访问，允许稍后重试，
+  // 不向调用方泄露服务端错误、用户资料，也不主动登出或清理登录 Cookie。
+  return {
+    ok: false,
+    response: NextResponse.json(
+      { error: '登录服务暂时连接不稳定，请稍后重试', code: 'AUTH_TEMPORARILY_UNAVAILABLE', retryable: true },
+      { status: 503, headers: { 'Retry-After': '5', 'Cache-Control': 'no-store' } }
+    ),
+  };
+}
+
+async function checkCurrentUser(): Promise<GuardResult> {
+  try {
+    const supabase = await getServerSupabase();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) return authFailure(error);
+    if (!user) return authFailure();
+    return { ok: true, userId: user.id };
+  } catch (error) {
+    return authFailure(error);
+  }
+}
+
 /**
  * API 守卫：仅要求已登录，不检查也不扣减配额。
  * 适用于 CRUD 类接口（读写自己的数据），生成类接口请用 requireUserWithQuota。
  *
  * - 未登录 -> 401
+ * - 认证服务临时故障 -> 503（稍后重试）
  */
 export async function requireUser(): Promise<GuardResult> {
-  const supabase = await getServerSupabase();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: '请先登录' }, { status: 401 }),
-    };
-  }
-
-  return { ok: true, userId: user.id };
+  return checkCurrentUser();
 }
 
 /**
@@ -38,22 +63,14 @@ export async function requireUser(): Promise<GuardResult> {
  * 扣减由 incrementUsageServer 完成，应在 Dify 生成成功后调用。
  *
  * - 未登录 -> 401
+ * - 认证服务临时故障 -> 503（稍后重试）
  * - 超额   -> 402（需要付费/升级）
  */
 export async function requireUserWithQuota(feature?: string): Promise<GuardResult> {
-  const supabase = await getServerSupabase();
+  const guard = await checkCurrentUser();
+  if (!guard.ok) return guard;
+  const userId = guard.userId!;
   const serviceSupabase = getServiceSupabase();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: '请先登录' }, { status: 401 }),
-    };
-  }
 
   /*
    * 订阅和配额一起查。
@@ -72,12 +89,12 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     serviceSupabase
       .from('subscriptions')
       .select('plan, status, end_date')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle(),
     serviceSupabase
       .from('user_quotas')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle(),
   ]);
 
@@ -97,12 +114,12 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
   const plan = getPlan(planId);
 
   /*
-   * 企业版不限量，但周期照样要滚。
+   * 所有套餐都要维护使用周期。
    *
    * 这里原来一进来就对企业版 return，下面"周期到期就重置"那段永远走不到：
    * 线上企业版用户的周期 9 月 9 日到期后再没重置过，计数器从 8 月一路累加，
    * 首页接口又把"周期已结束"当成 0 显示——本月用了六十多次，首页写着 0。
-   * 改成：建记录、滚周期对所有套餐都做，企业版只是跳过限额判定。
+   * 建记录、滚周期对所有套餐都做，再按当前配置判定限额。
    */
   const quota = quotaRow;
 
@@ -110,14 +127,14 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     // 如果没有配额记录，创建一个
     const { error: createError } = await serviceSupabase
       .from('user_quotas')
-      .insert({ user_id: user.id });
+      .insert({ user_id: userId });
 
     if (createError) {
       console.error('[api-guard] 创建配额记录失败:', createError);
     }
     
     // 新用户，允许继续
-    return { ok: true, userId: user.id };
+    return { ok: true, userId };
   }
 
   /*
@@ -132,14 +149,14 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     const { error: rollError } = await serviceSupabase
       .from('user_quotas')
       .update(roll.patch)
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
     if (rollError) console.error('[api-guard] 额度换期写入失败:', rollError.message);
     Object.assign(quota, roll.patch);
   }
 
-  // 企业版无限使用
-  if (planId === 'enterprise') {
-    return { ok: true, userId: user.id };
+  // 仅真正的无限套餐可跳过判定；199元高频会员现在按功能限额。
+  if (plan.totalQuota === -1) {
+    return { ok: true, userId };
   }
 
   // 判定交给 lib/config/plans.ts 的 judgeQuota：
@@ -165,7 +182,7 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
     }
   }
 
-  return { ok: true, userId: user.id };
+  return { ok: true, userId };
 }
 
 /**

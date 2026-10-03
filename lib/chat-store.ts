@@ -8,6 +8,9 @@
 // 就是打断对话——界面照常显示，下一次保存会把完整内容再写一遍。
 
 import { normalizeTimestamp, type ChatMessage, type ChatRole } from './chat-message-utils'
+import { sanitizeAttachments } from './chat-attachments'
+import { sanitizeMessages } from './chat-message-utils'
+import { postSafely } from '@/lib/safe-post'
 
 export { normalizeTimestamp, matchesGeneration } from './chat-message-utils'
 export type { ChatMessage, ChatRole } from './chat-message-utils'
@@ -34,10 +37,13 @@ function toConversation(row: any): ChatConversation {
     profileId: row.profile_id ?? null,
     title: row.title || '新对话',
     difyConversationId: row.dify_conversation_id || '',
-    messages: rawMessages.map((m: any) => ({
+    messages: sanitizeMessages(rawMessages).map((m: any) => ({
       role: m?.role === 'user' ? 'user' : 'assistant',
       content: typeof m?.content === 'string' ? m.content : '',
       timestamp: normalizeTimestamp(m?.timestamp),
+      ...(sanitizeAttachments(m?.attachments).length ? { attachments: sanitizeAttachments(m.attachments) } : {}),
+      ...(m.webSearch ? { webSearch: m.webSearch } : {}),
+      ...(m.creationSettings ? { creationSettings: m.creationSettings } : {}),
     })),
     createdAt: normalizeTimestamp(row.created_at),
     updatedAt: normalizeTimestamp(row.updated_at),
@@ -46,10 +52,11 @@ function toConversation(row: any): ChatConversation {
 
 export async function listConversations(
   kind: 'free_chat' | 'continuous',
-  options: { taskType?: string; limit?: number } = {}
+  options: { taskType?: string; limit?: number; profileId?: string | null } = {}
 ): Promise<ChatConversation[]> {
   try {
     const params = new URLSearchParams({ kind })
+    if ('profileId' in options) params.set('profileId', options.profileId || 'default')
     if (options.taskType) params.set('taskType', options.taskType)
     if (options.limit) params.set('limit', String(options.limit))
 
@@ -72,7 +79,7 @@ export async function createConversation(payload: {
   messages?: ChatMessage[]
 }): Promise<ChatConversation | null> {
   try {
-    const res = await fetch('/api/chat-conversations', {
+    const res = await postSafely('/api/chat-conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -96,7 +103,7 @@ export async function updateConversation(
 ): Promise<boolean> {
   if (!id) return false
   try {
-    const res = await fetch(`/api/chat-conversations?id=${encodeURIComponent(id)}`, {
+    const res = await postSafely(`/api/chat-conversations?id=${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),

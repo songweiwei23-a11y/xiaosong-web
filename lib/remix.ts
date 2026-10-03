@@ -66,7 +66,7 @@ export const ROLES = [
 export type RemixRole = (typeof ROLES)[number]['id'];
 
 export const DURATIONS = ['跟原片', '15 秒', '30 秒', '60 秒', '90 秒', '3 分钟'] as const;
-export type RemixDuration = (typeof DURATIONS)[number];
+export type RemixDuration = (typeof DURATIONS)[number] | `${number}秒` | `${number}分钟` | `${number}-${number}秒` | `${number}-${number}分钟`;
 
 export const OUTPUTS = [
   { id: 'script', label: '口播全文', hint: '按结构段落标好，照着念' },
@@ -99,7 +99,15 @@ export interface RemixOptions {
   outputs: RemixOutput[];
   /** 账号档案摘要（lib/profile-summary）；没有档案时为空，用 targetIndustry */
   profileSummary?: string;
-  /** 档案里的硬禁忌 */
+  /**
+   * 二创落到哪家店：侧边栏当前选中的档案（产品方定：一律以它为准，2026-09-30）。
+   * lines 是经营品类（lib/profile-summary 的 businessLines），track 是赛道原值——
+   * 单独拎出来写成硬约束，不让模型在一大段档案摘要里自己去找"这家卖什么"。
+   */
+  store?: { name: string; lines: string[]; track?: string };
+  /** 创作上下文（lib/creator-context 按 'remix' 清单切的：简报、成交理由、禁忌） */
+  contextBlock?: string;
+  /** 档案里的硬禁忌（没传 contextBlock 时用；contextBlock 里已经带了禁忌） */
   restrictions?: string;
   /** 没档案时手填的"我是做什么的" */
   targetIndustry?: string;
@@ -144,6 +152,27 @@ const LAYER_RULES: Record<BorrowLayer, string> = {
   topicAngle: '选题角度：借原片**讨论的话题或角度**，换成这个行业的说法（同一选题不同表达）',
 };
 
+/**
+ * "二创到哪家店"的硬约束，放在档案摘要前面。
+ * 只给档案摘要时，模型容易被原片的行业带着走（原片是修车，方案里就冒出"帮客人看车"），
+ * 或者只挑一个品类写。所以把店名、行业、在卖的品类单独拎出来，写死成每个方案都要守的规则。
+ */
+function storeSection(store: RemixOptions['store']): string {
+  if (!store?.name.trim() && !store?.lines.length && !store?.track?.trim()) return '';
+  const lines = store.lines.filter(Boolean);
+  return [
+    `## 二创到哪家店（以这个档案为准，硬约束）`,
+    `- **店 / 账号**：${store.name.trim() || '当前档案'}`,
+    store.track?.trim() ? `- **行业 / 赛道**：${store.track.trim()}` : '',
+    lines.length ? `- **在卖的品类**：${lines.join('、')}` : '',
+    `- 每个方案里的**事件、场景、产品、出镜的人**都必须是这家店的：原片是什么行业不重要，写出来的一律是${lines.length ? `「${lines.join('、')}」` : '这家店'}的事`,
+    lines.length > 1
+      ? `- ${lines.length} 个品类都在卖、一样重要：方案要覆盖到它们（可以一个方案落一个品类，也可以一条里带出几样），不要只挑一个写`
+      : '',
+    `- 例子、台词里提到的菜品/商品/服务，只能从上面的品类和下面的档案里取，不要编这家店没有的东西`,
+  ].filter(Boolean).join('\n');
+}
+
 export function buildRemixPrompt(source: RemixSource, o: RemixOptions): string {
   const layers = o.layers.length ? o.layers : DEFAULT_LAYERS;
   const notBorrowed = BORROW_LAYERS.filter((l) => !layers.includes(l.id)).map((l) => l.label);
@@ -184,8 +213,9 @@ export function buildRemixPrompt(source: RemixSource, o: RemixOptions): string {
   sections.push('', `#### 注意`, `原片学不来的部分（靠身份、高成本、偶然）这个方案怎么绕开；以及"这条不是搬运"：台词、画面、事件都是自己的`);
 
   const target = o.profileSummary?.trim()
-    ? `## 这个账号（二创要落到它身上）\n${o.profileSummary.trim()}`
-    : `## 这个账号\n${o.targetIndustry?.trim() ? `做的是：${o.targetIndustry.trim()}` : '用户没说自己是做什么的：按原片最容易迁移的实体店行业举例，并提醒他选好档案再做一次'}`;
+    ? [storeSection(o.store), `## 这个账号的档案（二创要落到它身上）\n${o.profileSummary.trim()}`].filter(Boolean).join('\n\n')
+    : `## 这个账号\n${o.targetIndustry?.trim() ? `做的是：${o.targetIndustry.trim()}。所有方案都换成这个行业` : '用户没说自己是做什么的：按原片最容易迁移的实体店行业举例，并提醒他选好档案再做一次'}`;
+  const context = o.contextBlock?.trim();
 
   return `【任务：跨行业二创】你是带过上百个实体店起号的编导。下面是别的行业一条爆款的拆解（或文案），
 帮这个账号把它**二创**成自己能拍的内容。目的不是照抄，是借走它火的"机制"，换上自己的血肉。
@@ -203,7 +233,7 @@ ${source.kind === 'breakdown' ? '（下面是这条视频的拆解报告，逐�
 ${sourceText}
 
 ${target}
-${o.restrictions?.trim() ? `\n## 硬禁忌（所有方案、例子、台词都不能碰）\n${o.restrictions.trim()}\n` : ''}
+${context ? `\n${context}\n` : o.restrictions?.trim() ? `\n## 硬禁忌（所有方案、例子、台词都不能碰）\n${o.restrictions.trim()}\n` : ''}
 ## 用户的选择（按他选的来）
 - **借这几层**：
 ${layers.map((l) => `  - ${LAYER_RULES[l]}`).join('\n')}

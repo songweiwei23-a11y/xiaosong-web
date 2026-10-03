@@ -4,6 +4,10 @@ import { useState } from 'react'
 import { OptionPicker } from '@/components/form/OptionPicker'
 import { OPTION_GROUPS } from '@/lib/profile-options'
 import { EMPTY_PROFILE, PROFILE_CHOICES as C, splitToArray, toFormData, type ProfileFormData } from '@/lib/profile-fields'
+import { ContentMixPicker } from '@/components/workspace/ContentMix'
+import { readSetting, type MixSetting } from '@/lib/content-mix'
+import { TabooEditor } from '@/components/profile/TabooEditor'
+import { readTabooSettings, type TabooSettings } from '@/lib/taboos'
 
 // 字段定义和选项搬到了 lib/profile-fields（前采建档也要按同一套选项填），这里转出去，老的引用照常可用
 export { EMPTY_PROFILE, toFormData }
@@ -31,7 +35,8 @@ interface Props {
   initial?: Record<string, unknown> | null
   submitLabel: string
   submittingLabel: string
-  onSubmit: (data: ProfileFormData) => Promise<void>
+  /** content_mix 不在 ProfileFormData 里（它是 jsonb，不走表单字段那套归一），单独带上 */
+  onSubmit: (data: ProfileFormData & { content_mix?: MixSetting; taboo_settings?: TabooSettings }) => Promise<void>
   onCancel: () => void
 }
 
@@ -39,6 +44,12 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<ProfileFormData>(() => toFormData(initial))
+  // 内容配比：没设过就是"系统推荐"
+  const [mixSetting, setMixSetting] = useState<MixSetting>(() => readSetting(initial?.content_mix) ?? { preset: 'auto' })
+  const [mixTouched, setMixTouched] = useState(false)
+  // 禁忌设置：关掉的行业禁忌、手动加的行业、自己补充的
+  const [tabooSettings, setTabooSettings] = useState<TabooSettings>(() => readTabooSettings(initial?.taboo_settings))
+  const [tabooTouched, setTabooTouched] = useState(false)
 
   const totalSteps = 6
 
@@ -65,7 +76,14 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
     }
     setLoading(true)
     try {
-      await onSubmit(formData)
+      // 没动过配比、库里也没存过，就不发这一栏：数据库还没加 content_mix 列时，老表单照样能存
+      const hadMix = readSetting(initial?.content_mix) !== null
+      const extras: { content_mix?: MixSetting; taboo_settings?: TabooSettings } = {}
+      if (mixTouched || hadMix) extras.content_mix = mixSetting
+      if (tabooTouched || initial?.taboo_settings) {
+        extras.taboo_settings = { ...tabooSettings, extra: tabooSettings.extra.map((x) => x.trim()).filter(Boolean) }
+      }
+      await onSubmit({ ...formData, ...extras })
     } finally {
       setLoading(false)
     }
@@ -298,12 +316,36 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
               className={TEXTAREA_CLS}
             />
           </div>
+          {/* 内容配比：选题、方向、起号、定位、简报都按它分流量 / 人设 / 变现 */}
+          <div className="rounded-xl border border-border bg-foreground/[0.02] p-4">
+            <label className="mb-1 block text-[13px] font-medium text-foreground">内容配比</label>
+            <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
+              流量型让新人刷到你，人设型让人记住你，变现型带来咨询和订单。选「系统推荐」会按账号阶段自动定；
+              设好后，选题、创作方向、起号方案、定位和创作简报都按这个比例来，各板块也能临时改。
+            </p>
+            <ContentMixPicker
+              value={mixSetting}
+              onChange={(s) => { setMixSetting(s); setMixTouched(true) }}
+              profile={formData as unknown as Record<string, unknown>}
+            />
+          </div>
           {pick('content_value', 1)}
           {pick('unique_selling_point', 3)}
           {pick('viral_content_pattern')}
           {/* 禁忌是硬约束，漏掉可能直接产出违规文案，所以单独框出来提醒 */}
-          <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4">
+          <div className="space-y-4 rounded-xl border border-destructive/25 bg-destructive/5 p-4">
+            <div>
+              <p className="text-[13px] font-medium text-foreground">禁忌与红线</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                设好后，选题、方向、脚本等所有板块生成时都会避开——不能拍的方向在源头就不会出现；生成完还会再扫一遍，踩到了会标出来。
+              </p>
+            </div>
             {pick('content_restrictions', 1)}
+            <TabooEditor
+              value={tabooSettings}
+              onChange={(s) => { setTabooSettings(s); setTabooTouched(true) }}
+              profile={formData as unknown as Record<string, unknown>}
+            />
           </div>
         </>
       ),

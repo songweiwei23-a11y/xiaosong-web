@@ -11,6 +11,8 @@
  */
 
 import { PROFILE_CHOICES } from './profile-fields';
+import { scrubProfile } from './interview-exclusions';
+import { readTabooSettings } from './taboos';
 
 type ProfileLike = Record<string, unknown> & { profile_name?: unknown };
 
@@ -118,7 +120,9 @@ export function businessLines(p: ProfileLike): string[] {
   return Array.from(new Set(all));
 }
 
-export function buildProfileSummary(p: ProfileLike): string {
+export function buildProfileSummary(profile: ProfileLike): string {
+  // 建档时编导刻意没选的（排除清单）：相关的句子先拿掉，模型看不见才谈得上"当它不存在"（见 lib/interview-exclusions）
+  const p = scrubProfile(profile, readTabooSettings(profile.taboo_settings).excluded) ?? profile;
   const lines = [`- 档案名称：${asText(p.profile_name, '未命名')}`];
   const products = businessLines(p);
   if (products.length) lines.push(`${BUSINESS_LINES_LABEL}${products.join('、')}`);

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
+import { PROFILE_UUID } from '@/lib/profile-history'
 import { requireUser } from '@/lib/api-guard'
 import { getServerSupabase } from '@/lib/admin-auth'
 import { sanitizeMessages } from '@/lib/chat-message-utils'
+import { readJsonBody } from '@/lib/read-body'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +15,10 @@ export async function GET(request: Request) {
 
   const supabase = await getServerSupabase()
   const { searchParams } = new URL(request.url)
+  const profileId = searchParams.get('profileId')
+  if (profileId && profileId !== 'default' && !PROFILE_UUID.test(profileId)) {
+    return NextResponse.json({ error: '档案编号不正确' }, { status: 400 })
+  }
   const kind = searchParams.get('kind')
   const taskType = searchParams.get('taskType')
   const limitRaw = Number(searchParams.get('limit'))
@@ -25,6 +31,8 @@ export async function GET(request: Request) {
     .order('updated_at', { ascending: false })
     .limit(limit)
 
+  if (profileId === 'default') query = query.is('profile_id', null)
+  else if (profileId) query = query.eq('profile_id', profileId)
   if (kind) query = query.eq('kind', kind)
   if (taskType) query = query.eq('task_type', taskType)
 
@@ -42,7 +50,7 @@ export async function POST(request: Request) {
   if (!guard.ok) return guard.response!
 
   const supabase = await getServerSupabase()
-  const body = await request.json()
+  const body = await readJsonBody(request)
 
   const kind = body.kind
   if (!VALID_KINDS.includes(kind)) {
@@ -82,7 +90,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: '缺少对话 ID' }, { status: 400 })
   }
 
-  const body = await request.json()
+  const body = await readJsonBody(request)
 
   // 只更新本次明确给出的字段：流式过程中会多次保存，
   // 若把未传的字段一律写成默认值，会把已拿到的 dify 会话 id 抹掉。

@@ -1,9 +1,15 @@
 "use client";
+import type { HandoffPayload } from '@/lib/handoff';
+import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
+import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds, scriptReasonIds, normalizeCreationReasons } from '@/lib/creation-settings';
+
 import ContinuousDialog from "@/components/ContinuousDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { extractScriptContext } from "@/lib/positioning-utils";
 import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock, type CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
@@ -58,12 +64,13 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { putHandoff, takeHandoff, extractOpening } from "@/lib/handoff";
+import { originForResult, continuationRules } from '@/lib/creation-continuation';
 import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
-import { throwApiError } from "@/lib/api-error";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -71,6 +78,7 @@ import { useWorkResume } from "@/hooks/useWorkResume";
 import { latestOf, workIdFromUrl } from "@/lib/resume";
 import { supabase } from "@/lib/supabase/client";
 import { Field, OptionCard } from "@/components/form/Field";
+import { postSafely } from '@/lib/safe-post';
 
 /*
  * 表单控件的共用样式。抽成常量而不是每处写一遍长串类名：
@@ -116,6 +124,8 @@ const SCRIPT_TYPE_STYLE: Record<
 };
 
 export default function ScriptPage() {
+  const beginProfileRequest = useProfileRequestGuard();
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
   const [scriptType, setScriptType] = useState("teach");
   /*
    * 这条视频的目的。原来脚本页只有"脚本类型"，结尾一律"引导互动（点赞/评论/关注）"，
@@ -170,11 +180,12 @@ export default function ScriptPage() {
     openContinuousDialog,
     closeContinuousDialog,
     lastResult,
+    resultScope,
     lastItem,
   } = useScriptHistory();
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
-  useRestoreLastResult(lastResult, setResult);
+  useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setWorkTitle(""); setTopic(""); setOriginContent(''); handedOffRef.current = false; });
 
   // 当前结果区展示的是哪条历史，用于在列表里高亮。
   // 新生成时清空——此时结果区的内容还没入库，不属于任何一条历史。
@@ -190,6 +201,7 @@ export default function ScriptPage() {
    */
   const [handoffTopics, setHandoffTopics] = useState<string[]>([]);
   const [handoffFrom, setHandoffFrom] = useState("");
+  const [originContent, setOriginContent] = useState('');
 
   /**
    * 当前脚本属于哪个作品。
@@ -222,7 +234,9 @@ export default function ScriptPage() {
 
   useEffect(() => {
     const data = takeHandoff();
+    if (data) setIncomingSetup(data);
     if (!data) return;
+    setOriginContent(data.originContent || data.sourceContent || '');
     handedOffRef.current = true;
     setHandoffFrom(data.from || "");
     if (data.topic) setTopic(data.topic);
@@ -245,11 +259,14 @@ export default function ScriptPage() {
    * 选题填进主题框，有写过的脚本就把最新一版调出来，打法也接上。
    * 隔多久打开都一样——内容是从云端现取的，不靠一次性的交接。
    */
-  useWorkResume((work) => {
+  useWorkResume((work, setup) => {
+    setIncomingSetup(setup);
+    setOriginContent(setup.originContent || '');
+    if (setup.note) setAdditionalInfo(setup.note);
     setWorkId(work.id);
     setWorkTitle(work.title);
     setTopic(work.title);
-    setHandoffFrom("我的作品");
+    setHandoffFrom("创作进度");
     const last = latestOf(work, "脚本生成");
     if (last) {
       setResult(last.result);
@@ -276,7 +293,34 @@ export default function ScriptPage() {
 
   // 创作简报从这里来。之前这一页漏了 brief，脚本最吃的
   // 「人设与口吻」「凭什么信你」「记忆点」一个都没进提示词
-  const { context: creatorContext } = useCreatorContext();
+  const { context: creatorContext, loading: contextLoading } = useCreatorContext();
+
+  const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
+    // 只填原内容写明的和档案里有的；没写的保持页面默认（目的「自动」、结构和钩子「auto」），不猜（2026-10-03）
+    if (s.topic) setTopic(s.topic);
+    if (s.scriptType) { setScriptType(s.scriptType); setActiveTab(s.scriptType.startsWith('ad_') ? 'ad' : 'content'); }
+    setScriptRole(s.purpose ?? '自动'); setPlatform(s.platform!); setScriptStructure(s.structure ?? 'auto'); setHookType(s.hookType ?? 'auto');
+    setDuration(s.duration!);
+    if (DURATIONS.includes(s.duration!)) setDurationMode('preset');
+    else { setDurationMode('custom'); setCustomDuration(String(durationSeconds(s.duration!))); }
+    const audience = s.audience ?? '';
+    setTargetGroup(TARGET_GROUPS.includes(audience) ? audience : '');
+    setCustomTargetGroup(TARGET_GROUPS.includes(audience) ? '' : audience);
+    if (s.style) { setStyle(STYLES.includes(s.style) ? s.style : ''); setCustomStyle(STYLES.includes(s.style) ? '' : s.style); }
+    setIndustry(s.industry ?? ''); setCustomIndustry(s.industry ?? '');
+    setBoomElements((s.elements || []).map(id => id === 'people' ? 'crowd' : id).filter(id => BOOM_ELEMENTS.some(e => e.id === id)));
+    if (s.scene) setScene(s.scene); if (s.device) setDevice(s.device); if (s.budget) setBudget(s.budget); if (s.personnel) setPersonnel(s.personnel);
+    if (s.tactic) setTactic(s.tactic); if (s.openingLine) setOpeningLine(s.openingLine);
+    setOpeningCard(s.openingCards?.[0] || '');
+    setDealReasons(scriptReasonIds(s.dealReasons || []));
+  });
+  const currentSettings = resolveCreationSettings({ from: '脚本生成', sourceContent: originContent || topic, settings: mergeCreationSettings(autoSetup.settings, {
+    topic, platform, duration: durationMode === 'custom' && customDuration ? customDuration + '秒' : durationMode === 'ai' ? 'AI推荐' : duration,
+    scriptType, purpose: effectiveRole, structure: scriptStructure, hookType, style: customStyle || style, audience: customTargetGroup || targetGroup,
+    industry: customIndustry || industry, elements: boomElements.map(id => id === 'crowd' ? 'people' : id),
+    dealReasons: normalizeCreationReasons([...autoSetup.settings.dealReasons || [], ...dealReasons]), notes: incomingSetup ? autoSetup.settings.notes : additionalInfo,
+    tactic: tactic === AUTO_TACTIC ? undefined : tactic, openingLine, openingCards: openingCard ? [openingCard] : [], scene, device, budget, personnel,
+  }) }, creatorContext);
 
   // 档案和定位关联
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -368,15 +412,23 @@ export default function ScriptPage() {
   };
 
   const handleGenerate = async () => {
+    if (isGenerating) return;
+    if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    const isCurrent = beginProfileRequest();
     // 0. 检查配额
+    setIsGenerating(true);
     const remainingQuota = await checkQuota("script");
+    if (!isCurrent()) { setIsGenerating(false); return; }
     if (remainingQuota !== null && remainingQuota <= 0) {
       openUpgrade("script");
+      setIsGenerating(false);
       return;
     }
 
     // 1. 检查主题是否填写
     if (!topic.trim()) {
+      setIsGenerating(false);
       notify("请输入视频主题");
       return;
     }
@@ -825,7 +877,7 @@ ${formatRequirements}
 
 请生成完整的内容创作脚本。`;
 
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // taskType 必传：后端据此选择知识库检索的主题提示词、按任务隔离
@@ -835,8 +887,9 @@ ${formatRequirements}
         // 上下文，代运营多个账号时会把 A 号的内容串到 B 号的生成里。
         body: JSON.stringify({
           taskType: "脚本生成",
+          creationSettings: currentSettings,
           profileId: selectedProfileId || null,
-          query,
+          query: query + creationSettingsBlock(currentSettings) + (originContent ? continuationRules('script') : ''),
         }),
       });
 
@@ -847,7 +900,7 @@ ${formatRequirements}
       // 中文占 3 字节，一旦某个字被拆在两个数据块的边界上就会解码成乱码；
       // 且没有行缓冲，被截断的半行 JSON 会被整行丢弃，表现为内容偶发缺失。
       const accumulated = await readDifyStream(response, {
-        onChunk: (_piece, full) => setResult(full),
+        onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
       });
       fullResult += accumulated;
 
@@ -869,7 +922,11 @@ ${formatRequirements}
       if (fullResult && fullResult.trim().length > 0) {
         setTimeout(async () => {
           try {            const inputData = {
+              profileId: selectedProfileId || null,
               topic, scriptType, platform,
+              creationSettings: currentSettings,
+              additionalInfo,
+              originContent,
               duration: durationMode === "ai"
                 ? "AI推荐"
                 : durationMode === "custom" && customDuration
@@ -917,7 +974,7 @@ ${formatRequirements}
                 content_form: "口播",
                 script_content: fullResult,
               };
-              const scriptRes = await fetch("/api/scripts", {
+              const scriptRes = await postSafely("/api/scripts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(scriptData),
@@ -996,6 +1053,7 @@ ${formatRequirements}
             换成状态条：自动带上，但明确告诉用户带了什么。
           */}
           <ContextBadge board="script" />
+          <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
           {/* 基础设置 */}
           <CollapsibleSection title="基础设置" icon={Settings} defaultOpen={true}>
             <Field label="脚本类型" required stacked>
@@ -1433,7 +1491,7 @@ ${formatRequirements}
             {/* 拍摄执行：四个字段用同一套 Field，与上方保持同一条对齐轴 */}
             <Field label="拍摄场景" optional>
               <select value={scene} onChange={(e) => setScene(e.target.value)} className={SELECT_CLS}>
-                {SCENES.map((s) => (
+                {Array.from(new Set([...SCENES, scene])).map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
@@ -1441,7 +1499,7 @@ ${formatRequirements}
 
             <Field label="拍摄设备" optional>
               <select value={device} onChange={(e) => setDevice(e.target.value)} className={SELECT_CLS}>
-                {DEVICES.map((d) => (
+                {Array.from(new Set([...DEVICES, device])).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
@@ -1449,7 +1507,7 @@ ${formatRequirements}
 
             <Field label="预算范围" optional>
               <select value={budget} onChange={(e) => setBudget(e.target.value)} className={SELECT_CLS}>
-                {BUDGETS.map((b) => (
+                {Array.from(new Set([...BUDGETS, budget])).map((b) => (
                   <option key={b} value={b}>{b}</option>
                 ))}
               </select>
@@ -1550,7 +1608,7 @@ ${formatRequirements}
           <div className="lg:static lg:mt-0 sticky bottom-0 left-0 right-0 glass border-x-0 border-b-0 lg:border-0 lg:bg-transparent lg:backdrop-blur-none p-4 lg:p-0 -mx-4 sm:-mx-6 lg:mx-0 z-10">
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !topic.trim()}
+              disabled={autoSetup.preparing || contextLoading || isGenerating || !topic.trim()}
               className="flex w-full items-center justify-center gap-2 btn-brand rounded-2xl py-4 font-semibold"
             >
               {isGenerating ? (
@@ -1577,6 +1635,7 @@ ${formatRequirements}
       {/* 结果区在上、历史在下：原先历史卡片占着顶部，每次进页面先看到的
           是旧记录而不是刚生成的内容 */}
       <ResultPanel
+        flowContext={{ settings: settingsForResult(result, scriptHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, scriptHistory, originContent) }}
         result={result}
         isGenerating={isGenerating}
         showQuality

@@ -4,6 +4,9 @@
 // （lib/chat-store、ContinuousDialog）共用同一份规则，且能直接写单元测试——
 // 放在 route.ts 或组件里都没法独立测。
 
+import { sanitizeAttachments, type ChatAttachment } from './chat-attachments'
+import { sanitizeWebSources, type WebSearchStatus } from './dify-web-status'
+import { mergeCreationSettings, type CreationSettings } from './creation-settings'
 export type ChatRole = 'user' | 'assistant'
 
 export interface ChatMessage {
@@ -11,6 +14,9 @@ export interface ChatMessage {
   content: string
   /** 存储时可能是数字或 ISO 字符串，读回后统一成数字 */
   timestamp: number
+  attachments?: ChatAttachment[]
+  webSearch?: WebSearchStatus
+  creationSettings?: CreationSettings
 }
 
 /**
@@ -39,6 +45,9 @@ type IncomingMessage = {
   role?: unknown
   content?: unknown
   timestamp?: unknown
+  attachments?: unknown
+  webSearch?: unknown
+  creationSettings?: unknown
 }
 
 /**
@@ -49,6 +58,9 @@ export function sanitizeMessages(input: unknown): Array<{
   role: ChatRole
   content: string
   timestamp: number | string
+  attachments?: ChatAttachment[]
+  webSearch?: WebSearchStatus
+  creationSettings?: CreationSettings
 }> {
   if (!Array.isArray(input)) return []
   const cleaned = input
@@ -57,6 +69,11 @@ export function sanitizeMessages(input: unknown): Array<{
     .map((m) => ({
       role: m.role as ChatRole,
       content: typeof m.content === 'string' ? m.content : '',
+      ...(m.creationSettings && typeof m.creationSettings === 'object' ? { creationSettings: mergeCreationSettings(m.creationSettings) } : {}),
+      ...(sanitizeAttachments(m.attachments).length ? { attachments: sanitizeAttachments(m.attachments) } : {}),
+      ...(m.webSearch && typeof m.webSearch === 'object' && 'status' in m.webSearch && ['done', 'unavailable', 'quota_exhausted'].includes(String(m.webSearch.status))
+        ? { webSearch: { status: m.webSearch.status as 'done' | 'unavailable' | 'quota_exhausted', sources: sanitizeWebSources('sources' in m.webSearch ? m.webSearch.sources : []),
+            ...('message' in m.webSearch && typeof m.webSearch.message === 'string' ? { message: m.webSearch.message.slice(0, 500) } : {}) } } : {}),
       timestamp:
         typeof m.timestamp === 'number' || typeof m.timestamp === 'string'
           ? m.timestamp

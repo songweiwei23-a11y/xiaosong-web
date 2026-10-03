@@ -27,7 +27,11 @@ export type Board =
   | 'title'
   | 'dealReason'
   | 'freeChat'
-  | 'growth';
+  | 'growth'
+  | 'breakdown'
+  | 'remix'
+  | 'knowledge'
+  | 'direction';
 
 /** 档案里可以切出来的几块 */
 export type ProfileSlice =
@@ -121,6 +125,47 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     job: '随口问什么都可能。给一份账号全貌，让它至少知道你是谁、做什么、不能说什么',
     profile: ['account', 'audience', 'tone', 'selling', 'shooting', 'restrictions'],
     brief: ['oneline', 'persona', 'audience', 'direction', 'trust', 'shooting', 'forbidden'],
+    dealReasons: false,
+  },
+  /*
+   * 下面三个是 2026-09-30 补接的（产品方："每个板块都要有记忆，互相关联互通"）。
+   * 拆解和二创另外还传了整份档案摘要（lib/profile-summary，含经营品类、团队设备），
+   * 所以档案这边只切禁忌，不重复塞。
+   */
+  {
+    board: 'breakdown',
+    label: '拆解爆款',
+    job: '拆完之后"套到这个账号上"给 3 个选题。要知道账号方向和说给谁听，套出来的选题才不跑偏',
+    profile: ['restrictions'],
+    brief: ['oneline', 'audience', 'direction', 'forbidden'],
+    dealReasons: false,
+  },
+  {
+    board: 'remix',
+    label: '跨行业二创',
+    job: '把别的行业的爆款换成这个账号的血肉。要人设口吻、说给谁听、凭什么信你、记忆点，外加成交理由当结尾的说服点',
+    profile: ['restrictions'],
+    brief: ['oneline', 'persona', 'audience', 'trust', 'memory', 'forbidden'],
+    dealReasons: true,
+  },
+  {
+    board: 'direction',
+    label: '创作方向',
+    /*
+     * 2026-10-02 新板块。档案摘要另传（含经营品类、团队设备），这里切的是方向判断要用的：
+     * 已有的内容方向和爆款基因（别重复、接着长）、变现方式（目的要落到钱上）、拍摄条件（方向要拍得出来）
+     */
+    job: '带着目的找方向：要知道这个号定好的方向、说给谁听、凭什么信你、能拍什么、靠什么赚钱，方向才能既达到目的又拍得出来',
+    profile: ['monetize', 'viral', 'restrictions'],
+    brief: ['oneline', 'persona', 'audience', 'direction', 'trust', 'shooting', 'forbidden'],
+    dealReasons: true,
+  },
+  {
+    board: 'knowledge',
+    label: '知识库',
+    job: '答方法论问题。知道这个号是做什么的、说给谁听，举例时就能用他自己的行业，而不是泛泛而谈',
+    profile: ['account', 'restrictions'],
+    brief: ['oneline', 'audience', 'forbidden'],
     dealReasons: false,
   },
 ];

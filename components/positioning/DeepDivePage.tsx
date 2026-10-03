@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
-import { throwApiError } from '@/lib/api-error'
+import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
@@ -11,6 +11,13 @@ import { buildPositioningPrompt, type PositioningFocus } from '@/lib/positioning
 import { Markdown } from '@/components/markdown'
 import { asText, buildProfileSummary, profileSearchHints } from '@/lib/profile-summary'
 import ContinuousDialog from '@/components/ContinuousDialog'
+import { CreationLinks } from '@/components/workspace/CreationLinks'
+import { takeHandoff } from '@/lib/handoff'
+import { incomingNote } from '@/lib/creation-flow'
+import { postSafely } from '@/lib/safe-post'
+import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
+import { taboosPromptBlock } from '@/lib/taboos'
+import { ContentMixBar } from '@/components/workspace/ContentMix'
 
 /**
  * 商业定位 / 内容定位 的共用页面。
@@ -49,6 +56,8 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
   const [baseline, setBaseline] = useState<string>('')
   const [loadingCtx, setLoadingCtx] = useState(true)
   const [notes, setNotes] = useState('')
+  // 内容配比：这次临时改的（null = 跟档案 / 系统推荐）
+  const [mixOverride, setMixOverride] = useState<MixSetting | null>(null)
   const [result, setResult] = useState('')
   /** 上次生成的时间，界面上标一句，让用户知道看到的是存档不是刚跑的 */
   const [savedAt, setSavedAt] = useState('')
@@ -121,6 +130,15 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // 别的板块「继续创作」带过来的内容：填进补充说明，点生成就纳入分析（2026-10-02）
+  const [handoffFrom, setHandoffFrom] = useState('')
+  useEffect(() => {
+    const data = takeHandoff()
+    if (!data?.sourceContent) return
+    setNotes(incomingNote(data))
+    setHandoffFrom(data.from || '其他板块')
+  }, [])
+
   const generate = async () => {
     if (!profile) {
       notify('请先创建一份账号档案')
@@ -143,10 +161,12 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
       restrictions: (profile.content_restrictions as string) || undefined,
       focus,
       baseline: baseline || undefined,
+      mixBlock: mixPromptBlock(resolveMix(profile, mixOverride, notes)),
+      taboos: taboosPromptBlock(profile),
     })
 
     try {
-      const res = await fetch('/api/dify/stream', {
+      const res = await fetchGeneration('/api/dify/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,7 +194,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
 
       if (full) {
         await save(full)
-        await saveGenerationHistory(taskType, { profileSummary: summary, notes }, full)
+        await saveGenerationHistory(taskType, { profileSummary: summary, notes, profileId: profile.id }, full)
         setConversationId(convId || undefined)
         setShowDialog(true)
       }
@@ -190,7 +210,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
     if (!profile) return
     try {
       const firstLine = content.split('\n').find((l) => l.trim())?.replace(/^#+\s*/, '').trim() || ''
-      const res = await fetch('/api/positioning', {
+      const res = await postSafely('/api/positioning', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -271,6 +291,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
           </div>
 
           <label className="mb-2 block text-[13px] font-medium text-foreground">补充说明（选填）</label>
+          {handoffFrom && <p className="mb-2 text-[12px] text-primary">已带入来自「{handoffFrom}」的内容，直接点生成就会一并纳入分析</p>}
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -278,6 +299,8 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
             placeholder="这次特别想解决什么？比如：想把客单价提上去、只做同城、想先跑通团购"
             className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
+          {/* 方案里的内容配比按它写 */}
+          <ContentMixBar className="mt-3" profile={profile} override={mixOverride} onOverride={setMixOverride} goal={notes} />
 
           <button
             onClick={generate}
@@ -348,6 +371,8 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
             {isGenerating && (
               <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />
             )}
+            {/* 原来生成完只能「继续对话」，是断头路：内容定位里的选题方向、系列规划带不去出选题 */}
+            {result && !isGenerating && <div className="mt-5"><CreationLinks body={result} /></div>}
           </div>
         )}
       </div>

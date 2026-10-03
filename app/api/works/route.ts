@@ -161,6 +161,17 @@ export async function PUT(request: Request) {
   if (typeof body.title === 'string' && body.title.trim()) patch.title = body.title.slice(0, 60)
   if (typeof body.isDone === 'boolean') patch.is_done = body.isDone
   if (body.profileId !== undefined) patch.profile_id = body.profileId || null
+  /*
+   * 落地状态（2026-10-02）：拍没拍、发没发。原来作品只记到"标题封面做完"，
+   * 之后系统就不知道了——「创作进度」里没法提醒"脚本好了还没拍"。
+   */
+  if (['none', 'shot', 'published'].includes(body.shootStatus)) {
+    patch.shoot_status = body.shootStatus
+    const now = new Date().toISOString()
+    if (body.shootStatus === 'none') { patch.shot_at = null; patch.published_at = null }
+    if (body.shootStatus === 'shot') { patch.shot_at = now; patch.published_at = null }
+    if (body.shootStatus === 'published') patch.published_at = now
+  }
 
   const { data, error } = await supabase
     .from('works')
@@ -170,7 +181,12 @@ export async function PUT(request: Request) {
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    if (/shoot_status|shot_at|published_at/.test(error.message)) {
+      return NextResponse.json({ error: '拍摄状态还没启用：请先在 Supabase 执行 20261002_library_and_progress.sql' }, { status: 503 })
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
   if (!data) return NextResponse.json({ error: '作品不存在或无权限' }, { status: 404 })
   return NextResponse.json(data)
 }

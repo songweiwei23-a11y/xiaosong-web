@@ -122,7 +122,7 @@ describe('基础会员：每个功能各 50 次', () => {
   });
 });
 
-describe('专业会员每个功能 120 次、企业版无限', () => {
+describe('专业会员每个功能 120 次、高频会员 300 次', () => {
   it('专业会员单功能 120 到顶', () => {
     expect(judgeQuota('pro', 'script', usage({ script_used: 119 })).allowed).toBe(true);
     expect(judgeQuota('pro', 'script', usage({ script_used: 120 })).allowed).toBe(false);
@@ -137,10 +137,12 @@ describe('专业会员每个功能 120 次、企业版无限', () => {
     }
   });
 
-  it('企业版怎么用都放行', () => {
-    const q = usage({ script_used: 99999 });
-    expect(judgeQuota('enterprise', 'script', q).allowed).toBe(true);
-    expect(judgeQuota('enterprise', 'script', q).remaining).toBe(-1);
+  it('高频会员第300次可用，第301次拦截，其他类别独立', () => {
+    expect(judgeQuota('enterprise', 'script', usage({ script_used: 299 })).remaining).toBe(1);
+    const q = usage({ script_used: 300 });
+    expect(judgeQuota('enterprise', 'script', q).allowed).toBe(false);
+    expect(judgeQuota('enterprise', 'script', q).remaining).toBe(0);
+    expect(judgeQuota('enterprise', 'topic', q).remaining).toBe(300);
   });
 });
 
@@ -149,9 +151,9 @@ describe('专业会员每个功能 120 次、企业版无限', () => {
  * 一份套餐卖出了 8 倍的量。现在页面上的话由 quotaSummary 从 quotas 现算。
  */
 describe('额度文案由配置现算', () => {
-  it('付费档创作额度一致时合并成一句', () => {
-    expect(quotaSummary('basic').join(' ')).toContain('每个创作功能各 50 次/月');
-    expect(quotaSummary('pro').join(' ')).toContain('每个创作功能各 120 次/月');
+  it('付费档各类创作额度一致时合并成一句', () => {
+    expect(quotaSummary('basic').join(' ')).toContain('每类创作额度各 50 次/月');
+    expect(quotaSummary('pro').join(' ')).toContain('每类创作额度各 120 次/月');
   });
 
   it('合并那一句不能把知识库也说进去', () => {
@@ -162,7 +164,7 @@ describe('额度文案由配置现算', () => {
      */
     for (const planId of ['basic', 'pro'] as const) {
       const lines = quotaSummary(planId);
-      const merged = lines.find((l) => l.includes('每个'))!;
+      const merged = lines.find((l) => l.includes('每类创作额度'))!;
       expect(merged, `${planId} 的合并句还在说"每个功能"`).not.toMatch(/每个功能各/);
       // 知识库必须另起一行，且写的是它自己的数
       const kb = SUBSCRIPTION_PLANS[planId].quotas.knowledge as number;
@@ -170,15 +172,13 @@ describe('额度文案由配置现算', () => {
     }
   });
 
-  it('付费档卡片不会因为知识库变成九行', () => {
-    // 合并逻辑一旦被知识库带崩，这里会从 2 行变成 9 行
-    expect(quotaSummary('basic').length).toBe(2);
-    expect(quotaSummary('pro').length).toBe(2);
+  it('付费档卡片分创作、知识库、联网三行', () => {
+    expect(quotaSummary('basic').length).toBe(3);
+    expect(quotaSummary('pro').length).toBe(3);
   });
 
-  it('只有企业版还写"知识库不限次数"', () => {
-    expect(quotaSummary('enterprise').join(' ')).toContain('不限次数');
-    for (const planId of ['free', 'basic', 'pro'] as const) {
+  it('每档知识库都有额度，不能宣传不限次数', () => {
+    for (const planId of ['free', 'basic', 'pro', 'enterprise'] as const) {
       expect(
         quotaSummary(planId).join(' '),
         `${planId} 还在承诺知识库不限次数，而它已经有额度了`
@@ -213,8 +213,12 @@ describe('额度文案由配置现算', () => {
     expect(unsupportedFeatures('free')).toEqual([]);
   });
 
-  it('企业版直接写不限次数', () => {
-    expect(quotaSummary('enterprise').join(' ')).toContain('不限次数');
+  it('高频会员明确写创作300、知识600、联网150', () => {
+    const text = quotaSummary('enterprise').join(' ');
+    expect(text).toContain('300 次/月');
+    expect(text).toContain('600 次/月');
+    expect(text).toContain('150 次/月');
+    expect(text).not.toContain('不限次数');
   });
 
   it('文案里的数字必须等于实际配额', () => {
@@ -251,7 +255,7 @@ describe('配置本身的一致性', () => {
   it('额度文案确实由 quotas 现算', () => {
     expect(quotaSummary('basic').join(' ')).toContain('50');
     expect(quotaSummary('pro').join(' ')).toContain('120');
-    expect(quotaSummary('enterprise').join(' ')).toContain('不限次数');
+    expect(quotaSummary('enterprise').join(' ')).toContain('300');
   });
 
   /*
@@ -297,13 +301,13 @@ describe('配置本身的一致性', () => {
     }
   });
 
-  it('知识库按等级递增，企业版才是无限', () => {
+  it('知识库按等级递增，高频会员600次', () => {
     const kb = (id: keyof typeof SUBSCRIPTION_PLANS) =>
       SUBSCRIPTION_PLANS[id].quotas.knowledge as number;
     expect(kb('free')).toBeGreaterThan(0);
     expect(kb('basic')).toBeGreaterThan(kb('free'));
     expect(kb('pro')).toBeGreaterThan(kb('basic'));
-    expect(kb('enterprise')).toBe(-1);
+    expect(kb('enterprise')).toBe(600);
   });
 
   it('知识库额度不低于同档的创作额度', () => {

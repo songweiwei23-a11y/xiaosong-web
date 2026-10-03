@@ -6,6 +6,7 @@ import { MAX_INSTRUCTION_CHARS, type Revision, type RevisionInput } from "@/lib/
 import { PROFILE_FIELDS } from "@/lib/profile-fields";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
 import { readSseResult } from "@/lib/sse-result";
+import { postSafely } from "@/lib/safe-post";
 
 const LABEL = new Map(PROFILE_FIELDS.map((f) => [f.key, f.label]));
 
@@ -55,7 +56,7 @@ export function ReviseChat({
       let res: Response | null = null;
       for (let attempt = 0; !res; attempt++) {
         try {
-          res = await fetch("/api/interview/revise", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+          res = await postSafely("/api/interview/revise", { method: "POST", headers: { "Content-Type": "application/json" }, body });
         } catch (e) {
           if (!isNetworkError(e) || attempt >= RETRIES) throw e;
           setRetrying(true);

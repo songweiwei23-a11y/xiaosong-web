@@ -1,8 +1,29 @@
 ﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/read-body'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * 新加的档案栏（content_mix 等）要用户在 Supabase 手动跑迁移。跑之前，带着这一栏保存会整条失败——
+ * 用户只是改了个错字，结果"更新档案失败"。所以库里没有某一栏时，去掉它再存一次，其余照常保存。
+ */
+async function withoutMissingColumns<T>(
+  data: Record<string, unknown>,
+  run: (d: Record<string, unknown>) => PromiseLike<{ data: T | null; error: { code?: string; message?: string } | null }>
+) {
+  let payload = { ...data }
+  for (let i = 0; i < 3; i++) {
+    const res = await run(payload)
+    const col = res.error?.code === 'PGRST204' ? res.error.message?.match(/'([a-z_]+)' column/)?.[1] : undefined
+    if (!col || !(col in payload)) return res
+    console.warn(`档案表还没有 ${col} 列（迁移未跑），这一栏先不存`)
+    const { [col]: _dropped, ...rest } = payload
+    payload = rest
+  }
+  return run(payload)
+}
 
 async function getSupabaseClient() {
   const cookieStore = await cookies()
@@ -62,18 +83,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await readJsonBody(request)
     
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .insert([
-        {
-          user_id: user.id,
-          ...body
-        }
-      ])
-      .select()
-      .single()
+    const { data: profile, error } = await withoutMissingColumns({ ...body, user_id: user.id }, (d) =>
+      supabase.from('user_profiles').insert([d]).select().single()
+    )
 
     if (error) {
       console.error('创建档案失败:', error)
@@ -97,20 +111,16 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await readJsonBody(request)
     const { id, ...updateData } = body
 
     if (!id) {
       return NextResponse.json({ error: '缺少档案ID' }, { status: 400 })
     }
 
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .update(updateData)
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .select()
-      .single()
+    const { data: profile, error } = await withoutMissingColumns(updateData, (d) =>
+      supabase.from('user_profiles').update(d).eq('id', id).eq('user_id', user.id).select().single()
+    )
 
     if (error) {
       console.error('更新档案失败:', error)

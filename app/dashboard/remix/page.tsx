@@ -1,9 +1,13 @@
 "use client";
+import type { HandoffPayload } from '@/lib/handoff';
+import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
+import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
 
-import { useEffect, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CheckCircle, Film, Loader2, Shuffle, Tag, Wand2 } from "lucide-react";
+import { Loader2, Shuffle, Wand2 } from "lucide-react";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, TEXTAREA_CLS, GENERATE_BTN, chipCls } from "@/components/form/controls";
@@ -15,12 +19,19 @@ import { notify } from "@/components/ui/feedback";
 import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
-import { checkQuota, saveGenerationHistory } from "@/lib/history";
+import { useCreativeHistory } from '@/hooks/useCreativeHistory';
+import { profileHistoryQuery } from '@/lib/profile-history';
+import { remixHistoryForm } from '@/lib/creative-history-form';
+import type { HistoryItem } from '@/components/workspace/HistoryPanel';
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
+import { checkQuota } from "@/lib/history";
+import { createHistoryId } from '@/lib/history-id';
 import { openUpgrade } from "@/lib/upgrade";
-import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
+import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
 import { readDifyStream } from "@/lib/sse-stream";
-import { putHandoff, takeHandoff } from "@/lib/handoff";
-import { buildProfileSummary } from "@/lib/profile-summary";
+import { takeHandoff } from "@/lib/handoff";
+import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summary";
+import { buildContextBlock } from "@/lib/creator-context";
 import { BREAKDOWN_TASK_TYPE } from "@/lib/viral-breakdown";
 import {
   BORROW_LAYERS,
@@ -97,10 +108,19 @@ function ChoiceGrid<T extends string>({
  * 方法和提示词见 lib/remix.ts。
  */
 export default function RemixPage() {
-  const router = useRouter();
-  const { history, loadHistory, deleteHistory, lastResult } = useGenerationPage({ taskType: REMIX_TASK_TYPE });
-  const { context } = useCreatorContext();
+  const beginProfileRequest = useProfileRequestGuard();
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
+  const { history, loadHistory, deleteHistory, lastResult, resultScope } = useGenerationPage({ taskType: REMIX_TASK_TYPE });
+  const { context, loading: ctxLoading } = useCreatorContext();
+  const { saveCreativeHistory, saveError, retrySave, getHistoryOwner } = useCreativeHistory(loadHistory);
   const profile = context.profile as Record<string, unknown> | null;
+  /*
+   * 二创一律落到侧边栏当前选中的档案上（产品方定，2026-09-30）：行业、在卖的品类、店里的场景都从它来。
+   * 原来有个「用不用档案」的勾选框，取消勾选就退回手填行业——两套来源，产出落到哪家店用户说不清。
+   * 现在只有还没建档案时才手填。
+   */
+  const lines = profile ? businessLines(profile) : [];
+  const track = profile ? asText(profile.account_track) : "";
 
   const [mode, setMode] = useState<"breakdown" | "paste">("breakdown");
   const [breakdowns, setBreakdowns] = useState<BreakdownRow[]>([]);
@@ -118,40 +138,89 @@ export default function RemixPage() {
   const [role, setRole] = useState<RemixRole>("same");
   const [duration, setDuration] = useState<RemixDuration>("跟原片");
   const [outputs, setOutputs] = useState<RemixOutput[]>(DEFAULT_OUTPUTS);
-  const [withProfile, setWithProfile] = useState(true);
   const [targetIndustry, setTargetIndustry] = useState("");
   const [notes, setNotes] = useState("");
 
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState("");
+  const breakdownScopeRef = useRef<string>();
+  const restoredInputScope = useRef<string>();
+  const incomingHandoff = useRef(false);
 
-  useRestoreLastResult(lastResult, setResult);
+  const restoreHistory = (item: HistoryItem) => {
+    const form = remixHistoryForm(item.input_data);
+    setResult(item.result);
+    setLayers(form.layers); setCount(form.count); setDifferentiate(form.differentiate);
+    setDepth(form.depth); setRole(form.role); setDuration(form.duration); setOutputs(form.outputs);
+    setTargetIndustry(form.targetIndustry); setNotes(form.notes);
+    if (form.source?.kind === 'paste') {
+      setMode('paste'); setPasteText(form.source.text); setPasteTitle(form.source.title || ''); setPasteIndustry(form.source.industry || '');
+    } else if (form.source?.kind === 'breakdown') {
+      setMode('breakdown'); setHanded({ title: form.source.title, text: form.source.text }); setPicked('__handed__');
+    }
+  };
+
+  useEffect(() => {
+    if (!resultScope || !lastResult || !history[0] || restoredInputScope.current === resultScope) return;
+    restoredInputScope.current = resultScope;
+    if (!incomingHandoff.current && !running && (!result || result === lastResult)) restoreHistory(history[0]);
+    // 一次性恢复；后续刷新历史不会改掉正在编辑的设置。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultScope, lastResult, history, running, result]);
+
+  useRestoreLastResult(lastResult, setResult, resultScope);
 
   useEffect(() => {
     const h = takeHandoff();
+    if (h) setIncomingSetup(h);
     if (h?.remixSource?.text) {
-      setHanded(h.remixSource);
-      setMode("breakdown");
-      setPicked("__handed__");
+      incomingHandoff.current = true;
+      if (h.from === BREAKDOWN_TASK_TYPE) {
+        setHanded(h.remixSource);
+        setMode("breakdown");
+        setPicked("__handed__");
+      } else {
+        setMode('paste'); setPasteText(h.remixSource.text); setPasteTitle(h.remixSource.title || h.from);
+      }
     }
-    fetch(`/api/script-history?taskType=${encodeURIComponent(BREAKDOWN_TASK_TYPE)}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => Array.isArray(rows) && setBreakdowns(rows.filter((r: { task_type?: string }) => r.task_type === BREAKDOWN_TASK_TYPE)))
-      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (ctxLoading) return;
+    let alive = true;
+    const scope = String(profile?.id || 'default');
+    if (breakdownScopeRef.current && breakdownScopeRef.current !== scope) { setPicked(null); setHanded(null); }
+    breakdownScopeRef.current = scope;
+    setBreakdowns([]);
+    fetch(`/api/script-history?taskType=${encodeURIComponent(BREAKDOWN_TASK_TYPE)}${profileHistoryQuery(profile?.id as string || null)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => alive && Array.isArray(rows) && setBreakdowns(rows.filter((r: { task_type?: string }) => r.task_type === BREAKDOWN_TASK_TYPE)))
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [profile?.id, ctxLoading]);
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   const source = (): RemixSource | null => {
     if (mode === "paste") {
-      return pasteText.trim().length >= 20 ? { kind: "paste", text: pasteText, title: pasteTitle.trim() || undefined, industry: pasteIndustry.trim() || undefined } : null;
+      return pasteText.trim().length >= (incomingHandoff.current ? 1 : 20) ? { kind: "paste", text: pasteText, title: pasteTitle.trim() || undefined, industry: pasteIndustry.trim() || undefined } : null;
     }
     if (picked === "__handed__" && handed) return { kind: "breakdown", text: handed.text, title: handed.title };
     const row = breakdowns.find((b) => b.id === picked);
     return row ? { kind: "breakdown", text: row.result, title: row.input_data?.fileName } : null;
   };
 
+  const autoSetup = useAutoCreationSetup(incomingSetup, context, ctxLoading, s => {
+    // 原稿写明了目的才填，没写就「和原片一样」；补充说明不塞占位话（2026-10-03：跳转时别乱填）
+    setRole(s.purpose ?? 'same'); setTargetIndustry(s.industry ?? ''); setPasteIndustry(s.industry ?? '');
+    setDuration(s.duration as RemixDuration); setNotes(s.notes || '');
+  });
+  const currentSettings = resolveCreationSettings({ from: '跨行业二创', sourceContent: pasteText || handed?.text || '', settings: mergeCreationSettings(autoSetup.settings, { industry: profile ? track : targetIndustry, duration, purpose: role === 'same' ? undefined : role, notes }) }, context);
+
   const start = async () => {
+    if (running) return;
+    if (autoSetup.preparing || ctxLoading) { notify('正在承接原方案，请稍候'); return; }
+    const isCurrent = beginProfileRequest();
     const src = source();
     if (!src) {
       notify(mode === "paste" ? "把原片的文案或描述贴进来（至少 20 个字）" : "先选一条拆过的视频", "error");
@@ -161,15 +230,28 @@ export default function RemixPage() {
       notify("至少选一层要借的", "error");
       return;
     }
+    if (ctxLoading) {
+      notify("正在读取当前档案，稍等一秒再点", "error");
+      return;
+    }
+    setRunning(true);
+    const historyOwnerId = await getHistoryOwner();
     const left = await checkQuota("remix");
+    if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) {
       openUpgrade("remix");
+      setRunning(false);
       return;
     }
     setRunning(true);
     setResult("");
+    const historyInput = {
+      source: src.title ?? src.kind, sourceData: src, layers, count, differentiate, depth, role,
+      duration, outputs, targetIndustry, notes, creationSettings: currentSettings,
+      profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null,
+    };
     try {
-      const useProfile = withProfile && profile;
+      const historyId = createHistoryId();
       const query = buildRemixPrompt(src, {
         layers,
         count,
@@ -178,28 +260,32 @@ export default function RemixPage() {
         role,
         duration,
         outputs,
-        profileSummary: useProfile ? buildProfileSummary(profile) : undefined,
-        restrictions: useProfile ? String(profile.content_restrictions ?? "") : undefined,
-        targetIndustry: useProfile ? undefined : targetIndustry,
+        profileSummary: profile ? buildProfileSummary(profile) : undefined,
+        store: profile ? { name: String(profile.profile_name ?? ""), lines, track } : undefined,
+        // 定位简报、成交理由、禁忌：和选题、脚本读的是同一份账号记忆
+        contextBlock: buildContextBlock(context, 'remix') + creationSettingsBlock(currentSettings),
+        targetIndustry: profile ? undefined : targetIndustry,
         notes,
       });
-      const res = await fetch("/api/dify/stream", {
+      const res = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: REMIX_TASK_TYPE,
           query,
-          profileId: useProfile ? (profile.id as string) : null,
+          profileId: profile ? (profile.id as string) : null,
+          historyId,
+          historyInput,
+          historyOwnerId,
         }),
       });
       if (!res.ok) await throwApiError(res, "二创失败");
       const full = await readDifyStream(res, {
-        onChunk: (_p, text) => setResult(text),
+        onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
       });
       if (full.trim()) {
-        await saveGenerationHistory(REMIX_TASK_TYPE, { source: src.title ?? src.kind, layers, count, depth, role, duration }, full);
-        loadHistory();
+        await saveCreativeHistory({ id: historyId, taskType: REMIX_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
       }
     } catch (e) {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "二创失败，请重试", "error");
@@ -208,16 +294,20 @@ export default function RemixPage() {
     }
   };
 
-  const sendTo = (path: string, body: string) => {
-    putHandoff({ from: REMIX_TASK_TYPE, scriptContent: body });
-    router.push(path);
-  };
-
   return (
     <WorkspaceLayout
       sidebar={
         <>
           <PageHeader title="跨行业二创" subtitle="借别的行业爆款的开篇、结构、拍法，换成你自己的行业来拍" />
+          <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
+
+          {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
+          <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
+            <p className="mb-2 text-[11.5px] text-muted-foreground">当前档案：{String(profile?.profile_name || '未关联档案')}。结果保存在当前账号的云端，不主动删除就一直保留，点击记录可恢复正文和当时的设置。</p>
+            {history.length === 0 && <p className="mb-2 text-[12px] text-muted-foreground">当前档案还没有二创记录，生成成功后会自动保存。</p>}
+            <HistoryPanel items={history} title="二创历史" showStats={false} onLoad={restoreHistory} onDelete={(id) => deleteHistory(id)} />
+            <Link href="/history" className="mt-2 inline-block text-[11.5px] text-primary underline">查看这个账号的全部历史</Link>
+          </CollapsibleSection>
 
           <CollapsibleSection title="原片" defaultOpen>
             <div className="flex gap-1.5">
@@ -293,7 +383,7 @@ export default function RemixPage() {
             </Field>
             <Field label="时长" stacked>
               <div className="flex flex-wrap gap-1.5">
-                {DURATIONS.map((d) => (
+                {Array.from(new Set([...DURATIONS, duration])).map((d) => (
                   <button key={d} type="button" onClick={() => setDuration(d)} aria-pressed={duration === d} className={chipCls(duration === d)}>
                     {d}
                   </button>
@@ -305,18 +395,23 @@ export default function RemixPage() {
             </Field>
           </CollapsibleSection>
 
-          <CollapsibleSection title="落到哪个账号" defaultOpen>
-            {profile ? (
-              <label className="flex cursor-pointer items-start gap-2.5 text-[12.5px] text-foreground">
-                <input type="checkbox" checked={withProfile} onChange={(e) => setWithProfile(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
-                <span>
-                  用「{String(profile.profile_name || "当前档案")}」的档案
-                  <span className="block text-[11.5px] text-muted-foreground">按它的行业、品类、团队设备、禁忌来二创；侧边栏切换档案这里跟着变</span>
-                </span>
-              </label>
-            ) : null}
-            {(!profile || !withProfile) && (
-              <Field label="你是做什么的" stacked hint="有账号档案会准得多">
+          <CollapsibleSection title="二创到哪家店" defaultOpen>
+            {ctxLoading ? (
+              <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> 正在读取当前档案…
+              </p>
+            ) : profile ? (
+              <div className="rounded-xl bg-primary/[0.06] px-3 py-2.5 text-[12.5px] leading-relaxed text-foreground">
+                <div className="font-medium">以「{String(profile.profile_name || "当前档案")}」为准</div>
+                {track && <div className="mt-1 text-[11.5px] text-muted-foreground">行业：{track}</div>}
+                {lines.length > 0 && <div className="mt-0.5 text-[11.5px] text-muted-foreground">在卖的品类：{lines.join("、")}</div>}
+                <div className="mt-1.5 text-[11px] text-muted-foreground">
+                  方案里的事、场景、产品都换成这家店的，也会带上它的定位简报和成交理由。要换店，在左侧栏切换档案；品类不对去
+                  <Link href="/dashboard/profiles"className="mx-0.5 text-primary">改档案</Link>
+                </div>
+              </div>
+            ) : (
+              <Field label="你是做什么的" stacked hint="还没有账号档案。建好档案后，二创会自动按档案里的行业和品类来">
                 <input value={targetIndustry} onChange={(e) => setTargetIndustry(e.target.value)} placeholder="例如：社区烧烤店、美甲工作室" className={INPUT_CLS} />
               </Field>
             )}
@@ -325,7 +420,7 @@ export default function RemixPage() {
             </Field>
           </CollapsibleSection>
 
-          <button type="button" onClick={start} disabled={running} className={GENERATE_BTN}>
+          <button type="button" onClick={start} disabled={autoSetup.preparing || ctxLoading || running} className={GENERATE_BTN}>
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
             {running ? "二创中…" : "开始二创"}
           </button>
@@ -336,6 +431,8 @@ export default function RemixPage() {
         result={result}
         isGenerating={running}
         title="二创方案"
+        flowContext={{ settings: settingsForResult(result, history, currentSettings) }}
+        individualPlans
         showStats={false}
         emptyIcon={Shuffle}
         emptyTitle="借别的行业的爆款，拍成你自己的"
@@ -347,16 +444,8 @@ export default function RemixPage() {
           navigator.clipboard.writeText(text);
           notify("已复制到剪贴板");
         }}
-        nextActions={[
-          { label: "拿去拆分镜", icon: Film, onClick: (body) => sendTo("/dashboard/storyboard", body) },
-          { label: "拿去审稿", icon: CheckCircle, onClick: (body) => sendTo("/dashboard/review", body) },
-          { label: "给它起标题", icon: Tag, onClick: (body) => sendTo("/dashboard/title", body) },
-        ]}
       />
 
-      <div className="mt-4">
-        <HistoryPanel items={history} title="二创过的" showStats={false} onLoad={(item) => setResult(item.result)} onDelete={(id) => deleteHistory(id)} />
-      </div>
     </WorkspaceLayout>
   );
 }

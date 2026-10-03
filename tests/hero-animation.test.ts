@@ -27,8 +27,8 @@ describe('首页动画', () => {
     expect(story).not.toMatch(/宠物|猫粮|PawPrint/);
   });
 
-  it('画面与数字标明是示意；不承诺收益', () => {
-    expect(story).toContain('画面与数字为示意');
+  it('虚构场景与数据标明仅作演示；不承诺收益', () => {
+    expect(story).toContain('虚构场景与数据，仅作演示');
     expect(story).not.toMatch(/月入|年入|赚了|收入翻|保证/);
   });
 

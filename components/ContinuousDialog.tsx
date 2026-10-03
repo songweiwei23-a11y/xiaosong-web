@@ -1,10 +1,12 @@
 "use client"
 
+import { fetchGeneration } from "@/lib/api-error";
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Loader2, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
 import { Markdown } from '@/components/markdown'
 import { readDifyStream } from '@/lib/sse-stream'
 import { getActiveProfileId } from '@/lib/active-profile'
+import { takeDialogDraft } from '@/lib/dialog-draft'
 import {
   listConversations,
   createConversation,
@@ -29,6 +31,11 @@ function toLocalMessages(messages: ChatMessage[]): Message[] {
 }
 
 /** 组件内结构 → 云端结构 */
+/** 最多等 ms 毫秒，超时当作没成功（返回 null），不让一次卡住的保存把整个对话拖死 */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), ms))])
+}
+
 function toStoredMessages(messages: Message[]): ChatMessage[] {
   return messages.map((m) => ({
     role: m.role,
@@ -69,6 +76,13 @@ export default function ContinuousDialog({
 
   // 打开弹窗时先去云端找这次生成是否已经聊过。
   // 以前这里只是把 messages 重置成生成结果，刷新页面后之前的追问全部消失。
+  // 别处预填的修改要求（比如结果下面的「让 AI 改掉」禁忌词）：打开时放进输入框，不自动发
+  useEffect(() => {
+    if (!isOpen) return
+    const draft = takeDialogDraft()
+    if (draft) setInputValue(draft)
+  }, [isOpen])
+
   useEffect(() => {
     if (!isOpen || !initialContent) return
 
@@ -149,15 +163,20 @@ export default function ContinuousDialog({
 
     // 用户的问题先落库：回答中途断网或刷新时，问题不会白打一遍。
     // 首轮在这里创建记录，把生成结果原文一并存进去，作为日后认回这次对话的依据。
+    /*
+     * 不再 await（2026-10-02）：原来先等这条存好才去问 AI。审稿结果上万字，存记录的请求
+     * 在用户线路上一卡住，AI 那一步就永远不开始——线上「审稿优化的继续对话用不了」：
+     * 打开对话框后一个请求都没发出去。存记录改成后台进行，最多等 15 秒，结束时再拿它的结果写回完整记录
+     */
+    let creating: Promise<void> | null = null
     if (!remoteIdRef.current) {
-      const created = await createConversation({
+      creating = withTimeout(createConversation({
         kind: 'continuous',
         taskType,
         title: initialContent.slice(0, 18) || taskType,
         difyConversationId: conversationId || '',
         messages: toStoredMessages([...baseMessages, userMessage]),
-      })
-      if (created) remoteIdRef.current = created.id
+      }), 15_000).then((created) => { if (created) remoteIdRef.current = created.id })
     } else {
       void updateConversation(remoteIdRef.current, {
         messages: toStoredMessages([...baseMessages, userMessage]),
@@ -179,7 +198,7 @@ export default function ContinuousDialog({
       abortRef.current = controller
       const timeoutId = setTimeout(() => controller.abort(), 90_000)
 
-      const response = await fetch('/api/dify/chat', {
+      const response = await fetchGeneration('/api/dify/chat', {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
@@ -272,8 +291,10 @@ export default function ContinuousDialog({
       abortRef.current = null
       setIsLoading(false)
 
-      // 本轮结束后写回完整记录，刷新页面再打开时即可原样恢复
-      if (shouldSave && remoteIdRef.current) {
+      // 本轮结束后写回完整记录，刷新页面再打开时即可原样恢复。
+      // 首轮的记录是后台在建的，等它建好（或超时放弃）再写
+      const writeBack = () => {
+        if (!shouldSave || !remoteIdRef.current) return
         void updateConversation(remoteIdRef.current, {
           difyConversationId: capturedDifyId,
           messages: toStoredMessages([
@@ -283,6 +304,8 @@ export default function ContinuousDialog({
           ]),
         })
       }
+      if (creating) void creating.then(writeBack, writeBack)
+      else writeBack()
     }
   }
 

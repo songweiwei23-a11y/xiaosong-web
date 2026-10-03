@@ -3,10 +3,10 @@
 // 三种计量方式，由 totalQuota 决定用哪一种：
 //
 //   totalQuota === null  → 分功能限额。各功能互不相通，脚本用完了
-//                          选题仍然能用。免费版、基础版、专业版都走这一档。
+//                          选题仍然能用。目前所有套餐都走这一档。
 //   totalQuota 是数字    → 总量制。所有功能共享一个池子。
 //                          目前没有套餐用它，但机制留着，随时可以切。
-//   totalQuota === -1    → 无限（企业版）。
+//   totalQuota === -1    → 无限（保留机制，目前没有无限套餐）。
 //
 // 【历史】这里曾经出过一次事：文案写「所有功能 150次/月」，而 quotas 里
 // 每个功能都配着 150，且 api-guard 每次都带 feature 走分功能分支——
@@ -22,8 +22,7 @@
 //
 // 定额的原则：知识库是**查资料**，是为了创作而做的辅助动作，
 // 所以每一档都设得比该档的创作额度更宽——不能让"查资料"先于"出内容"用完。
-//   免费 20（与自由对话对齐）／基础 100（创作额度的 2 倍）／
-//   专业 300（2.5 倍，约每天 10 次）／企业 无限
+//   免费 10（与自由对话对齐）／基础 100／专业 300／高频 600。
 // 改数字只改下面 quotas 里的那一个值，文案、价格对比表、用量提醒、
 // 管理后台统计全都跟着走。
 //
@@ -69,7 +68,9 @@ export const SUBSCRIPTION_PLANS = {
       // 免费给 3 次，够拆两三条对标试效果
       breakdown: 3,
       // 跨行业二创（2026-09-30 新增，产品方定单独一项）：免费 3 次
-      remix: 3
+      remix: 3,
+      // 创作方向（2026-10-02 新增，单独一项）：按「其余每个板块 5 次」
+      direction: 5
     }
   },
   basic: {
@@ -89,7 +90,8 @@ export const SUBSCRIPTION_PLANS = {
       dealReason: 50,
       interview: 50,
       breakdown: 50,
-      remix: 50
+      remix: 50,
+      direction: 50
     }
   },
   pro: {
@@ -109,32 +111,41 @@ export const SUBSCRIPTION_PLANS = {
       dealReason: 120,
       interview: 120,
       breakdown: 120,
-      remix: 120
+      remix: 120,
+      direction: 120
     }
   },
   enterprise: {
     id: "enterprise",
-    name: "企业版",
+    name: "高频会员",
     // 改造前这里有两个价：首页和配置写 199，会员页和收款页写 599，
     // 用户在首页看到 199 点进去要付 599。已确认以 199 为准。
     price: 199,
-    totalQuota: -1 as number | null, // 无限
+    totalQuota: null as number | null, // 按功能限额，联网另行计量
     quotas: {
-      knowledge: -1,       // 企业版是唯一还无限的档位
-      positioning: -1,
-      topic: -1,
-      script: -1,
-      freeChat: -1,
-      storyboard: -1,
-      review: -1,
-      title: -1,
-      dealReason: -1,
-      interview: -1,
-      breakdown: -1,
-      remix: -1
+      knowledge: 600,
+      positioning: 300,
+      topic: 300,
+      script: 300,
+      freeChat: 300,
+      storyboard: 300,
+      review: 300,
+      title: 300,
+      dealReason: 300,
+      interview: 300,
+      breakdown: 300,
+      remix: 300,
+      direction: 300
     }
   }
 };
+
+/** 联网是独立的搜索调用额度，不挤占创作次数；免费体验不按月重置。 */
+export const WEB_SEARCH_LIMITS: Record<string, number> = { free: 3, basic: 20, pro: 60, enterprise: 150 };
+export function webSearchSummary(planId: string): string {
+  const limit = WEB_SEARCH_LIMITS[planId] ?? WEB_SEARCH_LIMITS.free;
+  return `联网搜索：${limit} 次${planId === 'free' ? '（一次性体验）' : '/月'}`;
+}
 
 // 获取套餐信息
 export function getPlan(planId: string) {
@@ -172,6 +183,8 @@ export const COUNTED_FEATURES: { key: keyof typeof SUBSCRIPTION_PLANS.free.quota
   { key: 'breakdown', column: 'breakdown_used', name: '拆解爆款' },
   // 跨行业二创：user_quotas.remix_used 由 20260930_remix.sql 加
   { key: 'remix', column: 'remix_used', name: '跨行业二创' },
+  // 创作方向：user_quotas.direction_used 由 20261002_direction.sql 加
+  { key: 'direction', column: 'direction_used', name: '创作方向' },
   { key: 'knowledge', column: 'knowledge_used', name: '知识库查询' },
 ];
 
@@ -217,9 +230,9 @@ export function sumCountedUsage(quota: Record<string, any> | null | undefined): 
 export function quotaSummary(planId: string): string[] {
   const plan = getPlan(planId);
 
-  if (plan.totalQuota === -1) return ["所有功能：不限次数"];
+  if (plan.totalQuota === -1) return ["所有功能：不限次数", webSearchSummary(planId)];
   if (plan.totalQuota !== null) {
-    return [`所有功能合计：${plan.totalQuota} 次/月`, knowledgeLine(planId)];
+    return [`所有功能合计：${plan.totalQuota} 次/月`, knowledgeLine(planId), webSearchSummary(planId)];
   }
 
   /*
@@ -239,8 +252,8 @@ export function quotaSummary(planId: string): string[] {
   const unique = new Set(usable.map((f) => f.limit));
 
   if (usable.length === creation.length && unique.size === 1) {
-    // 「每个创作功能」而不是「每个功能」：知识库不在这句话的覆盖范围里了
-    return [`每个创作功能各 ${[...unique][0]} 次/月`, knowledgeLine(planId)];
+    // 按额度类别计量：定位各页、脚本/起号/开篇分别共享同类额度；知识库另列。
+    return [`每类创作额度各 ${[...unique][0]} 次/月`, knowledgeLine(planId), webSearchSummary(planId)];
   }
 
   /*
@@ -252,6 +265,7 @@ export function quotaSummary(planId: string): string[] {
     ...(free ? [FREE_TRIAL_NOTE] : []),
     ...usable.map((f) => `${f.name}：${f.limit} 次${free ? '' : '/月'}`),
     knowledgeLine(planId),
+    webSearchSummary(planId),
   ];
 }
 
@@ -295,9 +309,9 @@ function knowledgeLine(planId: string): string {
  */
 const SELLING_POINTS: Record<string, string[]> = {
   free: ['历史记录云端保存'],
-  basic: ['十二大功能全部开放', '历史记录云端保存'],
-  pro: ['十二大功能全部开放', '历史记录云端保存'],
-  enterprise: ['十二大功能全部开放', '历史记录云端保存'],
+  basic: ['全部创作板块开放', '历史记录云端保存'],
+  pro: ['全部创作板块开放', '历史记录云端保存'],
+  enterprise: ['全部创作板块开放', '历史记录云端保存'],
 };
 
 export function planSellingPoints(planId: string): string[] {
@@ -567,7 +581,7 @@ export function judgeQuota(
   const featureQuota = plan.quotas[feature as keyof typeof plan.quotas];
 
   // 该功能在这一档就是无限的，不受总量约束。
-  // 知识库以前走的是这条路，现在只有企业版还会命中。
+  // 当前套餐均有限额，保留这条配置机制。
   if (featureQuota === -1) {
     return { allowed: true, remaining: -1, limit: -1, used: 0 };
   }

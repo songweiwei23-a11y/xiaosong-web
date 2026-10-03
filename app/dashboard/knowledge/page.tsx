@@ -7,13 +7,18 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
-import { useState, useEffect } from "react";
-import { throwApiError } from "@/lib/api-error";
+import { useState } from "react";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { BookOpen, Search, Loader2, Lightbulb } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 import { saveGenerationHistory } from '@/lib/history';
 
 import { readDifyStream } from '@/lib/sse-stream';
+import { useGenerationPage } from '@/hooks/useGenerationPage';
+import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
+import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
+import { buildContextBlock } from '@/lib/creator-context';
 
 // 历史里用它区分本页记录。与发给 Dify 的 taskType 无关——成交理由页发的
 // 也是「知识库查询」，两页若共用同一个 task_type，历史会互相串。
@@ -37,37 +42,19 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function KnowledgePage() {
+  const beginProfileRequest = useProfileRequestGuard();
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState("");
+  const { context: creatorContext } = useCreatorContext();
 
-  // 切换页面或刷新后，把云端最近一条查询结果取回来显示。
-  // 本页原先既不保存也不恢复，结果只活在组件 state 里，一离开就没了。
-  useEffect(() => {
-    let cancelled = false;
-    const restore = async () => {
-      try {
-        // 必须显式传 taskType：不传的话接口只返回「脚本生成」，
-        // 下面那句 find(HISTORY_TASK_TYPE) 就永远是 undefined，
-        // 这一页的恢复从上线起就没生效过，且不报错
-        const res = await fetch(
-          `/api/script-history?taskType=${encodeURIComponent(HISTORY_TASK_TYPE)}&limit=1`
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled || !Array.isArray(data)) return;
-        const latest = data.find((x: any) => x.task_type === HISTORY_TASK_TYPE);
-        if (latest?.result) setResult((current) => current || latest.result);
-      } catch (error) {
-        console.error('恢复上次查询失败:', error);
-      }
-    };
-    restore();
-    return () => { cancelled = true; };
-  }, []);
+  const { lastResult, resultScope } = useGenerationPage({ taskType: HISTORY_TASK_TYPE });
+  useRestoreLastResult(lastResult, setResult, resultScope);
 
   const handleSearch = async () => {
+    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    const isCurrent = beginProfileRequest();
     if (!query.trim()) {
       notify("请输入要查询的问题");
       return;
@@ -75,23 +62,26 @@ export default function KnowledgePage() {
 
     setIsSearching(true);
     setResult("");
+    // 知道是哪个号，举例才能用他自己的行业（产品方：各板块都要有账号记忆，2026-09-30）
+    const accountBlock = buildContextBlock(creatorContext, 'knowledge');
 
     try {
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: "知识库查询",
+          profileId: creatorContext.profile?.id || null,
           topic: `请从编导知识库中查询并回答：
 
 【问题】
 ${query}
 
 ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c => c.id === selectedCategory)?.label}` : ''}
-
+${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它的行业和人群；方法论本身照知识库讲）\n${accountBlock}\n` : ''}
 要求：
 1. 从知识库中找到相关理论和方法
-2. 给出具体可执行的建议
+2. 给出具体可执行的建议${accountBlock ? '，尽量落到上面这个账号身上' : ''}
 3. 如果有案例，请举例说明
 4. 如果知识库没有，请明确说明`,
           platform: "抖音",
@@ -105,12 +95,12 @@ ${selectedCategory ? `【重点查询分类】\n${KNOWLEDGE_CATEGORIES.find(c =>
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer，
       // 否则页面上显示的会是满屏 data: {...} 而不是检索结果正文
       const full = await readDifyStream(response, {
-        onChunk: (_piece, text) => setResult(text),
+        onChunk: (_piece, text) => { if (isCurrent()) setResult(text); },
       });
 
       // 存一份到云端，换页面或刷新后才能取回来
       if (full.trim()) {
-        await saveGenerationHistory(HISTORY_TASK_TYPE, { query, category: selectedCategory }, full);
+        await saveGenerationHistory(HISTORY_TASK_TYPE, { query, category: selectedCategory, profileId: creatorContext.profile?.id || null }, full);
       }
     } catch (error: any) {
       notify(error.message || "查询失败");

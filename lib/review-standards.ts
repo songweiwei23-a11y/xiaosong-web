@@ -21,6 +21,7 @@ import {
   getRelevantExample,
 } from './quality-checker';
 import { roleInferRule } from './content-roles';
+import { continuationRules } from './creation-continuation';
 
 export interface ReviewPromptParams {
   draftContent: string;
@@ -41,7 +42,15 @@ export interface ReviewPromptParams {
    * 此前审稿只拿到一篇孤零零的稿子，评的是通用好坏。
    */
   contextBlock?: string;
+  /**
+   * 用户的个人要求（2026-10-02 产品方："优先级最高，比如原稿时长短、有错误，我在个人要求里指出，按要求来"）。
+   * 放在提示词最前面，并在优化稿那一节再提醒一次
+   */
+  personalRequirements?: string;
 }
+
+/** 时长选「AI 推荐」时传这个值 */
+export const AI_DURATION = 'AI推荐';
 
 /** 把七个评分维度连同权重写成表格，模型照着打分才有一致性 */
 function rubricTable(): string {
@@ -136,6 +145,13 @@ function forbiddenSection(draft: string): string {
 }
 
 /** 构建审稿优化的完整提示词 */
+/**
+ * 不许编事实。线上实测（2026-10-02）：原稿只说「牛肉每天新鲜、锅底自己熬」，优化稿写成了
+ * 「有人开车50公里来吃」「回头客占8成」「牛油放了8斤熬4小时」——全是原稿和档案里没有的。
+ * 评分标准鼓励"用具体数字增强说服力"，通用的承接规则放在最末尾管不住，所以就近写进这两节。
+ */
+const NO_INVENTED_FACTS = '⚠️ 原稿和档案里**没有**的数字（价格、人数、距离、时长、重量、比例、销量）和经历、事件不许编：要用数字增强说服力就写成 X（如「X公里」「回头客占X成」），要用真实经历的地方写「【换成你的：……】」并给一个参考方向。原稿里已有的数字照用。';
+
 export function buildReviewPrompt(p: ReviewPromptParams): string {
   const draft = p.draftContent || '';
 
@@ -147,6 +163,18 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('你的判断要能落地：指出问题之后必须给出可以直接抄进脚本的改写，');
   parts.push('而不是「建议加强情绪」这类正确但没用的话。');
   parts.push('');
+
+  const personal = p.personalRequirements?.trim();
+  if (personal) {
+    parts.push('## 🔝 用户的个人要求（优先级最高）');
+    parts.push('');
+    parts.push(personal);
+    parts.push('');
+    parts.push('以上要求的优先级**高于本提示词里的一切规则、评分标准和账号背景**：冲突时按用户的要求来；');
+    parts.push('用户指出的错误必须改掉，用户要的时长、语气、结构必须做到。用户在这里给出的事实（价格、年限、经历等）可以直接用。');
+    parts.push('总评里用一两句话说明你按个人要求做了哪些改动、哪里和通用标准有取舍。');
+    parts.push('');
+  }
 
   // 账号背景放在稿子之前：先知道这是谁的号、说给谁听，再看内容。
   // 顺序反过来的话，模型会先形成一个通用判断，再被背景信息拉扯
@@ -162,7 +190,15 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
 
   parts.push('## 📌 稿件背景');
   if (p.platform) parts.push(`- 目标平台：${p.platform}`);
-  if (p.duration) parts.push(`- 目标时长：${p.duration}`);
+  if (p.duration === AI_DURATION) {
+    parts.push('- 目标时长：由你按内容、平台和视频目的判断最合适的时长；在优化后的完整脚本开头用一行标注「建议时长：XX秒」，并在总评里用一句话说明为什么是这个时长');
+  } else if (p.duration) {
+    parts.push(`- 目标时长：${p.duration}`);
+  }
+  if (p.duration) {
+    // 原稿时长不够或超了是审稿里最常见的问题之一（产品方举的例子就是"原来的脚本时长短"）
+    parts.push('- 目标时长指的是**优化后的稿子**要达到的长度：原稿不够就补足内容，超了就删减，口播按每秒 3～4 个字估算');
+  }
   if (p.scriptType) parts.push(`- 脚本类型：${p.scriptType}`);
   parts.push('');
 
@@ -232,7 +268,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   // 这和脚本生成注入范例是同一个理由。
   parts.push('## 📎 达标范例（9.5 分，仅作参照，不要照抄其中的行业和台词）');
   parts.push('');
-  parts.push(getRelevantExample(p.scriptType || '教知识型', p.duration || '60秒', ''));
+  parts.push(getRelevantExample(p.scriptType || '教知识型', p.duration && p.duration !== AI_DURATION ? p.duration : '60秒', ''));
   parts.push('');
 
   parts.push('## 📤 输出格式（严格按顺序）');
@@ -251,6 +287,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
     parts.push('每条标注严重程度：🔴 必须改（不改就别拍）／🟡 建议改／🟢 锦上添花');
   }
   parts.push('每条格式：【问题】原文哪一句 →【为什么不行】→【改成】可直接使用的新句子');
+  parts.push(NO_INVENTED_FACTS);
   parts.push('');
 
   if (p.compareMode) {
@@ -266,8 +303,31 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   }
   parts.push('直接给出可以拿去拍的完整版本，保留秒数、镜头、台词、情绪、画面五要素，');
   parts.push('并确保它自己能通过上面那套评分标准（目标 9.0 分以上）。');
+  if (personal) parts.push('⚠️ 最前面「用户的个人要求」必须在这一版里逐条落实——它比评分标准优先。');
+  parts.push(NO_INVENTED_FACTS);
+  parts.push('');
+  /*
+   * 纯文字文案（2026-10-02 产品方："审稿的结果也要像脚本生成一样有纯文字版本"）。
+   * 规则和脚本板块的「第2步：纯文字文案」一样，标题里必须带「纯文字文案」四个字——
+   * 页面上的「复制纯文案」按钮（lib/script-copy 的 extractPlainCopy）认的就是它。
+   */
+  parts.push(`### ${p.compareMode ? 6 : 5}. 纯文字文案`);
+  parts.push('- 把上面优化后的完整脚本里**要念出来的话**按顺序整理成一段纯文案，方便直接复制去提词器、配音或发给出镜的人');
+  parts.push('- 只要口播内容：**不写**秒数、镜头、画面、字幕、音效、动作，不要【】标注、emoji、加粗、序号、列表符号');
+  parts.push('- 按说话的自然停顿分段，一句一行；结尾金句也写进去（不加"金句"两个字，也不加引号）');
+  parts.push('- 必须和上面优化后脚本里的台词**逐字一致**，不要另写一版');
   parts.push('');
   parts.push('⚠️ 不要输出「希望对你有帮助」这类结尾寒暄，也不要复述上面的标准。');
 
+  parts.push(continuationRules('review'));
   return parts.join('\n');
+}
+
+/**
+ * 页面会在提示词后面再拼「连续设置」「延续规则」，它们离模型最近、容易压过开头的个人要求；
+ * 所以有个人要求时，在整段提示词的最末尾再提醒一次
+ */
+export function personalRequirementsReminder(text?: string): string {
+  const t = text?.trim();
+  return t ? `\n\n⚠️ 最后再强调一次：用户的个人要求优先级最高，和上面任何设置（包括连续设置里的时长、结构）冲突时，按个人要求来——\n${t}` : '';
 }

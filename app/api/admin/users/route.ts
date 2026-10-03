@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { generateTempPassword } from '@/lib/password';
 import { COUNTED_FEATURES } from '@/lib/config/plans';
+import { accountStatus } from '@/lib/account-status';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
         full_name: profile?.profile_name || '未设置',
         avatar_url: profile?.avatar_url || null,
         membership_level: subscription?.plan || 'free',
-        subscription_status: subscription?.status || 'inactive',
+        subscription_status: accountStatus(authUser.banned_until, subscription?.status),
         subscription_end: subscription?.end_date || null,
         quota_details: {
           script: { used: quota?.script_used || 0 },

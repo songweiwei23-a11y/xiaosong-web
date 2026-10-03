@@ -27,7 +27,7 @@ describe('额度：企业版也要滚周期', () => {
 
   it('"周期到期就换期"排在企业版放行之前', () => {
     const reset = guard.indexOf('quotaRollover(subscription, quota)');
-    const enterprise = guard.indexOf("planId === 'enterprise'");
+    const enterprise = guard.indexOf("plan.totalQuota === -1");
     expect(reset).toBeGreaterThan(0);
     expect(enterprise).toBeGreaterThan(0);
     expect(reset, '企业版在重置之前就 return 了，周期永远不滚').toBeLessThan(enterprise);

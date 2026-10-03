@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
+import ts from 'typescript';
 import path from 'node:path';
 import { BOARD_MANIFESTS, manifestOf, type Board } from '@/lib/context-manifest';
 import { buildContextBlock, type CreatorContext, type CreatorProfile } from '@/lib/creator-context';
@@ -193,7 +194,40 @@ describe('页面确实把简报传进去了', () => {
   const NEWLY_WIRED: Array<[string, string, string]> = [
     ['成交理由', 'app/dashboard/deal-reason/page.tsx', 'dealReason'],
     ['自由对话', 'app/dashboard/free-chat/page.tsx', 'freeChat'],
+    // 2026-09-30 补接（"每个板块都要有记忆，互相关联互通"）
+    ['拆解爆款', 'app/dashboard/breakdown/page.tsx', 'breakdown'],
+    ['跨行业二创', 'app/dashboard/remix/page.tsx', 'remix'],
+    ['知识库', 'app/dashboard/knowledge/page.tsx', 'knowledge'],
   ];
+
+  it('清单里的每个板块都有页面真的按它取上下文（清单写了、页面没用，等于没接）', () => {
+    const dir = path.join(process.cwd(), 'app/dashboard');
+    const pages = fs
+      .readdirSync(dir, { recursive: true, encoding: 'utf8' })
+      .filter((f) => f.endsWith('page.tsx') || f.endsWith('.tsx'))
+      .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))
+      .join('\n');
+    expect(pages.length, '一个页面都没读到，扫描空转').toBeGreaterThan(10_000);
+    const used = new Set<string>();
+    const source = ts.createSourceFile('pages.tsx', pages, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const visit = (node: ts.Node) => {
+      if (ts.isCallExpression(node) && node.expression.getText(source) === 'buildContextBlock') {
+        const board = node.arguments[1];
+        if (board && ts.isStringLiteral(board)) used.add(board.text);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    const unused = BOARD_MANIFESTS.filter((m) => !used.has(m.board)).map((m) => m.label);
+    expect(unused, `这些板块清单里有、页面没按它取：${unused.join('、')}`).toEqual([]);
+  });
+
+  it('成交理由只给清单里声明要的板块', () => {
+    for (const m of BOARD_MANIFESTS) {
+      const block = buildContextBlock(ctx(), m.board);
+      expect(block.includes('这个账号的成交理由'), m.label).toBe(m.dealReasons);
+    }
+  });
 
   for (const [name, rel, board] of NEWLY_WIRED) {
     it(`${name}页接上了账号上下文（原来完全没接）`, () => {

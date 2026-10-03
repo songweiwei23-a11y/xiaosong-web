@@ -14,14 +14,21 @@
 export const ACTIVE_PROFILE_KEY = 'activeProfileId';
 export const PROFILE_CHANGED = 'profileChanged';
 
-/** 服务端渲染时没有 localStorage，取不到就是 null */
+// 存储被浏览器禁止时仍保留本次页面会话的选择。否则切换器收到广播后
+// 再次读到 null，会重复选第一个档案、广播、请求接口，形成循环。
+let memoryProfileId: string | null = null;
+let useMemoryProfile = false;
+
+/** 服务端没有当前浏览器档案；浏览器存储不可用时读本次会话的选择。 */
 export function getActiveProfileId(): string | null {
   if (typeof window === 'undefined') return null;
+  if (useMemoryProfile) return memoryProfileId;
   try {
-    return localStorage.getItem(ACTIVE_PROFILE_KEY);
+    memoryProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY);
+    return memoryProfileId;
   } catch {
-    // 隐私模式下 localStorage 可能直接抛错
-    return null;
+    useMemoryProfile = true;
+    return memoryProfileId;
   }
 }
 
@@ -31,17 +38,23 @@ export function getActiveProfileId(): string | null {
  */
 export function setActiveProfileId(id: string | null, detail?: unknown): void {
   if (typeof window === 'undefined') return;
+  const nextId = id || null;
+  const previousId = getActiveProfileId();
+  memoryProfileId = nextId;
   try {
-    if (id) localStorage.setItem(ACTIVE_PROFILE_KEY, id);
+    if (nextId) localStorage.setItem(ACTIVE_PROFILE_KEY, nextId);
     else localStorage.removeItem(ACTIVE_PROFILE_KEY);
+    useMemoryProfile = false;
   } catch {
-    // 存不进去也要把事件发出去，本次会话内至少是一致的
+    useMemoryProfile = true;
   }
-  window.dispatchEvent(new CustomEvent(PROFILE_CHANGED, { detail: detail ?? id }));
+  // 同一个选择无需重复加载；携带详情可能是编辑后的新档案，仍须通知。
+  if (previousId === nextId && detail === undefined) return;
+  window.dispatchEvent(new CustomEvent(PROFILE_CHANGED, { detail: detail ?? nextId }));
 }
 
 /** 订阅档案切换，返回取消订阅的函数（给 useEffect 直接 return 用） */
-export function onActiveProfileChange(handler: () => void): () => void {
+export function onActiveProfileChange(handler: (event: Event) => void): () => void {
   if (typeof window === 'undefined') return () => {};
   window.addEventListener(PROFILE_CHANGED, handler);
   return () => window.removeEventListener(PROFILE_CHANGED, handler);

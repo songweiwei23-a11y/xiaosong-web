@@ -1,3 +1,5 @@
+import { scrubProfile } from './interview-exclusions';
+import { readTabooSettings } from './taboos';
 /**
  * 成交理由：17 个理由的清单、分析提示词、结果解析。
  *
@@ -192,4 +194,66 @@ export function parseDealReasons(markdown: string): ParsedDealReasons {
  */
 export function normalizeLegacyResult(text: string): string {
   return (text || '').replace(/<br\s*\/?>/gi, '；');
+}
+
+// ---------------------------------------------------------------- 和账号档案同步（2026-09-30）
+
+/**
+ * 成交理由 ↔ 档案「凭什么让人选你」（unique_selling_point）。
+ *
+ * 两边本来就是同一套口径（知识库「十五个进店理由」，见 lib/profile-options 的 SELLING_POINTS），
+ * 只有一处叫法不同：成交理由叫「性价比」，档案选项叫「性价比高」。
+ * 产品方要求"成交理由要与档案同步"：存成交理由时并进档案这一栏，
+ * 这样只看档案的板块（账号定位、前采建档、拆解二创）也知道这家店凭什么让人买。
+ */
+const REASON_TO_SELLING: Record<string, string> = { 性价比: '性价比高' };
+
+export function reasonsToSellingPoints(reasons: string[]): string[] {
+  return reasons.map((r) => REASON_TO_SELLING[r] ?? r);
+}
+
+/** 合进档案原有的卖点：原来的在前、去重，顿号连接（和档案表单的存法一致） */
+export function mergeSellingPoints(existing: unknown, add: string[]): string {
+  const old = typeof existing === 'string' ? existing.split(/[、,，]/).map((s) => s.trim()).filter(Boolean) : Array.isArray(existing) ? existing.map(String) : [];
+  return Array.from(new Set([...old, ...add])).join('、');
+}
+
+const STORE_TYPE_HINTS: [RegExp, string][] = [
+  [/餐|饮|美食|烧烤|火锅|串|菜|小吃|咖啡|茶|烘焙/, '餐饮美食'],
+  [/美容|美发|美甲|美睫|护肤|美妆|理发/, '美容美发'],
+  [/健身|运动|瑜伽|游泳/, '运动健身'],
+  [/亲子|教育|培训|早教|母婴/, '亲子教育'],
+  [/医|牙|健康|药/, '医疗健康'],
+  [/宠物/, '宠物服务'],
+  [/汽车|汽修|洗车|4S/, '汽车服务'],
+  [/娱乐|KTV|酒吧|桌游|剧本杀/, '休闲娱乐'],
+  [/家政|维修|本地服务|生活/, '生活服务'],
+];
+
+const joinText = (v: unknown) => (Array.isArray(v) ? v.filter(Boolean).join('、') : typeof v === 'string' ? v.trim() : '');
+
+/**
+ * 档案 → 成交理由的表单。这个档案还没存过成交理由时，用档案里已有的信息预填，
+ * 不用把店名、类型、特色、客人再敲一遍（这些档案里早就有了）。
+ */
+export function dealFormFromProfile(profile: Record<string, unknown>): { storeName: string; storeType: string; storeFeatures: string; targetCustomer: string } {
+  // 建档时刻意没选的（排除清单）不带进成交理由的门店特点（见 lib/interview-exclusions）
+  const p = scrubProfile(profile, readTabooSettings(profile.taboo_settings).excluded) ?? profile;
+  const typeText = [joinText(p.product_category), joinText(p.account_track)].join(' ');
+  const storeType = STORE_TYPE_HINTS.find(([re]) => re.test(typeText))?.[1] ?? '其他';
+  const highlights = typeof p.interview_highlights === 'string' ? p.interview_highlights.split('\n').filter(Boolean).slice(0, 4) : [];
+  const features = [
+    joinText(p.product_category) && `卖的：${joinText(p.product_category)}`,
+    joinText(p.unique_selling_point) && `卖点：${joinText(p.unique_selling_point)}`,
+    joinText(p.competitive_advantage) && `优势：${joinText(p.competitive_advantage)}`,
+    joinText(p.price_range) && `价格：${joinText(p.price_range)}`,
+    ...highlights,
+  ].filter(Boolean);
+  const customer = [joinText(p.target_age), joinText(p.target_occupation), joinText(p.target_region)].filter(Boolean).join('，');
+  return {
+    storeName: typeof p.profile_name === 'string' ? p.profile_name : '',
+    storeType,
+    storeFeatures: features.join('\n'),
+    targetCustomer: customer,
+  };
 }

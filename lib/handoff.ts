@@ -13,6 +13,8 @@
  */
 
 import { splitTopicSections } from "./topic-library";
+import { getActiveProfileId } from './active-profile';
+import type { CreationSettings } from './creation-settings';
 
 const KEY = "xiaosong-handoff";
 
@@ -20,6 +22,14 @@ const KEY = "xiaosong-handoff";
 export interface HandoffPayload {
   /** 来源功能名，用于在目标页提示「内容来自哪里」 */
   from: string;
+  /** 指定接收页，避免绕到其他页面时被提前取走。 */
+  target?: string;
+  profileId?: string | null;
+  sourceContent?: string;
+  /** 最初选中的创作方案，跨多次跳转仍保留，不被标题等短结果替换。 */
+  originContent?: string;
+  settings?: CreationSettings;
+  sourceTitle?: string;
   /** 视频主题 / 选题：脚本页、标题页用 */
   topic?: string;
   /** 脚本正文：分镜页、审稿页用 */
@@ -84,8 +94,12 @@ export interface HandoffPayload {
  */
 export function extractOpening(script: string, maxLen = 120): string {
   if (!script?.trim()) return "";
+  const plain = script.replace(/\*\*/g, '');
+  const spoken = plain.match(/(?:^|\n)\s*(?:[-*>]\s*)?(?:台词|口播|开场台词|开头一句)[：:]\s*(.+)/)?.[1];
+  if (spoken) return spoken.replace(/^["“‘]|["”’]$/g, '').trim().slice(0, maxLen);
   // 去掉【开场】0-5秒 这类结构标记，留下真正要念的话
-  const cleaned = script
+  const cleaned = plain
+    .replace(/^\s*【(?:视频主题|主题|脚本类型|内容类型|脚本结构|视频目的|时长|视频时长|平台|发布平台|目标人群|创作方向)】.*$/gm, '')
     .replace(/^#+.*$/gm, "")
     .replace(/【[^】]*】/g, "")
     .replace(/^\s*\d+[.、)]\s*/gm, "")
@@ -102,20 +116,34 @@ export function extractOpening(script: string, maxLen = 120): string {
 /** 存下要交接的内容。调用方随后自行跳转 */
 export function putHandoff(payload: HandoffPayload) {
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(payload));
+    sessionStorage.setItem(KEY, JSON.stringify({ profileId: getActiveProfileId(), ...payload }));
+    return true;
   } catch {
-    // 隐私模式下写不进去，那就退化成「跳过去但不带内容」，不影响跳转本身
+    // 让调用方提示复制正文，避免用户以为内容已自动带入。
+    return false;
   }
 }
 
+/** 不消费交接数据，供历史回填判断是否正在开始一轮新创作。 */
+export function hasPendingHandoff(target?: string): boolean {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+    return Boolean(parsed && (!parsed.target || parsed.target === (target || window.location.pathname))
+      && (!('profileId' in parsed) || parsed.profileId === getActiveProfileId()));
+  } catch { return false; }
+}
+
 /** 取出并清除。目标页在挂载时调用一次 */
-export function takeHandoff(): HandoffPayload | null {
+export function takeHandoff(target?: string): HandoffPayload | null {
   try {
     const raw = sessionStorage.getItem(KEY);
     if (!raw) return null;
-    sessionStorage.removeItem(KEY);
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
+    if (!parsed || typeof parsed !== 'object') { sessionStorage.removeItem(KEY); return null; }
+    if (parsed.target && parsed.target !== (target || window.location.pathname)) return null;
+    sessionStorage.removeItem(KEY);
+    if ('profileId' in parsed && parsed.profileId !== getActiveProfileId()) return null;
+    return parsed;
   } catch {
     return null;
   }

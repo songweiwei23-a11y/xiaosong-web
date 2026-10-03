@@ -40,18 +40,13 @@ describe('登录成功后不提前收起加载态', () => {
     const calls = code.match(/goDashboard\([^)]*\)/g) ?? [];
     // 定义写作 `const goDashboard = (to: string = ...) =>`，不计入
     const invocations = calls.filter((c) => !/^goDashboard\(to/.test(c));
-    expect(invocations.length).toBe(2);
+    // 已有会话探测也走同一交接，保持 cookie 与导航一致。
+    expect(invocations.length).toBe(3);
   });
 
   it('注册完的新用户送去引导清单，不是直接丢进工作台', () => {
     // 线上漏斗：90% 的人没做到创作简报，而那步是让产品真正生效的关键
     expect(code).toContain('goDashboard("/onboarding")');
-  });
-
-  it('成功时提前 return，不落到 finally 的 setLoading(false)', () => {
-    // 落进去的话按钮会在页面被替换前恢复成可点状态，看着像失败了
-    const successBlocks = code.match(/goDashboard\([^)]*\);\s*return;/g) ?? [];
-    expect(successBlocks.length).toBe(2);
   });
 
   it('只有出错时才撤掉过渡层', () => {

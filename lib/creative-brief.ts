@@ -127,6 +127,10 @@ export function buildBriefPrompt(params: {
    */
   businessPositioning?: string;
   contentPositioning?: string;
+  /** 内容配比（lib/content-mix 的 mixPromptBlock，百分比版）。有它，「三种视频的配比」照它写，不再照定位抄 */
+  mixBlock?: string;
+  /** 平台红线 + 行业禁忌（lib/taboos）：简报「禁忌」那一节要把不能拍的方向写进去 */
+  taboos?: string;
 }): string {
   const fields = BRIEF_FIELDS.map(
     (f, i) => `### ${i + 1}. ${f.label}\n${f.spec}`
@@ -158,8 +162,16 @@ ${
     params.contentPositioning?.trim()
       ? `\n## 💎 已做过的内容定位（深挖，结论要吸收进「内容方向」）\n\n${params.contentPositioning.trim()}\n`
       : ''
-  }${params.profileSummary?.trim() ? `\n## 📇 账号档案（补充参照）\n\n${params.profileSummary.trim()}\n` : ''}${
+  }${params.profileSummary?.trim() ? `\n## 📇 账号档案（事实以它为准）\n\n${params.profileSummary.trim()}\n\n方向、取舍听定位的；**事实**（出镜人是谁、干了几年、从哪来、在本地多久、价格、品类）以这份档案为准——档案可能比定位新，两边对不上时按档案写，档案没写的年限、经历不要自己补。\n` : ''}${
     params.notes?.trim() ? `\n## 💡 这次的额外要求\n\n${params.notes.trim()}\n` : ''
+  }${
+    params.mixBlock?.trim()
+      ? `\n${params.mixBlock.trim()}\n- 简报「内容方向」里的**三种视频的配比**照这个数写，不照上面定位里的抄（定位可能是按旧配比写的）\n`
+      : ''
+  }${
+    params.taboos?.trim()
+      ? `\n## ⛔ 这个行业的禁忌\n\n${params.taboos.trim()}\n- 简报的「禁忌」那一节要把**不能拍的方向**和这个号最容易踩的几句话写进去；「内容方向」「能长期挖的选题来源」里不能出现这些方向\n`
+      : ''
   }
 ## 📤 输出格式
 
@@ -172,7 +184,7 @@ ${fields}
 
 - **每句都是指令**：能直接拿去指导写文案、起标题、排镜头。不要写"要注重…"这类空话
 - **具体到能执行**：不要形容词，要具体的词、句、动作、画面
-- **忠于定位**：结论必须来自上面那份定位，不要自己另起一套
+- **忠于定位**：结论必须来自上面那份定位，不要自己另起一套（事实性的年限、经历以账号档案为准）
 - **全篇控制在 1500 字以内**：这是要塞进每一次生成的，长了就是给所有板块加负担
 - 不要写前言、不要复述定位、不要解释你在做什么，直接从"### 1. 一句话定位"开始`;
 }
@@ -259,3 +271,43 @@ export function fieldOf(key: string): BriefField | undefined {
 
 /** 存进 account_positioning 时用的类型值 */
 export const BRIEF_TYPE = '创作简报';
+
+/**
+ * 简报依赖的那部分档案事实：人设、经历、品类、人群、语气、方向。
+ *
+ * 【为什么不比更新时间】2026-10-02 线上：成交理由保存时会把理由同步进档案的「核心卖点」，
+ * 档案更新时间跟着变，各板块就提示"档案在简报之后改过，简报可能是旧的"——简报里的人设、年限一个字没变。
+ * 保存配比、开关禁忌也一样会误报。所以只看这些字段的内容变没变：
+ * - 不含核心卖点：成交理由会往里同步，而成交理由本身另有通道进各板块
+ * - 不含配比、禁忌设置、前采原文、时间戳：要么不影响简报，要么各板块另外读
+ */
+const BRIEF_FACT_FIELDS = [
+  'profile_name', 'account_platform', 'account_track', 'account_stage', 'product_category', 'price_range', 'monetization_model',
+  'target_gender', 'target_age', 'target_region', 'target_occupation', 'target_pain_points', 'target_needs', 'target_interests',
+  'content_style', 'content_format', 'content_tone', 'content_themes', 'competitive_advantage', 'unique_resources', 'interview_highlights',
+];
+
+/** 存在简报那一行 positioning_description 里的前缀（这一列简报原来不用） */
+export const BRIEF_FACTS_PREFIX = 'profile-facts:';
+
+export function profileFactsFingerprint(profile: object | null | undefined): string {
+  const p = (profile ?? {}) as Record<string, unknown>;
+  const norm = (v: unknown) => (Array.isArray(v) ? v.filter(Boolean).map(String).map((x) => x.trim()).join('、') : v == null ? '' : String(v).trim());
+  const text = BRIEF_FACT_FIELDS.map((k) => `${k}=${norm(p[k])}`).join('\n');
+  // FNV-1a，够分辨"变没变"就行
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return BRIEF_FACTS_PREFIX + h.toString(16).padStart(8, '0');
+}
+
+/**
+ * 简报是不是按旧档案写的：生成 / 保存简报时记下的事实指纹，和档案现在的对不上。
+ * 老简报没记指纹的，判断不了，不提醒（不能拿更新时间猜——那正是误报的来源）
+ */
+export function briefFactsChanged(briefFacts: string | null | undefined, profile: object | null | undefined): boolean {
+  if (!profile || !briefFacts || !briefFacts.startsWith(BRIEF_FACTS_PREFIX)) return false;
+  return briefFacts !== profileFactsFingerprint(profile);
+}

@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Clapperboard, FileVideo, Loader2, ScanSearch, Shuffle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { putHandoff } from "@/lib/handoff";
+import Link from 'next/link';
+import { putHandoff, takeHandoff, type HandoffPayload } from "@/lib/handoff";
+import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
+import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult } from '@/lib/creation-settings';
+import { creationReference } from '@/lib/creation-continuation';
+import { buildTextBreakdownPrompt } from '@/lib/text-breakdown';
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, TEXTAREA_CLS, GENERATE_BTN } from "@/components/form/controls";
@@ -11,15 +17,20 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
+import type { HistoryItem } from '@/components/workspace/HistoryPanel';
 import { notify } from "@/components/ui/feedback";
 import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { useCreativeHistory } from '@/hooks/useCreativeHistory';
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
-import { checkQuota, saveGenerationHistory } from "@/lib/history";
+import { checkQuota } from "@/lib/history";
+import { createHistoryId } from '@/lib/history-id';
 import { openUpgrade } from "@/lib/upgrade";
-import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
+import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
 import { DifyStreamError, readDifyStream } from "@/lib/sse-stream";
 import { buildProfileSummary } from "@/lib/profile-summary";
+import { buildContextBlock } from "@/lib/creator-context";
 import {
   MAX_DURATION_SEC,
   MAX_FILE_MB,
@@ -72,14 +83,19 @@ const NUM_FIELDS: { key: keyof VideoMeta; label: string }[] = [
  * 拆解维度（八层 + 逐镜头表）见 lib/viral-breakdown。
  */
 export default function BreakdownPage() {
+  const beginProfileRequest = useProfileRequestGuard();
   const router = useRouter();
-  const { history, loadHistory, deleteHistory, lastResult } = useGenerationPage({ taskType: BREAKDOWN_TASK_TYPE });
-  const { context } = useCreatorContext();
+  const { history, loadHistory, deleteHistory, lastResult, resultScope } = useGenerationPage({ taskType: BREAKDOWN_TASK_TYPE });
+  const { context, loading: ctxLoading } = useCreatorContext();
+  const { saveCreativeHistory, saveError, retrySave, getHistoryOwner } = useCreativeHistory(loadHistory);
   const profile = context.profile as Record<string, unknown> | null;
 
   const [file, setFile] = useState<File | null>(null);
   const [meta, setMeta] = useState<VideoMeta>({});
   const [pastedScript, setPastedScript] = useState("");
+  const [textMode, setTextMode] = useState(false);
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
+  const incomingHandoff = useRef(false);
   const [withProfile, setWithProfile] = useState(true);
   const [running, setRunning] = useState(false);
   const [stage, setStage] = useState<Stage | null>(null);
@@ -92,9 +108,34 @@ export default function BreakdownPage() {
   /** 拆好的画面和口播：AI 拆解那一步失败了，重试不用再拆一遍 */
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const [loadedFileName, setLoadedFileName] = useState('');
+  const restoredInputScope = useRef<string>();
+  const restoreHistory = (item: HistoryItem) => {
+    setResult(item.result);
+    const input = item.input_data || {};
+    setLoadedFileName(typeof input.fileName === 'string' ? input.fileName : '');
+    setMeta(input.meta && typeof input.meta === 'object' ? input.meta as VideoMeta : {});
+    setPastedScript(typeof input.pastedScript === 'string' ? input.pastedScript : '');
+    setTextMode(input.textMode === true);
+    if (typeof input.withProfile === 'boolean') setWithProfile(input.withProfile);
+  };
+  useEffect(() => {
+    if (!resultScope || !lastResult || !history[0] || restoredInputScope.current === resultScope) return;
+    restoredInputScope.current = resultScope;
+    if (!incomingHandoff.current && !running && (!result || result === lastResult)) restoreHistory(history[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultScope, lastResult, history, running, result]);
 
   // 切页面回来，把最近一次拆解取回来显示
-  useRestoreLastResult(lastResult, setResult);
+  useRestoreLastResult(lastResult, setResult, resultScope);
+  useEffect(() => {
+    const data = takeHandoff();
+    if (!data?.sourceContent) return;
+    incomingHandoff.current = true; setIncomingSetup(data); setTextMode(true);
+    setPastedScript(creationReference(data));
+  }, []);
+  const autoSetup = useAutoCreationSetup(incomingSetup, context, ctxLoading, s => setMeta(m => ({ ...m, industry: s.industry, title: s.topic })));
+  const currentSettings = resolveCreationSettings({ from: BREAKDOWN_TASK_TYPE, sourceContent: pastedScript, settings: mergeCreationSettings(autoSetup.settings, { industry: meta.industry, topic: meta.title }) }, context);
 
   // 离开页面时把截图的临时地址释放掉
   useEffect(() => () => sheetUrls.forEach((u) => URL.revokeObjectURL(u)), [sheetUrls]);
@@ -168,6 +209,9 @@ export default function BreakdownPage() {
   };
 
   const generateWith = async (p: Prepared, sheets: Blob[]) => {
+    const isCurrent = beginProfileRequest();
+    const historyOwnerId = await getHistoryOwner();
+    setLoadedFileName(p.file.name);
     setStage("upload");
     setProgress("");
     const ids = await uploadSheets(sheets, (d, t) => setProgress(`${d}/${t} 张`));
@@ -188,45 +232,65 @@ export default function BreakdownPage() {
       pastedScript,
       meta,
       profileSummary,
+      contextBlock: profileSummary ? buildContextBlock(context, 'breakdown') : undefined,
     });
-    const res = await fetch("/api/dify/stream", {
+    const historyId = createHistoryId();
+    const historyInput = {
+      profileId: profile?.id || null, profileName: profile?.profile_name ?? null,
+      fileName: p.file.name, duration: Math.round(p.input.duration),
+      fullDuration: Math.round(p.input.fullDuration), shots: p.input.shots.length,
+      meta, pastedScript, withProfile: !!profileSummary,
+      creationSettings: currentSettings,
+    };
+    const res = await fetchGeneration("/api/dify/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         taskType: BREAKDOWN_TASK_TYPE,
         query,
         imageFileIds: ids,
-        profileId: withProfile ? (profile?.id as string | undefined) ?? null : null,
+        profileId: profile?.id ?? null,
+        historyId,
+        historyInput,
+        historyOwnerId,
       }),
     });
     if (!res.ok) await throwApiError(res, "拆解失败");
     const full = await readDifyStream(res, {
-      onChunk: (_p, text) => setResult(text),
+      onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
       onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
     });
     if (full.trim()) {
-      await saveGenerationHistory(
-        BREAKDOWN_TASK_TYPE,
-        {
-          fileName: p.file.name,
-          duration: Math.round(p.input.duration),
-          fullDuration: Math.round(p.input.fullDuration),
-          shots: p.input.shots.length,
-          meta,
-          withProfile: !!profileSummary,
-        },
-        full
-      );
-      loadHistory();
+      await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
     }
+  };
+
+  const generateText = async () => {
+    const isCurrent = beginProfileRequest();
+    const historyOwnerId = await getHistoryOwner();
+    const historyId = createHistoryId();
+    const historyInput = { profileId: profile?.id || null, textMode: true, pastedScript, meta, creationSettings: currentSettings, originContent: incomingSetup?.originContent || pastedScript };
+    setStage('ai');
+    const res = await fetchGeneration('/api/dify/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id || null, historyId, historyInput, historyOwnerId,
+      query: buildTextBreakdownPrompt(pastedScript, buildContextBlock(context, 'breakdown'), currentSettings),
+    }) });
+    if (!res.ok) await throwApiError(res, '拆解失败');
+    const full = await readDifyStream(res, { onChunk: (_p, all) => { if (isCurrent()) setResult(all); } });
+    if (full.trim()) await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
   };
 
   /** retry=true：用上次拆好的画面和口播，只重来传图和 AI 拆解 */
   const start = async (retry = false) => {
-    if (!file || running) return;
+    if (running || autoSetup.preparing || (!textMode && !file) || (textMode && !pastedScript.trim())) return;
+    if (ctxLoading) { notify('正在读取当前档案，请稍后再拆解', 'error'); return; }
+    setRunning(true);
+    const isCurrent = beginProfileRequest();
     const left = await checkQuota("breakdown");
+    if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) {
       openUpgrade("breakdown");
+      setRunning(false);
       return;
     }
     setRunning(true);
@@ -238,6 +302,8 @@ export default function BreakdownPage() {
       setSheetUrls([]);
     }
     try {
+      if (textMode) { await generateText(); return; }
+      if (!file) return;
       const p = retry && prepared?.file === file ? prepared : await prepare(file);
       setPrepared(p);
       await generate(p);
@@ -251,15 +317,29 @@ export default function BreakdownPage() {
     }
   };
 
-  const stageIndex = stage ? STAGES.findIndex((s) => s.id === stage) : -1;
+  const stageIndex = stage ? textMode ? 0 : STAGES.findIndex((s) => s.id === stage) : -1;
 
   return (
     <WorkspaceLayout
       sidebar={
         <>
-          <PageHeader title="拆解爆款" subtitle="传一条爆款视频，逐镜头拆出它为什么火、你能学走什么" />
+          <PageHeader title="拆解爆款" subtitle={textMode ? "拆解已有文案与创作方案，找出值得保留的表达和可优化的部分" : "传一条爆款视频，逐镜头拆出它为什么火、你能学走什么"} />
+          <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
+          <div className="mb-4 flex gap-2">
+            <button type="button" onClick={() => setTextMode(false)} className="glass-panel rounded-xl px-3 py-2 text-[12px]" aria-pressed={!textMode}>拆视频</button>
+            <button type="button" onClick={() => setTextMode(true)} className="glass-panel rounded-xl px-3 py-2 text-[12px]" aria-pressed={textMode}>拆文案 / 方案</button>
+          </div>
+          {textMode && <p className="mb-3 text-[12px] text-muted-foreground">文字已承接，点击开始拆解即可。画面与声音需上传视频后分析。</p>}
 
-          <CollapsibleSection title="上传视频" defaultOpen>
+          {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
+          <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
+            <p className="mb-2 text-[11.5px] text-muted-foreground">当前档案：{String(profile?.profile_name || '未关联档案')}。报告保存在当前账号的云端，不主动删除就一直保留，点击记录可恢复完整报告。</p>
+            {history.length === 0 && <p className="mb-2 text-[12px] text-muted-foreground">当前档案还没有拆解记录，生成成功后会自动保存。</p>}
+            <HistoryPanel items={history} title="拆解历史" showStats={false} onLoad={restoreHistory} onDelete={(id) => deleteHistory(id)} />
+            <Link href="/history" className="mt-2 inline-block text-[11.5px] text-primary underline">查看这个账号的全部历史</Link>
+          </CollapsibleSection>
+
+          {!textMode && <CollapsibleSection title="上传视频" defaultOpen>
             <input ref={fileInput} type="file" accept="video/*" className="hidden" onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
             {file ? (
               <div className="glass-panel flex items-center justify-between gap-3 rounded-xl px-3.5 py-3">
@@ -290,9 +370,9 @@ export default function BreakdownPage() {
             <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
               抖音里点「分享 → 保存本地」就能拿到视频。视频本身不上传，只在你的浏览器里截图；截图和口播会交给 AI 分析，不保存。
             </p>
-          </CollapsibleSection>
+          </CollapsibleSection>}
 
-          <CollapsibleSection title="补充信息（选填，填了拆得更准）" defaultOpen={false}>
+          <CollapsibleSection title={textMode ? '待拆解文案 / 方案' : '补充信息（选填，填了拆得更准）'} defaultOpen={textMode}>
             <Field label="这条的数据" optional stacked hint="有粉丝数才能判断是不是真爆">
               <div className="grid grid-cols-3 gap-1.5">
                 {NUM_FIELDS.map((f) => (
@@ -317,7 +397,7 @@ export default function BreakdownPage() {
             <Field label="想重点看什么" optional stacked>
               <input value={meta.focus ?? ""} placeholder="例如：开头怎么留人、怎么引导到店" onChange={(e) => setMeta((m) => ({ ...m, focus: e.target.value }))} className={INPUT_CLS} />
             </Field>
-            <Field label="视频文案" optional stacked hint="纯音乐的视频识别不出口播；有文案可以贴这里">
+            <Field label={textMode ? '文案 / 方案内容' : '视频文案'} optional={!textMode} required={textMode} stacked hint={textMode ? '跳转带入的内容已填好，可以直接开始拆解' : '纯音乐的视频识别不出口播；有文案可以贴这里'}>
               <textarea value={pastedScript} onChange={(e) => setPastedScript(e.target.value)} rows={3} className={TEXTAREA_CLS} />
             </Field>
           </CollapsibleSection>
@@ -332,21 +412,21 @@ export default function BreakdownPage() {
             </label>
           )}
 
-          <button type="button" onClick={() => start()} disabled={!file || running} className={GENERATE_BTN}>
+          <button type="button" onClick={() => start()} disabled={autoSetup.preparing || ctxLoading || (textMode ? !pastedScript.trim() : !file) || running} className={GENERATE_BTN}>
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
             {running ? "拆解中…" : "开始拆解"}
           </button>
 
           {running && (
             <ol className="space-y-1.5 px-1 text-[12.5px]">
-              {STAGES.map((s, i) => (
+              {(textMode ? [STAGES[3]] : STAGES).map((s, i) => (
                 <li key={s.id} className={`flex items-center gap-2 ${i < stageIndex ? "text-emerald-600 dark:text-emerald-400" : i === stageIndex ? "text-foreground" : "text-muted-foreground/60"}`}>
                   {i < stageIndex ? <Check className="h-3.5 w-3.5" /> : i === stageIndex ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className="h-3.5 w-3.5" />}
-                  {s.label}
+                  {textMode ? "AI 文案拆解" : s.label}
                   {i === stageIndex && progress && <span className="text-muted-foreground">· {progress}</span>}
                 </li>
               ))}
-              <li className="pt-1 text-[11.5px] text-muted-foreground">一条 3 分钟的视频大约 5 分钟；请停在这个页面</li>
+              <li className="pt-1 text-[11.5px] text-muted-foreground">{textMode ? '正在分析已带入的文字，请稍候' : '一条 3 分钟的视频大约 5 分钟；请停在这个页面'}</li>
             </ol>
           )}
         </>
@@ -368,12 +448,13 @@ export default function BreakdownPage() {
         result={result}
         isGenerating={running && stage === "ai"}
         title="拆解报告"
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: incomingSetup?.originContent }}
         showStats={false}
         emptyIcon={Clapperboard}
-        emptyTitle={running ? "正在准备画面和口播…" : "传一条爆款视频，逐镜头拆给你看"}
-        emptyHint="拆开篇怎么留人、结构怎么搭、每个镜头拍了什么，最后告诉你能学走什么"
-        emptyTips={["挑和你同行业、或者你想学的那一类", "点赞是粉丝的几倍才算真爆——填上数据拆得更准", "拆完可以结合你的档案，直接给 3 个能拍的选题"]}
-        generatingHint="AI 正在逐镜头拆解…"
+        emptyTitle={textMode ? running ? "正在分析已带入的文字…" : "拆解已有文案，继续完善创作" : running ? "正在准备画面和口播…" : "传一条爆款视频，逐镜头拆给你看"}
+        emptyHint={textMode ? "分析开篇、结构与表达，保留原意并给出可继续创作的文案" : "拆开篇怎么留人、结构怎么搭、每个镜头拍了什么，最后告诉你能学走什么"}
+        emptyTips={textMode ? ["跳转带入的文案与设置已保留", "文字分析只依据已有内容，画面与声音需上传视频", "拆完可以继续二创、审稿、选题或脚本创作"] : ["挑和你同行业、或者你想学的那一类", "点赞是粉丝的几倍才算真爆——填上数据拆得更准", "拆完可以结合你的档案，直接给 3 个能拍的选题"]}
+        generatingHint={textMode ? "AI 正在分析文案与结构…" : "AI 正在逐镜头拆解…"}
         bodyClassName={SHOT_CARD_CLS}
         nextActions={[
           {
@@ -381,7 +462,7 @@ export default function BreakdownPage() {
             label: "拿去二创到我的店",
             icon: Shuffle,
             onClick: (body) => {
-              putHandoff({ from: BREAKDOWN_TASK_TYPE, remixSource: { title: file?.name, text: body } });
+              putHandoff({ from: BREAKDOWN_TASK_TYPE, remixSource: { title: loadedFileName || file?.name, text: body } });
               router.push("/dashboard/remix");
             },
           },
@@ -410,15 +491,6 @@ export default function BreakdownPage() {
         </section>
       )}
 
-      <div className="mt-4">
-        <HistoryPanel
-          items={history}
-          title="拆过的视频"
-          showStats={false}
-          onLoad={(item) => setResult(item.result)}
-          onDelete={(id) => deleteHistory(id)}
-        />
-      </div>
     </WorkspaceLayout>
   );
 }

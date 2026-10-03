@@ -10,6 +10,7 @@
  */
 
 import { openUpgrade } from "@/lib/upgrade";
+import { postSafely } from "@/lib/safe-post";
 
 /**
  * 请求根本没到服务器（网络断了一下、代理掐了连接）。浏览器给的是一句英文
@@ -21,6 +22,31 @@ export function isNetworkError(e: unknown): boolean {
 }
 
 export const NETWORK_ERROR_HINT = "网络断了一下，请求没发出去，再试一次就好";
+
+/**
+ * 发生成请求（/api/dify/stream、/api/dify/chat）。
+ *
+ * 线上 2026-10-02：在「创作方向」勾了一阵选项再点生成，页面提示网络断了——服务器上**一条记录都没有**，
+ * 同一个人几分钟前的请求都正常到达。原因是浏览器拿了一条已经被网络线路断掉的空闲连接去发 POST，
+ * 立刻失败（Failed to fetch），请求根本没出去。表单填得越久越容易碰上。
+ *
+ * 这种"秒失败"自动换新连接重发一次。超过 3 秒才失败的不重发——那时请求可能已经到了服务器，
+ * 重发会重复生成、重复扣次数。
+ */
+export async function fetchGeneration(url: string, init: RequestInit): Promise<Response> {
+  /*
+   * 后来查实（2026-10-02 同日）：「创作方向」每次都失败不是空闲连接，是请求带上简报后约 11KB，
+   * 用户线路差的时候超过约 8KB 的 POST 一律被切断。所以发送统一走 postSafely：大了先压缩、再大就分块
+   */
+  const started = Date.now();
+  try {
+    return await postSafely(url, init);
+  } catch (e) {
+    if (!isNetworkError(e) || Date.now() - started > 3000 || init.signal?.aborted) throw e;
+    await new Promise((r) => setTimeout(r, 300));
+    return postSafely(url, init);
+  }
+}
 
 /**
  * 额度用完时各板块提示的后半句。

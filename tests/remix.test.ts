@@ -139,6 +139,33 @@ describe('提示词', () => {
     expect(buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, profileSummary: undefined })).toMatch(/提醒他选好档案/);
   });
 
+  it('以当前档案为准（产品方定）：店名、行业、在卖的品类写成硬约束，几个品类都要覆盖', () => {
+    const withStore = buildRemixPrompt(
+      { kind: 'breakdown', text: REPORT },
+      { ...base, store: { name: '锦园地摊串串', lines: ['川味串串火锅', '川味烧烤', '川菜'], track: '美食烹饪、川菜' } }
+    );
+    expect(withStore).toMatch(/## 二创到哪家店（以这个档案为准，硬约束）/);
+    expect(withStore).toContain('**店 / 账号**：锦园地摊串串');
+    expect(withStore).toContain('**行业 / 赛道**：美食烹饪、川菜');
+    expect(withStore).toContain('**在卖的品类**：川味串串火锅、川味烧烤、川菜');
+    expect(withStore).toMatch(/原片是什么行业不重要，写出来的一律是「川味串串火锅、川味烧烤、川菜」的事/);
+    expect(withStore).toMatch(/3 个品类都在卖、一样重要/);
+    expect(withStore).toMatch(/不要编这家店没有的东西/);
+    // 硬约束在档案摘要前面
+    expect(withStore.indexOf('二创到哪家店')).toBeLessThan(withStore.indexOf('这个账号的档案'));
+    // 只有一个品类就不说"覆盖几个品类"
+    const one = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, store: { name: '阿强牛肉', lines: ['川菜'] } });
+    expect(one).not.toMatch(/个品类都在卖/);
+  });
+
+  it('带上账号记忆（简报、成交理由、禁忌）：有它就不再重复单独的禁忌段', () => {
+    const ctx = '## 📇 账号背景：阿强牛肉\n\n### ⛔ 硬性禁忌（违反即不可用）\n\n- 绝对不能说：全长沙最好吃\n\n## 💰 这个账号的成交理由\n\n- 实在不坑';
+    const q = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, contextBlock: ctx });
+    expect(q).toContain('## 💰 这个账号的成交理由');
+    expect(q).toContain('硬性禁忌');
+    expect(q).not.toMatch(/## 硬禁忌（所有方案/);
+  });
+
   it('原片是拆解报告时说明镜头卡片省略了；贴文案时原样放进去', () => {
     expect(p).toMatch(/逐个镜头的卡片已省略/);
     expect(p).toContain('## 原片：下载.mp4');
@@ -161,18 +188,24 @@ describe('接到全站', () => {
   it('拆解爆款 → 二创：拆完一键带过去（整份报告走 sessionStorage）', () => {
     const breakdown = readCode('app/dashboard/breakdown/page.tsx');
     expect(breakdown).toMatch(/label: "拿去二创到我的店"/);
-    expect(breakdown).toMatch(/putHandoff\(\{ from: BREAKDOWN_TASK_TYPE, remixSource: \{ title: file\?\.name, text: body \} \}\)/);
+    expect(breakdown).toMatch(/putHandoff\(\{ from: BREAKDOWN_TASK_TYPE, remixSource: \{ title: loadedFileName \|\| file\?\.name, text: body \} \}\)/);
     expect(breakdown).toMatch(/router\.push\("\/dashboard\/remix"\)/);
     const remix = readCode('app/dashboard/remix/page.tsx');
-    expect(remix).toMatch(/const h = takeHandoff\(\);\s*if \(h\?\.remixSource\?\.text\)/);
+    expect(remix).toMatch(/const h = takeHandoff\(\);\s*if \(h\) setIncomingSetup\(h\);\s*if \(h\?\.remixSource\?\.text\)/);
     // 二创页也能从拆过的视频里挑
     expect(remix).toMatch(/taskType=\$\{encodeURIComponent\(BREAKDOWN_TASK_TYPE\)\}/);
   });
 
-  it('二创 → 分镜 / 审稿 / 标题：方案一键带过去', () => {
+  it('页面：一律用侧边栏当前档案，没有「用不用档案」的开关；只有没建档案才手填行业', () => {
     const remix = readCode('app/dashboard/remix/page.tsx');
-    for (const path of ['/dashboard/storyboard', '/dashboard/review', '/dashboard/title']) expect(remix).toContain(`sendTo("${path}", body)`);
-    expect(remix).toMatch(/putHandoff\(\{ from: REMIX_TASK_TYPE, scriptContent: body \}\)/);
+    expect(remix).not.toMatch(/withProfile/);
+    expect(remix).not.toMatch(/type="checkbox"/);
+    expect(remix).toMatch(/store: profile \? \{ name: String\(profile\.profile_name \?\? ""\), lines, track \} : undefined/);
+    expect(remix).toMatch(/businessLines\(profile\)/);
+    expect(remix).toMatch(/buildContextBlock\(context, 'remix'\)/);
+    expect(remix).toMatch(/targetIndustry: profile \? undefined : targetIndustry/);
+    // 档案还没读出来就点生成，会落到"没有档案"那一支
+    expect(remix).toMatch(/if \(ctxLoading\)/);
   });
 
   it('页面：先查额度、按跨行业二创发、存历史、切回来能恢复', () => {
@@ -180,7 +213,8 @@ describe('接到全站', () => {
     expect(remix).toMatch(/checkQuota\("remix"\)/);
     expect(remix).toMatch(/openUpgrade\("remix"\)/);
     expect(remix).toMatch(/taskType: REMIX_TASK_TYPE/);
-    expect(remix).toMatch(/saveGenerationHistory\(REMIX_TASK_TYPE/);
-    expect(remix).toMatch(/useRestoreLastResult\(lastResult, setResult\)/);
+    expect(remix).toMatch(/saveCreativeHistory\(\{ id: historyId, taskType: REMIX_TASK_TYPE/);
+    expect(remix).toContain('historyInput,');
+    expect(remix).toMatch(/useRestoreLastResult\(lastResult, setResult, resultScope\)/);
   });
 });

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
-import { SUBSCRIPTION_PLANS, COUNTED_FEATURES } from '@/lib/config/plans';
+import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, getPlan, sumCountedUsage } from '@/lib/config/plans';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,26 +54,9 @@ export async function GET(request: Request) {
           .eq('user_id', sub.user_id)
           .single();
 
-        const totalUsed = quota ? (
-          (quota.script_used || 0) +
-          (quota.topic_used || 0) +
-          (quota.positioning_used || 0) +
-          (quota.free_chat_used || 0) +
-          (quota.storyboard_used || 0) +
-          (quota.review_used || 0) +
-          (quota.title_used || 0) +
-          (quota.deal_reason_used || 0)
-        ) : 0;
-
-        // 获取套餐限额
-        const quotaLimits: Record<string, number> = {
-          free: 50,
-          basic: 150,
-          pro: 500,
-          enterprise: -1, // 无限
-        };
-
-        const totalLimit = quotaLimits[sub.plan] || 0;
+        const totalUsed = sumCountedUsage(quota);
+        const configured = getPlan(sub.plan);
+        const totalLimit = configured.totalQuota ?? COUNTED_FEATURES.reduce((sum, f) => sum + Math.max(0, configured.quotas[f.key] as number), 0);
 
         return {
           id: sub.id,
@@ -85,8 +68,8 @@ export async function GET(request: Request) {
             used: totalUsed,
             total: totalLimit,
           },
-          startDate: sub.current_period_start,
-          endDate: sub.current_period_end,
+          startDate: quota?.current_period_start ?? sub.start_date,
+          endDate: sub.end_date,
           created_at: sub.created_at,
           updated_at: sub.updated_at,
         };

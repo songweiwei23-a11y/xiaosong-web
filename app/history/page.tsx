@@ -54,20 +54,10 @@ export default function HistoryPage() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("script_history")
-        .select("*")
-        .eq("user_id", uid)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.error("查询失败:", error);
-        notify("加载历史记录失败");
-        return;
-      }
-
-      setHistory(data || []);
+      const response = await fetch('/api/script-history?taskType=all', { cache: 'no-store' });
+      if (!response.ok) throw new Error('历史读取失败');
+      const data = await response.json();
+      setHistory(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("加载历史记录失败:", error);
       notify("加载历史记录失败");

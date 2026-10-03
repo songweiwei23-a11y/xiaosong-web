@@ -1,0 +1,351 @@
+/**
+ * 禁忌库：平台红线 + 行业禁忌——全站唯一出处。
+ *
+ * 【2026-10-02 产品方】"不同行业都有禁忌，在哪设置好可以规避"；
+ * "禁忌放在档案比较合适，最好限制产出内容的时候方向不会偏，比方说这个行业哪些方向不能拍，避免使用中出现。"
+ *
+ * 所以分三类：
+ * - direction 不能拍的方向：选题、方向、起号在源头就避开（最要紧——方向错了，后面改词也没用）
+ * - say       不能说的话：带 words 的，生成完代码会扫一遍
+ * - shoot     不能拍的画面
+ *
+ * 三层来源：
+ * ① 平台红线：所有账号常开（只有"站外导流"能关：视频号、私域为主的号确实要留微信）
+ * ② 行业禁忌：按档案的赛道、品类、名称自动带出，可逐条关
+ * ③ 账号自己的：档案里原有的「绝对不能说」「不想拍的内容」，外加 taboo_settings.extra 补充
+ *
+ * 依据：《广告法》常见红线、短视频平台社区规范里的常见限流点、代运营经验。以平台最新规则为准。
+ */
+
+export type TabooKind = 'direction' | 'say' | 'shoot';
+
+export interface Taboo {
+  id: string;
+  kind: TabooKind;
+  /** 不能拍 / 不能说什么 */
+  text: string;
+  /** 为什么 */
+  why: string;
+  /** 换成怎么说 / 怎么拍 */
+  instead?: string;
+  /** 生成完扫描用的词（正则源码）；没有就只靠提示词约束 */
+  words?: string;
+  /** 平台红线里能不能关 */
+  closable?: boolean;
+}
+
+export interface Industry {
+  id: string;
+  name: string;
+  /** 档案赛道 / 品类里出现这些值就算 */
+  values: string[];
+  /** 档案名称、赛道、品类、选题方向里出现这些词也算（自定义赛道、高风险行业靠它） */
+  keywords?: RegExp;
+  items: Taboo[];
+}
+
+/** 绝对化用语：「最」后面接评价词才算，免得把「最近」「最后」也标出来；「第一」排掉第一次/第一步这类 */
+const ABSOLUTE = '(?:全网|全城|全国|全市|史上)?最(?:正宗|好吃|好|便宜|低价|实惠|划算|专业|地道|强|佳|大|全|火|高端|安全|靠谱)|全网最|全城最|第一(?:家|名|品牌)|(?:全国|全市|全城|南乐|县城)第一|顶级|极致|国家级|独家|唯一|史上最';
+
+export const PLATFORM_TABOOS: Taboo[] = [
+  { id: 'p-absolute', kind: 'say', text: '绝对化用语：最、第一、顶级、极致、全网最低、国家级、独家、唯一', why: '广告法红线', instead: '说具体事实："开了 9 年""一天卖 300 串"', words: ABSOLUTE },
+  { id: 'p-promise', kind: 'say', text: '100% 有效、保证、绝对、永久、无副作用', why: '虚假承诺', instead: '"大多数客人反馈……""我们的做法是……"', words: '100%(?:有效|好评|满意)|保证(?:有效|效果|好吃)|绝对(?:有效|正宗|不)|永久(?:有效|保持)|无副作用|零风险' },
+  { id: 'p-lure', kind: 'say', text: '点赞抽奖、转发送、评论区扣 1 领福利（拿奖励换互动）', why: '诱导互动，容易限流', instead: '用内容本身引评论："你们那边也这样吗？"', words: '点赞(?:抽奖|送)|转发(?:抽奖|送|有礼)|(?:扣|打)1(?:领|送|抽)|评论(?:抽奖|送)' },
+  { id: 'p-offsite', kind: 'say', text: '加微信、加 V、私信发你价格、主页有联系方式（口播或字幕）', why: '站外导流，抖音上容易限流', instead: '引到平台内：团购链接、到店地址、评论区回复', words: '加(?:我)?(?:微信|V信|vx|VX|v信|威信)|私信(?:发|给)你(?:价格|报价)|主页有(?:联系方式|微信)', closable: true },
+  { id: 'p-rival', kind: 'say', text: '贬低同行、点名竞品："隔壁那家都是……"', why: '不正当竞争，容易被举报', instead: '只讲自己怎么做', words: '隔壁(?:那家|店)(?:都是|全是|用的)|别家都是|同行都是(?:骗|坑)' },
+  { id: 'p-authority', kind: 'say', text: '冒用权威：央视推荐、专家认证、政府指定（没有就不说）', why: '虚假宣传', words: '央视(?:推荐|报道)|专家(?:认证|推荐)|政府指定|官方指定' },
+  { id: 'p-privacy', kind: 'shoot', text: '未经同意拍顾客、路人正脸；拍未成年人', why: '隐私和未成年人保护', instead: '背影、手部、打码' },
+  { id: 'p-politics', kind: 'direction', text: '时政、宗教、民族、地域歧视的话题', why: '通用红线' },
+  { id: 'p-fake', kind: 'direction', text: '虚构经历、编造数据（销量、播放量、客户数）', why: '虚假宣传', instead: '没有依据写成 X 或【换成你的：……】' },
+];
+
+export const INDUSTRIES: Industry[] = [
+  {
+    id: 'food', name: '餐饮', values: ['美食烹饪', '餐饮', '食品饮料'],
+    keywords: /餐饮|餐厅|饭店|饭馆|面馆|火锅|烧烤|串串|小吃|奶茶|咖啡|烘焙|蛋糕|饮品|食堂|川菜|湘菜|粤菜|快餐/,
+    items: [
+      { id: 'food-health', kind: 'direction', text: '吃了能治病、养生、减肥、壮阳这类功效向内容', why: '普通食品不能宣传疗效', instead: '只讲味道、口感、分量', words: '治(?:病|胃病|失眠)|养胃|降(?:三高|血压|血糖|血脂)|排毒|壮阳|补肾|减肥(?:神器|餐)' },
+      { id: 'food-dirty', kind: 'direction', text: '暴露后厨卫生问题的"真实揭底"：生熟混放、员工不戴帽子、徒手抓熟食', why: '一拍就是食安投诉素材', instead: '拍之前先收拾，拍干净的操作台' },
+      { id: 'food-wild', kind: 'direction', text: '野生动物、保护动物做菜', why: '违法' },
+      { id: 'food-drink', kind: 'direction', text: '劝酒、拼酒、喝醉的画面和话题', why: '平台限制饮酒内容', instead: '拍氛围不拍喝' },
+      { id: 'food-natural', kind: 'say', text: '零添加、纯天然、无防腐剂（没有检测依据）', why: '虚假宣传', instead: '说看得见的："现切现穿""当天进货"', words: '零添加|纯天然|无防腐剂|无任何添加' },
+      { id: 'food-price', kind: 'say', text: '口播价格和团购页对不上', why: '价格欺诈投诉', instead: '以团购页为准，或不说具体价' },
+    ],
+  },
+  {
+    id: 'beauty', name: '美妆护肤', values: ['美妆护肤'],
+    keywords: /美妆|护肤|化妆品|美容|美甲|美睫|皮肤管理/,
+    items: [
+      { id: 'beauty-cure', kind: 'direction', text: '治疗皮肤病、祛斑祛痘的"疗效"向内容（普通化妆品）', why: '功效宣称要备案，普通化妆品不能说', words: '祛斑|祛痘|美白(?:淡斑)?|抗敏|修复(?:屏障|受损)|治(?:痘|斑|皮肤)' },
+      { id: 'beauty-medical', kind: 'say', text: '医学级、药妆、械字号当化妆品卖', why: '混淆概念', words: '医学级|药妆|械字号' },
+      { id: 'beauty-compare', kind: 'shoot', text: '夸大的前后对比（修图、不同光线角度）', why: '虚假宣传', instead: '同光同角度，标明"个人效果"' },
+      { id: 'beauty-fast', kind: 'say', text: '几天见效、永久、立刻变白', why: '虚假承诺', words: '[一二三四五六七1-7]天(?:见效|变白|祛)|立刻变白|一次见效' },
+    ],
+  },
+  {
+    id: 'medical', name: '医美 / 医疗', values: [],
+    keywords: /医美|整形|整容|诊所|医院|口腔|牙科|中医|理疗|针灸|推拿|植发/,
+    items: [
+      { id: 'med-promise', kind: 'direction', text: '保证效果、无痛、零风险、包治的承诺向内容', why: '医疗广告红线', words: '无痛|零风险|包治|根治|包效果|保证效果' },
+      { id: 'med-case', kind: 'direction', text: '用患者术前术后对比、患者名义做证明', why: '医疗广告不能用患者名义证明', instead: '讲流程、注意事项、医生怎么判断' },
+      { id: 'med-price', kind: 'direction', text: '低价引流、"9.9 元做……"这类医疗项目促销', why: '医疗服务低价诱导易违规' },
+    ],
+  },
+  {
+    id: 'fitness', name: '健身运动', values: ['健身运动'],
+    keywords: /健身|瑜伽|普拉提|减脂|私教|运动馆/,
+    items: [
+      { id: 'fit-fast', kind: 'direction', text: 'X 天瘦 X 斤、躺着瘦、不节食不运动也能瘦', why: '虚假承诺', instead: '讲方法和坚持多久的真实记录', words: '\\d+天瘦\\d*斤?|躺着(?:就)?瘦|不节食(?:不运动)?(?:也能|就能)?瘦|月瘦\\d+' },
+      { id: 'fit-drug', kind: 'direction', text: '推荐减肥药、代餐替代正餐、处方药', why: '医疗风险' },
+      { id: 'fit-cure', kind: 'say', text: '治疗腰椎、治颈椎病（非医疗机构）', why: '医疗用语', instead: '"缓解久坐的僵硬感"', words: '治(?:疗)?(?:腰椎|颈椎|腰间盘)' },
+      { id: 'fit-danger', kind: 'shoot', text: '危险动作不加提示', why: '安全', instead: '加"量力而行"提示' },
+    ],
+  },
+  {
+    id: 'edu', name: '教育培训', values: ['知识教育', '职场成长'],
+    keywords: /教育|培训|辅导|课程|考研|考证|留学|编程|英语|托管/,
+    items: [
+      { id: 'edu-promise', kind: 'say', text: '保过、包就业、包拿证、100% 提分', why: '广告法明令禁止的教育承诺', instead: '说学员真实案例（征得同意）', words: '保过|包(?:就业|过|拿证|分配)|(?:100%|百分百)(?:提分|通过|上岸)|不过退款' },
+      { id: 'edu-rich', kind: 'direction', text: '月入过万、躺赚、副业暴富这类收益承诺向内容', why: '夸大收益', words: '月入(?:过万|十万|\\d+万)|躺赚|暴富' },
+      { id: 'edu-anxiety', kind: 'direction', text: '贩卖焦虑："不学就被淘汰""孩子输在起跑线"', why: '平台限流', instead: '讲具体问题怎么解决', words: '输在起跑线|不学就(?:被)?淘汰' },
+      { id: 'edu-teacher', kind: 'say', text: '名师、清北名师（没有依据）', why: '虚假宣传', words: '清北名师|顶级名师|金牌名师' },
+    ],
+  },
+  {
+    id: 'baby', name: '母婴育儿', values: ['母婴育儿'],
+    keywords: /母婴|育儿|奶粉|早教|月子|童装|婴/,
+    items: [
+      { id: 'baby-effect', kind: 'say', text: '增强免疫力、促进大脑发育（普通食品、用品）', why: '功效宣称', words: '增强免疫(?:力)?|促进(?:大脑|智力)发育|长高神器' },
+      { id: 'baby-milk', kind: 'say', text: '替代母乳、比母乳好', why: '违规', words: '替代母乳|比母乳(?:还)?好|媲美母乳' },
+      { id: 'baby-danger', kind: 'shoot', text: '宝宝危险动作、裸露画面', why: '未成年人保护' },
+      { id: 'baby-scare', kind: 'direction', text: '吓唬家长："不用这个孩子就会……"', why: '贩卖焦虑' },
+    ],
+  },
+  {
+    id: 'home', name: '家居装修', values: ['家居装修'],
+    keywords: /装修|家居|家具|建材|全屋定制|瓷砖|门窗|软装/,
+    items: [
+      { id: 'home-promise', kind: 'say', text: '零甲醛、无污染、永不开裂、终身质保（没有依据）', why: '虚假承诺', instead: '说检测报告、实际质保期', words: '零甲醛|无污染|永不(?:开裂|变形|褪色)|终身质保' },
+      { id: 'home-privacy', kind: 'shoot', text: '拍客户家门牌、小区名、家里全貌（未同意）', why: '隐私', instead: '打码、征得同意' },
+      { id: 'home-scare', kind: 'direction', text: '"装修公司都是骗子"这类全行业抹黑', why: '易被举报，也伤自己', instead: '讲怎么避坑' },
+    ],
+  },
+  {
+    id: 'fashion', name: '时尚穿搭', values: ['时尚穿搭', '服装配饰'],
+    keywords: /服装|女装|男装|穿搭|饰品|鞋包/,
+    items: [
+      { id: 'fashion-fake', kind: 'say', text: '大牌同款、原单、尾单（涉嫌仿冒）', why: '知识产权', words: '大牌同款|原单|尾单|高仿|1:1' },
+      { id: 'fashion-exaggerate', kind: 'say', text: '显瘦 20 斤、穿上秒变……（夸大）', why: '夸大宣传', instead: '说版型和适合的身材', words: '显瘦\\d+斤' },
+      { id: 'fashion-expose', kind: 'direction', text: '擦边、过度暴露的穿搭方向', why: '平台限流' },
+    ],
+  },
+  {
+    id: 'digital', name: '数码科技', values: ['数码科技', '数码家电'],
+    keywords: /数码|手机|电脑|家电|维修/,
+    items: [
+      { id: 'digital-rival', kind: 'say', text: '秒杀所有、吊打 XX（点名品牌）', why: '贬低竞品', instead: '讲参数和实测', words: '吊打|秒杀所有|完爆' },
+      { id: 'digital-crack', kind: 'direction', text: '破解、刷机绕过限制、翻墙', why: '违规' },
+    ],
+  },
+  {
+    id: 'local', name: '本地服务 / 探店', values: ['旅游探店', '本地服务'],
+    items: [
+      { id: 'local-ad', kind: 'say', text: '必吃、必去、不去后悔（商业合作没标注）', why: '广告未标识', instead: '合作内容要标注', words: '必吃|必去|不去后悔|不来后悔' },
+      { id: 'local-staff', kind: 'shoot', text: '未经同意拍店员、顾客正脸', why: '隐私', instead: '打码、征得同意' },
+      { id: 'local-fake', kind: 'direction', text: '收了钱包装成「自费真实探店」，或者拍同行店铺的差评、曝光', why: '虚假宣传、不正当竞争' },
+    ],
+  },
+  {
+    id: 'emotion', name: '情感生活', values: ['情感生活'],
+    items: [
+      { id: 'emo-pua', kind: 'direction', text: '教人出轨、PUA 话术、操控对方', why: '违背公序良俗' },
+      { id: 'emo-sexy', kind: 'direction', text: '性暗示、擦边', why: '平台红线' },
+    ],
+  },
+  {
+    id: 'health-food', name: '保健品', values: [],
+    keywords: /保健品|营养品|滋补|燕窝|阿胶|蛋白粉|益生菌/,
+    items: [
+      { id: 'hf-cure', kind: 'direction', text: '保健品能治病、替代药物', why: '保健食品不能宣称疗效', words: '治疗|治愈|替代药物|药到病除|包好' },
+      { id: 'hf-old', kind: 'direction', text: '针对老人的"包治百病"、会议营销式话术', why: '重点打击对象' },
+    ],
+  },
+  {
+    id: 'finance', name: '金融理财', values: [],
+    keywords: /理财|保险|贷款|基金|股票|信用卡|投资/,
+    items: [
+      { id: 'fin-promise', kind: 'say', text: '保本、稳赚、高收益无风险、年化 X% 保证', why: '金融广告红线', words: '保本|稳赚|稳赚不赔|无风险|保证收益|零风险' },
+      { id: 'fin-loan', kind: 'direction', text: '诱导借贷、"秒批""不看征信"', why: '违规', words: '秒批|不看征信|黑户可贷' },
+    ],
+  },
+  {
+    id: 'alcohol', name: '酒类', values: [],
+    keywords: /白酒|啤酒|红酒|酒馆|酒吧|精酿|酒坊/,
+    items: [
+      { id: 'alc-drink', kind: 'direction', text: '劝酒、拼酒、喝醉、未成年人喝酒', why: '平台限制饮酒内容' },
+      { id: 'alc-health', kind: 'say', text: '喝酒养生、解乏、助眠', why: '酒类不能宣传健康功效', words: '喝酒养生|养生酒|(?:助眠|解乏)(?:神器)?' },
+    ],
+  },
+  {
+    id: 'pet', name: '宠物', values: [],
+    keywords: /宠物|猫粮|狗粮|猫咖|萌宠|铲屎|宠物店|犬舍|猫舍/,
+    items: [
+      { id: 'pet-abuse', kind: 'direction', text: '整蛊、吓唬、虐待宠物来博流量', why: '平台红线' },
+      { id: 'pet-cure', kind: 'say', text: '宠物用品、食品说能治病', why: '功效宣称', words: '治(?:好|愈)(?:猫|狗)?(?:癣|病)' },
+    ],
+  },
+  {
+    id: 'car', name: '汽车', values: [],
+    keywords: /汽车|汽修|4S|二手车|车行|洗车|改装/,
+    items: [
+      { id: 'car-danger', kind: 'shoot', text: '危险驾驶、超速、不系安全带、边开边拍', why: '安全、违法' },
+      { id: 'car-mod', kind: 'direction', text: '违规改装教程（拆三元、改排气炸街）', why: '违法' },
+      { id: 'car-used', kind: 'say', text: '二手车"无事故""准新车"（没有检测依据）', why: '虚假宣传', words: '无事故|零事故|准新车' },
+    ],
+  },
+  {
+    id: 'house', name: '房产', values: [],
+    keywords: /房产|楼盘|中介|租房|二手房|置业/,
+    items: [
+      { id: 'house-promise', kind: 'say', text: '升值保证、学区承诺、"买到就是赚到"', why: '房地产广告不能承诺升值、学区', words: '(?:保证|稳)升值|买到就是赚到|学区(?:房)?保证|包学位' },
+      { id: 'house-panic', kind: 'direction', text: '制造恐慌："再不买就买不起了"', why: '违规炒作', words: '再不买就(?:买不起|没了)' },
+    ],
+  },
+];
+
+export interface TabooSettings {
+  /** 关掉的条目 id（行业禁忌，和可关的平台红线） */
+  disabled: string[];
+  /** 用户自己补充的（一行一条） */
+  extra: string[];
+  /** 手动加上的行业 id（赛道、品类没认出来时用） */
+  added: string[];
+  /**
+   * 建档时编导刻意没选的信息（前采要点没勾的、删掉的项，见 lib/interview-exclusions）。
+   * 所有板块当它不存在：档案别的栏里还残留相关字样也不用
+   */
+  excluded: string[];
+}
+
+export function readTabooSettings(v: unknown): TabooSettings {
+  const o = (v && typeof v === 'object' ? v : {}) as Partial<TabooSettings>;
+  const list = (x: unknown) => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string' && Boolean(s.trim())).map((s) => s.trim()) : []);
+  return { disabled: list(o.disabled), extra: list(o.extra), added: list(o.added).filter((id) => INDUSTRIES.some((i) => i.id === id)), excluded: list(o.excluded) };
+}
+
+interface ProfileLike {
+  account_track?: unknown;
+  product_category?: unknown;
+  profile_name?: unknown;
+  content_themes?: unknown;
+  taboo_settings?: unknown;
+}
+
+const asList = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? v.split(/[、,，]/).map((x) => x.trim()).filter(Boolean) : [];
+
+/** 这个号属于哪些行业：赛道 / 品类值命中，或者名称、赛道、品类、选题方向里出现关键词 */
+export function industriesOf(profile: object | null | undefined): Industry[] {
+  const p = (profile ?? {}) as ProfileLike;
+  const values = [...asList(p.account_track), ...asList(p.product_category)];
+  const text = [p.profile_name, ...values, p.content_themes].filter((x) => typeof x === 'string').join(' ');
+  const added = readTabooSettings(p.taboo_settings).added;
+  return INDUSTRIES.filter((ind) => added.includes(ind.id) || ind.values.some((v) => values.includes(v)) || (ind.keywords ? ind.keywords.test(text) : false));
+}
+
+export interface ActiveTaboos {
+  platform: Taboo[];
+  industries: { industry: Industry; items: Taboo[] }[];
+  extra: string[];
+}
+
+/** 这个号实际生效的禁忌：平台红线（可关的那条看设置）+ 匹配到的行业禁忌（去掉关掉的）+ 补充 */
+export function activeTaboos(profile: object | null | undefined): ActiveTaboos {
+  const s = readTabooSettings((profile as ProfileLike | null | undefined)?.taboo_settings);
+  const off = new Set(s.disabled);
+  return {
+    platform: PLATFORM_TABOOS.filter((t) => !(t.closable && off.has(t.id))),
+    industries: industriesOf(profile).map((industry) => ({ industry, items: industry.items.filter((t) => !off.has(t.id)) })).filter((x) => x.items.length > 0),
+    extra: s.extra,
+  };
+}
+
+export function countTaboos(a: ActiveTaboos): number {
+  return a.platform.length + a.industries.reduce((n, x) => n + x.items.length, 0) + a.extra.length;
+}
+
+/**
+ * 写进提示词。所有板块都带（经 creator-context 的 describeRestrictions），所以要短：
+ * 每条一行，不写"为什么"，只写不能做什么和换成什么。
+ * 「不能拍的方向」放最前——方向错了，后面改词也没用。
+ */
+export function taboosPromptBlock(profile: object | null | undefined): string {
+  const a = activeTaboos(profile);
+  const all = [...a.platform, ...a.industries.flatMap((x) => x.items)];
+  const fmt = (t: Taboo) => `- ${t.text}${t.instead ? `（换成：${t.instead}）` : ''}`;
+  const dirs = all.filter((t) => t.kind === 'direction');
+  const says = all.filter((t) => t.kind !== 'direction');
+  const names = a.industries.map((x) => x.industry.name).join('、');
+  const parts = [
+    `#### 🚫 不能拍的方向${names ? `（平台红线 + ${names}行业）` : '（平台红线）'}——选题、方向、示例一律避开`,
+    ...dirs.map(fmt),
+    '',
+    '#### 🚫 不能说的话 / 不能拍的画面',
+    ...says.map(fmt),
+  ];
+  if (a.extra.length) parts.push('', '#### 🚫 这个号自己补充的', ...a.extra.map((x) => `- ${x}`));
+  const excluded = readTabooSettings((profile as ProfileLike | null | undefined)?.taboo_settings).excluded;
+  if (excluded.length) {
+    /*
+     * 2026-10-02 线上：编导建档时勾掉了「公益」「直播」那几条，可同样的意思还残留在别的栏里，
+     * 账号定位照样拿"公益类 10-20 万播放"当依据推主力形式。所以不光不能用，残留的也要忽略
+     */
+    parts.push(
+      '',
+      '#### 🙈 建档时编导刻意去掉的信息——当它不存在',
+      ...excluded.map((x) => `- ${x}`),
+      '这些是前采录音里有、但编导判断**没用或不想要**的：不引用、不当依据、不据此推断方向和人设，也不要提"虽然你有××"；',
+      '档案其他栏、已有的定位或简报里如果还残留相关说法，**同样忽略**。'
+    );
+  }
+  return parts.join('\n');
+}
+
+export interface TabooHit {
+  word: string;
+  taboo: Taboo;
+  /** 命中所在的那一行（截短） */
+  line: string;
+}
+
+/**
+ * 生成完扫一遍。
+ * 行里本身就在说"不要 / 不能 / 禁忌"的跳过——定位、简报里常有"不说「全城最正宗」"这种，那是在列禁忌，不是踩禁忌。
+ */
+export function scanTaboos(text: string, profile: object | null | undefined): TabooHit[] {
+  const a = activeTaboos(profile);
+  const list = [...a.platform, ...a.industries.flatMap((x) => x.items)].filter((t) => t.words);
+  const hits: TabooHit[] = [];
+  const seen = new Set<string>();
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || /不要|不能|不得|不说|不用|不做|不拍|不碰|别说|别用|别拍|避免|禁忌|禁止|红线|❌|⛔|🚫|违规|违禁|不可以/.test(line)) continue;
+    for (const t of list) {
+      const m = line.match(new RegExp(t.words!));
+      if (!m) continue;
+      // "一元火锅怎么吃最划算？"是在提问，不是在吹自己最划算（实测误报）
+      if (t.id === 'p-absolute' && /怎么|怎样|如何|哪|什么/.test(line.slice(Math.max(0, (m.index ?? 0) - 6), m.index))) continue;
+      const key = `${t.id}:${m[0]}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      hits.push({ word: m[0], taboo: t, line: line.length > 60 ? `${line.slice(0, 60)}…` : line });
+    }
+  }
+  return hits;
+}
+
+/** "让 AI 改掉"时预填进继续对话的话 */
+export function fixRequest(hits: TabooHit[]): string {
+  const rows = hits.map((h) => `- 「${h.word}」：${h.taboo.why}${h.taboo.instead ? `，换成${h.taboo.instead}` : ''}`);
+  return `上面的内容里有可能违规的说法，帮我改掉，其他不要动，改完给完整版：\n${rows.join('\n')}`;
+}

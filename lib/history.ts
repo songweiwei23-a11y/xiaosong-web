@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { getPlan, judgeQuota, sumCountedUsage, effectivePlanId, quotaRollover } from '@/lib/config/plans';
 import { notifyGenerated } from '@/lib/upgrade';
+import { getActiveProfileId } from '@/lib/active-profile';
 
 /**
  * 保存生成历史记录到数据库
@@ -18,6 +19,11 @@ export async function saveGenerationHistory(
   result: string,
   workId?: string | null
 ): Promise<boolean> {
+  // 在任何异步等待之前固定归属；显式传入生成开始时的档案优先。
+  const scopedInput = { ...inputData };
+  if (!('profileId' in scopedInput) && !('profile_id' in scopedInput)) {
+    scopedInput.profileId = getActiveProfileId();
+  }
   try {
     console.log("💾 保存生成历史记录...");
 
@@ -37,7 +43,7 @@ export async function saveGenerationHistory(
       .insert({
         user_id: userId,
         task_type: taskType,
-        input_data: inputData,
+        input_data: scopedInput,
         result: result,
         work_id: workId || null,
       });
@@ -99,8 +105,8 @@ export async function checkQuota(feature?: string): Promise<number | null> {
     const planId = effectivePlanId(subscription);
     const plan = getPlan(planId);
 
-    // 企业版无限使用
-    if (planId === 'enterprise') {
+    // 仅配置明确为无限的套餐可跳过计数。
+    if (plan.totalQuota === -1) {
       return Number.POSITIVE_INFINITY;
     }
 

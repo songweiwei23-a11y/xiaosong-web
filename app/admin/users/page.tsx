@@ -263,7 +263,7 @@ export default function UsersPage() {
       free: { label: '免费版', color: 'bg-muted text-foreground dark:bg-muted dark:text-foreground' },
       basic: { label: '基础版', color: 'bg-primary/15 text-primary dark:bg-blue-900 dark:text-primary' },
       pro: { label: '专业版', color: 'bg-accent/15 text-accent dark:bg-purple-900 dark:text-accent' },
-      enterprise: { label: '企业版', color: 'bg-amber-500/15 text-yellow-500 dark:bg-yellow-900 dark:text-yellow-300' },
+      enterprise: { label: SUBSCRIPTION_PLANS.enterprise.name, color: 'bg-amber-500/15 text-yellow-500 dark:bg-yellow-900 dark:text-yellow-300' },
     };
     const config = configs[level] || configs.free;
     return (
@@ -278,22 +278,13 @@ export default function UsersPage() {
       active: { label: '正常', color: 'bg-emerald-500/15 text-green-500 dark:bg-green-900 dark:text-green-300' },
       inactive: { label: '已封禁', color: 'bg-destructive/15 text-destructive dark:bg-red-900 dark:text-destructive' },
     };
-    const config = configs[status] || configs.inactive;
+    // 认不出的状态别默认成「已封禁」——新用户就是这么被误显示成封禁的
+    const config = configs[status] || { label: status || '未知', color: 'bg-muted text-muted-foreground' };
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
         {config.label}
       </span>
     );
-  };
-
-  const getPlanLimits = (plan: string) => {
-    const limits: any = {
-      free: { positioning: 1, topic: 3, script: 20, freeChat: 20, others: 0 },
-      basic: { all: 150 },
-      pro: { all: 500 },
-      enterprise: { all: '无限' }
-    };
-    return limits[plan] || limits.free;
   };
 
   const totalPages = Math.ceil(total / pageSize);

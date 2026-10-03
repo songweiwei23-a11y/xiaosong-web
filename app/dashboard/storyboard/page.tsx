@@ -1,11 +1,18 @@
 ﻿"use client";
+import type { HandoffPayload } from '@/lib/handoff';
+import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
+import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
+
 
 import { takeHandoff, putHandoff } from "@/lib/handoff";
+import { creationReference, originForResult } from '@/lib/creation-continuation';
 import { recordStage } from "@/lib/works";
-import { throwApiError } from "@/lib/api-error";
+import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import { buildStoryboardPrompt, auditStoryboard } from "@/lib/storyboard-standards";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
+import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
@@ -27,7 +34,6 @@ import { useWorkResume } from '@/hooks/useWorkResume';
 import { latestOf, workScriptBody } from '@/lib/resume';
 
 import { readDifyStream } from '@/lib/sse-stream';
-import { getActiveProfileId } from '@/lib/active-profile';
 import {
   CONTENT_TYPES,
   CONTENT_TYPE_GROUPS,
@@ -41,6 +47,8 @@ const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
 const DURATIONS = ["15秒", "30秒", "60秒", "90秒", "3-5分钟"];
 
 export default function StoryboardPage() {
+  const beginProfileRequest = useProfileRequestGuard();
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
 
   // 统一生成页基础能力
   const {
@@ -55,6 +63,7 @@ export default function StoryboardPage() {
     copyToClipboard,
     downloadAsFile,
     lastResult,
+    resultScope,
   // 原来指向 /api/storyboards——那个路由根本不存在，请求一直 404，
   // 所以这一页从上线起就没有历史、也不会恢复上次的结果
   } = useGenerationPage({ taskType: '分镜脚本', historyApiPath: '/api/script-history' });
@@ -62,7 +71,7 @@ export default function StoryboardPage() {
   const router = useRouter();
 
   // 账号档案 + 定位 + 成交理由。以侧边栏选中的档案为准，切换时自动跟着变
-  const { context: creatorContext } = useCreatorContext();
+  const { context: creatorContext, loading: contextLoading } = useCreatorContext();
 
 
   const [scriptContent, setscriptContent] = useState("");
@@ -77,22 +86,36 @@ export default function StoryboardPage() {
   const [result, setResult] = useState("");
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
   const [workId, setWorkId] = useState<string | null>(null);
+  const [originContent, setOriginContent] = useState('');
 
+
+  const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
+    setPlatform(s.platform!); setDuration(s.duration!);
+    setContentType(CONTENT_TYPE_VALUES.includes(s.contentType!) ? s.contentType! : 'talking');
+    setVisualStyle(VISUAL_STYLE_VALUES.includes(s.visualStyle!) ? s.visualStyle! : 'bright');
+  });
+  const currentSettings = resolveCreationSettings({ from: '分镜脚本', sourceContent: scriptContent, settings: mergeCreationSettings(autoSetup.settings, { platform, duration, contentType, visualStyle }) }, creatorContext);
 
   // 接收从脚本页带来的正文，省掉一次复制粘贴
   useEffect(() => {
     const data = takeHandoff();
+    if (data) setIncomingSetup(data);
+    if (data) setOriginContent(data.originContent || data.sourceContent || '');
     if (data?.workId) setWorkId(data.workId);
     if (data?.scriptContent) setscriptContent(data.scriptContent);
+    if (data && creationReference(data) !== data.scriptContent) setAdditionalInfo(`【相关方案参考】\n${creationReference(data)}\n以上仅为背景资料，请对脚本输入框中的正文拆分镜。`);
   }, []);
 
   /*
    * 打开某个作品（地址带 ?work=）：脚本正文填进来当输入，
    * 做过分镜的把最新一版调出来。隔多久打开都一样。
    */
-  useWorkResume((work) => {
+  useWorkResume((work, setup) => {
+    setIncomingSetup(setup);
+    setOriginContent(setup.originContent || '');
+    setAdditionalInfo(creationReference(setup));
     setWorkId(work.id);
-    const script = workScriptBody(work);
+    const script = setup.scriptContent || workScriptBody(work);
     if (script) setscriptContent(script);
     const last = latestOf(work, "分镜脚本");
     if (last) setResult(last.result);
@@ -100,7 +123,7 @@ export default function StoryboardPage() {
   });
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
-  useRestoreLastResult(lastResult, setResult);
+  useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setOriginContent(''); });
 
   /*
    * 对模型排出来的分镜表做一次代码核对。
@@ -131,7 +154,7 @@ export default function StoryboardPage() {
 
     setIsRecommending(true);
     try {
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -201,14 +224,22 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
   };
 
   const handleGenerate = async () => {
+    if (isGenerating) return;
+    if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    const isCurrent = beginProfileRequest();
     // 检查配额
+    setIsGenerating(true);
     const remainingQuota = await checkQuota("storyboard");
+    if (!isCurrent()) { setIsGenerating(false); return; }
     if (remainingQuota !== null && remainingQuota <= 0) {
       openUpgrade("storyboard");
+      setIsGenerating(false);
       return;
     }
 
     if (!scriptContent.trim()) {
+      setIsGenerating(false);
       notify("请输入脚本内容");
       return;
     }
@@ -223,7 +254,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
       // 就不再用那套只有格式约束的旧模板。
       const query = buildStoryboardPrompt({
         // 账号背景随每次生成带上，不用用户在这一页重填一遍
-        contextBlock: buildContextBlock(creatorContext, "storyboard"),
+        contextBlock: buildContextBlock(creatorContext, "storyboard") + creationSettingsBlock(currentSettings),
         scriptContent,
         platform,
         duration,
@@ -233,14 +264,15 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         additionalInfo,
       });
 
-      const response = await fetch("/api/dify/stream", {
+      const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: "分镜脚本",
+          creationSettings: currentSettings,
           query,
           // 记忆按档案隔离，与其余板块共用同一个工作窗口
-          profileId: getActiveProfileId(),
+          profileId: creatorContext.profile?.id || null,
           // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           platform,
           duration,
@@ -253,7 +285,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
 
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
       fullResult = await readDifyStream(response, {
-        onChunk: (_piece, full) => setResult(full),
+        onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
       });
     } catch (error: any) {
       notify(error.message || "生成失败");
@@ -266,7 +298,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
       // 而额度已经在服务端扣掉了，用户刷新后一无所获，还以为系统吞了。
       if (fullResult && fullResult.trim().length > 0) {
         setTimeout(async () => {
-          try {            const inputData = { scriptContent, platform, duration, contentType, visualStyle };
+          try {            const inputData = { profileId: creatorContext.profile?.id || null, scriptContent, additionalInfo, originContent: originContent || scriptContent, creationSettings: currentSettings, platform, duration, contentType, visualStyle };
             await saveGenerationHistory("分镜脚本", inputData, fullResult, workId);
             // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
             await recordStage(workId, "分镜脚本");          } catch (err) {
@@ -293,6 +325,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
 
           {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
           <ContextBadge board="storyboard" className="mb-4" />
+          <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
 
           <CollapsibleSection title="脚本内容" defaultOpen>
             <Field label="脚本内容" required stacked hint="AI 会根据内容自动选择镜头语言">
@@ -335,7 +368,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
 
             <Field label="视频时长" optional>
               <select value={duration} onChange={(e) => setDuration(e.target.value)} className={SELECT_CLS}>
-                {["15秒", "30秒", "60秒", "90秒", "3-5分钟"].map((d) => (
+                {Array.from(new Set([...DURATIONS, duration])).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
@@ -416,7 +449,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
 
           <button
             onClick={handleGenerate}
-            disabled={isGenerating || !scriptContent.trim()}
+            disabled={autoSetup.preparing || contextLoading || isGenerating || !scriptContent.trim()}
             className={GENERATE_BTN}
           >
             {isGenerating ? (
@@ -438,6 +471,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         result={result}
         isGenerating={isGenerating}
         title="分镜脚本"
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || scriptContent) }}
         showStats={false}
         emptyIcon={Film}
         emptyTitle="填入脚本内容后生成分镜"
