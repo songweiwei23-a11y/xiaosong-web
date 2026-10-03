@@ -19,6 +19,9 @@ import type { CreationContext } from '@/lib/creation-flow';
 import { CREATION_SOURCES } from '@/lib/creation-flow';
 import { splitRemixPlans } from '@/lib/remix-plans';
 import { TabooScan } from './TabooScan';
+import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { reportQuality } from '@/lib/quality-report';
+import type { ResolvedMix } from '@/lib/content-mix';
 
 /**
  * 工作区通用的生成结果区。
@@ -57,6 +60,7 @@ export function ResultPanel({
   bodyClassName,
   flowContext,
   individualPlans = false,
+  qualityMix,
 }: {
   result: string;
   isGenerating: boolean;
@@ -89,6 +93,8 @@ export function ResultPanel({
   bodyClassName?: string;
   flowContext?: CreationContext;
   individualPlans?: boolean;
+  /** 按配比出的（选题、方向）：生成完体检时核对条数 */
+  qualityMix?: { resolved: ResolvedMix; count: number } | null;
 }) {
   // 拆分与统计只依赖 result，用 memo 避免流式输出时逐字符重算
   const pathname = usePathname();
@@ -122,6 +128,20 @@ export function ResultPanel({
     }
     wasGenerating.current = isGenerating;
   }, [isGenerating]);
+
+  /*
+   * 自动质检（lib/quality-checks）：这一次生成刚写完就体检一遍、报给后台。
+   * 只在"生成中 → 写完"那一下报——刷新后恢复出来的旧结果不算新生成
+   */
+  const { context: qualityCtx } = useCreatorContext();
+  const generatingBefore = useRef(false);
+  useEffect(() => {
+    if (generatingBefore.current && !isGenerating && body) {
+      const seg = pathname?.split('/')[2] || '';
+      reportQuality({ taskType: CREATION_SOURCES[seg] || seg || '生成', output: body, profile: qualityCtx.profile, mix: qualityMix });
+    }
+    generatingBefore.current = isGenerating;
+  }, [isGenerating, body, pathname, qualityCtx.profile, qualityMix]);
 
   if (!result && !isGenerating) {
     return (

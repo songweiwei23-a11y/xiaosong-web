@@ -113,6 +113,11 @@ describe('生成完扫一遍', () => {
     expect(scanTaboos('- 不要说"全城最正宗"\n⛔ 禁忌：零添加\n明确不做：养胃功效', shop)).toEqual([]);
   });
 
+  it('给建议的「最好先……」不算；吹自己的「我们家最好」照样报', () => {
+    expect(scanTaboos('最好先拍过程，最好别一上来就硬广', shop)).toEqual([]);
+    expect(scanTaboos('我们家的串串最好', shop).map((h) => h.word)).toEqual(['最好']);
+  });
+
   it('不误报：「最近」「最后」「第一步」「第一次」', () => {
     expect(scanTaboos('最近天冷了，最后一步是装盘，第一步先穿串，第一次来的客人', shop)).toEqual([]);
   });

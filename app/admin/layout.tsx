@@ -31,6 +31,8 @@ const navGroups: {
       // 大屏放最上面：它要回答的是"此刻有没有人需要我动手"，
       // 而不是"上个月数据怎么样"。排在配置项里就没人会开了
       { name: "实时监控", href: "/admin/monitor", icon: Radar },
+      // 自动质检（2026-10-03）：生成结果有没有踩禁忌、配比对不对、年限写没写错
+      { name: "质检看板", href: "/admin/quality", icon: ShieldCheck },
     ],
   },
   {

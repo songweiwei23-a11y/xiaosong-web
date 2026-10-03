@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -1392,6 +1392,7 @@ export default function TopicPage() {
         ]}
         generatingHint="正在策划选题…"
         footer={mixUsed ? <MixCheckLine text={result} resolved={mixUsed.resolved} count={mixUsed.count} /> : undefined}
+        qualityMix={mixUsed}
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `选题方案-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}

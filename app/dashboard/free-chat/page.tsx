@@ -21,6 +21,7 @@ import {
   PanelRight, RotateCcw, Quote, PencilLine, Square,
 } from "lucide-react";
 import { ResultCanvas } from '@/components/chat/ResultCanvas';
+import { reportQuality } from '@/lib/quality-report';
 import { CANVAS_MIN_CHARS, quoteForInput, type CanvasVersion } from '@/lib/canvas';
 import {
   listConversations,
@@ -477,7 +478,11 @@ export default function FreeChatPage() {
       }
 
       // 这一轮真有回答才算用了一次：快用完了就轻轻提醒一次（见 lib/upgrade）
-      if (assistantText && !assistantText.startsWith('⚠️')) notifyGenerated();
+      if (assistantText && !assistantText.startsWith('⚠️')) {
+        notifyGenerated();
+        // 自动质检：这一轮回答体检一遍报给后台（lib/quality-checks）
+        reportQuality({ taskType: '自由对话', output: assistantText, profile: creatorContext.profile });
+      }
 
       setTimeout(() => inputRef.current?.focus(), 50);
     }

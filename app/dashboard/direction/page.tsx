@@ -254,6 +254,7 @@ export default function DirectionPage() {
         emptyTips={["目的可以多选，比如「引流到店 + 立人设」", "已经有想法就写上，AI 会帮你判断靠不靠谱", "出来后勾选想做的方向，点「生成选题」「脚本生成」直接接着做"]}
         generatingHint="AI 正在按你的目的想方向…"
         footer={mixUsed ? <MixCheckLine text={result} resolved={mixUsed.resolved} count={mixUsed.count} /> : undefined}
+        qualityMix={mixUsed}
         onCopy={(text) => { navigator.clipboard.writeText(text); notify("已复制到剪贴板"); }}
       />
     </WorkspaceLayout>

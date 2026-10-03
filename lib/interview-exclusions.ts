@@ -120,6 +120,27 @@ function hitsExclusion(segment: string, ex: string[][]): string | undefined {
   return undefined;
 }
 
+/**
+ * 生成结果里还提到了排除清单里的东西（质检用，见 lib/quality-checks）。
+ * 行里本身在说"不做 / 不要 / 别"的跳过——"这次不做公益"不算漏出来
+ */
+export function findExcludedMentions(text: string, excluded: string[], profileName = ''): { needle: string; line: string }[] {
+  if (!excluded.length || !text) return [];
+  const ex = exclusionGrams(excluded, profileName);
+  const out: { needle: string; line: string }[] = [];
+  const seen = new Set<string>();
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || /不要|不做|不拍|不提|别|不用|避免|排除|去掉|没选|不再/.test(line)) continue;
+    const hit = hitsExclusion(line, ex);
+    if (hit && !seen.has(hit)) {
+      seen.add(hit);
+      out.push({ needle: hit, line: line.length > 60 ? `${line.slice(0, 60)}…` : line });
+    }
+  }
+  return out;
+}
+
 /** 档案里这些栏不动：名称、设置、原文 */
 const UNTOUCHED = new Set(['id', 'user_id', 'profile_name', 'taboo_settings', 'content_mix', 'persona_facts', 'interview_notes', 'created_at', 'updated_at', 'content_restrictions', 'avoid_content']);
 

@@ -76,7 +76,8 @@ describe('全站都接上了', () => {
   it('生成成功后发信号（快用完提醒靠它）：公共保存、选题页、自由对话', () => {
     expect(readCode('lib/history.ts')).toMatch(/历史记录已保存[\s\S]{0,120}notifyGenerated\(\)/);
     expect(readCode('app/dashboard/topic/page.tsx')).toContain('notifyGenerated()');
-    expect(readCode('app/dashboard/free-chat/page.tsx')).toMatch(/if \(assistantText && !assistantText\.startsWith\('⚠️'\)\) notifyGenerated\(\)/);
+    // 后面多了一句体检上报（2026-10-03），发信号这句还在、条件没变
+    expect(readCode('app/dashboard/free-chat/page.tsx')).toMatch(/if \(assistantText && !assistantText\.startsWith\('⚠️'\)\) \{\s*notifyGenerated\(\)/);
   });
 
   it('额度接口给出每个功能的剩余次数（80% 以下的也给，剩 3 次的免费额度才 70%）', () => {
