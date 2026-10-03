@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/api-guard'
 import { getServerSupabase } from '@/lib/admin-auth'
 import { STAGE_ORDER, OPTIONAL_STAGES } from '@/lib/resume'
+import { readMetrics } from '@/lib/performance'
 
 export const dynamic = 'force-dynamic'
 
@@ -172,6 +173,11 @@ export async function PUT(request: Request) {
     if (body.shootStatus === 'shot') { patch.shot_at = now; patch.published_at = null }
     if (body.shootStatus === 'published') patch.published_at = now
   }
+  /*
+   * 发布后的数据（2026-10-03，数据回流）：播放、完播、互动、涨粉、咨询、成交。
+   * 校验一遍再存（lib/performance 的 readMetrics），传 null 表示清空
+   */
+  if (body.metrics !== undefined) patch.metrics = body.metrics === null ? null : readMetrics(body.metrics)
 
   const { data, error } = await supabase
     .from('works')
@@ -184,6 +190,9 @@ export async function PUT(request: Request) {
   if (error) {
     if (/shoot_status|shot_at|published_at/.test(error.message)) {
       return NextResponse.json({ error: '拍摄状态还没启用：请先在 Supabase 执行 20261002_library_and_progress.sql' }, { status: 503 })
+    }
+    if (/metrics/.test(error.message)) {
+      return NextResponse.json({ error: '数据录入还没启用：请先在 Supabase 执行 20261003_work_metrics.sql' }, { status: 503 })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

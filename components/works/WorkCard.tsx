@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2, ArrowRight, Check, Camera, Clock, Send, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { Trash2, ArrowRight, Check, Camera, Clock, Send, AlertCircle, BarChart3 } from "lucide-react";
+import { METRIC_FIELDS, metricsLine, readMetrics, type WorkMetrics } from "@/lib/performance";
 import { workReminder, type ShootStatus, type Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
 
@@ -20,9 +22,32 @@ const SHOOT_STEPS: { id: ShootStatus; label: string; icon: typeof Camera }[] = [
 
 const TONE_CLS = { info: "text-primary", warn: "text-amber-500", done: "text-emerald-500" } as const;
 
-export function WorkCard({ work: w, onDelete, onShootChange }: { work: Work; onDelete: () => void; onShootChange?: (status: ShootStatus) => void }) {
+export function WorkCard({ work: w, onDelete, onShootChange, onMetricsSave }: {
+  work: Work;
+  onDelete: () => void;
+  onShootChange?: (status: ShootStatus) => void;
+  /** 录发布后的数据（数据回流）；返回 false 表示没存上，表单留着 */
+  onMetricsSave?: (metrics: WorkMetrics | null) => Promise<boolean>;
+}) {
   const next = nextStage(w.stages);
   const status = w.shoot_status ?? "none";
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const openForm = () => {
+    const m = w.metrics ?? {};
+    setForm(Object.fromEntries([...METRIC_FIELDS.map((f) => [f.key, m[f.key] === undefined ? "" : String(m[f.key])]), ["note", m.note ?? ""]]));
+    setEditing(true);
+  };
+  const save = async () => {
+    if (!onMetricsSave) return;
+    setSaving(true);
+    try {
+      if (await onMetricsSave(readMetrics(form))) setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
   const reminder = workReminder(w);
   // 开篇是可选环节，插在选题和脚本之间显示，符合实际的创作顺序
   const chips = [
@@ -106,6 +131,47 @@ export function WorkCard({ work: w, onDelete, onShootChange }: { work: Work; onD
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* 发布后的数据（数据回流）：录了以后选题、方向、起号会参考这个号的真实数据 */}
+      {onMetricsSave && status === "published" && (
+        <div className="mt-3 border-t border-border/60 pt-3">
+          {!editing ? (
+            <div className="flex flex-wrap items-center gap-2 text-[12px]">
+              <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+              {w.metrics ? <span className="text-foreground">{metricsLine(w.metrics)}{w.metrics.note ? `（${w.metrics.note}）` : ""}</span> : <span className="text-muted-foreground">还没录数据：录了以后，选题和方向会参考这个号的真实表现</span>}
+              <button type="button" onClick={openForm} className="text-primary underline">{w.metrics ? "改数据" : "录入数据"}</button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {METRIC_FIELDS.map((f) => (
+                  <label key={f.key} className="text-[11.5px] text-muted-foreground">
+                    {f.label}{f.unit ? `（${f.unit}）` : ""}
+                    <input
+                      aria-label={f.label}
+                      inputMode="decimal"
+                      value={form[f.key] ?? ""}
+                      onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                      placeholder="选填"
+                      className="mt-0.5 w-full rounded-lg border border-border bg-background/50 px-2 py-1.5 text-[13px] text-foreground focus:border-primary focus:outline-none"
+                    />
+                  </label>
+                ))}
+              </div>
+              <input
+                value={form.note ?? ""}
+                onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
+                placeholder="一句话备注（选填），例如：上了同城热榜"
+                className="w-full rounded-lg border border-border bg-background/50 px-2 py-1.5 text-[13px] text-foreground focus:border-primary focus:outline-none"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => void save()} disabled={saving} className="rounded-lg bg-primary px-3 py-1.5 text-[12.5px] text-white disabled:opacity-60">{saving ? "保存中…" : "保存数据"}</button>
+                <button type="button" onClick={() => setEditing(false)} className="rounded-lg px-3 py-1.5 text-[12.5px] text-muted-foreground hover:bg-muted">取消</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </li>

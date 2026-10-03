@@ -113,6 +113,11 @@ describe('生成完扫一遍', () => {
     expect(scanTaboos('- 不要说"全城最正宗"\n⛔ 禁忌：零添加\n明确不做：养胃功效', shop)).toEqual([]);
   });
 
+  it('分析里的「最大的优势 / 最大短板」不算；吹自己的「全城最大的串串店」照样报（每晚回归实测误报）', () => {
+    expect(scanTaboos('这个账号最大的优势是手艺，最大短板是没流量', shop)).toEqual([]);
+    expect(scanTaboos('我们是全城最大的串串店', shop).map((h) => h.word)).toEqual(['全城最大']);
+  });
+
   it('给建议的「最好先……」不算；吹自己的「我们家最好」照样报', () => {
     expect(scanTaboos('最好先拍过程，最好别一上来就硬广', shop)).toEqual([]);
     expect(scanTaboos('我们家的串串最好', shop).map((h) => h.word)).toEqual(['最好']);

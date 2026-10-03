@@ -622,6 +622,8 @@ export default function TopicPage() {
           positioning: positioningForCtx,
           dealReasons: [],
           brief: creatorContext.brief,
+          // 数据回流：这个号发出去的真实数据，出选题时参考（lib/performance）
+          performance: creatorContext.performance,
         },
         'topic'
       );

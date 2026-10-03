@@ -13,6 +13,7 @@
  */
 
 import { STAGE_ORDER } from "./resume";
+import type { WorkMetrics } from "./performance";
 
 export interface WorkStage {
   name: string;
@@ -30,6 +31,8 @@ export interface Work {
   shoot_status?: ShootStatus;
   shot_at?: string | null;
   published_at?: string | null;
+  /** 发布后的数据（数据回流，lib/performance）。迁移没跑时没有 */
+  metrics?: WorkMetrics | null;
   created_at: string;
   updated_at: string;
   stages: WorkStage[];
@@ -128,6 +131,18 @@ export async function setShootStatus(id: string, status: ShootStatus): Promise<W
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ shootStatus: status }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "保存失败，请重试");
+  return data;
+}
+
+/** 录发布后的数据（数据回流）。失败抛出带中文的错误 */
+export async function saveWorkMetrics(id: string, metrics: WorkMetrics | null): Promise<Work> {
+  const res = await fetch(`/api/works?id=${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ metrics }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "保存失败，请重试");

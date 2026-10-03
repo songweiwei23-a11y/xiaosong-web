@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ListChecks, Loader2 } from "lucide-react";
-import { listWorks, deleteWork, setShootStatus, progressGroup, type ProgressGroup, type ShootStatus, type Work } from "@/lib/works";
+import { listWorks, deleteWork, setShootStatus, saveWorkMetrics, progressGroup, type ProgressGroup, type ShootStatus, type Work } from "@/lib/works";
+import { PerformanceReview } from "@/components/works/PerformanceReview";
+import { invalidateCreatorContext } from "@/hooks/useCreatorContext";
+import type { WorkMetrics } from "@/lib/performance";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { WorkCard } from "@/components/works/WorkCard";
 
@@ -34,6 +37,8 @@ const FILTERS: { id: Filter; label: string }[] = [
 export default function WorksPage() {
   const [works, setWorks] = useState<Work[] | null>(null);
   const [filter, setFilter] = useState<Filter>("active");
+  // 录了数据就刷新数据复盘
+  const [perfRev, setPerfRev] = useState(0);
 
   useEffect(() => {
     listWorks(50).then((list) => {
@@ -67,6 +72,22 @@ export default function WorksPage() {
     }
   };
 
+  /** 录发布后的数据（数据回流）：存上了刷新卡片和数据复盘 */
+  const saveMetrics = async (w: Work, metrics: WorkMetrics | null): Promise<boolean> => {
+    try {
+      const saved = await saveWorkMetrics(w.id, metrics);
+      setWorks((prev) => (prev ?? []).map((x) => (x.id === w.id ? { ...x, metrics: saved.metrics ?? null } : x)));
+      setPerfRev((n) => n + 1);
+      // 各板块缓存的账号上下文里有数据汇总，作废让它重新取
+      invalidateCreatorContext();
+      notify("数据已保存，选题和方向会参考它");
+      return true;
+    } catch (e) {
+      notify((e as Error).message, "error");
+      return false;
+    }
+  };
+
   const count = (f: Filter) => (works ?? []).filter((w) => f === "all" || progressGroup(w) === f).length;
   const shown = (works ?? []).filter((w) => filter === "all" || progressGroup(w) === filter);
 
@@ -82,6 +103,9 @@ export default function WorksPage() {
           <Link href="/dashboard/library" className="mx-1 text-primary hover:underline">素材库</Link>
         </p>
       </header>
+
+      {/* 数据复盘（数据回流）：发布后录的数据汇总，同样会写进选题、方向的提示词 */}
+      {works && works.some((w) => w.shoot_status === "published") && <PerformanceReview revision={perfRev} />}
 
       {works && works.length > 0 && (
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -131,7 +155,7 @@ export default function WorksPage() {
       ) : (
         <ul className="space-y-3">
           {shown.map((w) => (
-            <WorkCard key={w.id} work={w} onDelete={() => remove(w)} onShootChange={(s) => changeShoot(w, s)} />
+            <WorkCard key={w.id} work={w} onDelete={() => remove(w)} onShootChange={(s) => changeShoot(w, s)} onMetricsSave={(m) => saveMetrics(w, m)} />
           ))}
         </ul>
       )}

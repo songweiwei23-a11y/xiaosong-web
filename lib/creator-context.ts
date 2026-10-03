@@ -29,6 +29,7 @@ import { resolveMix, mixContextLine } from './content-mix';
 import { taboosPromptBlock, readTabooSettings } from './taboos';
 import { scrubProfile } from './interview-exclusions';
 import { personaFactsBlock } from './persona-facts';
+import { performancePromptBlock, type PerformanceSummary } from './performance';
 
 export interface CreatorProfile {
   id: string;
@@ -111,7 +112,12 @@ export interface CreatorContext {
   briefAt?: string | null;
   /** 生成 / 保存简报时档案事实的指纹（lib/creative-brief 的 profileFactsFingerprint） */
   briefFacts?: string | null;
+  /** 数据回流：这个号发出去的作品录的数据汇总（lib/performance） */
+  performance?: PerformanceSummary | null;
 }
+
+/** 规划类板块才带真实数据：选题、方向、起号、自由对话（写脚本、分镜这些单条内容用不上） */
+const PERFORMANCE_BOARDS = new Set<ContextModule>(['topic', 'direction', 'growth', 'freeChat']);
 
 /**
  * 简报是按旧档案写的：人设、经历、品类、人群这些事实在简报之后改过。
@@ -327,6 +333,12 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
         '⚠️ 以上是这个号已经定好的方向，产出必须与它一致，不要另起炉灶。',
         '（这一段是从定位原文截断来的。生成一份「创作简报」可以让各板块拿到完整方向。）');
     }
+  }
+
+  // 数据回流：这个号发出去的真实数据（lib/performance），规划类板块用它调整方向和拍法
+  if (PERFORMANCE_BOARDS.has(module)) {
+    const perf = performancePromptBlock(ctx.performance);
+    if (perf) parts.push('', perf);
   }
 
   // 成交理由：只有变现相关的模块需要——哪些模块要，看清单里的 dealReasons（原来这里另写了一份名单，两处会对不上）

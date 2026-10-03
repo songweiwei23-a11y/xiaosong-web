@@ -101,7 +101,17 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       }
     }
 
-    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts };
+    // 数据回流（lib/performance）：这个号录了数据的作品汇总，选题、方向、起号、自由对话会参考
+    let performance: CreatorContext["performance"] = null;
+    if (profile) {
+      const perfRes = await fetch(`/api/works/performance?profileId=${encodeURIComponent(profile.id)}`).catch(() => null);
+      if (perfRes?.ok) {
+        const d = await perfRes.json().catch(() => null);
+        if (d && typeof d.count === "number" && d.count > 0) performance = d;
+      }
+    }
+
+    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts, performance };
     if (version === cacheVersion) cache.set(key, ctx);
     return ctx;
   })();
