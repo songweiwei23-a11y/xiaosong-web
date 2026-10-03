@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/api-guard'
-import { putChunk } from '@/lib/read-body'
+import { putChunk, putRange } from '@/lib/read-body'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +12,15 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   const guard = await requireUser()
   if (!guard.ok) return guard.response!
+  // 文件上传按字节位置分段（lib/safe-upload，2026-10-03）：段大小随线路自己调，所以按位置存
+  const offsetHeader = request.headers.get('x-upload-offset')
+  if (offsetHeader !== null) {
+    const data = Buffer.from(await request.arrayBuffer())
+    if (data.length > 64 * 1024) return NextResponse.json({ error: '分段太大' }, { status: 400 })
+    const err = putRange(guard.userId!, request.headers.get('x-upload-id') || '', Number(offsetHeader), Number(request.headers.get('x-upload-total')), data)
+    if (err) return NextResponse.json({ error: err }, { status: 400 })
+    return NextResponse.json({ ok: true })
+  }
   const id = request.headers.get('x-body-id') || ''
   const index = Number(request.headers.get('x-chunk-index'))
   const total = Number(request.headers.get('x-chunk-total'))

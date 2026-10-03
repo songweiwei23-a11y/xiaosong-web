@@ -5,6 +5,7 @@ import { Paperclip, FileText, Loader2, X, Download } from 'lucide-react';
 import { CHAT_FILE_ACCEPT, MAX_CHAT_FILES, MAX_CHAT_FILE_BYTES, chatFileType, chatFileUrl, chatFileSize, sanitizeAttachments, type ChatAttachment } from '@/lib/chat-attachments';
 import { throwApiError } from '@/lib/api-error';
 import { prepareVisionImage } from '@/lib/chat-image-upload';
+import { uploadFormSafely } from '@/lib/safe-upload';
 
 export function AttachmentList({ files, onRemove }: { files: ChatAttachment[]; onRemove?: (file: ChatAttachment) => void }) {
   if (!files.length) return null;
@@ -55,12 +56,17 @@ export function AttachmentComposer({ files, onChange, onBusy, disabled }: {
       const file = selected[next++];
       const controller = new AbortController();
       controllers.current.add(controller);
-      const timer = setTimeout(() => controller.abort(), 100_000);
+      // 线路差时要分段传，给足时间（整包成功的话几秒就完）
+      const timer = setTimeout(() => controller.abort(), 240_000);
       try {
-        const form = new FormData(); form.append('file', file);
-        if (chatFileType(file.name) === 'image') form.append('vision', await prepareVisionImage(file), 'vision.jpg');
+        const vision = chatFileType(file.name) === 'image' ? await prepareVisionImage(file) : null;
         if (!live.current) continue;
-        const res = await fetch('/api/chat-files', { method: 'POST', body: form, signal: controller.signal });
+        // 线路差时整包会被切断：断了自动分段重传（lib/safe-upload）
+        const res = await uploadFormSafely('/api/chat-files', () => {
+          const form = new FormData(); form.append('file', file);
+          if (vision) form.append('vision', vision, 'vision.jpg');
+          return form;
+        }, { signal: controller.signal });
         if (!res.ok) await throwApiError(res, '文件上传失败');
         const attachment = sanitizeAttachments([await res.json()])[0];
         if (!attachment) throw new Error('文件上传返回的信息不完整，请重试');

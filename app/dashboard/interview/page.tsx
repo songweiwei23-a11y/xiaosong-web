@@ -8,6 +8,7 @@ import { MAX_SOURCE_CHARS, MIN_SOURCE_CHARS, type Extraction, type Revision } fr
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
 import { readSseResult } from "@/lib/sse-result";
 import { postSafely } from "@/lib/safe-post";
+import { uploadFormSafely } from "@/lib/safe-upload";
 import { exclusionsOf, residualMentions, dropSegment, type Residual } from "@/lib/interview-exclusions";
 
 /**
@@ -147,11 +148,14 @@ export default function InterviewPage() {
           body: JSON.stringify({ fileName: file.name, fileBase64, profileId: profileId || undefined }),
         });
       } else if (file) {
-        // 特别大的文件（超过分块暂存的上限）还是直接上传
-        const form = new FormData();
-        form.append("file", file);
-        if (profileId) form.append("profileId", profileId);
-        res = await fetch("/api/interview/extract", { method: "POST", body: form });
+        // 大文件分段上传（lib/safe-upload）：整包发在线路差时会被切断。
+        // 提取会扣次数，不先试整包——"断了"也可能是服务器收到了，再发一次就扣两次
+        res = await uploadFormSafely("/api/interview/extract", () => {
+          const form = new FormData();
+          form.append("file", file);
+          if (profileId) form.append("profileId", profileId);
+          return form;
+        }, { rangesOnly: true });
       } else {
         res = await postSafely("/api/interview/extract", {
           method: "POST",

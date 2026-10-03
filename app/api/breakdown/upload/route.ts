@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithQuota } from '@/lib/api-guard';
+import { readFormBody } from '@/lib/read-body';
 import { createRateLimiter } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -20,7 +21,8 @@ export async function POST(req: NextRequest) {
   if (!guard.ok) return guard.response!;
   if (limited(guard.userId!)) return NextResponse.json({ error: '上传太频繁了，歇一会儿再来' }, { status: 429 });
 
-  const form = await req.formData().catch(() => null);
+  // 线路差时浏览器分段传来（lib/safe-upload），这里拼回原表单
+  const form = await readFormBody(req, guard.userId).catch(() => null);
   const file = form?.get('file');
   if (!file || typeof file === 'string') return NextResponse.json({ error: '没收到图片' }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: '图片太大了' }, { status: 400 });

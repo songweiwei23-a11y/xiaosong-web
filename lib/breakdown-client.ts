@@ -6,6 +6,7 @@
  * 额度用完（402）这类不是重发能解决的，直接抛给页面。
  */
 import { isNetworkError, throwApiError } from './api-error';
+import { uploadFormSafely } from './safe-upload';
 import type { TranscriptSegment } from './viral-breakdown';
 
 const RETRIES = 2;
@@ -13,7 +14,8 @@ const RETRIES = 2;
 async function postForm(url: string, form: () => FormData): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     try {
-      const res = await fetch(url, { method: 'POST', body: form() });
+      // 整包断了自动分段重传（lib/safe-upload）：原来重发的还是整包，线路差时照样断
+      const res = await uploadFormSafely(url, form);
       // 服务端偶发的 5xx 也重发一次；4xx（没登录、没额度、太大）直接报
       if (res.status >= 500 && attempt < RETRIES) throw new TypeError('Failed to fetch');
       return res;

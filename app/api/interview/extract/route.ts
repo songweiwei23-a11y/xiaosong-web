@@ -13,7 +13,7 @@ import {
   MIN_SOURCE_CHARS,
   type Extraction,
 } from '@/lib/interview-import';
-import { readJsonBody } from '@/lib/read-body';
+import { readJsonBody, readFormBody } from '@/lib/read-body';
 
 export const runtime = 'nodejs';
 export const maxDuration = 180;
@@ -40,8 +40,10 @@ export async function POST(req: NextRequest) {
   let targetProfileId: string | null = null;
   try {
     const type = req.headers.get('content-type') || '';
-    if (type.includes('multipart/form-data')) {
-      const form = await req.formData();
+    // 分段传来的表单（lib/safe-upload）带 X-Body-Content-Type；文字请求分块（lib/safe-post）不带，走下面 JSON
+    if (type.includes('multipart/form-data') || req.headers.get('x-body-content-type')) {
+      // 线路差时浏览器分段传来（lib/safe-upload），这里拼回原表单
+    const form = await readFormBody(req, userId);
       const file = form.get('file');
       const text = form.get('text');
       const target = form.get('profileId');

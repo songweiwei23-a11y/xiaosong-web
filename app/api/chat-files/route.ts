@@ -4,6 +4,7 @@ import { getServiceSupabase } from '@/lib/admin-auth';
 import { createRateLimiter } from '@/lib/rate-limit';
 import { chatFileType, FILE_UUID, MAX_CHAT_FILE_BYTES } from '@/lib/chat-attachments';
 import { CHAT_FILES_BUCKET, signAttachment } from '@/lib/chat-attachments-server';
+import { readFormBody } from '@/lib/read-body';
 
 export const runtime = 'nodejs';
 const limited = createRateLimiter(60 * 60_000, 60);
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
   if (Number(request.headers.get('content-length')) > MAX_CHAT_FILE_BYTES + 512 * 1024) {
     return Response.json({ error: '文件不能超过 10 MB' }, { status: 413 });
   }
-  const form = await request.formData().catch(() => null);
+  // 线路差时浏览器分段传来（lib/safe-upload），这里拼回原表单
+  const form = await readFormBody(request, guard.userId).catch(() => null);
   const file = form?.get('file');
   if (!file || typeof file === 'string') return Response.json({ error: '请选择要上传的文件' }, { status: 400 });
   const name = file.name.replace(/[\u0000-\u001f/\\]/g, '_').slice(-180);
