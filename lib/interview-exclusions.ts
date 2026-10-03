@@ -121,7 +121,7 @@ function hitsExclusion(segment: string, ex: string[][]): string | undefined {
 }
 
 /** 档案里这些栏不动：名称、设置、原文 */
-const UNTOUCHED = new Set(['id', 'user_id', 'profile_name', 'taboo_settings', 'content_mix', 'interview_notes', 'created_at', 'updated_at', 'content_restrictions', 'avoid_content']);
+const UNTOUCHED = new Set(['id', 'user_id', 'profile_name', 'taboo_settings', 'content_mix', 'persona_facts', 'interview_notes', 'created_at', 'updated_at', 'content_restrictions', 'avoid_content']);
 
 /**
  * 把档案里和排除清单相关的句子剔掉，再交给 AI。

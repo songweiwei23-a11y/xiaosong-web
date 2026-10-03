@@ -8,6 +8,7 @@ import { ContentMixPicker } from '@/components/workspace/ContentMix'
 import { readSetting, type MixSetting } from '@/lib/content-mix'
 import { TabooEditor } from '@/components/profile/TabooEditor'
 import { readTabooSettings, type TabooSettings } from '@/lib/taboos'
+import { PERSONA_FIELDS, readPersonaFacts, hasPersonaFacts, type PersonaFacts } from '@/lib/persona-facts'
 
 // 字段定义和选项搬到了 lib/profile-fields（前采建档也要按同一套选项填），这里转出去，老的引用照常可用
 export { EMPTY_PROFILE, toFormData }
@@ -36,7 +37,7 @@ interface Props {
   submitLabel: string
   submittingLabel: string
   /** content_mix 不在 ProfileFormData 里（它是 jsonb，不走表单字段那套归一），单独带上 */
-  onSubmit: (data: ProfileFormData & { content_mix?: MixSetting; taboo_settings?: TabooSettings }) => Promise<void>
+  onSubmit: (data: ProfileFormData & { content_mix?: MixSetting; taboo_settings?: TabooSettings; persona_facts?: PersonaFacts }) => Promise<void>
   onCancel: () => void
 }
 
@@ -50,6 +51,9 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
   // 禁忌设置：关掉的行业禁忌、手动加的行业、自己补充的
   const [tabooSettings, setTabooSettings] = useState<TabooSettings>(() => readTabooSettings(initial?.taboo_settings))
   const [tabooTouched, setTabooTouched] = useState(false)
+  // 人设事实卡：最硬的事实，所有板块以它为准（lib/persona-facts）
+  const [personaFacts, setPersonaFacts] = useState<PersonaFacts>(() => readPersonaFacts(initial?.persona_facts))
+  const [personaTouched, setPersonaTouched] = useState(false)
 
   const totalSteps = 6
 
@@ -78,7 +82,8 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
     try {
       // 没动过配比、库里也没存过，就不发这一栏：数据库还没加 content_mix 列时，老表单照样能存
       const hadMix = readSetting(initial?.content_mix) !== null
-      const extras: { content_mix?: MixSetting; taboo_settings?: TabooSettings } = {}
+      const extras: { content_mix?: MixSetting; taboo_settings?: TabooSettings; persona_facts?: PersonaFacts } = {}
+      if (personaTouched || hasPersonaFacts(initial?.persona_facts)) extras.persona_facts = readPersonaFacts(personaFacts)
       if (mixTouched || hadMix) extras.content_mix = mixSetting
       if (tabooTouched || initial?.taboo_settings) {
         extras.taboo_settings = { ...tabooSettings, extra: tabooSettings.extra.map((x) => x.trim()).filter(Boolean) }
@@ -265,6 +270,38 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
             options={C.account_stage}
           />
           <Select field="fans_level" label="粉丝量级" options={C.fans_level} />
+
+          {/* 人设事实卡：最硬的事实。所有板块以它为准，和别的栏、前采、旧简报冲突时按它来（lib/persona-facts） */}
+          <div className="rounded-xl border border-primary/30 bg-primary/[0.04] p-4">
+            <p className="text-[13px] font-medium text-foreground">🪪 人设事实卡</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+              出镜人是谁、干了几年、从哪来、在本地多久、主卖什么。填了以后，定位、简报、选题、脚本写到这些都以这里为准，
+              不会再出现"写成在本地 18 年"这种错；没填的 AI 不会替你编。
+            </p>
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+              {PERSONA_FIELDS.map((f) => (
+                <label key={f.key} className={f.multiline ? 'sm:col-span-2' : ''}>
+                  <span className="mb-1 block text-[12px] text-muted-foreground">{f.label}</span>
+                  {f.multiline ? (
+                    <textarea
+                      value={personaFacts[f.key] ?? ''}
+                      onChange={(e) => { setPersonaFacts((p) => ({ ...p, [f.key]: e.target.value })); setPersonaTouched(true) }}
+                      placeholder={f.placeholder}
+                      rows={f.key === 'others' ? 3 : 2}
+                      className={TEXTAREA_CLS}
+                    />
+                  ) : (
+                    <input
+                      value={personaFacts[f.key] ?? ''}
+                      onChange={(e) => { setPersonaFacts((p) => ({ ...p, [f.key]: e.target.value })); setPersonaTouched(true) }}
+                      placeholder={f.placeholder}
+                      className={TEXTAREA_CLS}
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
         </>
       ),
     },

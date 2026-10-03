@@ -28,6 +28,7 @@ import { profileCompletion } from './profile-options';
 import { resolveMix, mixContextLine } from './content-mix';
 import { taboosPromptBlock, readTabooSettings } from './taboos';
 import { scrubProfile } from './interview-exclusions';
+import { personaFactsBlock } from './persona-facts';
 
 export interface CreatorProfile {
   id: string;
@@ -86,6 +87,8 @@ export interface CreatorProfile {
   content_mix?: unknown;
   /** 禁忌设置：关掉的行业禁忌、自己补充的（jsonb，见 lib/taboos） */
   taboo_settings?: unknown;
+  /** 人设事实卡（jsonb，见 lib/persona-facts）：最硬的事实，所有板块以它为准 */
+  persona_facts?: unknown;
   /** 档案最后一次保存的时间。比简报新，说明简报里的事实可能过时 */
   updated_at?: string | null;
 }
@@ -242,6 +245,9 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
   if (p) {
     const want = new Set<ProfileSlice>(manifestOf(module)?.profile ?? []);
     parts.push(title, '');
+    // 人设事实卡放最前面：最硬的事实，每个板块都要（2026-10-03，见 lib/persona-facts）
+    const persona = personaFactsBlock(p.persona_facts);
+    if (persona) parts.push(persona, '');
 
     if (want.has('account')) {
       parts.push(join([

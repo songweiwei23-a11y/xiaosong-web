@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 创作简报：把账号定位转译成各板块能直接用的创作指令。
  *
  * 【为什么需要它】账号定位是给人看的——有论证、有推导，一份 12466 字。
@@ -285,6 +285,8 @@ const BRIEF_FACT_FIELDS = [
   'profile_name', 'account_platform', 'account_track', 'account_stage', 'product_category', 'price_range', 'monetization_model',
   'target_gender', 'target_age', 'target_region', 'target_occupation', 'target_pain_points', 'target_needs', 'target_interests',
   'content_style', 'content_format', 'content_tone', 'content_themes', 'competitive_advantage', 'unique_resources', 'interview_highlights',
+  // 人设事实卡改了，简报里的人设当然就旧了
+  'persona_facts',
 ];
 
 /** 存在简报那一行 positioning_description 里的前缀（这一列简报原来不用） */
@@ -292,8 +294,13 @@ export const BRIEF_FACTS_PREFIX = 'profile-facts:';
 
 export function profileFactsFingerprint(profile: object | null | undefined): string {
   const p = (profile ?? {}) as Record<string, unknown>;
-  const norm = (v: unknown) => (Array.isArray(v) ? v.filter(Boolean).map(String).map((x) => x.trim()).join('、') : v == null ? '' : String(v).trim());
-  const text = BRIEF_FACT_FIELDS.map((k) => `${k}=${norm(p[k])}`).join('\n');
+  const norm = (v: unknown) =>
+    Array.isArray(v) ? v.filter(Boolean).map(String).map((x) => x.trim()).join('、')
+      : v && typeof v === 'object' ? JSON.stringify(Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, x]) => x != null && x !== '').sort(([a], [b]) => a.localeCompare(b))))
+      : v == null ? '' : String(v).trim();
+  // 事实卡没填（或是空的 {}）时不参与：和加它之前算出来的指纹一样，已经记过指纹的简报不会误报"过时"
+  const text = BRIEF_FACT_FIELDS.filter((k) => k !== 'persona_facts' || !['', '{}'].includes(norm(p[k])))
+    .map((k) => `${k}=${norm(p[k])}`).join('\n');
   // FNV-1a，够分辨"变没变"就行
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {

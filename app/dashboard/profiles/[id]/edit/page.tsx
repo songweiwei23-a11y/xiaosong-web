@@ -8,6 +8,7 @@ import { getActiveProfileId, setActiveProfileId } from '@/lib/active-profile'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import { InterviewEntry, InterviewNotesCard } from '@/components/interview/InterviewEntry'
 import { postSafely } from '@/lib/safe-post'
+import { droppedColumnsNotice } from '@/lib/persona-facts'
 
 /**
  * 编辑已有档案。
@@ -83,7 +84,9 @@ export default function EditProfilePage() {
       // 改的不是当前档案时，侧边栏下拉里那一行的完整度也要跟着变
       else window.dispatchEvent(new Event('profileUpdated'))
 
-      notify('已保存')
+      // 数据库还没升级时有的栏存不上：明说，不能让编导以为存上了
+      const dropped = droppedColumnsNotice(updated)
+      notify(dropped || '已保存')
       router.push('/dashboard/profiles')
     } catch (e) {
       console.error('更新档案失败:', e)

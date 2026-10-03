@@ -1,4 +1,4 @@
-﻿import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { readJsonBody } from '@/lib/read-body'
@@ -14,16 +14,22 @@ async function withoutMissingColumns<T>(
   run: (d: Record<string, unknown>) => PromiseLike<{ data: T | null; error: { code?: string; message?: string } | null }>
 ) {
   let payload = { ...data }
-  for (let i = 0; i < 3; i++) {
+  const dropped: string[] = []
+  for (let i = 0; i < 4; i++) {
     const res = await run(payload)
     const col = res.error?.code === 'PGRST204' ? res.error.message?.match(/'([a-z_]+)' column/)?.[1] : undefined
-    if (!col || !(col in payload)) return res
+    if (!col || !(col in payload)) return { ...res, dropped }
     console.warn(`档案表还没有 ${col} 列（迁移未跑），这一栏先不存`)
+    dropped.push(col)
     const { [col]: _dropped, ...rest } = payload
     payload = rest
   }
-  return run(payload)
+  return { ...(await run(payload)), dropped }
 }
+
+/** 返回给页面：哪几栏因为数据库没升级没存上（页面要明说，不能让编导以为存上了） */
+const withDropped = (profile: unknown, dropped: string[]) =>
+  dropped.length && profile && typeof profile === 'object' ? { ...(profile as object), _droppedColumns: dropped } : profile
 
 async function getSupabaseClient() {
   const cookieStore = await cookies()
@@ -85,7 +91,7 @@ export async function POST(request: Request) {
 
     const body = await readJsonBody(request)
     
-    const { data: profile, error } = await withoutMissingColumns({ ...body, user_id: user.id }, (d) =>
+    const { data: profile, error, dropped } = await withoutMissingColumns({ ...body, user_id: user.id }, (d) =>
       supabase.from('user_profiles').insert([d]).select().single()
     )
 
@@ -94,7 +100,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '创建档案失败' }, { status: 500 })
     }
 
-    return NextResponse.json(profile)
+    return NextResponse.json(withDropped(profile, dropped))
   } catch (error) {
     console.error('创建档案错误:', error)
     return NextResponse.json({ error: '服务器错误' }, { status: 500 })
@@ -118,7 +124,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: '缺少档案ID' }, { status: 400 })
     }
 
-    const { data: profile, error } = await withoutMissingColumns(updateData, (d) =>
+    const { data: profile, error, dropped } = await withoutMissingColumns(updateData, (d) =>
       supabase.from('user_profiles').update(d).eq('id', id).eq('user_id', user.id).select().single()
     )
 
@@ -127,7 +133,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: '更新档案失败' }, { status: 500 })
     }
 
-    return NextResponse.json(profile)
+    return NextResponse.json(withDropped(profile, dropped))
   } catch (error) {
     console.error('更新档案错误:', error)
     return NextResponse.json({ error: '服务器错误' }, { status: 500 })

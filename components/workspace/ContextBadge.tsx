@@ -6,6 +6,7 @@ import { parseBrief, BRIEF_FIELDS } from '@/lib/creative-brief'
 import { manifestOf, type Board } from '@/lib/context-manifest'
 import { briefOlderThanProfile } from '@/lib/creator-context'
 import { activeTaboos, countTaboos } from '@/lib/taboos'
+import { hasPersonaFacts } from '@/lib/persona-facts'
 
 /**
  * 各板块顶部的「已自动带上什么」状态条。
@@ -62,6 +63,15 @@ export function ContextBadge({ board, className = '' }: Props) {
           换一个
         </Link>
       </p>
+
+      {hasPersonaFacts(context.profile?.persona_facts) ? (
+        <p className="text-emerald-500">人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓</p>
+      ) : (
+        <p className="text-muted-foreground">
+          还没填人设事实卡，人设、年限这类事实 AI 只能从档案各栏里拼。
+          <Link href={context.profile?.id ? `/dashboard/profiles/${context.profile.id}/edit` : '/dashboard/profiles'} className="ml-1 underline">去填</Link>
+        </p>
+      )}
 
       {manifest.profile.includes('restrictions') && (() => {
         const a = activeTaboos(context.profile)

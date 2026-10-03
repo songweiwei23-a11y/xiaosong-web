@@ -13,6 +13,7 @@
 import { PROFILE_CHOICES } from './profile-fields';
 import { scrubProfile } from './interview-exclusions';
 import { readTabooSettings } from './taboos';
+import { personaFactsBlock } from './persona-facts';
 
 type ProfileLike = Record<string, unknown> & { profile_name?: unknown };
 
@@ -124,6 +125,9 @@ export function buildProfileSummary(profile: ProfileLike): string {
   // 建档时编导刻意没选的（排除清单）：相关的句子先拿掉，模型看不见才谈得上"当它不存在"（见 lib/interview-exclusions）
   const p = scrubProfile(profile, readTabooSettings(profile.taboo_settings).excluded) ?? profile;
   const lines = [`- 档案名称：${asText(p.profile_name, '未命名')}`];
+  // 人设事实卡：最硬的事实，放在档案各栏前面（定位、简报、方向、二创、拆解都用这份摘要）
+  const persona = personaFactsBlock(profile.persona_facts);
+  if (persona) lines.push('', persona, '');
   const products = businessLines(p);
   if (products.length) lines.push(`${BUSINESS_LINES_LABEL}${products.join('、')}`);
   for (const [key, label] of PROFILE_SUMMARY_FIELDS) {
