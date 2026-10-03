@@ -7,6 +7,7 @@
 import { sanitizeAttachments, type ChatAttachment } from './chat-attachments'
 import { sanitizeWebSources, type WebSearchStatus } from './dify-web-status'
 import { mergeCreationSettings, type CreationSettings } from './creation-settings'
+import { sanitizeCanvasVersions, type CanvasVersion } from './canvas'
 export type ChatRole = 'user' | 'assistant'
 
 export interface ChatMessage {
@@ -17,6 +18,8 @@ export interface ChatMessage {
   attachments?: ChatAttachment[]
   webSearch?: WebSearchStatus
   creationSettings?: CreationSettings
+  /** 结果画布里改过的各版（lib/canvas）。第一版是 AI 原稿 */
+  canvas?: CanvasVersion[]
 }
 
 /**
@@ -48,6 +51,7 @@ type IncomingMessage = {
   attachments?: unknown
   webSearch?: unknown
   creationSettings?: unknown
+  canvas?: unknown
 }
 
 /**
@@ -61,6 +65,7 @@ export function sanitizeMessages(input: unknown): Array<{
   attachments?: ChatAttachment[]
   webSearch?: WebSearchStatus
   creationSettings?: CreationSettings
+  canvas?: CanvasVersion[]
 }> {
   if (!Array.isArray(input)) return []
   const cleaned = input
@@ -71,6 +76,7 @@ export function sanitizeMessages(input: unknown): Array<{
       content: typeof m.content === 'string' ? m.content : '',
       ...(m.creationSettings && typeof m.creationSettings === 'object' ? { creationSettings: mergeCreationSettings(m.creationSettings) } : {}),
       ...(sanitizeAttachments(m.attachments).length ? { attachments: sanitizeAttachments(m.attachments) } : {}),
+      ...(sanitizeCanvasVersions(m.canvas).length ? { canvas: sanitizeCanvasVersions(m.canvas) } : {}),
       ...(m.webSearch && typeof m.webSearch === 'object' && 'status' in m.webSearch && ['done', 'unavailable', 'quota_exhausted'].includes(String(m.webSearch.status))
         ? { webSearch: { status: m.webSearch.status as 'done' | 'unavailable' | 'quota_exhausted', sources: sanitizeWebSources('sources' in m.webSearch ? m.webSearch.sources : []),
             ...('message' in m.webSearch && typeof m.webSearch.message === 'string' ? { message: m.webSearch.message.slice(0, 500) } : {}) } } : {}),

@@ -44,6 +44,8 @@ function toConversation(row: any): ChatConversation {
       ...(sanitizeAttachments(m?.attachments).length ? { attachments: sanitizeAttachments(m.attachments) } : {}),
       ...(m.webSearch ? { webSearch: m.webSearch } : {}),
       ...(m.creationSettings ? { creationSettings: m.creationSettings } : {}),
+      // 结果画布的各版（lib/canvas）：读回来要带上，不然刷新后画布里改过的都没了
+      ...(m.canvas ? { canvas: m.canvas } : {}),
     })),
     createdAt: normalizeTimestamp(row.created_at),
     updatedAt: normalizeTimestamp(row.updated_at),

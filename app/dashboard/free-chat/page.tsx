@@ -18,7 +18,10 @@ import { buildContextBlock } from '@/lib/creator-context';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
   PanelLeft, X, Copy, Check, Bot, Globe, User as UserIcon,
+  PanelRight, RotateCcw, Quote, PencilLine, Square,
 } from "lucide-react";
+import { ResultCanvas } from '@/components/chat/ResultCanvas';
+import { CANVAS_MIN_CHARS, quoteForInput, type CanvasVersion } from '@/lib/canvas';
 import {
   listConversations,
   createConversation as createRemoteConversation,
@@ -146,6 +149,12 @@ export default function FreeChatPage() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const sending = useRef(false);
+  // 生成中点「停止」
+  const abortRef = useRef<AbortController | null>(null);
+  // 改最后一个提问再问（输入框里放着原来的提问，发送时换掉最后一轮）
+  const [editingLast, setEditingLast] = useState(false);
+  // 结果画布打开的是哪条回答（消息下标）
+  const [canvasIdx, setCanvasIdx] = useState<number | null>(null);
   const pendingCreation = useRef<{ conversationId: string; settings: CreationSettings } | null>(null);
   useEffect(() => { setAttachments([]); }, [activeId, profile?.id, showLegacy]);
 
@@ -278,8 +287,13 @@ export default function FreeChatPage() {
     setConversations((prev) => prev.map((c) => (c.id === id ? updater(c) : c)));
   }, []);
 
-  const handleSend = useCallback(async (text?: string) => {
-    const selectedFiles = text ? [] : [...attachments];
+  /**
+   * @param opts.replaceLast 换掉最后一轮（重新生成、改了提问再问）：把最后一个提问和它的回答拿掉，用这一轮替代
+   * @param opts.regenerate  重新生成：同一个问题，要求换个角度答
+   * @param opts.files       这一轮带的附件（重新生成时沿用原来那一轮的）
+   */
+  const handleSend = useCallback(async (text?: string, opts: { replaceLast?: boolean; regenerate?: boolean; files?: ChatAttachment[] } = {}) => {
+    const selectedFiles = opts.files ?? (text ? [] : [...attachments]);
     const content = (text ?? input).trim() || (selectedFiles.length ? '请分析我上传的文件，并提炼其中的关键信息。' : '');
     if (!content || sending.current || isStreaming || uploadingFiles || !loaded || contextLoading || showLegacy) return;
     sending.current = true;
@@ -290,26 +304,33 @@ export default function FreeChatPage() {
       conv = createConversation();
     }
     const convId = conv.id;
-    const isFirstMessage = conv.messages.length === 0;
+    // 换掉最后一轮：从最后一个提问开始截掉（它和它后面的回答）
+    const lastUserIdx = conv.messages.map((m) => m.role).lastIndexOf('user');
+    const keep = opts.replaceLast && lastUserIdx >= 0 ? conv.messages.slice(0, lastUserIdx) : conv.messages;
+    const isFirstMessage = keep.length === 0;
 
-    const inherited = pendingCreation.current?.conversationId === convId ? pendingCreation.current.settings : mergeCreationSettings(conv.messages.filter(m => m.role === 'user').at(-1)?.creationSettings, settingsFromText(content));
+    const inherited = pendingCreation.current?.conversationId === convId ? pendingCreation.current.settings : mergeCreationSettings(keep.filter(m => m.role === 'user').at(-1)?.creationSettings, settingsFromText(content));
     const creationSettings = resolveCreationSettings({ from: '自由对话', sourceContent: content, settings: inherited }, creatorContext);
     const userMsg: ChatMessage = { role: "user", content, timestamp: Date.now(), creationSettings, ...(selectedFiles.length ? { attachments: selectedFiles } : {}) };
     pendingCreation.current = null;
     const title = isFirstMessage ? content.slice(0, 18) : conv.title;
     // 发送前的消息快照。保存时以它为基准拼出完整记录，
-    // 避免从 state 闭包里读到上一轮的旧数组。
-    const baseMessages = conv.messages;
+    // 避免从 state 闭包里读到上一轮的旧数组。换掉最后一轮时，快照里已经没有那一轮了
+    const baseMessages = keep;
 
     patchConv(convId, (c) => ({
       ...c,
       title,
-      messages: [...c.messages, userMsg, { role: "assistant", content: "", timestamp: Date.now() }],
+      messages: [...baseMessages, userMsg, { role: "assistant", content: "", timestamp: Date.now() }],
       updatedAt: Date.now(),
     }));
     setInput("");
-    setAttachments([]);
+    setEditingLast(false);
+    if (!opts.files) setAttachments([]);
     setIsStreaming(true);
+    // 「停止」按钮用它中断
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     // 用户的问题先落库：万一回答中途断网或刷新，至少问题不会丢。
     // 新会话到这一步才真正创建，点了「新建对话」却没说话不会留下空记录。
@@ -335,7 +356,8 @@ export default function FreeChatPage() {
 
     // 首次对话把账号档案作为背景带上
     const difyConvId = conv.difyConversationId;
-    let query = content;
+    // 重新生成：会话记忆里已经有上一版回答了，明确要它换个角度，不然常常原样再来一遍
+    let query = opts.regenerate ? `【请换个角度重新回答这个问题，不要和上一版重复】\n${content}` : content;
     if (!content.includes('【本条创作的连续设置】')) query += creationSettingsBlock(creationSettings);
     if (!difyConvId) {
       const ctx = buildProfileContext();
@@ -353,6 +375,7 @@ export default function FreeChatPage() {
       const res = await fetchGeneration("/api/dify/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           query,
           question: content,
@@ -423,7 +446,10 @@ export default function FreeChatPage() {
         });
       }
     } catch (e) {
-      assistantText = "⚠️ " + ((e as Error)?.message || "生成失败，请重试");
+      // 用户点了「停止」：已经写出来的留着，标一句，不当成出错
+      assistantText = controller.signal.aborted
+        ? `${assistantText.trim()}\n\n（已停止生成）`.trim()
+        : "⚠️ " + ((e as Error)?.message || "生成失败，请重试");
       patchConv(convId, (c) => {
         const msgs = [...c.messages];
         const last = msgs[msgs.length - 1];
@@ -433,6 +459,7 @@ export default function FreeChatPage() {
     } finally {
       setIsStreaming(false);
       sending.current = false;
+      abortRef.current = null;
       if (webSearch?.status === 'searching') webSearch = { status: 'unavailable', sources: [] };
 
       // 本轮结束后把完整记录写回云端。以发送前的快照为基准拼接，
@@ -456,18 +483,62 @@ export default function FreeChatPage() {
     }
   }, [input, attachments, uploadingFiles, isStreaming, activeConv, createConversation, patchConv, buildProfileContext, profile, loaded, contextLoading, showLegacy, creatorContext]);
 
+  /** 发送：在改最后一个提问时，换掉最后一轮（附件沿用原来那一轮的） */
+  const submit = () => {
+    if (editingLast && lastUser) void handleSend(input, { replaceLast: true, files: lastUser.attachments ?? [] });
+    else void handleSend();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      submit();
     }
   };
 
   const copyMessage = (text: string, idx: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIdx(idx);
-    setTimeout(() => setCopiedIdx(null), 1500);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 1500);
+    }, () => {});
   };
+
+  const lastUser = activeConv ? [...activeConv.messages].reverse().find((m) => m.role === 'user') : undefined;
+  const lastUserIdx = activeConv ? activeConv.messages.lastIndexOf(lastUser as ChatMessage) : -1;
+
+  /** 重新生成最后一条回答：同一个问题（带原来的附件）再问一次，换掉最后一轮 */
+  const regenerate = () => {
+    if (!lastUser || isStreaming) return;
+    void handleSend(lastUser.content, { replaceLast: true, regenerate: true, files: lastUser.attachments ?? [] });
+  };
+
+  /** 改最后一个提问：放回输入框，发送时换掉最后一轮 */
+  const startEditLast = () => {
+    if (!lastUser || isStreaming) return;
+    setInput(lastUser.content);
+    setEditingLast(true);
+    setTimeout(() => inputRef.current?.focus(), 30);
+  };
+
+  /** 引用追问：选中了这条回答里的一段就引用那段，没选就引用开头一段 */
+  const quoteMessage = (idx: number, content: string) => {
+    const s = window.getSelection();
+    const holder = document.getElementById(`chat-msg-${idx}`);
+    const picked = s && !s.isCollapsed && holder && s.anchorNode && holder.contains(s.anchorNode) ? s.toString() : '';
+    const text = (picked || content).trim().slice(0, 600);
+    setInput((prev) => quoteForInput(text, prev));
+    setTimeout(() => inputRef.current?.focus(), 30);
+  };
+
+  /** 画布里改了版本：存进那条消息，跟着对话一起写回云端 */
+  const saveCanvas = (idx: number, versions: CanvasVersion[]) => {
+    if (!activeConv) return;
+    const messages = activeConv.messages.map((m, i) => (i === idx ? { ...m, canvas: versions } : m));
+    patchConv(activeConv.id, (c) => ({ ...c, messages, updatedAt: Date.now() }));
+    if (activeConv.remoteId) void updateRemoteConversation(activeConv.remoteId, { messages });
+  };
+  // 换了对话，画布关掉
+  useEffect(() => { setCanvasIdx(null); setEditingLast(false); }, [activeId]);
 
   return (
     /*
@@ -608,6 +679,7 @@ export default function FreeChatPage() {
                 </div>
                 <div className={`group min-w-0 max-w-[88%] sm:max-w-[80%] ${msg.role === "user" ? "text-right" : ""}`}>
                   <div
+                    id={`chat-msg-${idx}`}
                     className={`inline-block max-w-full break-words rounded-2xl px-3.5 py-3 text-left sm:px-4 ${
                       msg.role === "user"
                         ? "bg-primary text-white"
@@ -643,13 +715,35 @@ export default function FreeChatPage() {
                     <p className="flex items-center gap-1"><Globe className="h-3 w-3" />{msg.webSearch.status === 'searching' ? '正在联网查资料…' : msg.webSearch.status === 'done' ? '已执行联网搜索' : msg.webSearch.status === 'quota_exhausted' ? '联网额度已用完，本轮基于已有资料回答' : '本次联网搜索未成功，实时信息请稍后核实'}</p>
                     {msg.webSearch.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="block max-w-full truncate text-primary underline" title={source.url}>{source.title}</a>)}
                   </div>}
-                  {msg.role === "assistant" && msg.content && (
-                    <button
-                      onClick={() => copyMessage(msg.content, idx)}
-                      className="mt-1 flex items-center gap-1 text-xs text-muted-foreground [@media(hover:hover)]:opacity-0 transition-opacity hover:text-muted-foreground [@media(hover:hover)]:group-hover:opacity-100"
-                    >
-                      {copiedIdx === idx ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      {copiedIdx === idx ? "已复制" : "复制"}
+                  {/* 回答下面的操作：复制、画布、重新生成（最后一条）、引用追问 */}
+                  {msg.role === "assistant" && msg.content && !(isStreaming && idx === activeConv.messages.length - 1) && (
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <button onClick={() => copyMessage(msg.canvas?.at(-1)?.content ?? msg.content, idx)} className="flex items-center gap-1 hover:text-foreground">
+                        {copiedIdx === idx ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copiedIdx === idx ? "已复制" : "复制"}
+                      </button>
+                      {(msg.content.length >= CANVAS_MIN_CHARS || msg.canvas) && (
+                        <button onClick={() => setCanvasIdx(idx)} className="flex items-center gap-1 text-primary hover:underline">
+                          <PanelRight className="h-3 w-3" />
+                          {msg.canvas && msg.canvas.length > 1 ? `在画布中打开（已改到第 ${msg.canvas.length} 版）` : '在画布中打开'}
+                        </button>
+                      )}
+                      {idx === activeConv.messages.length - 1 && !showLegacy && (
+                        <button onClick={regenerate} disabled={isStreaming} className="flex items-center gap-1 hover:text-foreground disabled:opacity-50">
+                          <RotateCcw className="h-3 w-3" />重新生成
+                        </button>
+                      )}
+                      {!showLegacy && (
+                        <button onClick={() => quoteMessage(idx, msg.content)} className="flex items-center gap-1 hover:text-foreground" title="先在回答里选中一段再点，就只引用那段">
+                          <Quote className="h-3 w-3" />引用追问
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {/* 最后一个提问可以改了再问 */}
+                  {msg.role === "user" && idx === lastUserIdx && !isStreaming && !showLegacy && (
+                    <button onClick={startEditLast} className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                      <PencilLine className="h-3 w-3" />改一下再问
                     </button>
                   )}
                   {msg.role === 'assistant' && msg.content && !(isStreaming && idx === activeConv.messages.length - 1) && <div className="mt-3"><CreationLinks body={msg.content} context={{ originContent: activeConv.messages.find(m => m.role === 'user')?.content, settings: mergeCreationSettings(settingsFromText(activeConv.messages.find(m => m.role === 'user')?.content || ''), activeConv.messages.slice(0, idx).filter(m => m.role === 'user').at(-1)?.creationSettings) }} /></div>}
@@ -669,6 +763,12 @@ export default function FreeChatPage() {
             </select>
           </div>
           <AttachmentComposer key={`${profile?.id || 'default'}:${activeId}:${showLegacy}`} files={attachments} onChange={setAttachments} onBusy={setUploadingFiles} disabled={isStreaming || showLegacy || contextLoading || !loaded} />
+          {editingLast && (
+            <div className="mx-auto mb-2 flex max-w-3xl items-center justify-between rounded-lg bg-primary/10 px-3 py-1.5 text-xs text-primary">
+              <span>正在改上一个提问：发送后会换掉最后这一轮问答</span>
+              <button onClick={() => { setEditingLast(false); setInput(''); }} className="underline">取消</button>
+            </div>
+          )}
           <div className="mx-auto flex max-w-3xl items-end gap-2 sm:gap-3">
             <textarea
               ref={inputRef}
@@ -680,14 +780,25 @@ export default function FreeChatPage() {
               disabled={isStreaming || showLegacy || contextLoading || !loaded}
               className="min-w-0 flex-1 resize-none rounded-xl glass-panel px-3 py-2.5 text-sm sm:px-4 sm:py-3 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted"
             />
-            <button
-              onClick={() => handleSend()}
-              disabled={(!input.trim() && !attachments.length) || uploadingFiles || isStreaming || showLegacy || contextLoading || !loaded}
-              className="flex h-12 shrink-0 items-center gap-2 rounded-xl brand-gradient px-4 font-medium sm:px-5 text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isStreaming ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-              发送
-            </button>
+            {isStreaming ? (
+              // 生成中：发送键变成停止，已经写出来的会留着
+              <button
+                onClick={() => abortRef.current?.abort()}
+                className="flex h-12 shrink-0 items-center gap-2 rounded-xl border border-border bg-background px-4 font-medium text-foreground shadow-sm sm:px-5"
+              >
+                <Square className="h-4 w-4 fill-current" />
+                停止
+              </button>
+            ) : (
+              <button
+                onClick={submit}
+                disabled={(!input.trim() && !attachments.length) || uploadingFiles || showLegacy || contextLoading || !loaded}
+                className="flex h-12 shrink-0 items-center gap-2 rounded-xl brand-gradient px-4 font-medium sm:px-5 text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send className="h-5 w-5" />
+                {editingLast ? '重新提问' : '发送'}
+              </button>
+            )}
           </div>
           <p className="mx-auto mt-2 hidden max-w-3xl text-center text-xs text-muted-foreground sm:block">
             💡 这里和选题、脚本、分镜共用同一段记忆——刚生成的内容可以直接接着聊。
@@ -695,6 +806,24 @@ export default function FreeChatPage() {
           </p>
         </div>
       </div>
+
+      {/* 结果画布：电脑上在右边并排，手机上全屏盖住（lib/canvas、components/chat/ResultCanvas） */}
+      {canvasIdx !== null && activeConv?.messages[canvasIdx]?.role === 'assistant' && (() => {
+        const msg = activeConv.messages[canvasIdx];
+        const versions: CanvasVersion[] = msg.canvas?.length ? msg.canvas : [{ content: msg.content, at: msg.timestamp, note: 'AI 原稿' }];
+        const firstUser = activeConv.messages.find((m) => m.role === 'user')?.content;
+        return (
+          <ResultCanvas
+            key={`${activeConv.id}:${canvasIdx}`}
+            versions={versions}
+            onChange={(v) => saveCanvas(canvasIdx, v)}
+            onClose={() => setCanvasIdx(null)}
+            profileContext={buildProfileContext()}
+            profileId={profile?.id || null}
+            creationContext={{ originContent: firstUser, settings: mergeCreationSettings(settingsFromText(firstUser || ''), activeConv.messages.slice(0, canvasIdx).filter((m) => m.role === 'user').at(-1)?.creationSettings) }}
+          />
+        );
+      })()}
     </div>
   );
 }
