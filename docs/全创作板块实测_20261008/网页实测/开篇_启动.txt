@@ -1,0 +1,170 @@
+2026-10-08T04:39:35.722Z
+https://www.biandao.icu/dashboard/growth?tab=opening
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - heading "起号" [level=1]
+  - paragraph: 起号 36+1 计决定「拍什么套路」，开篇 36 计决定「前三秒怎么说」。 两套都按你的真实资源来挑，不是把方法摆出来让你自己猜。
+  - button "起号打法37 计"
+  - button "开篇钩子36 张卡"
+  - paragraph:
+    - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+    - link "换一个":
+      - /url: /dashboard/profiles
+  - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+  - paragraph:
+    - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+    - link "在档案里调整":
+      - /url: /dashboard/profiles
+  - paragraph:
+    - text: 还没生成创作简报，这次只能用档案里的字段。
+    - link "去生成":
+      - /url: /dashboard/creative-brief
+    - text: （做完选题、脚本、分镜都会自动用上）
+  - paragraph: 刚生成的选题，点一条直接用：
+  - button "挑衣柜时别只看颜色，打开这两个门你就知道能不能买"
+  - button "衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做…"
+  - button "南方人和北方人挑衣柜,第一眼看的地方居然不一样"
+  - button "老师傅挑衣柜从来不问价格,上来就看这个位置"
+  - button "为什么有人买衣柜要蹲下来看?我今天才明白"
+  - generic: 这条内容讲什么 *
+  - textbox "比如：为什么我们家 60 多的自助敢用鲜切牛肉": 【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或免费服务；前三秒短而具体，后文能兑现。
+  - generic: 现在的开头（选填，想换掉就贴进来）
+  - textbox "贴上现有的开头，AI 会告诉你问题在哪并给替代方案": 买衣柜前，先别急着看颜色。
+  - paragraph: 不选的话 AI 会按内容目的自己挑。
+  - button "相关性 4 种 · 展开":
+    - generic: 相关性
+    - generic: 4 种 · 展开
+  - button "认知缺口 7 种 · 展开":
+    - generic: 认知缺口
+    - generic: 7 种 · 展开
+  - button "价值与损失 10 种 · 展开":
+    - generic: 价值与损失
+    - generic: 10 种 · 展开
+  - button "冲突与选择 1 种 · 展开":
+    - generic: 冲突与选择
+    - generic: 1 种 · 展开
+  - button "事件期待 5 种 · 展开":
+    - generic: 事件期待
+    - generic: 5 种 · 展开
+  - button "视觉与感官 9 种 · 展开":
+    - generic: 视觉与感官
+    - generic: 9 种 · 展开
+  - button "正在写开头… 0:00" [disabled]
+  - heading "开篇钩子" [level=2]
+- alert

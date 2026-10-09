@@ -1,0 +1,10 @@
+{
+  "bytes": 5272104,
+  "format": "kaiwu-account-export",
+  "researchJobs": 1,
+  "researchSources": 0,
+  "researchSkipped": null,
+  "hasInternalTokens": false,
+  "includesRecoveryQA": true,
+  "skippedTables": []
+}

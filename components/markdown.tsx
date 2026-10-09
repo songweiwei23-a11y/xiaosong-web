@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { remarkAutolinkBoundary } from "@/lib/remark-autolink-boundary";
 import type { ComponentProps } from "react";
 
 /**
@@ -46,7 +47,7 @@ function clean<T extends object>(props: T & { node?: unknown }): T {
 export function Markdown({ children, className }: MarkdownProps) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkAutolinkBoundary]}
       components={{
         table: (props: ComponentProps<"table">) => (
           <div className={`not-prose my-4 overflow-x-auto rounded-xl border border-border ${className ?? ""}`}>

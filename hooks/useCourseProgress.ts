@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { clampPassed, passLevel } from "@/lib/newbie-course";
+import { postSafely } from "@/lib/safe-post";
 
 const LOCAL_KEY = "kaiwu:course-passed";
 
@@ -53,7 +54,7 @@ export function useCourseProgress() {
       writeLocal(next);
       if (local) return;
       try {
-        const r = await fetch("/api/course-progress", {
+        const r = await postSafely("/api/course-progress", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),

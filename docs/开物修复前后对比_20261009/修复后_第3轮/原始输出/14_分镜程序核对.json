@@ -1,0 +1,10 @@
+{
+  "shots": 20,
+  "totalSeconds": 73,
+  "target": 52,
+  "diff": 21,
+  "longest": 6,
+  "closeUpRatio": 20,
+  "moveRatio": 25,
+  "issues": []
+}

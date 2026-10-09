@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Check, X, Crown, Zap, Rocket } from "lucide-react";
 import {
   SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints,
-  COUNTED_FEATURES, PAID_PERIOD_NOTE, WEB_SEARCH_LIMITS,
+  COUNTED_FEATURES, PAID_PERIOD_NOTE, WEB_SEARCH_LIMITS, DEEP_RESEARCH_LIMITS,
 } from "@/lib/config/plans";
 import { toneSoft } from "@/lib/ui-tokens";
 
@@ -33,7 +33,7 @@ export default function PricingPage() {
             选择适合你的套餐
           </h1>
           <p className="text-xl text-muted-foreground">
-            从免费版开始，按创作需求升级更多额度
+            从免费版开始，按创作需求升级；全部会员开放全部创作板块，专业会员、高频会员另含深度研究报告
           </p>
         </div>
 
@@ -161,6 +161,15 @@ export default function PricingPage() {
                     <td key={id} className="text-center py-3 px-3 sm:py-4 sm:px-4">{WEB_SEARCH_LIMITS[id]} 次{id === 'free' ? '（一次性）' : '/月'}</td>
                   ))}
                 </tr>
+                {/* 深度研究报告（2026-10-04）：只给专业会员、高频会员，单独一份次数 */}
+                <tr className="border-b border-border hover:bg-muted/50">
+                  <td className="sticky left-0 z-10 bg-card py-3 px-4 sm:py-4">深度研究报告</td>
+                  {(['free', 'basic', 'pro', 'enterprise'] as const).map((id) => (
+                    <td key={id} className="text-center py-3 px-3 sm:py-4 sm:px-4">
+                      {DEEP_RESEARCH_LIMITS[id] ? `${DEEP_RESEARCH_LIMITS[id]} 份/月` : <X className="w-5 h-5 text-destructive mx-auto" />}
+                    </td>
+                  ))}
+                </tr>
               </tbody>
             </table>
           </div>
@@ -185,7 +194,7 @@ export default function PricingPage() {
             <div className="bg-card p-6 rounded-xl border border-border">
               {/* 原答案是「提供API接口、批量处理、数据导出、定制化模板等」，四样都没有做 */}
               <h3 className="font-bold mb-2">高频会员和专业会员差在哪？</h3>
-              <p className="text-sm text-muted-foreground">高频会员每类创作额度各 {SUBSCRIPTION_PLANS.enterprise.quotas.script} 次/月、知识库查询 {SUBSCRIPTION_PLANS.enterprise.quotas.knowledge} 次/月、联网搜索 {WEB_SEARCH_LIMITS.enterprise} 次/月；专业会员分别为 {SUBSCRIPTION_PLANS.pro.quotas.script} 次、{SUBSCRIPTION_PLANS.pro.quotas.knowledge} 次、{WEB_SEARCH_LIMITS.pro} 次。四个定位板块共享定位额度，脚本、起号、开篇共享脚本额度。两档都支持全部创作功能。</p>
+              <p className="text-sm text-muted-foreground">高频会员每类创作额度各 {SUBSCRIPTION_PLANS.enterprise.quotas.script} 次/月、知识库查询 {SUBSCRIPTION_PLANS.enterprise.quotas.knowledge} 次/月、联网搜索 {WEB_SEARCH_LIMITS.enterprise} 次/月、深度研究报告 {DEEP_RESEARCH_LIMITS.enterprise} 份/月；专业会员分别为 {SUBSCRIPTION_PLANS.pro.quotas.script} 次、{SUBSCRIPTION_PLANS.pro.quotas.knowledge} 次、{WEB_SEARCH_LIMITS.pro} 次、{DEEP_RESEARCH_LIMITS.pro} 份。深度研究报告只有这两档有。四个定位板块共享定位额度，脚本、起号、开篇共享脚本额度。两档都支持全部创作功能。</p>
             </div>
           </div>
         </div>

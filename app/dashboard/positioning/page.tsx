@@ -8,9 +8,11 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { putHandoff, takeHandoff } from "@/lib/handoff";
+import { buildCreationHandoff } from '@/lib/creation-flow';
+import { openCreationSafely } from '@/lib/creation-session';
+import { useCreationBridge } from '@/hooks/useCreationBridge';
 import { incomingNote } from "@/lib/creation-flow";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
@@ -119,12 +121,13 @@ export default function PositioningPage() {
 
   // 别的板块「继续创作」带过来的内容（比如自由对话里聊清楚的账号方向）：填进补充说明（2026-10-02）
   const [handoffFrom, setHandoffFrom] = useState("");
+  const bridge = useCreationBridge('账号定位', 'positioning', activeProfile?.id, loadingProfile);
   useEffect(() => {
-    const data = takeHandoff();
+    const data = bridge.payload;
     if (!data?.sourceContent) return;
     setAdditionalNotes(incomingNote(data));
     setHandoffFrom(data.from || "其他板块");
-  }, []);
+  }, [bridge.payload]);
 
   // 加载当前档案
   useEffect(() => {
@@ -153,10 +156,15 @@ export default function PositioningPage() {
     return () => clearInterval(t)
   }, [isGenerating])
 
+  const loadedProfileScope = useRef<string | null | undefined>(undefined);
   const loadActiveProfile = async () => {
     setLoadingProfile(true)
     try {
       const activeId = getActiveProfileId()
+      if (loadedProfileScope.current !== undefined && loadedProfileScope.current !== activeId) {
+        setResult(''); setAdditionalNotes(''); setHandoffFrom(''); setPositionings([]); setSelectedPositioning(null);
+      }
+      loadedProfileScope.current = activeId;
       if (!activeId) {
         console.log('⚠️ 未找到激活的档案')
         setLoadingProfile(false)
@@ -167,7 +175,7 @@ export default function PositioningPage() {
       if (res.ok) {
         const profiles = await res.json()
         const active = profiles.find((p: Profile) => p.id === activeId)
-        if (active) {
+        if (active && getActiveProfileId() === activeId) {
           setActiveProfile(active)
         }
       }
@@ -188,6 +196,7 @@ export default function PositioningPage() {
       )
       if (res.ok) {
         const data = await res.json()
+        if (getActiveProfileId() !== activeProfile.id) return
         setPositionings(data)
         console.log(`✅ 加载了 ${data.length} 个定位`)
 
@@ -258,7 +267,7 @@ export default function PositioningPage() {
       outputSpec: depth === "quick" ? buildQuickOutputSpec() : undefined,
       mixBlock: mixPromptBlock(resolveMix(activeProfile as unknown as Record<string, unknown>, mixOverride, additionalNotes)),
       taboos: taboosPromptBlock(activeProfile),
-    });
+    }) + bridge.prompt;
 
     try {
       const response = await fetchGeneration("/api/dify/stream", {
@@ -269,6 +278,7 @@ export default function PositioningPage() {
           // 记忆按档案隔离：定位是"这个号该做什么"的判断，绝不能串到别的号上。
           profileId: activeProfile?.id || null,
           query,
+          creationSettings: bridge.creationSettings,
           // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           profileInfo: profileSummary,
           // 赛道、地域进检索词：联网搜索才能搜到这个号相关的行情，不是通用文章
@@ -295,7 +305,9 @@ export default function PositioningPage() {
         await savePositioning(fullResult)
         
         // 保存生成历史
-        await saveGenerationHistory("账号定位", { profileSummary, additionalNotes, profileId: activeProfile?.id || null }, fullResult);
+        const historyInput = { profileSummary, additionalNotes, profileId: activeProfile?.id || null, creationSettings: bridge.creationSettings, originContent: bridge.originContent || additionalNotes };
+        await saveGenerationHistory("账号定位", historyInput, fullResult);
+        bridge.rememberResult(fullResult, historyInput);
 
         // 增加配额使用
         // 打开持续对话，传递 conversation_id
@@ -354,7 +366,7 @@ export default function PositioningPage() {
     if (!await confirmDialog('确定要删除这个定位方案吗？', { tone: 'danger', confirmText: '删除', title: '确认删除' })) return
 
     try {
-      const res = await fetch(`/api/positioning?id=${id}`, { method: 'DELETE' })
+      const res = await postSafely(`/api/positioning?id=${id}`, { method: 'DELETE' })
       if (res.ok) {
         loadPositionings()
         if (selectedPositioning?.id === id) {
@@ -637,6 +649,7 @@ export default function PositioningPage() {
         result={result}
         isGenerating={isGenerating}
         title={viewMode === "summary" ? "选题摘要" : "定位方案"}
+        flowContext={bridge.flowContext(result)}
         showStats={false}
         emptyIcon={Target}
         emptyTitle="基于档案生成定位方案"
@@ -675,8 +688,7 @@ export default function PositioningPage() {
             </div>
             <button
               onClick={() => {
-                putHandoff({ from: '账号定位' });
-                router.push('/dashboard/creative-brief');
+                void openCreationSafely(buildCreationHandoff('positioning', 'creative-brief', result, bridge.flowContext(result)), url => router.push(url), message => notify(message, 'error'));
               }}
               className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground"
             >
@@ -718,6 +730,10 @@ export default function PositioningPage() {
               }),
             })
             if (!res.ok) return false
+            const prior = bridge.flowContext(result)
+            const historyInput = { profileId: activeProfile?.id || null, creationSettings: prior.settings || bridge.creationSettings, originContent: prior.originContent || bridge.originContent || additionalNotes }
+            await saveGenerationHistory('账号定位', historyInput, next)
+            bridge.rememberResult(next, historyInput)
             setResult(next)
             setSelectedPositioning((cur) => (cur ? { ...cur, full_content: next } : cur))
             // 简报和各板块缓存的上下文要作废，否则接着生成用的还是旧的

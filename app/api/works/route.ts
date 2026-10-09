@@ -3,6 +3,8 @@ import { requireUser } from '@/lib/api-guard'
 import { getServerSupabase } from '@/lib/admin-auth'
 import { STAGE_ORDER, OPTIONAL_STAGES } from '@/lib/resume'
 import { readMetrics } from '@/lib/performance'
+import { fetchAllPages } from '@/lib/db-pages'
+import { DEFAULT_PROFILE_SCOPE, PROFILE_UUID } from '@/lib/profile-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +22,16 @@ function stageDone(stage: string, done: string[]): boolean {
   return stage === '选题策划' || done.includes(stage)
 }
 
+/** 创作进度的分组，和 lib/works 的 progressGroup 同一口径 */
+type WorkGroup = 'active' | 'toShoot' | 'shot' | 'published'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase 查询链
+const GROUPS: Record<WorkGroup, (q: any) => any> = {
+  active: (q) => q.eq('shoot_status', 'none').eq('is_done', false),
+  toShoot: (q) => q.eq('shoot_status', 'none').eq('is_done', true),
+  shot: (q) => q.eq('shoot_status', 'shot'),
+  published: (q) => q.eq('shoot_status', 'published'),
+}
+
 export async function GET(request: Request) {
   const guard = await requireUser()
   if (!guard.ok) return guard.response!
@@ -29,6 +41,14 @@ export async function GET(request: Request) {
   const id = searchParams.get('id')
   const limitRaw = Number(searchParams.get('limit'))
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 50) : 20
+  /*
+   * 按档案隔离（2026-10-04 产品方：「档案 1 生成的内容只在档案 1 里，档案 2 看不到」）。
+   * ?profileId=档案编号 只看这个档案的作品；?profileId=default 只看没挂档案的旧作品；不传是全部（单条读取、导出这类用）。
+   */
+  const scopeRaw = searchParams.get('profileId')
+  if (scopeRaw && scopeRaw !== DEFAULT_PROFILE_SCOPE && !PROFILE_UUID.test(scopeRaw)) return NextResponse.json({ error: '档案编号不正确' }, { status: 400 })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase 查询链
+  const byProfile = <T,>(q: T): T => (!scopeRaw ? q : scopeRaw === DEFAULT_PROFILE_SCOPE ? (q as any).is('profile_id', null) : (q as any).eq('profile_id', scopeRaw))
 
   // 单个作品：连同它的全部环节一起返回
   if (id) {
@@ -53,23 +73,49 @@ export async function GET(request: Request) {
     return NextResponse.json({ ...work, items: items ?? [] })
   }
 
+  /*
+   * 各组数量（2026-10-04）：创作进度页顶部的「创作中 / 待拍摄 / 已拍摄 / 已发布」。
+   * 原来是把最近 50 条取回来在浏览器里数，第 51 条以后的作品既看不到也不算数。现在用数据库计数。
+   */
+  if (searchParams.get('counts') === '1') {
+    const head = () => byProfile(supabase.from('works').select('id', { count: 'exact', head: true }).eq('user_id', guard.userId!))
+    const rs = await Promise.all((Object.keys(GROUPS) as WorkGroup[]).map((g) => GROUPS[g](head())))
+    const bad = rs.find((r) => r.error)
+    if (bad?.error) {
+      if (/shoot_status/.test(bad.error.message)) return NextResponse.json({ error: '拍摄状态还没启用：请先在 Supabase 执行 20261002_library_and_progress.sql' }, { status: 503 })
+      return NextResponse.json({ error: bad.error.message }, { status: 500 })
+    }
+    const counts = Object.fromEntries((Object.keys(GROUPS) as WorkGroup[]).map((g, i) => [g, rs[i].count ?? 0]))
+    return NextResponse.json({ ...counts, all: Object.values(counts).reduce((a, b) => a + b, 0) })
+  }
+
   // 列表：一次把这些作品的环节全查出来再归组，
-  // 逐个作品查一次会变成 N+1 次请求，列表越长越慢
-  const { data: works, error } = await supabase
+  // 逐个作品查一次会变成 N+1 次请求，列表越长越慢。
+  // ?offset= 翻页、?group= 只看某一组（2026-10-04），不再只给最近 50 条
+  const offsetRaw = Number(searchParams.get('offset'))
+  const offset = Number.isInteger(offsetRaw) && offsetRaw > 0 ? offsetRaw : 0
+  const group = searchParams.get('group') as WorkGroup | null
+  let listQuery = byProfile(supabase
     .from('works')
     .select('*')
-    .eq('user_id', guard.userId!)
+    .eq('user_id', guard.userId!))
+  if (group && GROUPS[group]) listQuery = GROUPS[group](listQuery)
+  const { data: works, error } = await listQuery
     .order('updated_at', { ascending: false })
-    .limit(limit)
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!works || works.length === 0) return NextResponse.json([])
 
-  const { data: items } = await supabase
+  // 按页取完：50 条作品各有好几版时会超过数据库一次 1000 行的上限，后面的环节会被算成「没做」
+  const items = await fetchAllPages<{ work_id: string | null; task_type: string }>((from, to) => supabase
     .from('script_history')
     .select('id, work_id, task_type, created_at')
     .eq('user_id', guard.userId!)
     .in('work_id', works.map((w) => w.id))
+    .order('id')
+    .range(from, to)).catch(() => [])
 
   const byWork = new Map<string, string[]>()
   for (const it of items ?? []) {
@@ -178,6 +224,24 @@ export async function PUT(request: Request) {
    * 校验一遍再存（lib/performance 的 readMetrics），传 null 表示清空
    */
   if (body.metrics !== undefined) patch.metrics = body.metrics === null ? null : readMetrics(body.metrics)
+  /*
+   * 数据对应哪一版稿子（2026-10-04）：取这条作品最新的审稿 / 脚本记录（含画布改稿），记进 metrics.contentVersion。
+   * 前端传来的不信，以服务端查到的为准；查不到就不记
+   */
+  if (patch.metrics && typeof patch.metrics === 'object') {
+    const { data: latest } = await supabase
+      .from('script_history')
+      .select('id, task_type, created_at')
+      .eq('user_id', guard.userId!)
+      .eq('work_id', id)
+      .in('task_type', ['审稿优化', '脚本生成'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const m = patch.metrics as Record<string, unknown>
+    delete m.contentVersion
+    if (latest) m.contentVersion = { historyId: latest.id, taskType: latest.task_type, at: latest.created_at }
+  }
 
   const { data, error } = await supabase
     .from('works')

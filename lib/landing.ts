@@ -6,15 +6,16 @@
  */
 
 /**
- * 首页公开体验码。邀请制保留，但从首页点进注册页时自动带上这个码，
- * 小白感觉不到要找码这回事。
- * 必须和 supabase/migrations/20260928_public_trial_code.sql 插入的那个码一致；
- * 名额满了或要停用，在后台邀请码列表里作废，再换一个新码改这里。
+ * 首页所有"去注册"的按钮都走这个地址：直接打开注册页。
+ *
+ * 2026-10-04 产品方：注册必须用邀请码，首页不再自动带公开体验码（原来带的是 START26），
+ * 想要邀请码必须找管理员。那个公开码由 supabase/migrations/20261004_revoke_public_trial_code.sql 作废。
+ * 管理员单独发给某个人的注册链接仍然可以带码（/login?mode=register&code=XXXX），登录页会自动填好。
  */
-export const PUBLIC_TRIAL_CODE = 'START26';
+export const REGISTER_URL = '/login?mode=register';
 
-/** 首页所有"去注册"的按钮都走这个地址：直接打开注册、码已填好 */
-export const REGISTER_URL = `/login?mode=register&code=${PUBLIC_TRIAL_CODE}`;
+/** 注册页提示：邀请码找谁要 */
+export const INVITE_CONTACT = '注册需要邀请码。请加管理员微信 13240286600（手机同号）领取。';
 
 export interface IndustrySample {
   id: string;

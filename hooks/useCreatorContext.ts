@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { CreatorContext, CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { BRIEF_TYPE } from "@/lib/creative-brief";
+import { fetchActivePreset } from "@/lib/creator-presets";
+import { fetchActivePreferences } from "@/lib/preferences-client";
 
 /**
  * 取当前账号的创作上下文：档案 + 定位 + 成交理由。
@@ -111,7 +113,12 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       }
     }
 
-    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts, performance };
+    // 风格预设（lib/creator-presets）：这个档案在用的那份；没有或表没建都当没有，不挡生成
+    const preset = await fetchActivePreset(profile?.id ?? profileId);
+    // 我的创作偏好（lib/preferences）：学习开着时生效的那几条；读不到当没有，不挡生成
+    const preferences = await fetchActivePreferences(profile?.id ?? profileId);
+
+    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, preset, preferences };
     if (version === cacheVersion) cache.set(key, ctx);
     return ctx;
   })();

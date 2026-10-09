@@ -1,0 +1,101 @@
+{
+  "time": "2026-10-07T03:55:51.185Z",
+  "scope": "临时隔离账号通过正式网站HTTP接口验收；不使用客户会话或配额，不替代页面点击验收",
+  "checks": [
+    {
+      "name": "数据库完整保存恢复 breakdown",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 remix",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 review",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 storyboard",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 topic",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 script",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 title",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 growth",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 free-chat",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 positioning",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 content-positioning",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 business-positioning",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 deal-reason",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 direction",
+      "passed": true
+    },
+    {
+      "name": "数据库完整保存恢复 creative-brief",
+      "passed": true
+    },
+    {
+      "name": "创作快照账号隔离",
+      "passed": true
+    },
+    {
+      "name": "同作品混合目的不复活旧单一目的",
+      "passed": true
+    },
+    {
+      "name": "数据库不会合并回来已清除旧脚本",
+      "passed": true
+    },
+    {
+      "name": "全部产出保留生成时的原意",
+      "passed": true
+    },
+    {
+      "name": "收藏再打开仍保留原意",
+      "passed": true
+    },
+    {
+      "name": "页面验收会话创建",
+      "passed": true
+    }
+  ],
+  "answers": [],
+  "cleanup": [],
+  "harnessCorrections": [
+    "脚本生成历史使用script-history接口（creative-history只接受拆解、二创与创作方向）",
+    "素材详情从item读取"
+  ],
+  "detailRetest": {
+    "historyStatus": 200,
+    "detailStatus": 200,
+    "favoriteStatus": 200
+  }
+}

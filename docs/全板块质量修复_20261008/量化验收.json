@@ -1,0 +1,149 @@
+{
+  "scope": "针对已定位缺陷的回放与正式模型校对，不能代表全平台文案质量、创意、流量或长期稳定性提升百分比",
+  "review": {
+    "sampleCount": 1,
+    "before": {
+      "dimensionsSum": 92,
+      "reportedTotal": 82
+    },
+    "after": {
+      "dimensionsSum": 92,
+      "reportedTotal": 92
+    },
+    "note": "只修正算术，分项评价不变，不把8.2变9.2解释成原稿质量提升"
+  },
+  "titleCounts": {
+    "sampleCount": 3,
+    "before": [
+      22,
+      23,
+      23
+    ],
+    "after": [
+      19,
+      19,
+      20
+    ],
+    "correctBefore": 0,
+    "correctAfter": 3,
+    "unit": "不含标点和空格的Unicode字母与数字"
+  },
+  "businessLines": {
+    "fixture": {
+      "product_category": [
+        "沙发",
+        "床",
+        "衣柜",
+        "沙发、床、衣柜"
+      ],
+      "account_track": [
+        "家居家装"
+      ]
+    },
+    "before": [
+      "沙发",
+      "床",
+      "衣柜",
+      "沙发、床、衣柜",
+      "家居家装"
+    ],
+    "after": [
+      "沙发",
+      "床",
+      "衣柜"
+    ]
+  },
+  "analysisSelection": {
+    "sampleCount": 1,
+    "before": [
+      {
+        "label": "开篇钩子",
+        "kind": "script"
+      },
+      {
+        "label": "脚本结构",
+        "kind": "script"
+      },
+      {
+        "label": "信息递进",
+        "kind": "script"
+      },
+      {
+        "label": "情绪设计",
+        "kind": "script"
+      },
+      {
+        "label": "结尾行动",
+        "kind": "script"
+      }
+    ],
+    "after": [
+      {
+        "id": "item-1",
+        "label": "选题1:教知识·避坑型",
+        "topic": "定制衣柜,别只看商家给的效果图——这三个地方不写进合同,后期全是坑",
+        "kind": "topic",
+        "body": "#### 选题1:教知识·避坑型\n\n标题:定制衣柜,别只看商家给的效果图——这三个地方不写进合同,后期全是坑\n开篇钩子:\"效果图画得再好看,交钱之后板材、五金、封边全给你换——今天就说说合同里必须写清楚的三件事\"\n承接点:同样是\"帮客户避坑\",从尺寸延伸到合同条款"
+      },
+      {
+        "id": "item-2",
+        "label": "选题2:晒过程·透明化",
+        "topic": "今天有个客人专门跑三家店,就为了验证我说的这句话是不是真的",
+        "kind": "topic",
+        "body": "#### 选题2:晒过程·透明化\n\n标题:今天有个客人专门跑三家店,就为了验证我说的这句话是不是真的\n开篇钩子:\"他说网上都说商家柜门打开里面偷工减料,今天我当着他的面把样柜全拆了\"\n承接点:用\"到店验证\"行为,升级为\"透明展示\"故事"
+      },
+      {
+        "id": "item-3",
+        "label": "选题3:36计·第17计 替网友做",
+        "topic": "粉丝让我去隔壁建材城,看看X元一米的定制柜到底什么配置",
+        "kind": "topic",
+        "body": "#### 选题3:36计·第17计 替网友做\n\n标题:粉丝让我去隔壁建材城,看看X元一米的定制柜到底什么配置\n开篇钩子:\"评论区问了三天,今天我真去了——现场让老板报价,你们自己看值不值\"\n承接点:把\"到店试样柜\"变成\"替观众探店测评\""
+      }
+    ]
+  },
+  "cutoff": {
+    "sampleCount": 1,
+    "observedHasEndEvent": true,
+    "beforeAccepted": true,
+    "afterRejected": true,
+    "scope": "极窄的未写完结构标签识别，不是通用完整性验证"
+  },
+  "pendingInterviewTitles": {
+    "batches": 2,
+    "titleCount": 6,
+    "beforeStateCompatible": 2,
+    "afterStateCompatible": 6,
+    "deltaPercentagePoints": 66.7,
+    "scope": "两份已生成失败产物进行独立校对回放；只评价尚未采访状态兼容，不代表标题综合质量或点击率"
+  },
+  "remixCount": {
+    "sampleCount": 1,
+    "requested": 1,
+    "before": 2,
+    "after": 1,
+    "scope": "仅数量通过；未以此认定其内容事实和镜头资源全部合格"
+  },
+  "unitTests": {
+    "files": 154,
+    "passed": 3082,
+    "total": 3082,
+    "failed": 0
+  },
+  "release": {
+    "candidateBuild": "i-_ar1_VNXMmSW7YiCveb",
+    "observedCurrentBuild": "i-_ar1_VNXMmSW7YiCveb",
+    "candidateSourceFiles": 10,
+    "status": "deployed_post_release_validation_in_progress",
+    "reason": "用户明确授权上线后执行切换；10个文件哈希匹配，公网登录200、健康接口204，未登录生成接口401",
+    "candidateHealth": {
+      "login": 200,
+      "publicPing": 204,
+      "unauthenticatedStream": 401,
+      "sourceHashMatches": 10
+    },
+    "candidateRuntime": "候选已转为正式目录；临时预览进程已删除",
+    "previousBuild": "VF2jcy8WLgiU0KsNJIvez",
+    "backup": "/var/www/xiaosong-backup-content-repair-20261008",
+    "deployedAtUTC": "2026-10-08T07:37:44Z"
+  }
+}

@@ -5,7 +5,7 @@ import { History, MessageCircle, Trash2, ChevronDown, Type, Clock } from "lucide
 import {
   extractTitle,
   splitQualityReport,
-  estimateSpeechStats,
+  resultStats,
   formatDuration,
   formatRelativeTime,
   parseQualitySummary,
@@ -125,7 +125,7 @@ function HistoryRow({
 }) {
   const { body, report } = splitQualityReport(item.result || "");
   const title = extractTitle(body);
-  const stats = estimateSpeechStats(body);
+  const stats = resultStats(body);
   const quality = parseQualitySummary(report);
 
   return (
@@ -155,11 +155,11 @@ function HistoryRow({
           <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
             {/* 相对时间在服务端与客户端必然算出不同的值，以客户端为准 */}
             <span suppressHydrationWarning>{formatRelativeTime(item.created_at)}</span>
-            {showStats && stats.chars > 0 && (
+            {showStats && stats.spokenChars > 0 && (
               <>
                 <span className="flex items-center gap-0.5">
                   <Type className="h-3 w-3" />
-                  {stats.chars}
+                  {stats.spokenChars}
                 </span>
                 <span className="flex items-center gap-0.5">
                   <Clock className="h-3 w-3" />
@@ -167,17 +167,10 @@ function HistoryRow({
                 </span>
               </>
             )}
-            {showQuality && quality.score !== null && (
-              <span
-                className={
-                  quality.score >= 9
-                    ? "text-emerald-500"
-                    : quality.score >= 8
-                      ? "text-amber-500"
-                      : "text-destructive"
-                }
-              >
-                {quality.score.toFixed(1)} 分
+            {/* 2026-10-05：不再显示「9.0 分」，只说结构要素齐不齐（分数没校准过，给人的可信感太强） */}
+            {showQuality && (quality.structure || quality.score !== null) && (
+              <span className={quality.passed ? "text-emerald-500" : "text-amber-500"}>
+                {quality.passed ? "结构齐全" : "结构待补"}
               </span>
             )}
           </div>

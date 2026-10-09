@@ -1,0 +1,139 @@
+2026-10-08T03:59:33.436Z
+https://www.biandao.icu/dashboard/free-chat
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "收起列表":
+- generic "可以接着最近一次创作聊，也可从各板块点「继续对话」带入指定稿件。想彻底换个话题就点「新建对话」。确认云端同步成功后，换设备也能接着聊。":
+  - generic: 高阶自由模式
+  - generic: 🆕 从头开始 · 选题·脚本·打磨都能聊
+- status:
+  - generic: 正在同步云端…
+  - button "导出完整历史":
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - button "新建对话":
+    - text: 新建对话
+  - generic: 【全板块测试·独立采访任务】本轮与家
+  - button "删除对话":
+  - button "查看以前未关联档案的对话"
+  - paragraph: 【全板块测试·独立采访任务】本轮与家具店无关。我是县城编导，计划采访同一条街的商家，比较国庆前后生意变化，给全国实体店老板看，不是代运营获客广告。尚未采访，没有答案、收入数字或账本。一人手机，90秒以内。请给共同主问、不同回答的追问办法、可比较的现场记录口径和后期组织方案；不要预写受访者回答、采访家数和结论。
+  - textbox "自由输入…（Enter 发送，Shift+Enter 换行）" [disabled]
+  - button "上传图片 / 文件" [disabled]:
+    - generic: 上传
+  - button "出方案":
+    - generic: 出方案
+  - button "深度研究":
+    - generic: 深度研究
+  - combobox "联网模式" [disabled]:
+    - option "按需联网"
+    - option "本轮联网"
+    - option "关闭联网" [selected]
+  - status:
+    - text: 联网本期剩余 135 / 150 次
+  - button "停止" [active]:
+    - text: 停止
+  - paragraph: 💡 和选题、脚本、分镜共用记忆，刚生成的可以直接接着聊 · 换话题点「新建对话」
+- alert

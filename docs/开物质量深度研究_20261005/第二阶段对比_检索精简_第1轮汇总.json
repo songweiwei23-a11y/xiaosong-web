@@ -1,0 +1,654 @@
+{
+ "summary": {
+  "time": "2026-10-05T11:38:25.085Z",
+  "variant": "B = 每组检索 4→2 条、相关度门槛 0.2，其余不变",
+  "A": {
+   "prompt_median": 33115,
+   "first_median": 7918,
+   "total_median": 29419,
+   "kb_total": 400,
+   "errors": 0,
+   "fact_flags": 12,
+   "regression_pass": "2/7"
+  },
+  "B": {
+   "prompt_median": 21266,
+   "first_median": 7437,
+   "total_median": 30769,
+   "kb_total": 200,
+   "errors": 0,
+   "fact_flags": 5,
+   "regression_pass": "3/7"
+  }
+ },
+ "rows": [
+  {
+   "id": "S1",
+   "task": "脚本生成",
+   "A": {
+    "firstMs": 14602,
+    "totalMs": 36534,
+    "prompt": 32117,
+    "completion": 1005,
+    "kb": 20,
+    "chars": 936,
+    "err": "",
+    "facts": [
+     "模型自称「无虚构」——以这里的核对为准，别信这句"
+    ]
+   },
+   "B": {
+    "firstMs": 14576,
+    "totalMs": 37769,
+    "prompt": 21266,
+    "completion": 1159,
+    "kb": 10,
+    "chars": 1096,
+    "err": "",
+    "facts": [
+     "模型自称「自检通过」——以这里的核对为准，别信这句"
+    ]
+   }
+  },
+  {
+   "id": "S2",
+   "task": "脚本生成",
+   "A": {
+    "firstMs": 7752,
+    "totalMs": 26615,
+    "prompt": 32127,
+    "completion": 949,
+    "kb": 20,
+    "chars": 903,
+    "err": "",
+    "facts": [
+     "模型自称「无虚构」——以这里的核对为准，别信这句"
+    ]
+   },
+   "B": {
+    "firstMs": 6897,
+    "totalMs": 25385,
+    "prompt": 21266,
+    "completion": 949,
+    "kb": 10,
+    "chars": 874,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "T1",
+   "task": "选题策划",
+   "A": {
+    "firstMs": 8082,
+    "totalMs": 61941,
+    "prompt": 34584,
+    "completion": 2778,
+    "kb": 20,
+    "chars": 2545,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7800,
+    "totalMs": 64743,
+    "prompt": 23321,
+    "completion": 2823,
+    "kb": 10,
+    "chars": 2577,
+    "err": "",
+    "facts": [
+     "经营承诺「坑的,就是这种\"免费设计\" *」老板没说过要这样做",
+     "经营承诺「钩子→展示常见\"免费设计\"套路(」老板没说过要这样做",
+     "地名「方潮湿地区」档案和素材里都没有"
+    ]
+   }
+  },
+  {
+   "id": "R1",
+   "task": "审稿优化",
+   "A": {
+    "firstMs": 6544,
+    "totalMs": 29419,
+    "prompt": 32325,
+    "completion": 1137,
+    "kb": 20,
+    "chars": 1139,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 6370,
+    "totalMs": 24616,
+    "prompt": 21293,
+    "completion": 900,
+    "kb": 10,
+    "chars": 867,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "M1",
+   "task": "跨行业二创",
+   "A": {
+    "firstMs": 8016,
+    "totalMs": 52464,
+    "prompt": 30498,
+    "completion": 2726,
+    "kb": 20,
+    "chars": 2681,
+    "err": "",
+    "facts": [
+     "模型自称「自检通过」——以这里的核对为准，别信这句",
+     "地名「柜常见误区」档案和素材里都没有",
+     "地名「被褥区」档案和素材里都没有",
+     "地名「尺寸误区」档案和素材里都没有",
+     "地名「帮你算分区」档案和素材里都没有",
+     "地名「从误区」档案和素材里都没有",
+     "地名「常用区」档案和素材里都没有"
+    ]
+   },
+   "B": {
+    "firstMs": 7768,
+    "totalMs": 44971,
+    "prompt": 21064,
+    "completion": 2156,
+    "kb": 10,
+    "chars": 2148,
+    "err": "",
+    "facts": [
+     "模型自称「无编造」——以这里的核对为准，别信这句"
+    ]
+   }
+  },
+  {
+   "id": "F1",
+   "task": "自由对话",
+   "A": {
+    "firstMs": 8327,
+    "totalMs": 15230,
+    "prompt": 27977,
+    "completion": 521,
+    "kb": 20,
+    "chars": 708,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7880,
+    "totalMs": 13249,
+    "prompt": 18102,
+    "completion": 384,
+    "kb": 10,
+    "chars": 512,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "D1",
+   "task": "自由对话",
+   "A": {
+    "firstMs": 8284,
+    "totalMs": 12329,
+    "prompt": 27679,
+    "completion": 198,
+    "kb": 20,
+    "chars": 260,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7529,
+    "totalMs": 11602,
+    "prompt": 17185,
+    "completion": 259,
+    "kb": 10,
+    "chars": 330,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "W1",
+   "task": "自由对话",
+   "A": {
+    "firstMs": 14010,
+    "totalMs": 21639,
+    "prompt": 39048,
+    "completion": 410,
+    "kb": 20,
+    "chars": 554,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 12650,
+    "totalMs": 24114,
+    "prompt": 30057,
+    "completion": 526,
+    "kb": 10,
+    "chars": 730,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "B1",
+   "task": "分镜脚本",
+   "A": {
+    "firstMs": 8043,
+    "totalMs": 24073,
+    "prompt": 30177,
+    "completion": 982,
+    "kb": 20,
+    "chars": 956,
+    "err": "",
+    "facts": [
+     "地名「样柜展示区」档案和素材里都没有"
+    ]
+   },
+   "B": {
+    "firstMs": 7930,
+    "totalMs": 25563,
+    "prompt": 19943,
+    "completion": 1149,
+    "kb": 10,
+    "chars": 1083,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "P1",
+   "task": "创作方向",
+   "A": {
+    "firstMs": 7493,
+    "totalMs": 74331,
+    "prompt": 32452,
+    "completion": 2951,
+    "kb": 20,
+    "chars": 2737,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7145,
+    "totalMs": 55194,
+    "prompt": 20982,
+    "completion": 2090,
+    "kb": 10,
+    "chars": 1991,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "R2",
+   "task": "审稿优化",
+   "A": {
+    "firstMs": 6633,
+    "totalMs": 54656,
+    "prompt": 36265,
+    "completion": 3042,
+    "kb": 20,
+    "chars": 2968,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7275,
+    "totalMs": 59702,
+    "prompt": 24782,
+    "completion": 3091,
+    "kb": 10,
+    "chars": 3068,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "C1",
+   "task": "画布改写",
+   "A": {
+    "firstMs": 9913,
+    "totalMs": 11615,
+    "prompt": 31452,
+    "completion": 58,
+    "kb": 20,
+    "chars": 50,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7437,
+    "totalMs": 8546,
+    "prompt": 19625,
+    "completion": 32,
+    "kb": 10,
+    "chars": 27,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "N1",
+   "task": "美甲选题",
+   "A": {
+    "firstMs": 7918,
+    "totalMs": 32298,
+    "prompt": 30892,
+    "completion": 1352,
+    "kb": 20,
+    "chars": 1246,
+    "err": "",
+    "facts": [
+     "价格「的真话：88元和288元的区别不」档案和素材里都没有",
+     "地名「元的区」档案和素材里都没有"
+    ]
+   },
+   "B": {
+    "firstMs": 8009,
+    "totalMs": 39398,
+    "prompt": 19709,
+    "completion": 1437,
+    "kb": 10,
+    "chars": 1335,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "回归:创作方向",
+   "task": "回归:创作方向",
+   "A": {
+    "firstMs": 10077,
+    "totalMs": 65532,
+    "prompt": 34588,
+    "completion": 2568,
+    "kb": 20,
+    "chars": 2446,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   },
+   "B": {
+    "firstMs": 8835,
+    "totalMs": 62501,
+    "prompt": 22714,
+    "completion": 2484,
+    "kb": 10,
+    "chars": 2340,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "taboo",
+       "detail": "「极致」— 广告法红线"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "回归:审稿优化",
+   "task": "回归:审稿优化",
+   "A": {
+    "firstMs": 6891,
+    "totalMs": 58343,
+    "prompt": 37179,
+    "completion": 3211,
+    "kb": 20,
+    "chars": 3155,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "facts",
+       "detail": "经营承诺「到店报抖音粉丝再送一份蘸料!\"」老板没说过要这样做"
+      },
+      {
+       "kind": "facts",
+       "detail": "地名「是那股家乡」档案和素材里都没有"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 6217,
+    "totalMs": 52318,
+    "prompt": 25305,
+    "completion": 2846,
+    "kb": 10,
+    "chars": 2844,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   }
+  },
+  {
+   "id": "回归:画布改写",
+   "task": "回归:画布改写",
+   "A": {
+    "firstMs": 4962,
+    "totalMs": 6173,
+    "prompt": 33655,
+    "completion": 58,
+    "kb": 20,
+    "chars": 47,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   },
+   "B": {
+    "firstMs": 7116,
+    "totalMs": 8009,
+    "prompt": 21781,
+    "completion": 32,
+    "kb": 10,
+    "chars": 28,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   }
+  },
+  {
+   "id": "回归:美甲选题",
+   "task": "回归:美甲选题",
+   "A": {
+    "firstMs": 4997,
+    "totalMs": 42946,
+    "prompt": 33135,
+    "completion": 1887,
+    "kb": 20,
+    "chars": 1717,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "years",
+       "detail": "「**：在杭州开美甲店1年，我把」和事实卡对不上"
+      },
+      {
+       "kind": "facts",
+       "detail": "百分比「容配比：流量型 60% / 人」没有出处"
+      },
+      {
+       "kind": "facts",
+       "detail": "百分比「% / 人设型 25% / 变」没有出处"
+      },
+      {
+       "kind": "facts",
+       "detail": "百分比「% / 变现型 15% --」没有出处"
+      },
+      {
+       "kind": "facts",
+       "detail": "地名「好的接待区」档案和素材里都没有"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 6594,
+    "totalMs": 30769,
+    "prompt": 21261,
+    "completion": 1168,
+    "kb": 10,
+    "chars": 1089,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "years",
+       "detail": "「**标题：在杭州做了5年美甲」和事实卡对不上"
+      },
+      {
+       "kind": "facts",
+       "detail": "地名「款式的区」档案和素材里都没有"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "回归:家具开篇",
+   "task": "回归:家具开篇",
+   "A": {
+    "firstMs": 5642,
+    "totalMs": 21013,
+    "prompt": 33115,
+    "completion": 693,
+    "kb": 20,
+    "chars": 619,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "years",
+       "detail": "「* \"我在苏州卖了两年家具，」和事实卡对不上"
+      },
+      {
+       "kind": "generation",
+       "detail": "必要交付部分「开篇」缺失或为空"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 6536,
+    "totalMs": 30881,
+    "prompt": 21242,
+    "completion": 1015,
+    "kb": 10,
+    "chars": 942,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "years",
+       "detail": "「** \"在苏州卖了两年家具，」和事实卡对不上"
+      },
+      {
+       "kind": "years",
+       "detail": "「3年、店开2年、从业12年均按事」和事实卡对不上"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "回归:无价格引流脚本",
+   "task": "回归:无价格引流脚本",
+   "A": {
+    "firstMs": 5574,
+    "totalMs": 20122,
+    "prompt": 33250,
+    "completion": 623,
+    "kb": 20,
+    "chars": 576,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "facts",
+       "detail": "模型自称「未编造」——以这里的核对为准，别信这句"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 5870,
+    "totalMs": 13865,
+    "prompt": 21371,
+    "completion": 314,
+    "kb": 10,
+    "chars": 259,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   }
+  },
+  {
+   "id": "回归:只换开头",
+   "task": "回归:只换开头",
+   "A": {
+    "firstMs": 5045,
+    "totalMs": 12242,
+    "prompt": 33282,
+    "completion": 371,
+    "kb": 20,
+    "chars": 374,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "years",
+       "detail": "「串火锅，我在南乐开了半年。」和事实卡对不上"
+      },
+      {
+       "kind": "years",
+       "detail": "「流量 - \"开了半年\" =」和事实卡对不上"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 6493,
+    "totalMs": 11257,
+    "prompt": 21403,
+    "completion": 234,
+    "kb": 10,
+    "chars": 239,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "facts",
+       "detail": "模型自称「未编造」——以这里的核对为准，别信这句"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

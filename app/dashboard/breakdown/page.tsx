@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Clapperboard, FileVideo, Loader2, ScanSearch, Shuffle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
-import { putHandoff, takeHandoff, type HandoffPayload } from "@/lib/handoff";
+import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
+import { openCreationSafely } from "@/lib/creation-session";
+import { buildCreationHandoff } from "@/lib/creation-flow";
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { resolveCreationSettings, mergeCreationSettings, settingsForResult } from '@/lib/creation-settings';
-import { creationReference } from '@/lib/creation-continuation';
+import { creationReference, originForResult } from '@/lib/creation-continuation';
 import { buildTextBreakdownPrompt } from '@/lib/text-breakdown';
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -123,7 +125,6 @@ export default function BreakdownPage() {
     if (!resultScope || !lastResult || !history[0] || restoredInputScope.current === resultScope) return;
     restoredInputScope.current = resultScope;
     if (!incomingHandoff.current && !running && (!result || result === lastResult)) restoreHistory(history[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultScope, lastResult, history, running, result]);
 
   // 切页面回来，把最近一次拆解取回来显示
@@ -448,7 +449,7 @@ export default function BreakdownPage() {
         result={result}
         isGenerating={running && stage === "ai"}
         title="拆解报告"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: incomingSetup?.originContent }}
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }}
         showStats={false}
         emptyIcon={Clapperboard}
         emptyTitle={textMode ? running ? "正在分析已带入的文字…" : "拆解已有文案，继续完善创作" : running ? "正在准备画面和口播…" : "传一条爆款视频，逐镜头拆给你看"}
@@ -462,8 +463,12 @@ export default function BreakdownPage() {
             label: "拿去二创到我的店",
             icon: Shuffle,
             onClick: (body) => {
-              putHandoff({ from: BREAKDOWN_TASK_TYPE, remixSource: { title: loadedFileName || file?.name, text: body } });
-              router.push("/dashboard/remix");
+              // 和「继续创作」同一套：目的、行业设置跟着走，持久保存后再跳（刷新、换设备能接着）
+              openCreationSafely({
+                ...buildCreationHandoff('breakdown', 'remix', body, { settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }),
+                from: BREAKDOWN_TASK_TYPE,
+                remixSource: { title: loadedFileName || file?.name, text: body },
+              }, (u) => router.push(u), (m) => notify(m, 'error'));
             },
           },
         ]}
@@ -479,7 +484,7 @@ export default function BreakdownPage() {
             <ChevronDown className={`h-4 w-4 transition-transform ${showSheets ? "" : "-rotate-90"}`} />
             AI 看到的画面（{sheetUrls.length} 张拼图）
           </button>
-          <p className="mt-1 text-[11.5px] text-muted-foreground">每格上面是时间和镜头号；橙色是开头 3 秒加密截的。拆解里说"镜头几"就是这里的编号</p>
+          <p className="mt-1 text-[11.5px] text-muted-foreground">每格上面是时间和镜头号；橙色是开头 3 秒加密截的。拆解里说&quot;镜头几&quot;就是这里的编号</p>
           {showSheets && (
             <div className="mt-3 grid gap-3">
               {sheetUrls.map((u, i) => (

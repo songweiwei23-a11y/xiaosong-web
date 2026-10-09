@@ -1,0 +1,211 @@
+2026-10-08T04:39:45.179Z
+https://www.biandao.icu/dashboard/remix
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "跨行业二创" [level=1]
+    - paragraph: 借别的行业爆款的开篇、结构、拍法，换成你自己的行业来拍
+    - button "历史记录（0）":
+      - generic: 历史记录（0）
+    - button "原片" [expanded]:
+      - generic: 原片
+    - button "从拆过的视频选"
+    - button "贴别的行业爆款" [pressed]
+    - generic: 原片文案 / 描述
+    - generic: 必填
+    - textbox "例如：一个修车师傅，开头说「信不信 15 秒让你不敢去 4S 店」，然后……": 【虚构测试餐饮文案】点菜前，先别急着看招牌。今天拿店里这套餐具看一眼：两个人吃，桌上能摆多少盘；再多点一道，位置还够不够。把自己来几个人、想吃什么记下来。菜喜欢，也得吃得完。
+    - generic: 口播原话、字幕，或者你看到的画面和情节都行
+    - textbox "原片行业":
+      - /placeholder: 原片是什么行业
+      - text: 餐饮
+    - textbox "原片标题":
+      - /placeholder: 原片标题（选填）
+    - button "借哪几层（可多选）" [expanded]:
+      - generic: 借哪几层（可多选）
+    - paragraph: 知识库原则：行业内看选题，跨行业看开篇、金句、呈现形式。没选的层都换成你自己的。
+    - button "开篇句式 前 3 秒怎么抓人：保留句式结构，换成你行业的词" [pressed]:
+      - generic: 开篇句式
+      - generic: 前 3 秒怎么抓人：保留句式结构，换成你行业的词
+    - button "结构骨架 段落顺序：比如困境→转机、结果前置→补原因" [pressed]:
+      - generic: 结构骨架
+      - generic: 段落顺序：比如困境→转机、结果前置→补原因
+    - button "呈现形式 怎么拍：口播/vlog/剧情、视角、出镜人物、道具" [pressed]:
+      - generic: 呈现形式
+      - generic: 怎么拍：口播/vlog/剧情、视角、出镜人物、道具
+    - button "镜头节奏 多长切一刀、景别怎么跟着情绪变":
+      - generic: 镜头节奏
+      - generic: 多长切一刀、景别怎么跟着情绪变
+    - button "情绪曲线 情绪在哪几秒起伏、靠什么起伏":
+      - generic: 情绪曲线
+      - generic: 情绪在哪几秒起伏、靠什么起伏
+    - button "悬念和兑现 钩子埋在哪、第几秒兑现":
+      - generic: 悬念和兑现
+      - generic: 钩子埋在哪、第几秒兑现
+    - button "金句 收尾那句让人想转发的话":
+      - generic: 金句
+      - generic: 收尾那句让人想转发的话
+    - button "人设和人物关系 谁出镜、跟谁对话、是什么身份":
+      - generic: 人设和人物关系
+      - generic: 谁出镜、跟谁对话、是什么身份
+    - button "结尾和转化 行动指令、怎么引到店/私信/下单":
+      - generic: 结尾和转化
+      - generic: 行动指令、怎么引到店/私信/下单
+    - button "系列化 能不能做成一个系列（\"帮粉丝买车\"→\"帮粉丝做账号\"）":
+      - generic: 系列化
+      - generic: 能不能做成一个系列（"帮粉丝买车"→"帮粉丝做账号"）
+    - button "选题角度 同一个话题换你的行业讲。知识库建议同行业更该学选题，跨行业主要学表达":
+      - generic: 选题角度
+      - generic: 同一个话题换你的行业讲。知识库建议同行业更该学选题，跨行业主要学表达
+    - button "出几个、怎么拉开、写多深" [expanded]:
+      - generic: 出几个、怎么拉开、写多深
+    - generic: 出几个方案
+    - button "1 个" [pressed]
+    - button "2 个"
+    - button "3 个"
+    - button "5 个"
+    - generic: 写多深
+    - button "快速 方向 + 开头 + 口播要点，先挑一个再细化" [pressed]:
+      - generic: 快速
+      - generic: 方向 + 开头 + 口播要点，先挑一个再细化
+    - button "完整 按你勾的产出写全":
+      - generic: 完整
+      - generic: 按你勾的产出写全
+    - button "深度 分镜细到每一镜的台词、动作、时长，再给 3 个备选开头":
+      - generic: 深度
+      - generic: 分镜细到每一镜的台词、动作、时长，再给 3 个备选开头
+    - button "目的、时长、要哪些产出":
+      - generic: 目的、时长、要哪些产出
+    - button "二创到哪家店" [expanded]:
+      - generic: 二创到哪家店
+    - generic: 以「测试_青禾家具店_全板块验收20261008」为准
+    - generic: 行业：家居装修
+    - generic: 在卖的品类：沙发、床、衣柜、沙发、床、衣柜
+    - text: 方案里的事、场景、产品都换成这家店的，也会带上它的定位简报和成交理由。要换店，在左侧栏切换档案；品类不对去
+    - link "改档案":
+      - /url: /dashboard/profiles
+    - generic: 补充要求
+    - generic: 可选
+    - textbox "例如：老板不想出镜；想推新上的烤鱼": 【测试】转到家具展厅，用现有样柜或沙发，一人手机，30秒以内；只借结构，不复制餐饮事实，不编客户经历、具体尺寸、价格和服务承诺。
+    - button "二创中…" [disabled]:
+      - text: 二创中…
+  - main:
+    - heading "二创方案" [level=2]
+    - text: 创作中
+    - paragraph: AI 正在二创…
+- alert

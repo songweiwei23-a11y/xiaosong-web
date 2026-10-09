@@ -7,7 +7,8 @@ import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
-import { takeHandoff } from '@/lib/handoff'
+import { useCreationBridge } from '@/hooks/useCreationBridge'
+import { incomingNote } from '@/lib/creation-flow'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import {
@@ -67,6 +68,10 @@ export default function CreativeBriefPage() {
   const [elapsed, setElapsed] = useState(0)
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const bridge = useCreationBridge('创作简报', 'creative-brief', profileId, loading)
+  useEffect(() => {
+    if (bridge.payload?.sourceContent) setNotes(incomingNote(bridge.payload))
+  }, [bridge.payload])
 
   const load = async () => {
     setLoading(true)
@@ -120,7 +125,6 @@ export default function CreativeBriefPage() {
   useEffect(() => {
     load()
     return onActiveProfileChange(load)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /*
@@ -136,12 +140,12 @@ export default function CreativeBriefPage() {
   const [autoRan, setAutoRan] = useState(false)
   useEffect(() => {
     if (autoRan || loading || !positioning || isGenerating) return
-    const handed = takeHandoff()
+    const handed = bridge.payload
     if (handed?.from !== '账号定位') return
     setAutoRan(true)
     generate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, positioning, isGenerating, autoRan])
+  }, [loading, positioning, isGenerating, autoRan, bridge.payload])
 
   useEffect(() => {
     if (!isGenerating) return
@@ -160,7 +164,7 @@ export default function CreativeBriefPage() {
   const profileNewer = !!brief && briefFactsChanged(brief.positioning_description, profileRow)
 
   const generate = async () => {
-    if (!positioning) return
+    if (!positioning && !bridge.sourceReference) return
     setIsGenerating(true)
     let full = ''
     try {
@@ -170,15 +174,16 @@ export default function CreativeBriefPage() {
         body: JSON.stringify({
           taskType: '创作简报',
           profileId,
+          creationSettings: bridge.creationSettings,
           query: buildBriefPrompt({
-            positioningFull: positioning.full_content,
+            positioningFull: positioning?.full_content || bridge.sourceReference,
             businessPositioning: business?.full_content,
             contentPositioning: contentPos?.full_content,
             profileSummary,
             notes,
             mixBlock: mixPromptBlock(resolveMix(profileRow, mixOverride, notes)),
             taboos: profileRow ? taboosPromptBlock(profileRow) : undefined,
-          }),
+          }) + bridge.prompt,
         }),
       })
       if (!res.ok) await throwApiError(res)
@@ -189,7 +194,9 @@ export default function CreativeBriefPage() {
 
       if (full) {
         await save(full)
-        await saveGenerationHistory('创作简报', { notes, profileId }, full)
+        const historyInput = { notes, profileId, creationSettings: bridge.creationSettings, originContent: bridge.originContent || notes }
+        await saveGenerationHistory('创作简报', historyInput, full)
+        bridge.rememberResult(full, historyInput)
         notify('简报已生成，各板块马上就会用上')
       }
     } catch (e: unknown) {
@@ -229,7 +236,14 @@ export default function CreativeBriefPage() {
   const saveEdits = async () => {
     setSaving(true)
     try {
-      const ok = await save(serializeBrief(values))
+      const content = serializeBrief(values)
+      const prior = bridge.flowContext(brief?.full_content || content)
+      const ok = await save(content)
+      if (ok) {
+        const historyInput = { notes, profileId, creationSettings: prior.settings || bridge.creationSettings, originContent: prior.originContent || bridge.originContent || notes }
+        await saveGenerationHistory('创作简报', historyInput, content)
+        bridge.rememberResult(content, historyInput)
+      }
       notify(ok ? '已保存，各板块立刻生效' : '保存失败，请重试')
     } finally {
       setSaving(false)
@@ -266,7 +280,7 @@ export default function CreativeBriefPage() {
               去创建
             </button>
           </div>
-        ) : !positioning ? (
+        ) : !positioning && !bridge.sourceReference ? (
           <div className="glass-panel rounded-2xl p-4 sm:p-6">
             <p className="text-[13px] text-amber-500">
               这个档案还没有生成过账号定位。简报是基于定位转译出来的，**必须先有定位**。
@@ -286,8 +300,7 @@ export default function CreativeBriefPage() {
                   当前档案：<span className="font-medium">{profileName || '未命名'}</span>
                 </p>
                 <p className="text-emerald-500">
-                  已读到账号定位（{new Date(positioning.created_at).toLocaleDateString()}），
-                  简报会基于它转译 ✓
+                  {positioning ? `已读到账号定位（${new Date(positioning.created_at).toLocaleDateString()}），简报会基于它转译 ✓` : '已带入当前创作材料，简报会承接你的想法 ✓'}
                 </p>
                 {/* 让用户看见简报吸收了哪几份东西——
                     商业定位和内容定位以前生成完就躺在库里没人读 */}
@@ -356,7 +369,7 @@ export default function CreativeBriefPage() {
                       每一段都可以直接改。账号在变，简报就该跟着变——改完点保存，所有板块立刻生效。
                     </p>
                   </div>
-                  <span className="shrink-0 text-[12px] text-muted-foreground">完整度 {pct}%</span>
+                  <span className="shrink-0 text-[12px] text-muted-foreground" title="仅表示八个栏目是否填写，不代表事实已确认或内容质量">栏目填写 {pct}%</span>
                 </div>
 
                 <div className="space-y-5">
@@ -404,7 +417,7 @@ export default function CreativeBriefPage() {
                 也可以只勾「内容方向」那一段带过去 */}
             {hasAny && !isGenerating && (
               <div className="mt-6">
-                <CreationLinks body={serializeBrief(values)} heading="简报好了，接着创作 · 内容自动带入" />
+                <CreationLinks body={serializeBrief(values)} context={bridge.flowContext(brief?.full_content || serializeBrief(values))} heading="简报好了，接着创作 · 内容自动带入" />
               </div>
             )}
           </>

@@ -128,8 +128,8 @@ describe('目的那一行怎么认', () => {
 describe('页面：没写的保持默认，不填占位话', () => {
   it('选题页：目的默认按配比，个人要求只填写明的方向', () => {
     const src = readCode('app/dashboard/topic/page.tsx');
-    expect(src).toMatch(/setTopicRole\(s\.purpose \?\? '按配比'\)/);
-    expect(src).toMatch(/setPersonalRequirement\(s\.direction \?\? ''\)/);
+    expect(src).toMatch(/setTopicRole\(roles\[0\] \?\? s\.purpose \?\? '按配比'\)/);
+    expect(src).toMatch(/setPersonalRequirement\(carriesScript\(incomingSetup\) \? '' : s\.direction \?\? ''\)/);
     expect(src).not.toMatch(/\|\| '聊观点型'\]\)/);
   });
 

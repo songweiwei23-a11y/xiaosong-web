@@ -1,0 +1,115 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, ChevronRight, Clock3, FileText, Film, FolderOpen, History, Lightbulb, MoreHorizontal, Sparkles, UserRound } from 'lucide-react';
+import type { IndustrySample } from '@/lib/landing';
+
+const STEPS = [
+  { id: 'profile', name: '客户档案', short: '档案', icon: UserRound },
+  { id: 'topic', name: '选题策划', short: '选题', icon: Lightbulb },
+  { id: 'script', name: '口播脚本', short: '脚本', icon: FileText },
+  { id: 'storyboard', name: '镜头与拍法', short: '分镜', icon: Film },
+  { id: 'history', name: '创作历史', short: '历史', icon: History },
+] as const;
+type Step = typeof STEPS[number]['id'];
+const PROFILE: Record<string, { audience: string; scene: string; value: string; shot: string }> = {
+  food: { audience: '附近上班族、想吃家常味的顾客', scene: '后厨、出餐台、店里日常', value: '把制作过程和顾客关心的细节拍清楚', shot: '老板端面出镜，近景拍备料和出餐' },
+  beauty: { audience: '想换发型、在意日常打理的顾客', scene: '剪发前沟通、操作区、造型前后', value: '解释发型选择，展示真实操作', shot: '理发师口播，特写拍发质与剪发动作' },
+  cloth: { audience: '想找到适合自己穿搭的顾客', scene: '店内试衣、搭配、细节展示', value: '把选款和搭配理由讲明白', shot: '店主上身示范，近景拍衣服细节' },
+  edu: { audience: '关心孩子学习方法的家长', scene: '黑板示范、例题、课后交流', value: '拆清一个问题，给出具体做法', shot: '老师出镜，用纸笔演示解题过程' },
+  shop: { audience: '附近居民、想挑好水果的顾客', scene: '挑货、称重、货架', value: '让顾客看懂怎样挑、为什么选', shot: '店主拿实物示范，特写拍辨别细节' },
+  mom: { audience: '同样带娃、想记录生活的妈妈', scene: '家里日常、自己的片刻时间', value: '从真实经历里找到值得分享的内容', shot: '生活记录搭配口播，保持自然表达' },
+};
+const SCRIPT_DIRECTIONS: Record<string, string[]> = {
+  food: ['对比两碗面的出餐过程，把汤底、配料和服务细节拍清楚，再说明顾客为什么会选择这一碗。', '从备料、下锅到出汤，顺着时间拍一遍。老板讲清用料和制作过程，让观众看见一碗面背后的工作。', '先展示这碗面的吃法，再说口味与配料，带第一次来的顾客了解怎样点单。'],
+  beauty: ['用发型图与实际发质做对照，分别讲清脸型、打理时间和发质对选择的影响，给出沟通时要问的问题。', '拿两种烫发效果做对照，讲清卷度、长度与日常打理的差别，帮助顾客表达自己想要的效果。', '按咨询、用料、操作与后续打理逐项展示，说明报价对应哪些服务，让顾客知道该怎样比较。'],
+  cloth: ['拿同一件大衣试穿，对比长度、腰线与鞋子的搭配，展示实际效果，让观众按自己的身材判断。', '用同一件白 T 搭配不同外套、下装和配饰，逐套展示适合的场景与搭配理由。', '用同一件衬衫演示全塞、半塞与不塞，对比腰线和比例，提醒观众按身形选择。'],
+  edu: ['拿一道例题，依次检查读题、列式与验算，标出容易漏掉的条件，示范一个具体的检查方法。', '用一道三年级例题，观察读题、表达与计算的过程，展示家长可以怎样陪孩子梳理问题。', '把应用题分成已知条件、要求什么和数量关系，再画成一张图，让孩子把意思讲出来。'],
+  shop: ['拿几个实物对比瓜皮、瓜蒂与纹路，讲清怎样综合判断；再切开看实际结果，不把一个特征当成保证。', '把品种、产地、规格与实物一起展示，让观众看到同样叫苹果，比较时还要看哪些信息。', '按店里的实际流程展示分拣、保存与处理，说明新鲜度如何检查，让顾客了解日常经营。'],
+  mom: ['从孩子睡着后的一个小动作开始，用几个生活镜头记录自己的时间，再说这一小时对你的意义。', '选一个熟悉的小场景，先说今天遇到什么，再拍自己怎样处理，最后留下一个想与观众交流的问题。', '分别演示手部特写、物品过程和生活空镜，配上自然口播，让观众看到不露脸也能怎样表达。'],
+};
+type HistoryView = 'breakdown' | 'remix' | null;
+
+/** 所有内容都是预置演示，不调用生成、账号或云端保存接口。 */
+export function PreviewStudio({ industry, compact = false }: { industry: IndustrySample; compact?: boolean }) {
+  const [step, setStep] = useState<Step>(compact ? 'topic' : 'profile');
+  const [topic, setTopic] = useState(0);
+  const [historyView, setHistoryView] = useState<HistoryView>(null);
+  useEffect(() => { setTopic(0); setHistoryView(null); }, [industry.id]);
+  const info = PROFILE[industry.id] || PROFILE.food;
+  const current = STEPS.find(s => s.id === step)!;
+  const CurrentIcon = current.icon;
+  const theme = industry.topics[topic] || industry.topics[0];
+  const setCurrentStep = (next: Step) => { setStep(next); setHistoryView(null); };
+  return (
+    <div className={`p-studio ${compact ? 'p-studio-compact' : ''}`}>
+      <div className="p-studio-chrome">
+        <div className="flex items-center gap-1.5" aria-hidden="true"><i /><i /><i /></div>
+        <span>开物 · 创作工作台</span>
+        <span className="p-demo-label">预置样例</span>
+      </div>
+      <div className="p-studio-body">
+        {!compact && <aside className="p-studio-sidebar">
+          <div className="mb-6 flex items-center gap-2 text-[13px] font-medium text-slate-200"><FolderOpen size={17} className="text-sky-300" /> 当前演示档案</div>
+          <div className="p-client-card"><div className="p-client-avatar"><UserRound size={20} /></div><div><strong>{industry.name}账号</strong><span>{industry.who}</span></div></div>
+          <p className="my-6 text-[10px] tracking-[0.18em] text-slate-500">内容创作</p>
+          {STEPS.map(s => <button type="button" key={s.id} onClick={() => setCurrentStep(s.id)} className={`p-studio-nav ${step === s.id ? 'is-active' : ''}`} aria-pressed={step === s.id}><s.icon size={17} />{s.name}<ChevronRight size={13} className="ml-auto opacity-50" /></button>)}
+          <div className="mt-auto pt-8 text-[11px] leading-5 text-slate-500">客户背景跟着创作走<br />成果留在各自的档案里</div>
+        </aside>}
+        <div className="p-studio-content">
+          <div className="p-studio-context"><span className="flex min-w-0 items-center gap-1.5"><UserRound size={13} className="shrink-0" /><span className="truncate">演示档案：{industry.who}</span></span><span className="shrink-0 text-emerald-300"><Check size={12} className="mr-1 inline" />背景已带入</span></div>
+          <div className="p-studio-tabs" role="tablist" aria-label={compact ? '首屏样例步骤' : '创作流程样例步骤'}>
+            {STEPS.map(s => <button type="button" key={s.id} role="tab" aria-selected={step === s.id} onClick={() => setCurrentStep(s.id)} className={step === s.id ? 'is-active' : ''}>{s.short}</button>)}
+          </div>
+          <div className="p-studio-output" role="tabpanel" aria-label={current.name}>
+            <div className="mb-5 flex items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-[14px] font-semibold text-slate-100"><CurrentIcon size={16} className="text-sky-300" />{current.name}</h3><MoreHorizontal size={17} className="text-slate-500" /></div>
+            {step === 'profile' && <div className="space-y-4">
+              <div className="p-output-note">先把客户是谁、想对谁说、有什么能拍的整理清楚。</div>
+              {[['账号背景', industry.who], ['目标观众', info.audience], ['内容方向', info.value], ['拍摄条件', info.scene]].map(([k,v]) => <div className="p-profile-row" key={k}><span>{k}</span><p>{v}</p></div>)}
+            </div>}
+            {step === 'topic' && <div className="space-y-3">
+              {industry.topics.map((t, i) => <button type="button" key={t} onClick={() => { setTopic(i); setStep('script'); }} className="p-topic-row"><span className="p-topic-number">0{i+1}</span><span><strong>{t}</strong><small>{['反差切入 · 让观众想知道为什么', '过程呈现 · 用真实细节建立信任', '具体问题 · 给观众一个观看理由'][i]}</small></span><ArrowRight size={15} className="ml-auto shrink-0 text-slate-500" /></button>)}
+              <p className="pt-2 text-[11px] text-slate-500">点击任一选题，看看脚本怎样接上。</p>
+            </div>}
+            {step === 'script' && <div>
+              <div className="mb-4 flex flex-wrap gap-2"><span className="p-tag">参考方向：{theme}</span><span className="p-tag">讲清细节</span></div>
+              <div className="p-script-line"><span>开篇</span><p>{theme}？这条带你看清楚。</p></div>
+              <div className="p-script-line"><span>展开</span><p>{(SCRIPT_DIRECTIONS[industry.id] || SCRIPT_DIRECTIONS.food)[topic]}</p></div>
+              <div className="p-script-line"><span>拍法</span><p>{info.shot}。边拍边解释，让观众看见选择背后的理由。</p></div>
+              <div className="p-script-line"><span>收尾</span><p>你最想了解哪一个细节？留言告诉我，下次拍给你看。</p></div>
+            </div>}
+            {step === 'storyboard' && <div>
+              <div className="p-shot-table">
+                <div className="p-shot-head"><span>镜头</span><span>画面与动作</span><span>时长</span></div>
+                {[['01','人物出镜，说出开篇问题','5秒'],['02',`进入${info.scene.split('、')[0]}，拍过程细节`,'12秒'],['03','近景展示关键动作，口播说明理由','15秒'],['04','回到人物，收尾提问','8秒']].map(row => <div className="p-shot-row" key={row[0]}>{row.map((x,i)=><span key={i}>{x}</span>)}</div>)}
+              </div>
+              <div className="p-output-note mt-4"><Check size={13} className="mr-1 inline text-emerald-300" />镜头、动作和口播放在一起，拍摄时更容易执行。</div>
+            </div>}
+            {step === 'history' && !historyView && <div className="space-y-3">
+              <div className="p-output-note">历史界面示意：当前档案的成果分别保存，点击旧稿可以重新查看。</div>
+              {[{ title: theme, stage: '口播脚本', target: 'script' as Step },{ title: `${industry.name}账号 · 镜头与拍摄清单`, stage:'分镜脚本',target:'storyboard' as Step}].map(h=><button type="button" className="p-history-row" key={h.stage} onClick={()=>setCurrentStep(h.target)}><div className="p-history-icon"><FileText size={16} /></div><div><strong>{h.title}</strong><span>{h.stage} · 当前演示档案</span></div><span className="ml-auto shrink-0 text-[11px] text-sky-300">打开</span></button>)}
+              {!compact && [{id:'breakdown' as const,title:'参考视频 · 开篇与镜头拆解',stage:'拆解爆款'},{id:'remix' as const,title:`${industry.name}账号 · 跨行业二创方案`,stage:'跨行业二创'}].map(h=><button type="button" className="p-history-row" key={h.id} onClick={()=>setHistoryView(h.id)}><div className="p-history-icon"><History size={16}/></div><div><strong>{h.title}</strong><span>{h.stage} · 正文与设置</span></div><span className="ml-auto shrink-0 text-[11px] text-sky-300">打开</span></button>)}
+            </div>}
+            {step === 'history' && historyView && <div className="space-y-4">
+              <button type="button" className="flex items-center gap-1.5 text-[11px] text-sky-300" onClick={()=>setHistoryView(null)}><ArrowLeft size={13}/>返回历史列表</button>
+              <div className="p-output-note">{historyView==='breakdown'?'拆解爆款 · 历史报告示意':'跨行业二创 · 历史方案示意'}，打开时可恢复正文与当时的设置。</div>
+              {historyView==='breakdown'?<>
+                <div className="p-profile-row"><span>参考素材</span><p>人物口播 + 现场过程的演示视频</p></div>
+                <div className="p-profile-row"><span>开篇</span><p>先抛出一个具体问题，让观众知道接下来要看什么。</p></div>
+                <div className="p-profile-row"><span>内容结构</span><p>提出问题 → 展示现场 → 解释理由 → 收尾交流</p></div>
+                <div className="p-profile-row"><span>镜头</span><p>人物中景与过程特写交替，关键动作配合口播解释。</p></div>
+              </>:<>
+                <div className="p-profile-row"><span>目标档案</span><p>{industry.who}</p></div>
+                <div className="p-profile-row"><span>当时设置</span><p>借用开篇句式、结构骨架与呈现形式。</p></div>
+                <div className="p-profile-row"><span>二创方向</span><p>{industry.topics[0]}</p></div>
+                <div className="p-profile-row"><span>方案正文</span><p>{SCRIPT_DIRECTIONS[industry.id]?.[0]}结合{info.scene}拍摄，用当前档案的真实产品与人物来表达。</p></div>
+              </>}
+            </div>}
+          </div>
+          <div className="p-studio-footer"><span><Clock3 size={12} className="mr-1 inline" />档案 → 方法 → 内容 → 历史</span><button type="button" onClick={() => setCurrentStep(STEPS[(STEPS.findIndex(s=>s.id===step)+1)%STEPS.length].id)}>看下一步 <ArrowRight size={12} /></button></div>
+        </div>
+      </div>
+      {!compact && <div className="p-studio-caption"><Sparkles size={13} />交互演示使用预置内容，展示创作流程与产出形式。</div>}
+    </div>
+  );
+}

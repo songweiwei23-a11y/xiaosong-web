@@ -72,6 +72,12 @@ export async function prepareWebSearch(userId: string, question: string, mode?: 
     },
     initialEvent: requested && !requestId ? { event: 'web_search', status: reason === 'quota_exhausted' || reason === 'membership_expired' ? 'quota_exhausted' : 'unavailable', sources: [], message: note, quota } : null,
     quota,
+    /** 自由对话的服务端搜索也沿用同一预占；在实际发起付费请求前确认开始。 */
+    async markStarted() {
+      if (!requestId) throw new Error('本轮没有联网授权');
+      started = true;
+      await settle('started');
+    },
     async observe(event: any) {
       if (isWebSearchNode(event?.data) && ['node_started','node_finished'].includes(event.event)) {
         started = true;

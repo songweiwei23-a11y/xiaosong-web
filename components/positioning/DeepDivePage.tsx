@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
@@ -12,7 +12,7 @@ import { Markdown } from '@/components/markdown'
 import { asText, buildProfileSummary, profileSearchHints } from '@/lib/profile-summary'
 import ContinuousDialog from '@/components/ContinuousDialog'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
-import { takeHandoff } from '@/lib/handoff'
+import { useCreationBridge } from '@/hooks/useCreationBridge'
 import { incomingNote } from '@/lib/creation-flow'
 import { postSafely } from '@/lib/safe-post'
 import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
@@ -80,12 +80,18 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
     return () => clearInterval(t)
   }, [isGenerating])
 
+  const loadedScope = useRef<string | null | undefined>(undefined)
   const load = async () => {
     setLoadingCtx(true)
     try {
       const id = getActiveProfileId()
+      if (loadedScope.current !== undefined && loadedScope.current !== id) {
+        setResult(''); setNotes(''); setConversationId(undefined); setHandoffFrom('')
+      }
+      loadedScope.current = id
       const profRes = await fetch('/api/profiles')
       const list = profRes.ok ? await profRes.json() : []
+      if (getActiveProfileId() !== id) return
       const p: Profile | null = Array.isArray(list) && list.length
         ? list.find((x: Profile) => x.id === id) || list[0]
         : null
@@ -110,6 +116,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
         setBaseline((await first(baseRes))?.full_content || '')
 
         const mine = await first(mineRes)
+        if (getActiveProfileId() !== id) return
         setSavedAt(mine?.created_at || '')
         // 只在当前为空时回填，别把用户正在看或刚生成的内容盖掉
         if (mine?.full_content) setResult((cur) => cur || mine.full_content)
@@ -132,12 +139,13 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
 
   // 别的板块「继续创作」带过来的内容：填进补充说明，点生成就纳入分析（2026-10-02）
   const [handoffFrom, setHandoffFrom] = useState('')
+  const bridge = useCreationBridge(taskType, focus === 'business' ? 'business-positioning' : 'content-positioning', profile?.id, loadingCtx)
   useEffect(() => {
-    const data = takeHandoff()
+    const data = bridge.payload
     if (!data?.sourceContent) return
     setNotes(incomingNote(data))
     setHandoffFrom(data.from || '其他板块')
-  }, [])
+  }, [bridge.payload])
 
   const generate = async () => {
     if (!profile) {
@@ -163,7 +171,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
       baseline: baseline || undefined,
       mixBlock: mixPromptBlock(resolveMix(profile, mixOverride, notes)),
       taboos: taboosPromptBlock(profile),
-    })
+    }) + bridge.prompt
 
     try {
       const res = await fetchGeneration('/api/dify/stream', {
@@ -174,6 +182,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
           // 记忆按档案隔离，避免代运营多个账号时串台
           profileId: profile.id,
           query,
+          creationSettings: bridge.creationSettings,
           profileInfo: summary,
           // 赛道、地域进检索词：联网搜索才能搜到这个号相关的行情，不是通用文章
           ...profileSearchHints(profile),
@@ -194,7 +203,9 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
 
       if (full) {
         await save(full)
-        await saveGenerationHistory(taskType, { profileSummary: summary, notes, profileId: profile.id }, full)
+        const historyInput = { profileSummary: summary, notes, profileId: profile.id, creationSettings: bridge.creationSettings, originContent: bridge.originContent || notes }
+        await saveGenerationHistory(taskType, historyInput, full)
+        bridge.rememberResult(full, historyInput)
         setConversationId(convId || undefined)
         setShowDialog(true)
       }
@@ -372,7 +383,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
               <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />
             )}
             {/* 原来生成完只能「继续对话」，是断头路：内容定位里的选题方向、系列规划带不去出选题 */}
-            {result && !isGenerating && <div className="mt-5"><CreationLinks body={result} /></div>}
+            {result && !isGenerating && <div className="mt-5"><CreationLinks body={result} context={bridge.flowContext(result)} /></div>}
           </div>
         )}
       </div>

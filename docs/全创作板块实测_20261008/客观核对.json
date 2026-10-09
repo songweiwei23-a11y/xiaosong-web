@@ -1,0 +1,28 @@
+{
+  "reviewScore": 92.0,
+  "reviewClaim": 82,
+  "contentRatioSum": 95,
+  "interviewCoreMin": 45,
+  "interviewCoreMax": 96,
+  "hook": "买衣柜只看外观？抽屉拉开才知道挡不挡床。",
+  "hookHanChars": 18,
+  "titleCounts": [
+    {
+      "text": "挑衣柜别只看柜门，抽屉打开才知道挡不挡床",
+      "hanChars": 19,
+      "includingPunctuation": 20
+    },
+    {
+      "text": "卧室放衣柜，先别急着看款式，抽屉能不能拉开？",
+      "hanChars": 19,
+      "includingPunctuation": 22
+    },
+    {
+      "text": "量过房的都知道，衣柜抽屉一拉，床前只剩一条缝",
+      "hanChars": 20,
+      "includingPunctuation": 22
+    }
+  ],
+  "sourceHashFileCount": 406,
+  "sourceHashDifferences": 0
+}

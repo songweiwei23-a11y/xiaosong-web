@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Trash2, ArrowRight, Check, Camera, Clock, Send, AlertCircle, BarChart3 } from "lucide-react";
+import { Trash2, ArrowRight, Check, Camera, Clock, Send, AlertCircle, BarChart3, Clapperboard, Loader2 } from "lucide-react";
 import { METRIC_FIELDS, metricsLine, readMetrics, type WorkMetrics } from "@/lib/performance";
 import { workReminder, type ShootStatus, type Work } from "@/lib/works";
-import { nextStage, workStageUrl } from "@/lib/resume";
+import { fetchWork, nextStage, workStageUrl, type WorkDetail } from "@/lib/resume";
+import { ProductionPack } from "@/components/works/ProductionPack";
 
 const fmt = (s: string) =>
   new Date(s).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -36,19 +37,36 @@ export function WorkCard({ work: w, onDelete, onShootChange, onMetricsSave }: {
   const [saving, setSaving] = useState(false);
   const openForm = () => {
     const m = w.metrics ?? {};
-    setForm(Object.fromEntries([...METRIC_FIELDS.map((f) => [f.key, m[f.key] === undefined ? "" : String(m[f.key])]), ["note", m.note ?? ""]]));
+    setForm(Object.fromEntries([...METRIC_FIELDS.map((f) => [f.key, m[f.key] === undefined ? "" : String(m[f.key])]), ["note", m.note ?? ""], ['platform', m.platform ?? ''], ['paidPromotion', m.paidPromotion === undefined ? '' : m.paidPromotion ? 'yes' : 'no']]));
     setEditing(true);
   };
   const save = async () => {
     if (!onMetricsSave) return;
     setSaving(true);
     try {
-      if (await onMetricsSave(readMetrics(form))) setEditing(false);
+      if (await onMetricsSave(readMetrics({ ...form, paidPromotion: form.paidPromotion ? form.paidPromotion === 'yes' : undefined }))) setEditing(false);
     } finally {
       setSaving(false);
     }
   };
   const reminder = workReminder(w);
+  // 写过脚本或审过稿才有可拍的口播；拍过、发过的也能回看
+  const scriptReady = w.stages.some((s) => (s.name === "脚本生成" || s.name === "审稿优化") && s.done);
+  const [packOpen, setPackOpen] = useState(false);
+  const [packLoading, setPackLoading] = useState(false);
+  const [packError, setPackError] = useState("");
+  const [detail, setDetail] = useState<WorkDetail | null>(null);
+  const togglePack = async () => {
+    if (packOpen) return setPackOpen(false);
+    setPackError("");
+    // 每次展开都重新取：在别的板块改过、生成过新版本，交付包要跟着是最新的
+    setPackLoading(true);
+    const d = await fetchWork(w.id).catch(() => null);
+    setPackLoading(false);
+    if (!d) return setPackError("这条作品的内容没取到，请重试");
+    setDetail(d);
+    setPackOpen(true);
+  };
   // 开篇是可选环节，插在选题和脚本之间显示，符合实际的创作顺序
   const chips = [
     ...w.stages.slice(0, 1),
@@ -117,6 +135,22 @@ export function WorkCard({ work: w, onDelete, onShootChange, onMetricsSave }: {
         )}
       </div>
 
+      {/*
+        拍摄交付包（2026-10-04 接入，组件见 components/works/ProductionPack）：口播大字稿、镜头清单、导出。
+        点开才去取这条作品的完整内容（各环节最新一版 + 作品需求），列表里不带正文
+      */}
+      {(scriptReady || status !== "none") && (
+        <div className="mt-3 border-t border-border/60 pt-3">
+          <button type="button" onClick={togglePack} aria-expanded={packOpen} disabled={packLoading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-[12px] text-muted-foreground hover:border-primary/40 hover:text-foreground disabled:opacity-60">
+            {packLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
+            {packOpen ? "收起拍摄交付包" : "拍摄交付包：口播大字稿、镜头清单"}
+          </button>
+          {packError && <p role="alert" className="mt-2 text-[12px] text-destructive">{packError}</p>}
+          {packOpen && detail && <div className="mt-3"><ProductionPack work={detail} /></div>}
+        </div>
+      )}
+
       {/* 落地状态：内容做完之后拍没拍、发没发（2026-10-02） */}
       {onShootChange && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-3">
@@ -145,6 +179,10 @@ export function WorkCard({ work: w, onDelete, onShootChange, onMetricsSave }: {
             </div>
           ) : (
             <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[11.5px] text-muted-foreground">发布平台<input aria-label="发布平台" value={form.platform ?? ''} maxLength={40} onChange={e => setForm(p => ({ ...p, platform: e.target.value }))} placeholder="例如：抖音" className="mt-1 w-full rounded-lg border border-border bg-background/50 px-2 py-1.5 text-foreground" /></label>
+                <label className="text-[11.5px] text-muted-foreground">是否投放<select aria-label="是否投放" value={form.paidPromotion ?? ''} onChange={e => setForm(p => ({ ...p, paidPromotion: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background/50 px-2 py-1.5 text-foreground"><option value="">未记录</option><option value="no">自然流量</option><option value="yes">有付费投放</option></select></label>
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {METRIC_FIELDS.map((f) => (
                   <label key={f.key} className="text-[11.5px] text-muted-foreground">

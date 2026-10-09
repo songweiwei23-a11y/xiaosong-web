@@ -14,6 +14,9 @@
 
 import { STAGE_ORDER } from "./resume";
 import type { WorkMetrics } from "./performance";
+import { getActiveProfileId } from "./active-profile";
+import { DEFAULT_PROFILE_SCOPE } from "./profile-history";
+import { postSafely } from "./safe-post";
 
 export interface WorkStage {
   name: string;
@@ -44,7 +47,7 @@ export interface Work {
 /** 新建作品，返回 id；失败返回 null（不阻断生成流程） */
 export async function createWork(title: string, profileId?: string | null): Promise<string | null> {
   try {
-    const res = await fetch("/api/works", {
+    const res = await postSafely("/api/works", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, profileId: profileId ?? null }),
@@ -114,14 +117,43 @@ export async function recordStage(workId: string | null | undefined, stageName: 
  */
 export { STAGE_ORDER };
 
+/**
+ * 作品列表只看当前档案的（2026-10-04 产品方：档案之间互相看不到）。
+ * 没选档案时看「没挂档案的旧作品」这一格（default），不会把各档案的混在一起。
+ */
+const profileScope = () => `profileId=${encodeURIComponent(getActiveProfileId() || DEFAULT_PROFILE_SCOPE)}`;
+
 export async function listWorks(limit = 20): Promise<Work[]> {
   try {
-    const res = await fetch(`/api/works?limit=${limit}`);
+    const res = await fetch(`/api/works?limit=${limit}&${profileScope()}`);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * 一页作品（2026-10-04）：按组筛、翻页。失败抛出带中文的错误（列表页要区分"没有"和"没取到"）
+ */
+export async function listWorksPage(opts: { group?: ProgressGroup | null; offset?: number; limit?: number } = {}): Promise<Work[]> {
+  const p = new URLSearchParams({ limit: String(opts.limit ?? 20), offset: String(opts.offset ?? 0) });
+  if (opts.group) p.set("group", opts.group);
+  const res = await fetch(`/api/works?${p.toString()}&${profileScope()}`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !Array.isArray(data)) throw new Error(data?.error || "作品没取到，请刷新重试");
+  return data;
+}
+
+/** 各组作品数（数据库计数，不受列表条数限制）；拿不到返回 null */
+export async function workGroupCounts(): Promise<(Record<ProgressGroup, number> & { all: number }) | null> {
+  try {
+    const res = await fetch(`/api/works?counts=1&${profileScope()}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
 }
 

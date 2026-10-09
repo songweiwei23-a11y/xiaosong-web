@@ -1,0 +1,112 @@
+2026-10-08T05:02:21.077Z
+https://www.biandao.icu/dashboard/positioning
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - button "关闭菜单":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 小张工作号·濮阳本地找工作服务
+  - generic: 抖音
+  - generic: 档案完整度
+  - generic: 81%
+  - button "还差 5 项：账号阶段、粉丝量级、观众看完的变化 等 · 去补"
+  - generic: 🎬 本地服务
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "打开菜单":
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - paragraph: 加载档案中...
+- alert

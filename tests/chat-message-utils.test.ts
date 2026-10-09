@@ -61,13 +61,14 @@ describe('sanitizeMessages', () => {
     expect(out[1].timestamp).toBe('2026-09-21T10:00:00Z');
   });
 
-  it('超长会话只保留最近的部分，且保的是末尾不是开头', () => {
+  it('超过500条的历史完整保留，不静默删除早期消息', () => {
     const many = Array.from({ length: MAX_MESSAGES + 30 }, (_, i) => ({
       role: 'user' as const,
       content: String(i),
     }));
     const out = sanitizeMessages(many);
-    expect(out).toHaveLength(MAX_MESSAGES);
+    expect(out).toHaveLength(MAX_MESSAGES + 30);
+    expect(out[0].content).toBe('0');
     // 末尾必须是最后一条，否则用户看到的会是被截断的旧上下文
     expect(out[out.length - 1].content).toBe(String(MAX_MESSAGES + 29));
   });

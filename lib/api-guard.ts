@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
-import {
-  getPlan, judgeQuota, usedColumnOf, effectivePlanId, quotaRollover,
-} from '@/lib/config/plans';
+import { getPlan, judgeQuota, effectivePlanId, quotaRollover } from '@/lib/config/plans';
+import { quotaUnavailable, settleCreation, refreshCreationPeriod, type CreationReservation } from '@/lib/creation-quota';
 
 export interface GuardResult {
   ok: boolean;
@@ -60,7 +59,7 @@ export async function requireUser(): Promise<GuardResult> {
 
 /**
  * API 守卫：要求已登录，并检查用户仍有可用配额（不扣减）。
- * 扣减由 incrementUsageServer 完成，应在 Dify 生成成功后调用。
+ * 仅预检查；生成路由必须在调用模型前 reserveCreation，成功后确认、失败后释放。
  *
  * - 未登录 -> 401
  * - 认证服务临时故障 -> 503（稍后重试）
@@ -70,6 +69,7 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
   const guard = await checkCurrentUser();
   if (!guard.ok) return guard;
   const userId = guard.userId!;
+  try {
   const serviceSupabase = getServiceSupabase();
 
   /*
@@ -85,7 +85,7 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
    *
    * end_date 必须一起取：没有它就判断不了订阅有没有到期。
    */
-  const [{ data: subscription }, { data: quotaRow }] = await Promise.all([
+  const [{ data: subscription, error: subError }, { data: quotaRow, error: quotaError }] = await Promise.all([
     serviceSupabase
       .from('subscriptions')
       .select('plan, status, end_date')
@@ -97,6 +97,8 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
       .eq('user_id', userId)
       .maybeSingle(),
   ]);
+
+  if (subError || quotaError) return { ok: false, response: quotaUnavailable() };
 
   // 如果用户被封禁
   if (subscription?.status === 'inactive') {
@@ -130,7 +132,7 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
       .insert({ user_id: userId });
 
     if (createError) {
-      console.error('[api-guard] 创建配额记录失败:', createError);
+      if (createError.code !== '23505') return { ok: false, response: quotaUnavailable() };
     }
     
     // 新用户，允许继续
@@ -146,13 +148,11 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
    */
   const roll = quotaRollover(subscription, quota);
   if (roll.kind !== 'none') {
-    const { error: rollError } = await serviceSupabase
-      .from('user_quotas')
-      .update(roll.patch)
-      .eq('user_id', userId);
-    if (rollError) console.error('[api-guard] 额度换期写入失败:', rollError.message);
+    // Preview only: reservation RPC applies rollover atomically.
     Object.assign(quota, roll.patch);
   }
+  // Keep standalone web-search quota reads current, without resetting outside the database lock.
+  if (!feature && roll.kind !== 'none') await refreshCreationPeriod(userId);
 
   // 仅真正的无限套餐可跳过判定；199元高频会员现在按功能限额。
   if (plan.totalQuota === -1) {
@@ -183,66 +183,19 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
   }
 
   return { ok: true, userId };
+  } catch { return { ok: false, response: quotaUnavailable() }; }
 }
 
-/**
- * 服务端配额扣减：在生成成功后由 API 路由调用，将对应功能的 used +1。
- * 使用 service_role 客户端直接原子操作，无竞态风险。
- * 若扣减失败仅记录日志，不影响已返回的流式内容。
- */
+/** Confirm a previously reserved successful generation, atomically and exactly once. */
 export async function incrementUsageServer(
   userId: string,
   feature: string,
   taskType?: string,
-  /** 这次做了什么（自由对话的提问和回答），给管理后台的实时监控看 */
-  detail?: Record<string, unknown>
+  detail?: Record<string, unknown>,
+  reservation?: CreationReservation,
 ): Promise<void> {
-  try {
-    const supabase = getServiceSupabase();
-
-    const usedColumn = usedColumnOf(feature);
-    if (!usedColumn) {
-      console.error('[api-guard] 未知的功能类型:', feature);
-      return;
-    }
-
-    // 记一条使用记录：首页「本月已用」按它按自然月数，删历史记录也不会少。
-    // 表还没建（迁移没跑）时只记日志，不影响计数器
-    const base = { user_id: userId, feature, task_type: taskType ?? null };
-    const row: Record<string, unknown> = detail ? { ...base, detail } : base;
-    let { error: eventError } = await supabase.from('usage_events').insert(row);
-    // detail 列是后加的：迁移没跑时整条插入会失败，那样连"本月已用"都少记一次。退回不带它再写
-    if (eventError && detail) {
-      ({ error: eventError } = await supabase.from('usage_events').insert(base));
-    }
-    if (eventError) console.error('[api-guard] 使用记录写入失败:', eventError.message);
-
-    // 获取当前值
-    const { data: quota } = await supabase
-      .from('user_quotas')
-      .select(usedColumn)
-      .eq('user_id', userId)
-      .single();
-
-    if (quota) {
-      const currentValue = (quota[usedColumn as keyof typeof quota] as number) || 0;
-      
-      // 更新 +1
-      const { error: updateError } = await supabase
-        .from('user_quotas')
-        .update({ 
-          [usedColumn]: currentValue + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-
-      if (updateError) {
-        console.error('[api-guard] incrementUsageServer update error:', updateError);
-      } else {
-        console.log(`[api-guard] 配额扣减成功: ${feature} -> ${currentValue + 1}`);
-      }
-    }
-  } catch (err) {
-    console.error('[api-guard] incrementUsageServer exception:', err);
+  if (!reservation || reservation.userId !== userId || reservation.feature !== feature) {
+    throw new Error('Generation must reserve quota before calling the model');
   }
+  await settleCreation(reservation, true, taskType, detail);
 }

@@ -36,7 +36,8 @@ describe('品牌名', () => {
   it('网页标题、隐私政策、服务条款都换成了开物', () => {
     expect(BRAND_NAME).toBe('开物');
     expect(readCode('app/layout.tsx')).toContain("title: '开物 - ");
-    expect(readSource('app/privacy/page.tsx')).toContain('开物（以下简称"我们"）');
+    // JSX 里的引号按 lint 要求写成 &quot;（页面上显示的还是 "）
+    expect(readSource('app/privacy/page.tsx')).toMatch(/开物（以下简称(?:"|&quot;)我们(?:"|&quot;)）/);
     expect(readSource('app/terms/page.tsx')).toContain('欢迎使用开物');
   });
 

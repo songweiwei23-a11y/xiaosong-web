@@ -1,0 +1,32 @@
+{
+  "time": "2026-10-06T17:44:36.370Z",
+  "checks": [
+    {
+      "name": "网站Dify绑定应用",
+      "appName": "开物",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "正式Dify六图片和文档附件",
+      "status": 200,
+      "limit": 6,
+      "passed": true
+    },
+    {
+      "name": "/login",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "/api/public/ping",
+      "status": 204,
+      "passed": true
+    },
+    {
+      "name": "/api/dify/chat",
+      "status": 401,
+      "passed": true
+    }
+  ]
+}

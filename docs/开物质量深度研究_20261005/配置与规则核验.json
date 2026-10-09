@@ -1,0 +1,186 @@
+{
+  "time": "2026-10-05T09:12:31.580Z",
+  "productionBuild": "FKKyHb_kTqwkQYiyrnUlu",
+  "matchedProductionFiles": [
+    "lib/quality-checks.ts",
+    "lib/creator-context.ts",
+    "lib/creation-continuation.ts",
+    "lib/preferences.ts",
+    "lib/performance.ts"
+  ],
+  "localDSL": {
+    "file": "docs/dify/开物_阿里云Lite六附件兼容修复_20261002.yml",
+    "sha256": "277547d3f83972908b26345faa5f6ab68d89e53f8a740df21a5e429b9a5b9b86",
+    "model": {
+      "completion_params": {
+        "frequency_penalty": 0,
+        "max_tokens": 50000,
+        "presence_penalty": 0,
+        "temperature": 0.5,
+        "top_p": 0.9
+      },
+      "mode": "chat",
+      "name": "claude-sonnet-4-6",
+      "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+    },
+    "memory": {
+      "query_prompt_template": "{{#sys.query#}}",
+      "role_prefix": {
+        "assistant": "",
+        "user": ""
+      },
+      "window": {
+        "enabled": true,
+        "size": 20
+      }
+    },
+    "vision": {
+      "enabled": true,
+      "configs": {
+        "detail": "high",
+        "variable_selector": [
+          "sys",
+          "files"
+        ]
+      }
+    },
+    "context": {
+      "enabled": false,
+      "variable_selector": []
+    },
+    "systemPromptChars": 8169
+  },
+  "runtimeModel": {
+    "title": "Claude 编导助手",
+    "type": "llm",
+    "status": "succeeded",
+    "elapsed": 19.292259,
+    "model": "claude-sonnet-4-6",
+    "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+    "usage": {
+      "prompt_tokens": 32213,
+      "completion_tokens": 744,
+      "total_tokens": 32957,
+      "total_price": "0",
+      "currency": "USD",
+      "latency": 19.279
+    },
+    "finish_reason": "stop"
+  },
+  "publishedFileUpload": {
+    "allowed_file_extensions": [
+      ".JPG",
+      ".JPEG",
+      ".PNG",
+      ".WEBP",
+      ".GIF",
+      ".MP4",
+      ".MOV",
+      ".PDF",
+      ".TXT",
+      ".MD",
+      ".DOCX",
+      ".XLSX",
+      ".CSV",
+      ".PPTX",
+      ".HTML",
+      ".XML",
+      ".JSON"
+    ],
+    "allowed_file_types": [
+      "image",
+      "document"
+    ],
+    "allowed_file_upload_methods": [
+      "local_file",
+      "remote_url"
+    ],
+    "enabled": true,
+    "fileUploadConfig": {
+      "attachment_image_file_size_limit": 2,
+      "audio_file_size_limit": 50,
+      "batch_count_limit": 5,
+      "file_size_limit": 15,
+      "file_upload_limit": 50,
+      "image_file_batch_limit": 10,
+      "image_file_size_limit": 10,
+      "knowledge_file_size_limit": 50,
+      "single_chunk_attachment_limit": 10,
+      "skill_file_size_limit": 50,
+      "video_file_size_limit": 100,
+      "workflow_file_upload_limit": 10
+    },
+    "number_limits": 6
+  },
+  "rules": {
+    "borrowedNumber": [],
+    "unsupportedPercent": [],
+    "placeFalsePositive": [
+      "地名「指着挂衣区」档案和素材里都没有"
+    ],
+    "angleFalsePositive": {
+      "passed": false,
+      "issues": [
+        {
+          "kind": "taboo",
+          "detail": "「最大」— 广告法红线"
+        }
+      ]
+    },
+    "reviewBodyChars": 927,
+    "nativeQuality": [
+      {
+        "id": "P1",
+        "quality": {
+          "passed": false,
+          "issues": [
+            {
+              "kind": "taboo",
+              "detail": "「最好」— 广告法红线"
+            }
+          ]
+        }
+      },
+      {
+        "id": "R2",
+        "quality": {
+          "passed": true,
+          "issues": []
+        }
+      },
+      {
+        "id": "C1",
+        "quality": {
+          "passed": true,
+          "issues": []
+        }
+      },
+      {
+        "id": "N1",
+        "quality": {
+          "passed": false,
+          "issues": [
+            {
+              "kind": "taboo",
+              "detail": "「最强」— 广告法红线"
+            },
+            {
+              "kind": "taboo",
+              "detail": "「最便宜」— 广告法红线"
+            },
+            {
+              "kind": "years",
+              "detail": "「钩子**：在杭州做了5年美甲，」和事实卡对不上"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "researchSecretMetadata": {
+    "present": true,
+    "envPresent": false,
+    "updatedAt": "2026-10-04T08:54:20.921+00:00",
+    "verificationScope": "存在性；不读取或展示密钥，真实调用另见研究分节记录"
+  }
+}

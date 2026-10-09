@@ -1,0 +1,210 @@
+{
+  "time": "2026-10-06T17:56:40.941Z",
+  "scope": "临时隔离账号通过正式网站HTTP接口验收；不使用客户会话或配额，不替代页面点击验收",
+  "checks": [
+    {
+      "name": "隔离账号登录及服务器会话验证",
+      "passed": true
+    },
+    {
+      "name": "真实档案创建",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "同账号档案恢复",
+      "passed": true
+    },
+    {
+      "name": "第二账号看不到他人档案",
+      "passed": true
+    },
+    {
+      "name": "拆解爆款历史真实保存及恢复",
+      "passed": true
+    },
+    {
+      "name": "拆解爆款历史账号隔离",
+      "passed": true
+    },
+    {
+      "name": "跨行业二创历史真实保存及恢复",
+      "passed": true
+    },
+    {
+      "name": "跨行业二创历史账号隔离",
+      "passed": true
+    },
+    {
+      "name": "自由对话历史真实保存及恢复",
+      "passed": true
+    },
+    {
+      "name": "自由对话历史账号隔离",
+      "passed": true
+    },
+    {
+      "name": "已登录接口 /api/quota/check",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "已登录接口 /api/web-search/quota",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "已登录接口 /api/account",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "已登录接口 /api/works",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "已登录接口 /api/research",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "已登录接口 /api/orders",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "正式上传六附件（1图5文档）",
+      "passed": true
+    },
+    {
+      "name": "附件跨账号访问被拒",
+      "passed": true
+    },
+    {
+      "name": "六附件真实模型识别",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "正式网站增强检索接入及SSE完成",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "真实研究计划任务创建",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "真实研究计划生成与数据库保存",
+      "passed": true
+    },
+    {
+      "name": "确认研究计划并启动",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "真实研究报告完成、来源与历史保存",
+      "passed": true
+    },
+    {
+      "name": "研究报告账号隔离",
+      "passed": true,
+      "status": 404
+    },
+    {
+      "name": "实际研究额度只扣一次",
+      "passed": true,
+      "used": 1,
+      "pending": 0
+    }
+  ],
+  "answers": [
+    {
+      "task": "六附件图片文档识别",
+      "answer": "根据本轮附件核对结果：\n\n**图片数字**：73（图片中显示\"KAIWU QA IMAGE 73\"）\n\n**五份文档数值**：\n- 文档1：1\n- 文档2：2\n- 文档3：3\n- 文档4：4\n- 文档5：5\n- **合计**：15\n\n**图片数字 + 文档合计**：73 + 15 = **88**",
+      "terminal": true,
+      "web": null,
+      "error": null
+    },
+    {
+      "task": "正式网站联网自由对话",
+      "answer": "根据 [Dify 官方文档 LLM 节点说明](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)，**Memory 不能跨不同 conversation 保存**。文档明确写道：\"Memory is node-specific and doesn't persist between different conversations\"（Memory 是节点特定的，不会在不同对话之间持续存在）。Memory 的作用域仅限于单个 Chatflow conversation 内的多次 LLM 调用，用于在同一对话中维护上下文。",
+      "terminal": true,
+      "web": {
+        "event": "web_search",
+        "status": "done",
+        "sources": [
+          {
+            "title": "LLM",
+            "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md"
+          }
+        ],
+        "quota": {
+          "plan": "pro",
+          "used": 0,
+          "limit": 60,
+          "reason": "reserved",
+          "allowed": true,
+          "pending": 1,
+          "periodEnd": "2026-11-06T17:56:42.310941+00:00",
+          "remaining": 59,
+          "requestId": "be6aa706-369b-40ac-bbdb-3b4536159480"
+        }
+      },
+      "error": null
+    },
+    {
+      "task": "真实持久化深度研究",
+      "status": "done",
+      "report": "# 隔离验收·Dify记忆\n\n> 研究主题：Dify官方LLM Memory与会话变量的作用域\n> 2026年10月7日 · 快速研究 · 引用 2 个来源\n\n## 核心结论\n\n1. **LLM Memory 不能跨会话保存**——记忆功能仅在单个 conversation 内有效，会话结束后记忆会被清空，官方文档明确\"不会在不同会话之间持久化\"[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。\n\n2. **Memory 的工作机制是在单次会话内维持上下文**——前面的交互内容会以格式化的\"用户-助手\"输出形式包含在后续提示词中，让 LLM 节点在同一对话过程中\"记住\"之前的内容[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。\n\n3. **会话变量也限于单个 chat session**——Conversation Variables 能够在同一会话的多轮对话中保持状态[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)，但文档未提及能在用户下次发起全新 conversation 时保留数据。\n\n4. **工作流变量在单次执行后就重置**——每次用户发送新消息触发工作流时，工作流变量都会从零开始，无法记住上一轮交互中存储的数据[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。\n\n5. **会话变量需通过专门节点配置**——必须使用 Variable Assigner 节点来写入和管理会话变量，支持覆盖、追加、清除等操作模式[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。\n\n## 结合你的情况\n\n1. **如果需要真正的跨会话数据持久化**——LLM Memory 和会话变量都无法满足需求[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)，需要考虑外部存储方案，比如通过 API 节点调用外部数据库、使用知识库功能存储结构化数据，或者利用 Dify 的其他持久化机制（需进一步查阅官方文档或社区实践）。\n\n2. **明确你的\"记忆\"场景属于哪个作用域**——如果只需在单次对话中让 LLM 记住前文（比如客服会话、单次咨询），LLM Memory 已经够用[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)；如果需要在同一会话中跨多轮交互累积状态（比如多步骤表单填写、进度追踪），用会话变量[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)；如果需要跨天、跨会话记住用户信息，现有机制不支持。\n\n3. **测试会话边界的实际行为**——文档对\"chat session\"的定义和生命周期没有详细说明，建议在你的实际应用中做对照试验：用户关闭对话窗口后重新打开、清除浏览器缓存、或隔天访问，观察会话变量是否还保留，以此确定你的使用场景是否适用。\n\n4. **用 Variable Assigner 节点规范管理会话数据**——如果采用会话变量方案，在 Chatflow 中明确配置 Variable Assigner 节点[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)，并为每个需要持久化的数据字段指定清晰的变量名和操作模式，避免在节点间隐式传递导致状态混乱。\n\n## 一、LLM Memory能否跨不同conversation保存？\n\n### LLM Memory 的作用范围\n\nLLM Memory 功能**仅在单个 conversation（会话）内部有效，无法跨不同 conversation 保存**[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。官方文档明确指出：\"Memory is node-specific and doesn't persist between different conversations\"[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)，即记忆功能是节点特定的，不会在不同会话之间持久化。\n\n当在 Chatflow 应用中启用 Memory 后，它能够维护同一会话中多次 LLM 调用之间的上下文[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。具体机制是：前面的交互内容会以格式化的\"用户-助手\"输出形式包含在后续的提示词中[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。这意味着在一次完整的对话过程中，LLM 节点可以\"记住\"之前说过的内容，但一旦会话结束或用户开启新的对话，这些记忆就会被清空。\n\n### 跨会话数据持久化的替代方案\n\n公开资料里没找到 LLM Memory 本身支持跨 conversation 保存的配置选项或参数。\n\n如果需要跨会话保存数据，文档提到了 **Conversation Variables**（会话变量）这一机制[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。与普通的 Workflow Variables（工作流变量，每次执行后重置）不同，Conversation Variables 能够\"persist across multiple conversation turns within the same chat session\"[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)——但需注意这里的\"chat session\"仍然是指单个会话期间的多轮对话，而非跨不同 conversation 的持久化（推断）。\n\n通过 Variable Assigner 节点，可以将数据写入会话变量并在同一会话的多轮交互中保持状态[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)，支持覆盖、追加、清除等操作模式[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。但文档未提及这些会话变量能否在用户下次发起全新 conversation 时依然保留。\n\n## 二、会话变量与工作流变量有什么区别？\n\n### 作用域的根本差异\n\n工作流变量（Workflow Variables）只在单次工作流执行期间存在，当工作流完成时会重置[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。这意味着每次用户发送新消息触发工作流时，这些变量都会从零开始，无法记住上一轮交互中存储的任何数据。\n\n会话变量（Conversation Variables）则在整个聊天会话（chat session）中持续存在，能够跨越多轮对话保持状态[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。它们专门用于 Chatflow 应用，通过 Variable Assigner 节点进行写入和管理[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。\n\n### 实际应用场景的区别\n\n会话变量的持久性特征使其能够实现上下文对话、用户个性化、有状态的工作流，以及跨多次用户交互的进度追踪[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。例如在多轮对话中记住用户偏好、累积信息或维持对话状态，都需要依赖会话变量。\n\n工作流变量更适合单次执行内的临时数据处理，比如在同一次工作流中不同节点之间传递中间结果、存储 LLM 的单次响应内容等临时数据[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。\n\n### 配置方式的差异\n\n会话变量需要通过专门的 Variable Assigner 节点来配置和更新[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)，可以在单个节点中同时分配多个会话变量，并指定它们的数据来源[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。（推断：工作流变量通常在节点间自动传递或通过节点输出直接产生，无需专门的赋值节点）\n\n公开资料里没找到会话变量的具体数量限制、存储大小上限，以及会话过期后变量的清理机制。\n\n## 局限与待核实\n\n- 本报告读了 2 个网页来源，其中 2 个读到了全文。\n- 数字文本匹配未发现异常；这不代表事实、口径或数字含义已核实。\n- 公开网页的信息可能滞后或片面；涉及钱、合同、法规、医疗的决定，请以官方原文和专业意见为准。\n\n## 参考来源\n\n1. [LLM](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md) — docs.dify.ai · 获取于 2026/10/7\n2. [Variable Assigner](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md) — docs.dify.ai · 获取于 2026/10/7",
+      "sources": [
+        {
+          "n": 1,
+          "step": 1,
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md",
+          "title": "Variable Assigner",
+          "site": "docs.dify.ai",
+          "published": "",
+          "fetched": "full",
+          "collected_at": "2026-10-06T17:58:12.447+00:00"
+        },
+        {
+          "n": 2,
+          "step": 1,
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md",
+          "title": "LLM",
+          "site": "docs.dify.ai",
+          "published": "",
+          "fetched": "full",
+          "collected_at": "2026-10-06T17:58:12.434+00:00"
+        }
+      ],
+      "checks": {
+        "cited": 2,
+        "removed": 0,
+        "sources": 2,
+        "fullText": 2,
+        "unverified": 0,
+        "failedSteps": 0
+      }
+    }
+  ],
+  "cleanup": [
+    {
+      "type": "test-storage",
+      "count": 6,
+      "ok": true
+    },
+    {
+      "type": "test-user",
+      "ok": true
+    },
+    {
+      "type": "test-user",
+      "ok": true
+    }
+  ]
+}

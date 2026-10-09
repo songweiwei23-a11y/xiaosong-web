@@ -1,0 +1,217 @@
+{
+  "time": "2026-10-06T17:38:25.986Z",
+  "scope": "数据库结构可读与未登录接口保护；未验证真实用户读写、RLS隔离或支付成功",
+  "elapsedMs": 7548,
+  "checks": [
+    {
+      "type": "database-read",
+      "table": "user_profiles",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "account_positioning",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "script_history",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "chat_conversations",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "works",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "creation_sessions",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "research_jobs",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "research_sources",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "research_requests",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "subscriptions",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "payment_orders",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "app_secrets",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "creator_presets",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "creator_preferences",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "launch_plans",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "interview_imports",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "creation_requests",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "database-read",
+      "table": "web_search_requests",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "type": "research-active-tasks",
+      "status": 200,
+      "count": 0,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/profiles",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/positioning",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/creative-history",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/script-history",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/chat-conversations",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/works",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/result-versions",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/research",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/web-search/quota",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/account",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/orders",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/admin/monitor",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/admin/health",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/chat-files",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/breakdown/upload",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "type": "unauthorized-api",
+      "path": "/api/breakdown/transcribe",
+      "status": 401,
+      "passed": true
+    }
+  ]
+}

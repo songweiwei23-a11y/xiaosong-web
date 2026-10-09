@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DataExportCard } from "@/components/account/DataExportCard";
 import Link from "next/link";
 import { Crown, KeyRound, Receipt, Loader2, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { INPUT_CLS, PRIMARY_BTN } from "@/components/form/controls";
 import { throwApiError } from "@/lib/api-error";
+import { postSafely } from "@/lib/safe-post";
 
 /*
  * 我的账户：会员状态、我的订单、修改密码。
@@ -82,6 +84,8 @@ export default function AccountPage() {
       <MembershipCard account={account} />
       <OrdersCard orders={orders} />
       <PasswordCard email={account?.email ?? null} />
+      {/* 全量导出与恢复预检（2026-10-04） */}
+      <DataExportCard />
     </div>
   );
 }
@@ -217,7 +221,7 @@ function PasswordCard({ email }: { email: string | null }) {
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/account/password", {
+      const res = await postSafely("/api/account/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword: current, newPassword: next }),

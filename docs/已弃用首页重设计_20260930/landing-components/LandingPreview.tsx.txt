@@ -1,0 +1,98 @@
+'use client';
+
+import { useState } from 'react';
+import { ArrowRight, BookOpen, Check, ChevronRight, Clapperboard, FileText, History, Layers3, Menu, MoveUpRight, Play, ScanLine, ShieldCheck, Sparkles, UserRound, X } from 'lucide-react';
+import { BrandSeal, BrandWordmark } from '@/components/brand/Brand';
+import { FACTS } from '@/lib/showcase';
+import { INDUSTRY_SAMPLES, matchIndustry } from '@/lib/landing';
+import { BORROW_LAYERS, DEFAULT_LAYERS, type BorrowLayer } from '@/lib/remix';
+import { PreviewStudio } from './PreviewStudio';
+import { PreviewDetails } from './PreviewDetails';
+
+const ADVANTAGES = [
+  { icon: UserRound, number:'01', title:'围绕你的生意创作', copy:'行业、人群、口吻、卖点和拍摄条件，都能成为创作背景。切换客户档案，让每个账号保持自己的方向。', tags:['前采与档案','定位与简报','真实卖点'], color:'sky' },
+  { icon: BookOpen, number:'02', title:'把编导方法用进内容', copy:'起号打法、开篇句式、脚本结构和爆款元素可选。把具体方法带进创作，知道这一条该怎样展开。', tags:[`${FACTS.methods} 条公式与句式`,`${FACTS.structures} 种脚本结构`], color:'violet' },
+  { icon: Clapperboard, number:'03', title:'拆懂参考，改成自己的', copy:'结合画面与口播分析开篇、结构和镜头，再选择借哪几层，换成当前档案的产品、场景和人物。', tags:['画面 + 口播','11 个二创层次','拆解接二创'], color:'amber' },
+  { icon: History, number:'04', title:'每个客户都有创作积累', copy:'成果按账号和档案保存在云端。恢复旧稿、继续细化，让后续创作参考近期成果，不必每次从零开始。', tags:['档案历史','旧稿恢复','近期创作参考'], color:'mint' },
+];
+
+export function LandingPreview() {
+  const [industry, setIndustry] = useState(INDUSTRY_SAMPLES[0]);
+  const [intro, setIntro] = useState('');
+  const [hint, setHint] = useState('');
+  const [menu, setMenu] = useState(false);
+  const [layers, setLayers] = useState<BorrowLayer[]>([...DEFAULT_LAYERS]);
+  const [remixShown, setRemixShown] = useState(false);
+  const showSample = () => {
+    if (!intro.trim()) { setHint('写一句你的行业，或点击下面的行业按钮。'); return; }
+    const hit = matchIndustry(intro);
+    setIndustry(hit || INDUSTRY_SAMPLES[0]);
+    setHint(hit ? `已切换到${hit.name}样例，点击各步骤查看产出。` : '先展示餐饮样例。正式创作会结合你的实际行业和档案。');
+  };
+  const toggleLayer = (id: BorrowLayer) => { setLayers(old => old.includes(id) ? old.filter(x=>x!==id) : [...old,id]); setRemixShown(false); };
+
+  return <div className="landing-preview">
+    <div className="p-preview-bar"><span><i />首页预览 · 尚未同步正式网站</span><a href="http://122.51.234.155/" target="_blank" rel="noreferrer">对照当前首页 <MoveUpRight size={12} /></a></div>
+    <header className="p-header">
+      <div className="p-header-inner">
+        <a href="#try" className="p-logo" aria-label="开物首页预览"><BrandSeal size={34} /><span><BrandWordmark /><small>AI 编导工作台</small></span></a>
+        <nav className="p-desktop-nav" aria-label="首页导航"><a href="#advantages">为什么选开物</a><a href="#studio">看看怎么用</a><a href="#method">编导方法</a><a href="#pricing">价格方案</a></nav>
+        <a href="#studio" className="p-nav-cta">体验创作流程 <ArrowRight size={14} /></a>
+        <button className="p-menu-button" type="button" onClick={()=>setMenu(!menu)} aria-label={menu?'关闭导航':'打开导航'} aria-expanded={menu}>{menu?<X size={21}/>:<Menu size={21}/>}</button>
+      </div>
+      {menu&&<nav className="p-mobile-nav" aria-label="手机首页导航">{[['#advantages','为什么选开物'],['#studio','看看怎么用'],['#method','编导方法'],['#pricing','价格方案']].map(([url,title])=><a key={url} href={url} onClick={()=>setMenu(false)}>{title}<ChevronRight size={14}/></a>)}</nav>}
+    </header>
+
+    <main>
+      <section id="try" className="p-hero p-section">
+        <div className="p-hero-copy">
+          <div className="p-eyebrow"><span className="p-live-dot" />为实体商家、编导与代运营而做</div>
+          <h1>不会拍短视频？<br /><span>说一句你是做什么的</span></h1>
+          <p className="p-hero-description">围绕你的行业、产品和客户，找选题、写口播、排镜头、起标题。把生意里的卖点，变成一套可拍的内容方案。</p>
+          <form className="p-try-form" onSubmit={e=>{e.preventDefault();showSample();}}><input value={intro} onChange={e=>setIntro(e.target.value)} placeholder="比如：我在县城开了家面馆" aria-label="你是做什么的" maxLength={60} /><button type="submit">查看行业样例 <ArrowRight size={15}/></button></form>
+          <div className="p-industry-options">{INDUSTRY_SAMPLES.map(i=><button type="button" key={i.id} aria-pressed={industry.id===i.id} className={industry.id===i.id?'is-active':''} onClick={()=>{setIndustry(i);setIntro(i.who);setHint(`已切换到${i.name}样例，点击各步骤查看产出。`);}}>{i.name}</button>)}</div>
+          <p className="p-try-hint" aria-live="polite">{hint||'示例展示创作思路；完整创作会结合你自己的档案。'}</p>
+          <div className="p-hero-promises">{['客户背景带入','编导方法可选','历史云端保存'].map(x=><span key={x}><Check size={14}/>{x}</span>)}</div>
+        </div>
+        <div className="p-hero-visual"><div className="p-hero-glow" /><div className="p-floating-note"><Sparkles size={14}/><span>让背景、方法和成果接起来</span></div><PreviewStudio industry={industry} compact/><div className="p-hero-visual-caption"><span className="p-caption-line" />把一个想法，一步步写成可拍的内容</div></div>
+      </section>
+
+      <div className="p-proof-strip p-section">
+        <div><strong>{FACTS.methods}<span>条</span></strong><p>创作公式与句式</p></div>
+        <div><strong>{FACTS.boards}<span>个</span></strong><p>创作板块</p></div>
+        <div><strong>{FACTS.docs}<span>篇</span></strong><p>编导资料 · {FACTS.libraries} 个专题</p></div>
+        <div><strong><History size={29}/><span className="p-proof-word">按档案积累</span></strong><p>云端历史 · 恢复旧稿</p></div>
+      </div>
+
+      <section id="advantages" className="p-section">
+        <div className="p-section-heading"><div><div className="p-eyebrow">为什么选择开物</div><h2 className="p-section-title">懂创作，<span>也围绕你的生意</span></h2></div><p className="p-section-copy">从客户背景到内容产出，<br className="hidden sm:block"/>让每个环节有依据，让每一轮成果留下来。</p></div>
+        <div className="p-advantages-grid">{ADVANTAGES.map(a=><article className={`p-advantage-card p-advantage-${a.color}`} key={a.title}><div className="flex items-center justify-between"><div className="p-advantage-icon"><a.icon size={23}/></div><span className="p-card-number">{a.number}</span></div><h3>{a.title}</h3><p>{a.copy}</p><div className="p-advantage-tags">{a.tags.map(t=><span key={t}>{t}</span>)}</div></article>)}</div>
+      </section>
+
+      <section id="studio" className="p-section">
+        <div className="p-eyebrow"><Layers3 size={15}/> 看得见的创作过程</div>
+        <h2 className="p-section-title">一个客户档案，<br className="sm:hidden"/><span>接起一套内容方案</span></h2>
+        <p className="p-section-copy">点开下面的步骤，看看背景怎样进入选题、脚本和镜头。上方切换行业，这里的样例也跟着切换。</p>
+        <div className="mt-10"><PreviewStudio industry={industry}/></div>
+      </section>
+
+      <section id="remix" className="p-section">
+        <div className="p-remix-layout">
+          <div><div className="p-eyebrow"><ScanLine size={15}/> 拆解爆款 × 跨行业二创</div><h2 className="p-section-title">拆懂一条参考，<br/><span>写成自己的生意</span></h2><p className="p-section-copy">结合画面与口播，分析开篇、结构、情绪和拍法。选择你想借的层次，二创围绕当前档案的行业和产品来写。</p><div className="p-remix-points"><span><Check size={15}/>拆解结果可直接带去二创</span><span><Check size={15}/>借哪几层、写多深，由你选择</span><span><Check size={15}/>报告和方案按档案保存，随时找回</span></div><p className="mt-6 text-[11px] leading-5 text-slate-500">当前视频拆解分析前 3 分钟。下方为二创设置与方向的预置演示。</p></div>
+          <div className="p-remix-demo">
+            <div className="p-remix-demo-head"><div className="flex items-center gap-2"><Clapperboard size={16}/>参考内容</div><span className="p-demo-label">演示素材</span></div>
+            <div className="p-filmstrip">{[{icon:Play,label:'开篇',text:'先抛出一个具体问题'},{icon:FileText,label:'结构',text:'给过程，再讲清理由'},{icon:Clapperboard,label:'呈现',text:'人物口播 + 现场细节'}].map((f,i)=><div key={f.label}><span>0{i+1}</span><f.icon size={25}/><strong>{f.label}</strong><small>{f.text}</small></div>)}</div>
+            <div className="p-remix-arrow"><ArrowRight size={16}/><span>选择借哪几层 · 换成自己的行业</span></div>
+            <div className="p-remix-layer-label">借哪几层 <span>已选 {layers.length} / {BORROW_LAYERS.length}</span></div>
+            <div className="p-remix-layers">{BORROW_LAYERS.map(l=><button type="button" key={l.id} onClick={()=>toggleLayer(l.id)} aria-pressed={layers.includes(l.id)} className={layers.includes(l.id)?'is-active':''}>{layers.includes(l.id)&&<Check size={11}/>} {l.label}</button>)}</div>
+            <button type="button" className="p-button p-button-primary mt-5 w-full" disabled={!layers.length} onClick={()=>setRemixShown(true)}>查看二创方向示例 <Sparkles size={14}/></button>
+            {remixShown&&<div className="p-remix-result" role="status"><strong>{industry.name}账号 · 改写方向示例</strong><p>借用{layers.map(id=>BORROW_LAYERS.find(l=>l.id===id)!.label).join('、')}，围绕「{industry.who}」展开。</p><div>切入方向：{industry.topics[0]}</div><small>预置方向示例，用来展示设置与产出的关系。</small></div>}
+          </div>
+        </div>
+      </section>
+
+      <PreviewDetails/>
+    </main>
+    <footer className="p-footer"><div><a href="#try" className="p-logo"><BrandSeal size={29}/><BrandWordmark/></a><p>围绕你的生意创作，让每轮成果积累下来。</p></div><span>开物首页预览 · 2026.09</span><a href="http://122.51.234.155/" target="_blank" rel="noreferrer">查看当前正式网站 <MoveUpRight size={13}/></a></footer>
+  </div>;
+}

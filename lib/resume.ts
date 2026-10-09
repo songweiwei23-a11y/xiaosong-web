@@ -61,6 +61,7 @@ const OTHER_ROUTES: Record<string, string> = {
   拆解爆款: '/dashboard/breakdown',
   跨行业二创: '/dashboard/remix',
   创作方向: '/dashboard/direction',
+  内容规划: '/dashboard/content-plan',
   起号方案: '/dashboard/growth',
   成交理由: '/dashboard/deal-reason',
   知识库查询: '/dashboard/knowledge',
@@ -108,6 +109,8 @@ export interface WorkDetail {
   profile_id: string | null;
   is_done: boolean;
   items: WorkItem[];
+  /** 作品需求（20261003_creation_sessions.sql）：跨板块跳转时服务端合并保存；迁移没跑时没有 */
+  creation_brief?: Record<string, unknown> | null;
 }
 
 /** 某个环节最新的一条内容。一个环节可能做过好几版，取最后一版 */

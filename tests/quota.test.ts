@@ -172,9 +172,11 @@ describe('额度文案由配置现算', () => {
     }
   });
 
-  it('付费档卡片分创作、知识库、联网三行', () => {
+  it('基础档三行，专业档另列独立深度研究额度', () => {
     expect(quotaSummary('basic').length).toBe(3);
-    expect(quotaSummary('pro').length).toBe(3);
+    expect(quotaSummary('pro').length).toBe(4);
+    expect(quotaSummary('pro').join(' ')).toContain('深度研究');
+    expect(quotaSummary('basic').join(' ')).not.toContain('深度研究');
   });
 
   it('每档知识库都有额度，不能宣传不限次数', () => {

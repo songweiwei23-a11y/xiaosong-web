@@ -16,30 +16,36 @@ export interface CanvasVersion {
   at: number;
   /** 这一版是怎么来的：「AI 原稿」「手动修改」「改写：口语一点」 */
   note: string;
+  /** 从哪一版继续修改；选择旧版创作时保留分支来源。 */
+  parentAt?: number;
 }
 
-const MAX_VERSIONS = 20;
-const MAX_VERSION_CHARS = 40_000;
-
-/** 存储前清洗：最多 20 版、每版最长 4 万字 */
+/** 清洗结构，不裁切用户正文或旧版本。写入体积超限由接口明确报错。 */
 export function sanitizeCanvasVersions(v: unknown): CanvasVersion[] {
   if (!Array.isArray(v)) return [];
   return v
     .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && typeof (x as Record<string, unknown>).content === 'string')
     .map((x) => ({
-      content: String(x.content).slice(0, MAX_VERSION_CHARS),
+      content: String(x.content),
       at: typeof x.at === 'number' && Number.isFinite(x.at) ? x.at : Date.now(),
       note: typeof x.note === 'string' ? x.note.slice(0, 60) : '',
-    }))
-    .slice(-MAX_VERSIONS);
+      ...(typeof x.parentAt === 'number' && Number.isFinite(x.parentAt) ? { parentAt: x.parentAt } : {}),
+    }));
 }
 
-/** 加一版：和最新一版一样就不加；超过上限丢最早的（第一版 AI 原稿保留） */
-export function addVersion(versions: CanvasVersion[], content: string, note: string): CanvasVersion[] {
+/** 加一版：不删除历史，旧版继续修改时可记录分支来源。 */
+export function addVersion(versions: CanvasVersion[], content: string, note: string, parentAt?: number): CanvasVersion[] {
   const last = versions[versions.length - 1];
   if (last && last.content === content) return versions;
-  const next = [...versions, { content: content.slice(0, MAX_VERSION_CHARS), at: Date.now(), note: note.slice(0, 60) }];
-  return next.length > MAX_VERSIONS ? [next[0], ...next.slice(-(MAX_VERSIONS - 1))] : next;
+  return [...versions, { content, at: Math.max(Date.now(), (last?.at ?? 0) + 1), note: note.slice(0, 60), ...(parentAt !== undefined ? { parentAt } : {}) }];
+}
+
+export const REWRITE_PRESETS = ['更口语自然', '精简重复表达', '加强开头吸引力', '保持结构，换个表达', '压缩到约30秒口播', '扩展到约60秒口播'] as const;
+
+/** 锁定的是原文片段，不靠模型自觉：改写后逐字校验，失败不替换。 */
+export function preservesLockedText(before: string, after: string, locked: string[]): boolean {
+  const count = (doc: string, text: string) => doc.split(text).length - 1;
+  return locked.filter(Boolean).every(text => count(after, text) >= count(before, text));
 }
 
 /**
@@ -47,13 +53,14 @@ export function addVersion(versions: CanvasVersion[], content: string, note: str
  * - 选中了一段：只改这一段、只输出改好的这一段——给全文是为了让它知道上下文（口吻、前后衔接），不是让它重写全文
  * - 没选：整篇按要求改，输出完整的新版
  */
-export function buildRewritePrompt(p: { doc: string; selection?: string; instruction: string; context?: string }): string {
+export function buildRewritePrompt(p: { doc: string; selection?: string; instruction: string; context?: string; lockedTexts?: string[] }): string {
   const ctx = p.context?.trim() ? `${p.context.trim()}\n\n` : '';
   /*
    * 2026-10-03 实测：只写"不要编数字"压不住——"口语一点"改出了「李师傅早上五点开始熬」「牛骨加番茄熬三小时」，
    * 原文一个字都没有。所以点名哪几类不许加，并给出替代写法（占位），模型才有路可走
    */
   const rules = [
+    ...(p.lockedTexts?.length ? ['- 以下锁定片段必须逐字保留，不得改写或删除：', ...p.lockedTexts.map(text => `【锁定片段】${text}`)] : []),
     '- **只换说法，不加事实**：原文和账号背景里没有的人名、称呼、时间、地点、数量、原料、做法、经历，一个都不要加',
     '- 想写得更具体、原文又没给的，就用【换成你的：……】占位（如「锅底熬了【换成你的：几个小时】」），让编导自己填',
     '- 原文有的事实不要改',

@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, GraduationCap } from "lucide-react";
 import { COURSE_TOTAL, LESSONS, graduated } from "@/lib/newbie-course";
 import { useCourseProgress } from "@/hooks/useCourseProgress";
-
-const COLLAPSE_KEY = "kaiwu:course-card-collapsed";
+import { useCollapsed } from "@/lib/home-prefs";
 
 /**
  * 工作台首页的「抖音新手课」卡片：过了几关、下一关是什么、一键继续。
@@ -14,27 +12,10 @@ const COLLAPSE_KEY = "kaiwu:course-card-collapsed";
  */
 export function CourseCard({ className = "" }: { className?: string }) {
   const { passed, ready } = useCourseProgress();
-  const [collapsed, setCollapsed] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      const saved = localStorage.getItem(COLLAPSE_KEY);
-      setCollapsed(saved === null ? graduated(passed) : saved === "1");
-    } catch {
-      setCollapsed(graduated(passed));
-    }
-  }, [ready, passed]);
+  // 收没收按账号分开记（lib/home-prefs）；没记过的：毕业了默认收起
+  const [collapsed, toggle] = useCollapsed("course", ready ? graduated(passed) : null);
 
   if (!ready || collapsed === null) return null;
-
-  const toggle = () =>
-    setCollapsed((c) => {
-      try {
-        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
-      } catch {}
-      return !c;
-    });
 
   const done = graduated(passed);
   const next = LESSONS[passed];

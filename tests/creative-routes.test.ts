@@ -142,7 +142,7 @@ describe('页面', () => {
     const src = readCode('app/dashboard/topic/page.tsx');
     expect(src).toMatch(/useState<CreativeRoute>\('两种都出'\)/);
     expect(src).toContain('🅰 打法');
-    expect(src).toMatch(/routeAssignment\(route, topicCount\)/);
+    expect(src).toMatch(/topicRoutePrompt\(\{ route, count: topicCount, sourced, explicit: routeExplicit \}\)/);
     expect(src).toMatch(/tacticIndex\(/);
     expect(src).toMatch(/topicTactics: /);
   });

@@ -4,19 +4,23 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
-import { listWorks, type Work } from "@/lib/works";
+import { listWorks, listWorksPage, progressGroup, workGroupCounts, type Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
+import { profileHistoryQuery } from '@/lib/profile-history';
 import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
 import { TodayBoard } from '@/components/dashboard/TodayBoard';
 import { LaunchPlanCard } from '@/components/dashboard/LaunchPlanCard';
 import { CourseCard } from '@/components/dashboard/CourseCard';
 import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import { LibraryCard } from '@/components/dashboard/LibraryCard';
+import { QuickStart } from '@/components/dashboard/QuickStart';
+import { PreferenceNews } from '@/components/preferences/PreferenceHint';
+import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
-  MessagesSquare, ChevronRight, Clock, Crown, User, History,
-  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass,
+  MessagesSquare, ChevronRight, ChevronDown, Clock, Crown, User, History,
+  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass, CalendarRange,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +48,14 @@ import {
  * 埋在工具堆里等于告诉用户这条链不存在。
  */
 const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; accent: string }[] = [
+  {
+    // 2026-10-09：先定这个月发几条、怎么配比、分哪几个方向，勾选方向再去出方向思路和选题
+    name: "内容规划",
+    desc: "定这个月发几条、配比和方向",
+    icon: CalendarRange,
+    href: "/dashboard/content-plan",
+    accent: "bg-teal-500/12 text-teal-500",
+  },
   {
     // 2026-10-02：带着目的找方向，在选题之前。出来的方向勾选后直接去选题、脚本
     name: "创作方向",
@@ -152,6 +164,7 @@ const TASK_ROUTES: Record<string, string> = {
   拆解爆款: "/dashboard/breakdown",
   跨行业二创: "/dashboard/remix",
   创作方向: "/dashboard/direction",
+  内容规划: "/dashboard/content-plan",
   起号方案: "/dashboard/growth",
   开篇钩子: "/dashboard/growth",
 };
@@ -214,6 +227,8 @@ export default function DashboardPage() {
   /** 这个档案下已有的定位类型，用来算「先打地基」还差几步 */
   const [posTypes, setPosTypes] = useState<string[]>([]);
   const [profileCount, setProfileCount] = useState(0);
+  const [toShoot, setToShoot] = useState<{ count: number; first: string | null }>({ count: 0, first: null });
+  const [todayCollapsed, toggleToday] = useCollapsed("today", false);
 
   const applyQuota = (d: any) =>
     setQuota({
@@ -277,13 +292,48 @@ export default function DashboardPage() {
    * 原来首页只在打开时读一次档案、从不听"档案切换了"的广播：侧边栏切过去了，
    * 首页的「当前档案」和「先打地基」还停在上一个号上，看着就是"点了没反应"。
    */
+  /*
+   * 这个档案的作品、待拍摄和最近记录（2026-10-04 按档案隔离：档案 1 生成的，档案 2 的首页看不到）。
+   * 打开首页时取一次，侧边栏切换档案时再取一次。
+   */
+  const loadProfileWork = async () => {
+    const [historyRes, workList, groupCounts, shootList] = await Promise.all([
+      fetch(`/api/script-history?taskType=all&limit=6${profileHistoryQuery(getActiveProfileId())}`).catch(() => null),
+      listWorks(10),
+      workGroupCounts(),
+      listWorksPage({ group: "toShoot", limit: 1 }).catch(() => [] as Work[]),
+    ]);
+
+    // 只展示还没做完的：做完的作品留在「全部」里，不占首页
+    setWorks(workList.filter((w) => !w.is_done).slice(0, 4));
+    // 「今天拍什么」：内容做完、还没拍的。数量用数据库计数；拿不到时退回按最近这些作品数
+    const ready = shootList.length ? shootList : workList.filter((w) => progressGroup(w) === "toShoot");
+    setToShoot({ count: groupCounts?.toShoot ?? ready.length, first: ready[0]?.title ?? null });
+
+    const list = historyRes?.ok ? await historyRes.json().catch(() => null) : null;
+    setRecent(Array.isArray(list)
+      ? list.slice(0, 5).map((x: any) => ({
+          id: x.id,
+          // 与历史列表同一套标题提取，避免首页显示成另一个样子
+          title: extractTitle(splitQualityReport(x.result || "").body),
+          taskType: x.task_type || "",
+          createdAt: x.created_at,
+          // 属于某个作品的，点进去带上作品编号，直接回到那一条；零散记录回到板块页
+          href: x.work_id
+            ? workStageUrl(x.work_id, x.task_type)
+            : TASK_ROUTES[x.task_type] || "/history",
+        }))
+      : []);
+  };
   useEffect(() => {
     return onActiveProfileChange(() => {
       fetch("/api/profiles")
         .then((r) => (r.ok ? r.json() : null))
         .then((list) => list && applyProfiles(list))
         .catch(() => {});
+      loadProfileWork().catch(() => {});
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProfileWork 只用到 setState，订阅一次即可
   }, []);
 
   useEffect(() => {
@@ -292,39 +342,16 @@ export default function DashboardPage() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // 四个请求互不依赖，并行发出；首页不该为此串行等待
-        const [quotaRes, profileRes, historyRes, workList] = await Promise.all([
+        // 额度、档案和「这个档案的作品与记录」互不依赖，并行发出；首页不该为此串行等待
+        const [quotaRes, profileRes] = await Promise.all([
           fetch(`/api/quota/check?userId=${session.user.id}`).catch(() => null),
           fetch("/api/profiles").catch(() => null),
-          fetch("/api/script-history?taskType=all&limit=6").catch(() => null),
-          listWorks(5),
+          loadProfileWork(),
         ]);
-
-        // 只展示还没做完的：做完的作品留在「全部」里，不占首页
-        setWorks(workList.filter((w) => !w.is_done).slice(0, 4));
 
         if (quotaRes?.ok) applyQuota(await quotaRes.json());
 
         if (profileRes?.ok) applyProfiles(await profileRes.json());
-
-        if (historyRes?.ok) {
-          const list = await historyRes.json();
-          if (Array.isArray(list)) {
-            setRecent(
-              list.slice(0, 5).map((x: any) => ({
-                id: x.id,
-                // 与历史列表同一套标题提取，避免首页显示成另一个样子
-                title: extractTitle(splitQualityReport(x.result || "").body),
-                taskType: x.task_type || "",
-                createdAt: x.created_at,
-                // 属于某个作品的，点进去带上作品编号，直接回到那一条；零散记录回到板块页
-                href: x.work_id
-                  ? workStageUrl(x.work_id, x.task_type)
-                  : TASK_ROUTES[x.task_type] || "/history",
-              }))
-            );
-          }
-        }
       } catch {
         // 首页这些信息都不是必需的，取不到就少显示一块，不打断使用
       } finally {
@@ -378,10 +405,44 @@ export default function DashboardPage() {
           <ProfileQuickSwitch loading={loading} hasProfile={!!profile} />
         </header>
 
-        {/* 今日看板：时钟 + 待办，进来第一眼看到的就是现在几点、今天要做什么 */}
-        <div className="mb-5">
-          <TodayBoard />
-        </div>
+        {/* 我的创作偏好：最近又学到几条新习惯（lib/preferences），没有新的就不出现 */}
+        <PreferenceNews />
+
+        {/* 首屏三件事：接着上次 / 导入文案审稿 / 今天拍什么（2026-10-03） */}
+        <QuickStart
+          loading={loading}
+          resume={
+            works[0]
+              ? { title: works[0].title, href: nextStageHref(works[0]), hint: nextStageLabel(works[0]), at: works[0].updated_at }
+              : recent[0]
+                ? { title: recent[0].title, href: recent[0].href, hint: recent[0].taskType, at: recent[0].createdAt }
+                : null
+          }
+          toShoot={toShoot}
+        />
+
+        {/* 今日看板：时钟 + 待办 + 白噪音。可以收起（按账号记）；收起时组件照样挂着，白噪音不断 */}
+        {todayCollapsed !== null && (
+          <div className="mb-5">
+            {todayCollapsed ? (
+              <button type="button" onClick={toggleToday} aria-expanded={false}
+                className="glass-panel flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left text-[13px] text-muted-foreground hover:text-foreground">
+                <span>今日看板 · 时钟、待办、白噪音</span>
+                <ChevronDown className="h-4 w-4 shrink-0" />
+                <span className="sr-only">展开</span>
+              </button>
+            ) : (
+              <div className="flex justify-end">
+                <button type="button" onClick={toggleToday} aria-expanded className="mb-1 flex items-center gap-1 px-1 text-[11.5px] text-muted-foreground hover:text-foreground">
+                  收起今日看板<ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                </button>
+              </div>
+            )}
+            <div hidden={todayCollapsed}>
+              <TodayBoard />
+            </div>
+          </div>
+        )}
 
         {/* 先学后做：抖音新手课（懂道理）→ 7 天起号计划（动手）。两张都能折叠 */}
         <CourseCard className="mb-5" />

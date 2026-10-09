@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
+// js-yaml 没装类型声明，按 CommonJS 加载
+const loadCjs = createRequire(import.meta.url);
 import vm from 'node:vm';
 
 function execute(name: string, input: unknown): any {
@@ -48,7 +51,7 @@ describe('阿里云 Lite 搜索请求和结果', () => {
     expect(output).not.toContain('secret');
   });
   it('接入草稿保留授权闸门、六附件、原模型和知识库，密钥为空', () => {
-    const yaml = require('js-yaml');
+    const yaml = loadCjs('js-yaml');
     const base = yaml.load(fs.readFileSync('docs/dify/小宋编导文案工作台.yml', 'utf8'));
     const draft = yaml.load(fs.readFileSync('docs/dify/开物_阿里云Lite联网接入_20261002.yml', 'utf8'));
     const graph = draft.workflow.graph;

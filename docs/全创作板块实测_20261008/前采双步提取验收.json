@@ -1,0 +1,246 @@
+{
+  "elapsedMs": 54065,
+  "firstCallMs": 31594,
+  "secondCallMs": 22471,
+  "extraction": {
+    "profileName": "青禾家具店",
+    "fields": [
+      {
+        "key": "account_platform",
+        "value": [
+          "抖音"
+        ],
+        "evidence": "我现在刚开始做抖音",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "account_track",
+        "value": [
+          "家居装修"
+        ],
+        "evidence": "我们叫青禾家具店，卖沙发、床和衣柜",
+        "unverified": false,
+        "check": {
+          "ok": false,
+          "reason": "原文说的是家具店，卖沙发、床、衣柜，应该归到「家居装修」或「生活用品」。但沙发床衣柜是家具类商品，不是装修服务，「家居装修」偏向装修施工、设计类内容，这个归类有偏差",
+          "fix": [
+            "本地服务"
+          ]
+        }
+      },
+      {
+        "key": "account_stage",
+        "value": "刚起号，定位未确定",
+        "evidence": "我现在刚开始做抖音，粉丝不到一千",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "fans_level",
+        "value": "0-1万",
+        "evidence": "粉丝不到一千",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "target_region",
+        "value": [
+          "本地同城"
+        ],
+        "evidence": "主要想让本县正在装修的人来展厅看看",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "target_pain_points",
+        "value": "怕尺寸买错、怕门开不了、怕摆放不好看",
+        "evidence": "顾客常担心尺寸买错，我一般会说先看家里门能不能开，再看柜子摆得好不好看",
+        "unverified": false,
+        "check": {
+          "ok": false,
+          "reason": "原文说的是「顾客常担心尺寸买错」和「先看家里门能不能开，再看柜子摆得好不好看」，这是老板的回答方式，不是客人担心的全部。「怕门开不了、怕摆放不好看」是从老板的回答里反推的，原文客人担心的只明确说了「尺寸买错」",
+          "fix": "不知道怎么挑"
+        }
+      },
+      {
+        "key": "fan_common_questions",
+        "value": "尺寸会不会买错、门能不能开、柜子摆得好不好看",
+        "evidence": "顾客常担心尺寸买错，我一般会说先看家里门能不能开，再看柜子摆得好不好看",
+        "unverified": false,
+        "check": {
+          "ok": false,
+          "reason": "原文说「顾客常担心尺寸买错，我一般会说先看家里门能不能开，再看柜子摆得好不好看」，这是老板的回答，不是客人的提问。客人常问什么原文没说",
+          "fix": null
+        }
+      },
+      {
+        "key": "content_format",
+        "value": [
+          "口播"
+        ],
+        "evidence": "视频由我一个人拍，只有手机",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "unique_resources",
+        "value": "有实体展厅、能开柜门拉抽屉、能试坐沙发",
+        "evidence": "展厅有样柜，能开柜门和拉抽屉，也能试坐沙发",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "team_structure",
+        "value": "一人全包",
+        "evidence": "视频由我一个人拍",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "equipment",
+        "value": [
+          "手机"
+        ],
+        "evidence": "只有手机",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "shooting_location",
+        "value": [
+          "店铺"
+        ],
+        "evidence": "展厅有样柜，能开柜门和拉抽屉，也能试坐沙发",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "editing_capability",
+        "value": "基础剪辑",
+        "evidence": "做基础剪辑",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "monetization_model",
+        "value": [
+          "到店消费"
+        ],
+        "evidence": "主要想让本县正在装修的人来展厅看看",
+        "unverified": false,
+        "check": {
+          "ok": true,
+          "reason": ""
+        }
+      },
+      {
+        "key": "product_category",
+        "value": [
+          "沙发",
+          "床",
+          "衣柜"
+        ],
+        "evidence": "卖沙发、床和衣柜",
+        "unverified": false,
+        "check": {
+          "ok": false,
+          "reason": "原文说「卖沙发、床和衣柜」，这是具体商品，不是标准说法里的大类。沙发床衣柜属于家具，标准说法里最接近的是「生活用品」，但档案填的是具体品类名而不是标准说法",
+          "fix": [
+            "生活用品"
+          ]
+        }
+      },
+      {
+        "key": "conversion_path",
+        "value": "看视频 → 到展厅看样",
+        "evidence": "主要想让本县正在装修的人来展厅看看",
+        "unverified": false,
+        "check": {
+          "ok": false,
+          "reason": "原文说「主要想让本县正在装修的人来展厅看看」，这是期待的路径。但「看视频→到展厅看样」里的「看样」是猜测，原文只说「看看」。另外标准说法里应该是「看视频 → 评论区问 → 私信 → 到店」或类似格式，「到展厅看样」不够完整",
+          "fix": "看视频 → 到店"
+        }
+      }
+    ],
+    "highlights": [
+      "本县装修人群为主要目标客户",
+      "展厅可实际体验：开柜门、拉抽屉、试坐沙发",
+      "顾客最担心尺寸买错和摆放问题",
+      "会主动提醒顾客先看门能不能开、柜子摆放效果"
+    ],
+    "missing": [
+      {
+        "key": "target_age",
+        "label": "年龄段",
+        "question": "来买家具的主要是哪个年龄段的人？刚结婚的年轻人多，还是三四十岁换房的多？"
+      },
+      {
+        "key": "target_gender",
+        "label": "主要性别",
+        "question": "来挑家具的是男的多还是女的多，还是夫妻一起来的多？"
+      },
+      {
+        "key": "price_range",
+        "label": "价格区间",
+        "question": "你们家沙发、床、衣柜大概什么价位？一套下来多少钱？"
+      },
+      {
+        "key": "unique_selling_point",
+        "label": "你凭什么让人选你",
+        "question": "顾客为什么选你家不选隔壁那几家？你觉得你家最大的优势是什么？"
+      },
+      {
+        "key": "competitive_weakness",
+        "label": "现在最大的短板",
+        "question": "现在做抖音最头疼的是什么？不会讲、没时间、还是不知道拍什么？"
+      },
+      {
+        "key": "conversion_barriers",
+        "label": "他们为什么犹豫、没下单",
+        "question": "来展厅看过但没买的人，一般是因为什么？嫌贵、还是要再看看、还是别的原因？"
+      }
+    ],
+    "checked": true
+  },
+  "rawCheck": "```json\n{\n  \"checks\": {\n    \"account_platform\": {\n      \"ok\": true\n    },\n    \"account_track\": {\n      \"ok\": false,\n      \"reason\": \"原文说的是家具店，卖沙发、床、衣柜，应该归到「家居装修」或「生活用品」。但沙发床衣柜是家具类商品，不是装修服务，「家居装修」偏向装修施工、设计类内容，这个归类有偏差\",\n      \"fix\": \"本地服务\"\n    },\n    \"account_stage\": {\n      \"ok\": false,\n      \"reason\": \"原文只说「刚开始做抖音，粉丝不到一千」，没说定位定没定。「刚起号」是事实，但「定位未确定」是推测\",\n      \"fix\": \"刚起号，定位未确定\"\n    },\n    \"fans_level\": {\n      \"ok\": true\n    },\n    \"target_region\": {\n      \"ok\": true\n    },\n    \"target_pain_points\": {\n      \"ok\": false,\n      \"reason\": \"原文说的是「顾客常担心尺寸买错」和「先看家里门能不能开，再看柜子摆得好不好看」，这是老板的回答方式，不是客人担心的全部。「怕门开不了、怕摆放不好看」是从老板的回答里反推的，原文客人担心的只明确说了「尺寸买错」\",\n      \"fix\": \"不知道怎么挑\"\n    },\n    \"fan_common_questions\": {\n      \"ok\": false,\n      \"reason\": \"原文说「顾客常担心尺寸买错，我一般会说先看家里门能不能开，再看柜子摆得好不好看」，这是老板的回答，不是客人的提问。客人常问什么原文没说\",\n      \"fix\": null\n    },\n    \"content_format\": {\n      \"ok\": true\n    },\n    \"unique_resources\": {\n      \"ok\": true\n    },\n    \"team_structure\": {\n      \"ok\": true\n    },\n    \"equipment\": {\n      \"ok\": true\n    },\n    \"shooting_location\": {\n      \"ok\": false,\n      \"reason\": \"原文说「展厅有样柜」，是展厅不是店铺，虽然意思接近但标准说法里没有「展厅」选项，应该用「店铺」\",\n      \"fix\": \"店铺\"\n    },\n    \"editing_capability\": {\n      \"ok\": true\n    },\n    \"monetization_model\": {\n      \"ok\": true\n    },\n    \"product_category\": {\n      \"ok\": false,\n      \"reason\": \"原文说「卖沙发、床和衣柜」，这是具体商品，不是标准说法里的大类。沙发床衣柜属于家具，标准说法里最接近的是「生活用品」，但档案填的是具体品类名而不是标准说法\",\n      \"fix\": \"生活用品\"\n    },\n    \"conversion_path\": {\n      \"ok\": false,\n      \"reason\": \"原文说「主要想让本县正在装修的人来展厅看看」，这是期待的路径。但「看视频→到展厅看样」里的「看样」是猜测，原文只说「看看」。另外标准说法里应该是「看视频 → 评论区问 → 私信 → 到店」或类似格式，「到展厅看样」不够完整\",\n      \"fix\": \"看视频 → 到店\"\n    }\n  }\n}\n```",
+  "usage": {
+    "prompt_tokens": 28327,
+    "completion_tokens": 999,
+    "total_tokens": 29326,
+    "latency": 17.404,
+    "total_price": 0,
+    "currency": "USD",
+    "elapsed_time": 20.33153
+  }
+}

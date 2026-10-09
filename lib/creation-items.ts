@@ -7,7 +7,7 @@
  *
  * 认的写法（线上见过的）：
  *   ### 选题1：……   ## 📌 选题1：【类别】（题目在下面「**标题**：《…》」里）
- *   ### 1. 【流量型·聊观点】成本选题+地域对立（题目在「**选题：** …」里）
+ *   ### 1. 【流量型·地域差异】成本选题+地域对立（题目在「**选题：** …」里）
  *   ## 方向一 / 方案 2 / 脚本 3 / 版本A
  *   整段没有标题时：1. **…** 这样的编号列表
  * 不认的：脚本内部的「1. 开场 0-3秒」「2. 正文」这类段落——它们是一条内容的组成部分，不是并列的几条。
@@ -63,7 +63,7 @@ const NUMBER_ITEM = /^\d{1,2}\s*[.、．)）]\s*\S/;
  * 脚本内部的段落、报告的收尾小节——编号了也不是"并列的几条"。
  * 「1. 先确定拍摄场地 2. 准备道具」这种执行建议要能勾，所以拍摄、准备、道具、发布不在这里
  */
-const STRUCTURAL = /开场|开篇钩子(?!\d)|正文|中段|结尾|收尾|铺垫|高潮|转折|镜头\s*\d|分镜|注意事项|总结|\d+\s*[-–~～]\s*\d+\s*秒|^\d{1,2}\s*[.、．)）]\s*(?:为什么|原因)/;
+const STRUCTURAL = /分析|拆解|核查|核验|评估|开场|开篇钩子(?!\d)|正文|中段|结尾|收尾|铺垫|高潮|转折|镜头\s*\d|分镜|总评|逐维度打分|问题清单|优化后的完整脚本|纯文字文案|节奏自检|拍摄顺序|拍摄清单|注意事项|总结|\d+\s*[-–~～]\s*\d+\s*秒|^\d{1,2}\s*[.、．)）]\s*(?:为什么|原因)/;
 const TOPIC_LINE = /^\s*[-*>]?\s*\**\s*(?:选题|标题|题目|主题)\s*\**\s*[：:]\s*\**\s*(.+?)\s*\**\s*$/;
 
 /** 标题行的文字：去掉 #、加粗、开头的 emoji 和符号 */
@@ -137,14 +137,19 @@ export function splitCreationItems(markdown: string): CreationItems {
   // 找候选标题（代码块里的不算）
   type Cand = { index: number; level: number; text: string; keyword: boolean };
   const cands: Cand[] = [];
+  const parents: { level: number; text: string }[] = [];
   let fenced = false;
   lines.forEach((line, index) => {
     if (/^\s*(```|~~~)/.test(line)) { fenced = !fenced; return; }
     if (fenced) return;
     const h = headingText(line);
     if (!h) return;
+    while (parents.length && parents[parents.length - 1].level >= h.level) parents.pop();
     const keyword = KEYWORD_ITEM.test(h.text);
-    if (keyword || NUMBER_ITEM.test(h.text)) cands.push({ index, level: h.level, text: h.text, keyword });
+    const analysisSection = parents.some(parent => parent.level >= 2 && /(?:结构|逐项|逐句).*(?:拆解|分析)|(?:拆解|分析).*(?:结构|逐项|逐句)/.test(parent.text));
+    // 拆解中的“1.开篇钩子、2.脚本结构…”是分析维度；后面真正的选题/方向仍可带走。
+    if (keyword || (NUMBER_ITEM.test(h.text) && !analysisSection)) cands.push({ index, level: h.level, text: h.text, keyword });
+    parents.push(h);
   });
 
   // 取最浅的、至少有两条的那一层

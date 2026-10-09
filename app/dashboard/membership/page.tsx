@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -112,7 +112,7 @@ export default function MembershipPage() {
           升级会员，获得更多创作额度
         </h1>
         <p className="text-lg text-muted-foreground">
-          选择适合你的套餐，开启高效创作之旅
+          全部会员开放全部创作板块；专业会员、高频会员另含深度研究报告（带出处的联网研究）
         </p>
 
         {/* 当前状态。到期时间在这之前全站没有任何地方显示 */}

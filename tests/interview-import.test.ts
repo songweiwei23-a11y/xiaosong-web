@@ -542,7 +542,7 @@ describe('接口', () => {
 
   it('提取、修改都不接共用会话（不带 conversation_id，也不存）', () => {
     for (const src of [extract, revise, readCode('lib/dify-task.ts')]) {
-      expect(src).not.toMatch(/conversation_id/);
+      expect(src).not.toMatch(/conversation_id\s*:/);
       expect(src).not.toMatch(/saveDifyConversationId|getDifyConversationId/);
     }
   });
@@ -551,7 +551,7 @@ describe('接口', () => {
     const task = readCode('lib/dify-task.ts');
     expect(task).toMatch(/setInterval\(\(\) => write\(': ping\\n\\n'\)/);
     expect(task).toMatch(/X-Accel-Buffering/);
-    expect(extract).toMatch(/return sseTask\(/);
+    expect(extract).toMatch(/const response = sseTask\(/);
     expect(revise).toMatch(/return sseTask\(/);
   });
 

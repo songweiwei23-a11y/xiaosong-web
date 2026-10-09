@@ -1,0 +1,147 @@
+2026-10-08T03:59:04.662Z
+https://www.biandao.icu/dashboard/deal-reason
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "成交理由" [level=1]
+    - paragraph: AI 判断 17 个成交理由哪些适用；按账号档案分别保存，并同步进档案，各板块自动带上
+    - paragraph: 「测试_青禾家具店_全板块验收20261008」还没存过成交理由，已经把档案里的店名、品类、卖点、客人带进下面，检查一下就能分析。
+    - button "店铺信息" [expanded]:
+      - generic: 店铺信息
+    - generic: 店铺名称
+    - generic: 必填
+    - textbox "例如：老李烧烤、美美美容院": 测试_青禾家具店_全板块验收20261008
+    - generic: 店铺类型
+    - generic: 可选
+    - combobox:
+      - option "餐饮美食"
+      - option "美容美发"
+      - option "休闲娱乐"
+      - option "运动健身"
+      - option "亲子教育"
+      - option "生活服务"
+      - option "医疗健康"
+      - option "宠物服务"
+      - option "汽车服务"
+      - option "其他" [selected]
+    - generic: 店铺特色
+    - generic: 必填
+    - textbox "开了 10 年的老店 秘制配方，味道独特 环境装修有特色 人均 50 元":
+      - /placeholder: "开了 10 年的老店\n秘制配方，味道独特\n环境装修有特色\n人均 50 元"
+      - text: 【测试】只卖沙发、床、衣柜。展厅有真实样柜可开门拉抽屉、沙发可试坐，老板愿意现场讲解选购注意点。价格、销量、年限、评价、环保等级、免费服务、售后承诺未核实。一人手机，不安排顾客表演；证据不足的成交理由不要打成已具备。
+    - generic: 写得越具体，分析越准
+    - generic: 目标客户
+    - generic: 可选
+    - textbox "例如：周边 3 公里上班族": 本地正在装修的家庭
+    - button "分析中…" [disabled]:
+      - text: 分析中…
+  - main:
+    - heading "分析结果" [level=2]
+    - text: 创作中
+    - paragraph: 正在判断哪些成交理由适用…
+- alert

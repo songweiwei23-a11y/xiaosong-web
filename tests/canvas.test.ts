@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   addVersion, buildRewritePrompt, cleanRewriteOutput, lineDiff, quoteForInput, replaceSelection, sanitizeCanvasVersions,
-  CANVAS_TASK_TYPE, type CanvasVersion,
+  CANVAS_TASK_TYPE, preservesLockedText, type CanvasVersion,
 } from '@/lib/canvas';
 import { sanitizeMessages } from '@/lib/chat-message-utils';
 import { ISOLATED_TASKS } from '@/lib/topic-library';
@@ -13,21 +13,30 @@ import { readCode } from './helpers/source';
 const v = (content: string, note = ''): CanvasVersion => ({ content, at: 1, note });
 
 describe('版本', () => {
-  it('和最新一版一样就不加；超过 20 版丢最早的，但保留第一版 AI 原稿', () => {
+  it('重复版本不增加，超过20版仍完整保留原稿及所有修改', () => {
     let list = [v('原稿', 'AI 原稿')];
     expect(addVersion(list, '原稿', '手动修改')).toBe(list);
     for (let i = 1; i <= 25; i++) list = addVersion(list, `第${i}次`, '手动修改');
-    expect(list).toHaveLength(20);
+    expect(list).toHaveLength(26);
+    expect(list[1].content).toBe('第1次');
     expect(list[0].note).toBe('AI 原稿');
     expect(list.at(-1)!.content).toBe('第25次');
   });
 
-  it('存储前清洗：乱的丢掉、超长截断', () => {
+  it('清洗仅丢非法结构，长正文和所有版本不截断', () => {
     expect(sanitizeCanvasVersions([{ content: 'a', at: 5, note: 'x' }, { nope: 1 }, null, { content: 'b'.repeat(50_000) }])).toEqual([
       { content: 'a', at: 5, note: 'x' },
-      expect.objectContaining({ content: 'b'.repeat(40_000) }),
+      expect.objectContaining({ content: 'b'.repeat(50_000) }),
     ]);
     expect(sanitizeCanvasVersions('乱写')).toEqual([]);
+    expect(sanitizeCanvasVersions(Array.from({ length: 40 }, (_, i) => v(String(i))))).toHaveLength(40);
+  });
+
+  it('从旧版本创作记录分支来源，保存后仍能比较和恢复原稿', () => {
+    const original = v('原稿');
+    const versions = addVersion([original, v('另一种写法')], '从原稿试一个新方向', '改写分支', original.at);
+    expect(versions.at(-1)?.parentAt).toBe(original.at);
+    expect(sanitizeCanvasVersions(versions).at(-1)?.parentAt).toBe(original.at);
   });
 
   it('对话记录存和读都带着画布的各版（刷新后不丢）', () => {
@@ -73,6 +82,13 @@ describe('让 AI 改', () => {
     expect(ISOLATED_TASKS.has(CANVAS_TASK_TYPE)).toBe(true);
     expect(readCode('components/chat/ResultCanvas.tsx')).toMatch(/taskType: CANVAS_TASK_TYPE/);
   });
+
+  it('锁定片段必须逐字保留，减少重复出现也不允许', () => {
+    expect(preservesLockedText('开篇不能改\n正文', '开篇不能改\n改后的正文', ['开篇不能改'])).toBe(true);
+    expect(preservesLockedText('开篇不能改\n正文', '开头随便改\n正文', ['开篇不能改'])).toBe(false);
+    expect(preservesLockedText('事实\n事实', '事实', ['事实'])).toBe(false);
+    expect(buildRewritePrompt({ doc, instruction: '口语一些', lockedTexts: ['中段：牛肉现切现穿。'] })).toContain('【锁定片段】中段：牛肉现切现穿。');
+  });
 });
 
 describe('对比上一版', () => {
@@ -109,7 +125,7 @@ describe('消息操作', () => {
     expect(page).toMatch(/handleSend\(input, \{ replaceLast: true, files: lastUser\.attachments \?\? \[\] \}\)/);
     expect(page).toMatch(/quoteForInput\(text, prev\)/);
     expect(page).toMatch(/<ResultCanvas/);
-    expect(page).toMatch(/updateRemoteConversation\(activeConv\.remoteId, \{ messages \}\)/);
+    expect(page).toMatch(/syncQueue\.current\.enqueue\(\{ \.\.\.activeConv, messages/);
   });
 
   it('换掉最后一轮时，存回云端的是截掉那一轮之后的记录（不会留下两份问答）', () => {

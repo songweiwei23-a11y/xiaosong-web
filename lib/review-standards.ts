@@ -16,12 +16,13 @@
 
 import {
   FORBIDDEN_PHRASES,
-  REQUIRED_ELEMENTS,
-  evaluateScriptQualityStrict,
   getRelevantExample,
 } from './quality-checker';
 import { roleInferRule } from './content-roles';
 import { continuationRules } from './creation-continuation';
+import { reviewDraftStats } from './script-result-utils';
+import { creativeCraftRules } from './creative-craft';
+import { AI_LENGTH_RULE, EXAMPLE_LENGTH_NOTE } from './ai-recommend';
 
 export interface ReviewPromptParams {
   draftContent: string;
@@ -52,36 +53,23 @@ export interface ReviewPromptParams {
 /** 时长选「AI 推荐」时传这个值 */
 export const AI_DURATION = 'AI推荐';
 
+export const AMBIGUOUS_REVIEW_DURATION = /(?:^|[^\d])1\s*[-—－]\s*30\s*秒/;
+
+export function reviewDimensionLabels(selected: string[], options: { id: string; label: string }[]): string {
+  return selected.map(value => options.find(option => option.id === value || option.label === value)?.label ?? value).filter(Boolean).join('、');
+}
+
 /** 把七个评分维度连同权重写成表格，模型照着打分才有一致性 */
 function rubricTable(): string {
-  const rows = [
-    ...REQUIRED_ELEMENTS.basic.map((e) => ({ name: e.name, weight: e.weight, note: basicNote(e.id) })),
-    ...REQUIRED_ELEMENTS.advanced.map((e) => ({ name: e.name, weight: e.weight, note: advancedNote(e.id) })),
-  ];
   return [
-    '| 维度 | 权重 | 达标的含义 |',
-    '|---|---|---|',
-    ...rows.map((r) => `| ${r.name} | ${r.weight} 分 | ${r.note} |`),
+    '| 维度 | 权重 | 达标的含义 |', '|---|---|---|',
+    '| 核心目的与开场钩子 | 20 分 | 切中用户核心问题、立场与人群，开头承诺能由正文兑现，不强制3秒冲突 |',
+    '| 信息递进与情绪波点适配 | 20 分 | 主体有具体问题、有效细节与递进；情绪服务真实内容，不要求数量或符号 |',
+    '| 事实与证据 | 20 分 | 事实有材料支持，未知回答与结果不冒充事实；比较口径一致，追问能获得证据。**逐条对照【档案关键事实】看意思**：品类是哪几样、年限是谁的、店在哪，稿子换了说法、意思对不上的（如把六种风格说成六类家具、把从业年限说成店龄）要列为问题，不能只因为词在档案里出现过就给满分 |',
+    '| 表达与人设 | 15 分 | 清楚自然、符合用户口吻，采访保留真实原话，不套统一俚语 |',
+    '| 拍摄执行与时长 | 15 分 | 镜头、资源、台词与时长可执行；纯文字或局部优化不因缺镜头标注扣分 |',
+    '| 收束与目的兑现 | 10 分 | 核心问题得到回应；金句与行动指令仅在内容和用户目的需要时使用 |',
   ].join('\n');
-}
-
-function basicNote(id: string): string {
-  switch (id) {
-    case 'hook': return '开头单独标注了钩子，且 3 秒内进入冲突/痛点/反常识/利益点';
-    case 'emotion': return '全篇至少 3 处情绪波点，且落在情绪转折处而非随手撒符号';
-    case 'timing': return '至少 3 处「X-X秒」的时间区间标注，总时长对得上';
-    case 'scene': return '每个镜头都有画面描述，不是只有台词';
-    default: return '';
-  }
-}
-
-function advancedNote(id: string): string {
-  switch (id) {
-    case 'golden': return '结尾有独立成行的金句，8-20 字，能被单独摘出来传播';
-    case 'cta': return '结尾有明确的行动指令，说清到哪里、怎么做';
-    case 'colloquial': return '台词是说出来的话，不是写出来的字；至少 2 处生活化表达';
-    default: return '';
-  }
 }
 
 /**
@@ -90,35 +78,18 @@ function advancedNote(id: string): string {
  * 分工：数得清的交给代码，判断力的交给模型。
  */
 function machineFindings(draft: string): string {
-  const evalResult = evaluateScriptQualityStrict(draft);
-
   const timingCount = (draft.match(/\d+\s*-\s*\d+\s*秒/g) || []).length;
   const emotionCount = (draft.match(/(?:😰|😓|💕|🤝|⚡)|波点/g) || []).length;
   const shotCount = (draft.match(/【?镜头\s*\d*】?/g) || []).length;
-  const wordCount = draft.replace(/\s/g, '').length;
-  // 口播按 5 字/秒估算，和脚本页的统计口径保持一致
-  const estimatedSeconds = Math.round(wordCount / 5);
-
-  const lines = [
-    '## 🔍 系统预检结果（客观数据，请以此为准，不要另行估算）',
-    '',
-    `- 正文字数：${wordCount} 字，按口播 5 字/秒估算约 **${estimatedSeconds} 秒**`,
-    `- 时间区间标注：**${timingCount} 处**（达标线 3 处）`,
-    `- 情绪波点标记：**${emotionCount} 处**（达标线 3 处）`,
-    `- 镜头编号：**${shotCount} 处**`,
-    `- 系统初判得分：**${evalResult.score.toFixed(1)} 分（${evalResult.level}）**`,
-  ];
-
-  if (evalResult.issues.length > 0) {
-    lines.push('', '**机器已确认的缺失项**（这些是事实，请直接采信并给出修改方案）：');
-    for (const issue of evalResult.issues) lines.push(`- ${issue}`);
-  }
-  if (evalResult.suggestions.length > 0) {
-    lines.push('', '**机器已确认的待改进项**：');
-    for (const s of evalResult.suggestions) lines.push(`- ${s}`);
-  }
-
-  return lines.join('\n');
+  const stats = reviewDraftStats(draft);
+  return [
+    '## 🔍 系统预检结果（格式计数，仅作线索）', '',
+    stats.chars ? `- ${stats.estimated ? '原稿纯文本估算' : '可识别口播'}：${stats.chars} 字，按口播5字/秒约 ${stats.seconds} 秒；停顿、同期声与动作需另留时间` : '- 原稿含拍摄或分析说明，暂不能分离口播；时长未知，不得据此认定原稿为0字或0秒',
+    `- 时间区间标注：**${timingCount} 处**；镜头编号：**${shotCount} 处**`,
+    `- 情绪波点标记：**${emotionCount} 处**，不设数量达标线`,
+    '- 系统初判得分：不采用固定格式分；请按本次内容适用的编辑标准判断。',
+    '缺少金句、CTA、emoji或秒数标签不等于内容差；不需要的项目不用补。用户只改局部时只评和改那一部分。',
+  ].join('\n');
 }
 
 /** 把话术禁忌列出来，并标明命中的后果，避免模型对同类问题时轻时重 */
@@ -127,18 +98,19 @@ function forbiddenSection(draft: string): string {
   const hitLevel3 = FORBIDDEN_PHRASES.level3.filter((p) => draft.includes(p));
 
   const lines = [
-    '## 🚫 话术禁忌（与脚本生成同一套标准）',
+    '## 🚫 话术检查（结合句意，不机械扣分）',
     '',
-    `- **一级（致命）**：废话开场，如「${FORBIDDEN_PHRASES.level1.slice(0, 3).join('」「')}」等。出现即判不合格，必须重写开场。`,
-    `- **二级（书面语）**：如「${FORBIDDEN_PHRASES.level2.slice(0, 4).join('」「')}」等。每处扣 0.5 分，必须换成口语。`,
-    `- **三级（空洞）**：如「${FORBIDDEN_PHRASES.level3.slice(0, 4).join('」「')}」等。每处扣 0.2 分，必须替换为具体的人、事、数字。`,
+    `- 检查开场是否空转，如「${FORBIDDEN_PHRASES.level1.slice(0, 3).join('」「')}」；先看它出现的位置和后面有没有具体内容，中段口语、人物原话不能因命中词表就判致命。`,
+    `- 书面表达如「${FORBIDDEN_PHRASES.level2.slice(0, 4).join('」「')}」仅是检查线索，判断是否符合这位作者的口吻，再给自然替换，不逐词机械扣分。`,
+    `- 空泛赞美如「${FORBIDDEN_PHRASES.level3.slice(0, 4).join('」「')}」检查是否有原稿细节支撑。已有细节可压缩重组，没有依据的不要为了具体去编数字，也不编动作、神态或物件来增色。`,
+    `- **有分寸的说法不算问题**：「可能」「我觉得」「先试试看」这类，原稿是在表达不确定、或者是个人观点时要保留，不要改成「一定」「必然」。`,
   ];
 
   if (hitLevel2.length || hitLevel3.length) {
     lines.push('', '**本篇已命中**：');
     if (hitLevel2.length) lines.push(`- 二级：${hitLevel2.join('、')}`);
     if (hitLevel3.length) lines.push(`- 三级：${hitLevel3.join('、')}`);
-    lines.push('这些是逐字比对出来的，请逐一给出替换写法，不要漏。');
+    lines.push('这些仅是逐字命中；逐一结合语境判断，合适的保留，需要改的再给替换。');
   }
 
   return lines.join('\n');
@@ -150,7 +122,7 @@ function forbiddenSection(draft: string): string {
  * 「有人开车50公里来吃」「回头客占8成」「牛油放了8斤熬4小时」——全是原稿和档案里没有的。
  * 评分标准鼓励"用具体数字增强说服力"，通用的承接规则放在最末尾管不住，所以就近写进这两节。
  */
-const NO_INVENTED_FACTS = '⚠️ 原稿和档案里**没有**的数字（价格、人数、距离、时长、重量、比例、销量）和经历、事件不许编：要用数字增强说服力就写成 X（如「X公里」「回头客占X成」），要用真实经历的地方写「【换成你的：……】」并给一个参考方向。原稿里已有的数字照用。';
+const NO_INVENTED_FACTS = '⚠️ 这是编辑现有稿件：改写只重组原稿和用户本轮明确提供的信息。没有的数字、经历、事件、物品品种、动作次数、气味、神态、天气和作者感受都不补造；画面感从已有动作、声音、物件与空间中提炼。不能为了具体而替原稿加一个现场事实，包括问题清单、怎么改和逐句对照里的示范句。未提供的必要信息写在文案外说明待补，原稿里已有的数字与原话照用，不擅自改变人物行为。';
 
 export function buildReviewPrompt(p: ReviewPromptParams): string {
   const draft = p.draftContent || '';
@@ -187,17 +159,24 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('');
   parts.push(draft || '未提供脚本内容');
   parts.push('');
+  parts.push('## 编辑工作方法');
+  parts.push('先读懂本条的题眼、人物关系、叙述视角和观众想知道的问题，再指出原稿已有的有效细节与值得保留的声音。每个问题必须引用对应原句，区分素材缺失、表达可优化与拍摄标注缺失；文字稿已有动作、声音、物件和人物原话，即使没有镜头编号，也有画面。');
+  parts.push('观察记录、探访、日常过程：让观众跟着作者发现具体的人和事，用已有现场细节推进。开场压缩背景，尽早交代地点、时间和好奇点；不同场景各留下一个不同的发现，转场由前后信息关系带动，收尾回扣开场。保留有意味的停顿和克制反应，不把所有情绪都改成煽情判断或营销金句。');
+  parts.push('口语化不是统一换成网络俚语；把拗口、重复、解释过满的句子改成作者能自然说出的短句。画面感优先从原稿的动作、声音、物件与空间提炼，拍摄建议与文案事实分开；新增可拍建议不能伪装成已经发生的事实。用户提供的原话按原稿素材保留，不把未核实标签塞进口播，也不擅自改变人物行为、回答或作者情绪。');
+  parts.push('先按当前素材做最小必要改写。素材充分时直接交付；关键缺口说明需要补什么。时长写法若有歧义（如“1-30秒”），明确说明两种理解及影响，优先确认；不得自行当成30秒而删掉主要场景。用户明确30秒时集中一个切口，明确90秒时保留可支撑主题的多场景递进。');
+  parts.push('');
 
   parts.push('## 📌 稿件背景');
   if (p.platform) parts.push(`- 目标平台：${p.platform}`);
-  if (p.duration === AI_DURATION) {
-    parts.push('- 目标时长：由你按内容、平台和视频目的判断最合适的时长；在优化后的完整脚本开头用一行标注「建议时长：XX秒」，并在总评里用一句话说明为什么是这个时长');
-  } else if (p.duration) {
+  if (!p.duration || p.duration === AI_DURATION) {
+    // AI 推荐 = 要质量最好的那一版，不设上限（2026-10-06 产品方）：原稿里好的情节、细节不为了变短删掉
+    parts.push(`- 目标时长：由你按内容需要定——${AI_LENGTH_RULE}。原稿里讲得好的情节、细节不要为了变短删掉；在优化后的完整脚本开头用一行标注「建议时长：XX秒」，并在总评里用一句话说明为什么是这个时长`);
+  } else {
     parts.push(`- 目标时长：${p.duration}`);
   }
-  if (p.duration) {
+  if (p.duration && p.duration !== AI_DURATION) {
     // 原稿时长不够或超了是审稿里最常见的问题之一（产品方举的例子就是"原来的脚本时长短"）
-    parts.push('- 目标时长指的是**优化后的稿子**要达到的长度：原稿不够就补足内容，超了就删减，口播按每秒 3～4 个字估算');
+    parts.push('- 目标时长指优化后的成片：超时则取舍重复信息，时长不足先用已有动作、环境音和自然停顿。用户要扩充内容时深化已有问题与表达；缺少新素材就明确补采建议，不编情节或数字凑时长。口播按每秒约5字估算，停顿和同期声另计。');
   }
   if (p.scriptType) parts.push(`- 脚本类型：${p.scriptType}`);
   parts.push('');
@@ -208,11 +187,11 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('');
   parts.push(
     '稿子用了起号 36 计的（策略卡里写着"用的计"，或者一看就是某一计的拍法），再查一条：' +
-      '那一计的结构公式是不是真落在片子的事件上，还是只在开头提了一句。没落上的算问题。'
+      '检查用户明确采用的那一计是否服务核心目的；若只是候选标签，不能据此重写真实事件。合适的节点要落实，不合适的说明理由，不编素材去凑公式。'
   );
   parts.push('');
   parts.push(
-    `目的和结构、结尾指令对不上的，列进问题清单${p.severityLabels ? '（🔴 必须改）' : '，排在最前面'}，并在优化后的脚本里改过来。`
+    `实际内容违背用户目的、人群、立场或限制的，列进问题清单${p.severityLabels ? '（🔴 必须改）' : '，排在最前面'}，并在优化后的脚本里改过来。`
   );
   parts.push('');
 
@@ -229,11 +208,11 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   // 换算规则必须写死，否则它会按自己的直觉给一个看起来合理的数。
   parts.push('**换算规则**：把各维度得分相加得到百分制总分，再 **除以 10** 得到最终分数。');
   parts.push('例：各维度合计 82 分 → 最终 8.2 分；合计 25 分 → 最终 2.5 分。');
-  parts.push('总评里的分数和逐维度表格的合计必须对得上，不要各写各的。');
+  parts.push('总评里的分数和逐维度表格的合计必须对得上，不要各写各的。权重严格为20、20、20、15、15、10，合计100，各项得分不得超过其权重；检索资料或旧稿中的其他评分表不适用于本轮。');
   parts.push('');
   parts.push('**等级线**：9.0 以上为 MCN 级，8.5 以上优秀，8.0 以上良好，');
-  parts.push('7.0-8.0 及格但不建议直接拍，7.0 以下不合格必须重写。');
-  parts.push('这套标准与本产品的脚本生成模块完全一致——同一篇稿子在两边应当得到同一个分数。');
+  parts.push('7.0-8.0表示还有明确改进点；低于7.0先解释问题，改动范围服从用户要求，不自动推翻原稿。');
+  parts.push('这是当前稿件的编辑判断，不是程序验证结果；分数不能证明事实真实或传播效果。金句、CTA、波点不适用时不扣分，也不为了评分强行补入。');
   parts.push('');
 
   parts.push(forbiddenSection(draft));
@@ -268,19 +247,23 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   // 这和脚本生成注入范例是同一个理由。
   parts.push('## 📎 达标范例（9.5 分，仅作参照，不要照抄其中的行业和台词）');
   parts.push('');
-  parts.push(getRelevantExample(p.scriptType || '教知识型', p.duration && p.duration !== AI_DURATION ? p.duration : '60秒', ''));
+  // AI 推荐时不拿 60 秒去挑范例（范例多长模型就照着写多长）
+  if (/教知识|测评/.test(p.scriptType)) parts.push(getRelevantExample(p.scriptType, p.duration && p.duration !== AI_DURATION ? p.duration : '', ''));
+  else parts.push('先辨认稿件形式。采访保留主问、具体追问、不同回答与证据，未知回答保持待实拍；观察保留现场信息；讨论保留论点与依据。不要拿教学或广告范例改写其他形式。');
+  parts.push(EXAMPLE_LENGTH_NOTE);
   parts.push('');
 
   parts.push('## 📤 输出格式（严格按顺序）');
   parts.push('');
   parts.push('### 1. 总评');
   parts.push('- **综合得分**：X.X 分（等级）');
-  parts.push('- **视频目的**：流量型 / 人设型 / 变现型，目的、结构、结尾指令是否一致');
+  parts.push('- **用户目的与核心问题**：明确当前要解决什么、给谁看、哪些不做；混合目的照原要求保留');
   parts.push('- **一句话结论**：这稿子能不能直接拍，不能的话卡在哪');
+  parts.push('- **值得保留**：引用两三处原稿有效细节，说明它们如何服务当前题眼；不能只列缺点后整篇推翻');
   parts.push('');
   parts.push('### 2. 逐维度打分');
   parts.push('用表格输出：| 维度 | 得分/权重 | 问题 | 怎么改 |');
-  parts.push('每个维度的「怎么改」必须是具体动作，不能写「需要优化」。');
+  parts.push('每个维度说明具体判断；已合适的写保留及理由，确需修改的给有素材依据的具体动作，不能为填表发明缺点或新事实。');
   parts.push('');
   parts.push('### 3. 问题清单');
   if (p.severityLabels) {
@@ -301,8 +284,8 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   } else {
     parts.push('### 4. 优化后的完整脚本');
   }
-  parts.push('直接给出可以拿去拍的完整版本，保留秒数、镜头、台词、情绪、画面五要素，');
-  parts.push('并确保它自己能通过上面那套评分标准（目标 9.0 分以上）。');
+  parts.push('按当前内容形式给出可用完整版本；原稿是纯文字或用户只改局部时不强行扩成五要素镜头稿，已有镜头稿保留适用的秒数、镜头、台词与画面，');
+  parts.push('重点解决核心问题、信息深度、依据和执行性，不为达到目标分数补金句、情绪高潮或营销结尾。采访尚未实拍时补具体追问与取证动作，不编受访者回答。');
   if (personal) parts.push('⚠️ 最前面「用户的个人要求」必须在这一版里逐条落实——它比评分标准优先。');
   parts.push(NO_INVENTED_FACTS);
   parts.push('');
@@ -314,12 +297,13 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push(`### ${p.compareMode ? 6 : 5}. 纯文字文案`);
   parts.push('- 把上面优化后的完整脚本里**要念出来的话**按顺序整理成一段纯文案，方便直接复制去提词器、配音或发给出镜的人');
   parts.push('- 只要口播内容：**不写**秒数、镜头、画面、字幕、音效、动作，不要【】标注、emoji、加粗、序号、列表符号');
-  parts.push('- 按说话的自然停顿分段，一句一行；结尾金句也写进去（不加"金句"两个字，也不加引号）');
+  parts.push('- 按说话的自然停顿分段，一句一行；适用的自然收束原句保留，不强写金句，不把未知采访答案放进纯文案');
   parts.push('- 必须和上面优化后脚本里的台词**逐字一致**，不要另写一版');
   parts.push('');
   parts.push('⚠️ 不要输出「希望对你有帮助」这类结尾寒暄，也不要复述上面的标准。');
 
   parts.push(continuationRules('review'));
+  parts.push(creativeCraftRules({ source: p.draftContent, context: p.contextBlock }));
   return parts.join('\n');
 }
 

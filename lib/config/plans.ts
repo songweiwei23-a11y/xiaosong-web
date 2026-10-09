@@ -147,6 +147,20 @@ export function webSearchSummary(planId: string): string {
   return `联网搜索：${limit} 次${planId === 'free' ? '（一次性体验）' : '/月'}`;
 }
 
+/**
+ * 深度研究报告（2026-10-04 产品方定）：只给专业会员、高频会员，单独一份次数，不挤占联网和创作额度。
+ * 一次研究要搜十几到几十次、读几十个网页、调模型十来次，成本约是一次普通对话的二三十倍，所以按月给得少。
+ * 0 = 这一档不含。改数字只改这里，价格页、会员卡片、服务端判定都跟着走。
+ */
+export const DEEP_RESEARCH_LIMITS: Record<string, number> = { free: 0, basic: 0, pro: 10, enterprise: 30 };
+export function deepResearchLimit(planId: string): number {
+  return DEEP_RESEARCH_LIMITS[planId] ?? 0;
+}
+function deepResearchLines(planId: string): string[] {
+  const n = deepResearchLimit(planId);
+  return n > 0 ? [`深度研究报告：${n} 份/月`] : [];
+}
+
 // 获取套餐信息
 export function getPlan(planId: string) {
   return SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.free;
@@ -230,9 +244,9 @@ export function sumCountedUsage(quota: Record<string, any> | null | undefined): 
 export function quotaSummary(planId: string): string[] {
   const plan = getPlan(planId);
 
-  if (plan.totalQuota === -1) return ["所有功能：不限次数", webSearchSummary(planId)];
+  if (plan.totalQuota === -1) return ["所有功能：不限次数", webSearchSummary(planId), ...deepResearchLines(planId)];
   if (plan.totalQuota !== null) {
-    return [`所有功能合计：${plan.totalQuota} 次/月`, knowledgeLine(planId), webSearchSummary(planId)];
+    return [`所有功能合计：${plan.totalQuota} 次/月`, knowledgeLine(planId), webSearchSummary(planId), ...deepResearchLines(planId)];
   }
 
   /*
@@ -253,7 +267,7 @@ export function quotaSummary(planId: string): string[] {
 
   if (usable.length === creation.length && unique.size === 1) {
     // 按额度类别计量：定位各页、脚本/起号/开篇分别共享同类额度；知识库另列。
-    return [`每类创作额度各 ${[...unique][0]} 次/月`, knowledgeLine(planId), webSearchSummary(planId)];
+    return [`每类创作额度各 ${[...unique][0]} 次/月`, knowledgeLine(planId), webSearchSummary(planId), ...deepResearchLines(planId)];
   }
 
   /*
@@ -266,6 +280,7 @@ export function quotaSummary(planId: string): string[] {
     ...usable.map((f) => `${f.name}：${f.limit} 次${free ? '' : '/月'}`),
     knowledgeLine(planId),
     webSearchSummary(planId),
+    ...deepResearchLines(planId),
   ];
 }
 

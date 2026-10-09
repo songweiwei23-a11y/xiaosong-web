@@ -1,0 +1,415 @@
+2026-10-08T04:37:58.043Z
+https://www.biandao.icu/dashboard/knowledge
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "知识库" [level=1]
+    - paragraph: 查询编导专业知识与方法
+    - button "提问" [expanded]:
+      - generic: 提问
+    - generic: 你的问题
+    - generic: 必填
+    - textbox "例如：如何设计开头的强冲突？": 【测试】教知识型和晒过程型分别适合什么内容？请给结构方法和能定位的知识库依据。用一人手机在家具展厅演示柜门开合来举例，不编客户故事、厘米标准、价格或五金性能；知识库没有的请明确说明。
+    - generic: 按 Enter 搜索，Shift + Enter 换行
+    - button "查询知识库":
+      - text: 查询知识库
+    - button "缩小范围" [expanded]:
+      - generic: 缩小范围
+    - generic: 知识分类
+    - generic: 可选
+    - button "全部分类" [pressed]
+    - button "脚本结构 教知识、晒过程、聊话题、讲故事":
+      - generic: 脚本结构
+      - generic: 教知识、晒过程、聊话题、讲故事
+    - button "爆款元素 冲突点、情绪波点、反转设计":
+      - generic: 爆款元素
+      - generic: 冲突点、情绪波点、反转设计
+    - button "拍摄技巧 镜头语言、场景选择、剪辑节奏":
+      - generic: 拍摄技巧
+      - generic: 镜头语言、场景选择、剪辑节奏
+    - button "选题方法 如何找热点、判断选题质量":
+      - generic: 选题方法
+      - generic: 如何找热点、判断选题质量
+    - button "账号定位 人设打造、内容边界、涨粉策略":
+      - generic: 账号定位
+      - generic: 人设打造、内容边界、涨粉策略
+    - button "文案写作 开头设计、情绪递进、结尾引导":
+      - generic: 文案写作
+      - generic: 开头设计、情绪递进、结尾引导
+    - button "常见问题":
+      - generic: 常见问题
+  - main:
+    - heading "查询结果" [level=2]
+    - button "继续创作":
+      - text: 继续创作
+    - button "复制":
+      - text: 复制
+    - article:
+      - heading "教知识型 vs 晒过程型：定位、结构与家具展厅实战" [level=1]
+      - separator
+      - heading "一、两类脚本的核心区别（知识库依据）" [level=2]
+      - heading "📚 教知识型（库2·脚本与文案库 + 库4·综合知识手册）" [level=3]
+      - paragraph:
+        - strong: 适合什么内容：
+      - list:
+        - listitem: 解决用户决策难题：怎么挑、怎么避坑、怎么判断好坏
+        - listitem: 降低行动成本：给出12345步骤，让用户立刻能用
+        - listitem: 专业壁垒高的领域：用户不懂的知识（如材质、工艺、尺寸逻辑）
+      - paragraph:
+        - strong: 核心价值：
+        - text: 建立专业感 → 精准粉丝 → 变现转化
+      - paragraph:
+        - strong: 结构方法（三种）：
+      - heading "1. 解题型脚本（库4·第8章）" [level=4]
+      - code: 第一段：场景难题 或 放大危机 第二段：低行动成本承诺（"一个视频教会你""三分钟学会"） 第三段：具体操作步骤（12345按顺序）
+      - heading "2. 推荐型脚本（库2·第12节）" [level=4]
+      - code: 美好愿景（用了之后的好结果） ↓ 圈定人群（锁定目标用户） ↓ 引发好奇（"内部人才知道"） ↓ 推荐理由12345（门槛低放两边，难的放中间）
+      - heading "3. 拆解型脚本（库2·第13节\"案例型脚本\"延伸）" [level=4]
+      - code: 反常识开篇（点出大家习以为常的误区） ↓ 讲清原理（为什么会这样） ↓ 操作示范（正确做法）
+      - separator
+      - heading "🎬 晒过程型（库2·脚本与文案库 + 库3·拍摄与执行库）" [level=3]
+      - paragraph:
+        - strong: 适合什么内容：
+      - list:
+        - listitem: 真实工作场景：进货、制作、服务、售后中的某一段
+        - listitem: 产品使用过程：测评、演示、对比
+        - listitem: 任务挑战：完成一件有难度或有趣的事
+      - paragraph:
+        - strong: 核心价值：
+        - text: 真实透明 → 建立信任 → 降低决策顾虑
+      - paragraph:
+        - strong: 结构方法（火车节模型，库2提到但库3·第19节更详细）：
+      - code: 起因（带钩子）：为什么做这件事 ↓ 关键步骤：做的过程中的1-3个关键动作/细节 ↓ 结果：做完了怎么样
+      - paragraph:
+        - strong: ⚠️ 注意（库3·第19节）：
+      - list:
+        - listitem: vlog有四种呈现方式，最强的是"有真人出镜+真人说话"
+        - listitem: 口播有四大视角，家具展厅适合"自拍视角"或"偷拍视角"（模拟随手拍）
+      - separator
+      - heading "二、柜门开合场景：两类脚本实战对比" [level=2]
+      - heading "场景设定（符合禁忌要求）" [level=3]
+      - list:
+        - listitem: 地点：青禾家具店展厅
+        - listitem: 道具：样柜（能开门、拉抽屉）
+        - listitem: 人员：老板一人
+        - listitem: 设备：手机
+        - listitem: "**不编：**客户故事、厘米标准、价格、五金品牌/性能参数"
+      - separator
+      - heading "方案A：教知识型·解题型脚本" [level=3]
+      - paragraph:
+        - strong: 目的：
+        - text: 变现型（解决"怎么挑衣柜"的决策难题）
+      - paragraph:
+        - strong: 开篇钩子（场景难题）：
+      - blockquote:
+        - paragraph: "\"买衣柜最容易被坑的，不是板材，是这个。\""
+        - paragraph: （镜头：手推柜门，停顿，特写合页）
+      - paragraph:
+        - strong: 第二段（低成本解决）：
+      - blockquote:
+        - paragraph: "\"三个动作，当场就能测出来，不用等师傅装完。\""
+      - paragraph:
+        - strong: 第三段（操作步骤12345）：
+      - blockquote:
+        - paragraph: "\"第一，开到45度，松手——（演示）看它会不会自己弹回去，弹就是弹簧坏了或者没装到位。"
+        - paragraph: 第二，全开到90度，抓住门板晃一下——（演示晃动）听有没有咯吱咯吱的声音，有就是螺丝松了。
+        - paragraph: 第三，关门的时候别推，用两根手指轻轻一碰——（演示）看它能不能自己吸过去，吸不上就是磁吸位置没对准。
+        - paragraph: 这三个动作，你在店里试，在师傅装完也要试一遍。"
+      - paragraph:
+        - strong: 结尾（行动指令+金句）：
+      - blockquote:
+        - paragraph: "\"柜子要用十年，门每天开关十几次，这三个动作能帮你避开90%的售后。\""
+        - paragraph: （字幕：有问题评论区问我）
+      - separator
+      - paragraph:
+        - strong: 为什么这样设计（知识库依据）：
+      - list:
+        - listitem: ✅ 符合"解题型三段式"（库4·第8章）
+        - listitem: ✅ 开篇点出"不是板材是合页"——制造反常识（库2·铁律4 对抗/反常识型钩子）
+        - listitem: ✅ "三个动作"——低成本、可执行（库2·九字真言"效果快"）
+        - listitem: ✅ 步骤123有画面演示——口播+晒过程结合（库3·第19节"口播+vlog"）
+        - listitem: ✅没说"我们用的是XX级"，只讲检测方法
+        - listitem: ✅ 结尾金句≤20字，可转发（库2·铁律5）
+      - separator
+      - heading "方案B：晒过程型·火车节模型" [level=3]
+      - paragraph:
+        - strong: 目的：
+        - text: 变现型（展示真实服务细节 → 对应成交理由"真实透明·服务好"）
+      - paragraph:
+        - strong: 开篇钩子（起因）：
+      - blockquote:
+        - paragraph: "\"今天展厅来了个客人，说她家衣柜装了三个月，门关不严。\""
+        - paragraph: （镜头：从门口拍，老板走向样柜）
+      - paragraph:
+        - strong: 关键步骤（过程中的细节）：
+      - blockquote:
+        - paragraph: "\"我让她拍了张照片给我看——（手机屏幕特写，模糊处理）嗯，跟我想的一样。"
+        - paragraph: （切回样柜）你看，这个门，我现在关上——（演示关门）它自己会弹开一条缝。
+        - paragraph: 很多人以为是门板变形了,其实是这里——（特写合页）安装的时候螺丝没拧到位,或者柜体本身不平。
+        - paragraph: 我教她一个办法：找个硬币，垫在这个位置——（演示用硬币垫合页底部）再关一次——（关门）你看，严丝合缝。"
+      - paragraph:
+        - strong: 结果（兑现钩子）：
+      - blockquote:
+        - paragraph: "\"她说试了,真的不弹了。"
+        - paragraph: 其实很多问题,不一定要返厂,有时候就是一个小细节。"
+      - paragraph:
+        - strong: 结尾（行动指令）：
+      - blockquote:
+        - paragraph: "\"你家柜门要是也关不严,可以试试这个办法,不行再找我。\""
+      - separator
+      - paragraph:
+        - strong: 为什么这样设计（知识库依据）：
+      - list:
+        - listitem: ✅ 符合"火车节模型：起因→步骤→结果"（库2提到,库3·第19节补充）
+        - listitem: ✅ 开篇有故事钩子"客人遇到问题"——制造代入感（库2·铁律4 盲盒型）
+        - listitem: ✅ 过程中有"很多人以为…其实是…"——制造认知反差（库2·画面感技法"强弱对比"）
+        - listitem: ✅字、小区、具体对话,只说"有个客人反馈"——符合禁忌
+        - listitem: ✅ 用"硬币垫合页"代替具体五金参数——给出可执行方案,不涉及专业术语
+        - listitem: ✅ 结尾引导"不行再找我"——软性引流,不直接要联系方式
+      - separator
+      - heading "三、两类脚本的选择逻辑（知识库依据）" [level=2]
+      - table:
+        - rowgroup:
+          - row "维度 教知识型 晒过程型":
+            - columnheader "维度"
+            - columnheader "教知识型"
+            - columnheader "晒过程型"
+        - rowgroup:
+          - row "内容来源 用户常问的问题、决策难题 真实发生的工作场景":
+            - cell "内容来源":
+              - strong: 内容来源
+            - cell "用户常问的问题、决策难题"
+            - cell "真实发生的工作场景"
+          - row "表达重点 方法、步骤、判断标准 动作、细节、结果":
+            - cell "表达重点":
+              - strong: 表达重点
+            - cell "方法、步骤、判断标准"
+            - cell "动作、细节、结果"
+          - row "信任建立方式 专业感（\"我懂得多\"） 真实感（\"我做得透明\"）":
+            - cell "信任建立方式":
+              - strong: 信任建立方式
+            - cell "专业感（\"我懂得多\"）"
+            - cell "真实感（\"我做得透明\"）"
+          - row "适合人群 有明确需求、正在做决策 还在观望、需要建立信任":
+            - cell "适合人群":
+              - strong: 适合人群
+            - cell "有明确需求、正在做决策"
+            - cell "还在观望、需要建立信任"
+          - row "拍摄难度 中等（需要讲清楚逻辑） 低（只要真实记录）":
+            - cell "拍摄难度":
+              - strong: 拍摄难度
+            - cell "中等（需要讲清楚逻辑）"
+            - cell "低（只要真实记录）"
+          - row "流量天花板 中（精准但圈层窄） 高（真实场景易共鸣）":
+            - cell "流量天花板":
+              - strong: 流量天花板
+            - cell "中（精准但圈层窄）"
+            - cell "高（真实场景易共鸣）"
+          - row "转化效率 高（解决了痛点直接咨询） 中（需要多条视频累积信任）":
+            - cell "转化效率":
+              - strong: 转化效率
+            - cell "高（解决了痛点直接咨询）"
+            - cell "中（需要多条视频累积信任）"
+      - paragraph:
+        - strong: 青禾家具店建议（结合账号现状）：
+      - list:
+        - strong: 前期（0-1万粉）：
+        - text: 晒过程为主（60%）+ 教知识（40%）
+        - list:
+          - listitem: 理由：一人拍摄,晒过程更易落地（库3·第19节"成本低,一人即可完成"）；真实场景建立初步信任
+        - strong: 中期（1-5万粉）：
+        - text: 教知识为主（60%）+ 晒过程（30%）+ 故事（10%）
+        - list:
+          - listitem: 理由：有粉丝基础后,教知识型带来的精准粉丝转化率更高（库2·第12节"粉丝精准"）
+      - separator
+      - heading "四、知识库没有的内容（明确说明）" [level=2]
+      - paragraph:
+        - text: 以下内容知识库
+        - strong: 未明确给出
+        - text: ",以下为行业常识补充："
+      - list:
+        - paragraph:
+          - strong: 家具行业的具体选题方向
+          - text: （如"柜门五金怎么选""板材环保等级对比"）
+        - list:
+          - listitem: 知识库给了"八大爆款元素""三词根选题法"（库5·成交理由库提到）,但没有家具行业的具体选题库
+          - listitem: 建议：用"三词根公式"自己生成（人群词根×场景词根×行业词根）
+        - paragraph:
+          - strong: 家具展厅的拍摄运镜技巧
+        - list:
+          - listitem: 知识库提到"景别、构图、运镜"（库3·第19节）,但没有展厅场景的具体参数
+          - listitem: 建议：参考库3·第19节"自拍视角""偷拍视角"的口播方式
+        - paragraph:
+          - strong: 柜门开合的专业术语和行业标准
+        - list:
+          - listitem: 知识库没有家具工艺的专业知识
+          - listitem: 本回答中的"合页""磁吸""螺丝"等为常识,未涉及具体型号/标准（符合禁忌要求）
+      - separator
+      - heading "五、立刻能用的执行清单" [level=2]
+      - heading "✅ 教知识型（柜门检测法）" [level=3]
+      - list:
+        - checkbox [disabled]
+        - text: 确定选题：买衣柜怎么检测柜门质量
+        - checkbox [disabled]
+        - text: 开篇钩子：反常识（"不是板材是合页"）
+        - checkbox [disabled]
+        - text: 中段步骤：三个动作（45度松手/90度晃动/关门测磁吸）
+        - checkbox [disabled]
+        - text: 拍摄要点：手部特写+门板特写+声音收录
+        - checkbox [disabled]
+        - text: 结尾指令：评论区问我
+      - heading "✅ 晒过程型（客户问题解决）" [level=3]
+      - list:
+        - checkbox [disabled]
+        - text: 确定场景：客人反馈柜门关不严
+        - checkbox [disabled]
+        - text: 开篇钩子：客人遇到问题（盲盒型）
+        - checkbox [disabled]
+        - text: 中段细节：用硬币垫合页（可执行方案）
+        - checkbox [disabled]
+        - text: 拍摄要点：从门口走向样柜+手机屏幕模糊+硬币垫合页特写
+        - checkbox [disabled]
+        - text: 结尾指令：你也可以试试,不行再找我
+      - separator
+      - paragraph:
+        - strong: 总结：
+        - text: 教知识型靠"专业拆解"建立权威感,晒过程型靠"真实记录"建立信任感。青禾家具店现阶段（一人+手机+展厅样柜）更适合先用
+        - strong: 晒过程打基础
+        - text: （真实、易拍、不需要大量专业术语）,再用
+        - strong: 教知识做转化
+        - text: （解决"怎么挑"的决策难题）。两类脚本都可以一人完成,关键是
+        - strong: 开篇3秒有钩子+中间有细节+结尾有指令
+        - text: 。
+    - paragraph:
+      - text: 有 1 处可能踩禁忌，发布前改一下
+    - list:
+      - text: 最强
+      - generic: 广告法红线，可以换成：说具体事实："开了 9 年""一天卖 300 串"
+    - button "复制修改要求"
+    - paragraph: 继续创作 · 内容自动带入
+    - button "收藏到素材库":
+      - text: 收藏这 2 条
+    - paragraph:
+      - text: 勾选要带走的方案建议
+      - generic: 已选 2/2
+    - button "全不选"
+    - group "选择要带走的方案建议":
+      - checkbox "1. 方案A：教知识型·解题型脚本" [checked]:
+        - generic: 1. 方案A：教知识型·解题型脚本
+      - checkbox "2. 方案B：晒过程型·火车节模型" [checked]:
+        - generic: 2. 方案B：晒过程型·火车节模型
+    - paragraph: 再点下面的板块：整份带过去，自动填好，点生成就行
+    - button "分镜脚本":
+      - generic: 分镜脚本
+    - button "生成选题":
+      - generic: 生成选题
+    - button "脚本生成":
+      - generic: 脚本生成
+    - button "更多板块":
+      - generic: 更多板块
+- alert

@@ -1,0 +1,301 @@
+{
+  "time": "2026-10-01T15:47:16.532Z",
+  "tests": [
+    {
+      "name": "发布后的附件上限6且支持文档",
+      "passed": false,
+      "fileUpload": {
+        "enabled": true,
+        "allowed_file_types": [
+          "image",
+          "document"
+        ],
+        "allowed_file_extensions": [
+          ".JPG",
+          ".JPEG",
+          ".PNG",
+          ".GIF",
+          ".WEBP",
+          ".SVG"
+        ],
+        "allowed_file_upload_methods": [
+          "remote_url",
+          "local_file"
+        ],
+        "number_limits": 3,
+        "fileUploadConfig": {
+          "file_size_limit": 15,
+          "knowledge_file_size_limit": 50,
+          "batch_count_limit": 5,
+          "file_upload_limit": 50,
+          "image_file_size_limit": 10,
+          "video_file_size_limit": 100,
+          "audio_file_size_limit": 50,
+          "skill_file_size_limit": 50,
+          "workflow_file_upload_limit": 10,
+          "image_file_batch_limit": 10,
+          "single_chunk_attachment_limit": 10,
+          "attachment_image_file_size_limit": 2
+        }
+      },
+      "inputs": [
+        {
+          "text-input": {
+            "default": "",
+            "hint": "知识库检索专用短查询，由应用侧从任务类型与用户输入提炼，避免用完整长指令检索",
+            "label": "search_query",
+            "options": [],
+            "placeholder": "",
+            "required": false,
+            "type": "text-input",
+            "variable": "search_query"
+          }
+        },
+        {
+          "text-input": {
+            "default": "",
+            "hint": "",
+            "label": "dealReasons",
+            "options": [],
+            "placeholder": "",
+            "required": false,
+            "type": "text-input",
+            "variable": "dealReasons"
+          }
+        },
+        {
+          "text-input": {
+            "variable": "web_search_enabled",
+            "label": "web_search_enabled",
+            "type": "text-input",
+            "required": false,
+            "default": "0",
+            "max_length": 1000,
+            "options": []
+          }
+        },
+        {
+          "text-input": {
+            "variable": "web_search_note",
+            "label": "web_search_note",
+            "type": "text-input",
+            "required": false,
+            "default": "本轮未联网",
+            "max_length": 1000,
+            "options": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "关闭联网普通创作: HTTP成功",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "关闭联网普通创作: 分支执行与回答正确",
+      "passed": true,
+      "searches": 0,
+      "answer": "有人说这家串串不好吃，我第一个不服。",
+      "errors": [],
+      "nodes": [
+        {
+          "title": "开始",
+          "status": "succeeded"
+        },
+        {
+          "title": "筛选文档附件",
+          "status": "succeeded"
+        },
+        {
+          "title": "联网授权闸门",
+          "status": "succeeded"
+        },
+        {
+          "title": "读取文档正文",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮未联网",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮联网参考",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 2",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 3",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 4",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 5",
+          "status": "succeeded"
+        },
+        {
+          "title": "Claude 编导助手",
+          "status": "succeeded"
+        },
+        {
+          "title": "输出",
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "开启联网: HTTP成功",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "开启联网: 分支执行与回答正确",
+      "passed": true,
+      "searches": 1,
+      "answer": "已为你找到 Dify Document Extractor 的官方文档：\n\n**https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor**\n\n这是英文版官方说明页面，涵盖支持的文件类型、配置方法、输入输出结构和使用示例。中文版链接为 https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor",
+      "errors": [],
+      "nodes": [
+        {
+          "title": "开始",
+          "status": "succeeded"
+        },
+        {
+          "title": "筛选文档附件",
+          "status": "succeeded"
+        },
+        {
+          "title": "联网授权闸门",
+          "status": "succeeded"
+        },
+        {
+          "title": "读取文档正文",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 2",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 3",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 4",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 5",
+          "status": "succeeded"
+        },
+        {
+          "title": "Tavily Search",
+          "status": "succeeded"
+        },
+        {
+          "title": "整理联网结果",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮联网参考",
+          "status": "succeeded"
+        },
+        {
+          "title": "Claude 编导助手",
+          "status": "succeeded"
+        },
+        {
+          "title": "输出",
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "视觉识别测试.png: 上传成功",
+      "passed": true
+    },
+    {
+      "name": "Word识别测试.docx: 上传成功",
+      "passed": true
+    },
+    {
+      "name": "关闭联网读取图片文档: HTTP成功",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "关闭联网读取图片文档: 分支执行与回答正确",
+      "passed": true,
+      "searches": 0,
+      "answer": "图片颜色从左到右是：红色、绿色、蓝色。\n\nWord暗号是：梧桐5826。",
+      "errors": [],
+      "nodes": [
+        {
+          "title": "开始",
+          "status": "succeeded"
+        },
+        {
+          "title": "联网授权闸门",
+          "status": "succeeded"
+        },
+        {
+          "title": "筛选文档附件",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮未联网",
+          "status": "succeeded"
+        },
+        {
+          "title": "读取文档正文",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮联网参考",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 2",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 3",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 4",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 5",
+          "status": "succeeded"
+        },
+        {
+          "title": "Claude 编导助手",
+          "status": "succeeded"
+        },
+        {
+          "title": "输出",
+          "status": "succeeded"
+        }
+      ]
+    }
+  ]
+}

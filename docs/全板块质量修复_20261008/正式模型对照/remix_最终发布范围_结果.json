@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsedMs": 21165,
+  "initialIssues": [
+    "必须恰好交付1个连续编号的方案，当前数量或编号不符。"
+  ],
+  "remaining": [],
+  "completion": {
+    "terminal": "workflow_finished",
+    "conversationId": "e24e0433-1912-4ccd-9461-baf1c018d211",
+    "messageId": "17844002-f378-475d-8113-d16364019555",
+    "usage": {
+      "prompt_tokens": 7689,
+      "completion_tokens": 1723,
+      "total_tokens": 9412,
+      "latency": 17.012,
+      "total_price": 0,
+      "currency": "USD",
+      "elapsed_time": 20.334787
+    }
+  }
+}

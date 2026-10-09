@@ -1,0 +1,145 @@
+{
+  "assumptions": {
+    "paidRMB": 50,
+    "balanceUSD": 600,
+    "monthlyFixed": 306.16666666666663,
+    "feeReserve": 0.05,
+    "unitCost": 0.015,
+    "confirmation": "用户确认：50元人民币购买600美元计费面值，按截图价格扣面值",
+    "monthlyMaintenanceBudget": 1000,
+    "searchUSDPerAdvanced": 0.016,
+    "searchBudgetRMBPerUSD": 7.2
+  },
+  "tasks": [
+    {
+      "label": "短标题/短问答",
+      "input": 8000,
+      "output": 1000,
+      "usd": 0.039,
+      "rmb": 0.00325
+    },
+    {
+      "label": "常规创作",
+      "input": 12000,
+      "output": 3000,
+      "usd": 0.08099999999999999,
+      "rmb": 0.00675
+    },
+    {
+      "label": "较长分镜/二创",
+      "input": 20000,
+      "output": 6000,
+      "usd": 0.15,
+      "rmb": 0.0125
+    },
+    {
+      "label": "长文档/视频分析",
+      "input": 50000,
+      "output": 10000,
+      "usd": 0.3,
+      "rmb": 0.025
+    },
+    {
+      "label": "最大输出风险示例",
+      "input": 100000,
+      "output": 50000,
+      "usd": 1.05,
+      "rmb": 0.0875
+    }
+  ],
+  "plans": [
+    {
+      "name": "基础",
+      "price": 49,
+      "calls": 650,
+      "support": 5,
+      "api": 9.75,
+      "contribution": 31.799999999999997,
+      "stressApi": 19.5,
+      "breakEvenUsers": 10,
+      "breakEvenWithMaintenance": 42,
+      "searchLimit": 20,
+      "searchBudget": 2.3040000000000003,
+      "contributionWithSearch": 29.495999999999995
+    },
+    {
+      "name": "专业",
+      "price": 99,
+      "calls": 1620,
+      "support": 8,
+      "api": 24.3,
+      "contribution": 61.75,
+      "stressApi": 48.6,
+      "breakEvenUsers": 5,
+      "breakEvenWithMaintenance": 22,
+      "searchLimit": 60,
+      "searchBudget": 6.912,
+      "contributionWithSearch": 54.838
+    },
+    {
+      "name": "高频",
+      "price": 199,
+      "calls": 3900,
+      "support": 15,
+      "api": 58.5,
+      "contribution": 115.54999999999998,
+      "stressApi": 117,
+      "breakEvenUsers": 3,
+      "breakEvenWithMaintenance": 12,
+      "searchLimit": 150,
+      "searchBudget": 17.28,
+      "contributionWithSearch": 98.26999999999998
+    }
+  ],
+  "mix": [
+    {
+      "users": 20,
+      "revenue": 1680,
+      "api": 408.9,
+      "fee": 84,
+      "support": 144,
+      "remainingBeforeMaintenance": 736.9333333333333,
+      "remainingAfterMaintenance": -263.0666666666667,
+      "searchBudget": 112.896,
+      "remainingAfterSearchAndMaintenance": -375.96266666666673
+    },
+    {
+      "users": 50,
+      "revenue": 4200,
+      "api": 1022.25,
+      "fee": 210,
+      "support": 360,
+      "remainingBeforeMaintenance": 2301.5833333333335,
+      "remainingAfterMaintenance": 1301.5833333333335,
+      "searchBudget": 282.24,
+      "remainingAfterSearchAndMaintenance": 1019.3433333333335
+    },
+    {
+      "users": 100,
+      "revenue": 8400,
+      "api": 2044.5,
+      "fee": 420,
+      "support": 720,
+      "remainingBeforeMaintenance": 4909.333333333333,
+      "remainingAfterMaintenance": 3909.333333333333,
+      "searchBudget": 564.48,
+      "remainingAfterSearchAndMaintenance": 3344.853333333333
+    }
+  ],
+  "mixedContributionPerUser": 52.155,
+  "mixedBreakEvenWithMaintenance": 26,
+  "modelPricePerMTok": {
+    "inputUSD": 3,
+    "outputUSD": 15,
+    "cacheWrite5minUSD": 3.75,
+    "cacheReadUSD": 0.3
+  },
+  "purchaseCostPerUSD": 0.08333333333333333,
+  "effectivePricePerMTokRMB": {
+    "input": 0.25,
+    "output": 1.25,
+    "cacheWrite5min": 0.3125,
+    "cacheRead": 0.025
+  },
+  "mixedBreakEvenWithSearchAndMaintenance": 29
+}

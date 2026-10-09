@@ -149,7 +149,8 @@ describe('跨板块交接', () => {
     const src = read('app/dashboard/topic/page.tsx');
     expect(src).toContain('设计开篇');
     expect(src).toMatch(/tab:\s*["']opening["']/);
-    expect(src).toContain('/dashboard/growth');
+    // 目标页由 buildCreationHandoff 定（/dashboard/growth），持久保存后跳
+    expect(src).toMatch(/buildCreationHandoff\('topic', 'growth', body, topicFlow\)/);
   });
 
   it('脚本页有「换个开头」入口，并带上正文开头', () => {
@@ -197,6 +198,8 @@ describe('内部链接都指向存在的页面', () => {
     }
     const dir = path.join(process.cwd(), 'app', ...segs);
     if (fs.existsSync(path.join(dir, 'page.tsx'))) return true;
+    // 下载链接直接指向接口（导出数据）：接口的 route.ts 在就算存在
+    if (segs[0] === 'api' && fs.existsSync(path.join(dir, 'route.ts'))) return true;
     // 动态路由：父目录下有 [xxx]
     const parent = path.join(process.cwd(), 'app', ...segs.slice(0, -1));
     if (!fs.existsSync(parent)) return false;

@@ -1,0 +1,13 @@
+{
+  "regressionPassed": 2979,
+  "browserHolidayDirection": "passed",
+  "sourceTargetCombinations": 255,
+  "regressionFailed": 0,
+  "databaseChecksPassed": 21,
+  "qaUsersRemoved": 2,
+  "buildId": "QsGqjjnAe3KwBkZeiooLE",
+  "browserScriptRefresh": "same work and same latest result",
+  "formalLoginHttp": 200,
+  "factBoundary": "not passed; see acceptance report",
+  "sourceFiles": 35
+}

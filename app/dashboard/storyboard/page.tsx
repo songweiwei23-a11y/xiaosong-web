@@ -1,16 +1,18 @@
-﻿"use client";
+"use client";
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
 
 
-import { takeHandoff, putHandoff } from "@/lib/handoff";
+import { takeHandoff } from "@/lib/handoff";
+import { openCreationSafely } from "@/lib/creation-session";
+import { buildCreationHandoff } from "@/lib/creation-flow";
 import { creationReference, originForResult } from '@/lib/creation-continuation';
 import { recordStage } from "@/lib/works";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
-import { buildStoryboardPrompt, auditStoryboard } from "@/lib/storyboard-standards";
+import { buildStoryboardPrompt, auditStoryboard, FOLLOW_SCRIPT } from "@/lib/storyboard-standards";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
@@ -44,7 +46,8 @@ import {
 } from '@/lib/content-types';
 
 const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
-const DURATIONS = ["15秒", "30秒", "60秒", "90秒", "3-5分钟"];
+// 第一项「按脚本长度」是默认：没另选就按脚本台词本来的长度排，一句不删（2026-10-06：原来默认 60 秒会砍台词）
+const DURATIONS = [FOLLOW_SCRIPT, "15秒", "30秒", "60秒", "90秒", "3-5分钟"];
 
 export default function StoryboardPage() {
   const beginProfileRequest = useProfileRequestGuard();
@@ -76,8 +79,8 @@ export default function StoryboardPage() {
 
   const [scriptContent, setscriptContent] = useState("");
   const [platform, setPlatform] = useState("抖音");
-  const [duration, setDuration] = useState("60秒");
-  const [contentType, setContentType] = useState("food");
+  const [duration, setDuration] = useState(FOLLOW_SCRIPT);
+  const [contentType, setContentType] = useState("auto");
   const [visualStyle, setVisualStyle] = useState("cinematic");
   const [additionalInfo, setAdditionalInfo] = useState("");
   
@@ -90,8 +93,8 @@ export default function StoryboardPage() {
 
 
   const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
-    setPlatform(s.platform!); setDuration(s.duration!);
-    setContentType(CONTENT_TYPE_VALUES.includes(s.contentType!) ? s.contentType! : 'talking');
+    setPlatform(s.platform!); setDuration(s.duration ?? FOLLOW_SCRIPT);
+    setContentType(CONTENT_TYPE_VALUES.includes(s.contentType!) ? s.contentType! : 'auto');
     setVisualStyle(VISUAL_STYLE_VALUES.includes(s.visualStyle!) ? s.visualStyle! : 'bright');
   });
   const currentSettings = resolveCreationSettings({ from: '分镜脚本', sourceContent: scriptContent, settings: mergeCreationSettings(autoSetup.settings, { platform, duration, contentType, visualStyle }) }, creatorContext);
@@ -135,8 +138,8 @@ export default function StoryboardPage() {
    * 用 useMemo 是因为流式生成时 result 每个字都在变，不必每帧重算整张表。
    */
   const audit = useMemo(
-    () => (isGenerating || !result ? null : auditStoryboard(result, duration)),
-    [isGenerating, result, duration]
+    () => (isGenerating || !result ? null : auditStoryboard(result, duration, scriptContent)),
+    [isGenerating, result, duration, scriptContent]
   );
 
   // 加载示例脚本
@@ -369,7 +372,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
             <Field label="视频时长" optional>
               <select value={duration} onChange={(e) => setDuration(e.target.value)} className={SELECT_CLS}>
                 {Array.from(new Set([...DURATIONS, duration])).map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{d === FOLLOW_SCRIPT ? "按脚本长度（推荐）" : d}</option>
                 ))}
               </select>
             </Field>
@@ -378,6 +381,9 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
               {/* 十三个类型平铺开不好找，按「怎么拍」分四组：
                   口播类（对镜讲）、展示类（镜头对着东西）、
                   场景类（人在环境里走）、叙事类（有情节有他人） */}
+              <button type="button" onClick={() => setContentType('auto')} aria-pressed={contentType === 'auto'} className={`${SECONDARY_BTN} mb-2 w-full`}>
+                {contentType === 'auto' ? '已按原稿自动选择内容类型' : '按原稿自动选择内容类型'}
+              </button>
               <div className="space-y-2.5">
                 {CONTENT_TYPE_GROUPS.map((group) => (
                   <div key={group}>
@@ -511,7 +517,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
                 </ul>
               ) : (
                 <p className="mt-2 text-[12px] text-muted-foreground">
-                  时长、景别配比、镜头长度都在标准范围内，可以照着拍。
+                  时长、台词语速、景别配比、镜头长度都在标准范围内，可以照着拍。
                 </p>
               )}
             </div>
@@ -526,12 +532,11 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
             onClick: () => {
               // 带的是原始脚本而不是分镜表：起标题要看的是内容讲了什么，
               // 镜号和景别对它没有帮助
-              putHandoff({
-                from: "分镜脚本",
-                scriptContent: scriptContent,
-                workId: workId ?? undefined,
-              });
-              router.push("/dashboard/title");
+              // 目的、结构、作品、源资料一起带，并持久保存（刷新、换设备能接着）
+              openCreationSafely(
+                buildCreationHandoff('storyboard', 'title', scriptContent, { settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || scriptContent) }),
+                (u) => router.push(u), (m) => notify(m, 'error'),
+              );
             },
           },
         ]}

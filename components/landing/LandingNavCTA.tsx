@@ -47,7 +47,7 @@ export function LandingNavCTA() {
       >
         登录
       </Link>
-      {/* 直接进注册、首页体验码已填好：小白手上没有邀请码，看到要填码就走了 */}
+      {/* 直接进注册页；注册要邀请码，找管理员领（2026-10-04 起首页不再自动带码） */}
       <Link 
         href={REGISTER_URL} 
         className="brand-gradient text-white px-4 sm:px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all font-medium"

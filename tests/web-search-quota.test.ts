@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
+// js-yaml 没装类型声明，按 CommonJS 加载
+const loadCjs = createRequire(import.meta.url);
 const state = vi.hoisted(() => ({ rpc: vi.fn(), guard: vi.fn() }));
 vi.mock('@/lib/admin-auth', () => ({ getServiceSupabase: () => ({ rpc: state.rpc }) }));
 vi.mock('@/lib/api-guard', () => ({ requireUserWithQuota: state.guard }));
@@ -117,7 +120,7 @@ describe('套餐和联网额度展示', () => {
     expect(sql).toContain('FROM PUBLIC, anon, authenticated'); expect(sql).toContain('v_used + v_pending < v_limit');
   });
   it('已保存的工作流只允许true分支调用搜索，缺少输入默认关闭', async () => {
-    const yaml=require('js-yaml');
+    const yaml=loadCjs('js-yaml');
     const doc=yaml.load(fs.readFileSync('docs/dify/小宋编导文案工作台.yml','utf8')) as any;
     const g=doc.workflow.graph; const search=g.nodes.find((n:any)=>n.data.title==='Tavily Search');
     const incoming=g.edges.filter((e:any)=>e.target===search.id);

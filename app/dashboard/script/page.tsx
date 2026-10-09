@@ -2,7 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds, scriptReasonIds, normalizeCreationReasons } from '@/lib/creation-settings';
+import { cleanTitle, resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds, scriptReasonIds, normalizeCreationReasons } from '@/lib/creation-settings';
 
 import ContinuousDialog from "@/components/ContinuousDialog";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock, type CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
+import { buildAdaptiveScriptPrompt } from "@/lib/script-design";
 import { enhancePromptWithMCNStandards } from "@/lib/enhance-prompt";
 import { recommendFormula, generateFormulaGuide } from "@/lib/formula-enforcer";
 import { getStructureNarrative } from "@/lib/script-structure-details";
@@ -30,6 +31,7 @@ import {
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } from "@/lib/quality-checker";
+import { PRIORITY_ORDER } from "@/lib/output-rules";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
@@ -63,12 +65,15 @@ import { useScriptHistory } from "./useScriptHistory";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContextBadge } from "@/components/workspace/ContextBadge";
-import { putHandoff, takeHandoff, extractOpening } from "@/lib/handoff";
+import { takeHandoff, extractOpening } from "@/lib/handoff";
+import { openCreationSafely } from "@/lib/creation-session";
+import { buildCreationHandoff } from "@/lib/creation-flow";
 import { originForResult, continuationRules } from '@/lib/creation-continuation';
 import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
+import { AI_LENGTH_RULE, EXAMPLE_LENGTH_NOTE } from "@/lib/ai-recommend";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
@@ -127,6 +132,7 @@ export default function ScriptPage() {
   const beginProfileRequest = useProfileRequestGuard();
   const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
   const [scriptType, setScriptType] = useState("teach");
+  const [scriptTypePicked, setScriptTypePicked] = useState(false);
   /*
    * 这条视频的目的。原来脚本页只有"脚本类型"，结尾一律"引导互动（点赞/评论/关注）"，
    * 广告类一律"到店/团购/加微信等"——指令一堆、和目的无关。SOP 的铁律是
@@ -134,15 +140,15 @@ export default function ScriptPage() {
    */
   const [scriptRole, setScriptRole] = useState<'自动' | ContentRole>('自动');
   // 广告四类本来就是变现型
-  const effectiveRole: ContentRole = scriptType.startsWith('ad_')
-    ? '变现型'
-    : scriptRole !== '自动' ? scriptRole : defaultRoleOfScriptType(scriptType);
+  const effectiveRole: ContentRole = scriptRole !== '自动' ? scriptRole
+    : scriptType.startsWith('ad_') ? '变现型' : defaultRoleOfScriptType(scriptType);
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState("抖音");
   const [duration, setDuration] = useState("60秒");
   const [customDuration, setCustomDuration] = useState("");
   // 时长模式：preset=预设选择 / custom=自定义秒数 / ai=AI推荐（由Dify判断）
-  const [durationMode, setDurationMode] = useState<"preset" | "custom" | "ai">("preset");
+  // 默认「AI 推荐」：编导没选，就按内容需要给最好的结果，不先框一个 60 秒（2026-10-06 产品方）
+  const [durationMode, setDurationMode] = useState<"preset" | "custom" | "ai">("ai");
   const [style, setStyle] = useState("专业");
   const [targetGroup, setTargetGroup] = useState("");
   const [boomElements, setBoomElements] = useState<string[]>([]);
@@ -210,7 +216,7 @@ export default function ScriptPage() {
    */
   const [workId, setWorkId] = useState<string | null>(null);
   /**
-   * 作品的标题（就是那条选题）。生成时用来判断用户是不是换了题：
+   * 打开作品时实际承接的主题。作品名可能带“方案2”前缀，不能拿显示标题判断是否换题：
    * 打开作品 A 之后把主题改成别的，那已经是另一条内容，不该再记到 A 上。
    */
   const [workTitle, setWorkTitle] = useState("");
@@ -239,12 +245,13 @@ export default function ScriptPage() {
     setOriginContent(data.originContent || data.sourceContent || '');
     handedOffRef.current = true;
     setHandoffFrom(data.from || "");
-    if (data.topic) setTopic(data.topic);
+    const carriedTopic = cleanTitle(data.settings?.topic || data.topic || '');
+    if (carriedTopic) setTopic(carriedTopic);
     if (data.topicOptions?.length) setHandoffTopics(data.topicOptions);
     if (data.note) setAdditionalInfo(data.note);
     if (data.workId) {
       setWorkId(data.workId);
-      setWorkTitle(data.topic || "");
+      setWorkTitle(carriedTopic);
     }
     // 选题页/起号页带过来的拍法
     if (data.tactic) setTactic(data.tactic);
@@ -264,8 +271,9 @@ export default function ScriptPage() {
     setOriginContent(setup.originContent || '');
     if (setup.note) setAdditionalInfo(setup.note);
     setWorkId(work.id);
-    setWorkTitle(work.title);
-    setTopic(work.title);
+    const carriedTopic = cleanTitle(setup.settings?.topic || setup.topic || work.title);
+    setWorkTitle(carriedTopic);
+    setTopic(carriedTopic);
     setHandoffFrom("创作进度");
     const last = latestOf(work, "脚本生成");
     if (last) {
@@ -300,9 +308,10 @@ export default function ScriptPage() {
     if (s.topic) setTopic(s.topic);
     if (s.scriptType) { setScriptType(s.scriptType); setActiveTab(s.scriptType.startsWith('ad_') ? 'ad' : 'content'); }
     setScriptRole(s.purpose ?? '自动'); setPlatform(s.platform!); setScriptStructure(s.structure ?? 'auto'); setHookType(s.hookType ?? 'auto');
-    setDuration(s.duration!);
-    if (DURATIONS.includes(s.duration!)) setDurationMode('preset');
-    else { setDurationMode('custom'); setCustomDuration(String(durationSeconds(s.duration!))); }
+    // 原内容写明了时长才照填；没写就是「AI 推荐」，不替编导定 60 秒（2026-10-06）
+    if (!s.duration) setDurationMode('ai');
+    else if (DURATIONS.includes(s.duration)) { setDuration(s.duration); setDurationMode('preset'); }
+    else { setDurationMode('custom'); setCustomDuration(String(durationSeconds(s.duration))); }
     const audience = s.audience ?? '';
     setTargetGroup(TARGET_GROUPS.includes(audience) ? audience : '');
     setCustomTargetGroup(TARGET_GROUPS.includes(audience) ? '' : audience);
@@ -314,9 +323,10 @@ export default function ScriptPage() {
     setOpeningCard(s.openingCards?.[0] || '');
     setDealReasons(scriptReasonIds(s.dealReasons || []));
   });
+  const autoScriptType = Boolean(!autoSetup.settings.scriptType && !scriptTypePicked);
   const currentSettings = resolveCreationSettings({ from: '脚本生成', sourceContent: originContent || topic, settings: mergeCreationSettings(autoSetup.settings, {
     topic, platform, duration: durationMode === 'custom' && customDuration ? customDuration + '秒' : durationMode === 'ai' ? 'AI推荐' : duration,
-    scriptType, purpose: effectiveRole, structure: scriptStructure, hookType, style: customStyle || style, audience: customTargetGroup || targetGroup,
+    scriptType: autoScriptType ? undefined : scriptType, purpose: scriptRole === '自动' ? autoSetup.settings.purpose : effectiveRole, structure: scriptStructure, hookType, style: customStyle || style, audience: customTargetGroup || targetGroup,
     industry: customIndustry || industry, elements: boomElements.map(id => id === 'crowd' ? 'people' : id),
     dealReasons: normalizeCreationReasons([...autoSetup.settings.dealReasons || [], ...dealReasons]), notes: incomingSetup ? autoSetup.settings.notes : additionalInfo,
     tactic: tactic === AUTO_TACTIC ? undefined : tactic, openingLine, openingCards: openingCard ? [openingCard] : [], scene, device, budget, personnel,
@@ -394,21 +404,15 @@ export default function ScriptPage() {
 
   const isAdScript = () => activeTab === "ad";
 
+  /*
+   * 智能推荐：时长交给 AI 按内容定（原来按平台写死：抖音 60 秒、快手 30 秒——"智能推荐"反而把上限框死了），
+   * 风格按平台给个常用的起点
+   */
   const handleSmartRecommend = () => {
-    if (platform === "抖音") {
-      setDurationMode("preset"); setDuration("60秒"); setStyle("幽默");
-    } else if (platform === "小红书") {
-      setDurationMode("preset"); setDuration("90秒"); setStyle("干货");
-    } else if (platform === "视频号") {
-      setDurationMode("preset"); setDuration("60秒"); setStyle("温情");
-    } else if (platform === "快手") {
-      setDurationMode("preset"); setDuration("30秒"); setStyle("接地气");
-    } else if (platform === "B站") {
-      setDurationMode("preset"); setDuration("3-5分钟"); setStyle("专业");
-    } else {
-      setDurationMode("ai");
-    }
-    notify("✅ 已根据平台智能推荐时长和风格！");
+    setDurationMode("ai");
+    const styleByPlatform: Record<string, string> = { 抖音: "幽默", 小红书: "干货", 视频号: "温情", 快手: "接地气", B站: "专业" };
+    if (styleByPlatform[platform]) setStyle(styleByPlatform[platform]);
+    notify("✅ 时长交给 AI 按内容定，风格已按平台推荐");
   };
 
   const handleGenerate = async () => {
@@ -524,9 +528,8 @@ ${scriptContext}
       const contentFocus = getContentFocus(helperProfile.fans_level || "");
       const smartHookRecommendation = `${smartHook.hookType}：${smartHook.reason}`;
       // AI模式下用平台常见默认值兜底时间分配计算，避免 parseInt 得到 NaN
-      const durationForCalc = isAiDuration
-        ? (customDuration ? `${customDuration}秒` : "60秒")
-        : finalDuration;
+      // AI 推荐时不拿 60 秒去挑范例：范例多长，模型就照着写多长（范例只学节奏和标注，这里给它不按时长挑的那份）
+      const durationForCalc = isAiDuration ? "" : finalDuration;
       const timeAllocation = isAiDuration
         ? "由AI依据主题与平台节奏自行分配各段时长（开场钩子→主体→情绪高潮→结尾CTA）"
         : getTimeAllocation(structureName, durationForCalc);
@@ -558,7 +561,7 @@ ${generateFormulaGuide(formulaType)}
 ## 📎 MCN级参考范例（9.5分标准）
 
 下面是达标脚本的完整范例。**只学它的分段节奏、波点标注位置和台词口语化程度，
-不要照搬其中的行业、案例或具体台词**——照搬会让脚本失去与本次主题的相关性。
+不要照搬其中的行业、案例或具体台词**——照搬会让脚本失去与本次主题的相关性。${EXAMPLE_LENGTH_NOTE}。
 
 ${getRelevantExample(scriptType, durationForCalc, scriptStructure)}
 `;
@@ -617,9 +620,9 @@ ${tacticText}
 ${roleBrief(effectiveRole)}
 
 **硬要求**：
-1. 全片只担这一个目的，不要顺手把另外两种也塞进来
+1. 按用户明确目的执行；混合目的按原要求保留，不为分类擅自删掉其中一个，也不新增营销目标
 2. 上面选的脚本结构是"时间怎么分"，上面这几种是"这类视频该怎么讲"——按这里挑一个骨架填进去
-3. 结尾行动指令**只要一个**，按上面"结尾行动指令"来，说清楚做什么
+3. 仅在用户目的需要互动或转化时设计一个行动指令；否则自然收束，不强加关注、私信或到店
 `;
       // ========== 目的结束 ==========
 
@@ -653,28 +656,27 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
 ## 🧭 生成流程（必须按顺序输出）
 
 ### 第1步：脚本策略卡
-- 用3-5条说明本条脚本的核心策略：视频目的（${effectiveRole}）、目标用户、核心痛点、主钩子、情绪推进、唯一的结尾行动指令
+- 用3-5条说明本条脚本的核心策略：用户目的、目标用户、核心问题、主切口、信息递进、适合本条的自然收束或行动
 - 不写空泛定位，必须和主题、行业、账号信息直接相关
 
 ### 第2步：纯文字文案
 - 把这条视频要**念出来的话**按顺序整理成一段纯文案，方便直接复制去提词器、配音或发给出镜的人
 - 只要口播内容：**不写**秒数、镜头、画面、字幕、音效、动作，不要【】标注、emoji、加粗、序号、列表符号
-- 按说话的自然停顿分段，一句一行；结尾金句也写进去（不加"金句"两个字，也不加引号）
+- 按说话的自然停顿分段，一句一行；有自然收束原句就保留，不强写金句
 - 先定好这段文案，第3步再把它拆进镜头：**第3步的口播台词必须和这段逐字一致**，不要两边各写一版${openingLine.trim() ? "\n- 开头已经定了，这段文案的第一句就是那句开头，一字不改" : ""}
 
 ### 第3步：正文脚本
 - ${isAiDuration
-  ? "请根据主题复杂度、平台调性与内容节奏，自行判断最合适的视频总时长（并在脚本开头用一行标注：建议时长：XX秒），再据此完整输出可直接拍摄的脚本"
+  ? `时长由你按内容需要定：${AI_LENGTH_RULE}（在脚本开头用一行标注：建议时长：XX秒，后面写一句为什么），再据此完整输出可直接拍摄的脚本`
   : `按${finalDuration}完整输出可直接拍摄的脚本`}
 - 必须包含秒数、镜头/画面、口播台词、字幕/音效/动作建议
 - 开头3秒直接进入冲突、痛点、反常识或利益点，禁止废话开场
 
 **格式硬性要求（不满足会被判定为缺失，务必遵守）：**
 1. 开场必须单独成行标注钩子，格式示例：【开场钩子】0-8秒：（用半角冒号，秒数区间按实际填）
-2. 结尾必须单独成行输出一句金句，格式示例：**金句**：“完整句子”（X字）
-   - 金句正文控制在8-20字，用中文或英文双引号包裹，独立成行，不要和台词混在同一段
+2. 结尾按内容自然收束；有适合摘出的原句才标注金句，不强制字数，不编感悟
 3. 每个镜头标注时间区间（如 8-15秒）和【镜头X】编号
-4. 至少标注3处情绪波点（可用 ⚡😰😓💕🤝 等符号或“波点”字样）
+4. 按真实信息和情绪变化提示节奏，不凑情绪波点数量；采访、记录不预设受访者的情绪或回答
 
 ### 第4步：优化建议（只写建议，不要打分）
 - 用3-5条指出正文脚本还能加强的地方（钩子、节奏、画面、转化）
@@ -698,35 +700,44 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
       const additionalInfoLength = (additionalInfo || '').length;
       const isDetailedRequirement = additionalInfoLength > 100; // 超过100字认为是详细要求
       
-      // 根据详细程度调整提示词策略
-      const promptStrategy = isDetailedRequirement 
-        ? '⚠️ **用户已提供详细脚本框架，请严格按照用户补充要求生成**，MCN标准作为质量保障参考。'
-        : '⚠️ **请严格按照MCN标准生成专业脚本**，用户补充要求作为额外参考。';
-      
-      // 构建优先级说明
-      const priorityNote = isDetailedRequirement
-        ? `
+      /*
+       * 优先级（2026-10-05 质量整改）：原来补充要求不到 100 字时写的是「MCN 标准 > 用户补充要求」——
+       * 「别改正文，只换开头」只有十来个字，却排在模板下面。现在用户的明确要求不按字数决定地位，永远排在模板前面；
+       * 字数只决定「没写到的部分」由谁来补：用户给了详细框架就照框架写，没给就按 MCN 标准补全。顺序见 lib/output-rules。
+       */
+      const promptStrategy = isDetailedRequirement
+        ? '⚠️ **用户已提供详细脚本框架，请严格按照用户补充要求生成**，MCN标准只作格式参考。'
+        : '⚠️ **用户补充要求里的明确约束必须严格遵守**（哪怕只有一句，比如「只换开头」「别提价格」「控制在 30 秒」）；没写到的部分按 MCN 标准补全。';
+
+      const priorityNote = `
 ## 📋 生成策略
 
-**优先级**：用户补充要求 > MCN标准
+**优先级**：${PRIORITY_ORDER}
 
-用户已提供详细的脚本框架（${additionalInfoLength}字），请按照以下优先级生成：
-1. **首要**：严格按照【补充要求】中的脚本框架、秒数、台词方向生成
-2. **其次**：参考MCN标准中的格式要求（钩子、金句、秒数、镜头、波点等硬性格式）
-3. **注意**：不要偏离用户提供的脚本思路
-`
-        : `
-## 📋 生成策略
-
-**优先级**：MCN标准 > 用户补充要求
-
-用户补充要求较简单（${additionalInfoLength}字），请按照以下优先级生成：
-1. **首要**：严格按照MCN标准中的脚本结构、钩子要求、爆款元素生成
-2. **其次**：在符合标准的基础上，融入用户的补充要求
-3. **注意**：发挥AI专业能力，创作高质量脚本
+${isDetailedRequirement
+  ? `用户已提供详细的脚本框架（${additionalInfoLength}字）：
+1. **首要**：严格按照【补充要求】中的脚本框架、秒数、台词方向生成，不要偏离用户的思路
+2. **其次**：参考MCN标准中的格式要求（钩子、金句、秒数、镜头、波点等）`
+  : `用户补充要求较简单（${additionalInfoLength}字）：
+1. **首要**：补充要求里说了的（改哪里、不改哪里、提不提什么、多长）一字不差地遵守
+2. **其次**：补充要求没说到的部分，按MCN标准的脚本结构、钩子要求、爆款元素补全`}
 `;
       // ========== 智能判断结束 ==========
-      const query = isAd ? `# 广告引流短视频脚本生成
+      const query = (autoScriptType || !isAd) ? buildAdaptiveScriptPrompt({
+        topic, platform, duration: isAiDuration ? 'AI推荐' : finalDuration,
+        context: profileInfo + positioningInfo,
+        source: [originContent, autoSetup.settings.focusContent].filter(Boolean).join('\n\n'),
+        requirements: additionalInfo,
+        settings: currentSettings,
+        structureGuide: scriptStructure !== 'auto' ? structureGuide : undefined,
+        hookGuide: openingLine.trim() ? undefined : hookType !== 'auto' ? hookGuide : undefined,
+        tacticGuide: tactic && tactic !== AUTO_TACTIC ? tacticSection : undefined,
+        scriptTypeGuide: !autoScriptType ? formulaSection : undefined,
+        craftFocus: [
+          boomElements.length ? `用户勾选元素：${boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label ?? id).join('、')}` : '',
+          directorThoughts.length ? `表达重点：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label ?? id).join('、')}` : '',
+        ].filter(Boolean).join('\n'),
+      }) : isAd ? `# 广告引流短视频脚本生成
 
 ${promptStrategy}
 
@@ -772,9 +783,9 @@ ${priceInfo ? `**价格策略**：${priceInfo}` : ""}
 
 示例格式：
 【成交理由应用自检】
-✅ 性价比：开场"人均80块"、中段对比"比隔壁便宜30%"
-✅ 品质保证：展示"现切羊肉"镜头、老板介绍"30年传承"
-✅ 老板好：结尾"老板说报我名字打9折"
+✅ 性价比：引用已确认价格或真实可拍的产品信息，无资料不写数字
+✅ 品质保证：拍摄用户确实提供的制作过程，不虚构年限或认证
+✅ 老板好：使用已提供的真实服务行为，不编折扣承诺
 
 ## 创意要求
 - **开场方式**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（3秒内抓住目标用户）
@@ -798,7 +809,7 @@ ${additionalInfo}` : ""}
 3. 中段重点展示产品卖点和成交理由
 4. 结尾只要一个明确的行动指令（到店、团购、加微信里选最贴这条的一个，说清楚怎么做）
 5. 全程植入产品信息，自然不生硬
-6. 突出价格优势和稀缺性（限时/限量）
+6. 价格、优惠和限时限量仅使用用户已确认信息；未提供就不用，不编福利或经营承诺
 
 ${formatRequirements}
 
@@ -867,9 +878,9 @@ ${additionalInfo}` : ""}
 ---
 **生成要求**：
 1. 使用【编导技巧知识库】和【脚本公式知识库】
-2. 开场要有悬念、反常识或情感共鸣
-3. 中段按${effectiveRole}的写法走：${effectiveRole === '流量型' ? '观点和论据，给情绪价值，覆盖面要广' : effectiveRole === '人设型' ? '真实经历里的"那一刻"，细节验证' : '落在一个成交理由上，晒过程或教知识，先给价值'}
-4. 结尾只要一个行动指令：${ROLE_SPECS[effectiveRole].cta}
+2. 开场清楚点出当前议题或现场切口，正文能够兑现；不为制造冲突改变主题
+3. 中段沿用户目的与材料逐层展开；采访写主问、追问与证据，不编未知回答
+4. 结尾自然收束；用户需要互动或转化时才设计一个与目的对应的行动
 5. 全程注重情感连接，建立信任
 6. 避免硬广，自然输出价值
 
@@ -889,7 +900,7 @@ ${formatRequirements}
           taskType: "脚本生成",
           creationSettings: currentSettings,
           profileId: selectedProfileId || null,
-          query: query + creationSettingsBlock(currentSettings) + (originContent ? continuationRules('script') : ''),
+          query: query + creationSettingsBlock(currentSettings) + (originContent ? continuationRules('script') : '') + (incomingSetup && scriptRole === '自动' ? '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。' : '') + (autoScriptType ? '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。' : ''),
         }),
       });
 
@@ -905,7 +916,7 @@ ${formatRequirements}
       fullResult += accumulated;
 
       if (fullResult.trim()) {
-        const qualityEvaluation = evaluateScriptQualityStrict(fullResult);
+        const qualityEvaluation = evaluateScriptQualityStrict(fullResult, { adaptive: true });
         const qualityReport = `\n\n---\n\n${formatQualityReport(qualityEvaluation)}`;
         fullResult += qualityReport;
         setResult(fullResult);
@@ -923,7 +934,7 @@ ${formatRequirements}
         setTimeout(async () => {
           try {            const inputData = {
               profileId: selectedProfileId || null,
-              topic, scriptType, platform,
+              topic, scriptType: autoScriptType ? undefined : scriptType, platform,
               creationSettings: currentSettings,
               additionalInfo,
               originContent,
@@ -957,6 +968,10 @@ ${formatRequirements}
             // 登记到作品。必须排在保存之后——recordStage 要读这条作品已有的
             // 环节才能判断是不是刚补上最后一块。
             await recordStage(currentWork, "脚本生成");
+            // 新建/换题后刷新也应恢复刚保存的作品，不能仍指向地址中的旧作品。
+            if (currentWork && workIdFromUrl() !== currentWork) {
+              router.replace(`/dashboard/script?work=${encodeURIComponent(currentWork)}`, { scroll: false });
+            }
             // 重新加载历史记录
             await loadScriptHistory();
 
@@ -993,6 +1008,9 @@ ${formatRequirements}
 
 
 
+  // 结果下方「继续创作」和各快捷按钮共用：目的、结构、作品、源资料一起往下带
+  const scriptFlow = { settings: settingsForResult(result, scriptHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, scriptHistory, originContent) };
+  const go = (payload: HandoffPayload) => openCreationSafely(payload, (u) => router.push(u), (m) => notify(m, 'error'));
   return (
     // 容器透明，让全站的背景光晕透上来；面板各自用玻璃质感分层
     /*
@@ -1020,6 +1038,7 @@ ${formatRequirements}
             onClick={() => {
               setActiveTab("content");
               setScriptType("teach");
+              setScriptTypePicked(true);
             }}
             className={`flex-1 rounded-xl py-2.5 px-4 text-sm font-medium transition-all ${
               activeTab === "content"
@@ -1033,6 +1052,7 @@ ${formatRequirements}
             onClick={() => {
               setActiveTab("ad");
               setScriptType("ad_lead");
+              setScriptTypePicked(true);
             }}
             className={`flex-1 rounded-xl py-2.5 px-4 text-sm font-medium transition-all ${
               activeTab === "ad"
@@ -1069,12 +1089,13 @@ ${formatRequirements}
                         accent={style.accent}
                         title={value.label}
                         desc={value.desc}
-                        selected={scriptType === key}
-                        onClick={() => setScriptType(key)}
+                        selected={!autoScriptType && scriptType === key}
+                        onClick={() => { setScriptType(key); setScriptTypePicked(true); }}
                       />
                     );
                   })}
               </div>
+              {autoScriptType && <p className="mt-2 text-[12px] text-muted-foreground">按带来的内容自动选择脚本类型；也可以手动指定。</p>}
             </Field>
 
             {activeTab === "content" && (
@@ -1635,7 +1656,7 @@ ${formatRequirements}
       {/* 结果区在上、历史在下：原先历史卡片占着顶部，每次进页面先看到的
           是旧记录而不是刚生成的内容 */}
       <ResultPanel
-        flowContext={{ settings: settingsForResult(result, scriptHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, scriptHistory, originContent) }}
+        flowContext={scriptFlow}
         result={result}
         isGenerating={isGenerating}
         showQuality
@@ -1683,45 +1704,32 @@ ${formatRequirements}
           {
             label: "拆分镜",
             icon: Film,
-            onClick: (body) => {
-              putHandoff({ from: "脚本生成", scriptContent: body, workId: workId ?? undefined });
-              router.push("/dashboard/storyboard");
-            },
+            // 这几个快捷按钮和「继续创作」同一套：只带口播正文，目的、结构、作品一起走，并持久保存
+            onClick: (body) => go(buildCreationHandoff('script', 'storyboard', body, scriptFlow)),
           },
           {
             label: "审一遍",
             icon: CheckCircle,
-            onClick: (body) => {
-              putHandoff({ from: "脚本生成", scriptContent: body, workId: workId ?? undefined });
-              router.push("/dashboard/review");
-            },
+            onClick: (body) => go(buildCreationHandoff('script', 'review', body, scriptFlow)),
           },
           {
             // 开头不够抓人是最常见的返工点。把正文开头那几句截过去，
             // 省得用户从两千字里自己找
             label: "换个开头",
             icon: Sparkles,
-            onClick: (body) => {
-              putHandoff({
-                from: "脚本生成",
-                topic,
-                // 有纯文案就取它的头两句——那就是要念的开头；旧结果没有这段，再从正文里截
-                currentOpening:
-                  extractPlainCopy(body).split("\n").filter((l) => l.trim()).slice(0, 2).join("") ||
-                  extractOpening(body),
-                tab: "opening",
-                workId: workId ?? undefined,
-              });
-              router.push("/dashboard/growth");
-            },
+            onClick: (body) => go({
+              ...buildCreationHandoff('script', 'growth', body, scriptFlow),
+              topic,
+              // 有纯文案就取它的头两句——那就是要念的开头；旧结果没有这段，再从正文里截
+              currentOpening:
+                extractPlainCopy(body).split("\n").filter((l) => l.trim()).slice(0, 2).join("") ||
+                extractOpening(body),
+            }),
           },
           {
             label: "起标题",
             icon: Tag,
-            onClick: () => {
-              putHandoff({ from: "脚本生成", topic, workId: workId ?? undefined });
-              router.push("/dashboard/title");
-            },
+            onClick: (body) => go({ ...buildCreationHandoff('script', 'title', body, scriptFlow), topic }),
           },
         ]}
       />

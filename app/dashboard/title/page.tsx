@@ -32,6 +32,7 @@ import { readDifyStream } from '@/lib/sse-stream';
 import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCircle, Trash2, Tag } from "lucide-react";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
+import { postSafely } from '@/lib/safe-post';
 
 // 标题风格选项
 const TITLE_STYLES = [
@@ -42,6 +43,7 @@ const TITLE_STYLES = [
 
 // ===== 专业版配置 =====
 const TITLE_TYPES = [
+  { value: "auto", label: "AI推荐", desc: "按原稿选择", example: "沿原意选择最合适的标题", icon: "✨" },
   { value: "suspense", label: "悬念式", desc: "留下悬念", example: "为什么90%的人...", icon: "🔮" },
   { value: "number", label: "数字式", desc: "具体数字", example: "3个方法让你...", icon: "🔢" },
   { value: "contrast", label: "对比式", desc: "前后对比", example: "穷人vs富人...", icon: "⚖️" },
@@ -57,6 +59,7 @@ const TITLE_TYPES = [
 ];
 
 const TITLE_FORMULAS = [
+  { value: "auto", label: "AI推荐", example: "按内容和证据选择公式", icon: "✨" },
   { value: "number-action", label: "数字+动词+结果", example: "3个方法让你月入过万", icon: "📊" },
   { value: "time-twist", label: "时间+人物+反转", example: "35岁失业，如今...", icon: "⏰" },
   { value: "pain-solution", label: "痛点+解决方案", example: "牙疼？试试这个...", icon: "💊" },
@@ -68,6 +71,7 @@ const TITLE_FORMULAS = [
 ];
 
 const KEYWORD_STRATEGIES = [
+  { value: "auto", label: "AI推荐", desc: "按内容与平台", example: "不强塞热点词", icon: "✨" },
   { value: "search", label: "搜索词", desc: "高搜索量", example: "减肥、赚钱", icon: "🔍" },
   { value: "long-tail", label: "长尾词", desc: "精准细分", example: "30天减肥10斤", icon: "🎯" },
   { value: "brand", label: "品牌词", desc: "个人IP", example: "不一编导", icon: "🏷️" },
@@ -99,9 +103,9 @@ export default function TitlePage() {
   const [result, setResult] = useState("");
 
   // 专业版状态
-  const [titleType, setTitleType] = useState("suspense");
-  const [titleFormula, setTitleFormula] = useState("number-action");
-  const [keywordStrategy, setKeywordStrategy] = useState("search");
+  const [titleType, setTitleType] = useState("auto");
+  const [titleFormula, setTitleFormula] = useState("auto");
+  const [keywordStrategy, setKeywordStrategy] = useState("auto");
   const [abTestCount, setAbTestCount] = useState(5);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isRecommending, setIsRecommending] = useState(false);
@@ -120,13 +124,15 @@ export default function TitlePage() {
 
   const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
     setTopic(s.topic ?? ''); setVideoTopic(s.direction || s.topic || ''); setPlatform(s.platform!); setTargetAudience(s.audience ?? '');
-    setTitleType(TITLE_TYPES.some(x => x.value === s.titleType) ? s.titleType! : 'question');
-    setTitleFormula(TITLE_FORMULAS.some(x => x.value === s.titleFormula) ? s.titleFormula! : 'why-reason');
-    setKeywordStrategy(KEYWORD_STRATEGIES.some(x => x.value === s.keywordStrategy) ? s.keywordStrategy! : 'search');
+    setTitleType(TITLE_TYPES.some(x => x.value === s.titleType) ? s.titleType! : 'auto');
+    setTitleFormula(TITLE_FORMULAS.some(x => x.value === s.titleFormula) ? s.titleFormula! : 'auto');
+    setKeywordStrategy(KEYWORD_STRATEGIES.some(x => x.value === s.keywordStrategy) ? s.keywordStrategy! : 'auto');
     setAbTestCount(AB_TEST_COUNTS.some(x => x.value === s.titleCount) ? s.titleCount! : 3);
     setOpeningCards(s.openingCards || []);
   });
-  const currentSettings = resolveCreationSettings({ from: '标题封面', sourceContent: scriptContent || topic, settings: mergeCreationSettings(autoSetup.settings, { topic, platform, audience: targetAudience, titleType, titleFormula, keywordStrategy, titleCount: abTestCount, openingCards }) }, creatorContext);
+  // 直接填写也要传递原始要求；不能只有跨板块带入时才检查“尚未采访”。
+  const userIntent = autoSetup.settings.userIntent || [topic, scriptContent].filter(Boolean).join('\n');
+  const currentSettings = resolveCreationSettings({ from: '标题封面', sourceContent: scriptContent || topic, settings: mergeCreationSettings(autoSetup.settings, { topic, platform, audience: targetAudience, titleType, titleFormula, keywordStrategy, titleCount: abTestCount, openingCards, userIntent }) }, creatorContext);
 
   // 接收从脚本页带来的主题
   useEffect(() => {
@@ -167,7 +173,7 @@ export default function TitlePage() {
     if (!await confirmDialog('确定要删除这个标题吗？', { tone: 'danger', confirmText: '删除', title: '确认删除' })) return;
     
     try {
-      const res = await fetch(`/api/titles?id=${id}`, { method: 'DELETE' });
+      const res = await postSafely(`/api/titles?id=${id}`, { method: 'DELETE' });
       if (res.ok) {        loadTitleHistory();
         if (selectedHistory?.id === id) {
           setSelectedHistory(null);
@@ -247,7 +253,7 @@ export default function TitlePage() {
         // 账号背景随每次生成带上，不用用户在这一页重填一遍
         contextBlock: buildContextBlock(creatorContext, "title") + creationSettingsBlock(currentSettings),
       topic,
-      titleTypeLabel: TITLE_TYPES.find(t => t.value === titleType)?.label || "悬念式",
+      titleTypeLabel: TITLE_TYPES.find(t => t.value === titleType)?.label || "AI推荐",
       titleFormulaValue: titleFormula,
       titleFormulaLabel: TITLE_FORMULAS.find(f => f.value === titleFormula)?.label || "",
       keywordStrategyLabel: keywordStrategyOption?.label || "",
@@ -377,8 +383,11 @@ export default function TitlePage() {
 
           <CollapsibleSection title="标题风格" defaultOpen>
             <Field label="标题类型" optional stacked>
+              <button type="button" onClick={() => setTitleType('auto')} aria-pressed={titleType === 'auto'} className={`${SECONDARY_BTN} mb-2 w-full`}>
+                {titleType === 'auto' ? '已按原稿自动选择标题类型' : '按原稿自动选择标题类型'}
+              </button>
               <div className="grid grid-cols-3 gap-1.5">
-                {TITLE_TYPES.slice(0, 6).map((type) => (
+                {TITLE_TYPES.filter(type => type.value !== 'auto').slice(0, 6).map((type) => (
                   <button
                     key={type.value}
                     onClick={() => setTitleType(type.value)}

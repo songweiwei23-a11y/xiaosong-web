@@ -10,7 +10,7 @@
  */
 
 import { openUpgrade } from "@/lib/upgrade";
-import { postSafely } from "@/lib/safe-post";
+import { postSafely, withGenerationId } from "@/lib/safe-post";
 
 /**
  * 请求根本没到服务器（网络断了一下、代理掐了连接）。浏览器给的是一句英文
@@ -34,18 +34,13 @@ export const NETWORK_ERROR_HINT = "网络断了一下，请求没发出去，再
  * 重发会重复生成、重复扣次数。
  */
 export async function fetchGeneration(url: string, init: RequestInit): Promise<Response> {
+  init = withGenerationId(url, init);
   /*
    * 后来查实（2026-10-02 同日）：「创作方向」每次都失败不是空闲连接，是请求带上简报后约 11KB，
    * 用户线路差的时候超过约 8KB 的 POST 一律被切断。所以发送统一走 postSafely：大了先压缩、再大就分块
    */
-  const started = Date.now();
-  try {
-    return await postSafely(url, init);
-  } catch (e) {
-    if (!isNetworkError(e) || Date.now() - started > 3000 || init.signal?.aborted) throw e;
-    await new Promise((r) => setTimeout(r, 300));
-    return postSafely(url, init);
-  }
+  // 秒失败重发一次现在在 postSafely 里做（2026-10-05 推广到所有写请求），这里不再套一层，免得重发次数翻倍
+  return postSafely(url, init);
 }
 
 /**

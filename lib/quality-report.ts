@@ -12,13 +12,15 @@ export function reportQuality(p: {
   output: string;
   profile: { id?: string } & object | null | undefined;
   mix?: { resolved: ResolvedMix; count: number } | null;
+  /** 这次带进来的素材：关键事实核对时，价格、地名在这里找得到就不算编的 */
+  source?: string | null;
 }): QualityResult | null {
-  const output = p.output?.trim();
-  if (!output || output.length < 20) return null;
-  const key = `${p.taskType}:${outputKey(output)}`;
+  const output = p.output?.trim() ?? '';
+  const key = `${p.profile?.id ?? ''}:${p.taskType}:${outputKey(output)}`;
   if (reported.has(key)) return null;
   reported.add(key);
-  const result = runQualityChecks({ output, profile: p.profile, mix: p.mix });
+  if (reported.size > 1000) reported.delete(reported.values().next().value!);
+  const result = runQualityChecks({ output, profile: p.profile, mix: p.mix, taskType: p.taskType, source: p.source });
   void fetch('/api/quality-checks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

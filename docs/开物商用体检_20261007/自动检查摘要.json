@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-10-07T17:05:45.0308138+08:00",
+  "build": "QsGqjjnAe3KwBkZeiooLE",
+  "regression": {
+    "passed": 2979,
+    "failed": 0,
+    "success": true,
+    "total": 2979
+  },
+  "diagnostics": {
+    "passed": 7,
+    "failed": 0,
+    "meaning": "Pass means current weaknesses were reproduced; not fix acceptance.",
+    "total": 7
+  },
+  "scope": {
+    "browser": "Runtime unavailable; no fresh mobile or full-page interaction check",
+    "model": "Current-build same-day evidence reviewed; no new model calls in this audit",
+    "productionData": "Read-only aggregate counts; no customer content",
+    "payment": "Mock database fault injection; no real payment"
+  }
+}

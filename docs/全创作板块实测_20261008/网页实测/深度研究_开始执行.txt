@@ -1,0 +1,449 @@
+2026-10-08T04:45:48.907Z
+https://www.biandao.icu/dashboard/free-chat
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "收起列表":
+- generic "可以接着最近一次创作聊，也可从各板块点「继续对话」带入指定稿件。想彻底换个话题就点「新建对话」。确认云端同步成功后，换设备也能接着聊。":
+  - generic: 高阶自由模式
+  - generic: ✅ 记忆已开启 · 选题·脚本·打磨都能聊
+- status:
+  - generic: 已同步云端
+  - button "导出完整历史":
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - button "新建对话":
+    - text: 新建对话
+  - generic: 【全板块测试·独立采访任务】本轮与家
+  - button "删除对话":
+  - button "查看以前未关联档案的对话"
+  - paragraph: 【全板块测试·独立采访任务】本轮与家具店无关。我是县城编导，计划采访同一条街的商家，比较国庆前后生意变化，给全国实体店老板看，不是代运营获客广告。尚未采访，没有答案、收入数字或账本。一人手机，90秒以内。请给共同主问、不同回答的追问办法、可比较的现场记录口径和后期组织方案；不要预写受访者回答、采访家数和结论。
+  - heading "县城商家国庆前后对比采访方案" [level=1]
+  - heading "一、核心设计逻辑" [level=2]
+  - paragraph:
+    - text: 你这个选题的价值在于
+    - strong: 可比性
+    - text: 和
+    - strong: 真实感
+    - text: 。全国实体店老板想看的不是"某个店赚了多少"，而是"节假日到底有没有用、不同类型店的差异在哪里"。所以设计的关键是：用统一问法收集能横向对比的素材，同时保留每个老板的个性化应对，让观众自己得出判断。
+  - paragraph: 90秒成片要承载多家店的对比，意味着每家有效素材只有15-20秒，必须在拍摄阶段就完成信息浓缩和可比维度的固定。
+  - separator
+  - heading "二、共同主问设计（三个核心问题）" [level=2]
+  - heading "问题1：\"国庆这几天，和平时比感觉怎么样？\"" [level=3]
+  - paragraph:
+    - strong: 为什么这样问
+    - text: ：开放式但有锚点。"感觉"允许老板用自己的语言描述（人多人少、忙不忙、累不累），同时"和平时比"自动建立对比框架。
+  - paragraph:
+    - strong: 追问分支
+    - text: ：
+  - list:
+    - listitem: 如果回答"人多了"→ 追问："多出来的人是外地回来的，还是本地人出来逛？"（识别流量来源）
+    - listitem: 如果回答"没啥变化"→ 追问："您这行平时节假日影响本来就不大吗？"（识别行业特性）
+    - listitem: 如果回答"反而更冷清"→ 追问："您觉得是大家都出去玩了，还是别的原因？"（记录反常现象）
+  - separator
+  - heading "问题2：\"这几天有没有做什么和平时不一样的准备？\"" [level=3]
+  - paragraph:
+    - strong: 为什么这样问
+    - text: ：挖掘商家的主动动作。有人会说"备了货、多进了人手"，有人说"没准备，就正常开门"，这本身就是有价值的对比维度。
+  - paragraph:
+    - strong: 追问分支
+    - text: ：
+  - list:
+    - listitem: 如果有准备 → "现在看来，这个准备值不值？"（验证预判准确性）
+    - listitem: 如果没准备 → "以前国庆您也不特别弄吗？"（了解历年经验）
+  - separator
+  - heading "问题3：\"如果明年国庆还在这儿干，您会调整什么？\"" [level=3]
+  - paragraph:
+    - strong: 为什么这样问
+    - text: ：这是
+    - strong: 前瞻性总结
+    - text: ，比问"赚了多少"更安全也更有启发性。老板的回答会自然透露出这次的得失（"明年多备点货"说明这次卖断货了；"明年可能就不开了"说明确实不行）。
+  - paragraph:
+    - strong: 追问分支
+    - text: ：
+  - list:
+    - listitem: 如果说要调整 → "具体打算怎么调？"（记录具体动作）
+    - listitem: 如果说不调整 → "那您觉得现在这个节奏就挺好？"（确认满意度）
+  - separator
+  - heading "三、现场记录可比口径（拍摄时同步完成）" [level=2]
+  - paragraph: 除了口述回答，用画面固定以下可比信息，后期剪辑时可以快速建立对比：
+  - table:
+    - rowgroup:
+      - row "维度 拍什么 怎么拍（单人手机）":
+        - columnheader "维度"
+        - columnheader "拍什么"
+        - columnheader "怎么拍（单人手机）"
+    - rowgroup:
+      - row "店铺类型 招牌特写 每家开场第一个镜头：固定构图拍招牌3秒，能看清品类（餐饮、服装、家居等）":
+        - cell "店铺类型":
+          - strong: 店铺类型
+        - cell "招牌特写"
+        - cell "每家开场第一个镜头：固定构图拍招牌3秒，能看清品类（餐饮、服装、家居等）"
+      - row "客流状态 店内或门口环境 采访结束后，手机固定角度拍店内5秒：有顾客就拍顾客（背影、手部），没顾客就拍空场景":
+        - cell "客流状态":
+          - strong: 客流状态
+        - cell "店内或门口环境"
+        - cell "采访结束后，手机固定角度拍店内5秒：有顾客就拍顾客（背影、手部），没顾客就拍空场景"
+      - row "老板状态 采访时的肢体语言 不用刻意，但注意拍全身或半身，别只拍脸。累的、忙的、闲的，肢体动作会说话":
+        - cell "老板状态":
+          - strong: 老板状态
+        - cell "采访时的肢体语言"
+        - cell "不用刻意，但注意拍全身或半身，别只拍脸。累的、忙的、闲的，肢体动作会说话"
+      - row "时间锚点 采访时的口播标记 每段采访开始时你自己说一句：\"现在是10月X号下午X点，XX街。\"后期可以剪掉，但留着方便你整理素材":
+        - cell "时间锚点":
+          - strong: 时间锚点
+        - cell "采访时的口播标记"
+        - cell "每段采访开始时你自己说一句：\"现在是10月X号下午X点，XX街。\"后期可以剪掉，但留着方便你整理素材"
+  - paragraph:
+    - strong: 注意
+    - text: ：不要拍收银台屏幕、账本、价格标签的特写，除非老板主动展示且同意拍。你的目的是比较"状态和应对"，不是核算收入。
+  - separator
+  - heading "四、后期组织方案（90秒成片结构）" [level=2]
+  - heading "结构框架（按对比逻辑剪辑）" [level=3]
+  - paragraph:
+    - strong: 0-10秒 | 开场
+    - text: 画面：你出镜或画外音 + 街景空镜
+    - text: 文案示例："国庆后我在县城这条街采访了几家店，问了同样的问题，答案完全不一样。"
+  - paragraph:
+    - strong: 10-60秒 | 对比主体（核心）
+    - text: 按
+    - strong: 问题
+    - text: 组织，不是按
+    - strong: 店家
+    - text: 组织。比如：
+  - list:
+    - listitem: 10-25秒：问题1的回答合集（A店说人多、B店说没变化、C店说更冷清）
+    - listitem: 25-40秒：问题2的回答合集（A店备了货、B店没准备）
+    - listitem: 40-60秒：问题3的回答合集（各家明年打算）
+  - paragraph:
+    - strong: 剪辑技巧
+    - text: ：
+  - list:
+    - listitem: 同一个问题的不同回答，用相同的字幕前缀（"人流量——"）+ 各家回答，视觉上强化对比
+    - listitem: 每家店的回答控制在5-8秒，只留最核心的一句话
+    - listitem: 可以用分屏（手机剪辑App里的"画中画"或"分屏模板"）同时展示2-3家店的回答
+  - paragraph:
+    - strong: 60-85秒 | 你的观察总结
+    - text: 不是下结论，而是
+    - strong: 点出对比中的规律
+    - text: 。示例方向：
+  - list:
+    - listitem: "\"几家店聊下来，我发现刚需类的（比如餐饮）确实人多了，但可选消费类的（比如服装）反而冷清……\""
+    - listitem: "\"有意思的是，提前准备的不一定就赚到了，关键是……\""
+  - paragraph:
+    - strong: 85-90秒 | 收尾
+    - text: 引导互动，但不是"点赞关注"，而是：
+    - text: "\"你那边国庆生意怎么样？评论区说说。\""
+    - text: 或："明年你会调整吗？"
+  - separator
+  - heading "五、执行细节与风险管理" [level=2]
+  - heading "采访前的准备" [level=3]
+  - list:
+    - strong: 提前踩点但不打招呼
+    - text: ：先走一遍街，看哪些店开着、哪些类型能覆盖（餐饮、零售、服务类各来一家最好）。不要提前约，容易准备"官方回答"。
+    - strong: 开场话术
+    - text: ：直接说"我是本地做视频的，想采访一下国庆前后生意变化，给其他实体店老板看看，不涉及具体收入。您方便聊两分钟吗？"强调"给同行看"而不是"帮你宣传"，更容易获得真实回答。
+    - strong: 征得同意
+    - text: ：明确问"可以拍吗？会露脸（或只拍声音），发到抖音上。"如果不同意露脸，就拍手部、侧脸或店铺环境 + 画外音。
+  - heading "拍摄时的应对" [level=3]
+  - list:
+    - strong: 录音清晰优先
+    - text: ：手机离老板1米内，如果街上吵就往店里走。宁可画面暗一点，也别声音听不清。
+    - strong: 不要打断
+    - text: ：老板说多了就让他说，后期你能剪；但他说太少（只回答"还行"），就用追问激活。
+    - strong: 记录真实情绪
+    - text: ：如果老板叹气、摇头、笑，这些都是好素材，别急着安慰或接话，让情绪在镜头里停留2秒。
+  - heading "剪辑时的取舍" [level=3]
+  - list:
+    - strong: 不凑家数
+    - text: ：如果只采访到3家，但3家回答质量高、对比明显，就只用3家。不要为了"显得调研充分"硬拼凑5-6家，导致每家只剩3秒钟，信息量反而丢失。
+    - strong: 不编造对比
+    - text: ：如果所有店回答都差不多（比如都说"还行"），那就不要强行剪成"有人欢喜有人愁"。可以调整成"国庆对县城这条街的店影响没想象中大，老板们的共同感受是……"
+    - strong: 不配悲情音乐
+    - text: ：这不是揭露困境的纪录片，是给同行看的横向参考。配轻松、中性的音乐，或者不配乐只留同期声。
+  - separator
+  - heading "六、这个方案为什么可行" [level=2]
+  - list:
+    - strong: 一人手机能完成
+    - text: ：没有复杂运镜，固定机位拍采访 + 少量店铺空镜即可。
+    - strong: 90秒能装下
+    - text: ：3个问题 × 3-4家店 × 每家5-8秒 = 45-60秒核心内容，加上开场和总结刚好。
+    - strong: 不需要提前知道答案
+    - text: ：你的问题设计本身就是为了收集"不知道的答案"，现场根据回答灵活追问即可。
+    - strong: 规避了敏感信息
+    - text: ：不问收入、不拍账本、不让老板承诺效果，只谈感受和动作，老板更愿意配合。
+    - strong: 可复制
+    - text: ：这个方法不只适用于国庆，换成"下雨天 vs 晴天""工作日 vs 周末"都能用。
+  - separator
+  - heading "七、你现在可以做的三件事" [level=2]
+  - list:
+    - strong: 打印或保存这3个主问
+    - text: ，采访时直接照着问，不用临场想词。
+    - strong: 准备一个表格
+    - text: （手机备忘录也行），每采访完一家就记录：店名、类型、核心回答关键词、是否同意露脸。方便后期剪辑时快速定位素材。
+    - strong: 先采访一家试试
+    - text: ：不用等凑齐所有店再开始剪，采访完第一家就导入手机看看收音、构图、信息密度是否够，及时调整后再继续采访其他家。
+  - paragraph: 这个方案的所有建议都基于你的实际条件：一人、手机、90秒、未采访。采访过程中具体遇到什么情况（比如老板不配合、回答跑偏、街上太吵），可以随时调整或追问我。
+  - button "复制":
+    - text: 复制
+  - button "在画布中打开":
+    - text: 在画布中打开
+  - button "引用追问":
+    - text: 引用追问
+  - button "Word":
+    - text: Word
+  - button "PDF":
+    - text: PDF
+  - button "这几处请核对：账号资料和素材里找不到出处（1 处）" [expanded]:
+    - generic: 这几处请核对：账号资料和素材里找不到出处（1 处）
+  - list:
+    - generic: ·
+    - generic: 采访经历「问了同样的问题」用户尚未提供采访素材，请改成准备验证的问题或行动，不预写发现与答案
+  - button "按资料修正":
+    - text: 按资料修正
+  - generic: 是真的就不用管（比如你口头告诉过它的）；点「按资料修正」只改这几句，其余不动，不扣次数。
+  - paragraph: 继续创作 · 内容自动带入
+  - button "收藏到素材库":
+    - text: 收藏到素材库
+  - button "审稿优化":
+    - generic: 审稿优化
+  - button "脚本生成":
+    - generic: 脚本生成
+  - button "更多板块":
+    - generic: 更多板块
+  - paragraph: 【公开资料检索测试】仅查询中国政府网公布的2026年国庆节放假起止日期、天数及调休日期，给官方原文链接和来源日期。只回答日历事实；这些日期不能证明任何商家生意变化，不补造采访数据。
+  - heading "2026年国庆节放假安排（中国政府网官方信息）" [level=2]
+  - paragraph: 根据本轮搜索返回的资料，我能确认以下日历事实：
+  - heading "放假时间" [level=3]
+  - paragraph:
+    - strong: 2026年10月1日（周四）至10月7日（周三）放假调休，共7天
+  - heading "调休安排" [level=3]
+  - list:
+    - strong: 9月20日（周日）上班
+    - strong: 10月10日（周六）上班
+  - heading "官方来源说明" [level=3]
+  - paragraph: 搜索结果中多个政府机构网站（如留学服务中心 zwfw.cscse.edu.cn）引用了**《国务院办公厅关于2026年部分节假日安排的通知》**作为依据。
+  - separator
+  - heading "关于官方原文链接的说明" [level=2]
+  - paragraph:
+    - text: 本轮搜索
+    - strong:
+      - text: 未能直接返回中国政府网（
+      - link "www.gov.cn）发布该通知的完整原文页面链接":
+        - /url: http://www.gov.cn%EF%BC%89%E5%8F%91%E5%B8%83%E8%AF%A5%E9%80%9A%E7%9F%A5%E7%9A%84%E5%AE%8C%E6%95%B4%E5%8E%9F%E6%96%87%E9%A1%B5%E9%9D%A2%E9%93%BE%E6%8E%A5
+    - text: 。返回的资料主要是：
+  - list:
+    - listitem: 各政府部门、事业单位转发通知的公告页面
+    - listitem: 第三方媒体、个人博客对该通知的解读文章
+  - paragraph: 这些来源均提到通知来自"国务院办公厅"，但没有给出中国政府网的原始发布URL。
+  - separator
+  - heading "明确的事实边界" [level=2]
+  - paragraph:
+    - text: ✅
+    - strong: 可以确认的日历事实
+    - text: ：
+  - list:
+    - listitem: 放假起止日期：10月1日至10月7日
+    - listitem: 放假天数：7天
+    - listitem: 调休补班日期：9月20日（周日）、10月10日（周六）
+  - paragraph:
+    - text: ❌
+    - strong: 这些日期不能证明
+    - text: ：
+  - list:
+    - listitem: 任何商家的生意变化
+    - listitem: 客流量增减情况
+    - listitem: 消费者行为模式
+    - listitem: 采访对象的具体回答
+  - separator
+  - paragraph:
+    - text: 如需获取中国政府网原始通知的完整链接，建议直接访问
+    - link "www.gov.cn，在\"政策文件\"或\"国务院文件\"栏目中搜索\"2026年部分节假日安排\"。本轮搜索工具返回的结果中未包含该直接链接。":
+      - /url: http://www.gov.cn%EF%BC%8C%E5%9C%A8%22%E6%94%BF%E7%AD%96%E6%96%87%E4%BB%B6%22%E6%88%96%22%E5%9B%BD%E5%8A%A1%E9%99%A2%E6%96%87%E4%BB%B6%22%E6%A0%8F%E7%9B%AE%E4%B8%AD%E6%90%9C%E7%B4%A2%222026%E5%B9%B4%E9%83%A8%E5%88%86%E8%8A%82%E5%81%87%E6%97%A5%E5%AE%89%E6%8E%92%22%E3%80%82%E6%9C%AC%E8%BD%AE%E6%90%9C%E7%B4%A2%E5%B7%A5%E5%85%B7%E8%BF%94%E5%9B%9E%E7%9A%84%E7%BB%93%E6%9E%9C%E4%B8%AD%E6%9C%AA%E5%8C%85%E5%90%AB%E8%AF%A5%E7%9B%B4%E6%8E%A5%E9%93%BE%E6%8E%A5%E3%80%82
+  - paragraph:
+    - text: 已执行联网搜索
+  - link "国庆节放假最新通知！不光放假7天，而且还有4个好消息告诉大家":
+    - /url: https://m.toutiao.com/a7688511274304438828/
+  - link "2026年国庆节放假通知出炉！不止连休7天，还有4个民生好消息":
+    - /url: https://www.toutiao.com/a7689764241209049602/
+  - link "2026年国庆节放假安排时间表_2026年国庆节是几月几日怎么放假":
+    - /url: https://m.php.cn/faq/2327834.html
+  - link "详细解析：国庆调休安排与完整时间线":
+    - /url: https://wk.baidu.com/view/9877d1ed6ddc5022aaea998fcc22bcd126ff42bb
+  - link "中秋 + 国庆连休攻略来了，请 3 天年假休 13 天，出行抢票要趁早":
+    - /url: https://m.toutiao.com/article/7674795771815821867/
+  - link "2026年国庆放假时间表及调休安排":
+    - /url: http://m.gz.bendibao.com/tour/372007.html
+  - button "复制":
+    - text: 复制
+  - button "在画布中打开":
+    - text: 在画布中打开
+  - button "引用追问":
+    - text: 引用追问
+  - button "Word":
+    - text: Word
+  - button "PDF":
+    - text: PDF
+  - paragraph: 继续创作 · 内容自动带入
+  - button "收藏到素材库":
+    - text: 收藏到素材库
+  - button "审稿优化":
+    - generic: 审稿优化
+  - button "脚本生成":
+    - generic: 脚本生成
+  - button "更多板块":
+    - generic: 更多板块
+  - paragraph: 🔎 深度研究（快速）：【合成验收】研究一人手机拍摄家具样柜开门拉抽屉演示时，如何区分可观察事实、待验证推测和不能预写的结论。只找可核查的拍摄或事实核验方法，不提供家具维修、性能或营销数据。优先官方资料，最多3个子问题。
+  - paragraph:
+    - text: 我打算这样查，你看看行不行
+  - paragraph: 问题和搜索词都能直接改、删、加。点「开始研究」才会去查，才扣 1 份。
+  - textbox "报告标题": 一人手机拍摄家具演示的事实核验方法研究
+  - list:
+    - generic: "1."
+    - textbox "问题1":
+      - /placeholder: 想弄清楚的问题
+      - text: 手机拍摄家具开门抽屉时，哪些属于可直接观察记录的客观事实（尺寸、动作、位置），哪些属于需要额外验证的推测（材质、承重、耐用性）？
+    - button "删掉这个问题":
+    - textbox "问题1的搜索词":
+      - /placeholder: 搜索词，用顿号隔开
+      - text: 手机拍摄家具视频 可记录事实 2026
+    - generic: "2."
+    - textbox "问题2":
+      - /placeholder: 想弄清楚的问题
+      - text: 一人操作手机拍摄家具演示时，如何同步核验开门角度、抽屉深度等关键参数，有哪些可独立完成的测量与记录方法？
+    - button "删掉这个问题":
+    - textbox "问题2的搜索词":
+      - /placeholder: 搜索词，用顿号隔开
+      - text: 一人拍摄家具演示 测量方法 抖音
+    - generic: "3."
+    - textbox "问题3":
+      - /placeholder: 想弄清楚的问题
+      - text: 拍摄家具样柜演示时，哪些结论不能在拍摄现场预先判断（如适配性、长期质量），需要标注为待验证或因人而异的信息？
+    - button "删掉这个问题":
+    - textbox "问题3的搜索词":
+      - /placeholder: 搜索词，用顿号隔开
+      - text: 家具展示视频 禁止宣称 平台规则 2026
+  - button "加一个问题":
+    - text: 加一个问题
+  - button "不做了" [disabled]
+  - button "开始研究" [disabled]:
+    - text: 开始研究
+  - textbox "自由输入…（Enter 发送，Shift+Enter 换行）"
+  - button "上传图片 / 文件":
+    - generic: 上传
+  - button "出方案":
+    - generic: 出方案
+  - button "深度研究":
+    - generic: 深度研究
+  - combobox "联网模式":
+    - option "按需联网"
+    - option "本轮联网" [selected]
+    - option "关闭联网"
+  - status:
+    - text: 联网本期剩余 134 / 150 次
+  - button "发送" [disabled]:
+    - text: 发送
+  - paragraph: 💡 和选题、脚本、分镜共用记忆，刚生成的可以直接接着聊 · 换话题点「新建对话」
+- alert

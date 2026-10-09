@@ -1,0 +1,51 @@
+{
+  "time": "2026-10-01T16:37:02.995Z",
+  "tests": [
+    {
+      "name": "发布后的附件上限为六个",
+      "passed": true,
+      "fileUpload": {
+        "image": {
+          "enabled": false,
+          "number_limits": 3,
+          "transfer_methods": [
+            "local_file",
+            "remote_url"
+          ]
+        },
+        "enabled": true,
+        "allowed_file_types": [
+          "image",
+          "document"
+        ],
+        "allowed_file_extensions": [
+          ".JPG",
+          ".JPEG",
+          ".PNG",
+          ".GIF",
+          ".WEBP",
+          ".SVG"
+        ],
+        "allowed_file_upload_methods": [
+          "remote_url",
+          "local_file"
+        ],
+        "number_limits": 6,
+        "fileUploadConfig": {
+          "file_size_limit": 15,
+          "knowledge_file_size_limit": 50,
+          "batch_count_limit": 5,
+          "file_upload_limit": 50,
+          "image_file_size_limit": 10,
+          "video_file_size_limit": 100,
+          "audio_file_size_limit": 50,
+          "skill_file_size_limit": 50,
+          "workflow_file_upload_limit": 10,
+          "image_file_batch_limit": 10,
+          "single_chunk_attachment_limit": 10,
+          "attachment_image_file_size_limit": 2
+        }
+      }
+    }
+  ]
+}

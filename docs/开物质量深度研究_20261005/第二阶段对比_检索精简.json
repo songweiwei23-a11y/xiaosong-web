@@ -1,0 +1,665 @@
+{
+ "summary": {
+  "time": "2026-10-05T11:53:26.551Z",
+  "variant": "B = 每组检索 4→2 条、相关度门槛 0.2，其余不变",
+  "A": {
+   "prompt_median": 33118,
+   "first_median": 6887,
+   "total_median": 25638,
+   "kb_total": 400,
+   "errors": 0,
+   "fact_flags": 7,
+   "regression_pass": "3/7"
+  },
+  "B": {
+   "prompt_median": 21266,
+   "first_median": 6961,
+   "total_median": 22700,
+   "kb_total": 200,
+   "errors": 0,
+   "fact_flags": 9,
+   "regression_pass": "3/7"
+  }
+ },
+ "rows": [
+  {
+   "id": "S1",
+   "task": "脚本生成",
+   "A": {
+    "firstMs": 7789,
+    "totalMs": 30203,
+    "prompt": 32124,
+    "completion": 1063,
+    "kb": 20,
+    "chars": 989,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7055,
+    "totalMs": 28263,
+    "prompt": 21266,
+    "completion": 1064,
+    "kb": 10,
+    "chars": 992,
+    "err": "",
+    "facts": [
+     "模型自称「无虚构」——以这里的核对为准，别信这句"
+    ]
+   }
+  },
+  {
+   "id": "S2",
+   "task": "脚本生成",
+   "A": {
+    "firstMs": 5195,
+    "totalMs": 25638,
+    "prompt": 32124,
+    "completion": 1066,
+    "kb": 20,
+    "chars": 964,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 5284,
+    "totalMs": 22700,
+    "prompt": 21266,
+    "completion": 840,
+    "kb": 10,
+    "chars": 763,
+    "err": "",
+    "facts": [
+     "模型自称「无虚构」——以这里的核对为准，别信这句"
+    ]
+   }
+  },
+  {
+   "id": "T1",
+   "task": "选题策划",
+   "A": {
+    "firstMs": 12925,
+    "totalMs": 48556,
+    "prompt": 34590,
+    "completion": 2139,
+    "kb": 20,
+    "chars": 2002,
+    "err": "",
+    "facts": [
+     "模型自称「无虚构」——以这里的核对为准，别信这句",
+     "价格「- 镜头3：拿起一块，指着切」档案和素材里都没有",
+     "百分比「\"定制衣柜，90%的人盯着」没有出处",
+     "地名「到这个城市」档案和素材里都没有"
+    ]
+   },
+   "B": {
+    "firstMs": 6162,
+    "totalMs": 71405,
+    "prompt": 23320,
+    "completion": 3070,
+    "kb": 10,
+    "chars": 2852,
+    "err": "",
+    "facts": [
+     "模型自称「无虚构」——以这里的核对为准，别信这句"
+    ]
+   }
+  },
+  {
+   "id": "R1",
+   "task": "审稿优化",
+   "A": {
+    "firstMs": 8301,
+    "totalMs": 25415,
+    "prompt": 32325,
+    "completion": 933,
+    "kb": 20,
+    "chars": 946,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 6961,
+    "totalMs": 21467,
+    "prompt": 21293,
+    "completion": 770,
+    "kb": 10,
+    "chars": 704,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "M1",
+   "task": "跨行业二创",
+   "A": {
+    "firstMs": 6210,
+    "totalMs": 39060,
+    "prompt": 30501,
+    "completion": 1791,
+    "kb": 20,
+    "chars": 1825,
+    "err": "",
+    "facts": [
+     "模型自称「未编造」——以这里的核对为准，别信这句"
+    ]
+   },
+   "B": {
+    "firstMs": 8097,
+    "totalMs": 47690,
+    "prompt": 21065,
+    "completion": 2277,
+    "kb": 10,
+    "chars": 2252,
+    "err": "",
+    "facts": [
+     "模型自称「没有编造」——以这里的核对为准，别信这句",
+     "顾客见证「| 真实案例:\"有个客人说做不了\" | | *」资料里没有这段经历",
+     "资历/荣誉「没有\"最低价\"\"全网第一\"等绝对」档案里没有"
+    ]
+   }
+  },
+  {
+   "id": "F1",
+   "task": "自由对话",
+   "A": {
+    "firstMs": 8791,
+    "totalMs": 14902,
+    "prompt": 27973,
+    "completion": 439,
+    "kb": 20,
+    "chars": 578,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 8172,
+    "totalMs": 14540,
+    "prompt": 18106,
+    "completion": 562,
+    "kb": 10,
+    "chars": 767,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "D1",
+   "task": "自由对话",
+   "A": {
+    "firstMs": 6773,
+    "totalMs": 10390,
+    "prompt": 27675,
+    "completion": 215,
+    "kb": 20,
+    "chars": 293,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 5982,
+    "totalMs": 8956,
+    "prompt": 17185,
+    "completion": 185,
+    "kb": 10,
+    "chars": 260,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "W1",
+   "task": "自由对话",
+   "A": {
+    "firstMs": 10607,
+    "totalMs": 21275,
+    "prompt": 39052,
+    "completion": 461,
+    "kb": 20,
+    "chars": 676,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 8960,
+    "totalMs": 22615,
+    "prompt": 36047,
+    "completion": 449,
+    "kb": 10,
+    "chars": 650,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "B1",
+   "task": "分镜脚本",
+   "A": {
+    "firstMs": 7459,
+    "totalMs": 20500,
+    "prompt": 30177,
+    "completion": 837,
+    "kb": 20,
+    "chars": 791,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7228,
+    "totalMs": 22258,
+    "prompt": 19942,
+    "completion": 961,
+    "kb": 10,
+    "chars": 938,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "P1",
+   "task": "创作方向",
+   "A": {
+    "firstMs": 6445,
+    "totalMs": 52892,
+    "prompt": 32449,
+    "completion": 2213,
+    "kb": 20,
+    "chars": 2083,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 6944,
+    "totalMs": 71115,
+    "prompt": 20982,
+    "completion": 2826,
+    "kb": 10,
+    "chars": 2612,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "R2",
+   "task": "审稿优化",
+   "A": {
+    "firstMs": 8390,
+    "totalMs": 60637,
+    "prompt": 36258,
+    "completion": 3075,
+    "kb": 20,
+    "chars": 3101,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 6208,
+    "totalMs": 54067,
+    "prompt": 24782,
+    "completion": 2851,
+    "kb": 10,
+    "chars": 2834,
+    "err": "",
+    "facts": [
+     "地名「个成都老乡」档案和素材里都没有",
+     "地名「成都老乡」档案和素材里都没有"
+    ]
+   }
+  },
+  {
+   "id": "C1",
+   "task": "画布改写",
+   "A": {
+    "firstMs": 14407,
+    "totalMs": 15892,
+    "prompt": 31452,
+    "completion": 67,
+    "kb": 20,
+    "chars": 54,
+    "err": "",
+    "facts": []
+   },
+   "B": {
+    "firstMs": 7065,
+    "totalMs": 8044,
+    "prompt": 19625,
+    "completion": 34,
+    "kb": 10,
+    "chars": 27,
+    "err": "",
+    "facts": []
+   }
+  },
+  {
+   "id": "N1",
+   "task": "美甲选题",
+   "A": {
+    "firstMs": 7254,
+    "totalMs": 53609,
+    "prompt": 31433,
+    "completion": 2233,
+    "kb": 20,
+    "chars": 2071,
+    "err": "",
+    "facts": [
+     "模型自称「未编造」——以这里的核对为准，别信这句",
+     "价格「州美甲店88元和288元的区别，」档案和素材里都没有"
+    ]
+   },
+   "B": {
+    "firstMs": 8286,
+    "totalMs": 41952,
+    "prompt": 19705,
+    "completion": 1569,
+    "kb": 10,
+    "chars": 1445,
+    "err": "",
+    "facts": [
+     "百分比「店3个隐形收费，90%的人第一」没有出处"
+    ]
+   }
+  },
+  {
+   "id": "回归:创作方向",
+   "task": "回归:创作方向",
+   "A": {
+    "firstMs": 6581,
+    "totalMs": 55960,
+    "prompt": 34590,
+    "completion": 2348,
+    "kb": 20,
+    "chars": 2263,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   },
+   "B": {
+    "firstMs": 7008,
+    "totalMs": 57615,
+    "prompt": 22715,
+    "completion": 2508,
+    "kb": 10,
+    "chars": 2283,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "taboo",
+       "detail": "「最大」— 广告法红线"
+      },
+      {
+       "kind": "years",
+       "detail": "「老王\"成都来的、做了9年\"这个」和事实卡对不上"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "回归:审稿优化",
+   "task": "回归:审稿优化",
+   "A": {
+    "firstMs": 4867,
+    "totalMs": 58666,
+    "prompt": 37181,
+    "completion": 3100,
+    "kb": 20,
+    "chars": 3089,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "years",
+       "detail": "「词**：\"在南乐卖了半年串串,」和事实卡对不上"
+      },
+      {
+       "kind": "facts",
+       "detail": "顾客见证「*：\"头一回吃的客人都说,这味儿对了,跟在成」资料里没有这段经历"
+      },
+      {
+       "kind": "facts",
+       "detail": "地名「老王在夜市」档案和素材里都没有"
+      },
+      {
+       "kind": "facts",
+       "detail": "地名「路夜市」档案和素材里都没有"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 6682,
+    "totalMs": 69129,
+    "prompt": 25307,
+    "completion": 3691,
+    "kb": 10,
+    "chars": 3540,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   }
+  },
+  {
+   "id": "回归:画布改写",
+   "task": "回归:画布改写",
+   "A": {
+    "firstMs": 5662,
+    "totalMs": 6921,
+    "prompt": 33658,
+    "completion": 39,
+    "kb": 20,
+    "chars": 35,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   },
+   "B": {
+    "firstMs": 5350,
+    "totalMs": 5529,
+    "prompt": 21783,
+    "completion": 37,
+    "kb": 10,
+    "chars": 30,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   }
+  },
+  {
+   "id": "回归:美甲选题",
+   "task": "回归:美甲选题",
+   "A": {
+    "firstMs": 6140,
+    "totalMs": 44726,
+    "prompt": 33138,
+    "completion": 1762,
+    "kb": 20,
+    "chars": 1616,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "years",
+       "detail": "「设型】在杭州开美甲店一年，我才」和事实卡对不上"
+      },
+      {
+       "kind": "years",
+       "detail": "「- 结尾金句：「开店两年比从业」和事实卡对不上"
+      },
+      {
+       "kind": "years",
+       "detail": "「句：「开店两年比从业五年更懂,」和事实卡对不上"
+      },
+      {
+       "kind": "years",
+       "detail": "「。」（注：此处\"开店两年\"应为」和事实卡对不上"
+      },
+      {
+       "kind": "facts",
+       "detail": "模型自称「无编造」——以这里的核对为准，别信这句"
+      },
+      {
+       "kind": "facts",
+       "detail": "百分比「论据1：网红款90%是修图+」没有出处"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 7194,
+    "totalMs": 41119,
+    "prompt": 21263,
+    "completion": 1601,
+    "kb": 10,
+    "chars": 1462,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "facts",
+       "detail": "百分比「： \"美甲翘边,百分之八十是因为这」没有出处"
+      },
+      {
+       "kind": "facts",
+       "detail": "地名「其他城市」档案和素材里都没有"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "回归:家具开篇",
+   "task": "回归:家具开篇",
+   "A": {
+    "firstMs": 6034,
+    "totalMs": 25453,
+    "prompt": 33118,
+    "completion": 891,
+    "kb": 20,
+    "chars": 858,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "facts",
+       "detail": "模型自称「未编造」——以这里的核对为准，别信这句"
+      },
+      {
+       "kind": "generation",
+       "detail": "必要交付部分「开篇」缺失或为空"
+      },
+      {
+       "kind": "generation",
+       "detail": "必要交付部分「衔接正文」缺失或为空"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 5823,
+    "totalMs": 19114,
+    "prompt": 21243,
+    "completion": 605,
+    "kb": 10,
+    "chars": 562,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "generation",
+       "detail": "必要交付部分「开篇」缺失或为空"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "回归:无价格引流脚本",
+   "task": "回归:无价格引流脚本",
+   "A": {
+    "firstMs": 6887,
+    "totalMs": 14806,
+    "prompt": 33247,
+    "completion": 359,
+    "kb": 20,
+    "chars": 341,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "facts",
+       "detail": "模型自称「无虚构」——以这里的核对为准，别信这句"
+      },
+      {
+       "kind": "facts",
+       "detail": "顾客见证「过来的配方。 不少客人说，这个味儿在南乐找不」资料里没有这段经历"
+      }
+     ]
+    }
+   },
+   "B": {
+    "firstMs": 6364,
+    "totalMs": 19264,
+    "prompt": 21373,
+    "completion": 541,
+    "kb": 10,
+    "chars": 510,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   }
+  },
+  {
+   "id": "回归:只换开头",
+   "task": "回归:只换开头",
+   "A": {
+    "firstMs": 5875,
+    "totalMs": 13581,
+    "prompt": 33280,
+    "completion": 424,
+    "kb": 20,
+    "chars": 411,
+    "err": "",
+    "regression": {
+     "passed": true,
+     "issues": []
+    }
+   },
+   "B": {
+    "firstMs": 4834,
+    "totalMs": 10014,
+    "prompt": 21405,
+    "completion": 252,
+    "kb": 10,
+    "chars": 238,
+    "err": "",
+    "regression": {
+     "passed": false,
+     "issues": [
+      {
+       "kind": "generation",
+       "detail": "没守住用户的明确要求：「锅底每天早上现炒，一元一串，自己拿签子」被改了"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

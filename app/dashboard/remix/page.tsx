@@ -30,6 +30,7 @@ import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
 import { readDifyStream } from "@/lib/sse-stream";
 import { takeHandoff } from "@/lib/handoff";
+import { originForResult } from '@/lib/creation-continuation';
 import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summary";
 import { buildContextBlock } from "@/lib/creator-context";
 import { BREAKDOWN_TASK_TYPE } from "@/lib/viral-breakdown";
@@ -165,7 +166,6 @@ export default function RemixPage() {
     restoredInputScope.current = resultScope;
     if (!incomingHandoff.current && !running && (!result || result === lastResult)) restoreHistory(history[0]);
     // 一次性恢复；后续刷新历史不会改掉正在编辑的设置。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultScope, lastResult, history, running, result]);
 
   useRestoreLastResult(lastResult, setResult, resultScope);
@@ -213,7 +213,7 @@ export default function RemixPage() {
   const autoSetup = useAutoCreationSetup(incomingSetup, context, ctxLoading, s => {
     // 原稿写明了目的才填，没写就「和原片一样」；补充说明不塞占位话（2026-10-03：跳转时别乱填）
     setRole(s.purpose ?? 'same'); setTargetIndustry(s.industry ?? ''); setPasteIndustry(s.industry ?? '');
-    setDuration(s.duration as RemixDuration); setNotes(s.notes || '');
+    setDuration((s.duration ?? '跟原片') as RemixDuration); setNotes(s.notes || '');
   });
   const currentSettings = resolveCreationSettings({ from: '跨行业二创', sourceContent: pasteText || handed?.text || '', settings: mergeCreationSettings(autoSetup.settings, { industry: profile ? track : targetIndustry, duration, purpose: role === 'same' ? undefined : role, notes }) }, context);
 
@@ -248,6 +248,7 @@ export default function RemixPage() {
     const historyInput = {
       source: src.title ?? src.kind, sourceData: src, layers, count, differentiate, depth, role,
       duration, outputs, targetIndustry, notes, creationSettings: currentSettings,
+      originContent: incomingSetup?.originContent || src.text,
       profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null,
     };
     try {
@@ -431,7 +432,8 @@ export default function RemixPage() {
         result={result}
         isGenerating={running}
         title="二创方案"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings) }}
+        // 源资料：最初带进来的那份 > 这次二创用的原片/原文。选某一个方案带走时，整份源资料仍跟着（不被单个方案顶替）
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || handed?.text || pasteText || '') }}
         individualPlans
         showStats={false}
         emptyIcon={Shuffle}

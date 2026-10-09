@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Eye, KeyRound, Copy } from "lucide-react";
+import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Eye, KeyRound, Copy, Trash2 } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { SUBSCRIPTION_PLANS, getPlan } from '@/lib/config/plans';
 
@@ -60,6 +60,11 @@ export default function UsersPage() {
   const [editEndDate, setEditEndDate] = useState("");
   // 刚重置出来的临时密码。只在这个弹窗里出现一次，关掉就没了
   const [tempPw, setTempPw] = useState<{ email: string; password: string } | null>(null);
+  /*
+   * 删除用户（2026-10-04，lib/admin-delete-user）：先看这个人有多少东西，再输入他的邮箱确认才删。
+   * 删了不能恢复：账号、档案、作品、生成记录、对话、素材、订单、上传的文件全部删除
+   */
+  const [del, setDel] = useState<{ user: User; preview: { email: string; counts: Record<string, number>; paidOrders: number } | null; error: string; input: string; busy: boolean } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -246,6 +251,32 @@ export default function UsersPage() {
     }
   };
 
+  const openDelete = async (user: User) => {
+    setDel({ user, preview: null, error: "", input: "", busy: false });
+    try {
+      const res = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.user_id, action: "delete_preview" }) });
+      const data = await res.json().catch(() => ({}));
+      setDel((d) => d && d.user.user_id === user.user_id ? { ...d, preview: res.ok ? data : null, error: res.ok ? "" : data.error || "读取失败" } : d);
+    } catch {
+      setDel((d) => d && { ...d, error: "读取失败，请重试" });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!del?.preview || del.busy) return;
+    setDel({ ...del, busy: true, error: "" });
+    try {
+      const res = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: del.user.user_id, action: "delete_user", confirmEmail: del.input }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setDel((d) => d && { ...d, busy: false, error: data.error || "删除失败，请重试" }); return; }
+      notify(data.message || "已删除");
+      setDel(null);
+      fetchUsers();
+    } catch {
+      setDel((d) => d && { ...d, busy: false, error: "网络不稳，请重试" });
+    }
+  };
+
   const openEditModal = (user: User) => {
     setSelectedUser(user);
     setEditPlan(user.membership_level);
@@ -384,6 +415,13 @@ export default function UsersPage() {
                           >
                             <KeyRound className="h-5 w-5" />
                           </button>
+                          <button
+                            onClick={() => void openDelete(user)}
+                            className="text-muted-foreground hover:text-destructive"
+                            title="删除用户（清理垃圾账号，删除后不能恢复）"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
                           {user.subscription_status === 'active' ? (
                             <button
                               onClick={() => handleBanUser(user.user_id)}
@@ -505,6 +543,50 @@ export default function UsersPage() {
               >
                 已发给用户，关闭
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 删除用户：先看有多少东西，输入邮箱确认才删 */}
+        {del && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="glass-panel mx-4 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl p-5 shadow-2xl sm:p-6">
+              <h3 className="mb-1 flex items-center gap-2 text-xl font-bold text-destructive"><Trash2 className="h-5 w-5" />删除用户</h3>
+              <p className="mb-4 text-sm text-muted-foreground">{del.user.email}</p>
+              {!del.preview && !del.error && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />正在读取这个用户的数据…</p>}
+              {del.preview && (
+                <>
+                  <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/[0.06] p-3 text-sm leading-relaxed text-foreground">
+                    <p className="font-medium text-destructive">删除后不能恢复，下面这些会全部删掉：</p>
+                    <p className="mt-1 text-muted-foreground">
+                      账号档案 {del.preview.counts.user_profiles ?? 0} 个 · 作品 {del.preview.counts.works ?? 0} 条 · 生成记录 {del.preview.counts.script_history ?? 0} 条 · 对话 {del.preview.counts.chat_conversations ?? 0} 个 · 素材 {del.preview.counts.material_library ?? 0} 条 · 订单 {del.preview.counts.payment_orders ?? 0} 笔，以及会员、额度、上传的文件和登录账号。
+                    </p>
+                    <p className="mt-1 text-muted-foreground">他要再用，只能拿邀请码重新注册。</p>
+                    {del.preview.paidOrders > 0 && (
+                      <p className="mt-2 font-medium text-amber-600 dark:text-amber-400">⚠️ 这个用户有 {del.preview.paidOrders} 笔已付款的订单，删除后订单记录也会删掉。确定是垃圾账号再删。</p>
+                    )}
+                  </div>
+                  <label className="mb-1 block text-sm text-foreground/80">输入这个用户的邮箱确认：</label>
+                  <input
+                    value={del.input}
+                    onChange={(e) => setDel({ ...del, input: e.target.value })}
+                    placeholder={del.preview.email}
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-destructive/40"
+                  />
+                </>
+              )}
+              {del.error && <p role="alert" className="mt-3 text-sm text-destructive">{del.error}</p>}
+              <div className="flex gap-3 pt-5">
+                <button
+                  onClick={() => void confirmDelete()}
+                  disabled={!del.preview || del.busy || del.input.trim().toLowerCase() !== del.preview.email.toLowerCase()}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  {del.busy && <Loader2 className="h-4 w-4 animate-spin" />}{del.busy ? "正在删除…" : "永久删除"}
+                </button>
+                <button onClick={() => setDel(null)} disabled={del.busy} className="flex-1 rounded-lg bg-muted px-4 py-2 text-foreground disabled:opacity-50">取消</button>
+              </div>
             </div>
           </div>
         )}

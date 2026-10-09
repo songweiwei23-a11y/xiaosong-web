@@ -1,0 +1,332 @@
+2026-10-08T03:58:17.500Z
+https://www.biandao.icu/dashboard/interview
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - heading "前采建档" [level=1]
+  - paragraph: 把前采记录贴进来，AI 帮你把客户的信息填进账号档案——每一项都标出原文依据，你确认了才写入。 档案越准，账号定位越准。
+  - list:
+    - generic: "1"
+    - text: 逐项核对（还剩 6 项）
+    - generic: →
+    - generic: "2"
+    - text: 跟 AI 说哪里不对
+    - generic: →
+    - generic: "3"
+    - text: 写入档案
+  - generic: 提取出 16 项。AI 已对照原文逐项核对：10 项没问题，6 项有疑问。有疑问的每一项都要你看一眼：按建议改、确认没问题，或者不填。看完才能写入档案。
+  - button "去看下一项需核对的":
+    - text: 去看下一项需核对的
+  - generic: 新档案名称
+  - textbox: 青禾家具店
+  - heading "账号基础" [level=3]
+  - checkbox "写入「运营平台」" [checked]
+  - generic: 运营平台
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - textbox: 抖音
+  - paragraph:
+    - generic: 我现在刚开始做抖音
+  - checkbox "写入「内容赛道」" [checked]
+  - generic: 内容赛道
+  - generic: 新增
+  - text: 需核对
+  - paragraph: AI 核对：原文说卖沙发、床和衣柜，这属于家具销售，应归入「本地服务」赛道，不是「家居装修」
+  - button "改成「本地服务」"
+  - button "我核对过，没问题"
+  - textbox: 家居装修
+  - paragraph:
+    - generic: 我们叫青禾家具店，卖沙发、床和衣柜
+  - checkbox "写入「账号阶段」" [checked]
+  - generic: 账号阶段
+  - generic: 新增
+  - text: 需核对
+  - paragraph: AI 核对：原文只说刚开始做抖音、粉丝不到一千，没说定位定没定，「定位未确定」是推测
+  - button "原文没说，这项不填"
+  - button "我核对过，没问题"
+  - combobox:
+    - option "刚起号，定位未确定" [selected]
+    - option "有定位，需要内容方向"
+    - option "稳定运营，需要新选题"
+    - option "成熟期，需要突破"
+  - paragraph:
+    - generic: 我现在刚开始做抖音，粉丝不到一千
+  - checkbox "写入「粉丝量级」" [checked]
+  - generic: 粉丝量级
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - combobox:
+    - option "0-1万" [selected]
+    - option "1-5万"
+    - option "5-10万"
+    - option "10-50万"
+    - option "50万+"
+  - paragraph:
+    - generic: 粉丝不到一千
+  - heading "目标受众" [level=3]
+  - checkbox "写入「地域分布」" [checked]
+  - generic: 地域分布
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - textbox: 本地同城
+  - paragraph:
+    - generic: 主要想让本县正在装修的人来展厅看看
+  - checkbox "写入「你的客人最担心什么」" [checked]
+  - generic: 你的客人最担心什么
+  - generic: 新增
+  - text: 需核对
+  - paragraph: AI 核对：原文只说顾客常担心尺寸买错，「分辨不出好坏」原文没提到
+  - button "改成「不知道怎么挑」"
+  - button "我核对过，没问题"
+  - textbox: 怕尺寸买错、分辨不出好坏
+  - paragraph:
+    - generic: 顾客常担心尺寸买错
+  - checkbox "写入「客人最常问你什么」" [checked]
+  - generic: 客人最常问你什么
+  - generic: 新增
+  - text: 需核对
+  - paragraph: AI 核对：原文说的是「我一般会说先看家里门能不能开，再看柜子摆得好不好看」，这是老板回答客人的话，不是客人问的问题。客人问什么原文没明确说
+  - button "原文没说，这项不填"
+  - button "我核对过，没问题"
+  - textbox: 尺寸合不合适、门能不能开、柜子摆得好不好看
+  - paragraph:
+    - generic: 我一般会说先看家里门能不能开，再看柜子摆得好不好看
+  - heading "内容定位" [level=3]
+  - checkbox "写入「内容形式」" [checked]
+  - generic: 内容形式
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - textbox: 口播
+  - paragraph:
+    - generic: 视频由我一个人拍
+  - heading "竞争策略" [level=3]
+  - checkbox "写入「你手上有什么别人没有的」" [checked]
+  - generic: 你手上有什么别人没有的
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - textbox: 自有门店、展厅有样柜能试坐和开柜门拉抽屉
+  - paragraph:
+    - generic: 展厅有样柜，能开柜门和拉抽屉，也能试坐沙发
+  - heading "资源配置" [level=3]
+  - checkbox "写入「团队配置」" [checked]
+  - generic: 团队配置
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - combobox:
+    - option "一人全包" [selected]
+    - option "2-3人小团队"
+    - option "完整团队(编导/摄影/剪辑)"
+    - option "专业MCN"
+  - paragraph:
+    - generic: 视频由我一个人拍
+  - checkbox "写入「设备条件」" [checked]
+  - generic: 设备条件
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - textbox: 手机
+  - paragraph:
+    - generic: 只有手机
+  - checkbox "写入「拍摄场地」" [checked]
+  - generic: 拍摄场地
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - textbox: 店铺
+  - paragraph:
+    - generic: 展厅有样柜
+  - checkbox "写入「后期能力」" [checked]
+  - generic: 后期能力
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - combobox:
+    - option "基础剪辑" [selected]
+    - option "中级特效"
+    - option "专业制作"
+  - paragraph:
+    - generic: 做基础剪辑
+  - heading "变现路径" [level=3]
+  - checkbox "写入「变现方式」" [checked]
+  - generic: 变现方式
+  - generic: 新增
+  - generic "AI 已对照原文逐项核对过":
+    - text: 已核对
+  - textbox: 到店消费
+  - paragraph:
+    - generic: 主要想让本县正在装修的人来展厅看看
+  - checkbox "写入「产品品类」" [checked]
+  - generic: 产品品类
+  - generic: 新增
+  - text: 需核对
+  - paragraph: AI 核对：这一项标准说法列表里只有大类（餐饮/美妆护肤/服装配饰等），「沙发、床、衣柜」不在标准说法里，应该填「生活用品」或「本地服务」对应的标准大类
+  - button "改成「生活用品」"
+  - button "我核对过，没问题"
+  - textbox: 沙发、床、衣柜
+  - paragraph:
+    - generic: 卖沙发、床和衣柜
+  - checkbox "写入「客人一般怎么找到你、怎么成交」" [checked]
+  - generic: 客人一般怎么找到你、怎么成交
+  - generic: 新增
+  - text: 需核对
+  - paragraph: AI 核对：原文说想让人来展厅看看，没说「看视频→到展厅」这个路径是已经在跑的，只是目标。而且中间缺了客人怎么知道地址、怎么联系的环节
+  - button "原文没说，这项不填"
+  - button "我核对过，没问题"
+  - textbox: 看视频 → 到展厅看样柜
+  - paragraph:
+    - generic: 主要想让本县正在装修的人来展厅看看
+  - heading "哪里不对？直接跟 AI 说" [level=3]:
+    - text: 哪里不对？直接跟 AI 说
+  - paragraph: 说一句就行，AI 只改你说到的那几项。不额外用次数。
+  - button "粉丝其实有 3 万"
+  - button "客人主要是女性"
+  - button "不做直播，把直播相关的去掉"
+  - button "再看看原文，团队到底几个人"
+  - textbox "比如：粉丝其实有 3 万；人均是 150 不是 120"
+  - button "发送" [disabled]:
+  - paragraph: 可以一直接着说，改到满意为止。
+  - heading "前采要点" [level=3]
+  - paragraph: 档案里没有对应的栏，但做定位、写内容用得上。勾上的会存进档案，做账号定位时一起参考。
+  - list:
+    - checkbox "展厅有实物样柜，可以开柜门、拉抽屉、试坐沙发" [checked]
+    - generic: 展厅有实物样柜，可以开柜门、拉抽屉、试坐沙发
+    - checkbox "顾客最常担心尺寸买错的问题" [checked]
+    - generic: 顾客最常担心尺寸买错的问题
+    - checkbox "会指导顾客先看家里门能不能开、再看柜子摆放效果" [checked]
+    - generic: 会指导顾客先看家里门能不能开、再看柜子摆放效果
+  - heading "补问清单" [level=3]:
+    - text: 补问清单
+  - button "复制问题":
+    - text: 复制问题
+  - paragraph: 这次前采没问到、但做定位很需要。下次回访照着问，问完再导入一次就补齐了。
+  - list:
+    - generic: 1. 竞争优势
+    - generic: 和县里其他卖家具的比，你家最大的优势是什么？为什么顾客要选你？
+    - generic: 2. 价格区间
+    - generic: 你们家沙发、床、衣柜大概什么价位？顾客一般花多少钱？
+    - generic: 3. 你凭什么让人选你
+    - generic: 顾客买完之后，最常夸你们哪一点？质量？服务？还是别的？
+    - generic: 4. 年龄段
+    - generic: 来你们店的顾客，大多是多大年纪的人？
+    - generic: 5. 他们为什么犹豫、没下单
+    - generic: 有些顾客来看了但没买，一般是什么原因？嫌贵？还是要再比比？
+    - generic: 6. 主要选题方向
+    - generic: 你打算拍什么内容？是教人怎么挑家具，还是展示你们的柜子，还是别的？
+  - checkbox "把前采原文也存进档案 以后再补前采会接在后面；随时可以在档案编辑页删掉" [checked]
+  - text: 把前采原文也存进档案
+  - generic: 以后再补前采会接在后面；随时可以在档案编辑页删掉
+  - button "重新导入":
+    - text: 重新导入
+  - button "还有 6 项没核对":
+    - text: 还有 6 项没核对
+- alert

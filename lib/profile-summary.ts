@@ -98,7 +98,7 @@ export function profileSearchHints(profile: object | null | undefined): Record<s
 
 const listOf = (v: unknown): string[] =>
   Array.isArray(v)
-    ? v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean)
+    ? v.filter((x): x is string => typeof x === 'string').flatMap((x) => x.split(/[、,，]/)).map((x) => x.trim()).filter(Boolean)
     : typeof v === 'string'
       ? v.split(/[、,，]/).map((x) => x.trim()).filter(Boolean)
       : [];
@@ -117,7 +117,10 @@ export const BUSINESS_LINES_LABEL = '- 经营品类（每一个都在卖，定�
 
 export function businessLines(p: ProfileLike): string[] {
   const generic = new Set<string>([...PROFILE_CHOICES.product_category, ...PROFILE_CHOICES.account_track]);
-  const all = [...listOf(p.product_category), ...listOf(p.account_track)].filter((x) => !generic.has(x));
+  const products = listOf(p.product_category).filter((x) => !generic.has(x));
+  // 明确填写具体产品时以产品栏为准，避免把自定义赛道「家居家装」当成商品。
+  // 老档案只填「餐饮」大类、把菜品填在赛道时，保留历史兼容。
+  const all = products.length ? products : listOf(p.account_track).filter((x) => !generic.has(x));
   return Array.from(new Set(all));
 }
 

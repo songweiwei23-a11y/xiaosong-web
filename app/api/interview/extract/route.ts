@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { reserveCreation, releaseCreation, recordCreationCompletion, type CreationCompletion } from '@/lib/creation-quota';
 import { requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { askDify, sseTask } from '@/lib/dify-task';
 import { recordImport, UUID_RE } from '@/lib/interview-history';
@@ -81,11 +82,17 @@ export async function POST(req: NextRequest) {
   }
 
   const query = buildExtractionPrompt(source);
+  const reserved = await reserveCreation(userId, 'interview', req, { source, targetProfileId });
+  if (!reserved.ok) return reserved.response;
+  const reservation = reserved.reservation;
+  let generationCompleted = false;
 
-  return sseTask(async () => {
+  const response = sseTask(async () => {
+    try {
     // 模型偶尔不守格式：解析不了就再来一次，两次都不行才报错
     let result: Extraction | null = null;
     let lastError = '';
+    let extractionCompletion: Omit<CreationCompletion, 'result'> | undefined;
     for (let attempt = 0; attempt < 2 && !result; attempt++) {
       const answer = await askDify(query, userId, '前采 账号档案');
       if (!answer.ok) {
@@ -94,6 +101,7 @@ export async function POST(req: NextRequest) {
       }
       try {
         result = parseExtraction(answer.text, source);
+        extractionCompletion = answer.completion;
       } catch (e) {
         lastError = '这次没读出结果，请重试';
         console.warn(`[interview] 第 ${attempt + 1} 次解析失败:`, (e as Error).message, answer.text.slice(0, 200));
@@ -118,14 +126,20 @@ export async function POST(req: NextRequest) {
     } else {
       console.warn('[interview] 核对没跑成，不带核对给结果:', check.message);
     }
-    await incrementUsageServer(userId, 'interview', INTERVIEW_TASK_TYPE, {
+    generationCompleted = true;
+    try {
+      await recordCreationCompletion(reservation, { ...extractionCompletion, result: JSON.stringify(result), terminal: 'structured_result', usage: { extraction: extractionCompletion?.usage ?? {}, verification: check.ok ? check.completion?.usage ?? {} : {} } }, INTERVIEW_TASK_TYPE);
+      await incrementUsageServer(userId, 'interview', INTERVIEW_TASK_TYPE, {
       profileName: result.profileName,
       chars: source.length,
       fields: result.fields.length,
-    });
+    }, reservation); } catch { console.warn('[interview] generated result awaiting quota sync'); }
     // 存进历史。浏览器那头就算已经切走了，这一步照样会跑完（sseTask 往外写失败不中断任务），
     // 回来在历史记录里点开就能接着核对——花了的次数不白花
     const importId = await recordImport({ userId, source, extraction: result, targetProfileId, profileName: result.profileName });
     return { event: 'result', extraction: result, source, importId };
+    } finally { if (!generationCompleted) await releaseCreation(reservation); }
   }, 'interview');
+  response.headers.set('X-Generation-Id', reservation.requestId);
+  return response;
 }

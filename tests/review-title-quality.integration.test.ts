@@ -96,7 +96,7 @@ describe('审稿提示词的真实产出', () => {
 });
 
 describe('标题提示词的真实产出', () => {
-  it('生成 5 个标题并检查是否各赌不同动机', async () => {
+  it('生成 5 个同一主线的标题并检查表达与依据', async () => {
     const prompt = buildTitlePrompt({
       topic: '新手开烤肉店，选址最容易踩的坑',
       titleTypeLabel: '痛点式',
@@ -124,7 +124,7 @@ describe('标题提示词的真实产出', () => {
       ['输出了 5 条', (answer.match(/###\s*\d/g) || []).length >= 5],
       ['标注了字数', /\d+\s*字/.test(answer)],
       ['标注了赌的动机', /动机/.test(answer)],
-      ['动机至少 3 种不同', usedMotives.length >= 3],
+      ['各标题承接餐饮选址问题', /选址|位置|开店/.test(answer)],
       ['标注了核心卖点', /卖点/.test(answer)],
       ['给了投放建议', /首选|备选/.test(answer)],
       ['给了封面大字', /封面/.test(answer)],

@@ -8,6 +8,8 @@ import { sanitizeAttachments, type ChatAttachment } from './chat-attachments'
 import { sanitizeWebSources, type WebSearchStatus } from './dify-web-status'
 import { mergeCreationSettings, type CreationSettings } from './creation-settings'
 import { sanitizeCanvasVersions, type CanvasVersion } from './canvas'
+import { readPlanMeta, type PlanMeta } from './plan-builder'
+import { readResearchMeta, type ResearchMeta } from './research-meta'
 export type ChatRole = 'user' | 'assistant'
 
 export interface ChatMessage {
@@ -20,11 +22,14 @@ export interface ChatMessage {
   creationSettings?: CreationSettings
   /** 结果画布里改过的各版（lib/canvas）。第一版是 AI 原稿 */
   canvas?: CanvasVersion[]
+  /** 出方案（lib/plan-builder）：这一轮是大纲还是全文、场景、确认的大纲。提问和回答都带 */
+  plan?: PlanMeta
+  /** 深度研究（lib/research-meta）：研究编号和状态；报告写完后放在 content 里 */
+  research?: ResearchMeta
 }
 
 /**
- * 单个会话保留的最大消息数。正常对话远达不到，这里只是防止异常写入
- * 把单行撑到无法读取——超出时丢最旧的，保住最近的上下文。
+ * 旧版阈值，仅作为长会话分段展示的参考。存储时不再裁切历史。
  */
 export const MAX_MESSAGES = 500
 
@@ -52,10 +57,12 @@ type IncomingMessage = {
   webSearch?: unknown
   creationSettings?: unknown
   canvas?: unknown
+  plan?: unknown
+  research?: unknown
 }
 
 /**
- * 入库前清洗：丢掉结构不合法的条目，超长时只保留最近的部分。
+ * 入库前清洗：丢掉结构不合法的条目，完整保留合法消息。
  * timestamp 原样保留（数字或字符串都可），读回时再由 normalizeTimestamp 归一。
  */
 export function sanitizeMessages(input: unknown): Array<{
@@ -66,6 +73,9 @@ export function sanitizeMessages(input: unknown): Array<{
   webSearch?: WebSearchStatus
   creationSettings?: CreationSettings
   canvas?: CanvasVersion[]
+  plan?: PlanMeta
+  /** 深度研究（lib/research-meta）：研究编号和状态；报告写完后放在 content 里 */
+  research?: ResearchMeta
 }> {
   if (!Array.isArray(input)) return []
   const cleaned = input
@@ -77,6 +87,8 @@ export function sanitizeMessages(input: unknown): Array<{
       ...(m.creationSettings && typeof m.creationSettings === 'object' ? { creationSettings: mergeCreationSettings(m.creationSettings) } : {}),
       ...(sanitizeAttachments(m.attachments).length ? { attachments: sanitizeAttachments(m.attachments) } : {}),
       ...(sanitizeCanvasVersions(m.canvas).length ? { canvas: sanitizeCanvasVersions(m.canvas) } : {}),
+      ...(readPlanMeta(m.plan) ? { plan: readPlanMeta(m.plan)! } : {}),
+      ...(readResearchMeta(m.research) ? { research: readResearchMeta(m.research)! } : {}),
       ...(m.webSearch && typeof m.webSearch === 'object' && 'status' in m.webSearch && ['done', 'unavailable', 'quota_exhausted'].includes(String(m.webSearch.status))
         ? { webSearch: { status: m.webSearch.status as 'done' | 'unavailable' | 'quota_exhausted', sources: sanitizeWebSources('sources' in m.webSearch ? m.webSearch.sources : []),
             ...('message' in m.webSearch && typeof m.webSearch.message === 'string' ? { message: m.webSearch.message.slice(0, 500) } : {}) } } : {}),
@@ -85,7 +97,7 @@ export function sanitizeMessages(input: unknown): Array<{
           ? m.timestamp
           : Date.now(),
     }))
-  return cleaned.length > MAX_MESSAGES ? cleaned.slice(-MAX_MESSAGES) : cleaned
+  return cleaned
 }
 
 /**

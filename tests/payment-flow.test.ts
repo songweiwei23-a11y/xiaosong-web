@@ -263,8 +263,20 @@ describe('订单状态机', () => {
   it('开通失败必须报错，不能只记日志', () => {
     // 默默记日志的话，管理员以为审核成功了，用户却什么都没得到
     const block = review.slice(review.indexOf('if (subError)'), review.indexOf('if (subError)') + 400);
-    expect(block).toContain('status: 500');
-    expect(block).toContain('开通会员失败');
+    // 2026-10-07 体检 A02：失败后订单退回「审核中」（rollback 返回 500），管理员能直接重试
+    expect(block).toMatch(/return rollback\('开通会员', subError\.message\)/);
+    expect(review).toMatch(/const rollback = async[\s\S]{0,400}status: 'reviewing'[\s\S]{0,600}status: 500/);
+  });
+
+  it('付款审核：先校验套餐再动订单；只抢占「审核中」的订单，重复点击/并发只开通一次', () => {
+    expect(review.indexOf("!(planId in SUBSCRIPTION_PLANS)")).toBeLessThan(review.indexOf(".from('payment_orders')\n      .update"));
+    expect(review).toMatch(/\.eq\('id', orderId\)\s*\.eq\('status', 'reviewing'\)\s*\.select\('id'\)/);
+    expect(review).toMatch(/if \(!claimed\?\.length\)[\s\S]{0,200}status: 409/);
+  });
+
+  it('付款审核：额度重置失败不再假装成功，告诉管理员去「重置额度」；读不到现有会员不开通', () => {
+    expect(review).toMatch(/会员已开通，但额度重置失败：请到「用户管理」/);
+    expect(review).toMatch(/if \(readSubError\) return rollback\('读取现有会员'/);
   });
 
   it('开通后重置额度，覆盖所有计费功能', async () => {

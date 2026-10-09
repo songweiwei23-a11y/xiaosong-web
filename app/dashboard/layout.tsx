@@ -6,6 +6,10 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AmbientPill } from "@/components/ambient/AmbientPill";
 import { UpgradePrompt } from "@/components/upgrade/UpgradePrompt";
 import { Menu } from "lucide-react";
+import { Suspense } from 'react';
+import { TopBarSlotProvider, TopBarSlotTarget } from '@/components/dashboard/TopBarSlot';
+import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate';
+import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
 
 function TopBar() {
   const { toggle } = useSidebar();
@@ -20,6 +24,8 @@ function TopBar() {
       >
         <Menu className="h-5 w-5" />
       </button>
+      {/* 左边空位：自由对话页把标题行放在这里（components/dashboard/TopBarSlot），别的页面空着 */}
+      <TopBarSlotTarget />
       <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
         <AmbientPill />
         <ThemeToggle />
@@ -36,6 +42,7 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
+      <TopBarSlotProvider>
       {/*
         容器必须保持透明。这里原本是 bg-background 实色，会把
         AmbientBackground 的光晕整个盖住——玻璃组件下面没有颜色可透，
@@ -46,12 +53,15 @@ export default function DashboardLayout({
         <div className="flex flex-1 flex-col min-w-0">
           <TopBar />
           <main className="flex-1 overflow-y-auto">
-            {children}
+            <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">正在恢复创作…</p>}><CreationRestoreGate>{children}</CreationRestoreGate></Suspense>
           </main>
           {/* 全站付费引导：任何板块额度用完 / 快用完都由它接（见 lib/upgrade） */}
           <UpgradePrompt />
+          {/* 连接保活：闲几分钟后线路掐掉空闲连接，再点保存、带去下一步就发不出去 */}
+          <ConnectionKeepAlive />
         </div>
       </div>
+      </TopBarSlotProvider>
     </SidebarProvider>
   );
 }

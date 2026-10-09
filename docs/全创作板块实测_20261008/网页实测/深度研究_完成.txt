@@ -1,0 +1,642 @@
+2026-10-08T04:48:09.569Z
+https://www.biandao.icu/dashboard/free-chat
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "收起列表":
+- generic "可以接着最近一次创作聊，也可从各板块点「继续对话」带入指定稿件。想彻底换个话题就点「新建对话」。确认云端同步成功后，换设备也能接着聊。":
+  - generic: 高阶自由模式
+  - generic: ✅ 记忆已开启 · 选题·脚本·打磨都能聊
+- status:
+  - generic: 已同步云端
+  - button "导出完整历史":
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - button "新建对话":
+    - text: 新建对话
+  - generic: 【全板块测试·独立采访任务】本轮与家
+  - button "删除对话":
+  - button "查看以前未关联档案的对话"
+  - paragraph: 【全板块测试·独立采访任务】本轮与家具店无关。我是县城编导，计划采访同一条街的商家，比较国庆前后生意变化，给全国实体店老板看，不是代运营获客广告。尚未采访，没有答案、收入数字或账本。一人手机，90秒以内。请给共同主问、不同回答的追问办法、可比较的现场记录口径和后期组织方案；不要预写受访者回答、采访家数和结论。
+  - heading "县城商家国庆前后对比采访方案" [level=1]
+  - heading "一、核心设计逻辑" [level=2]
+  - paragraph:
+    - text: 你这个选题的价值在于
+    - strong: 可比性
+    - text: 和
+    - strong: 真实感
+    - text: 。全国实体店老板想看的不是"某个店赚了多少"，而是"节假日到底有没有用、不同类型店的差异在哪里"。所以设计的关键是：用统一问法收集能横向对比的素材，同时保留每个老板的个性化应对，让观众自己得出判断。
+  - paragraph: 90秒成片要承载多家店的对比，意味着每家有效素材只有15-20秒，必须在拍摄阶段就完成信息浓缩和可比维度的固定。
+  - separator
+  - heading "二、共同主问设计（三个核心问题）" [level=2]
+  - heading "问题1：\"国庆这几天，和平时比感觉怎么样？\"" [level=3]
+  - paragraph:
+    - strong: 为什么这样问
+    - text: ：开放式但有锚点。"感觉"允许老板用自己的语言描述（人多人少、忙不忙、累不累），同时"和平时比"自动建立对比框架。
+  - paragraph:
+    - strong: 追问分支
+    - text: ：
+  - list:
+    - listitem: 如果回答"人多了"→ 追问："多出来的人是外地回来的，还是本地人出来逛？"（识别流量来源）
+    - listitem: 如果回答"没啥变化"→ 追问："您这行平时节假日影响本来就不大吗？"（识别行业特性）
+    - listitem: 如果回答"反而更冷清"→ 追问："您觉得是大家都出去玩了，还是别的原因？"（记录反常现象）
+  - separator
+  - heading "问题2：\"这几天有没有做什么和平时不一样的准备？\"" [level=3]
+  - paragraph:
+    - strong: 为什么这样问
+    - text: ：挖掘商家的主动动作。有人会说"备了货、多进了人手"，有人说"没准备，就正常开门"，这本身就是有价值的对比维度。
+  - paragraph:
+    - strong: 追问分支
+    - text: ：
+  - list:
+    - listitem: 如果有准备 → "现在看来，这个准备值不值？"（验证预判准确性）
+    - listitem: 如果没准备 → "以前国庆您也不特别弄吗？"（了解历年经验）
+  - separator
+  - heading "问题3：\"如果明年国庆还在这儿干，您会调整什么？\"" [level=3]
+  - paragraph:
+    - strong: 为什么这样问
+    - text: ：这是
+    - strong: 前瞻性总结
+    - text: ，比问"赚了多少"更安全也更有启发性。老板的回答会自然透露出这次的得失（"明年多备点货"说明这次卖断货了；"明年可能就不开了"说明确实不行）。
+  - paragraph:
+    - strong: 追问分支
+    - text: ：
+  - list:
+    - listitem: 如果说要调整 → "具体打算怎么调？"（记录具体动作）
+    - listitem: 如果说不调整 → "那您觉得现在这个节奏就挺好？"（确认满意度）
+  - separator
+  - heading "三、现场记录可比口径（拍摄时同步完成）" [level=2]
+  - paragraph: 除了口述回答，用画面固定以下可比信息，后期剪辑时可以快速建立对比：
+  - table:
+    - rowgroup:
+      - row "维度 拍什么 怎么拍（单人手机）":
+        - columnheader "维度"
+        - columnheader "拍什么"
+        - columnheader "怎么拍（单人手机）"
+    - rowgroup:
+      - row "店铺类型 招牌特写 每家开场第一个镜头：固定构图拍招牌3秒，能看清品类（餐饮、服装、家居等）":
+        - cell "店铺类型":
+          - strong: 店铺类型
+        - cell "招牌特写"
+        - cell "每家开场第一个镜头：固定构图拍招牌3秒，能看清品类（餐饮、服装、家居等）"
+      - row "客流状态 店内或门口环境 采访结束后，手机固定角度拍店内5秒：有顾客就拍顾客（背影、手部），没顾客就拍空场景":
+        - cell "客流状态":
+          - strong: 客流状态
+        - cell "店内或门口环境"
+        - cell "采访结束后，手机固定角度拍店内5秒：有顾客就拍顾客（背影、手部），没顾客就拍空场景"
+      - row "老板状态 采访时的肢体语言 不用刻意，但注意拍全身或半身，别只拍脸。累的、忙的、闲的，肢体动作会说话":
+        - cell "老板状态":
+          - strong: 老板状态
+        - cell "采访时的肢体语言"
+        - cell "不用刻意，但注意拍全身或半身，别只拍脸。累的、忙的、闲的，肢体动作会说话"
+      - row "时间锚点 采访时的口播标记 每段采访开始时你自己说一句：\"现在是10月X号下午X点，XX街。\"后期可以剪掉，但留着方便你整理素材":
+        - cell "时间锚点":
+          - strong: 时间锚点
+        - cell "采访时的口播标记"
+        - cell "每段采访开始时你自己说一句：\"现在是10月X号下午X点，XX街。\"后期可以剪掉，但留着方便你整理素材"
+  - paragraph:
+    - strong: 注意
+    - text: ：不要拍收银台屏幕、账本、价格标签的特写，除非老板主动展示且同意拍。你的目的是比较"状态和应对"，不是核算收入。
+  - separator
+  - heading "四、后期组织方案（90秒成片结构）" [level=2]
+  - heading "结构框架（按对比逻辑剪辑）" [level=3]
+  - paragraph:
+    - strong: 0-10秒 | 开场
+    - text: 画面：你出镜或画外音 + 街景空镜
+    - text: 文案示例："国庆后我在县城这条街采访了几家店，问了同样的问题，答案完全不一样。"
+  - paragraph:
+    - strong: 10-60秒 | 对比主体（核心）
+    - text: 按
+    - strong: 问题
+    - text: 组织，不是按
+    - strong: 店家
+    - text: 组织。比如：
+  - list:
+    - listitem: 10-25秒：问题1的回答合集（A店说人多、B店说没变化、C店说更冷清）
+    - listitem: 25-40秒：问题2的回答合集（A店备了货、B店没准备）
+    - listitem: 40-60秒：问题3的回答合集（各家明年打算）
+  - paragraph:
+    - strong: 剪辑技巧
+    - text: ：
+  - list:
+    - listitem: 同一个问题的不同回答，用相同的字幕前缀（"人流量——"）+ 各家回答，视觉上强化对比
+    - listitem: 每家店的回答控制在5-8秒，只留最核心的一句话
+    - listitem: 可以用分屏（手机剪辑App里的"画中画"或"分屏模板"）同时展示2-3家店的回答
+  - paragraph:
+    - strong: 60-85秒 | 你的观察总结
+    - text: 不是下结论，而是
+    - strong: 点出对比中的规律
+    - text: 。示例方向：
+  - list:
+    - listitem: "\"几家店聊下来，我发现刚需类的（比如餐饮）确实人多了，但可选消费类的（比如服装）反而冷清……\""
+    - listitem: "\"有意思的是，提前准备的不一定就赚到了，关键是……\""
+  - paragraph:
+    - strong: 85-90秒 | 收尾
+    - text: 引导互动，但不是"点赞关注"，而是：
+    - text: "\"你那边国庆生意怎么样？评论区说说。\""
+    - text: 或："明年你会调整吗？"
+  - separator
+  - heading "五、执行细节与风险管理" [level=2]
+  - heading "采访前的准备" [level=3]
+  - list:
+    - strong: 提前踩点但不打招呼
+    - text: ：先走一遍街，看哪些店开着、哪些类型能覆盖（餐饮、零售、服务类各来一家最好）。不要提前约，容易准备"官方回答"。
+    - strong: 开场话术
+    - text: ：直接说"我是本地做视频的，想采访一下国庆前后生意变化，给其他实体店老板看看，不涉及具体收入。您方便聊两分钟吗？"强调"给同行看"而不是"帮你宣传"，更容易获得真实回答。
+    - strong: 征得同意
+    - text: ：明确问"可以拍吗？会露脸（或只拍声音），发到抖音上。"如果不同意露脸，就拍手部、侧脸或店铺环境 + 画外音。
+  - heading "拍摄时的应对" [level=3]
+  - list:
+    - strong: 录音清晰优先
+    - text: ：手机离老板1米内，如果街上吵就往店里走。宁可画面暗一点，也别声音听不清。
+    - strong: 不要打断
+    - text: ：老板说多了就让他说，后期你能剪；但他说太少（只回答"还行"），就用追问激活。
+    - strong: 记录真实情绪
+    - text: ：如果老板叹气、摇头、笑，这些都是好素材，别急着安慰或接话，让情绪在镜头里停留2秒。
+  - heading "剪辑时的取舍" [level=3]
+  - list:
+    - strong: 不凑家数
+    - text: ：如果只采访到3家，但3家回答质量高、对比明显，就只用3家。不要为了"显得调研充分"硬拼凑5-6家，导致每家只剩3秒钟，信息量反而丢失。
+    - strong: 不编造对比
+    - text: ：如果所有店回答都差不多（比如都说"还行"），那就不要强行剪成"有人欢喜有人愁"。可以调整成"国庆对县城这条街的店影响没想象中大，老板们的共同感受是……"
+    - strong: 不配悲情音乐
+    - text: ：这不是揭露困境的纪录片，是给同行看的横向参考。配轻松、中性的音乐，或者不配乐只留同期声。
+  - separator
+  - heading "六、这个方案为什么可行" [level=2]
+  - list:
+    - strong: 一人手机能完成
+    - text: ：没有复杂运镜，固定机位拍采访 + 少量店铺空镜即可。
+    - strong: 90秒能装下
+    - text: ：3个问题 × 3-4家店 × 每家5-8秒 = 45-60秒核心内容，加上开场和总结刚好。
+    - strong: 不需要提前知道答案
+    - text: ：你的问题设计本身就是为了收集"不知道的答案"，现场根据回答灵活追问即可。
+    - strong: 规避了敏感信息
+    - text: ：不问收入、不拍账本、不让老板承诺效果，只谈感受和动作，老板更愿意配合。
+    - strong: 可复制
+    - text: ：这个方法不只适用于国庆，换成"下雨天 vs 晴天""工作日 vs 周末"都能用。
+  - separator
+  - heading "七、你现在可以做的三件事" [level=2]
+  - list:
+    - strong: 打印或保存这3个主问
+    - text: ，采访时直接照着问，不用临场想词。
+    - strong: 准备一个表格
+    - text: （手机备忘录也行），每采访完一家就记录：店名、类型、核心回答关键词、是否同意露脸。方便后期剪辑时快速定位素材。
+    - strong: 先采访一家试试
+    - text: ：不用等凑齐所有店再开始剪，采访完第一家就导入手机看看收音、构图、信息密度是否够，及时调整后再继续采访其他家。
+  - paragraph: 这个方案的所有建议都基于你的实际条件：一人、手机、90秒、未采访。采访过程中具体遇到什么情况（比如老板不配合、回答跑偏、街上太吵），可以随时调整或追问我。
+  - button "复制":
+    - text: 复制
+  - button "在画布中打开":
+    - text: 在画布中打开
+  - button "引用追问":
+    - text: 引用追问
+  - button "Word":
+    - text: Word
+  - button "PDF":
+    - text: PDF
+  - button "这几处请核对：账号资料和素材里找不到出处（1 处）" [expanded]:
+    - generic: 这几处请核对：账号资料和素材里找不到出处（1 处）
+  - list:
+    - generic: ·
+    - generic: 采访经历「问了同样的问题」用户尚未提供采访素材，请改成准备验证的问题或行动，不预写发现与答案
+  - button "按资料修正":
+    - text: 按资料修正
+  - generic: 是真的就不用管（比如你口头告诉过它的）；点「按资料修正」只改这几句，其余不动，不扣次数。
+  - paragraph: 继续创作 · 内容自动带入
+  - button "收藏到素材库":
+    - text: 收藏到素材库
+  - button "审稿优化":
+    - generic: 审稿优化
+  - button "脚本生成":
+    - generic: 脚本生成
+  - button "更多板块":
+    - generic: 更多板块
+  - paragraph: 【公开资料检索测试】仅查询中国政府网公布的2026年国庆节放假起止日期、天数及调休日期，给官方原文链接和来源日期。只回答日历事实；这些日期不能证明任何商家生意变化，不补造采访数据。
+  - heading "2026年国庆节放假安排（中国政府网官方信息）" [level=2]
+  - paragraph: 根据本轮搜索返回的资料，我能确认以下日历事实：
+  - heading "放假时间" [level=3]
+  - paragraph:
+    - strong: 2026年10月1日（周四）至10月7日（周三）放假调休，共7天
+  - heading "调休安排" [level=3]
+  - list:
+    - strong: 9月20日（周日）上班
+    - strong: 10月10日（周六）上班
+  - heading "官方来源说明" [level=3]
+  - paragraph: 搜索结果中多个政府机构网站（如留学服务中心 zwfw.cscse.edu.cn）引用了**《国务院办公厅关于2026年部分节假日安排的通知》**作为依据。
+  - separator
+  - heading "关于官方原文链接的说明" [level=2]
+  - paragraph:
+    - text: 本轮搜索
+    - strong:
+      - text: 未能直接返回中国政府网（
+      - link "www.gov.cn）发布该通知的完整原文页面链接":
+        - /url: http://www.gov.cn%EF%BC%89%E5%8F%91%E5%B8%83%E8%AF%A5%E9%80%9A%E7%9F%A5%E7%9A%84%E5%AE%8C%E6%95%B4%E5%8E%9F%E6%96%87%E9%A1%B5%E9%9D%A2%E9%93%BE%E6%8E%A5
+    - text: 。返回的资料主要是：
+  - list:
+    - listitem: 各政府部门、事业单位转发通知的公告页面
+    - listitem: 第三方媒体、个人博客对该通知的解读文章
+  - paragraph: 这些来源均提到通知来自"国务院办公厅"，但没有给出中国政府网的原始发布URL。
+  - separator
+  - heading "明确的事实边界" [level=2]
+  - paragraph:
+    - text: ✅
+    - strong: 可以确认的日历事实
+    - text: ：
+  - list:
+    - listitem: 放假起止日期：10月1日至10月7日
+    - listitem: 放假天数：7天
+    - listitem: 调休补班日期：9月20日（周日）、10月10日（周六）
+  - paragraph:
+    - text: ❌
+    - strong: 这些日期不能证明
+    - text: ：
+  - list:
+    - listitem: 任何商家的生意变化
+    - listitem: 客流量增减情况
+    - listitem: 消费者行为模式
+    - listitem: 采访对象的具体回答
+  - separator
+  - paragraph:
+    - text: 如需获取中国政府网原始通知的完整链接，建议直接访问
+    - link "www.gov.cn，在\"政策文件\"或\"国务院文件\"栏目中搜索\"2026年部分节假日安排\"。本轮搜索工具返回的结果中未包含该直接链接。":
+      - /url: http://www.gov.cn%EF%BC%8C%E5%9C%A8%22%E6%94%BF%E7%AD%96%E6%96%87%E4%BB%B6%22%E6%88%96%22%E5%9B%BD%E5%8A%A1%E9%99%A2%E6%96%87%E4%BB%B6%22%E6%A0%8F%E7%9B%AE%E4%B8%AD%E6%90%9C%E7%B4%A2%222026%E5%B9%B4%E9%83%A8%E5%88%86%E8%8A%82%E5%81%87%E6%97%A5%E5%AE%89%E6%8E%92%22%E3%80%82%E6%9C%AC%E8%BD%AE%E6%90%9C%E7%B4%A2%E5%B7%A5%E5%85%B7%E8%BF%94%E5%9B%9E%E7%9A%84%E7%BB%93%E6%9E%9C%E4%B8%AD%E6%9C%AA%E5%8C%85%E5%90%AB%E8%AF%A5%E7%9B%B4%E6%8E%A5%E9%93%BE%E6%8E%A5%E3%80%82
+  - paragraph:
+    - text: 已执行联网搜索
+  - link "国庆节放假最新通知！不光放假7天，而且还有4个好消息告诉大家":
+    - /url: https://m.toutiao.com/a7688511274304438828/
+  - link "2026年国庆节放假通知出炉！不止连休7天，还有4个民生好消息":
+    - /url: https://www.toutiao.com/a7689764241209049602/
+  - link "2026年国庆节放假安排时间表_2026年国庆节是几月几日怎么放假":
+    - /url: https://m.php.cn/faq/2327834.html
+  - link "详细解析：国庆调休安排与完整时间线":
+    - /url: https://wk.baidu.com/view/9877d1ed6ddc5022aaea998fcc22bcd126ff42bb
+  - link "中秋 + 国庆连休攻略来了，请 3 天年假休 13 天，出行抢票要趁早":
+    - /url: https://m.toutiao.com/article/7674795771815821867/
+  - link "2026年国庆放假时间表及调休安排":
+    - /url: http://m.gz.bendibao.com/tour/372007.html
+  - button "复制":
+    - text: 复制
+  - button "在画布中打开":
+    - text: 在画布中打开
+  - button "引用追问":
+    - text: 引用追问
+  - button "Word":
+    - text: Word
+  - button "PDF":
+    - text: PDF
+  - paragraph: 继续创作 · 内容自动带入
+  - button "收藏到素材库":
+    - text: 收藏到素材库
+  - button "审稿优化":
+    - generic: 审稿优化
+  - button "脚本生成":
+    - generic: 脚本生成
+  - button "更多板块":
+    - generic: 更多板块
+  - paragraph: 🔎 深度研究（快速）：【合成验收】研究一人手机拍摄家具样柜开门拉抽屉演示时，如何区分可观察事实、待验证推测和不能预写的结论。只找可核查的拍摄或事实核验方法，不提供家具维修、性能或营销数据。优先官方资料，最多3个子问题。
+  - heading "一人手机拍摄家具演示的事实核验方法研究" [level=1]
+  - blockquote:
+    - paragraph: 研究主题：【合成验收】研究一人手机拍摄家具样柜开门拉抽屉演示时，如何区分可观察事实、待验证推测和不能预写的结论。只找可核查的拍摄或事实核验方法，不提供家具维修、性能或营销数据。优先官方资料，最多3个子问题。 2026年10月8日 · 快速研究 · 引用 5 个来源
+  - heading "核心结论" [level=2]
+  - list:
+    - paragraph:
+      - strong: 手机能直接记录的是外观尺寸、开合动作、间隙距离、五金件表面状态，材质、承重、耐用性都需要厂家资料或检测报告才能验证
+      - text: ——镜头能拍到木纹纹理但判断不了是实木还是贴皮，抽屉顺畅拉开不等于能承重20公斤 【未核实】
+      - link "[1]":
+        - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+      - text: 。
+    - paragraph:
+      - strong: 一人拍摄时可用卷尺同框入镜、借助地砖/踢脚线等固定参照物、用自拍倒计时功能分镜拆解动作
+      - text: ——将卷尺从门板边缘拉到最大开启位置让刻度和家具同时清晰可读，或用常见地砖边长(800mm)作尺度对比
+      - link "[2]":
+        - /url: https://m.renrendoc.com/paper/356752079.html
+      - link "[3]":
+        - /url: https://jingyan.baidu.com/article/22a299b50526eddf19376aca.html
+      - text: 。
+    - paragraph:
+      - strong: "\"适合你家\"这类适配性结论不能在展厅预判"
+      - text: ——客户家门洞位置、插座、暖气片是否挡开启轨迹,定制方案的层高、承重墙、梁柱凸出都需要上门量尺后才能确定
+      - link "[4]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+      - link "[5]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+      - text: 。
+    - paragraph:
+      - strong: 现场开合顺畅不代表长期质量,只能标注为"到店时的观察"
+      - text: ——铰链滑轨的耐久性、木材在不同湿度下的变形开裂风险需要反复使用和环境变化才能暴露,微信小店禁止"永不开裂""终身质保"等绝对化承诺
+      - link "[4]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+      - link "[5]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+      - text: 。
+    - paragraph:
+      - strong: 舒适度、高度匹配这类体验因人而异,拍摄时只能展示具体参数(椅面离地75cm、桌面厚5cm),不能替客户下结论
+      - text: ——沙发软硬、靠背角度、床垫支撑感受身高体重坐姿习惯影响,老板试坐说"很舒服"只代表某一体型的感受 【未核实】
+      - link "[4]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+      - link "[5]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+      - text: 。
+  - heading "结合你的情况" [level=2]
+  - list:
+    - paragraph:
+      - strong: 拍样柜开门抽屉时,把卷尺直接放进画面
+      - text: ——用手机自拍倒计时功能固定拍摄,然后走到柜前拉开门板,卷尺从门板边缘拉到最大开启位置,让刻度、门板、背景墙角同时入镜;抽屉深度测量时将卷尺平放在抽屉侧面从柜体前沿量到尾部,拍特写展示读数
+      - link "[2]":
+        - /url: https://m.renrendoc.com/paper/356752079.html
+      - text: 。这样客户能直接看到数字,比口播"能打开90度"更有说服力【未核实】。
+    - paragraph:
+      - strong: 用展厅地砖作参照物建立尺度感
+      - text: ——拍摄前先用卷尺测量并展示一块地砖的实际边长(常见800mm),后续画面让柜门宽度、抽屉长度和地砖对角线同框出现,客户能通过"柜门宽度约等于两块半地砖"判断真实尺寸
+      - link "[2]":
+        - /url: https://m.renrendoc.com/paper/356752079.html
+      - text: 。或者在抽屉里放一张A4纸(210mm×297mm)作对比,让观众直观看到"能放下两张A4纸竖着排列"【未核实】。
+    - paragraph:
+      - strong: 分镜拆解开门抽屉动作成三个静态画面
+      - text: ——第一镜拍关闭状态的柜门正面和卷尺,第二镜固定手机用延时拍摄功能记录开门过程和卷尺读数变化,第三镜手持手机伸入柜内从里向外拍展示开门后内部空间
+      - link "[3]":
+        - /url: https://jingyan.baidu.com/article/22a299b50526eddf19376aca.html
+      - text: 。剪辑时按"全景—局部—细节"顺序排列,最后用卷尺特写给出精确数据。
+    - paragraph:
+      - strong: 只说能直接观察到的事实,材质承重耐用性标注【待确认】
+      - text: ——拍摄时记录"柜体表面纹理""抽屉拉开状态""铰链表面无锈迹",配合口播说明"这是厂家提供的【待确认:板材等级】"或"抽屉滑轨是【待确认:品牌型号】",不要直接说"这是纯实木"或"能放50斤东西" 【未核实】
+      - link "[1]":
+        - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+      - text: 。
+    - paragraph:
+      - strong: 不替客户判断适配性和舒适度,引导到店验证
+      - text: ——拍沙发试坐时只展示"座深XX厘米""靠背角度可调节",说"我坐着挺舒服,但每个人身高体重不一样,建议你到店亲自试试";拍衣柜开门时展示"完全打开后离墙XX厘米",提醒"你家门口、插座、暖气位置不一样,需要量完尺寸才能确定方案"
+      - link "[4]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+      - link "[5]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+      - text: 。用具体参数+到店邀约代替"适合所有卧室"这类断言。
+    - paragraph:
+      - strong: 避开长期质量承诺,用当下状态描述
+      - text: ——拍铰链滑轨时说"今天到店看柜门闭合没缝隙、推拉不卡顿、没有异响",不说"用十年没问题";提供质保信息时说"厂家质保【待确认:X年】",不说"永久质保""终身免费维修"
+      - link "[4]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+      - link "[5]":
+        - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+      - text: 。
+  - heading "一、手机拍摄家具开门抽屉时，哪些属于可直接观察记录的客观事实（尺寸、动作、位置），哪些属于需要额外验证的推测（材质、承重、耐用性）？" [level=2]
+  - heading "可直接记录的客观事实" [level=3]
+  - paragraph:
+    - text: 手机拍摄家具开门抽屉时，能直接观察并记录的客观事实主要包括：家具的外观尺寸（长宽高）、开合动作的流畅程度、门板或抽屉与周边墙面/家具的实际距离、五金件的外观状态
+    - link "[1]":
+      - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+    - text: 。具体来说，拍摄时可以记录柜门打开后与墙面的间隙是多少厘米、抽屉能拉出多长、开门过程中是否有卡顿或异响、铰链和滑轨表面是否生锈或变形——这些都是镜头能直接捕捉、观众能直接看到的事实。
+  - paragraph:
+    - text: 使用手机的实时取景功能可以辅助记录这些细节
+    - link "[1]":
+      - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+    - text: ，例如用低机位拍摄抽屉底部的滑轨状态，或者用中等高度（约屋高的一半）平行拍摄门板开合的轨迹，避免因仰拍或俯拍造成的透视畸变影响尺寸判断
+    - link "[1]":
+      - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+    - text: 。如果配合三脚架使用，能更稳定地记录开门抽屉的连续动作
+    - link "[1]":
+      - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+    - text: ，减少画面抖动导致的细节模糊。
+  - heading "需要额外验证的推测" [level=3]
+  - paragraph: 材质、承重能力、耐用性这三类信息无法通过单次手机拍摄直接确认。例如，镜头能拍到柜体表面的木纹纹理，但无法判断这是实木、实木贴皮还是高密度板材——需要商家提供板材检测报告或切面样品才能验证。同样，抽屉能顺畅拉开不代表能承重20公斤，五金件表面光亮也不等于经得住长期开合，这些都需要厂家的承重测试数据或使用年限记录作为依据【未核实】。
+  - paragraph: （推断）在县城家具店一人手机拍摄的条件下，如果老板想在视频中展示材质或承重，更可行的做法是：拍摄时只记录"柜体表面纹理""抽屉拉开状态"等客观画面，配合口播说明"这是厂家提供的【待确认：板材等级】"或"抽屉滑轨是【待确认：品牌型号】"，而不是直接在视频里宣称"这是纯实木"或"能放50斤东西"——因为这些结论需要文字资料或测试设备支撑，超出了手机拍摄能记录的范围【未核实】。
+  - heading "公开资料的覆盖缺口" [level=3]
+  - paragraph:
+    - text: 本次检索到的资料
+    - link "[1]":
+      - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+    - text: 主要涉及家具拍摄的构图、光线、设备技巧（2022年发布），未涉及如何在拍摄中区分事实与推测、如何验证材质承重等参数的具体方法。关于手机拍摄家具演示时如何标注待验证信息、避免过度推断的操作规范，公开资料里没找到官方或行业标准文件。
+  - heading "二、一人操作手机拍摄家具演示时，如何同步核验开门角度、抽屉深度等关键参数，有哪些可独立完成的测量与记录方法？" [level=2]
+  - heading "关键参数的可视化记录方法" [level=3]
+  - paragraph:
+    - text: 一人拍摄家具演示时，最直接的核验方式是将测量工具同框入镜。根据家具尺寸测量的基本原理，需要使用卷尺、钢卷尺等标准化测量工具保证数据准确性
+    - link "[2]":
+      - /url: https://m.renrendoc.com/paper/356752079.html
+    - text: 。具体操作是：开门时将卷尺从门板边缘拉到最大开启位置，让手机画面同时拍到门板、卷尺刻度和背景参照物（如墙角、地砖缝）。拉抽屉时同样将卷尺平行放置在抽屉侧面，从柜体前沿量到抽屉尾部，拍摄时保持卷尺刻度清晰可读
+    - link "[2]":
+      - /url: https://m.renrendoc.com/paper/356752079.html
+    - text: 。这种方法的优势是观众能直接看到数字，不需要后期标注。
+  - paragraph:
+    - text: 需要注意测量尺应与家具表面平行放置，确保接触良好
+    - link "[2]":
+      - /url: https://m.renrendoc.com/paper/356752079.html
+    - text: 。拍摄衣柜开门角度时，可以先将手机固定在三脚架或稳定物体上（如对面的桌子），用自拍倒计时功能启动拍摄，然后走到柜门前拉开门板并展示卷尺读数。抽屉深度测量同理：固定手机—启动倒计时—走到柜体前拉出抽屉—将卷尺放入抽屉内部从前沿量到底板。这样可以避免画面抖动，同时让卷尺刻度和家具结构都处于清晰对焦范围内。
+  - heading "借助现场固定参照物建立尺度感" [level=3]
+  - paragraph:
+    - text: 公开资料里没找到专门针对单人手机拍摄的参照物选择标准，但根据测量环境应保持稳定、避免因环境因素影响精度的原则
+    - link "[2]":
+      - /url: https://m.renrendoc.com/paper/356752079.html
+    - text: ，可以使用展厅内的固定物体作为尺度参照。例如拍摄柜门开启角度时，让门板边缘、地面瓷砖的对角线、墙面踢脚线同时出现在画面里——常见地砖边长为800mm，踢脚线高度多为100mm或150mm，这些尺寸相对标准化【未核实】。拍摄前可在视频开头先用卷尺测量并展示一块地砖的实际边长，后续画面中观众就能通过"柜门宽度约等于两块半地砖"来判断真实尺寸。
+  - paragraph: 抽屉深度演示时，可以放入一个观众熟悉尺寸的常见物品作参照，比如一张A4纸（210mm×297mm）【未核实】。将A4纸平放在抽屉底部，拉出抽屉让纸张完全露出，观众能直观对比"这个抽屉深度能放下两张A4纸竖着排列"。这种方法的前提是参照物本身尺寸必须是已知且准确的，不能用"差不多一个手机长"这类个体差异大的说法。
+  - heading "分镜拆解与多角度复核" [level=3]
+  - paragraph:
+    - text: 一人操作的局限在于无法同时拍摄和演示，因此需要将一个完整动作拆成多个静态画面。以衣柜开门为例：第一镜拍关闭状态的柜门正面，手持卷尺贴在门板边缘；第二镜固定手机拍侧面，用延时拍摄功能记录开门过程，门板从0度到90度的运动轨迹和卷尺读数变化同框；第三镜切换到柜体内部视角，手持手机伸入柜内从里向外拍，展示门板开启后内部空间与门板背面的距离关系【未核实】。这三个镜头组合起来，观众能看到"关门时的外观尺寸—开门时的最大角度—开门后不会碰到周围障碍物"的完整信息
+    - link "[3]":
+      - /url: https://jingyan.baidu.com/article/22a299b50526eddf19376aca.html
+    - text: 。
+  - paragraph:
+    - text: 抽屉深度同样需要多角度记录：俯视角拍抽屉完全拉出时的长度、平视角拍抽屉与柜体的进深对比、特写镜头拍卷尺刻度从0刻度到抽屉底板的具体读数。根据"将手机对准家具位置并点击拍摄"的基本操作
+    - link "[3]":
+      - /url: https://jingyan.baidu.com/article/22a299b50526eddf19376aca.html
+    - text: ，每个角度拍摄时要确保画面水平稳定，可以借助展厅内的桌沿、层板等平面临时放置手机。拍完所有素材后，在剪辑时按"全景—局部—细节"的顺序排列，让观众先看到家具整体，再聚焦到开门或抽屉的具体动作，最后用卷尺特写给出精确数据。
+  - heading "三、拍摄家具样柜演示时，哪些结论不能在拍摄现场预先判断（如适配性、长期质量），需要标注为待验证或因人而异的信息？" [level=2]
+  - heading "适配性结论需要客户实际环境数据" [level=3]
+  - paragraph: 拍摄家具样柜开合演示时，最容易误判的是"这个柜子适合你家"。即使现场能证明柜门完全打开、抽屉拉到底，也无法判断客户家门洞位置、墙面插座、暖气片或窗户是否会挡住开启轨迹（推断）。同样，沙发靠背能否放倒、餐桌能否完全拉开，都取决于客户家预留的活动空间，而不是展厅的宽敞环境。
+  - paragraph:
+    - text: 定制家具的适配问题更复杂。微信小店规则要求定制商品标题必须注明"适用场景/适用范围"
+    - link "[4]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+    - link "[5]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+    - text: ，但这只是类目规范，不等于拍摄时就能断言"适合所有书房"或"卧室通用"。展厅样柜的尺寸、层板间距、内部分区是为展示设计的，客户家的层高、承重墙位置、梁柱凸出都会影响实际定制方案（推断）。拍摄时只能展示"这个样柜的开门方式是这样的""抽屉能拉出这么深"，至于客户家能否采用相同设计，需要上门量尺后才能确定。
+  - heading "长期质量表现无法从单次演示推断" [level=3]
+  - paragraph:
+    - text: 现场开合顺畅不代表一年后仍然如此。铰链、滑轨、气撑的耐久性需要反复使用才能暴露，木材、板材在不同湿度环境下的变形、开裂风险也无法通过一次拍摄验证（推断）。微信小店禁止商家宣称"永不开裂""终身质保"这类绝对化承诺
+    - link "[4]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+    - link "[5]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+    - text: ，正是因为材料性能受使用环境、频率、维护方式影响，不存在可以预先保证的结果。
+  - paragraph: 拍摄时能记录的是当下状态：柜门闭合有无缝隙、抽屉推拉是否卡顿、铰链有无异响。但这些只能标注为"到店时的观察"，不能延伸为"用十年没问题"。同样，样柜的油漆附着力、封边牢固度，也需要经过一段时间的温湿度变化、日常擦拭才能判断，单次拍摄无法替代长期跟踪（推断）。
+  - heading "因人而异的体验不能替客户下结论" [level=3]
+  - paragraph: 沙发软硬、座深是否舒适、靠背角度是否合适，这些体验感受因身高、体重、坐姿习惯而异（推断）。拍摄时老板本人试坐并说"很舒服"，只能代表某一体型和偏好的感受,不能推广为"所有人都觉得舒服"。同样，床垫软硬、床板支撑感、枕头高度,也需要客户亲自到店体验才能判断是否适合自己的睡眠习惯。
+  - paragraph:
+    - text: 餐椅高度与餐桌的配合、书桌台面高度与座椅的人体工学匹配,都属于需要使用者本人验证的信息（推断）。拍摄时可以展示"椅面离地75厘米""桌面厚度5厘米",但不能替客户判断"这个高度你用着一定合适"【未核实】。微信小店要求商品详情标注规格型号、尺寸参数
+    - link "[4]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+    - link "[5]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+    - text: ",目的就是让客户对照自身需求做判断,而不是由商家代替客户下结论。"
+  - paragraph:
+    - text: 公开资料里没找到官方对家具拍摄现场可判定项与待验证项的明确分类标准,以上推断基于平台禁止绝对化宣传的规则
+    - link "[4]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+    - link "[5]":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+    - text: 反推得出。
+  - heading "局限与待核实" [level=2]
+  - list:
+    - listitem: 本报告读了 6 个网页来源，其中 3 个读到了全文，3 个网页打不开、只用了搜索结果里的摘录。
+    - listitem: 有 11 处数字未通过文本匹配，已标【未核实】，使用前请核对。
+    - listitem: 公开网页的信息可能滞后或片面；涉及钱、合同、法规、医疗的决定，请以官方原文和专业意见为准。
+  - heading "参考来源" [level=2]
+  - list:
+    - link "如何拍摄家具？家具拍摄十大技巧":
+      - /url: https://wk.baidu.com/view/a075fb2feb7101f69e3143323968011ca300f709
+    - text: — wk.baidu.com · 2022-04-29T23:03:33+08:00 · 获取于 2026/10/8 · 仅摘录
+    - link "家具尺寸与人体工学匹配度研究":
+      - /url: https://m.renrendoc.com/paper/356752079.html
+    - text: — m.renrendoc.com · 2024-10-29T00:00:00+08:00 · 获取于 2026/10/8
+    - link "家具怎么拍抖音做宣传":
+      - /url: https://jingyan.baidu.com/article/22a299b50526eddf19376aca.html
+    - text: — jingyan.baidu.com · 2020-05-25T08:50:00+08:00 · 获取于 2026/10/8 · 仅摘录
+    - link "微信小店":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9799/866998cfb50d8b07/growth_center_rule_for_store/28?bpath=%252Fhome%252Fweekly-rules&source=5&sourceType=3
+    - text: — store.weixin.qq.com · 2026-08-17T00:00:00+08:00 · 获取于 2026/10/8
+    - link "微信小店成长中心-规则中心":
+      - /url: https://store.weixin.qq.com/chengzhang/webdoc/wiki/9800/c3e00c924e1eabc7/growth_center_rule_for_store?bpath=%252Frule%252Fshop%252Fhome%252F3%252F12&source=4&sourceType=1
+    - text: — store.weixin.qq.com · 2026-08-25T00:00:00+08:00 · 获取于 2026/10/8
+  - paragraph:
+    - strong: 读过但正文未直接引用：
+  - list:
+    - link "第2集 | 三分钟搞定AIppt，零门槛出免费，不套模板！【小白必备】":
+      - /url: https://page.sm.cn/blm/video-page-710/video?h=www.bilibili.com&id=26_ea9fb7583ecc8aacc44434c60f43d44f
+    - text: — page.sm.cn · 2026-04-09T18:58:52+08:00 · 获取于 2026/10/8 · 仅摘录
+  - button "复制":
+    - text: 复制
+  - button "在画布中打开":
+    - text: 在画布中打开
+  - button "引用追问":
+    - text: 引用追问
+  - button "Word":
+    - text: Word
+  - button "PDF":
+    - text: PDF
+  - paragraph: 继续创作 · 内容自动带入
+  - button "收藏到素材库":
+    - text: 收藏到素材库
+  - button "审稿优化":
+    - generic: 审稿优化
+  - button "脚本生成":
+    - generic: 脚本生成
+  - button "更多板块":
+    - generic: 更多板块
+  - textbox "自由输入…（Enter 发送，Shift+Enter 换行）"
+  - button "上传图片 / 文件":
+    - generic: 上传
+  - button "出方案":
+    - generic: 出方案
+  - button "深度研究":
+    - generic: 深度研究
+  - combobox "联网模式":
+    - option "按需联网"
+    - option "本轮联网" [selected]
+    - option "关闭联网"
+  - status:
+    - text: 联网本期剩余 134 / 150 次
+  - button "发送" [disabled]:
+    - text: 发送
+  - paragraph: 💡 和选题、脚本、分镜共用记忆，刚生成的可以直接接着聊 · 换话题点「新建对话」
+- alert

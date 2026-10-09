@@ -5,16 +5,17 @@ import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, Flag, PartyPopper, Rocket } from "lucide-react";
 import { LAUNCH_DAYS, LAUNCH_TOTAL, currentLaunchDay } from "@/lib/launch-plan";
 import { confirmDialog, notify } from "@/components/ui/feedback";
+import { useCollapsed } from "@/lib/home-prefs";
+import { postSafely } from "@/lib/safe-post";
 
 interface Plan {
   startedAt: string;
   doneDays: number[];
 }
 
-const COLLAPSE_KEY = "kaiwu:launch-plan-collapsed";
 
 async function post(body: object): Promise<Plan | null | undefined> {
-  const r = await fetch("/api/launch-plan", {
+  const r = await postSafely("/api/launch-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -35,21 +36,10 @@ export function LaunchPlanCard({ className = "" }: { className?: string }) {
   const [busy, setBusy] = useState(false);
   /*
    * 可以折叠（产品方要的）：展开时整张卡占首页一大块，天天看的人会嫌挡路。
-   * 收起后只剩一行"第几天 · 完成几天"和进度条；收没收记在本机，下次进来保持原样。
+   * 收起后只剩一行"第几天 · 完成几天"和进度条；收没收按账号记在本机（lib/home-prefs），下次进来保持原样。
    */
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
-    } catch {}
-  }, []);
-  const toggleCollapsed = () =>
-    setCollapsed((c) => {
-      try {
-        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
-      } catch {}
-      return !c;
-    });
+  const [collapsedPref, toggleCollapsed] = useCollapsed("launchPlan", false);
+  const collapsed = collapsedPref ?? false;
 
   useEffect(() => {
     fetch("/api/launch-plan", { cache: "no-store" })

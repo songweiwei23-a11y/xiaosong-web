@@ -1,0 +1,368 @@
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=7cd9a15f-a2cc-40c5-975d-ef2fa27eefc5
+    - paragraph: 【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或":
+  - link "【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不 选题策划（已做） 脚本生成（已做） 分镜脚本 审稿优化 标题封面 下一步：分镜脚本":
+    - /url: /dashboard/storyboard?work=6e09b803-34d3-4c50-86b8-e03b3ded7ad5
+    - paragraph: 【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不
+    - generic "选题策划（已做）"
+    - generic "脚本生成（已做）"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：分镜脚本
+  - button "删除作品：【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不":
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "审稿优化" [level=1]
+    - paragraph: 逐条指出问题并给出改写建议，可对照标杆脚本做差距分析
+    - paragraph:
+      - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+      - link "换一个":
+        - /url: /dashboard/profiles
+    - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+    - paragraph:
+      - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+      - link "在档案里调整":
+        - /url: /dashboard/profiles
+    - paragraph: 创作简报已带上：一句话定位、人设与口吻、说给谁听、绝对不能说 ✓
+    - button "待审脚本" [expanded]:
+      - generic: 待审脚本
+    - generic: 草稿内容
+    - generic: 必填
+    - textbox "把要审的脚本粘贴进来…": 买衣柜前，先别急着看颜色。今天就在店里这个样柜上看一眼：柜门打开后，要占到哪儿；抽屉拉出来，前面还剩多少位置。把自己家的门、床和过道位置记下来，到店对着样柜试一试。款式喜欢，还得在自己家用得顺手。
+    - generic: 86 字 · 口播约 17 秒
+    - button "个人要求（优先级最高）" [expanded]:
+      - generic: 个人要求（优先级最高）
+    - generic: 你的要求
+    - generic: 可选
+    - textbox "个人要求":
+      - /placeholder: "比如：\n原稿太短，扩到 60 秒左右\n第二段价格写错了，应该是 19.9 元\n开头那句保留不要改"
+      - text: 【上线验收合成稿】保留原意与核心动作，给本地装修家庭，一人手机自然演示，30秒以内。不要加入客户经历、数字标准、免费服务、保证效果或夸大冲突。原稿好的地方保留，只修改有明确理由的表达。六维评分按实际分项相加，不要为了评分擅自改写事实。
+    - generic: 写了就以它为准，和其它设置冲突时按你的来：时长、错误、语气、要保留的句子都可以写
+    - button "基础信息" [expanded]:
+      - generic: 基础信息
+    - generic: 发布平台
+    - generic: 可选
+    - combobox:
+      - option "抖音" [selected]
+      - option "快手"
+      - option "视频号"
+      - option "小红书"
+      - option "B站"
+    - generic: 视频时长
+    - generic: 可选
+    - combobox "视频时长":
+      - option "AI 推荐" [selected]
+      - option "15秒"
+      - option "30秒"
+      - option "60秒"
+      - option "3分钟"
+      - option "5分钟"
+      - option "长视频"
+      - option "自定义…"
+    - generic: AI 按内容和平台判断，优化稿开头会写明建议时长
+    - generic: 脚本类型
+    - generic: 可选
+    - button "教知识型"
+    - button "晒过程型" [active] [pressed]
+    - button "聊观点型"
+    - button "讲故事型"
+    - button "测评型"
+    - button "探店型"
+    - button "剧情型"
+    - button "混剪型"
+    - button "审稿维度":
+      - generic: 审稿维度
+    - button "优化目标":
+      - generic: 优化目标
+    - button "开始审稿优化":
+      - text: 开始审稿优化
+  - main:
+    - heading "审稿意见" [level=2]
+    - text: 口播 84 字
+    - text: 念完约 17秒
+    - button "继续创作":
+      - text: 继续创作
+    - button "在画布里改":
+      - text: 在画布里改
+    - button "继续对话":
+      - text: 继续对话
+    - button "复制纯文案":
+      - text: 复制纯文案
+    - button "复制":
+      - text: 复制
+    - button "下载":
+      - text: 下载
+    - article:
+      - heading "短视频脚本审稿报告" [level=1]
+      - heading "1. 总评" [level=2]
+      - list:
+        - strong: 综合得分
+        - text: ：8.2 分（良好）
+        - strong: 用户目的与核心问题
+        - text: ：给本地装修家庭看，解决"买衣柜前如何判断尺寸是否合用"这个实际问题；一人手机自然演示，30秒以内；不加客户经历、数据或夸大冲突。
+        - strong: 一句话结论
+        - text: ：原稿逻辑清楚、切口实用，可以直接拍，有两处表达可以更顺。
+        - strong: 值得保留
+        - text: ：
+        - list:
+          - listitem: "\"柜门打开后，要占到哪儿；抽屉拉出来,前面还剩多少位置\"——把抽象的\"尺寸问题\"落到具体动作，观众能想象画面。"
+          - listitem: "\"把自己家的门、床和过道位置记下来，到店对着样柜试一试\"——给出可执行的动作,不是空泛建议。"
+          - listitem: "\"款式喜欢,还得在自己家用得顺手\"——回扣开头,强化\"别只看外观\"的核心提醒。"
+      - separator
+      - heading "2. 逐维度打分" [level=2]
+      - table:
+        - rowgroup:
+          - row "维度 得分/权重 问题 怎么改":
+            - columnheader "维度"
+            - columnheader "得分/权重"
+            - columnheader "问题"
+            - columnheader "怎么改"
+        - rowgroup:
+          - row "核心目的与开场钩子 18/20 开头\"先别急着看颜色\"准确,但\"今天就在店里这个样柜上看一眼\"稍有停顿感 压缩成\"今天拿店里这个样柜给你看\"，更口语":
+            - cell "核心目的与开场钩子"
+            - cell "18/20"
+            - cell "开头\"先别急着看颜色\"准确,但\"今天就在店里这个样柜上看一眼\"稍有停顿感"
+            - cell "压缩成\"今天拿店里这个样柜给你看\"，更口语"
+          - row "信息递进与情绪波点适配 18/20 递进清晰：开门占位→抽屉占位→回家对比→收束；自然演示不需要刻意波点 保留原有节奏":
+            - cell "信息递进与情绪波点适配"
+            - cell "18/20"
+            - cell "递进清晰：开门占位→抽屉占位→回家对比→收束；自然演示不需要刻意波点"
+            - cell "保留原有节奏"
+          - row "事实与证据 20/20 柜门、抽屉、样柜都是店里有的实物,动作可演示 保持":
+            - cell "事实与证据"
+            - cell "20/20"
+            - cell "柜门、抽屉、样柜都是店里有的实物,动作可演示"
+            - cell "保持"
+          - row "表达与人设 13/15 \"要占到哪儿\"口语自然；\"位置记下来\"略正式 改成\"记一下\"或\"量一下\"":
+            - cell "表达与人设"
+            - cell "13/15"
+            - cell "\"要占到哪儿\"口语自然；\"位置记下来\"略正式"
+            - cell "改成\"记一下\"或\"量一下\""
+          - row "拍摄执行与时长 13/15 约17秒口播+开关柜门抽屉的动作时间,30秒内可完成；一人手机可拍 开场边说边走向样柜,或直接手搭在柜门上起为可选建议":
+            - cell "拍摄执行与时长"
+            - cell "13/15"
+            - cell "约17秒口播+开关柜门抽屉的动作时间,30秒内可完成；一人手机可拍"
+            - cell "开场边说边走向样柜,或直接手搭在柜门上起为可选建议"
+          - row "收束与目的兑现 10/10 回扣\"款式喜欢+用得顺手\",核心问题得到回应；不强推,符合要求 保留":
+            - cell "收束与目的兑现"
+            - cell "10/10"
+            - cell "回扣\"款式喜欢+用得顺手\",核心问题得到回应；不强推,符合要求"
+            - cell "保留"
+      - paragraph:
+        - strong: 百分制合计
+        - text: ：82 分 →
+        - strong: 最终得分 8.2 分
+      - separator
+      - heading "3. 问题清单" [level=2]
+      - paragraph:
+        - text: 🟡
+        - strong: 建议改 1
+        - text: 【问题】"今天就在店里这个样柜上看一眼"
+        - text: 【为什么不行】"就在店里这个"有两个指示词叠加,说起来会卡
+        - text: 【改成】"今天拿店里这个样柜给你看"
+      - paragraph:
+        - text: 🟡
+        - strong: 建议改 2
+        - text: 【问题】"把自己家的门、床和过道位置记下来"
+        - text: 【为什么不行】"记下来"略正式,和前后口语化节奏不完全匹配
+        - text: 【改成】"把自己家的门、床、过道位置先量一下" 或 "记一下"
+      - paragraph:
+        - text: 🟢
+        - strong: 锦上添花
+        - text: 【建议】开场第一句可以边说边走向样柜,或者手直接搭在柜门上,让画面和台词同步进入
+        - text: 【理由】减少空镜,30秒更紧凑
+      - separator
+      - heading "4. 原文 vs 改写 逐句对照" [level=2]
+      - table:
+        - rowgroup:
+          - row "位置 原文 改写 改动理由":
+            - columnheader "位置"
+            - columnheader "原文"
+            - columnheader "改写"
+            - columnheader "改动理由"
+        - rowgroup:
+          - row "开场第2句 今天就在店里这个样柜上看一眼 今天拿店里这个样柜给你看 减少指示词叠加,更顺口":
+            - cell "开场第2句"
+            - cell "今天就在店里这个样柜上看一眼"
+            - cell "今天拿店里这个样柜给你看"
+            - cell "减少指示词叠加,更顺口"
+          - row "中段 把自己家的门、床和过道位置记下来 把自己家的门、床、过道位置先量一下 \"量一下\"比\"记下来\"更口语,也更具体":
+            - cell "中段"
+            - cell "把自己家的门、床和过道位置记下来"
+            - cell "把自己家的门、床、过道位置先量一下"
+            - cell "\"量一下\"比\"记下来\"更口语,也更具体"
+      - separator
+      - heading "5. 优化后的完整脚本" [level=2]
+      - paragraph:
+        - strong: "[0-3秒]"
+        - text: 手搭在样柜柜门上
+        - text: 买衣柜前,先别急着看颜色。
+      - paragraph:
+        - strong: "[3-10秒]"
+        - text: 打开柜门,停住,手指指向柜门边缘占据的空间
+        - text: 今天拿店里这个样柜给你看——柜门打开后,要占到哪儿;
+      - paragraph:
+        - strong: "[10-17秒]"
+        - text: 拉开抽屉,停住,手比划抽屉前方的空间
+        - text: 抽屉拉出来,前面还剩多少位置。
+      - paragraph:
+        - strong: "[17-25秒]"
+        - text: 收回抽屉和柜门,转向镜头
+        - text: 把自己家的门、床、过道位置先量一下,到店对着样柜试一试。
+      - paragraph:
+        - strong: "[25-30秒]"
+        - text: 手轻拍柜门
+        - text: 款式喜欢,还得在自己家用得顺手。
+      - separator
+      - heading "6. 纯文字文案" [level=2]
+      - paragraph: 买衣柜前,先别急着看颜色。 今天拿店里这个样柜给你看——柜门打开后,要占到哪儿;抽屉拉出来,前面还剩多少位置。 把自己家的门、床、过道位置先量一下,到店对着样柜试一试。 款式喜欢,还得在自己家用得顺手。
+      - separator
+      - paragraph:
+        - strong: 按个人要求的改动说明
+        - text: ：保留原意和主要场景,只调整两处表达顺畅度;没有增加客户经历、数据、免费服务或夸大冲突;一人手机可完成,30秒以内。原稿本身质量较好,改动幅度小于通用优化标准的常规操作。
+    - paragraph: 继续创作 · 内容自动带入
+    - button "收藏到素材库":
+      - text: 收藏到素材库
+    - button "分镜脚本":
+      - generic: 分镜脚本
+    - button "生成选题":
+      - generic: 生成选题
+    - button "脚本生成":
+      - generic: 脚本生成
+    - button "更多板块":
+      - generic: 更多板块
+    - heading "历史审稿" [level=3]
+    - generic: "1"
+    - button "载入：短视频脚本审稿报告":
+      - paragraph: 短视频脚本审稿报告
+      - generic: 3 小时前
+      - text: "84"
+      - text: 17秒
+      - button "继续对话":
+      - button "删除":
+- alert

@@ -1,0 +1,58 @@
+{
+  "time": "2026-10-07T19:12:38.606Z",
+  "base": "https://www.biandao.icu",
+  "buildId": "2dKmm1z9LvoB8VWqoO_zl",
+  "previousBuildId": "kVnT4uX4YF2SrDANaAwwH",
+  "files": [
+    {
+      "file": "lib/quality-checks.ts",
+      "sha256": "878035e7def2c0f2d5debbf67cb8c48edbda9f81078b999e86580c5a68ed033b",
+      "match": true
+    },
+    {
+      "file": "lib/script-copy.ts",
+      "sha256": "8b3987b80c6a74cc78e4a60d66780cb8ba53b5f0e0590d42ee80fc829657aa05",
+      "match": true
+    },
+    {
+      "file": "lib/storyboard-standards.ts",
+      "sha256": "5496df7c8d321c7c8b0fb4f0c935b63fe0d24b12da212fc39ab74f48dcc8db24",
+      "match": true
+    }
+  ],
+  "checks": [
+    {
+      "route": "/",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "route": "/login",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "route": "/pricing",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "route": "/api/public/ping",
+      "status": 204,
+      "ok": true
+    },
+    {
+      "route": "/api/dify/stream (unauthenticated)",
+      "status": 401,
+      "location": null,
+      "ok": true
+    }
+  ],
+  "pm2": "online; exec cwd /var/www/xiaosong-web (SSH separately verified)",
+  "backup": "/var/www/xiaosong-backup-20261008_craft_checks",
+  "dify": {
+    "publishedVersion": 26,
+    "contentAcceptancePassed": false
+  },
+  "limits": "合成单元/回归测试及公开HTTP检查；未模拟登录后完整网站生成、数据库写入及会员扣费。实验创作规则与两个接口未部署。"
+}

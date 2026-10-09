@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
@@ -171,9 +171,9 @@ export default function AdminQRCodesPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>1. 从支付宝和微信分别导出您的收款二维码图片</p>
-          <p>2. 点击上方"上传二维码"按钮，选择对应的图片</p>
+          <p>2. 点击上方&quot;上传二维码&quot;按钮，选择对应的图片</p>
           <p>3. 上传成功后，用户在支付页面就能看到您的收款码</p>
-          <p>4. 用户扫码支付后会上传支付凭证，您可以在"订单审核"页面进行审核</p>
+          <p>4. 用户扫码支付后会上传支付凭证，您可以在&quot;订单审核&quot;页面进行审核</p>
           <p className="text-orange-500 font-semibold">
             ⚠️ 请确保二维码清晰可见，否则用户无法成功支付
           </p>

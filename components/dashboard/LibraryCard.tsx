@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bookmark, ChevronRight } from "lucide-react";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
-import { LIBRARY_CATEGORIES, categoryLabel, type LibraryItem } from "@/lib/library";
+import { LIBRARY_CATEGORIES, categoryLabel, type LibraryListItem } from "@/lib/library";
+import { DEFAULT_PROFILE_SCOPE } from "@/lib/profile-history";
 
 /**
  * 工作台上的素材库卡片（2026-10-02，产品方："新上的功能同步到工作台首页"）。
@@ -12,21 +13,25 @@ import { LIBRARY_CATEGORIES, categoryLabel, type LibraryItem } from "@/lib/libra
  * 还没收藏过：告诉人收藏按钮在哪——不说没人知道每个板块结果下面有它。
  */
 export function LibraryCard({ className = "" }: { className?: string }) {
-  const [items, setItems] = useState<LibraryItem[] | null>(null);
+  const [items, setItems] = useState<LibraryListItem[] | null>(null);
+  // 总数和各分类数量用接口给的（列表现在是分页的，一页只有 20 条，自己数会少）
+  const [stats, setStats] = useState<{ all: number; categories: Record<string, number> } | null>(null);
 
   useEffect(() => {
     const load = () => {
-      const pid = getActiveProfileId();
-      fetch(`/api/library${pid ? `?profileId=${encodeURIComponent(pid)}` : ""}`)
+      // 只看当前档案的（2026-10-04 按档案隔离）；没选档案时看没挂档案的
+      const pid = getActiveProfileId() || DEFAULT_PROFILE_SCOPE;
+      fetch(`/api/library?limit=3&profileId=${encodeURIComponent(pid)}`)
         .then((r) => r.json().catch(() => ({})))
-        .then((d) => setItems(Array.isArray(d.items) ? d.items : []))
+        .then((d) => { setItems(Array.isArray(d.items) ? d.items : []); setStats(d.counts ?? null); })
         .catch(() => setItems([]));
     };
     load();
     return onActiveProfileChange(load);
   }, []);
 
-  const counts = LIBRARY_CATEGORIES.map((c) => ({ ...c, n: (items ?? []).filter((it) => it.category === c.id).length })).filter((c) => c.n > 0);
+  const counts = LIBRARY_CATEGORIES.map((c) => ({ ...c, n: stats?.categories[c.id] ?? 0 })).filter((c) => c.n > 0);
+  const total = stats?.all ?? items?.length ?? 0;
 
   return (
     <section className={`glass-panel rounded-2xl p-4 sm:p-5 ${className}`}>
@@ -34,7 +39,7 @@ export function LibraryCard({ className = "" }: { className?: string }) {
         <h2 className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
           <Bookmark className="h-3.5 w-3.5 text-muted-foreground" />
           素材库
-          {items && items.length > 0 && <span className="text-[11.5px] font-normal text-muted-foreground">{items.length} 条</span>}
+          {total > 0 && <span className="text-[11.5px] font-normal text-muted-foreground">{total} 条</span>}
         </h2>
         <Link href="/dashboard/library" className="text-[11.5px] text-muted-foreground hover:text-foreground">打开</Link>
       </div>

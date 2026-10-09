@@ -1,0 +1,81 @@
+[
+  {
+    "id": "06-3",
+    "board": "账号定位（快速版）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "没做过定位的串串店第一次做账号定位",
+    "ok": true,
+    "ms": 78407,
+    "promptChars": 22388,
+    "answerChars": 3015,
+    "auto": {
+      "issues": [],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 50062,
+        "completion_tokens": 3287,
+        "total_tokens": 53349,
+        "latency": 73.265,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 76.347248
+      }
+    }
+  },
+  {
+    "id": "06-1",
+    "board": "账号定位（快速版）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "没做过定位的串串店第一次做账号定位",
+    "ok": true,
+    "ms": 115320,
+    "promptChars": 22388,
+    "answerChars": 4590,
+    "auto": {
+      "issues": [],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 50062,
+        "completion_tokens": 4949,
+        "total_tokens": 55011,
+        "latency": 102.167,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 111.957979
+      }
+    }
+  },
+  {
+    "id": "06-2",
+    "board": "账号定位（快速版）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "没做过定位的串串店第一次做账号定位",
+    "ok": true,
+    "ms": 162976,
+    "promptChars": 22388,
+    "answerChars": 6896,
+    "auto": {
+      "issues": [
+        "taboo:「隔壁那家用的」— 不正当竞争，容易被举报",
+        "taboo:「最划算」— 广告法红线",
+        "taboo:「最强」— 广告法红线"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 50063,
+        "completion_tokens": 7527,
+        "total_tokens": 57590,
+        "latency": 157.599,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 160.78386
+      }
+    }
+  }
+]

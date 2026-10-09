@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { auditStoryboard } from '@/lib/storyboard-standards';
+import { auditStoryboard, FOLLOW_SCRIPT, spokenChars } from '@/lib/storyboard-standards';
 
 /**
  * 这个核对器存在的理由，就是下面第一个用例。
@@ -54,6 +54,15 @@ describe('分镜核对器', () => {
     expect(audit.target).toBe(60);
     expect(audit.diff).toBe(-5);
   });
+  it('没有固定目标时也核对模型自称的总时长，不因完整回答加时而误报超时', () => {
+    const a = auditStoryboard(REAL_OUTPUT, FOLLOW_SCRIPT, '老板您好。')!;
+    expect(a.issues.join('|')).toContain('文中总时长写 60s，但镜头表实际合计 55s');
+    expect(a.issues.join('|')).not.toContain('比目标多');
+  });
+  it('执行标记不被当成必须念出的台词，长问题仍按全部已知字数计时', () => {
+    expect(spokenChars('[根据回答选择追问方向] 能说一件具体的事吗？')).toBe(9);
+    expect(spokenChars('（按现场真实回答）')).toBe(0);
+  });
 
   it('差额超过 2 秒就点出来，并说清后果', () => {
     const msg = audit.issues.join(' ');
@@ -90,25 +99,25 @@ describe('分镜核对器', () => {
     expect(audit.issues.some((i) => i.includes('运动镜头占'))).toBe(false);
   });
 
-  it('特写超标会被点名', () => {
+  it('特写比例只作统计，不以固定上限判不合格', () => {
     const heavy = REAL_OUTPUT.replace(/近景📸/g, '特写🔍');
     const a = auditStoryboard(heavy, '60秒')!;
     expect(a.closeUpRatio).toBeGreaterThan(25);
-    expect(a.issues.join(' ')).toContain('特写占');
+    expect(a.issues.join(' ')).not.toContain('特写占');
   });
 
-  it('运动镜头超标会被点名', () => {
+  it('运镜比例只作统计，不能仅凭比例推断设备或画面问题', () => {
     const shaky = REAL_OUTPUT.replace(/\|\s*固定\s*\|/g, '| 跟随 |');
     const a = auditStoryboard(shaky, '60秒')!;
     expect(a.moveRatio).toBeGreaterThan(33);
-    expect(a.issues.join(' ')).toContain('运动镜头占');
+    expect(a.issues.join(' ')).not.toContain('运动镜头占');
   });
 
-  it('单个镜头过长会被点名', () => {
+  it('有长镜头仍能统计，不因超过六秒就误报掉完播', () => {
     const slow = REAL_OUTPUT.replace('| 2s | 屏幕占满竖屏', '| 12s | 屏幕占满竖屏');
     const a = auditStoryboard(slow, '60秒')!;
     expect(a.longest).toBe(12);
-    expect(a.issues.join(' ')).toContain('最长镜头');
+    expect(a.issues.join(' ')).not.toContain('最长镜头');
   });
 
   it('没有表格时返回 null，不硬凑一个 0 秒的结论', () => {

@@ -231,8 +231,10 @@ describe('开篇也挂到作品上', () => {
   });
 
   it('"用这条写脚本""起标题"把作品带下去', () => {
-    expect(code).toMatch(/workStageUrl\(currentOpeningWork, '脚本生成'\)/);
-    expect(code).toMatch(/workStageUrl\(currentOpeningWork, '标题封面'\)/);
+    // 作品编号写进持久创作需求，跳转地址由服务端保存结果生成（?creation=…&work=…）
+    expect(code).toMatch(/buildCreationHandoff\('growth', 'script', o\.line,/);
+    expect(code).toMatch(/buildCreationHandoff\('growth', 'title', result,/);
+    expect(code.match(/workId: currentOpeningWork \?\? undefined,\s*\}, \(u\) => router\.push\(u\)/g)?.length).toBe(2);
   });
 });
 
@@ -247,7 +249,9 @@ describe('选题清单：每一条都能单独送出去', () => {
     expect(page).toContain('<TopicList');
     expect(page).toContain('parseTopicOptions(result)');
     expect(page).toMatch(/createWork\(title,/);
-    expect(page).toMatch(/workStageUrl\(workId, stage\)/);
+    // 带着编号持久保存后跳（地址里有 ?work=，见 lib/creation-snapshot 的 creationSnapshotUrl）
+    expect(page).toMatch(/workId: workId \?\? undefined,/);
+    expect(page).toMatch(/await openCreationSafely\(\{/);
   });
 
   it('从历史里打开旧批次时，那一批的打法也接上', () => {

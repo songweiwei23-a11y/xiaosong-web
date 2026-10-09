@@ -5,13 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { listWorks, deleteWork, type Work } from "@/lib/works";
+import { onActiveProfileChange } from "@/lib/active-profile";
 import { nextStage, workStageUrl } from "@/lib/resume";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, Bookmark, ListChecks, Compass, GraduationCap, FileSearch, Clapperboard, Shuffle,
+  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, Bookmark, ListChecks, Compass, GraduationCap, FileSearch, Clapperboard, Shuffle, CalendarRange,
 } from "lucide-react";
 
 /*
@@ -47,6 +48,8 @@ const navGroups: {
     label: "内容创作",
     items: [
       // 顺序即创作链路：先想清楚为了什么拍、往哪个方向 → 拆别人的爆款 → 定选题 → 写脚本 → 拆分镜 → 审稿 → 起标题
+      // 当月内容规划（2026-10-09）：先定这个月发几条、怎么配比、分哪几个方向，再往下做方向和选题
+      { name: "内容规划", href: "/dashboard/content-plan", icon: CalendarRange },
       { name: "创作方向", href: "/dashboard/direction", icon: Compass },
       { name: "拆解爆款", href: "/dashboard/breakdown", icon: Clapperboard },
       // 拆完别人的，借过来拍成自己的
@@ -144,7 +147,10 @@ export function Sidebar() {
   }, []);
 
   // 进行中的作品。路由变化时重新取一次——刚生成完的内容应当立刻反映在这里
+  // 只列当前档案的（lib/works 按档案取）；侧边栏切了档案立刻换成那个档案的
   const [moreWorks, setMoreWorks] = useState(false);
+  const [profileTick, setProfileTick] = useState(0);
+  useEffect(() => onActiveProfileChange(() => setProfileTick((n) => n + 1)), []);
   useEffect(() => {
     let cancelled = false;
     listWorks(12).then((list) => {
@@ -155,7 +161,7 @@ export function Sidebar() {
       setMoreWorks(active.length > SIDEBAR_WORKS || list.length > active.length);
     });
     return () => { cancelled = true; };
-  }, [pathname]);
+  }, [pathname, profileTick]);
 
   const removeWork = async (w: Work) => {
     const ok = await confirmDialog(

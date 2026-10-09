@@ -45,6 +45,13 @@ describe('三种视频的定义', () => {
     expect(ROLE_SPECS.变现型.cta).toMatch(/只选一个/);
   });
 
+  it('流量型的结构不再用观点句式，大流量靠三十六计里标了流量型的打法', () => {
+    const structures = ROLE_SPECS.流量型.structures.join('\n');
+    expect(structures).not.toMatch(/观点并列|观点正反|争议开篇/);
+    expect(ROLE_SPECS.流量型.scriptTypes).toMatch(/聊观点不是流量主力/);
+    expect(ROLE_SPECS.人设型.structures.some((x) => x.startsWith('观点立场'))).toBe(true);
+  });
+
   it('三十六计每一计都归到了一种视频，且只归一种（名字和计名表一字不差）', () => {
     const all = CONTENT_ROLE_LIST.flatMap((r) => TACTIC_ROLES[r]);
     const names = GROWTH_TACTICS.map((t) => t.name);
@@ -57,9 +64,9 @@ describe('三种视频的定义', () => {
     expect(TACTIC_ROLES.流量型.length).toBeGreaterThan(names.length / 2);
   });
 
-  it('脚本类型只给默认目的：观点→流量，故事→人设，其余→变现', () => {
-    expect(defaultRoleOfScriptType('discuss')).toBe('流量型');
-    expect(defaultRoleOfScriptType('聊观点')).toBe('流量型');
+  it('脚本类型只给默认目的：观点→人设（观点拿不到大流量），故事→人设，其余→变现', () => {
+    expect(defaultRoleOfScriptType('discuss')).toBe('人设型');
+    expect(defaultRoleOfScriptType('聊观点')).toBe('人设型');
     expect(defaultRoleOfScriptType('story')).toBe('人设型');
     expect(defaultRoleOfScriptType('teach')).toBe('变现型');
     expect(defaultRoleOfScriptType('show')).toBe('变现型');

@@ -5,6 +5,7 @@ import { confirmDialog, notify } from "@/components/ui/feedback";
 import { checkQuota } from "@/lib/history";
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { profileHistoryQuery } from '@/lib/profile-history';
+import { postSafely } from '@/lib/safe-post';
 
 interface GenerationHistory {
   id: string;
@@ -99,7 +100,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
       });
       if (!confirmed) return;
       try {
-        const response = await fetch(`${historyApiPath}?id=${id}`, { method: "DELETE" });
+        const response = await postSafely(`${historyApiPath}?id=${id}`, { method: "DELETE" });
         if (response.ok) {
           await loadHistory();
           notify("✓ 删除成功");

@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { runQualityChecks, yearConflicts, sanitizeQualityReport, summarizeQuality, outputKey, type QualityRow } from '@/lib/quality-checks';
 import { resolveMix } from '@/lib/content-mix';
-import { regressionCases, runRegression, REGRESSION_PROFILE } from '@/lib/quality-regression';
+import { regressionCases, runRegression, readDifyAnswer, REGRESSION_PROFILE } from '@/lib/quality-regression';
 import { readCode } from './helpers/source';
 
 const persona = { yearsInTrade: '做川菜 9 年', yearsLocal: '来南乐半年' };
@@ -81,7 +81,7 @@ describe('上报和汇总', () => {
 describe('每晚回归', () => {
   it('测试档案把这周的坑都埋进去了：事实卡半年、排除公益直播、审稿原稿写 18 年和全城最正宗', () => {
     const cases = regressionCases();
-    expect(cases.map((c) => c.task)).toEqual(['回归:创作方向', '回归:审稿优化', '回归:画布改写']);
+    expect(cases.map((c) => c.task)).toEqual(['回归:创作方向', '回归:审稿优化', '回归:画布改写', '回归:美甲选题', '回归:家具开篇', '回归:无价格引流脚本', '回归:只换开头']);
     expect(cases[0].query).toContain('人设事实卡');
     expect(cases[0].query).toContain('刻意去掉的信息');
     expect(cases[0].query).toContain('流量型 3 个');
@@ -112,6 +112,50 @@ describe('每晚回归', () => {
   });
 });
 
+describe('可靠性补充：正文、语义事实和上游流', () => {
+  it.each(['', '  \n ', '…', '---\n###'])('无实际正文不能通过：%s', output => {
+    expect(runQualityChecks({ output, profile }).issues[0].kind).toBe('generation');
+  });
+  it('从业、本地和店龄互不借用，明示字段优先于旧故事', () => {
+    expect(yearConflicts('在南乐扎根9年了。', persona)).toHaveLength(1);
+    expect(yearConflicts('我在南乐9年了。', persona)).toHaveLength(1);
+    expect(yearConflicts('从业半年了。', persona)).toHaveLength(1);
+    expect(yearConflicts('一家9年的老店。', persona)).toHaveLength(1);
+    expect(yearConflicts('做川菜9年，来南乐半年。', persona)).toEqual([]);
+    expect(yearConflicts('在南乐扎根9年。', { ...persona, story: '在南乐扎根9年' })).toHaveLength(1);
+    expect(yearConflicts('一家3年的老店。', { ...persona, others: '店开了3年' })).toEqual([]);
+  });
+  it('审稿中的引用原文不被算进交付稿，但空交付节不能用原文代替', () => {
+    const answer = '### 问题清单\n原稿写“在南乐扎根9年”和“全城最正宗”需要改。\n### 优化后的完整脚本\n做川菜9年，来南乐半年。\n### 纯文字文案\n做川菜9年，来南乐半年。';
+    expect(runQualityChecks({ output: answer, profile, taskType: '审稿优化' }).passed).toBe(true);
+    expect(runQualityChecks({ output: '### 问题清单\n原稿很长\n### 优化后的完整脚本\n\n### 其他建议\n继续努力', profile, taskType: '审稿优化' }).passed).toBe(false);
+  });
+  it('配比要求存在但条目缺失时不能显示质检通过', () => {
+    expect(runQualityChecks({ output: '今天拍一道菜。', profile, mix: { resolved: resolveMix(profile), count: 3 } }).passed).toBe(false);
+  });
+  it('注入空回答时所有回归失败；新增样例使用自己的事实卡', async () => {
+    expect((await runRegression(async () => '')).every(o => !o.result.passed)).toBe(true);
+    const out = await runRegression(async q => q.includes('家具从业12年') ? '我在苏州扎根12年了。' : '你好，这是可用的文案。');
+    expect(out.find(o => o.task === '回归:家具开篇')!.result.issues.some(i => i.kind === 'years')).toBe(true);
+  });
+  it('新增样例校验必要交付章节，标题空壳也不算成功', async () => {
+    const out = await runRegression(async q => q.includes('家具从业12年') ? '## 开篇\n来苏州3年，做家具12年，这个柜子选对尺寸很重要。\n## 衔接正文\n先量好过道，再看门能不能完全打开。' : q.includes('美甲从业5年') ? '## 选题1\n基础单色怎么选：拍一只手的色板对比。\n## 选题2\n修甲型：近景拍指尖处理。\n## 选题3\n日常护理：实拍用手习惯。' : '一段普通文案');
+    expect(out.filter(o => /美甲选题|家具开篇/.test(o.task)).every(o => o.result.passed)).toBe(true);
+    const shells = await runRegression(async () => '## 选题1\n## 选题2\n## 选题3\n## 开篇\n## 衔接正文');
+    expect(shells.filter(o => /美甲选题|家具开篇/.test(o.task)).every(o => !o.result.passed)).toBe(true);
+  });
+  const response = (...events: object[]) => new Response(events.map(e => `data: ${JSON.stringify(e)}\n\n`).join(''));
+  it('任意上游错误都抛出，包括已有部分回答之后的错误', async () => {
+    await expect(readDifyAnswer(response({ event: 'message', answer: '半段稿件' }, { event: 'error', message: 'Run failed: quota exceeded' }))).rejects.toThrow('Run failed');
+  });
+  it('正常结束才交付；连接截断、空回答和损坏事件都失败', async () => {
+    await expect(readDifyAnswer(response({ event: 'message', answer: '完成的文案' }, { event: 'message_end' }))).resolves.toBe('完成的文案');
+    await expect(readDifyAnswer(response({ event: 'message', answer: '半段稿件' }))).rejects.toThrow('未收到完成事件');
+    await expect(readDifyAnswer(response({ event: 'message_end' }))).rejects.toThrow('未返回正文');
+    await expect(readDifyAnswer(new Response('data: {broken}\n'))).rejects.toThrow('无法解析');
+  });
+});
+
 describe('接线', () => {
   it('所有结果面板生成完体检；按配比的两个板块带上配比；自由对话每轮也体检', () => {
     const panel = readCode('components/workspace/ResultPanel.tsx');
@@ -127,5 +171,22 @@ describe('接线', () => {
     expect(api).toMatch(/requireUser\(\)/);
     expect(api).toMatch(/source: 'live'/);
     expect(readCode('supabase/migrations/20261003_quality_checks.sql')).toMatch(/create table if not exists public\.quality_checks/);
+  });
+});
+
+describe('每晚回归：2026-10-05 新增的两个用例', () => {
+  it('无价格引流脚本：编出价格、顾客见证就判不过；只换开头：正文被改就判不过', async () => {
+    const out = await runRegression(async q => {
+      if (q.includes('突出性价比和顾客口碑')) return '## 开头\n人均 39 元吃到撑！\n## 正文\n有位顾客说吃完还想来。\n## 结尾\n快来。';
+      if (q.includes('只换开头')) return '开头：一元一串的火锅，你吃过吗？\n正文：锅底每天现炒，一元一串。\n结尾：想吃的评论区说说你在哪个区。';
+      return '一段普通文案';
+    });
+    const price = out.find(o => o.task === '回归:无价格引流脚本')!;
+    expect(price.result.passed).toBe(false);
+    expect(price.result.issues.map(i => i.detail).join('|')).toMatch(/价格「.*39 元.*\|.*顾客见证|顾客见证.*\|.*价格/);
+    const keep = out.find(o => o.task === '回归:只换开头')!;
+    expect(keep.result.issues.map(i => i.detail).join('|')).toMatch(/没守住用户的明确要求/);
+    const good = await runRegression(async q => q.includes('只换开头') ? '开头：一元一串的火锅，你吃过吗？\n正文：锅底每天早上现炒，一元一串，自己拿签子。\n结尾：想吃的评论区说说你在哪个区。' : '一段普通文案');
+    expect(good.find(o => o.task === '回归:只换开头')!.result.passed).toBe(true);
   });
 });

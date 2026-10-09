@@ -1,0 +1,439 @@
+2026-10-08T04:41:17.657Z
+https://www.biandao.icu/dashboard/storyboard
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "分镜脚本" [level=1]
+    - paragraph: 把口播脚本拆成可执行的分镜：景别、运镜、画面与时长
+    - button "填入示例"
+    - paragraph:
+      - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+      - link "换一个":
+        - /url: /dashboard/profiles
+    - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+    - paragraph:
+      - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+      - link "在档案里调整":
+        - /url: /dashboard/profiles
+    - paragraph:
+      - text: 还没生成创作简报，这次只能用档案里的字段。
+      - link "去生成":
+        - /url: /dashboard/creative-brief
+      - text: （做完选题、脚本、分镜都会自动用上）
+    - button "脚本内容" [expanded]:
+      - generic: 脚本内容
+    - generic: 脚本内容
+    - generic: 必填
+    - textbox "例如：我要拍美食探店，先拍店门口招牌，再进店拍环境，然后特写拍菜品，最后拍我吃的反应": 买衣柜前，先别急着看颜色。今天就在店里这个样柜上看一眼：柜门打开后，要占到哪儿；抽屉拉出来，前面还剩多少位置。把自己家的门、床和过道位置记下来，到店对着样柜试一试。款式喜欢，还得在自己家用得顺手。
+    - generic: AI 会根据内容自动选择镜头语言
+    - button "让 AI 推荐参数":
+      - text: 让 AI 推荐参数
+    - button "拍摄设置" [expanded]:
+      - generic: 拍摄设置
+    - generic: 发布平台
+    - generic: 可选
+    - combobox:
+      - option "抖音" [selected]
+      - option "快手"
+      - option "视频号"
+      - option "小红书"
+      - option "B站"
+    - generic: 视频时长
+    - generic: 可选
+    - combobox:
+      - option "按脚本长度（推荐）"
+      - option "15秒"
+      - option "30秒" [selected]
+      - option "60秒"
+      - option "90秒"
+      - option "3-5分钟"
+    - generic: 内容类型
+    - generic: 可选
+    - button "已按原稿自动选择内容类型" [pressed]
+    - generic: 口播类
+    - button "🎙️ 口播":
+      - generic: 🎙️
+      - generic: 口播
+    - button "💡 知识讲解":
+      - generic: 💡
+      - generic: 知识讲解
+    - generic: 展示类
+    - button "🍜 美食":
+      - generic: 🍜
+      - generic: 美食
+    - button "📚 教程":
+      - generic: 📚
+      - generic: 教程
+    - button "📦 产品":
+      - generic: 📦
+      - generic: 产品
+    - button "⚖️ 测评对比":
+      - generic: ⚖️
+      - generic: 测评对比
+    - button "🔧 晒过程":
+      - generic: 🔧
+      - generic: 晒过程
+    - generic: 场景类
+    - button "🏪 探店":
+      - generic: 🏪
+      - generic: 探店
+    - button "📹 VLOG":
+      - generic: 📹
+      - generic: VLOG
+    - button "🎯 挑战体验":
+      - generic: 🎯
+      - generic: 挑战体验
+    - generic: 叙事类
+    - button "🎬 剧情故事":
+      - generic: 🎬
+      - generic: 剧情故事
+    - button "🏆 客户案例":
+      - generic: 🏆
+      - generic: 客户案例
+    - button "🎤 访谈对话":
+      - generic: 🎤
+      - generic: 访谈对话
+    - generic: AI 会据此选择合适的景别与运镜
+    - generic: 视觉风格
+    - generic: 可选
+    - button "🎥 电影感":
+      - generic: 🎥
+      - generic: 电影感
+    - button "☀️ 明亮清新" [pressed]:
+      - generic: ☀️
+      - generic: 明亮清新
+    - button "🌅 温暖治愈":
+      - generic: 🌅
+      - generic: 温暖治愈
+    - button "🌃 冷酷科技":
+      - generic: 🌃
+      - generic: 冷酷科技
+    - button "📷 复古怀旧":
+      - generic: 📷
+      - generic: 复古怀旧
+    - button "⬜ 简约高级":
+      - generic: ⬜
+      - generic: 简约高级
+    - button "补充说明" [expanded]:
+      - generic: 补充说明
+    - generic: 其他要求
+    - generic: 可选
+    - textbox "例如：需要航拍镜头、避免快速剪辑…": 【测试】原台词逐字保留，不增加事实。只有一人一部手机，没有助手、三脚架、稳定器或灯。只拍现有样柜，先给不需额外设备的拍法，禁止一人同时出镜与手持推镜。
+    - button "生成分镜脚本":
+      - text: 生成分镜脚本
+  - main:
+    - heading "分镜脚本" [level=2]
+    - button "继续创作":
+      - text: 继续创作
+    - button "在画布里改":
+      - text: 在画布里改
+    - button "继续对话":
+      - text: 继续对话
+    - button "复制":
+      - text: 复制
+    - button "下载":
+      - text: 下载
+    - article:
+      - heading "🎬 分镜脚本表" [level=1]
+      - table:
+        - rowgroup:
+          - row "镜号 景别 运镜 画面内容 台词/旁白 时长 拍摄要点":
+            - columnheader "镜号"
+            - columnheader "景别"
+            - columnheader "运镜"
+            - columnheader "画面内容"
+            - columnheader "台词/旁白"
+            - columnheader "时长"
+            - columnheader "拍摄要点"
+        - rowgroup:
+          - row "1 近景📸 固定 手机架在衣柜旁的凳子上，人站在衣柜正面，手搭在柜门把手上，看向镜头 买衣柜前，先别急着看颜色。 3s 手机竖屏放稳，人在画面中上部，手自然搭在把手上别僵硬":
+            - cell "1"
+            - cell "近景📸"
+            - cell "固定"
+            - cell "手机架在衣柜旁的凳子上，人站在衣柜正面，手搭在柜门把手上，看向镜头"
+            - cell "买衣柜前，先别急着看颜色。"
+            - cell "3s"
+            - cell "手机竖屏放稳，人在画面中上部，手自然搭在把手上别僵硬"
+          - row "2 中景📹 固定 人拉开柜门到最大角度，停住，柜门占据画面右侧约1/3 今天就在店里这个样柜上看一眼： 3s 柜门完全打开后停顿1秒，让观众看清柜门占据的空间范围":
+            - cell "2"
+            - cell "中景📹"
+            - cell "固定"
+            - cell "人拉开柜门到最大角度，停住，柜门占据画面右侧约1/3"
+            - cell "今天就在店里这个样柜上看一眼："
+            - cell "3s"
+            - cell "柜门完全打开后停顿1秒，让观众看清柜门占据的空间范围"
+          - row "3 特写🔍 固定 俯拍视角，拍打开的柜门边缘与地面的位置关系，可见地砖纹路作参照 柜门打开后，要占到哪儿； 3s 手机从衣柜侧上方往下拍，地砖纹路要清晰，能看出柜门占了多少地面空间":
+            - cell "3"
+            - cell "特写🔍"
+            - cell "固定"
+            - cell "俯拍视角，拍打开的柜门边缘与地面的位置关系，可见地砖纹路作参照"
+            - cell "柜门打开后，要占到哪儿；"
+            - cell "3s"
+            - cell "手机从衣柜侧上方往下拍，地砖纹路要清晰，能看出柜门占了多少地面空间"
+          - row "4 中景📹 固定 人蹲下，手抓住衣柜下层抽屉把手，准备往外拉 无 2s 蹲下动作自然，手机保持竖屏固定在原位，人物在画面中央偏上":
+            - cell "4"
+            - cell "中景📹"
+            - cell "固定"
+            - cell "人蹲下，手抓住衣柜下层抽屉把手，准备往外拉"
+            - cell "无"
+            - cell "2s"
+            - cell "蹲下动作自然，手机保持竖屏固定在原位，人物在画面中央偏上"
+          - row "5 特写🔍 固定 抽屉被完全拉出，拍抽屉前端与柜体的距离，能看到抽屉底部与地面的高度 抽屉拉出来，前面还剩多少位置。 4s 拉到底后停住2秒，让观众看清抽屉占据的纵深空间，不要晃":
+            - cell "5"
+            - cell "特写🔍"
+            - cell "固定"
+            - cell "抽屉被完全拉出，拍抽屉前端与柜体的距离，能看到抽屉底部与地面的高度"
+            - cell "抽屉拉出来，前面还剩多少位置。"
+            - cell "4s"
+            - cell "拉到底后停住2秒，让观众看清抽屉占据的纵深空间，不要晃"
+          - row "6 近景📸 固定 人站起身，对着镜头，手指向旁边的衣柜（手势指向画面右侧或左侧） 把自己家的门、床和过道位置记下来， 4s 手指方向要明确，表情自然像在跟人聊天，不要念稿感":
+            - cell "6"
+            - cell "近景📸"
+            - cell "固定"
+            - cell "人站起身，对着镜头，手指向旁边的衣柜（手势指向画面右侧或左侧）"
+            - cell "把自己家的门、床和过道位置记下来，"
+            - cell "4s"
+            - cell "手指方向要明确，表情自然像在跟人聊天，不要念稿感"
+          - row "7 中景📹 固定 人侧身站在衣柜旁，用手比划柜门打开的轨迹，或用手掌测量抽屉与地面的距离 到店对着样柜试一试。 3s 手部动作要清楚，是在\"试\"的动作，不是指指点点":
+            - cell "7"
+            - cell "中景📹"
+            - cell "固定"
+            - cell "人侧身站在衣柜旁，用手比划柜门打开的轨迹，或用手掌测量抽屉与地面的距离"
+            - cell "到店对着样柜试一试。"
+            - cell "3s"
+            - cell "手部动作要清楚，是在\"试\"的动作，不是指指点点"
+          - row "8 近景📸 固定 人回到正面面对镜头，双手自然放下或轻搭在柜门上 款式喜欢，还得在自己家用得顺手。 3s 收尾时表情放松，像跟邻居说话的语气，别着急结束":
+            - cell "8"
+            - cell "近景📸"
+            - cell "固定"
+            - cell "人回到正面面对镜头，双手自然放下或轻搭在柜门上"
+            - cell "款式喜欢，还得在自己家用得顺手。"
+            - cell "3s"
+            - cell "收尾时表情放松，像跟邻居说话的语气，别着急结束"
+          - row "9 特写🔍 固定 空镜：拍衣柜的品牌标识或柜门纹理细节，停留2秒后画面自然结束 无 2s 补足时长用，拍个衣柜局部特写，可以是木纹、把手或柜门接缝处，体现质感":
+            - cell "9"
+            - cell "特写🔍"
+            - cell "固定"
+            - cell "空镜：拍衣柜的品牌标识或柜门纹理细节，停留2秒后画面自然结束"
+            - cell "无"
+            - cell "2s"
+            - cell "补足时长用，拍个衣柜局部特写，可以是木纹、把手或柜门接缝处，体现质感"
+          - row "10 中景📹 固定 人后退半步,双手叉腰或自然下垂,看向镜头,背景能看到完整衣柜 无 3s 最后的停留镜头,保持画面稳定,人物自然站立,让观众看清展厅环境":
+            - cell "10"
+            - cell "中景📹"
+            - cell "固定"
+            - cell "人后退半步,双手叉腰或自然下垂,看向镜头,背景能看到完整衣柜"
+            - cell "无"
+            - cell "3s"
+            - cell "最后的停留镜头,保持画面稳定,人物自然站立,让观众看清展厅环境"
+      - separator
+      - heading "🎥 拍摄顺序建议" [level=2]
+      - table:
+        - rowgroup:
+          - row "拍摄批次 包含镜号 机位/场景 一次布置能拍完的理由":
+            - columnheader "拍摄批次"
+            - columnheader "包含镜号"
+            - columnheader "机位/场景"
+            - columnheader "一次布置能拍完的理由"
+        - rowgroup:
+          - row "批次1 1、2、6、7、8、10 手机架在衣柜正前方1.5米处的凳子上,人站在衣柜前 这6个镜头都是人在衣柜正面说话或做动作,机位完全一致,一次布置手机位置后连续拍完,只需按台词顺序做不同动作":
+            - cell "批次1"
+            - cell "1、2、6、7、8、10"
+            - cell "手机架在衣柜正前方1.5米处的凳子上,人站在衣柜前"
+            - cell "这6个镜头都是人在衣柜正面说话或做动作,机位完全一致,一次布置手机位置后连续拍完,只需按台词顺序做不同动作"
+          - row "批次2 3 手机移到衣柜侧上方,俯拍角度对准地面 单独拍柜门占地的俯拍特写,需要换机位到衣柜侧面往下拍,可以把手机放在衣柜顶部边缘往下伸":
+            - cell "批次2"
+            - cell "3"
+            - cell "手机移到衣柜侧上方,俯拍角度对准地面"
+            - cell "单独拍柜门占地的俯拍特写,需要换机位到衣柜侧面往下拍,可以把手机放在衣柜顶部边缘往下伸"
+          - row "批次3 4、5 手机放回正面位置(与批次1相同),或稍低一点对准抽屉高度 拍蹲下拉抽屉的两个镜头,机位与批次1基本一致或略低,可以接着批次1的位置微调":
+            - cell "批次3"
+            - cell "4、5"
+            - cell "手机放回正面位置(与批次1相同),或稍低一点对准抽屉高度"
+            - cell "拍蹲下拉抽屉的两个镜头,机位与批次1基本一致或略低,可以接着批次1的位置微调"
+          - row "批次4 9 手机靠近衣柜,对准柜门局部 空镜补时长,拍衣柜木纹或把手特写,手持手机靠近拍即可,最后拍":
+            - cell "批次4"
+            - cell "9"
+            - cell "手机靠近衣柜,对准柜门局部"
+            - cell "空镜补时长,拍衣柜木纹或把手特写,手持手机靠近拍即可,最后拍"
+      - separator
+      - heading "🧰 拍摄清单" [level=2]
+      - heading "这条片子要带的器材" [level=3]
+      - list:
+        - strong: 手机
+        - text: （全片使用）：拍摄全部10个镜头
+        - strong: 凳子或纸箱
+        - text: （用作临时手机支架）：镜号1、2、4、5、6、7、8、10需要固定机位,把手机靠在凳子上或摞起来的纸箱上保持稳定
+      - heading "用不上的" [level=3]
+      - list:
+        - strong: 稳定器
+        - text: ：全片固定镜头,不需要
+        - strong: 灯光
+        - text: ：店里自然光或日常照明即可,白天拍或开店内灯
+        - strong: 三脚架
+        - text: ：没有就用凳子替代
+        - strong: 收音设备
+        - text: ：手机自带麦克风够用,店内环境安静
+      - heading "道具与场地" [level=3]
+      - list:
+        - strong: 衣柜样柜
+        - text: （现有）：必须是能打开柜门、能拉出抽屉的款式
+        - strong: 店铺展厅
+        - text: （现有场地）：背景干净,光线充足,地面有地砖纹路最好(作为空间参照)
+        - strong: 无需额外道具
+        - text: ：不需要卷尺、标签、其他人员
+      - separator
+      - heading "⚠️ 这条片子最容易翻车的 3 个地方" [level=2]
+      - heading "1. 【风险】手机放不稳,画面歪斜或中途晃动" [level=3]
+      - paragraph:
+        - strong: →【怎么避】
+        - text: 拍摄前先用凳子或纸箱把手机垫到合适高度(镜头中心对准人的胸口位置),手机背面靠墙或靠柜子侧面,拍之前录3秒测试画面看稳不稳,稳了再正式拍。每次换机位都重新测试。
+      - heading "2. 【风险】柜门或抽屉拉开后,画面里看不清占了多少空间,观众get不到重点" [level=3]
+      - paragraph:
+        - strong: →【怎么避】
+        - text: 镜号3(柜门俯拍)必须拍到地砖纹路或地面参照物,让观众能数出"占了几块砖的距离";镜号5(抽屉拉出)要拍到抽屉前端与柜体的距离,最好画面里能看到旁边的床或其他家具作对比。拍完回放检查,看不清就补拍。
+      - heading "3. 【风险】口播时念稿感太重,或动作和台词对不上" [level=3]
+      - paragraph:
+        - strong: →【怎么避】
+        - text: 拍之前把98字台词在心里过3遍,知道哪句话配哪个动作。拍的时候不要盯着提词器念,眼睛看镜头(把镜头想象成来店里的顾客),用跟人聊天的语气说。动作先做到位再说台词,比如镜号2先把柜门拉开停住,再说"今天就在店里这个样柜上看一眼"。拍完检查,不自然就重拍,别凑合。
+    - generic: 系统核对
+    - generic: 10 个镜头
+    - generic: 合计 30s / 目标 30s
+    - generic: 特写 30%
+    - generic: 运动镜头 0%
+    - generic: 最长 4s
+    - paragraph: 时长、台词语速、景别配比、镜头长度都在标准范围内，可以照着拍。
+    - paragraph:
+      - text: 有 1 处可能踩禁忌，发布前改一下
+    - list:
+      - text: 最好
+      - generic: 广告法红线，可以换成：说具体事实："开了 9 年""一天卖 300 串"
+    - button "让 AI 改掉"
+    - paragraph: 继续创作 · 内容自动带入
+    - button "收藏到素材库":
+      - text: 收藏到素材库
+    - button "这份结果里有 3 条，只带其中几条？":
+      - text: 这份结果里有 3 条，只带其中几条？
+    - button "审稿优化":
+      - generic: 审稿优化
+    - button "标题封面":
+      - generic: 标题封面
+    - button "更多板块":
+      - generic: 更多板块
+- alert

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { getActiveProfileId, onActiveProfileChange, setActiveProfileId } from '@/lib/active-profile';
+import { postSafely } from '@/lib/safe-post';
 
 interface UserProfile {
   id: string
@@ -59,7 +60,7 @@ export default function ProfilesPage() {
     if (!await confirmDialog('确定要删除这个档案吗？', { tone: 'danger', confirmText: '删除', title: '确认删除' })) return
 
     try {
-      const res = await fetch(`/api/profiles?id=${id}`, {
+      const res = await postSafely(`/api/profiles?id=${id}`, {
         method: 'DELETE'
       })
 

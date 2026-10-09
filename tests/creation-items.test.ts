@@ -3,15 +3,31 @@
  */
 import { describe, it, expect } from 'vitest';
 import { splitCreationItems, selectionBody, itemsNoun } from '@/lib/creation-items';
-import { buildCreationHandoff } from '@/lib/creation-flow';
+import { buildCreationHandoff, creationScript } from '@/lib/creation-flow';
 import { readCode } from './helpers/source';
+
+it('分镜的表格、自检、拍摄顺序和清单是同一作品的组成部分', () => {
+  const report = '## 1. 分镜表\n| 镜头 | 台词 |\n| 1 | 先确认预算 |\n## 2. 节奏自检\n27个镜头\n## 3. 拍摄顺序建议\n按场地集中拍摄\n## 4. 拍摄清单\n手机和卷尺\n## 5. 这条片子最容易翻车的3个地方\n避免镜头抖动';
+  expect(splitCreationItems(report).items).toHaveLength(0);
+  expect(splitCreationItems('## 建议1：多拍备用素材\n不同角度\n## 建议2：现场随机应变\n记录真实反应').items).toHaveLength(2);
+});
+
+it('审稿报告的五个章节不会成为五份候选脚本，后续仍带完整优化稿', () => {
+  const report = '# 1. 总评\n台词存在格式问题\n# 2. 逐维度打分\n口播得分\n# 3. 问题清单\n镜头需要调整\n# 4. 优化后的完整脚本\n## 【镜头1】0-5秒\n台词：预算8000如何配齐客厅。\n## 【镜头2】5-20秒\n台词：先确认户型和风格。\n# 5. 纯文字文案\n预算8000如何配齐客厅。';
+  const script = creationScript('review', report);
+  expect(splitCreationItems(script).items).toHaveLength(0);
+  const payload = buildCreationHandoff('review', 'storyboard', report, { topic: '按预算配全屋', workId: 'existing-work' });
+  expect(payload.scriptContent).toContain('先确认户型和风格');
+  expect(payload.scriptContent).not.toContain('逐维度打分');
+  expect(payload.topic).toBe('按预算配全屋');
+});
 
 /** 自由对话里结合濮阳热点出选题，线上原样（节选） */
 const PUYANG = `根据濮阳最近一周（10月1日前后）的热点信息，我给你出几个爆款选题：
 
 ## 基于濮阳近期热点的爆款选题
 
-### 1. 【流量型·聊观点】成本选题+地域对立
+### 1. 【流量型·地域差异】成本选题+地域对立
 **选题：** 国庆假期濮阳人都往哪儿扎堆？外地人以为的VS本地人真去的
 **钩子：** 国庆七天濮阳最火的地方，外地人全猜错了
 
@@ -68,7 +84,7 @@ describe('拆成一条一条', () => {
       '国庆濮阳免费开放的5个地方，最后一个90%的人不知道',
     ]);
     expect(p.items[0].kind).toBe('topic');
-    expect(p.items[0].label).toBe('【流量型·聊观点】成本选题+地域对立');
+    expect(p.items[0].label).toBe('【流量型·地域差异】成本选题+地域对立');
     expect(p.footer).toMatch(/我推荐先拍哪个/);
     expect(p.items[2].body).not.toMatch(/我推荐/);
     expect(p.intro).toMatch(/根据濮阳最近一周/);

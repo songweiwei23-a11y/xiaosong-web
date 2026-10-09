@@ -9,8 +9,8 @@ import { FeedbackHost } from '@/components/ui/feedback';
 import { ClipboardFallback } from '@/components/ui/ClipboardFallback';
 
 export const metadata: Metadata = {
-  title: '开物 - AI短视频脚本生成',
-  description: '结合编导知识库与账号档案，从创作方向、选题、脚本、分镜到视频拆解和跨行业二创，板块互通、结果一键带去下一步，好内容收进素材库。',
+  title: '开物 - 懂编导的 AI 短视频搭档',
+  description: '懂编导的 AI 短视频搭档：100 条编导方法、约 29 万字符编导资料，结合账号档案与人设事实卡，从创作方向、选题、脚本、分镜到拍摄交付包和发布数据复盘，板块互通、结果一键带去下一步，好内容收进素材库；高阶自由对话能出方案、做带出处的深度研究报告。',
 };
 
 // 在 React 接管前就把主题类名打上，否则首屏会先渲染成另一套配色再跳变。

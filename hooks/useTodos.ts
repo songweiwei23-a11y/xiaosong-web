@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { sortTodos, type Todo } from "@/lib/todos";
+import { postSafely } from "@/lib/safe-post";
 
 /**
  * 首页待办的数据和操作。样式归组件，这里只管增删改和失败回退。
@@ -40,7 +41,7 @@ export function useTodos() {
     const text = content.trim();
     if (!text) return false;
     try {
-      const r = await fetch("/api/todos", {
+      const r = await postSafely("/api/todos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text, dueAt }),

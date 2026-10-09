@@ -95,7 +95,7 @@ describe('二创各方案继续创作', () => {
       expect(continuationRules(task)).toContain('不是已核实事实');
     }
     expect(continuationRules('storyboard')).toContain('台词不要改写');
-    expect(continuationRules('topic')).toContain('承接了原方案的哪个点');
+    expect(continuationRules('topic')).toContain('承接了原文哪一处');
   });
 });
 

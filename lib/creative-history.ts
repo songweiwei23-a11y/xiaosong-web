@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROFILE_UUID } from '@/lib/profile-history';
 import { historyProfileFilter } from '@/lib/profile-history';
 
-export const DURABLE_CREATIVE_TASKS = new Set(['拆解爆款', '跨行业二创', '创作方向']);
+export const DURABLE_CREATIVE_TASKS = new Set(['拆解爆款', '跨行业二创', '创作方向', '内容规划']);
 export type CreativeHistoryInput = {
   id: string; taskType: string; profileId: string | null;
   ownerId?: string;

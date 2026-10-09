@@ -1,0 +1,89 @@
+[
+  {
+    "id": "06-1",
+    "board": "账号定位（快速版）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "没做过定位的串串店第一次做账号定位",
+    "ok": true,
+    "ms": 146370,
+    "promptChars": 22223,
+    "answerChars": 5562,
+    "auto": {
+      "issues": [
+        "taboo:「最好」— 广告法红线",
+        "taboo:「最大」— 广告法红线"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 49903,
+        "completion_tokens": 6167,
+        "total_tokens": 56070,
+        "latency": 132.028,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 141.700788
+      }
+    }
+  },
+  {
+    "id": "06-3",
+    "board": "账号定位（快速版）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "没做过定位的串串店第一次做账号定位",
+    "ok": true,
+    "ms": 147700,
+    "promptChars": 22223,
+    "answerChars": 5789,
+    "auto": {
+      "issues": [
+        "taboo:「极致」— 广告法红线",
+        "taboo:「最好」— 广告法红线",
+        "taboo:「南乐第一」— 广告法红线",
+        "taboo:「最大」— 广告法红线",
+        "taboo:「最强」— 广告法红线"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 49904,
+        "completion_tokens": 6284,
+        "total_tokens": 56188,
+        "latency": 139.321,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 144.643721
+      }
+    }
+  },
+  {
+    "id": "06-2",
+    "board": "账号定位（快速版）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "没做过定位的串串店第一次做账号定位",
+    "ok": true,
+    "ms": 151250,
+    "promptChars": 22223,
+    "answerChars": 6254,
+    "auto": {
+      "issues": [
+        "taboo:「最好」— 广告法红线",
+        "taboo:「最大」— 广告法红线"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 49904,
+        "completion_tokens": 6698,
+        "total_tokens": 56602,
+        "latency": 142.467,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 147.862192
+      }
+    }
+  }
+]

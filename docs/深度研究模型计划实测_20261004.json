@@ -1,0 +1,11 @@
+{
+  "time": "2026-10-04T08:17:03.355Z",
+  "ok": true,
+  "planParsed": true,
+  "questions": 4,
+  "title": "2026年本地家具门店短视频营销策略研究",
+  "elapsedMs": 8651,
+  "terminal": "workflow_finished",
+  "error": null,
+  "scope": "调用正式Dify模型，仅拟定公开主题的计划，不执行搜索，不修改网站用户创作历史"
+}

@@ -1,0 +1,95 @@
+{
+  "time": "2026-10-01T16:31:49.496Z",
+  "tests": [
+    {
+      "name": "视觉识别测试.png:六附件上传成功",
+      "passed": true
+    },
+    {
+      "name": "正文识别测试.txt:六附件上传成功",
+      "passed": true
+    },
+    {
+      "name": "Word识别测试.docx:六附件上传成功",
+      "passed": true
+    },
+    {
+      "name": "表格识别测试.xlsx:六附件上传成功",
+      "passed": true
+    },
+    {
+      "name": "PPT识别测试.pptx:六附件上传成功",
+      "passed": true
+    },
+    {
+      "name": "PDF识别测试.pdf:六附件上传成功",
+      "passed": true
+    },
+    {
+      "name": "六附件读取且不联网: HTTP成功",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "六附件读取且不联网: 分支执行与回答正确",
+      "passed": true,
+      "searches": 0,
+      "answer": "1. **图片颜色**：左红、中绿、右蓝\n\n2. **TXT暗号**：松果7319；**预算**：24680元\n\n3. **Word暗号**：梧桐5826\n\n4. **Excel amount总和**：130 + 270 = 400\n\n5. **PPT validation code**：CEDAR-9462\n\n6. **PDF validation code**：MAPLE-8047",
+      "errors": [],
+      "nodes": [
+        {
+          "title": "开始",
+          "status": "succeeded"
+        },
+        {
+          "title": "联网授权闸门",
+          "status": "succeeded"
+        },
+        {
+          "title": "筛选文档附件",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮未联网",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮联网参考",
+          "status": "succeeded"
+        },
+        {
+          "title": "读取文档正文",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 2",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 5",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 4",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 3",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索",
+          "status": "succeeded"
+        },
+        {
+          "title": "Claude 编导助手",
+          "status": "succeeded"
+        },
+        {
+          "title": "输出",
+          "status": "succeeded"
+        }
+      ]
+    }
+  ]
+}

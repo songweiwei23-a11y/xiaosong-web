@@ -101,7 +101,7 @@ describe('经营品类单列一行，定位里当硬约束', () => {
 
   it('从赛道、产品品类里取出具体品类，「餐饮」「美食烹饪」这种大类不算', () => {
     expect(businessLines(live)).toEqual(['川味烧烤', '川味串串火锅', '川菜']);
-    expect(businessLines({ ...live, product_category: ['川菜', '餐饮', '冷饮'] })).toEqual(['川菜', '冷饮', '川味烧烤', '川味串串火锅']);
+    expect(businessLines({ ...live, product_category: ['川菜', '餐饮', '冷饮'] })).toEqual(['川菜', '冷饮']);
     expect(businessLines({ account_track: '美食烹饪、川菜' })).toEqual(['川菜']);
     expect(businessLines({ account_track: ['美食烹饪'], product_category: ['餐饮'] })).toEqual([]);
   });

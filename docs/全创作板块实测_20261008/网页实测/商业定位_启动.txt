@@ -1,0 +1,133 @@
+2026-10-08T03:58:11.149Z
+https://www.biandao.icu/dashboard/business-positioning
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - heading "商业定位" [level=1]
+  - paragraph: 把「靠什么赚钱」拆到能执行：卖什么、卖多少钱、客人从刷到视频到付钱要走哪几步、凭什么信你。
+  - list:
+    - listitem: · 列出现在就能卖的产品或服务，以及各自的客单价和决策难度
+    - listitem: · 把成交路径一步步拆开，标明每一步会流失什么人
+    - listitem: · 给出能拍成画面的信任证据清单，没有的会告诉你怎么攒
+    - listitem: · 排出变现型内容的占比和方向，以及起步阶段怎么定价
+  - paragraph:
+    - text: 当前档案：测试_青禾家具店_全板块验收20261008
+    - button "编辑档案"
+  - paragraph:
+    - text: 还没有生成过账号定位。可以直接做，但先出一份六维地基会更准。
+    - button "去生成"
+  - generic: 补充说明（选填）
+  - textbox "这次特别想解决什么？比如：想把客单价提上去、只做同城、想先跑通团购": 【测试】仅有沙发、床、衣柜三个经营品类，家居装修是内容赛道；未核实客单价、毛利、销量、定制、免费测量、配送安装与售后，不把它们当既有事实。老板一人手机、样柜演示，请明确已确认/待验证/建议，不虚构客户。
+  - generic: 内容配比：系统推荐（刚起号）
+  - button "这次改一下"
+  - generic: 流量型 60%
+  - generic: 人设型 25%
+  - generic: 变现型 15%
+  - button "正在拆解变现路径… 已用 0:00" [disabled]
+  - paragraph: 这份方案要过一遍知识库再逐段写，全文大约 5 分钟。开头十几秒在检索知识库，屏幕上还不出字，是正常的。
+  - heading "商业定位方案" [level=2]
+- alert

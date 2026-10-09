@@ -24,15 +24,15 @@ beforeEach(() => {
   state.getUser.mockResolvedValue({ data: { user: { id: 'owner' } }, error: null });
 });
 
-function database(subscription: unknown, quota: unknown) {
+function database(subscription: unknown, quota: unknown, failures: { query?: unknown; insert?: unknown } = {}) {
   const filters: [string, unknown][] = [];
   const inserts: unknown[] = [];
   state.from.mockImplementation((table: string) => {
     const builder = {
       select: vi.fn(() => builder),
       eq: vi.fn((key: string, value: unknown) => { filters.push([key, value]); return builder; }),
-      maybeSingle: vi.fn(async () => ({ data: table === 'subscriptions' ? subscription : quota })),
-      insert: vi.fn(async (row: unknown) => { inserts.push(row); return { error: null }; }),
+      maybeSingle: vi.fn(async () => ({ data: table === 'subscriptions' ? subscription : quota, error: failures.query })),
+      insert: vi.fn(async (row: unknown) => { inserts.push(row); return { error: failures.insert ?? null }; }),
     };
     return builder;
   });
@@ -111,6 +111,17 @@ describe.each([
 });
 
 describe('认证成功后的权限和配额不变', () => {
+  it('额度/订阅查询失败时拒绝生成，不按新用户或免费档放行', async () => {
+    database(null, null, { query: { code: 'connection_error' } });
+    const result = await requireUserWithQuota('script');
+    expect(result.ok).toBe(false);
+    expect(result.response?.status).toBe(503);
+  });
+
+  it('新建额度失败时拒绝生成，不静默放行', async () => {
+    database(null, null, { insert: { code: 'permission_denied' } });
+    expect((await requireUserWithQuota('script')).response?.status).toBe(503);
+  });
   it('普通 API 返回经过认证的用户，不访问特权数据库', async () => {
     expect(await requireUser()).toEqual({ ok: true, userId: 'owner' });
     expect(state.service).not.toHaveBeenCalled();

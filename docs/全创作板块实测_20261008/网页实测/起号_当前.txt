@@ -1,0 +1,373 @@
+2026-10-08T04:41:18.221Z
+https://www.biandao.icu/dashboard/growth
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - heading "起号" [level=1]
+  - paragraph: 起号 36+1 计决定「拍什么套路」，开篇 36 计决定「前三秒怎么说」。 两套都按你的真实资源来挑，不是把方法摆出来让你自己猜。
+  - button "起号打法37 计"
+  - button "开篇钩子36 张卡"
+  - paragraph:
+    - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+    - link "换一个":
+      - /url: /dashboard/profiles
+  - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+  - paragraph:
+    - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+    - link "在档案里调整":
+      - /url: /dashboard/profiles
+  - paragraph:
+    - text: 还没生成创作简报，这次只能用档案里的字段。
+    - link "去生成":
+      - /url: /dashboard/creative-brief
+    - text: （做完选题、脚本、分镜都会自动用上）
+  - paragraph: 默认按你的资源条件从 37 计里挑。知识库的选择矩阵是这样分的：
+  - list:
+    - listitem: · 单人、低预算、专业强 → 行业避坑、内幕揭秘、冷知识…
+    - listitem: · 有产品 / 门店 → 情境还原、以物换物、正确做法VS错误做法…
+    - listitem: · 有表演与搭档 → 一人分饰多角、角色扮演、整蛊…
+    - listitem: · 有真实项目过程 → 对比改造、接受网友挑战、互联网嘴替/替网友做…
+    - listitem: · 擅长故事 / 文案 → 借物喻人、一句话设定故事感、加入人物关系…
+  - button "✨ 让 AI 先推荐几个，我再选" [disabled]
+  - button "或者从 37 计里自己圈定"
+  - generic: 补充说明（选填）
+  - textbox "比如：老板不太愿意出镜、这阵子只有周末能拍": 【测试】一人手机，基础剪辑，家具展厅真实样柜；每周总共只有2小时集中拍摄。不能安排顾客演戏，不编客户故事、价格、厘米标准或免费服务。请给低成本可持续起号安排，区分建议与事实，不承诺涨粉或成交。
+  - generic: 内容配比：系统推荐（刚起号）
+  - button "这次改一下"
+  - generic: 流量型 65%
+  - generic: 人设型 25%
+  - generic: 变现型 10%
+  - button "正在挑打法… 1:42" [disabled]
+  - heading "起号方案" [level=2]
+  - heading "🚀 起号方案·青禾家具店" [level=1]
+  - separator
+  - heading "📌 先说结论" [level=2]
+  - list:
+    - paragraph:
+      - strong: 建议主攻
+      - text: ：
+      - strong: 第15计·正确做法VS错误做法
+      - text: 。两个理由：一是店里有真实样柜能当场演示，柜门、抽屉拉开位置这事儿一演就懂，不靠口才；二是它自带流量基因（对比型内容天然吸引停留）又能落变现（客人看完评论"我家能放吗"，自然引到店）
+    - paragraph:
+      - strong: 备选
+      - text: ：
+    - list:
+      - strong: 第22计·行业避坑
+      - text: （流量型为主，有变现潜力）：县城装修家庭怕被坑，"挑衣柜这3个坑别踩"这类话题评论区互动强。什么情况切：主攻的15计拍了10条，数据稳定在单条300播放以上但咨询不多时——说明流量有了,信任还差一层,用避坑补专业度
+      - strong: 第7计·一句话设定故事感
+      - text: （人设型）：老板一人拍,没有员工和客户配合,但可以自己做事时口述目标和困境("今天要把这批新到的床摆进展厅,位置只剩那一块了")。什么情况切：第20条后流量稳定、开始补人设时用,一周1条
+      - strong: 第19计·对比改造
+      - text: （变现型）：如果后期有客户同意拍家里改造过程（旧家具→量尺寸→新家具进场→摆放效果）,这计最能证明"我帮他解决了"。什么情况切：有了3个以上真实客户案例、拍摄同意书都签了再启动
+    - paragraph:
+      - strong: 明确不做
+      - text: ：
+    - list:
+      - strong: 第35计·街头采访
+      - text: ：县城熟人社会,街上随机拦人拍摄容易引起反感;一人拍摄没法同时持稳定器、收音和提问;路人正脸需打码,剪辑成本高
+      - strong: 第9计·一人分饰多角
+      - text: ：虽然一人能拍,但这计需要表演能力和剪辑节奏感,档案显示只有基础剪辑,演砸了会很尬
+    - paragraph:
+      - strong: 多久能看出跑没跑通
+      - text: ：
+    - list:
+      - strong: 20条看初步信号
+      - text: （约2-3周）：单条稳定拿到200-300播放,评论区有人问"我家X平能放吗""到店在哪" = 选题和钩子对了
+      - strong: 到一千粉、流量稳定
+      - text: （约30-40条,1.5-2个月）：连续5条以上作品播放都在300+,主页访问和私信咨询开始出现 = 基本跑通,可以开始补人设和变现内容
+      - strong: 警戒线
+      - text: ：前20条平均播放<100,评论区没人问尺寸只有泛泛夸赞 = 钩子或场景有问题,要回到第6条重新测开篇
+  - separator
+  - heading "🧮 起号期内容配比" [level=2]
+  - heading "到一千粉、流量稳定之前" [level=3]
+  - paragraph:
+    - text: 按定位方案已定的配比：
+    - strong: 流量型60% + 人设型25% + 变现型15%
+  - paragraph:
+    - strong: 为什么是这个比例
+    - text: ：
+  - list:
+    - strong: 流量型占大头(60%)
+    - text: ：刚起号,0粉状态,第一任务是让算法认识你、给你稳定流量池。主攻的第15计·正确做法VS错误做法本身就是流量打法,拍尺寸演示这事儿覆盖所有本地装修人群
+    - strong: 人设型占1/4(25%)
+    - text: ：县城买大件看人,光有流量不够,要让人记住"这是个实在的老板"。但起号期不能一上来就讲故事(没人认识你),所以从第5条开始、一周1条的节奏慢慢补
+    - strong: 变现型占小头(15%)
+    - text: ：第一周就有,但只占15%——因为主攻的演示系列本身就在解决痛点(客人最怕尺寸不合适),评论区自然会有人问"我能到店看吗",这时私信引导即可,不用每条都硬推成交
+  - heading "每一种用哪一计、怎么讲、结尾要什么" [level=3]
+  - table:
+    - rowgroup:
+      - row "类型 用哪一计 配什么脚本结构 结尾行动指令（只要一个）":
+        - columnheader "类型"
+        - columnheader "用哪一计"
+        - columnheader "配什么脚本结构"
+        - columnheader "结尾行动指令（只要一个）"
+    - rowgroup:
+      - row "流量型60% 第15计·正确做法VS错误做法 教知识·解题型（场景难题→放大危机→低成本解决→操作步骤） 评论：\"你家卧室多大?评论区说,我帮你看看能不能放\"":
+        - cell "流量型60%":
+          - strong: 流量型60%
+        - cell "第15计·正确做法VS错误做法"
+        - cell "教知识·解题型（场景难题→放大危机→低成本解决→操作步骤）"
+        - cell "评论：\"你家卧室多大?评论区说,我帮你看看能不能放\"":
+          - strong: 评论
+          - text: ："你家卧室多大?评论区说,我帮你看看能不能放"
+      - row "人设型25% 第7计·一句话设定故事感 讲故事·平凡英雄（普通人→一件不普通的小事→细节验证→感悟） 关注：\"明天接着拍,关注我别走丢\"":
+        - cell "人设型25%":
+          - strong: 人设型25%
+        - cell "第7计·一句话设定故事感"
+        - cell "讲故事·平凡英雄（普通人→一件不普通的小事→细节验证→感悟）"
+        - cell "关注：\"明天接着拍,关注我别走丢\"":
+          - strong: 关注
+          - text: ："明天接着拍,关注我别走丢"
+      - row "变现型15% 第15计·正确做法VS错误做法（同一计,但落点不同） 晒过程·火车节（起因带钩子→关键步骤→结果）,结尾落在成交理由上 私信/到店：\"想看实物的,评论区扣1我私信发你地址\"或\"店在XX路XX号,导航搜青禾家具\"":
+        - cell "变现型15%":
+          - strong: 变现型15%
+        - cell "第15计·正确做法VS错误做法（同一计,但落点不同）"
+        - cell "晒过程·火车节（起因带钩子→关键步骤→结果）,结尾落在成交理由上"
+        - cell "私信/到店：\"想看实物的,评论区扣1我私信发你地址\"或\"店在XX路XX号,导航搜青禾家具\"":
+          - strong: 私信/到店
+          - text: ："想看实物的,评论区扣1我私信发你地址"或"店在XX路XX号,导航搜青禾家具"
+  - paragraph:
+    - strong: 说明
+    - text: ：
+  - list:
+    - text: 流量型和变现型都用第15计,但
+    - strong: 讲法不同
+    - text: ——流量型按"教知识"讲,重点是"你也能学会怎么挑",结尾要评论互动;变现型按"晒过程"讲,重点是"我这有真货能演示",结尾直接引到店
+    - listitem: 人设型从第5条开始穿插,一周1条,不抢主力形式的量
+  - heading "过线之后(一千粉、流量稳定)" [level=3]
+  - paragraph:
+    - strong: 比例调整为
+    - text: ：流量型40% + 人设型25% + 变现型35%
+  - paragraph:
+    - strong: 为什么这么调
+    - text: ：
+  - list:
+    - listitem: 流量型降到40%：算法已经认识你、标签稳定了,不需要每条都拼流量
+    - listitem: 人设型保持25%:信任这事儿细水长流,比例不变但要持续讲
+    - listitem: 变现型提到35%：这时主页有粉丝基础了,开始加大"我能帮你做什么""客户案例"这类直接推动成交的内容
+  - paragraph:
+    - strong: 补什么
+    - text: ：
+  - list:
+    - listitem: 启动第19计·对比改造(如果有客户同意拍),每月2条
+    - listitem: 启动第22计·行业避坑,一周1条,补专业度和信任
+  - heading "怎么对上已定的内容定位" [level=3]
+  - paragraph:
+    - text: 定位里说
+    - strong: 主力形式是晒过程(60%)
+    - text: ",因为有真实样柜可演示、起号快、15-30秒视频最适合——主攻的第15计·正确做法VS错误做法就是晒过程,每条都是\"拉开柜门/抽屉→量位置→告诉你怎么选\",完全契合。"
+  - paragraph:
+    - text: 定位里说
+    - strong: 主系列是《X个家具的隐藏设计,挡不挡门拉一下就知道》
+    - text: ——就是用第15计拍出来的,每集一件样柜,店里有沙发、床、衣柜至少能拍15-20条不重复。
+  - separator
+  - heading "🎯 主攻打法:第15计·正确做法VS错误做法" [level=2]
+  - heading "为什么是你能拍的(逐条核对真实资源)" [level=3]
+  - table:
+    - rowgroup:
+      - row "资源条件 档案里的 这一计需要什么 结论":
+        - columnheader "资源条件"
+        - columnheader "档案里的"
+        - columnheader "这一计需要什么"
+        - columnheader "结论"
+    - rowgroup:
+      - row "团队 一人全包 一人能拍——自己演示,手机架三脚架或找东西垫着拍 ✅ 能拍":
+        - cell "团队":
+          - strong: 团队
+        - cell "一人全包"
+        - cell "一人能拍——自己演示,手机架三脚架或找东西垫着拍"
+        - cell "✅ 能拍"
+      - row "设备 手机、基础剪辑 手机够用;剪辑只需要剪两段(错误+正确)拼一起,不需要复杂转场 ✅ 能拍":
+        - cell "设备":
+          - strong: 设备
+        - cell "手机、基础剪辑"
+        - cell "手机够用;剪辑只需要剪两段(错误+正确)拼一起,不需要复杂转场"
+        - cell "✅ 能拍"
+      - row "场地 店铺(县城家具展厅) 需要真实样柜——档案说\"现有样柜能开门、拉抽屉,沙发可以试坐\" ✅ 完美匹配":
+        - cell "场地":
+          - strong: 场地
+        - cell "店铺(县城家具展厅)"
+        - cell "需要真实样柜——档案说\"现有样柜能开门、拉抽屉,沙发可以试坐\""
+        - cell "✅ 完美匹配"
+      - row "擅长什么 没说擅长讲故事或表演 不靠口才,靠动作——拉开柜门这个动作本身就是内容,话不用多 ✅ 适合":
+        - cell "擅长什么":
+          - strong: 擅长什么
+        - cell "没说擅长讲故事或表演"
+        - cell "不靠口才,靠动作——拉开柜门这个动作本身就是内容,话不用多"
+        - cell "✅ 适合"
+      - row "时间 每周2小时集中拍摄 一条拍摄<10分钟(拍错误示范1分钟、正确示范1分钟、口播补一句),2小时能拍6-8条素材 ✅ 产能够":
+        - cell "时间":
+          - strong: 时间
+        - cell "每周2小时集中拍摄"
+        - cell "一条拍摄<10分钟(拍错误示范1分钟、正确示范1分钟、口播补一句),2小时能拍6-8条素材"
+        - cell "✅ 产能够"
+  - paragraph:
+    - strong: 核心理由
+    - text: ：这一计的本质是
+    - strong: 用对比降低理解成本
+    - text: ——不用你嘴上说"这个衣柜抽屉拉开会挡床",直接拉开给他看占多少位置,再拉开另一款对比,观众3秒就懂。县城装修家庭最怕的就是"买回去挡门、抽屉打不开",你店里有真货能当场演,这是天然优势。
+  - heading "结构公式(套到这个号上)" [level=3]
+  - paragraph:
+    - strong: 原公式
+    - text: ：错误示范 → 后果 → 正确示范 → 原理/适用条件
+  - paragraph:
+    - strong: 套到家具店
+    - text: ：
+  - list:
+    - strong: 错误示范
+    - text: (前5秒)：拉开一款衣柜的抽屉,镜头拍抽屉完全拉出后占的位置(比如占了50cm),口播"很多人挑衣柜只看柜门好不好看"
+    - strong: 后果
+    - text: (第6-8秒)：用脚或身体比划,"你看,抽屉一拉,人只能侧着过,卧室门都开不全"
+    - strong: 正确示范
+    - text: (第9-18秒)：切到另一款衣柜,拉开抽屉,占的位置明显少(比如只占30cm),"要挑这种抽屉拉开不超过XX(不说具体厘米,说"一个身位"或用手比划),过道才不堵"
+    - strong: 原理/适用条件
+    - text: (第19-25秒)："为什么?因为县城的房子卧室普遍X平(没数据就说"不大"),床、柜、床头柜一放,过道只剩一条缝。到店之前先量一下你家床到墙的距离,我帮你看"
+  - paragraph:
+    - strong: 时长
+    - text: ：25秒,符合档案里"惯用时长15-30秒"
+  - heading "配什么脚本讲(这一计管事件,话怎么讲配四大脚本)" [level=3]
+  - paragraph:
+    - strong: 配两种,按目的分
+    - text: ：
+  - heading "流量型(60%)配 教知识·解题型" [level=4]
+  - paragraph:
+    - strong: 结构
+    - text: ：场景难题 → 放大危机 → 低成本解决 → 操作步骤12345
+  - paragraph:
+    - strong: 落到这一计上
+    - text: ：
+  - list:
+    - listitem: 场景难题 = 错误示范("很多人挑衣柜只看柜门")
+    - listitem: 放大危机 = 后果("抽屉一拉,人只能侧着过")
+    - listitem: 低成本解决 = 正确示范("要挑这种抽屉拉开不超过一个身位的")
+    - listitem: 操作步骤 = 原理/适用条件("到店之前先量一下你家床到墙的距离")
+  - paragraph:
+    - strong: 结尾行动指令
+    - text: ："你家卧室多大?评论区说,我帮你看看能不能放"(要评论)
+  - paragraph:
+    - strong: 配它补上的是什么
+    - text: ：把流量入口做大——"怎么挑家具不踩坑"这个话题覆盖所有本地装修人群,不只是已经决定来你店的人
+  - heading "变现型(15%)配 晒过程·火车节" [level=4]
+  - paragraph:
+    - strong: 结构
+    - text: ：起因(带钩子)→ 关键步骤 → 结果
+  - paragraph:
+    - strong: 落到这一计上
+    - text: ：
+  - list:
+    - listitem: 起因(带
+- alert

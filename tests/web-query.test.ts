@@ -32,6 +32,20 @@ describe('联网搜索词', () => {
     expect(buildWebQuery('联网查一下', NOW).query).toBe('联网查一下');
   });
 
+  it('长问题保留后半段的技术限定和比较对象，仍限制搜索请求长度', () => {
+    const question = 'Dify Chatflow LLM memory conversation variables documentation ' + 'technical comparison '.repeat(4) + 'Vision high detail';
+    const result = buildWebQuery(question, NOW);
+    expect(result.query).toContain('Vision high detail');
+    expect(result.query.length).toBeGreaterThan(100);
+    expect(buildWebQuery('Dify documentation '.repeat(40), NOW).query.length).toBeLessThanOrEqual(280);
+  });
+
+  it('解释、分析后面仍可能是要查的对象，不能误删比较维度', () => {
+    const result = buildWebQuery('联网核查Dify官方LLM节点Memory，解释Vision high detail和会话变量的区别', NOW);
+    expect(result.query).toContain('Vision high detail');
+    expect(result.query).toContain('会话变量');
+  });
+
   it('按北京时间算日期：UTC 16 点已经是北京第二天', () => {
     expect(buildWebQuery('今天新闻', Date.parse('2026-09-30T16:30:00Z')).today).toBe('2026年10月1日');
   });

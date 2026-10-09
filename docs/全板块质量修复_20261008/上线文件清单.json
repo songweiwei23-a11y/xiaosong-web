@@ -1,0 +1,61 @@
+{
+  "time": "2026-10-08T07:46:30.619Z",
+  "scope": "11项源码文件：原10文件及网页复测补齐的标题页状态传递；输出规则、上下文、简报生成和二创提示词候选不发布；Dify不发布",
+  "files": [
+    {
+      "file": "lib/result-reconciliation.ts",
+      "sha256": "0db3695e71d60784921eb36fe2a25df171090d0e3a09202e00fc1862105d55dd",
+      "beforeSha256": null
+    },
+    {
+      "file": "lib/remark-autolink-boundary.ts",
+      "sha256": "8e36e8cb3ecf00cfd9b720aaf78ba31a8e1c3dfb812a49aaf2a3e3a0fe471acd",
+      "beforeSha256": null
+    },
+    {
+      "file": "lib/bounded-result-check.ts",
+      "sha256": "d2005d01637b1163b454166e6580452cae1efe169843a97b9bbca84608b9b887",
+      "beforeSha256": null
+    },
+    {
+      "file": "lib/review-verification.ts",
+      "sha256": "5c8af39d3533802e5aa04af4cc6bd154510bedb3c804094499031e51bb270d2b",
+      "beforeSha256": "3f35b2557f892a80846fe8fe2e22627f6aa639a1f154c0d4cb4f55e2817bf7af"
+    },
+    {
+      "file": "lib/dify-task.ts",
+      "sha256": "afe4b64ac8ccecd3bae5820eee11719ebe43b1d911ea8827d4af0c6f2e2a02fe",
+      "beforeSha256": "a094d7bef800f00ed3968dcb5ca6688767293c79ac9eac1949d8864163e878a7"
+    },
+    {
+      "file": "components/markdown.tsx",
+      "sha256": "6d9092bcc4db6ee8264bb801362a6da0142af3342202b0d9098fd9bada582404",
+      "beforeSha256": "00d7fb47651fc5b8b9a0fd8669a7b525ad0d1b58c4d3a458a94580fe862501b8"
+    },
+    {
+      "file": "app/api/dify/stream/route.ts",
+      "sha256": "670d58770c86a2184d259238b9ef64e79f946e3abf62040cfe126ca71d838aec",
+      "beforeSha256": "f2111c2ed39f19f75843005b10d3f6806b4a0e2c6b8d419cf488c99d2ad461df"
+    },
+    {
+      "file": "lib/creation-items.ts",
+      "sha256": "7795f13bfcc8b4785060c31eeca086bf8180a6be4ea31f5e7fe06537b20e29b0",
+      "beforeSha256": "d68498457034fcfa07708b2c220bcdae7c31cd302829367ab63a09858b793b60"
+    },
+    {
+      "file": "lib/profile-summary.ts",
+      "sha256": "14d069d81cc2ca5c55546ce06227d2ba788d34b54c1d6634e9be36c2e4e3f0e7",
+      "beforeSha256": "933a57b1835430c7c8af32fa2df2318b1321bc0bfb05ff09bbc509c648c285c8"
+    },
+    {
+      "file": "app/dashboard/creative-brief/page.tsx",
+      "sha256": "fb90606d2b35b8f07cc8e87a905839fcc65da1f61c3bfffbd19bdf7563b2cb7d",
+      "beforeSha256": "5c7113d5e417ac45a2a62b10075d2a4709367bd8d43a14788a86c0b21190d76c"
+    },
+    {
+      "file": "app/dashboard/title/page.tsx",
+      "sha256": "1ed76e2fd7dca9932fb1ec564690fd0a92d7a835c87280e32c47e25ed920a9e3",
+      "beforeSha256": "06000ac0baaa4acba2d09590c3d4f7b85bbe7650cec41b8f7d0c2f067e5be3b0"
+    }
+  ]
+}

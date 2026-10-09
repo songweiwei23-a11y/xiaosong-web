@@ -1,0 +1,191 @@
+{
+  "opening": {
+    "fields": [
+      {
+        "label": "开篇创作参考",
+        "value": "【原始创作方案】\n【视频主题】牛肉穿串前的真实备菜过程\n【创作方向】用真实工序让顾客了解切肉穿串，保持晒过程，不改成创业故事\n【目标人群】25-35岁关注食材的本地顾客\n【脚本类型】晒过程型\n【脚本结构】火车节\n【视频目的】人设型\n【视频时长】37秒\n【发布平台】视频号\n【内容风格】朴实接地气\n\n今"
+      },
+      {
+        "label": "比如：为什么我们家 60 多的自助敢用鲜切牛肉",
+        "value": "牛肉穿串前的真实备菜过程"
+      },
+      {
+        "label": "贴上现有的开头，AI 会告诉你问题在哪并给替代方案",
+        "value": "你看这串牛肉，从买回来到穿上串，中间得过我手多少次？"
+      }
+    ],
+    "generate": [
+      {
+        "disabled": false,
+        "text": "生成开篇钩子"
+      }
+    ],
+    "status": "已承接原方案并自动配置，可直接点击生成人设型 · 晒过程 · 视频号 · 37秒 · 25-35岁关注食材的本地顾客"
+  },
+  "script": {
+    "fields": [
+      {
+        "label": null,
+        "type": null,
+        "value": "视频号"
+      },
+      {
+        "label": "输入秒数",
+        "type": "number",
+        "value": "37"
+      },
+      {
+        "label": null,
+        "type": null,
+        "value": ""
+      },
+      {
+        "label": "或自定义...",
+        "type": "text",
+        "value": "美食烹饪、本地服务、川味烧烤、川味串串火锅、川菜"
+      },
+      {
+        "label": null,
+        "type": null,
+        "value": ""
+      },
+      {
+        "label": "或自定义...",
+        "type": "text",
+        "value": "25-35岁关注食材的本地顾客"
+      },
+      {
+        "label": null,
+        "type": null,
+        "value": "__auto__"
+      }
+    ],
+    "generate": [
+      {
+        "disabled": false,
+        "text": "生成专业脚本"
+      }
+    ],
+    "selected": [
+      "晒过程展示类内容，分享经历和成果",
+      "人设型",
+      "🎁盲盒型",
+      "🚂火车节",
+      "👥人群",
+      "⚡反差"
+    ],
+    "status": "已承接原方案并自动配置，可直接点击生成人设型 · 晒过程 · 视频号 · 37秒 · 25-35岁关注食材的本地顾客"
+  },
+  "remix": {
+    "generateEnabled": true,
+    "status": "已承接原方案并自动配置，可直接点击生成人设型 · 晒过程 · 视频号 · 37秒 · 25-35岁关注食材的本地顾客",
+    "url": "http://122.51.234.155/dashboard/remix"
+  },
+  "topic": {
+    "generateEnabled": true,
+    "resultChars": 3376,
+    "status": "已承接原方案并自动配置，可直接点击生成人设型 · 晒过程 · 视频号 · 37秒 · 25-35岁关注食材的本地顾客",
+    "url": "http://122.51.234.155/dashboard/topic"
+  },
+  "freeChat": {
+    "error": false,
+    "fields": [
+      {
+        "hasAudience": true,
+        "hasCurrentScript": true,
+        "hasDirection": true,
+        "hasDuration": true,
+        "hasReadyRequest": true,
+        "hasStructure": true,
+        "label": "自由输入…（Enter 发送，Shift+Enter 换行）",
+        "length": 4151
+      }
+    ],
+    "sendEnabled": true,
+    "url": "http://122.51.234.155/dashboard/free-chat"
+  },
+  "storyboard": {
+    "fields": [
+      {
+        "label": "例如：我要拍美食探店，先拍店门口招牌，再进店拍环境，然后特写拍菜品，最后拍我吃的反应",
+        "length": 140,
+        "value": "早上六点去市场买回来这块牛肉，现在下午三点半了，我准备切它。\n先看纹路，你看这个，横着切就老了。\n我师傅教我的，顺着纹路看，再下刀。\n这刀我用了九年，手感在这儿。\n切好肉,就一串串穿起来。这双手,一天下来全是肉味儿。\n在我这儿，肉是肉，串是串，不糊弄。\n关注我，明天拍红油怎么炒。"
+      },
+      {
+        "label": null,
+        "length": 3,
+        "value": "视频号"
+      },
+      {
+        "label": null,
+        "length": 3,
+        "value": "37秒"
+      }
+    ],
+    "generateEnabled": true,
+    "selected": [
+      "🔧晒过程",
+      "☀️明亮清新"
+    ],
+    "status": "已承接原方案并自动配置，可直接点击生成人设型 · 晒过程 · 视频号 · 37秒 · 25-35岁关注食材的本地顾客",
+    "url": "http://122.51.234.155/dashboard/storyboard",
+    "result": {
+      "generating": false,
+      "has37Seconds": true,
+      "history": [],
+      "length": 2437
+    }
+  },
+  "breakdown": {
+    "buttons": [
+      {
+        "disabled": false,
+        "text": "开始拆解"
+      }
+    ],
+    "fields": [],
+    "selected": [
+      "拆文案 / 方案"
+    ],
+    "status": "已承接原方案并自动配置，可直接点击生成人设型 · 晒过程 · 视频号 · 37秒 · 25-35岁关注食材的本地顾客",
+    "url": "http://122.51.234.155/dashboard/breakdown",
+    "result": {
+      "generating": false,
+      "hasAudience": true,
+      "hasDirection": true,
+      "historyButton": "历史记录（3）",
+      "length": 4240
+    }
+  },
+  "workResume": {
+    "button": false,
+    "fields": [
+      {
+        "label": "例如：普通人做短视频最容易踩的3个坑",
+        "value": "牛肉穿串前的真实备菜过程"
+      },
+      {
+        "label": null,
+        "value": "视频号"
+      },
+      {
+        "label": "输入秒数",
+        "value": "37"
+      },
+      {
+        "label": "或自定义...",
+        "value": "25-35岁关注食材的本地顾客"
+      }
+    ],
+    "selected": [
+      "晒过程展示类内容，分享经历和成果",
+      "人设型",
+      "🎁盲盒型",
+      "🚂火车节",
+      "👥人群",
+      "⚡反差"
+    ],
+    "status": "已承接原方案并自动配置，可直接点击生成人设型 · 晒过程 · 视频号 · 37秒 · 25-35岁关注食材的本地顾客",
+    "url": "http://122.51.234.155/dashboard/script?work=174f2a4f-0ee9-45b0-993f-e2af017c6983"
+  }
+}

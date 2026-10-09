@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Sparkles, Wand2 } from "lucide-react";
+import { ArrowRight, Check, Sparkles, Wand2, X } from "lucide-react";
 import { INDUSTRY_SAMPLES, REGISTER_URL, matchIndustry, type IndustrySample } from "@/lib/landing";
 import { track } from "@/lib/funnel";
 import { PhoneStory } from "./PhoneStory";
@@ -44,7 +44,18 @@ export function TryHero() {
     track("landing_try");
   };
 
+  /** 回到右边的手机动画（2026-10-04：选过行业以后回不去了）。输入框里是点行业自动填的那句就一起清掉，自己写的留着 */
+  const reset = () => {
+    if (shown && text === shown.ind.who) setText("");
+    setShown(null);
+  };
+
   const pick = (ind: IndustrySample) => {
+    // 再点一次已经选中的行业：取消，回到动画
+    if (shown?.ind.id === ind.id && !shown.guessed) {
+      reset();
+      return;
+    }
     setText(ind.who);
     setEmpty(false);
     setShown({ ind, guessed: false });
@@ -129,7 +140,17 @@ export function TryHero() {
                   <Sparkles className="h-4 w-4 text-primary" />
                   「{shown.ind.name}」选题样例
                 </span>
-                <span className="shrink-0 text-[11px] text-muted-foreground/70">示意样例</span>
+                <span className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground/70">
+                  示意样例
+                  <button
+                    type="button"
+                    onClick={reset}
+                    aria-label="关闭样例，回到演示动画"
+                    className="flex items-center gap-0.5 rounded-md px-1.5 py-1 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />看演示
+                  </button>
+                </span>
               </div>
               {shown.guessed && (
                 <p className="mb-3 rounded-lg bg-foreground/[0.04] px-3 py-2 text-[12.5px] text-muted-foreground">

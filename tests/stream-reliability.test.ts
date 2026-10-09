@@ -1,3 +1,4 @@
+vi.mock('@/lib/creation-quota', () => ({ reserveCreation: vi.fn(async () => ({ ok: true, reservation: { userId: 'test-user', feature: 'script', requestId: 'test-request-id-12345' } })), releaseCreation: vi.fn(async () => {}), recordCreationCompletion: vi.fn(async () => {}), completionUsage: vi.fn(() => ({})) }));
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
@@ -34,6 +35,7 @@ vi.mock('@/lib/dify-recover', () => ({
 }));
 
 import { POST } from '@/app/api/dify/stream/route';
+import { reserveCreation, releaseCreation } from '@/lib/creation-quota';
 import { incrementUsageServer } from '@/lib/api-guard';
 import { clearDifyConversationId, saveDifyConversationId } from '@/lib/dify-conversation';
 import { waitForDifyMessage } from '@/lib/dify-recover';
@@ -90,12 +92,26 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.unstubAllGlobals());
 
 describe('流式接口：报错要说出来，不能一声不吭', () => {
+  it('预占失败时没有付费模型请求', async () => {
+    vi.mocked(reserveCreation).mockResolvedValueOnce({ ok: false, response: Response.json({ error: 'busy' }, { status: 503 }) });
+    mockDify();
+    expect((await call('脚本生成')).status).toBe(503);
+    expect(difyCalls).toHaveLength(0);
+    expect(incrementUsageServer).not.toHaveBeenCalled();
+  });
+
+  it('上游 HTTP 拒绝请求时释放预占', async () => {
+    mockDify(new Response('rejected', { status: 429 }));
+    expect((await call('脚本生成')).status).toBe(429);
+    expect(releaseCreation).toHaveBeenCalledTimes(1);
+    expect(incrementUsageServer).not.toHaveBeenCalled();
+  });
   it('会话塞满了：换新会话重来一次，用户照样拿到结果', async () => {
     mockDify(
       difyStream([ev({ event: 'error', message: OVERFLOW, conversation_id: 'shared-conv' })]),
       difyStream([msg('新会话'), msg('写出来了'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })])
     );
-    const res = await call('脚本生成');
+    const res = await call('成交理由');
     expect(await readDifyStream(res)).toBe('新会话写出来了');
 
     expect(difyCalls).toHaveLength(2);
@@ -112,6 +128,7 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     await expect(readDifyStream(res)).rejects.toThrow('AI 这会儿太忙了');
     expect(difyCalls).toHaveLength(1);
     expect(incrementUsageServer).not.toHaveBeenCalled();
+    expect(releaseCreation).toHaveBeenCalledTimes(1);
   });
 
   it('工作流节点失败也算报错', async () => {
@@ -133,11 +150,11 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     expect(saveDifyConversationId).not.toHaveBeenCalled();
   });
 
-  it('普通板块照旧接共用会话、写完记下来', async () => {
+  it('没有完整稿件的成交理由仍可接共用会话、写完记下来', async () => {
     mockDify(difyStream([msg('脚本'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]));
-    expect(await readDifyStream(await call('脚本生成'))).toBe('脚本');
+    expect(await readDifyStream(await call('成交理由'))).toBe('脚本');
     expect(difyCalls[0].body.conversation_id).toBe('shared-conv');
-    expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '脚本生成');
+    expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '成交理由');
   });
 });
 
@@ -158,7 +175,7 @@ describe('流式接口：和 Dify 之间断了，把全文取回来', () => {
     expect(incrementUsageServer).not.toHaveBeenCalled();
   });
 
-  it('浏览器半路走了：服务端照样把上游读完，扣次数、记会话（用户回来能取回）', async () => {
+  it('浏览器半路走了：独立脚本仍读完并确认次数，自由对话可接最新成稿', async () => {
     mockDify(
       difyStream([msg('一'), msg('二'), msg('三'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })])
     );

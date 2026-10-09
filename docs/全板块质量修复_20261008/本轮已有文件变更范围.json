@@ -1,0 +1,12 @@
+[
+  "tests\\dify-task-completion.test.ts",
+  "tests\\creative-stream-persistence.test.ts",
+  "tests\\profile-summary.test.ts",
+  "lib\\dify-task.ts",
+  "lib\\creation-items.ts",
+  "lib\\profile-summary.ts",
+  "lib\\review-verification.ts",
+  "components\\markdown.tsx",
+  "app\\dashboard\\creative-brief\\page.tsx",
+  "app\\api\\dify\\stream\\route.ts"
+]

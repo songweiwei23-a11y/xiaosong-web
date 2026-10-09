@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -6,12 +6,15 @@ import { resolveCreationSettings, mergeCreationSettings, settingsForResult, sett
 
 
 import { useRouter } from "next/navigation";
-import { takeHandoff, putHandoff } from "@/lib/handoff";
-import { creationReference, originForResult, continuationRules } from '@/lib/creation-continuation';
+import { takeHandoff } from "@/lib/handoff";
+import { openCreationSafely } from "@/lib/creation-session";
+import { buildCreationHandoff } from "@/lib/creation-flow";
+import { creationReference, originForResult } from '@/lib/creation-continuation';
+import { reviewDraftStats } from '@/lib/script-result-utils';
 import { recordStage } from "@/lib/works";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
-import { buildReviewPrompt, personalRequirementsReminder, AI_DURATION } from "@/lib/review-standards";
+import { buildReviewPrompt, personalRequirementsReminder, reviewDimensionLabels, AMBIGUOUS_REVIEW_DURATION, AI_DURATION } from "@/lib/review-standards";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
@@ -101,7 +104,8 @@ export default function ReviewPage() {
 
   const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
     // 类型写明了才填；优化目标是编导自己选的，不替他勾（2026-10-03：跳转时别乱填）
-    setPlatform(s.platform!); setDuration(s.duration!); setScriptType(s.scriptType ? REVIEW_SCRIPT_TYPES[s.scriptType] ?? '' : '');
+    // 原稿没写明时长就保持「AI 推荐」（2026-10-06：原来这里会被兜底成 60 秒）
+    setPlatform(s.platform!); setDuration(s.duration ?? AI_DURATION); setScriptType(s.scriptType ? REVIEW_SCRIPT_TYPES[s.scriptType] ?? '' : '');
   });
   // 自定义只填了数字就当秒数；没填等于交给 AI
   const effectiveDuration = /^\d+$/.test(duration.trim()) ? `${duration.trim()}秒` : duration.trim() || AI_DURATION;
@@ -190,11 +194,9 @@ export default function ReviewPage() {
 
   // 计算字数和预估时长
   useEffect(() => {
-    const count = draftContent.length;
-    setWordCount(count);
-    // 按平均3字/秒计算
-    const seconds = Math.ceil(count / 3);
-    setEstimatedDuration(seconds);
+    const stats = reviewDraftStats(draftContent);
+    setWordCount(stats.chars);
+    setEstimatedDuration(stats.seconds);
   }, [draftContent]);
 
   // 多选切换
@@ -221,6 +223,10 @@ export default function ReviewPage() {
 
   const handleGenerate = async () => {
     if (isGenerating) return;
+    if (AMBIGUOUS_REVIEW_DURATION.test(personalRequirements) || AMBIGUOUS_REVIEW_DURATION.test(duration)) {
+      notify('“1-30秒”可能指30秒以内或1分30秒，请在个人要求处明确后再审稿');
+      return;
+    }
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
     const isCurrent = beginProfileRequest();
@@ -245,21 +251,21 @@ export default function ReviewPage() {
     let fullResult = ""; // 保存历史记录用
 
     // 整合审稿维度
-    const reviewDimensions = [];
+    const reviewDimensions: string[] = [];
     if (openingChecks.length > 0) {
-      reviewDimensions.push(`【开头吸引力】${openingChecks.map(id => openingOptions.find(o => o.id === id)?.label).join("、")}`);
+      reviewDimensions.push(`【开头吸引力】${reviewDimensionLabels(openingChecks, openingOptions)}`);
     }
     if (structureChecks.length > 0) {
-      reviewDimensions.push(`【结构完整性】${structureChecks.map(id => structureOptions.find(o => o.id === id)?.label).join("、")}`);
+      reviewDimensions.push(`【结构完整性】${reviewDimensionLabels(structureChecks, structureOptions)}`);
     }
     if (contentChecks.length > 0) {
-      reviewDimensions.push(`【文案质量】${contentChecks.map(id => contentOptions.find(o => o.id === id)?.label).join("、")}`);
+      reviewDimensions.push(`【文案质量】${reviewDimensionLabels(contentChecks, contentOptions)}`);
     }
     if (emotionChecks.length > 0) {
-      reviewDimensions.push(`【情绪波点】${emotionChecks.map(id => emotionOptions.find(o => o.id === id)?.label).join("、")}`);
+      reviewDimensions.push(`【情绪波点】${reviewDimensionLabels(emotionChecks, emotionOptions)}`);
     }
     if (actionChecks.length > 0) {
-      reviewDimensions.push(`【行动指引】${actionChecks.map(id => actionOptions.find(o => o.id === id)?.label).join("、")}`);
+      reviewDimensions.push(`【行动指引】${reviewDimensionLabels(actionChecks, actionOptions)}`);
     }
 
     try {
@@ -287,7 +293,10 @@ export default function ReviewPage() {
         body: JSON.stringify({
           taskType: "审稿优化",
           creationSettings: currentSettings,
-          query: query + creationSettingsBlock(currentSettings) + continuationRules('review') + personalRequirementsReminder(personalRequirements),
+          query: query + personalRequirementsReminder(personalRequirements),
+          draftContent,
+          personalRequirements,
+          reviewFocus: personalRequirements,
           // 记忆按档案隔离，与脚本、选题两页保持一致
           profileId: creatorContext.profile?.id || null,
           // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
@@ -316,7 +325,7 @@ export default function ReviewPage() {
       // 而额度已经在服务端扣掉了，用户刷新后一无所获，还以为系统吞了。
       if (fullResult && fullResult.trim().length > 0) {
         setTimeout(async () => {
-          try {            const inputData = { profileId: creatorContext.profile?.id || null, draftContent, sourceReference, originContent: originContent || sourceReference || draftContent, creationSettings: currentSettings, scriptType, platform, duration: effectiveDuration, personalRequirements };
+          try {            const inputData = { profileId: creatorContext.profile?.id || null, draftContent, sourceReference, originContent: originContent || sourceReference || draftContent, creationSettings: currentSettings, scriptType, platform, duration: effectiveDuration, personalRequirements, reviewDimensions: reviewDimensions.join("\n"), optimizationGoals: optimizationGoals.join("、"), benchmarkScript, compareMode, severityLabels };
             await saveGenerationHistory("审稿优化", inputData, fullResult, workId);
             // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
             await recordStage(workId, "审稿优化");          } catch (err) {
@@ -327,6 +336,8 @@ export default function ReviewPage() {
     }
   };
 
+  // 结果下方「继续创作」和两个快捷按钮共用：目的、结构、作品、源资料一起往下带
+  const reviewFlow = { settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || sourceReference || draftContent) };
   return (
     <WorkspaceLayout
       sidebar={
@@ -381,6 +392,19 @@ export default function ReviewPage() {
                 className={TEXTAREA_CLS}
               />
             </Field>
+            {(AMBIGUOUS_REVIEW_DURATION.test(personalRequirements) || AMBIGUOUS_REVIEW_DURATION.test(duration)) && (
+              <div role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p>“1-30秒”有两种理解，明确后再审稿，避免误删场景。</p>
+                <div className="mt-2 flex gap-2">
+                  {['30秒以内', '1分30秒'].map(label => (
+                    <button key={label} type="button" className={SECONDARY_BTN} onClick={() => {
+                      setPersonalRequirements(previous => previous.replace(/(?<!\d)1\s*[-—－]\s*30\s*秒/g, label));
+                      setDuration(label === '30秒以内' ? '30秒' : '90秒');
+                    }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </CollapsibleSection>
           {sourceReference && <CollapsibleSection title="相关方案参考（已带入）" defaultOpen={false}>
             <textarea aria-label="审稿方案参考" value={sourceReference} onChange={e => setSourceReference(e.target.value)} rows={5} className={TEXTAREA_CLS} />
@@ -542,7 +566,7 @@ export default function ReviewPage() {
         result={result}
         isGenerating={isGenerating}
         title="审稿意见"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || sourceReference || draftContent) }}
+        flowContext={reviewFlow}
         emptyIcon={CheckCircle}
         emptyTitle="粘贴脚本后开始审稿"
         emptyHint="逐条指出问题，并给出可直接替换的改写"
@@ -563,24 +587,15 @@ export default function ReviewPage() {
             onClick: (body) => {
               // workId 必须一并带走。漏掉的话下一个环节生成出来就挂不到
               // 这条内容下面，作品的链条在这里断开，变成一条零散记录。
-              putHandoff({
-                from: "审稿优化",
-                scriptContent: body,
-                workId: workId ?? undefined,
-              });
-              router.push("/dashboard/storyboard");
+              // 和「继续创作」同一套：只带「优化后的完整脚本」进分镜，目的、人群、结构跟着走，并持久保存（刷新、换设备能接着）
+              openCreationSafely(buildCreationHandoff('review', 'storyboard', body, reviewFlow), (u) => router.push(u), (m) => notify(m, 'error'));
             },
           },
           {
             label: "给这条起标题",
             icon: Tag,
             onClick: (body) => {
-              putHandoff({
-                from: "审稿优化",
-                scriptContent: body,
-                workId: workId ?? undefined,
-              });
-              router.push("/dashboard/title");
+              openCreationSafely(buildCreationHandoff('review', 'title', body, reviewFlow), (u) => router.push(u), (m) => notify(m, 'error'));
             },
           },
         ]}

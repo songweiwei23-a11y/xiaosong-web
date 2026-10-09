@@ -24,7 +24,7 @@ interface Resp {
   nightly: Row[];
 }
 
-const KIND_LABEL: Record<string, string> = { taboo: "踩禁忌", excluded: "用了排除的信息", mix: "配比对不上", years: "年限不符" };
+const KIND_LABEL: Record<string, string> = { taboo: "踩禁忌", excluded: "用了排除的信息", mix: "配比对不上", years: "年限不符", generation: "生成未完成或内容缺失" };
 const time = (s: string) => new Date(s).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export default function QualityPage() {

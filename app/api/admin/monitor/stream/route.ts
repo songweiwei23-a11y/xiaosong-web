@@ -16,8 +16,11 @@ export async function GET(request: Request) {
       let mode: 'realtime' | 'polling' = 'polling';
       let lastError: string | undefined;
       let unsubscribe = () => {};
+      // 故意用 let：cleanup 在下面赋值之前就可能被调用（首个 enqueue 失败），改成 const 会在暂时性死区里抛错
+      /* eslint-disable prefer-const */
       let heartbeat: ReturnType<typeof setInterval> | undefined;
       let expiry: ReturnType<typeof setTimeout> | undefined;
+      /* eslint-enable prefer-const */
       cleanup = () => {
         if (closed) return;
         closed = true;

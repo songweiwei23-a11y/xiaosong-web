@@ -1,0 +1,182 @@
+2026-10-08T04:46:05.927Z
+https://www.biandao.icu/dashboard/library
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=7cd9a15f-a2cc-40c5-975d-ef2fa27eefc5
+    - paragraph: 【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或":
+  - link "【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不 选题策划（已做） 脚本生成（已做） 分镜脚本 审稿优化 标题封面 下一步：分镜脚本":
+    - /url: /dashboard/storyboard?work=6e09b803-34d3-4c50-86b8-e03b3ded7ad5
+    - paragraph: 【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不
+    - generic "选题策划（已做）"
+    - generic "脚本生成（已做）"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：分镜脚本
+  - button "删除作品：【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不":
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - heading "素材库" [level=1]:
+    - text: 素材库
+  - paragraph: 你的创作资产都在这里：收藏的好内容、自己记下的真实素材，加上各板块生成过的全部结果（自动按选题库、脚本库……归好）。随时拿去继续创作
+  - tablist "素材库分区":
+    - tab "我的收藏1" [selected]
+    - tab "全部产出21"
+    - tab "风格预设"
+  - textbox "搜索素材":
+    - /placeholder: 搜标题、全文、备注
+  - generic: 时间
+  - textbox "开始日期"
+  - generic: 至
+  - textbox "结束日期"
+  - button "记录真实素材":
+    - text: 记录真实素材
+  - link "导出这个档案的":
+    - /url: /api/library/export?profileId=49cc7968-679c-46b2-a9ee-44ea30090372
+    - text: 导出这个档案的
+  - button "全部来源1" [pressed]
+  - button "真实素材0"
+  - button "认可的好稿0"
+  - button "AI 建议1"
+  - button "全部分类1" [pressed]
+  - button "审稿稿1"
+  - paragraph: 共 1 条
+  - list:
+    - button "短视频脚本审稿报告":
+      - generic: 短视频脚本审稿报告
+    - paragraph:
+      - generic: AI 建议
+      - generic: 审稿稿
+      - generic: 来自审稿优化
+      - generic: 10/8 收藏
+    - paragraph: 短视频脚本审稿报告 1. 总评 综合得分 ：8.2 分（良好） 用户目的与核心问题 ：给本地装修家庭看，解决"买衣柜前如何判断尺寸是否合用"这个实际问题；一人手机自然演示，30秒以内；不加客户经历、数据或夸大冲突。 一句话结论 ：原稿逻辑清楚、切口实用，可以直接拍，有两处表达可以
+    - button "认可为好稿（可当风格示例）":
+    - button "改名":
+    - button "复制":
+    - button "删除":
+    - button "继续创作":
+      - text: 继续创作
+    - button "看全文（1811 字）"
+- alert

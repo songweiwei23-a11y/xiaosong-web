@@ -1,0 +1,53 @@
+{
+  "time": "2026-10-07T23:16:44.1166115Z",
+  "files": [
+    {
+      "file": "lib/topic-library.ts",
+      "sha256": "3b043215a639c490d73a395faef9c399cbc2e9fc246c59566a5b8daa6bca84a3"
+    },
+    {
+      "file": "lib/review-standards.ts",
+      "sha256": "b1f78c54d11d9cd4bde2284163ded7f2c9339687b1a6e9ae1f5ebea2dde32d1a"
+    },
+    {
+      "file": "lib/script-result-utils.ts",
+      "sha256": "03e83f886803810828a507a7168b8815854db948b098754c6bb7a3f9a30a1cd2"
+    },
+    {
+      "file": "lib/search-query.ts",
+      "sha256": "89ab41abb8abd985d81e88092fd49fc08b848838fd6cef8aed9129d1615c273e"
+    },
+    {
+      "file": "app/dashboard/review/page.tsx",
+      "sha256": "6aee52cff871e0d558812fedda0e67d9e91c02fa79ae6a7a2c59db2826237253"
+    },
+    {
+      "file": "app/api/dify/stream/route.ts",
+      "sha256": "f2111c2ed39f19f75843005b10d3f6806b4a0e2c6b8d419cf488c99d2ad461df"
+    },
+    {
+      "file": "lib/script-design.ts",
+      "sha256": "f69e25810c0168969fa99eeca9264487f3cc860e51b5d7cd7e684e1f1f776e1d"
+    },
+    {
+      "file": "app/dashboard/script/page.tsx",
+      "sha256": "7037df8324514ef2cf7ccf31127c0d642b07c2281fbd7d21ffc73ff313bb7109"
+    },
+    {
+      "file": "lib/creative-brief.ts",
+      "sha256": "d81986beeb7b855145bff531326d6663e9374f32ce16d66cfbccd555358bfdcc"
+    },
+    {
+      "file": "lib/creator-context.ts",
+      "sha256": "9468e4df37dfc01a3640af84539edab6a0f2475ff639708d21f0392655efa24f"
+    },
+    {
+      "file": "lib/review-verification.ts",
+      "sha256": "3f35b2557f892a80846fe8fe2e22627f6aa639a1f154c0d4cb4f55e2817bf7af"
+    },
+    {
+      "file": "app/dashboard/free-chat/page.tsx",
+      "sha256": "05de50599e4b7fbe7facd5308fbcf32034bee6345dd5e7fe40930a1791624dbc"
+    }
+  ]
+}

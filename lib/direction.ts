@@ -8,6 +8,8 @@
  * 输出用「### 方向1：…」，结果下面的勾选列表（lib/creation-items）能直接一条一条认出来。
  */
 
+import { creativeCraftRules } from './creative-craft';
+
 export const DIRECTION_TASK_TYPE = '创作方向';
 
 export interface Choice<T extends string = string> { id: T; label: string; hint: string }
@@ -85,6 +87,12 @@ export interface DirectionInput {
   industry?: string;
   /** 内容配比（lib/content-mix 的 mixPromptBlock，按方向个数换成条数）。有它就要求每个方向标明是哪种视频 */
   mixBlock?: string;
+  /**
+   * 别的板块带过来、要在它上面继续拓展的方向（2026-10-06）。
+   * 线上：自由对话里勾了「国庆后的县城消费观察」带过来拓展，原来只当「已有的想法」一并参考，
+   * 要求里还写着「方向之间目的不同、思路不同」——出来 5 个和国庆消费对比无关的泛方向
+   */
+  expand?: { from: string; content: string; intent?: string };
 }
 
 const labels = (list: Choice[], ids: string[]) => ids.map((id) => list.find((c) => c.id === id)?.label).filter(Boolean).join('、');
@@ -99,7 +107,7 @@ export function buildDirectionPrompt(i: DirectionInput): string {
   const goal = [labels(PURPOSES, i.purposes), i.customGoal?.trim()].filter(Boolean).join('；');
   const formats = i.formats.filter((f) => f !== 'any');
   const conditions = [
-    formats.length ? `- 想用的形式：${labels(FORMATS, formats)}（可以有一两个方向用别的形式，但要说明为什么）` : '- 形式不限：按目的挑最合适的',
+    formats.length ? `- 想用的形式：${labels(FORMATS, formats)}（按用户选定的形式执行；只有用户明确允许其他形式时才增加候选）` : '- 形式不限：按目的挑最合适的',
     label(ON_CAMERA, i.onCamera) ? `- 出镜：${label(ON_CAMERA, i.onCamera)}` : '',
     label(CAPACITY, i.capacity) ? `- 产能：${label(CAPACITY, i.capacity)}——方向要拍得过来` : '',
     label(HORIZON, i.horizon) ? `- 时间：${label(HORIZON, i.horizon)}` : '',
@@ -129,11 +137,30 @@ export function buildDirectionPrompt(i: DirectionInput): string {
     ? `## 这个账号的档案（方向必须落在它身上）\n${i.profileSummary.trim()}`
     : `## 这个账号\n${i.industry?.trim() ? `做的是：${i.industry.trim()}` : '用户还没建账号档案，也没说做什么：按最常见的实体店举例，并提醒他建好档案再做一次会准得多'}`;
 
-  return `【任务：创作方向】你是带过上百个实体店账号的编导兼运营。用户不是为了拍视频而拍视频，而是带着目的来的。
+  const ex = i.expand?.content.trim() ? i.expand : undefined;
+  const head = ex
+    ? `【任务：在编导带来的方向上继续拓展】你是带过上百个实体店账号的编导兼运营。
+这次不是从零出方向：编导在「${ex.from}」里已经选定了下面这个方向，要你守住它原来的主题、目的和核心角度，往下拓展成 ${i.count} 个更细、能直接开拍的方向，再推荐一个最好的。
+
+## 要拓展的这个方向（最重要：${i.count} 个方向都从它长出来）
+${ex.intent?.trim() ? `${ex.intent.trim()}\n` : ''}${ex.content.trim()}
+
+## 他的目的
+${goal ? `按上面这个方向原本的目的来；他这次另外勾的：${goal}——在不偏离这个方向的前提下兼顾` : '按上面这个方向原本的目的来（它为什么能起量、要达到什么，原文里写着）'}`
+    : `【任务：创作方向】你是带过上百个实体店账号的编导兼运营。用户不是为了拍视频而拍视频，而是带着目的来的。
 根据他的目的和这个账号的情况，把能达到目的的创作方向和思路尽量铺开，再推荐一个最好的。
 
 ## 他的目的
-${goal}
+${goal}`;
+  const opening = ex
+    ? '先用两三句话说：这个方向的核心是什么（主题、目的、为什么能起量），这个账号做它的最大优势和最大短板是什么。'
+    : '先用两三句话说：他的目的拆开是哪几件事、这个账号做这件事的最大优势和最大短板是什么。';
+  const differ = ex
+    ? `- ${i.count} 个方向都必须守住上面那个方向的主题、目的和核心角度——是它的不同切口、不同拍法、不同出镜方式，彼此要拉开；不许另起和它主题无关的方向，也不能只是把它换个说法
+- 它原文里已经列的子方向、选题示例，编导手上已经有了：可以往深里做，但不要原样照抄`
+    : `- ${i.count} 个方向要真的不一样：全部服务用户原定目的，在子议题、对象、材料、思路或拍法上拉开，不能只是换个说法；用户只给一个目的就不增加其他目的，多目的按用户明确要求兼顾`;
+
+  return `${head}
 ${i.ideas?.trim() ? `\n## 他自己已经有的想法（要认真对待：好的就展开成方向，不靠谱的直说哪里不行、怎么改）\n${i.ideas.trim()}\n` : ''}
 ## 条件
 ${conditions}
@@ -141,7 +168,7 @@ ${conditions}
 ${target}
 ${i.contextBlock?.trim() ? `\n${i.contextBlock.trim()}\n` : ''}${mix}
 ## 输出格式（Markdown，严格按这个结构）
-先用两三句话说：他的目的拆开是哪几件事、这个账号做这件事的最大优势和最大短板是什么。
+${opening}
 
 然后出 ${i.count} 个方向，每个都用这个样子，方向之间用 --- 隔开：
 
@@ -157,10 +184,11 @@ ${fields}
 - **其他方向什么时候做**：哪几个适合接着做、哪个先放一放
 
 ## 要求
-- ${i.count} 个方向要真的不一样：目的不同、思路不同、拍法不同，不能是同一个方向换个说法
+${differ}
 - 每个方向都必须是**这个账号拍得出来的**：看档案里的行业、在卖的品类、团队、设备、场地；档案里没有的资源不要安排
 - 方向要具体到这个账号：写这家店真的会发生的事、真的在卖的东西，不要写成放之四海皆准的套话
 - **不要替他编经历和数字**：档案里没有的人生经历、事件写成「【换成你的：……】」给个参考方向；没有的人数、金额、播放量写成 X
 - 不说"揭秘"，不用绝对化用语，不诋毁同行
-- 大白话，不要"赋能""打造""矩阵"这类词`;
+- 大白话，不要"赋能""打造""矩阵"这类词
+${creativeCraftRules({ intent: ex?.intent || i.customGoal, selected: ex?.content, source: i.ideas, context: i.contextBlock })}`;
 }

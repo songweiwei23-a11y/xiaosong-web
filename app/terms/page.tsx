@@ -17,7 +17,7 @@ export default function TermsPage() {
     <LegalPage title="服务条款" updated="2026 年 9 月 30 日">
       <section>
         <p>
-          欢迎使用开物（以下简称"我们"）。注册或使用本服务，即表示你同意以下条款。
+          欢迎使用开物（以下简称&quot;我们&quot;）。注册或使用本服务，即表示你同意以下条款。
         </p>
       </section>
 

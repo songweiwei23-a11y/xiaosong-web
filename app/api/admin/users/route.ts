@@ -5,6 +5,7 @@ import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { generateTempPassword } from '@/lib/password';
 import { COUNTED_FEATURES } from '@/lib/config/plans';
 import { accountStatus } from '@/lib/account-status';
+import { previewUserData, purgeUser } from '@/lib/admin-delete-user';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -327,6 +328,48 @@ export async function POST(request: Request) {
           tempPassword,
           message: '已重置。把临时密码发给用户，并提醒他登录后到「我的账户」里改掉',
         });
+      }
+
+      /*
+       * 删除用户（2026-10-04 产品方：清理垃圾用户）。见 lib/admin-delete-user.ts。
+       * delete_preview：删之前看看这个人有多少东西；delete_user：输入对方邮箱确认后，删全部数据和登录账号。
+       * 不能删自己、不能删管理员（要删管理员先在权限管理里撤掉）。
+       */
+      case 'delete_preview':
+      case 'delete_user': {
+        if (userId === admin.userId) return NextResponse.json({ error: '不能删除自己的账号' }, { status: 400 });
+        const { data: target, error: targetError } = await supabase.auth.admin.getUserById(userId);
+        if (targetError || !target?.user) return NextResponse.json({ error: '没找到这个用户，可能已经删过了' }, { status: 404 });
+        const [{ data: role }, { data: settings }] = await Promise.all([
+          supabase.from('admin_roles').select('role').eq('user_id', userId).maybeSingle(),
+          supabase.from('user_settings').select('is_admin').eq('user_id', userId).maybeSingle(),
+        ]);
+        if (role?.role || settings?.is_admin === true) {
+          return NextResponse.json({ error: '这是管理员账号，不能直接删除。先到「权限管理」撤掉管理员权限' }, { status: 400 });
+        }
+        const email = target.user.email || '';
+        if (action === 'delete_preview') {
+          const counts = await previewUserData(supabase as never, userId);
+          const { count: paid } = await supabase.from('payment_orders').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'approved');
+          return NextResponse.json({ email, counts, paidOrders: paid ?? 0 });
+        }
+        const confirmEmail = typeof body.confirmEmail === 'string' ? body.confirmEmail.trim().toLowerCase() : '';
+        if (!email || confirmEmail !== email.toLowerCase()) {
+          return NextResponse.json({ error: '输入的邮箱和这个用户对不上，没有删除' }, { status: 400 });
+        }
+        try {
+          const result = await purgeUser(supabase as never, userId);
+          await logAdminAction(admin.userId, AdminActions.DELETE_USER, {
+            targetUserId: userId,
+            email,
+            deleted: result.deleted,
+            files: result.files,
+          });
+          return NextResponse.json({ success: true, message: `已删除 ${email} 及其全部数据。他要再用，只能拿邀请码重新注册`, ...result });
+        } catch (e) {
+          console.error('[用户管理] 删除用户失败:', (e as Error).message);
+          return NextResponse.json({ error: (e as Error).message || '删除失败，请重试' }, { status: 500 });
+        }
       }
 
       default:

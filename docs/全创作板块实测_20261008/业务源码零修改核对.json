@@ -1,0 +1,6 @@
+{
+  "checkedFiles": 406,
+  "differences": 0,
+  "diff": [],
+  "note": "仅覆盖测试前列出的 app/lib/components/hooks 文件；不替代完整部署审计"
+}

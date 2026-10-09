@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 import { OptionPicker } from '@/components/form/OptionPicker'
 import { OPTION_GROUPS } from '@/lib/profile-options'
 import { EMPTY_PROFILE, PROFILE_CHOICES as C, splitToArray, toFormData, type ProfileFormData } from '@/lib/profile-fields'
@@ -41,6 +41,150 @@ interface Props {
   onCancel: () => void
 }
 
+/**
+ * MultiSelect / Select 原来定义在 ProfileForm 里面（2026-10-04 lint 查出）：父组件每渲染一次，它们就是新组件、整个重新挂载——
+ * 在一栏「自定义添加」里打了一半的字，去点别的选项就没了。挪到外面，表单状态用 context 传进来，调用处不变。
+ */
+type ProfileFormCtxValue = {
+  formData: ProfileFormData
+  setFormData: React.Dispatch<React.SetStateAction<ProfileFormData>>
+  handleChange: (field: string, value: unknown) => void
+  toggleArray: (field: string, value: string) => void
+}
+const ProfileFormCtx = createContext<ProfileFormCtxValue | null>(null)
+function useProfileFormCtx(): ProfileFormCtxValue {
+  const v = useContext(ProfileFormCtx)
+  if (!v) throw new Error('MultiSelect / Select 只能放在 ProfileForm 里用')
+  return v
+}
+/**
+ * 多选 + 自由添加，给 text[] 字段用。
+ *
+ * 原来这个控件把颜色写死成内联样式（白底、#374151 文字、浅紫渐变面板），
+ * 暗色主题下整片格格不入。这里改成主题令牌。
+ */
+function MultiSelect({
+  field,
+  label,
+  options,
+  placeholder,
+  columns = 3,
+}: {
+  field: string
+  label: string
+  options: string[]
+  placeholder?: string
+  columns?: 2 | 3 | 4
+}) {
+  const { formData, toggleArray, setFormData } = useProfileFormCtx()
+  const selected = ((formData as Record<string, unknown>)[field] || []) as string[]
+  const custom = selected.filter((v) => !options.includes(v))
+  const [draft, setDraft] = useState('')
+
+  const add = () => {
+    const vals = splitToArray(draft).concat(draft.split(/\s+/).map((s) => s.trim()))
+    const clean = Array.from(new Set(vals.filter(Boolean)))
+    if (clean.length === 0) return
+    setFormData((prev) => ({
+      ...prev,
+      [field]: Array.from(new Set([...(((prev as Record<string, unknown>)[field] || []) as string[]), ...clean])),
+    }))
+    setDraft('')
+  }
+
+  return (
+    <div className="space-y-2.5">
+      <label className="block text-[13px] font-medium text-foreground">{label}</label>
+      <div
+        className={`grid gap-1.5 ${
+          columns === 4 ? 'grid-cols-4' : columns === 2 ? 'grid-cols-2' : 'grid-cols-3'
+        }`}
+      >
+        {options.map((o) => {
+          const on = selected.includes(o)
+          return (
+            <button
+              key={o}
+              type="button"
+              onClick={() => toggleArray(field, o)}
+              aria-pressed={on}
+              className={`glass-interactive rounded-xl border px-3 py-2 text-[12.5px] font-medium ${
+                on ? 'glass-selected text-primary' : 'glass-panel text-foreground'
+              }`}
+            >
+              {o}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              add()
+            }
+          }}
+          placeholder={placeholder || '上面没有的写在这里'}
+          className={TEXTAREA_CLS + ' flex-1'}
+        />
+        <button
+          type="button"
+          onClick={add}
+          className="shrink-0 rounded-xl border border-border px-4 text-[13px] text-foreground hover:bg-foreground/[0.06]"
+        >
+          添加
+        </button>
+      </div>
+
+      {custom.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {custom.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-foreground/[0.04] px-3 py-1 text-[12px] text-foreground"
+            >
+              {t}
+              <button
+                type="button"
+                onClick={() => toggleArray(field, t)}
+                className="text-muted-foreground hover:text-destructive"
+                aria-label={`移除 ${t}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Select({ field, label, options }: { field: string; label: string; options: string[] }) {
+  const { formData, handleChange } = useProfileFormCtx()
+  return (
+  <div>
+    <label className="mb-2 block text-[13px] font-medium text-foreground">{label}</label>
+    <select
+      value={(formData as Record<string, unknown>)[field] as string}
+      onChange={(e) => handleChange(field, e.target.value)}
+      className={SELECT_CLS}
+    >
+      <option value="">请选择</option>
+      {options.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
+  </div>
+)
+}
+
 export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, onCancel }: Props) {
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -60,8 +204,6 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
   const handleChange = (field: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
-
-  const arr = (field: string) => ((formData as Record<string, unknown>)[field] || []) as string[]
 
   const toggleArray = (field: string, value: string) => {
     setFormData((prev) => {
@@ -112,129 +254,6 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
     )
   }
 
-  /**
-   * 多选 + 自由添加，给 text[] 字段用。
-   *
-   * 原来这个控件把颜色写死成内联样式（白底、#374151 文字、浅紫渐变面板），
-   * 暗色主题下整片格格不入。这里改成主题令牌。
-   */
-  const MultiSelect = ({
-    field,
-    label,
-    options,
-    placeholder,
-    columns = 3,
-  }: {
-    field: string
-    label: string
-    options: string[]
-    placeholder?: string
-    columns?: 2 | 3 | 4
-  }) => {
-    const selected = arr(field)
-    const custom = selected.filter((v) => !options.includes(v))
-    const [draft, setDraft] = useState('')
-
-    const add = () => {
-      const vals = splitToArray(draft).concat(draft.split(/\s+/).map((s) => s.trim()))
-      const clean = Array.from(new Set(vals.filter(Boolean)))
-      if (clean.length === 0) return
-      setFormData((prev) => ({
-        ...prev,
-        [field]: Array.from(new Set([...(((prev as Record<string, unknown>)[field] || []) as string[]), ...clean])),
-      }))
-      setDraft('')
-    }
-
-    return (
-      <div className="space-y-2.5">
-        <label className="block text-[13px] font-medium text-foreground">{label}</label>
-        <div
-          className={`grid gap-1.5 ${
-            columns === 4 ? 'grid-cols-4' : columns === 2 ? 'grid-cols-2' : 'grid-cols-3'
-          }`}
-        >
-          {options.map((o) => {
-            const on = selected.includes(o)
-            return (
-              <button
-                key={o}
-                type="button"
-                onClick={() => toggleArray(field, o)}
-                aria-pressed={on}
-                className={`glass-interactive rounded-xl border px-3 py-2 text-[12.5px] font-medium ${
-                  on ? 'glass-selected text-primary' : 'glass-panel text-foreground'
-                }`}
-              >
-                {o}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex gap-2">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                add()
-              }
-            }}
-            placeholder={placeholder || '上面没有的写在这里'}
-            className={TEXTAREA_CLS + ' flex-1'}
-          />
-          <button
-            type="button"
-            onClick={add}
-            className="shrink-0 rounded-xl border border-border px-4 text-[13px] text-foreground hover:bg-foreground/[0.06]"
-          >
-            添加
-          </button>
-        </div>
-
-        {custom.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {custom.map((t) => (
-              <span
-                key={t}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-foreground/[0.04] px-3 py-1 text-[12px] text-foreground"
-              >
-                {t}
-                <button
-                  type="button"
-                  onClick={() => toggleArray(field, t)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label={`移除 ${t}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const Select = ({ field, label, options }: { field: string; label: string; options: string[] }) => (
-    <div>
-      <label className="mb-2 block text-[13px] font-medium text-foreground">{label}</label>
-      <select
-        value={(formData as Record<string, unknown>)[field] as string}
-        onChange={(e) => handleChange(field, e.target.value)}
-        className={SELECT_CLS}
-      >
-        <option value="">请选择</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
 
   const steps: Array<{ title: string; body: React.ReactNode }> = [
     {
@@ -276,7 +295,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
             <p className="text-[13px] font-medium text-foreground">🪪 人设事实卡</p>
             <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
               出镜人是谁、干了几年、从哪来、在本地多久、主卖什么。填了以后，定位、简报、选题、脚本写到这些都以这里为准，
-              不会再出现"写成在本地 18 年"这种错；没填的 AI 不会替你编。
+              不会再出现&quot;写成在本地 18 年&quot;这种错；没填的 AI 不会替你编。
             </p>
             <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
               {PERSONA_FIELDS.map((f) => (
@@ -436,7 +455,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
   const cur = steps[currentStep - 1]
 
   return (
-    <>
+    <ProfileFormCtx.Provider value={{ formData, setFormData, handleChange, toggleArray }}>
       {/* 步骤条：点一下能直接跳过去，编辑时常常只想改某一步 */}
       {/* 连接线按宽度伸缩：原来每段定宽 40px，六步加起来 416px，手机上首尾两步被切掉 */}
       <div className="mx-auto mb-8 flex max-w-md items-center">
@@ -517,7 +536,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
         除档案名称外都是选填。填得越全，账号定位和脚本越贴合你的实际情况——
         不填的部分 AI 只能靠赛道去猜。
       </p>
-    </>
+    </ProfileFormCtx.Provider>
   )
 }
 

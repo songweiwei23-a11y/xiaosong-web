@@ -16,7 +16,8 @@ import { notify } from "@/components/ui/feedback";
 import { saveGenerationHistory } from "@/lib/history";
 import { profileHistoryQuery } from '@/lib/profile-history';
 import { readDifyStream } from "@/lib/sse-stream";
-import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
+import type { HandoffPayload } from "@/lib/handoff";
+import { useCreationBridge } from '@/hooks/useCreationBridge';
 import { incomingNote } from "@/lib/creation-flow";
 import {
   DEAL_REASONS,
@@ -83,10 +84,11 @@ export default function DealReasonPage() {
    */
   const incomingRef = useRef<HandoffPayload | null>(null);
   const [handoffFrom, setHandoffFrom] = useState("");
+  const bridge = useCreationBridge(HISTORY_TASK_TYPE, 'deal-reason', profileId, ctxLoading);
   useEffect(() => {
-    const data = takeHandoff();
+    const data = bridge.payload;
     if (data?.sourceContent) incomingRef.current = data;
-  }, []);
+  }, [bridge.payload]);
 
   // 从结果里现算适用 / 不适用。显示给用户的和自动勾上的是同一份
   const parsed = useMemo(() => parseDealReasons(analysisResult), [analysisResult]);
@@ -106,7 +108,13 @@ export default function DealReasonPage() {
   useEffect(() => {
     if (ctxLoading) return;
     const scope = profileId || "default";
-    if (restoredProfileRef.current === scope) return;
+    if (restoredProfileRef.current === scope) {
+      if (bridge.payload) {
+        setHandoffFrom(bridge.payload.from);
+        setStoreFeatures(current => current.includes(incomingNote(bridge.payload!, 1200)) ? current : [current.slice(0, 600), incomingNote(bridge.payload!, 1200)].join('\n\n'));
+      }
+      return;
+    }
     setIsLoading(true);
     setAnalysisResult("");
     setSaved(null);
@@ -139,7 +147,7 @@ export default function DealReasonPage() {
         // 店铺特色存库上限 2000 字，带入的那段给原有内容留出位置
         setStoreFeatures(incoming ? [baseFeatures.slice(0, 600), incomingNote(incoming, 1200)].filter(Boolean).join("\n\n") : baseFeatures);
         if (incoming) setHandoffFrom(incoming.from || "其他板块");
-        setTargetCustomer(seed?.targetCustomer || s?.targetCustomer || input.targetCustomer || "");
+        setTargetCustomer(bridge.creationSettings.audience || seed?.targetCustomer || s?.targetCustomer || input.targetCustomer || "");
 
         const result = seed ? "" : normalizeLegacyResult(latest?.result || s?.analysisResult || "");
         setAnalysisResult((current) => current || result);
@@ -163,7 +171,7 @@ export default function DealReasonPage() {
     };
     // 只跟着"换了哪个档案"走；档案对象每次取回来都是新引用，放进依赖会反复重置表单
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctxLoading, profileId]);
+  }, [ctxLoading, profileId, bridge.payload]);
 
   const handleAnalyze = async () => {
     const isCurrent = beginProfileRequest();
@@ -185,12 +193,12 @@ export default function DealReasonPage() {
         storeType,
         storeFeatures,
         targetCustomer,
-      });
+      }) + bridge.prompt;
 
       const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskType: "成交理由", category: "成交理由", profileId, topic: query }),
+        body: JSON.stringify({ taskType: "成交理由", category: "成交理由", profileId, topic: query, creationSettings: bridge.creationSettings }),
       });
       if (!response.ok) await throwApiError(response, "分析失败");
 
@@ -206,11 +214,13 @@ export default function DealReasonPage() {
       }
 
       if (full.trim()) {
+        const historyInput = { storeName, storeType, storeFeatures, targetCustomer, profileId, creationSettings: bridge.creationSettings, originContent: bridge.originContent || storeFeatures };
         await saveGenerationHistory(
           HISTORY_TASK_TYPE,
-          { storeName, storeType, storeFeatures, targetCustomer, profileId },
+          historyInput,
           full
         );
+        bridge.rememberResult(full, historyInput);
       }
     } catch (error: any) {
       notify(error.message || "分析失败");
@@ -433,6 +443,7 @@ export default function DealReasonPage() {
         result={analysisResult}
         isGenerating={isAnalyzing}
         title="分析结果"
+        flowContext={bridge.flowContext(analysisResult)}
         showStats={false}
         emptyIcon={Award}
         emptyTitle="填好店铺信息就能开始"

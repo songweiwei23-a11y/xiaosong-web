@@ -1,0 +1,351 @@
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=7cd9a15f-a2cc-40c5-975d-ef2fa27eefc5
+    - paragraph: 【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或":
+  - link "【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不 选题策划（已做） 脚本生成（已做） 分镜脚本 审稿优化 标题封面 下一步：分镜脚本":
+    - /url: /dashboard/storyboard?work=6e09b803-34d3-4c50-86b8-e03b3ded7ad5
+    - paragraph: 【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不
+    - generic "选题策划（已做）"
+    - generic "脚本生成（已做）"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：分镜脚本
+  - button "删除作品：【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不":
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "跨行业二创" [level=1]
+    - paragraph: 借别的行业爆款的开篇、结构、拍法，换成你自己的行业来拍
+    - button "历史记录（2）":
+      - generic: 历史记录（2）
+    - button "原片" [expanded]:
+      - generic: 原片
+    - button "从拆过的视频选"
+    - button "贴别的行业爆款" [pressed]
+    - generic: 原片文案 / 描述
+    - generic: 必填
+    - textbox "例如：一个修车师傅，开头说「信不信 15 秒让你不敢去 4S 店」，然后……": 【虚构测试餐饮文案】点菜前，先别急着看招牌。今天拿店里这套餐具看一眼：两个人吃，桌上能摆多少盘；再多点一道，位置还够不够。把自己来几个人、想吃什么记下来。菜喜欢，也得吃得完。
+    - generic: 口播原话、字幕，或者你看到的画面和情节都行
+    - textbox "原片行业":
+      - /placeholder: 原片是什么行业
+      - text: 餐饮
+    - textbox "原片标题":
+      - /placeholder: 原片标题（选填）
+    - button "借哪几层（可多选）" [expanded]:
+      - generic: 借哪几层（可多选）
+    - paragraph: 知识库原则：行业内看选题，跨行业看开篇、金句、呈现形式。没选的层都换成你自己的。
+    - button "开篇句式 前 3 秒怎么抓人：保留句式结构，换成你行业的词" [pressed]:
+      - generic: 开篇句式
+      - generic: 前 3 秒怎么抓人：保留句式结构，换成你行业的词
+    - button "结构骨架 段落顺序：比如困境→转机、结果前置→补原因" [pressed]:
+      - generic: 结构骨架
+      - generic: 段落顺序：比如困境→转机、结果前置→补原因
+    - button "呈现形式 怎么拍：口播/vlog/剧情、视角、出镜人物、道具" [pressed]:
+      - generic: 呈现形式
+      - generic: 怎么拍：口播/vlog/剧情、视角、出镜人物、道具
+    - button "镜头节奏 多长切一刀、景别怎么跟着情绪变":
+      - generic: 镜头节奏
+      - generic: 多长切一刀、景别怎么跟着情绪变
+    - button "情绪曲线 情绪在哪几秒起伏、靠什么起伏":
+      - generic: 情绪曲线
+      - generic: 情绪在哪几秒起伏、靠什么起伏
+    - button "悬念和兑现 钩子埋在哪、第几秒兑现":
+      - generic: 悬念和兑现
+      - generic: 钩子埋在哪、第几秒兑现
+    - button "金句 收尾那句让人想转发的话":
+      - generic: 金句
+      - generic: 收尾那句让人想转发的话
+    - button "人设和人物关系 谁出镜、跟谁对话、是什么身份":
+      - generic: 人设和人物关系
+      - generic: 谁出镜、跟谁对话、是什么身份
+    - button "结尾和转化 行动指令、怎么引到店/私信/下单":
+      - generic: 结尾和转化
+      - generic: 行动指令、怎么引到店/私信/下单
+    - button "系列化 能不能做成一个系列（\"帮粉丝买车\"→\"帮粉丝做账号\"）":
+      - generic: 系列化
+      - generic: 能不能做成一个系列（"帮粉丝买车"→"帮粉丝做账号"）
+    - button "选题角度 同一个话题换你的行业讲。知识库建议同行业更该学选题，跨行业主要学表达":
+      - generic: 选题角度
+      - generic: 同一个话题换你的行业讲。知识库建议同行业更该学选题，跨行业主要学表达
+    - button "出几个、怎么拉开、写多深" [expanded]:
+      - generic: 出几个、怎么拉开、写多深
+    - generic: 出几个方案
+    - button "1 个" [pressed]
+    - button "2 个"
+    - button "3 个"
+    - button "5 个"
+    - generic: 写多深
+    - button "快速 方向 + 开头 + 口播要点，先挑一个再细化" [pressed]:
+      - generic: 快速
+      - generic: 方向 + 开头 + 口播要点，先挑一个再细化
+    - button "完整 按你勾的产出写全":
+      - generic: 完整
+      - generic: 按你勾的产出写全
+    - button "深度 分镜细到每一镜的台词、动作、时长，再给 3 个备选开头":
+      - generic: 深度
+      - generic: 分镜细到每一镜的台词、动作、时长，再给 3 个备选开头
+    - button "目的、时长、要哪些产出":
+      - generic: 目的、时长、要哪些产出
+    - button "二创到哪家店" [expanded]:
+      - generic: 二创到哪家店
+    - generic: 以「测试_青禾家具店_全板块验收20261008」为准
+    - generic: 行业：家居装修
+    - generic: 在卖的品类：沙发、床、衣柜
+    - text: 方案里的事、场景、产品都换成这家店的，也会带上它的定位简报和成交理由。要换店，在左侧栏切换档案；品类不对去
+    - link "改档案":
+      - /url: /dashboard/profiles
+    - generic: 补充要求
+    - generic: 可选
+    - textbox "例如：老板不想出镜；想推新上的烤鱼": 【上线验收合成稿】只交付1个方案，转到家具展厅，现有样柜演示开门与抽屉占位，一人手机，30秒内。只借表达结构，不复制餐饮事实，不编客户经历、具体尺寸标准、价格和服务承诺，也不声称这份虚构原稿真实爆火。
+    - button "开始二创":
+      - text: 开始二创
+  - main:
+    - heading "二创方案" [level=2]
+    - button "继续创作":
+      - text: 继续创作
+    - button "在画布里改":
+      - text: 在画布里改
+    - button "复制":
+      - text: 复制
+    - generic "二创方案目录":
+      - button "查看方案 1"
+    - article:
+      - heading "原片火的核心机制分析" [level=2]
+      - paragraph:
+        - text: 这条虚构餐饮文案的核心机制是：
+        - strong: 用"物理限制演示"让客户在决策前看清实际占位
+        - text: 。
+      - paragraph: 它抓人的原因：
+      - list:
+        - strong: 反常识开篇
+        - text: ："点菜前别看招牌"——打破习惯动作，制造"那看什么?"的悬念
+        - strong: 具象化验证
+        - text: ：不讲"我们菜量合适"，而是让你看"桌上能摆几盘"——把担心变成可验证的动作
+        - strong: 决策前置
+        - text: ：先演示空间限制，再做选择——帮客户避坑而不是卖完才说
+      - paragraph:
+        - strong: 为什么能跨行业
+        - text: ：所有"客户担心尺寸/容量/占位不合适"的行业都能用——餐具占桌面=家具占房间；点菜前看空间=买家具前看开门位置。
+      - separator
+    - article:
+      - heading "方案 1：买家具前别急着看款式，先看这个" [level=3]
+      - paragraph:
+        - strong: 一句话
+        - text: ：原片"用餐具演示桌面能摆多少" → 你的"用样柜演示柜门抽屉打开占多少位置"
+      - paragraph:
+        - strong: 借了
+        - text: ：反常识开头句式 + 物理演示动作 + 决策前置逻辑
+        - strong: 换成自己的
+        - text: ：家具展厅场景、衣柜/床真实样柜、卧室过道尺寸担心
+      - heading "迁移对照" [level=4]
+      - table:
+        - rowgroup:
+          - row "层 原片 你的版本":
+            - columnheader "层"
+            - columnheader "原片"
+            - columnheader "你的版本"
+        - rowgroup:
+          - row "事件/主角 餐厅服务员教客人点菜前先看桌面空间 家具店老板演示衣柜抽屉打开后占多宽过道":
+            - cell "事件/主角":
+              - strong: 事件/主角
+            - cell "餐厅服务员教客人点菜前先看桌面空间"
+            - cell "家具店老板演示衣柜抽屉打开后占多宽过道"
+          - row "开篇 \"点菜前,先别急着看招牌\" \"买衣柜前,先别急着看款式\"":
+            - cell "开篇":
+              - strong: 开篇
+            - cell "\"点菜前,先别急着看招牌\""
+            - cell "\"买衣柜前,先别急着看款式\""
+          - row "演示动作 在桌上摆餐具,数能放几盘 拉开衣柜抽屉/柜门,看实际占多少位置":
+            - cell "演示动作":
+              - strong: 演示动作
+            - cell "在桌上摆餐具,数能放几盘"
+            - cell "拉开衣柜抽屉/柜门,看实际占多少位置"
+          - row "决策逻辑 记下来几个人、想吃什么,再看够不够 记下来你家卧室过道多宽,再看抽屉拉开挡不挡":
+            - cell "决策逻辑":
+              - strong: 决策逻辑
+            - cell "记下来几个人、想吃什么,再看够不够"
+            - cell "记下来你家卧室过道多宽,再看抽屉拉开挡不挡"
+          - row "结尾金句 \"菜喜欢,也得吃得完\" \"款式喜欢,也得放得下\"":
+            - cell "结尾金句":
+              - strong: 结尾金句
+            - cell "\"菜喜欢,也得吃得完\""
+            - cell "\"款式喜欢,也得放得下\""
+      - heading "开头(前3秒)" [level=4]
+      - paragraph:
+        - strong: 口播
+        - text: ："买衣柜前,先别急着看款式。"
+      - paragraph:
+        - strong: 画面
+        - text: ：
+      - list:
+        - listitem: 镜头对着展厅里的衣柜样柜(能看到柜门和抽屉)
+        - listitem: 老板站在衣柜侧面,手放在抽屉把手上还没拉
+        - listitem: 字幕:【买衣柜前,先别急着看款式】
+      - heading "口播要点" [level=4]
+      - paragraph:
+        - strong: 第一段·反常识开篇
+        - text: "\"买衣柜前,先别急着看款式。今天拿店里这个衣柜试一下——\""
+      - paragraph:
+        - strong: 第二段·演示动作
+        - text: (拉开抽屉)"你看这个抽屉,拉开往外占这么宽。"
+        - text: (镜头拍清抽屉拉出来的实际距离)
+        - text: "\"再拉这个柜门——\"(打开柜门90度,手比划)\"门开了,又占这一块。\""
+      - paragraph:
+        - strong: 第三段·决策逻辑
+        - text: "\"你回去量量,你家床到衣柜之间过道有多宽。抽屉拉开这么宽,人还能不能过。款式喜欢,也得放得下。\""
+      - paragraph:
+        - strong: 第四段·行动指令(流量型)
+        - text: "\"你家卧室过道多宽?评论区说说。\""
+      - heading "注意" [level=4]
+      - paragraph:
+        - strong: 原片学不来的部分
+        - text: ：餐饮场景有"多人多盘"的丰富画面,家具店只有样柜。解决办法:用
+        - strong: 连续演示动作
+        - text: (先拉抽屉再开柜门)制造画面层次,镜头推拉突出"占位"这个关键信息,不依赖多人互动。
+      - paragraph:
+        - strong: 这条不是搬运
+        - text: ：台词从"点菜、餐具、桌上摆几盘"全部换成"买衣柜、抽屉柜门、过道多宽";画面从餐桌换成展厅样柜;事件从服务员教点菜换成老板演示开门占位——只借了"决策前先看物理限制"这个表达结构。
+    - article:
+      - heading "我推荐先拍这个" [level=3]
+      - paragraph:
+        - strong: 原因
+        - text: ：
+      - list:
+        - strong: 最贴这个账号的已有方向
+        - text: ——档案里已经确认"样柜真实演示,30秒内",这个方案直接用上,不用另起炉灶
+        - strong: 一人手机就能拍
+        - text: ——不需要顾客配合,老板自己拉抽屉开柜门,镜头跟着动作走,基础剪辑够用
+        - strong: 击中客户真实担心
+        - text: ——档案明确"本地装修家庭担心抽屉打不开、尺寸不合适",这条直接演示给他看,变现转化清晰
+        - strong: 可复制成系列
+        - text: ——衣柜拍完拍床(床头柜抽屉打开占多少)、沙发(进门转角够不够宽),三个品类都能用同一个句式和拍法
+    - region "选择二创方案继续创作":
+      - heading "继续创作" [level=3]
+      - paragraph: 1. 选择要继续创作的方案
+      - group "选择方案":
+        - button "方案 1"
+      - paragraph: 选好方案后，再选择审稿、分镜、选题等创作去向。
+- alert

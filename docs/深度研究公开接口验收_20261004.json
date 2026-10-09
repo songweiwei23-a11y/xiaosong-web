@@ -1,0 +1,18 @@
+[
+  {
+    "path": "/login",
+    "status": 200
+  },
+  {
+    "path": "/api/research",
+    "status": 401
+  },
+  {
+    "path": "/api/admin/search-key",
+    "status": 403
+  },
+  {
+    "path": "/api/chat-conversations",
+    "status": 401
+  }
+]

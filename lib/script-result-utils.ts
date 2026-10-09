@@ -55,6 +55,8 @@ export interface QualitySummary {
   level: string;
   /** 是否达标 */
   passed: boolean;
+  /** 「格式要素齐全」「还缺 N 项格式要素」（2026-10-05 起的报告才有） */
+  structure: string;
 }
 
 /**
@@ -64,17 +66,31 @@ export interface QualitySummary {
  * 报告，重新跑一遍评分既慢又可能因为规则更新而和当初的结论不一致。
  */
 export function parseQualitySummary(report: string): QualitySummary {
-  if (!report) return { score: null, level: "", passed: false };
+  if (!report) return { score: null, level: "", passed: false, structure: "" };
 
   const scoreMatch = report.match(/\*\*得分\*\*：\s*([\d.]+)/);
   const levelMatch = report.match(/\*\*等级\*\*：\s*(.+)/);
+  const structureMatch = report.match(/\*\*结构检查\*\*：\s*(.+)/);
   const score = scoreMatch ? Number.parseFloat(scoreMatch[1]) : null;
 
   return {
     score: score !== null && Number.isFinite(score) ? score : null,
     level: levelMatch ? levelMatch[1].trim() : "",
-    passed: /✅\s*达标/.test(report),
+    passed: /✅\s*达标|格式要素齐全/.test(report),
+    structure: structureMatch ? structureMatch[1].trim() : "",
   };
+}
+
+/**
+ * 页面上显示的报告：去掉旧记录里的「得分 / 等级 / 状态」三行（2026-10-05 起不再给用户看分数和「MCN级」），
+ * 只留结构检查、还缺的、建议。
+ */
+export function displayQualityReport(report: string): string {
+  return report
+    .split("\n")
+    .filter((l) => !/^\s*\*\*(?:得分|等级|状态)\*\*：/.test(l))
+    .join("\n")
+    .replace(/###\s*发现的问题/g, "### 还缺的");
 }
 
 /**
@@ -84,6 +100,11 @@ export function parseQualitySummary(report: string): QualitySummary {
  * 几乎一样，根本分不清谁是谁。这里优先取 Markdown 标题，其次取第一句有
  * 实质内容的话。
  */
+/**
+ * 每份结果都有的通用栏目名（2026-10-07 体检 B02）：拿它当标题，历史里一排都叫「脚本策略卡」，分不清谁是谁
+ */
+const GENERIC_HEADING = /^(?:第[一二三四五六七八九十\d]+步|(?:脚本)?策略卡|纯文字文案|口播全文|正文脚本|完整脚本|总评|逐维度|问题清单|修改说明|拍摄(?:建议|要点|清单)|分镜表|系统预检|目的拆解|创作方向诊断|对这个方向的理解|短视频分镜脚本|生成策略|执行要点)/;
+
 export function extractTitle(text: string, maxLen = 28): string {
   if (!text) return "未命名脚本";
 
@@ -94,7 +115,7 @@ export function extractTitle(text: string, maxLen = 28): string {
     const m = line.match(/^#{1,3}\s+(.+)$/);
     if (m) {
       const title = m[1].replace(/[*`_]/g, "").trim();
-      if (title && !REPORT_HEADING.test(line) && !/^(脚本|结果|输出)$/.test(title)) {
+      if (title && !REPORT_HEADING.test(line) && !/^(脚本|结果|输出)$/.test(title) && !GENERIC_HEADING.test(title.replace(/^[^\p{L}\p{N}]+|^\d+[.、]\s*/gu, ""))) {
         return truncate(title, maxLen);
       }
     }
@@ -134,6 +155,45 @@ export function estimateSpeechStats(text: string): { chars: number; seconds: num
 
   const chars = chinese + words + digits;
   return { chars, seconds: Math.round(chars / 5) };
+}
+
+/**
+ * 真正要念出来的话（2026-10-07 体检 B01）。
+ * 原来「约 X 秒」按整份结果算：策略卡、画面说明、优化建议都算成台词——一个标 55 秒的方案显示成 2054 字、6 分 51 秒。
+ * 现在：有「纯文字文案 / 口播全文」这一节就只算它；没有就收「台词：」「口播：」那几行；都没有返回空（不估时长）。
+ */
+export function spokenText(text: string): string {
+  if (!text) return "";
+  const lines = text.split("\n");
+  const start = lines.findIndex((l) => /^\s*#{1,4}\s/.test(l) && /纯文字文案|纯文案|口播全文|完整口播|口播文案/.test(l));
+  if (start >= 0) {
+    const level = lines[start].match(/^\s*(#+)/)![1].length;
+    const end = lines.findIndex((l, i) => i > start && (
+      (l.match(/^\s*(#{1,4})\s/)?.[1].length ?? 9) <= level || /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(l)
+    ));
+    const body = lines.slice(start + 1, end < 0 ? lines.length : end).join("\n").trim();
+    if (body) return body;
+  }
+  const said = lines
+    .map((l) => l.replace(/\*\*/g, "").match(/^\s*(?:[-*>|]\s*)?(?:台词(?:外音)?|口播)\s*[：:]\s*(.+)/)?.[1])
+    .filter((v): v is string => Boolean(v && v.trim() && !/^(?:无|—+|-+)$/.test(v.trim())));
+  return said.join("\n");
+}
+
+/** 用户粘贴的原稿可以没有栏目名；生成结果中的分析文字则不能当成口播。 */
+export function reviewDraftStats(draft: string): { chars: number; seconds: number; estimated: boolean } {
+  const spoken = spokenText(draft);
+  if (spoken) return { ...estimateSpeechStats(spoken), estimated: false };
+  const structured = /(?:^|\n)\s*(?:#{1,4}\s|\|.*\||(?:画面|景别|运镜|字幕|音效|拍摄建议|总评)\s*[：:])/.test(draft);
+  if (structured) return { chars: 0, seconds: 0, estimated: true };
+  return { ...estimateSpeechStats(draft), estimated: true };
+}
+
+/** 结果的字数统计：整份有多少字，真正要念的有多少字、念多久（念的认不出来就不估时长） */
+export function resultStats(text: string): { totalChars: number; spokenChars: number; seconds: number } {
+  const total = estimateSpeechStats(text).chars;
+  const spoken = estimateSpeechStats(spokenText(text));
+  return { totalChars: total, spokenChars: spoken.chars, seconds: spoken.seconds };
 }
 
 /** 秒数格式化成「1分30秒」这种读起来直观的形式 */

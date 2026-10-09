@@ -15,6 +15,13 @@ import { postSafely } from '@/lib/safe-post'
 export { normalizeTimestamp, matchesGeneration } from './chat-message-utils'
 export type { ChatMessage, ChatRole } from './chat-message-utils'
 
+const saveErrors = new Map<string, string>()
+export function getConversationSaveError(id: string): string { return saveErrors.get(id) || '' }
+async function responseSaveError(response: Response): Promise<string> {
+  try { const data = await response.json(); if (typeof data?.error === 'string') return data.error.slice(0, 500) } catch {}
+  return response.status === 401 ? '登录已过期，请重新登录后重试同步' : '云端暂时无法保存，请稍后重试或导出完整历史'
+}
+
 export interface ChatConversation {
   id: string
   kind: 'free_chat' | 'continuous'
@@ -46,6 +53,10 @@ function toConversation(row: any): ChatConversation {
       ...(m.creationSettings ? { creationSettings: m.creationSettings } : {}),
       // 结果画布的各版（lib/canvas）：读回来要带上，不然刷新后画布里改过的都没了
       ...(m.canvas ? { canvas: m.canvas } : {}),
+      // 出方案的那几轮（lib/plan-builder）：读回来要带上，不然刷新后大纲编辑器没了
+      ...(m.plan ? { plan: m.plan } : {}),
+      // 深度研究那一轮（lib/research-meta）：读回来要带上，不然刷新后进度和计划卡片没了
+      ...(m.research ? { research: m.research } : {}),
     })),
     createdAt: normalizeTimestamp(row.created_at),
     updatedAt: normalizeTimestamp(row.updated_at),
@@ -54,25 +65,29 @@ function toConversation(row: any): ChatConversation {
 
 export async function listConversations(
   kind: 'free_chat' | 'continuous',
-  options: { taskType?: string; limit?: number; profileId?: string | null } = {}
+  options: { taskType?: string; limit?: number; offset?: number; profileId?: string | null; strict?: boolean } = {}
 ): Promise<ChatConversation[]> {
   try {
     const params = new URLSearchParams({ kind })
     if ('profileId' in options) params.set('profileId', options.profileId || 'default')
     if (options.taskType) params.set('taskType', options.taskType)
     if (options.limit) params.set('limit', String(options.limit))
+    if (options.offset) params.set('offset', String(options.offset))
 
     const res = await fetch(`/api/chat-conversations?${params.toString()}`)
-    if (!res.ok) return []
+    if (!res.ok) { if (options.strict) throw new Error('读取对话失败，请重试'); return [] }
     const rows = await res.json()
     return Array.isArray(rows) ? rows.map(toConversation) : []
   } catch (e) {
+    if (options.strict) throw e
     console.warn('[chat-store] 读取对话失败', e)
     return []
   }
 }
 
 export async function createConversation(payload: {
+  id?: string
+  ownerId?: string
   kind: 'free_chat' | 'continuous'
   taskType?: string | null
   profileId?: string | null
@@ -86,23 +101,39 @@ export async function createConversation(payload: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    if (!res.ok) return null
+    if (!res.ok) { if (payload.id) saveErrors.set(payload.id, await responseSaveError(res)); return null }
+    if (payload.id) saveErrors.delete(payload.id)
     return toConversation(await res.json())
   } catch (e) {
+    if (payload.id) saveErrors.set(payload.id, '网络连接失败，请重试同步或先导出完整历史')
     console.warn('[chat-store] 创建对话失败', e)
     return null
   }
 }
 
-export async function updateConversation(
+/** 同一对话按请求顺序写入，避免慢的旧快照覆盖新的画布或回答。 */
+const writeQueues = new Map<string, Promise<boolean>>()
+
+export function updateConversation(
   id: string,
   patch: {
     title?: string
     difyConversationId?: string
     messages?: ChatMessage[]
     profileId?: string | null
+    ownerId?: string
   }
 ): Promise<boolean> {
+  const previous = writeQueues.get(id) ?? Promise.resolve(true)
+  const work = previous.catch(() => false).then(() => writeConversation(id, patch))
+  writeQueues.set(id, work)
+  void work.finally(() => { if (writeQueues.get(id) === work) writeQueues.delete(id) })
+  return work
+}
+
+async function writeConversation(id: string, patch: {
+  title?: string; difyConversationId?: string; messages?: ChatMessage[]; profileId?: string | null; ownerId?: string
+}): Promise<boolean> {
   if (!id) return false
   try {
     const res = await postSafely(`/api/chat-conversations?id=${encodeURIComponent(id)}`, {
@@ -110,8 +141,11 @@ export async function updateConversation(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     })
-    return res.ok
+    if (!res.ok) { saveErrors.set(id, await responseSaveError(res)); return false }
+    saveErrors.delete(id)
+    return true
   } catch (e) {
+    saveErrors.set(id, '网络连接失败，请重试同步或先导出完整历史')
     console.warn('[chat-store] 保存对话失败', e)
     return false
   }

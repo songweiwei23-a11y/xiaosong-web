@@ -1,0 +1,346 @@
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - button "关闭菜单":
+  - generic: 进行中
+  - link "【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=7cd9a15f-a2cc-40c5-975d-ef2fa27eefc5
+    - paragraph: 【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：【测试】买衣柜先看柜门与抽屉打开后的占位，给本地装修家庭，一人手机演示，30秒内。不要写客户经历、比例、价格、尺寸标准或":
+  - link "【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不 选题策划（已做） 脚本生成（已做） 分镜脚本 审稿优化 标题封面 下一步：分镜脚本":
+    - /url: /dashboard/storyboard?work=6e09b803-34d3-4c50-86b8-e03b3ded7ad5
+    - paragraph: 【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不
+    - generic "选题策划（已做）"
+    - generic "脚本生成（已做）"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：分镜脚本
+  - button "删除作品：【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不":
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "打开菜单":
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "标题封面" [level=1]
+    - paragraph: 生成高点击率的爆款标题，一次给出多个方案做对比
+    - paragraph:
+      - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+      - link "换一个":
+        - /url: /dashboard/profiles
+    - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+    - paragraph:
+      - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+      - link "在档案里调整":
+        - /url: /dashboard/profiles
+    - paragraph: 创作简报已带上：一句话定位、说给谁听、凭什么信你、绝对不能说 ✓
+    - button "脚本 / 创作参考" [expanded]:
+      - generic: 脚本 / 创作参考
+    - textbox "脚本或创作参考":
+      - /placeholder: 可粘贴脚本；从其他板块跳转时自动带入内容
+      - text: 【上线验收合成材料】计划采访县城同一条街的商家，询问国庆前后生意变化。尚未采访，没有实录、已知回答或经营数字。锁定问题：国庆前后，这条街上的生意到底有什么变化？请给3个当前能用的开放提问或计划式标题与封面，不得写问了、老板说、真实回答、不同答案或预设结论。
+    - button "基础信息" [expanded]:
+      - generic: 基础信息
+    - generic: 视频主题
+    - generic: 必填
+    - textbox "例如：教你3招拍出电影感视频": 【上线验收】尚未采访：国庆前后，这条街上的生意到底有什么变化？
+    - generic: 目标平台
+    - generic: 必填
+    - button "抖音" [pressed]
+    - button "小红书"
+    - button "快手"
+    - button "B站"
+    - button "视频号"
+    - generic: 目标人群
+    - generic: 可选
+    - textbox "例如：25-35 岁职场女性": 全国实体店老板；本轮按采访计划，不套家具店定位
+    - button "标题风格" [expanded]:
+      - generic: 标题风格
+    - generic: 标题类型
+    - generic: 可选
+    - button "已按原稿自动选择标题类型" [pressed]
+    - button "🔮 悬念式":
+      - generic: 🔮
+      - generic: 悬念式
+    - button "🔢 数字式":
+      - generic: 🔢
+      - generic: 数字式
+    - button "⚖️ 对比式":
+      - generic: ⚖️
+      - generic: 对比式
+    - button "❓ 疑问式":
+      - generic: ❓
+      - generic: 疑问式
+    - button "❗ 惊叹式":
+      - generic: ❗
+      - generic: 惊叹式
+    - button "💢 痛点式":
+      - generic: 💢
+      - generic: 痛点式
+    - generic: 生成数量
+    - generic: 可选
+    - button "3个 快速测试" [pressed]:
+      - generic: 3个
+      - generic: 快速测试
+    - button "5个 标准版":
+      - generic: 5个
+      - generic: 标准版
+    - button "8个 充分选择":
+      - generic: 8个
+      - generic: 充分选择
+    - button "10个 全面对比":
+      - generic: 10个
+      - generic: 全面对比
+    - button "生成标题":
+      - text: 生成标题
+  - main:
+    - heading "标题方案" [level=2]
+    - button "继续创作":
+      - text: 继续创作
+    - button "在画布里改":
+      - text: 在画布里改
+    - button "复制":
+      - text: 复制
+    - article:
+      - heading "标题方案" [level=1]
+      - heading "1. 国庆后这条街的生意，我挨家问了一遍" [level=3]
+      - list:
+        - strong: 字数
+        - text: ：16 字（不含标点和空格）
+        - strong: 目的
+        - text: ：流量型（让实体店老板、关心商业动态的人看到）
+        - strong: 用的钩子
+        - text: ：直接说具体的事（时间/地点/动作 + 一个具体发现 + 感受/联想）
+        - strong: 赌的动机
+        - text: ：好奇——同为实体店老板想知道其他人的真实处境；关心县城经济的人想知道一线情况；"挨家问"暗示有多个样本，不是单一个例
+        - strong: 核心卖点
+        - text: ：真实采访多家商户，呈现同一条街在国庆前后的生意变化对比
+        - strong: 埋的关键词
+        - text: ：国庆、实体店、生意
+        - strong: 适合场景
+        - text: ：强调调查动作本身，突出真实性与样本量，适合第一次发布测试反应
+      - separator
+      - heading "2. 同一条街，国庆前后生意差多少？" [level=3]
+      - list:
+        - strong: 字数
+        - text: ：13 字（不含标点和空格）
+        - strong: 目的
+        - text: ：流量型（让实体店老板、关心商业动态的人看到）
+        - strong: 用的钩子
+        - text: ：对比·对立·区别（A和B怎么选/有什么区别/谁更X）
+        - strong: 赌的动机
+        - text: ：好奇——核心疑问直接抛出，"差多少"触发想知道答案的冲动；县城商户关心自己遇到的情况是不是普遍现象
+        - strong: 核心卖点
+        - text: ：通过采访同一区域商户，对比国庆前后两个时段的生意变化
+        - strong: 埋的关键词
+        - text: ：国庆、生意、实体店
+        - strong: 适合场景
+        - text: ：适合平台推荐流，疑问句式点击率通常较高；前8字已完整表达对比关系
+      - separator
+      - heading "3. 县城这条街的老板，国庆后都在说同一件事" [level=3]
+      - list:
+        - strong: 字数
+        - text: ：18 字（不含标点和空格）
+        - strong: 目的
+        - text: ：流量型（让实体店老板、关心商业动态的人看到）
+        - strong: 用的钩子
+        - text: ：引发共鸣（共同处境/细节 + 被理解的判断 + 后续解释）
+        - strong: 赌的动机
+        - text: ：认同——"都在说同一件事"暗示存在共同处境，引发"是不是我也遇到了"的共鸣；悬念在于到底是什么事
+        - strong: 核心卖点
+        - text: ：采访发现多位商户对国庆后生意变化有共同感受或判断（具体内容待实际采访确定）
+        - strong: 埋的关键词
+        - text: ：县城、实体店、国庆、老板
+        - strong: 适合场景
+        - text: ：适合采访后发现确实存在趋势性答案时使用；若各家答案差异大则不适用此标题
+      - separator
+      - heading "🎯 投放建议" [level=3]
+      - list:
+        - paragraph:
+          - strong: 首选
+          - text: ：标题1「国庆后这条街的生意，我挨家问了一遍」
+        - list:
+          - strong: 理由
+          - text: ：前8字"国庆后这条街"已点明时间+地点，"挨家问"强调调查动作，建立真实感与期待；适合尚未采访时发布采访计划预告，也适合采访完成后作为实录标题
+        - paragraph:
+          - strong: 备选
+          - text: ：若首选标题完播率低于账号平均水平，换标题2「同一条街,国庆前后生意差多少?」
+        - list:
+          - strong: 观察指标
+          - text: ：前5秒完播率——标题1若未能在开头5秒内兑现"问了哪几家"的承诺,观众会流失;标题2直接抛问题,对开头容错度更高
+        - paragraph:
+          - strong: 封面配合
+          - text: ：
+        - list:
+          - strong: 封面文字
+          - text: ：
+          - strong: 真实采访
+          - text: 或
+          - strong: 多家对比
+          - text: 或
+          - strong: 节前 VS 节后
+          - strong: 画面建议
+          - text: ：街景+多个店铺门头拼图(显示是同一条街);或手持话筒/手机面对店主的采访画面(背影/侧面,不拍正脸未经同意)
+      - separator
+      - paragraph:
+        - text: ⚠️
+        - strong: 使用说明
+        - text: ：
+      - list:
+        - text: 以上三个标题均为
+        - strong: 采访计划阶段可用
+        - text: ",不包含预设答案或结论"
+        - listitem: 若采访后发现各家答案高度一致,标题3可用;若答案差异大,标题1、2更安全
+        - listitem: 正文需与标题承诺一致:标题说"挨家问",正文就要呈现多家采访;标题说"对比",正文就要有前后时段的具体对比维度
+    - paragraph: 自动修正没成功，下面这几处请你核对
+    - button "这几处请核对：账号资料和素材里找不到出处（3 处）" [expanded]:
+      - generic: 这几处请核对：账号资料和素材里找不到出处（3 处）
+    - list:
+      - generic: ·
+      - generic: 采访经历「我挨家问了一遍」用户尚未提供采访素材，请改成准备验证的问题或行动，不预写发现与答案
+      - generic: ·
+      - generic: 采访经历「我挨家问了一遍」」用户尚未提供采访素材，请改成准备验证的问题或行动，不预写发现与答案
+      - generic: ·
+      - generic: 采访经历「问了哪几家」用户尚未提供采访素材，请改成准备验证的问题或行动，不预写发现与答案
+    - button "按资料修正":
+      - text: 按资料修正
+    - generic: 是真的就不用管（比如你口头告诉过它的）；点「按资料修正」只改这几句，其余不动，不扣次数。
+    - paragraph: 继续创作 · 内容自动带入
+    - button "收藏到素材库":
+      - text: 收藏到素材库
+    - button "这份结果里有 3 条，只带其中几条？":
+      - text: 这份结果里有 3 条，只带其中几条？
+    - button "审稿优化":
+      - generic: 审稿优化
+    - button "脚本生成":
+      - generic: 脚本生成
+    - button "更多板块":
+      - generic: 更多板块
+    - heading "历史标题" [level=3]
+    - generic: "2"
+    - button "载入：标题方案":
+      - paragraph: 标题方案
+      - generic: 刚刚
+      - button "删除":
+    - button "载入：标题方案":
+      - paragraph: 标题方案
+      - generic: 2 小时前
+      - button "删除":
+- alert

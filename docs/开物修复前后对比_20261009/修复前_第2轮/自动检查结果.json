@@ -1,0 +1,461 @@
+[
+  {
+    "id": "05",
+    "board": "起号打法推荐",
+    "account": "万客隆家具城·李国才",
+    "scenario": "让 AI 按账号情况推荐起号打法候选",
+    "ok": true,
+    "ms": 27988,
+    "promptChars": 14382,
+    "answerChars": 301,
+    "auto": {
+      "issues": [
+        "facts:百分比「买家具前这三个坑80%的人都踩」没有出处"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 45674,
+        "completion_tokens": 358,
+        "total_tokens": 46032,
+        "latency": 12.452,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 22.874664
+      }
+    }
+  },
+  {
+    "id": "03",
+    "board": "成交理由",
+    "account": "万客隆家具城·李国才",
+    "scenario": "用档案里已存的店铺信息重新分析 17 个成交理由",
+    "ok": true,
+    "ms": 48146,
+    "promptChars": 3863,
+    "answerChars": 1650,
+    "auto": {
+      "issues": [
+        "taboo:「最大」— 广告法红线",
+        "taboo:「独家」— 广告法红线",
+        "taboo:「唯一」— 广告法红线",
+        "excluded:提到了「手机」：- 客人问价，你拿手机计算器现场算：沙发X+茶几X+电视柜X=总价X，没有模糊地带",
+        "excluded:提到了「效果好」：- 效果好（4分）：家具不是立竿见影的效果型产品（不像美容、健身、维修），\"效果\"需要客人用很久才能验证",
+        "excluded:提到了「不知道怎么挑」：规模大和选择多解决\"跑三家太麻烦\"的痛点，专业强（教师背景会讲+哥哥15年经验）解决\"不知道怎么挑\"的痛点。这三个都有具…"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 29323,
+        "completion_tokens": 1835,
+        "total_tokens": 31158,
+        "latency": 36.519,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 45.828787
+      }
+    }
+  },
+  {
+    "id": "01",
+    "board": "高阶自由对话",
+    "account": "万客隆家具城·李国才",
+    "scenario": "节后客流掉了一半，想拍视频拉客但不想拍成甩卖",
+    "ok": true,
+    "ms": 86437,
+    "promptChars": 4896,
+    "answerChars": 3121,
+    "auto": {
+      "issues": [],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 6364,
+        "completion_tokens": 3457,
+        "total_tokens": 9821,
+        "latency": 78.789,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 83.388609
+      }
+    }
+  },
+  {
+    "id": "02",
+    "board": "知识库查询",
+    "account": "万客隆家具城·李国才",
+    "scenario": "节后淡季拍什么最容易起量",
+    "ok": true,
+    "ms": 87192,
+    "promptChars": 2525,
+    "answerChars": 3485,
+    "auto": {
+      "issues": [
+        "taboo:「最强」— 广告法红线",
+        "excluded:提到了「怎么挑」：- 淡季内容重心从「促销活动」转向「教怎么挑」——**教知识型内容权重提升**",
+        "excluded:提到了「不着急」：- 淡季用户决策周期长，不着急下单，但**愿意学习**",
+        "excluded:提到了「不知道怎么挑」：- 「不知道怎么挑」是你客户核心痛点（档案原话），教知识天然匹配",
+        "excluded:提到了「好不好」：- 用户关心\"服务好不好\"\"会不会被坑\"，过程展示天然建立信任",
+        "excluded:提到了「一套床」：| 客户买了一套床，我们送货上门全过程 | \"客户在濮阳，40公里外——淡季我们也照样送到家\" | 拆包装 → 验货 →…"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 28526,
+        "completion_tokens": 3589,
+        "total_tokens": 32115,
+        "latency": 72.355,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 84.51251
+      }
+    }
+  },
+  {
+    "id": "04",
+    "board": "拆解爆款（文案）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "同行一块钱一串的爆款口播，拆出能学走的",
+    "ok": true,
+    "ms": 89804,
+    "promptChars": 3816,
+    "answerChars": 4108,
+    "auto": {
+      "issues": [],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 34544,
+        "completion_tokens": 4233,
+        "total_tokens": 38777,
+        "latency": 77.908,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 87.422089
+      }
+    }
+  },
+  {
+    "id": "06",
+    "board": "账号定位（快速版）",
+    "account": "锦园地摊串串一元火锅",
+    "scenario": "没做过定位的串串店第一次做账号定位",
+    "ok": true,
+    "ms": 207995,
+    "promptChars": 21548,
+    "answerChars": 8666,
+    "auto": {
+      "issues": [
+        "taboo:「最大」— 广告法红线",
+        "taboo:「最好」— 广告法红线",
+        "taboo:「最强」— 广告法红线"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 49192,
+        "completion_tokens": 9278,
+        "total_tokens": 58470,
+        "latency": 193.465,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 203.083983
+      }
+    }
+  },
+  {
+    "id": "08",
+    "board": "画布局部改写",
+    "account": "万客隆家具城·李国才",
+    "scenario": "自由对话结果里选一段，让 AI 改得更口语",
+    "ok": true,
+    "ms": 15347,
+    "promptChars": 8345,
+    "answerChars": 144,
+    "auto": {
+      "issues": [],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 10058,
+        "completion_tokens": 169,
+        "total_tokens": 10227,
+        "latency": 6.31,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 13.169456
+      }
+    }
+  },
+  {
+    "id": "09",
+    "board": "跨行业二创",
+    "account": "锦园地摊串串一元火锅的爆款 → 万客隆家具城·李国才",
+    "scenario": "拆完串串店的爆款，借它的打法给家具店出 2 个方案",
+    "ok": true,
+    "ms": 97945,
+    "promptChars": 11829,
+    "answerChars": 4306,
+    "auto": {
+      "issues": [
+        "taboo:「最好」— 广告法红线",
+        "taboo:「最大」— 广告法红线",
+        "excluded:提到了「手机」：**画面**：航拍或手机广角拍店面全景(6000平、六大品类分区清晰可见),你站在店门口,镜头推进到你脸上",
+        "excluded:提到了「不知道怎么挑」：很多客人来了不知道怎么挑,我当过5年教师,会问你户型、预算、喜欢的风格,",
+        "facts:「构在你账号上的数据,数据好了再拍」引用了数据但没给出处"
+      ],
+      "spokenChars": 412,
+      "spokenSeconds": 82,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 42268,
+        "completion_tokens": 4601,
+        "total_tokens": 46869,
+        "latency": 91.308,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 95.300358
+      }
+    }
+  },
+  {
+    "id": "07",
+    "board": "创作方向（拓展）",
+    "account": "万客隆家具城·李国才",
+    "scenario": "自由对话里勾第 1 个方向带去拓展",
+    "ok": true,
+    "ms": 128767,
+    "promptChars": 8504,
+    "answerChars": 5481,
+    "auto": {
+      "issues": [
+        "excluded:提到了「不知道」：- **为什么能达到目的**：观望的人最大顾虑之一是\"不知道我这点钱能不能配齐\"。看到你接待一个预算5000的客人，帮他…",
+        "excluded:提到了「手机」：- **怎么拍**：手机跟拍，客人进店开始录（打码或拍背影），你问预算、问户型、带他走到对应区域、掀开沙发垫讲材质、报价…",
+        "excluded:提到了「再看看」：- **为什么能达到目的**：所有同行都在拍成交的客人，你拍那些\"看了没买\"\"说回去商量\"\"觉得贵了走了\"的，反而显得真…",
+        "excluded:提到了「不着急」：- **核心思路**：专门拍那些没当场成交的客人——他为什么来、你怎么接待、他为什么没买（预算不够/要和家里人商量/想多…",
+        "excluded:提到了「效果好」：- **看什么数据**：评论区的信任类留言（\"这老板实在\"\"不像有些店逼着你买\"）、关注率（这类内容不直接转化，但涨粉效…"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 28090,
+        "completion_tokens": 5913,
+        "total_tokens": 34003,
+        "latency": 119.765,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 126.097758
+      }
+    }
+  },
+  {
+    "id": "10",
+    "board": "生成选题",
+    "account": "万客隆家具城·李国才",
+    "scenario": "创作方向结果里勾第 1 个方向带去出选题",
+    "ok": true,
+    "ms": 135902,
+    "promptChars": 16008,
+    "answerChars": 7142,
+    "auto": {
+      "issues": [
+        "taboo:「最大」— 广告法红线",
+        "excluded:提到了「手机」：- **场景设置**:店内通货区,自然光+店内照明,手机跟拍",
+        "excluded:提到了「的问题」：- 收声关键:你的问题和报价要说清楚,客人回答收全",
+        "excluded:提到了「的家庭」：- 人群:宝妈、有孩子的家庭"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 51576,
+        "completion_tokens": 7613,
+        "total_tokens": 59189,
+        "latency": 128.366,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 134.327697
+      }
+    }
+  },
+  {
+    "id": "12",
+    "board": "开篇钩子",
+    "account": "万客隆家具城·李国才",
+    "scenario": "同一条选题带去设计开头",
+    "ok": true,
+    "ms": 52381,
+    "promptChars": 11780,
+    "answerChars": 1851,
+    "auto": {
+      "issues": [],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 36692,
+        "completion_tokens": 1968,
+        "total_tokens": 38660,
+        "latency": 44.25,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 47.446929
+      }
+    }
+  },
+  {
+    "id": "11",
+    "board": "脚本生成",
+    "account": "万客隆家具城·李国才",
+    "scenario": "选题结果里勾第 1 条带去写脚本（时长 AI 推荐）",
+    "ok": true,
+    "ms": 99306,
+    "promptChars": 13144,
+    "answerChars": 4138,
+    "auto": {
+      "issues": [
+        "taboo:「加微信」— 站外导流，抖音上容易限流",
+        "taboo:「最好」— 广告法红线",
+        "excluded:提到了「是真的」：- **材质讲解必须准确**：掀开坐垫讲的填充物、框架材质必须是真的，不懂的不乱说",
+        "excluded:提到了「手机」：- **拍摄要点**:手机跟拍或固定机位,拍客人背影或侧面打码,你的声音清晰,开篇直接点题",
+        "facts:「# 优化方向(根据数据调整)」引用了数据但没给出处"
+      ],
+      "spokenChars": 247,
+      "spokenSeconds": 49,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 36091,
+        "completion_tokens": 4408,
+        "total_tokens": 40499,
+        "latency": 92.371,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 97.830046
+      }
+    }
+  },
+  {
+    "id": "15",
+    "board": "标题封面",
+    "account": "万客隆家具城·李国才",
+    "scenario": "刚写的脚本带去起 3 个标题",
+    "ok": true,
+    "ms": 39637,
+    "promptChars": 14759,
+    "answerChars": 1433,
+    "auto": {
+      "issues": [
+        "facts:百分比「（5秒完播率低于40%）时，换」没有出处",
+        "facts:「**备选**：数据显示前段流失」引用了数据但没给出处",
+        "facts:地名「直奔某个区」档案和素材里都没有",
+        "facts:地名「底是哪个区」档案和素材里都没有",
+        "facts:地名「直奔某区」档案和素材里都没有"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 40480,
+        "completion_tokens": 1478,
+        "total_tokens": 41958,
+        "latency": 32.937,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 37.675095
+      }
+    }
+  },
+  {
+    "id": "16",
+    "board": "按资料修正（自动修正）",
+    "account": "万客隆家具城·李国才",
+    "scenario": "脚本里查出的找不到出处的说法，自动修正一次",
+    "ok": true,
+    "ms": 70253,
+    "promptChars": 9240,
+    "answerChars": 4130,
+    "auto": {
+      "issues": [
+        "taboo:「加微信」— 站外导流，抖音上容易限流",
+        "taboo:「最好」— 广告法红线",
+        "excluded:提到了「是真的」：- **材质讲解必须准确**：掀开坐垫讲的填充物、框架材质必须是真的，不懂的不乱说",
+        "excluded:提到了「手机」：- **拍摄要点**:手机跟拍或固定机位,拍客人背影或侧面打码,你的声音清晰,开篇直接点题"
+      ],
+      "spokenChars": 247,
+      "spokenSeconds": 49,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 10860,
+        "completion_tokens": 4364,
+        "total_tokens": 15224,
+        "latency": 65.478,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 69.203897
+      }
+    }
+  },
+  {
+    "id": "14",
+    "board": "分镜脚本",
+    "account": "万客隆家具城·李国才",
+    "scenario": "刚写的脚本带去拆分镜（按脚本长度）",
+    "ok": true,
+    "ms": 76424,
+    "promptChars": 14989,
+    "answerChars": 3046,
+    "auto": {
+      "issues": [
+        "excluded:提到了「手机」：| 1 | 中景📹 | 固定 | 客人背影推门进店（或已站在店里），李国才迎上去，客人侧面打码 | 小伙子进店第一句话…",
+        "excluded:提到了「不着急」：| 9 | 中景📹 | 固定 | 李国才站在三件套旁边，面对客人（客人背影），手依次指向沙发、茶几、电视柜 | 我给你…"
+      ],
+      "spokenChars": 0,
+      "spokenSeconds": 0,
+      "selfCertRemoved": 376,
+      "usage": {
+        "prompt_tokens": 36672,
+        "completion_tokens": 3277,
+        "total_tokens": 39949,
+        "latency": 69.366,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 70.983676
+      }
+    }
+  },
+  {
+    "id": "13",
+    "board": "审稿优化",
+    "account": "万客隆家具城·李国才",
+    "scenario": "刚写的脚本带去审稿（时长 AI 推荐、不填个人要求）",
+    "ok": true,
+    "ms": 89995,
+    "promptChars": 15159,
+    "answerChars": 4589,
+    "auto": {
+      "issues": [
+        "excluded:提到了「手机」：- **拍摄要点**：手机固定或跟拍,客人背影/侧面打码,你的声音清晰"
+      ],
+      "spokenChars": 199,
+      "spokenSeconds": 40,
+      "selfCertRemoved": 0,
+      "usage": {
+        "prompt_tokens": 17247,
+        "completion_tokens": 4812,
+        "total_tokens": 22059,
+        "latency": 86.231,
+        "total_price": 0,
+        "currency": "USD",
+        "elapsed_time": 88.115333
+      }
+    }
+  }
+]

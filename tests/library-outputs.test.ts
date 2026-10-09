@@ -62,26 +62,27 @@ describe('标题和预览', () => {
 
 describe('接口和页面', () => {
   const api = readCode('app/api/library/outputs/route.ts');
+  // 分页、隔离、搜索、选题按条拆的真实行为见 tests/library-assets.test.ts（内存数据库跑真实路由）
   it('按本人读；列表不带全文（用户网络对大请求敏感），全文点开再取', () => {
-    expect(api.match(/\.eq\('user_id', guard\.userId!\)/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(api).toMatch(/const userId = guard\.userId!/);
+    expect(api.match(/\.eq\('user_id', userId\)/g)?.length).toBeGreaterThanOrEqual(3);
     expect(api).toMatch(/preview: outputPreview/);
-    expect(api).toMatch(/\.map\(\(\{ body: _body, \.\.\.rest \}\) => rest\)/);
   });
 
-  it('选题库按一条一条拆，不按批', () => {
-    expect(api).toMatch(/splitTopicSections\(String\(r\.result \|\| ''\)\)\.map/);
-    expect(api).toMatch(/id: `\$\{r\.id\}#\$\{i\}`/);
+  it('选题库按一条一条拆（选题索引），一条的 id 是「批次id#序号」', () => {
+    expect(readCode('lib/library-topic-index.ts')).toMatch(/id: `\$\{row\.history_id\}#\$\{idx\}`/);
   });
 
-  it('搜索关键词里的通配符去掉', () => {
-    expect(api).toMatch(/kw\.replace\(\/\[%_\\\\\]\/g, ''\)/);
+  it('搜索关键词里的通配符和过滤语法符号去掉', () => {
+    expect(api).toMatch(/const kw = cleanKeyword\(sp\.get\('q'\)\)/);
   });
 
-  it('素材库分「我的收藏」「全部产出」两块；没收藏过直接进全部产出', () => {
+  it('素材库分「我的收藏」「全部产出」「风格预设」；没收藏过直接进全部产出', () => {
     const page = readCode('app/dashboard/library/page.tsx');
     expect(page).toMatch(/"我的收藏"/);
     expect(page).toMatch(/"全部产出"/);
-    expect(page).toMatch(/if \(list\.length === 0\) setTab\("outputs"\)/);
+    expect(page).toMatch(/"风格预设"/);
+    expect(page).toMatch(/if \(\(data\.counts\?\.all \?\? list\.length\) === 0\) setTab\("outputs"\)/);
   });
 
   it('每条产出能看全文、复制、继续创作、收藏（按原板块归类）、回到原板块', () => {

@@ -200,6 +200,31 @@ describe('登录交接行为', () => {
   });
 });
 
+describe('小眼睛（2026-10-04）', () => {
+  it('点一下显示密码、再点藏起来；登录照常用输入的密码', async () => {
+    mount();
+    enter('password', 'synthetic-test-input');
+    const eye = () => find((node) => node.type === 'button' && /显示密码|隐藏密码/.test(String(node.props['aria-label'])));
+    expect(eye().props['aria-label']).toBe('显示密码');
+    eye().props.onClick();
+    render();
+    expect(find((node) => node.type === 'input' && node.props.value === 'synthetic-test-input').props.type).toBe('text');
+    expect(eye().props['aria-label']).toBe('隐藏密码');
+    eye().props.onClick();
+    render();
+    expect(find((node) => node.type === 'input' && node.props.value === 'synthetic-test-input').props.type).toBe('password');
+    enter('email', 'test@example.invalid');
+    await submit();
+    expect(harness.signIn.mock.calls[0][0].password).toBe('synthetic-test-input');
+  });
+
+  it('小眼睛不是提交按钮：点它不会触发登录', () => {
+    mount();
+    const eye = find((node) => node.type === 'button' && node.props['aria-label'] === '显示密码');
+    expect(eye.props.type).toBe('button');
+  });
+});
+
 describe('认证超时与取消', () => {
   it('注册超时实际取消请求，只发送一次并提醒先登录检查账号', async () => {
     vi.useFakeTimers();

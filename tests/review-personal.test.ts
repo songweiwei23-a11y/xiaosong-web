@@ -43,15 +43,19 @@ describe('个人要求', () => {
 describe('时长', () => {
   it('AI 推荐：让模型自己判断并在优化稿开头写「建议时长」', () => {
     const prompt = buildReviewPrompt({ ...base, duration: AI_DURATION });
-    expect(prompt).toMatch(/目标时长：由你按内容、平台和视频目的判断/);
+    expect(prompt).toMatch(/目标时长：由你按内容需要定——先保证内容讲透、讲精彩/);
+    expect(prompt).toMatch(/不要为了变短删掉/);
+    // 没选时长也一样按 AI 推荐，不拿 60 秒的范例去带节奏
+    expect(buildReviewPrompt({ ...base, duration: '' })).toMatch(/目标时长：由你按内容需要定/);
+    expect(prompt).toContain('范例有多长不代表这条要多长');
     expect(prompt).toContain('建议时长：XX秒');
     expect(prompt).not.toContain('目标时长：AI推荐');
   });
 
-  it('指定或自定义时长：原样写进去，并要求优化稿补足或删减到这个长度', () => {
+  it('指定或自定义时长原样写入，素材不足不编事实凑秒数', () => {
     const prompt = buildReviewPrompt({ ...base, duration: '2分半' });
     expect(prompt).toContain('目标时长：2分半');
-    expect(prompt).toMatch(/原稿不够就补足内容，超了就删减/);
+    expect(prompt).toContain('不编情节或数字凑时长');
   });
 });
 

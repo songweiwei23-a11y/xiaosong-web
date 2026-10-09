@@ -18,41 +18,35 @@
  *   8. 轴线——跨轴会让观众瞬间失去方向感
  */
 
+import { continuationRules } from './creation-continuation';
+import { creativeCraftRules } from './creative-craft';
+
 /** 五种景别各自的任务。这是整套方法论的地基 */
 const SHOT_SIZE_LANGUAGE = `### 景别不是随便选的，每一种都有它的活儿
 
 | 景别 | 它在替你说什么 | 什么时候用 | 滥用会怎样 |
 |---|---|---|---|
-| 远景 📷 | 交代这是哪儿、什么氛围 | 开场建立场景、结尾留白收束 | 短视频里超过 2 个远景就显得拖沓，观众等不及 |
+| 远景 📷 | 交代这是哪儿、什么氛围 | 开场建立场景、结尾留白收束 | 没有新信息时会拖沓；观察比较需要的环境信息应保留 |
 | 全景 🎥 | 人和环境的关系、完整动作 | 展示全身动作、人物进出场 | 竖屏里人物太小，细节全丢，不能当主力 |
 | 中景 📹 | 承载信息，最接近日常对话的距离 | 口播主体、讲解、访谈 | 全片都是中景 = 没有情绪起伏，像念稿 |
 | 近景 📸 | 表情和态度，让观众读到人 | 情绪转折、强调观点、建立信任 | 连续超过 3 个会让人喘不过气 |
-| 特写 🔍 | 感叹号：这个细节你必须看见 | 关键物件、微表情、情绪最高点 | **最容易被滥用**。用多了就不再是感叹号，全片建议不超过总镜头数的 1/4 |
+| 特写 🔍 | 感叹号：这个细节值得看清 | 关键物件、微表情、证据细节 | 避免没有信息的重复特写；演示细节等内容可以按需要多用 |
 
-**硬规则**：
-- 同一景别连续超过 3 个镜头，观众会视觉疲劳，必须插入一个不同景别
+**适配原则**：
+- 同一景别持续时检查是否有新信息；访谈可保留稳定机位，不为了数量换景别
 - 相邻两个镜头的景别不要只差一档还拍同一主体（中景接近景拍同一个人），
   剪出来像跳帧；要么差两档，要么换角度
-- 每条视频至少要有一个特写，否则整条片子没有「重音」`;
+- 有需要看清的细节才设计特写，不强制每条都有特写`;
 
 /** 景别随情绪推进，而不是均匀分配 */
-const RHYTHM_GUIDE = `### 景别节奏：跟着情绪走
+const RHYTHM_GUIDE = `### 景别节奏：跟着内容与信息走
 
-短视频的景别分布不是平均的，它应该画出一条和情绪一样的曲线：
-
-- **开场（0-3秒）**：近景或特写起手。竖屏里观众第一眼只看得清脸和大物件，
-  用远景开场等于把最宝贵的 3 秒浪费在交代环境上。
-- **展开段**：中景为主，穿插近景。信息靠中景传递，观点靠近景加重。
-- **情绪高潮**：特写 + 缩短镜头时长。这里是全片唯一该密集切的地方。
-- **收尾**：拉回中景或全景。情绪需要一个"呼气"的位置，一直怼脸收不住。
-
-**镜头时长**：
-- 短视频平均镜头时长 **2-4 秒**
-- 开场 3 秒内至少切 **2 个**镜头，静止不动的开场是完播率杀手
-- 单个镜头超过 **6 秒**不切，除非画面里有持续发生的变化（动作、字幕递进）
-- 高潮段可以压到 1-1.5 秒一切，但前后必须有慢镜头衬托，全片都快等于都不快`;
-
-import { continuationRules } from './creation-continuation';
+先判断当前内容是采访、真实记录、口播、演示还是剧情，再选择镜头语言，不把快切、特写和情绪高潮当作所有内容的标准。
+- **开场（0-3秒）**：需要交代门店、街道与比较环境时可以用全景或远景；需要看清动作或表情时用近景、特写。一个持续有信息的镜头也可以抓住观众，不规定镜头数量。
+- **展开段**：镜头提供台词之外的证据；采访保留完整问题、回答与必要停顿，不用快切制造不存在的情绪。
+- **重要段落**：只有真实细节、变化或情绪需要强调时才用特写和节奏变化；没有高潮就不制造高潮。
+- **收尾**：跟随原稿收束，不另加励志结论、成交或反转。
+**镜头时长**：按台词、动作和信息所需时间分配。快节奏短片可以参考2-4秒切镜；访谈、持续演示、观察记录允许更长的镜头，不强制前3秒切两镜或6秒内切镜。说明长镜头保留了哪些信息，别为满足数字拆坏问答。`;
 
 /**
  * 运镜与情绪的对应，以及器材带来的现实约束。
@@ -157,11 +151,22 @@ export interface StoryboardPromptParams {
   contextBlock?: string;
 }
 
+/**
+ * 分镜时长「按脚本长度」（2026-10-06，默认）：编导没另选时长，就按脚本台词本来要念多久排，一句不删。
+ * 原来默认 60 秒，脚本长一点就提示"建议删减"、模型照着砍台词——等于替编导把内容压短了
+ */
+export const FOLLOW_SCRIPT = '按脚本长度';
+export const followsScript = (duration: string | undefined) => !duration || duration === FOLLOW_SCRIPT || duration === 'AI推荐';
+/** 脚本按口播 5 字/秒要念多久（和下面的预检同一口径） */
+const scriptSeconds = (script: string) => Math.max(10, Math.round(script.replace(/\s/g, '').length / 5));
+
 /** 把目标时长解析成秒数，顺带给出建议镜头数 */
-function planShots(duration: string): { seconds: number; min: number; max: number } {
-  // "3-5分钟" 这类取上界的分钟数；"60秒" 直接取数字
+function planShots(duration: string, script = ''): { seconds: number; min: number; max: number } {
+  // "3-5分钟" 这类取上界的分钟数；"60秒" 直接取数字；没定时长就按脚本本身的长度
   const minuteMatch = duration.match(/(\d+)\s*-\s*(\d+)\s*分/);
-  const seconds = minuteMatch
+  const seconds = followsScript(duration)
+    ? scriptSeconds(script)
+    : minuteMatch
     ? Number(minuteMatch[2]) * 60
     : /分/.test(duration)
       ? (Number(duration.match(/\d+/)?.[0]) || 1) * 60
@@ -242,8 +247,8 @@ const MOVE_WORDS = ['推镜', '拉镜', '摇镜', '移镜', '跟随'];
  * 往提示词里再加几句「务必相加」解决不了，只能由代码来数。
  * 数出来的结果直接摆给用户，他拍之前就知道素材够不够。
  */
-export function auditStoryboard(markdown: string, duration: string): StoryboardAudit | null {
-  const target = planShots(duration || '60秒').seconds;
+export function auditStoryboard(markdown: string, duration: string, script = ''): StoryboardAudit | null {
+  const target = planShots(duration, script).seconds;
 
   // 只取分镜表的数据行：以 | 开头、第二格是纯数字（镜号）
   const rows = (markdown || '')
@@ -256,6 +261,9 @@ export function auditStoryboard(markdown: string, duration: string): StoryboardA
   const durations: number[] = [];
   let closeUps = 0;
   let moves = 0;
+  /** 念不完的镜头（2026-10-05 质量整改：实测「5 秒里 46 个字」，表上却写 28—30 秒能拍完） */
+  const rushed: { no: string; chars: number; need: number; given: number }[] = [];
+  let speechChars = 0;
 
   for (const cells of rows) {
     // 表格列序：| 镜号 | 景别 | 运镜 | 画面 | 台词 | 时长 | 拍摄要点 |
@@ -266,6 +274,12 @@ export function auditStoryboard(markdown: string, duration: string): StoryboardA
 
     const n = Number((dur.match(/[\d.]+/) || [])[0] || 0);
     if (n > 0) durations.push(n);
+
+    // 台词按口播 5 字/秒算要几秒（和脚本页、上面的预检同一个口径）；比给的时长多出 1 秒以上才报
+    const chars = spokenChars(cells[5] ?? '');
+    speechChars += chars;
+    const need = Math.round((chars / SPEECH_RATE) * 10) / 10;
+    if (n > 0 && chars > 0 && need - n >= 1) rushed.push({ no: cells[1] ?? '', chars, need, given: n });
 
     if (size.includes('特写')) closeUps++;
     if (MOVE_WORDS.some((w) => move.includes(w))) moves++;
@@ -279,24 +293,51 @@ export function auditStoryboard(markdown: string, duration: string): StoryboardA
   const diff = totalSeconds - target;
 
   const issues: string[] = [];
-  // 2 秒以内的出入属于正常取整，不值得打扰用户
-  if (Math.abs(diff) > 2) {
+  // 2 秒以内的出入属于正常取整，不值得打扰用户。按脚本长度排的、又没给脚本的，没有目标可比
+  if (Math.abs(diff) > 2 && !followsScript(duration)) {
     issues.push(
       diff > 0
         ? `镜头时长合计 ${totalSeconds}s，比目标多 ${diff}s，拍出来会超时`
         : `镜头时长合计 ${totalSeconds}s，比目标少 ${Math.abs(diff)}s，素材会不够`
     );
   }
-  if (closeUpRatio > 25) issues.push(`特写占 ${closeUpRatio}%，超过 25% 的建议上限，感叹号用多了就不响了`);
-  if (moveRatio > 33) issues.push(`运动镜头占 ${moveRatio}%，手机没有稳定器时建议不超过 33%`);
-  if (longest > 6) issues.push(`最长镜头 ${longest}s，超过 6s 不切容易掉完播，确认画面里有持续变化`);
+  // 按脚本排时允许动作与未知回答增加时长，但模型写出的总数仍须与表格一致。
+  if (durations.length === rows.length) {
+    const stated = [...markdown.replace(/\*\*/g, '').matchAll(/总时长[：:]\s*(\d+(?:\.\d+)?)\s*(?:s\b|秒)/gi)];
+    for (const value of new Set(stated.map((m) => Number(m[1])))) {
+      if (Math.abs(value - totalSeconds) > 2) {
+        issues.push(`文中总时长写 ${value}s，但镜头表实际合计 ${totalSeconds}s，需要核对总数`);
+      }
+    }
+  }
+  // Ratio and length are descriptive statistics, not universal quality cutoffs.
+  // Necessary detail shots or a complete interview answer must not be marked as failures.
+  // 念不完：逐个镜头按字数算，最多列 3 个；再看台词合计和镜头合计
+  for (const r of rushed.slice(0, 3)) {
+    issues.push(`镜头 ${r.no}：台词 ${r.chars} 字，按正常语速（约 ${SPEECH_RATE} 字/秒）要 ${r.need}s，表里只给了 ${r.given}s，念不完——删减台词或延长这个镜头`);
+  }
+  if (rushed.length > 3) issues.push(`还有 ${rushed.length - 3} 个镜头也念不完`);
+  const speechSeconds = Math.round(speechChars / SPEECH_RATE);
+  if (totalSeconds > 0 && speechSeconds - totalSeconds > 2) {
+    issues.push(`台词合计 ${speechChars} 字，按正常语速约要 ${speechSeconds}s，镜头合计只有 ${totalSeconds}s——表上的时长是估的，按这个拍会超时`);
+  }
 
   return { shots, totalSeconds, target, diff, longest, closeUpRatio, moveRatio, issues };
 }
 
+/** 口播语速：5 字/秒（脚本页、审稿、分镜预检同一口径） */
+export const SPEECH_RATE = 5;
+
+/** 台词里要念出来的字数：去掉标点、空白、「无」「—」「（动作）」这类非口播内容 */
+export function spokenChars(line: string): number {
+  const t = line.replace(/（[^）]*）|\([^)]*\)|【[^】]*】|\[[^\]]*\]|<br\s*\/?>/g, '').trim();
+  if (!t || /^(?:无|—+|-+|\/|（?无台词）?|空镜|音乐|BGM)$/i.test(t)) return 0;
+  return t.replace(/[\s\p{P}\p{S}]/gu, '').length;
+}
+
 export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   const script = p.scriptContent || '';
-  const { seconds, min, max } = planShots(p.duration || '60秒');
+  const { seconds, min, max } = planShots(p.duration, script);
   const parts: string[] = [];
 
   const hasRealSetup = !!p.contextBlock?.includes('真实拍摄条件');
@@ -330,8 +371,11 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
 
   parts.push('## 📌 本条的拍摄参数');
   parts.push(`- 发布平台：${p.platform}`);
-  parts.push(`- 目标时长：${p.duration}（${seconds} 秒）`);
+  parts.push(followsScript(p.duration)
+    ? `- 目标时长：按脚本台词实际要念的长度排（约 ${seconds} 秒）。台词一句不删、不压缩；节奏需要的话可以加空镜、停顿，让总时长略长于这个数`
+    : `- 目标时长：${p.duration}（${seconds} 秒）`);
   parts.push(`- 视觉风格：${p.visualStyleLabel}`);
+  if (p.contentType === 'auto') parts.push('- 内容类型：从原稿与用户主线判断，采访、记录、讨论、演示分别选合适的镜头语言，不默认套美食或口播模板');
   if (p.additionalInfo) parts.push(`- 补充说明：${p.additionalInfo}`);
   parts.push('');
 
@@ -347,7 +391,7 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
     parts.push('');
   }
 
-  parts.push('## 🎬 分镜方法论（判断依据，不是可选项）');
+  parts.push('## 🎬 分镜方法论（按当前形式选用，用户明确拍法优先）');
   parts.push('');
   parts.push(SHOT_SIZE_LANGUAGE);
   parts.push('');
@@ -394,11 +438,17 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('');
   // 实测里模型排出来的总时长是 56 秒而不是 60 秒，自检那栏也没抓出来。
   // 时长对不上，拍摄当天就会发现素材不够或者超时，必须写死对账动作。
-  parts.push(`**时长必须对账**：把「时长」这一列的数字全部相加，结果必须**正好等于 ${seconds}**。`);
-  parts.push('写完表之后自己加一遍：');
-  parts.push(`- 少了就把差额补在信息量最大的那个镜头上，或者加一个空镜；`);
-  parts.push(`- 多了就压缩重复的镜头，不要靠删内容凑数。`);
-  parts.push(`加不到 ${seconds} 就回去改表，不允许写一个对不上的数字。`);
+  if (followsScript(p.duration)) {
+    // 按脚本长度：不凑某个总数，每个镜头按台词真要念多久给（5 字/秒）再加动作、停顿
+    parts.push(`**时长按台词算**：每个镜头的时长 = 这个镜头的台词按 5 字/秒要念的秒数 + 动作、停顿需要的时间，宁可多给不少给。`);
+    parts.push(`合计大约 ${seconds} 秒上下都正常，不用凑整，也不许为了凑短删台词。写完自己把「时长」列加一遍，总时长写真实相加的数。`);
+  } else {
+    parts.push(`**时长必须对账**：把「时长」这一列的数字全部相加，结果必须**正好等于 ${seconds}**。`);
+    parts.push('写完表之后自己加一遍：');
+    parts.push(`- 少了就把差额补在信息量最大的那个镜头上，或者加一个空镜；`);
+    parts.push(`- 多了就压缩重复的镜头，不要靠删内容凑数。`);
+    parts.push(`加不到 ${seconds} 就回去改表，不允许写一个对不上的数字。`);
+  }
   parts.push('');
   parts.push('每一栏的要求：');
   parts.push('- **景别**：中文 + emoji（远景📷 / 全景🎥 / 中景📹 / 近景📸 / 特写🔍）');
@@ -415,15 +465,15 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('把你自己排的表数一遍，如实填写（数字对不上就回去改表，不要改数）：');
   parts.push('');
   parts.push('- 景别分布：特写 X 个 / 近景 X 个 / 中景 X 个 / 全景 X 个 / 远景 X 个');
-  parts.push('- 特写占比：X%（应 ≤ 25%）');
+  parts.push('- 特写占比：X%（按内容需要说明，不以固定比例压过证据和表达）');
   parts.push(
     hasRealSetup
       ? '- 运动镜头占比：X%（按上面的器材条件判断是否合理，有稳定器可以更高）'
       : '- 运动镜头占比：X%（手机无稳定器时应 ≤ 33%）'
   );
-  parts.push('- 最长镜头：Xs（超过 6s 需说明画面里在持续发生什么）');
-  parts.push('- 开场 3 秒内镜头数：X 个（应 ≥ 2）');
-  parts.push('- 总时长：Xs（必须等于 ' + seconds + 's）');
+  parts.push('- 最长镜头：Xs（说明保留的回答、动作或信息，不能为了切镜破坏内容）');
+  parts.push('- 开场 3 秒内镜头数：X 个（据实统计，不设最低数量）');
+  parts.push(followsScript(p.duration) ? '- 总时长：Xs（各镜头真实相加）' : '- 总时长：Xs（必须等于 ' + seconds + 's）');
   parts.push('- 是否存在同一景别连续超过 3 个：是/否');
   parts.push('');
 
@@ -459,5 +509,6 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('反问用户要更多信息——信息不足的地方按最常见的情况假设，并在拍摄要点里注明。');
 
   parts.push(continuationRules('storyboard'));
+  parts.push(creativeCraftRules({ source: p.scriptContent, context: p.contextBlock }));
   return parts.join('\n');
 }

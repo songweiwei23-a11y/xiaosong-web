@@ -21,7 +21,13 @@ import {
   Brain, Layers, Clock, Shield, Quote, ChevronRight,
   MessageCircle, Activity, ChevronDown, X,
   Clapperboard, Shuffle, FileSearch, GraduationCap, Compass, Bookmark, ListChecks, MessagesSquare,
+  Telescope, ClipboardList, FileDown, PenLine, Globe, Paperclip, ShieldCheck, LineChart, Download,
+  Users, Camera, UserCheck, Rocket, Fingerprint, Sparkles, SearchX, FolderOpen,
 } from "lucide-react";
+import { PLAN_CATEGORIES } from "@/lib/plan-builder";
+import { DEPTHS } from "@/lib/research";
+import { MAX_CHAT_FILES } from "@/lib/chat-attachments";
+import { DEEP_RESEARCH_LIMITS } from "@/lib/config/plans";
 
 export default function HomePage() {
   /**
@@ -88,149 +94,275 @@ export default function HomePage() {
 
   if (!mounted) return null;
 
-  const features = [
+  /*
+   * 全部功能（2026-10-04 首页卖点整理，产品方确认，docs/首页卖点整理_草稿_20261004.md）。
+   * 按「想清楚 / 找灵感 / 写出来 / 拍出来 / 管起来 / AI 助理 / 学起来」分组，每一条都是线上已经能用的。
+   * 旧的教训照旧：选题不写「热点追踪」「爆款概率」（没有热点数据源）；脚本不写「多版本对比」（没做）。
+   */
+  const FEATURE_GROUPS = ["想清楚", "找灵感", "写出来", "拍出来", "管起来", "AI 助理", "学起来"] as const;
+  const features: { group: (typeof FEATURE_GROUPS)[number]; icon: typeof Target; title: string; desc: string; benefits: string[]; color: string; isNew?: boolean }[] = [
     {
+      group: "想清楚",
+      icon: Compass,
+      title: "创作方向",
+      desc: "告诉 AI 你拍视频是为了什么，按你的账号铺开方向和思路，推荐最值得先做的一个",
+      benefits: [`${PURPOSES.length} 种目的可选`, "勾选方向直接去写", "推荐先做哪个"],
+      color: "orange",
+    },
+    {
+      group: "想清楚",
       icon: Target,
       title: "账号定位",
-      desc: "先出核心几节让你尽快看到方向，再补完整方案",
-      benefits: ["避免试错成本", "精准人设定位", "商业模式规划"],
-      color: "blue"
+      desc: "账号定位、商业定位、内容定位、创作简报四件套，先出核心几节让你尽快看到方向，再补完整",
+      benefits: ["人设与差异化", "怎么赚钱、卖什么", "拍什么、怎么配比"],
+      color: "blue",
     },
     {
-      icon: Lightbulb,
-      title: "选题策划",
-      /*
-       * 原来写「AI实时分析热点趋势」「每日热点追踪」「爆款概率预测」。
-       * 系统没有任何热点数据源，提示词里只是让模型"结合当前热点"——
-       * 那是模型自己训练时的旧知识，谈不上实时；"概率预测"更是完全没有。
-       * 改成真正在做的事：按八大爆款元素的句式出题、可填对标账号、每条带钩子。
-       */
-      desc: "按八大爆款元素的句式出选题，贴着你的账号定位",
-      benefits: ["八大爆款元素句式", "对标账号参考", "每条附开篇钩子"],
-      color: "yellow"
+      group: "想清楚",
+      icon: FileSearch,
+      title: "前采建档",
+      desc: "贴前采记录或传 Word，AI 提取成账号档案，逐项核对后再写入",
+      benefits: ["每项标原文依据", "AI 逐项核对", "补问清单"],
+      color: "blue",
     },
     {
-      icon: FileText,
-      title: "脚本生成",
-      // 「多版本对比」「一键多版本」没有做——只能重新生成、在历史里翻旧版
-      desc: `AI 生成完整脚本，${FACTS.structures} 种脚本结构任选`,
-      benefits: ["AI 智能生成", "内置编导知识库", `${FACTS.structures}种脚本结构`],
-      color: "green"
-    },
-    {
-      icon: Film,
-      title: "分镜脚本",
-      desc: "镜头表与拍摄清单，拍摄执行一目了然",
-      benefits: ["镜头语言规划", "场景道具清单", "时长节奏把控"],
-      color: "purple"
-    },
-    {
-      icon: CheckCircle,
-      title: "审稿优化",
-      desc: "智能优化脚本节奏、情绪曲线、冲突设计",
-      benefits: ["完播率优化", "情绪起伏分析", "冲突点强化"],
-      color: "pink"
-    },
-    {
-      icon: Zap,
-      title: "标题与封面文案",
-      // 生成数量可选 3/5/8/10，默认 5，所以说"最多"
-      desc: "一次最多出 10 个标题+封面文案，方便 A/B 测试",
-      benefits: ["标题公式库", "情绪钩子植入", "A/B测试建议"],
-      color: "orange"
-    },
-    {
+      group: "想清楚",
       icon: TrendingUp,
       // 板块本名是「成交理由」，原来这里写"成交话术"，点进去对不上
       title: "成交理由",
       desc: "找出客人凭什么选你，同步进账号档案，选题、脚本、标题都会用上",
       // 理由个数从理由表取，别手写（手写过"十五个"，实际 17 个）
       benefits: [`${DEAL_REASONS.length} 个成交理由逐个打分`, "按档案分别保存", "选题、脚本、标题和二创共用"],
-      color: "red"
+      color: "red",
     },
     {
-      icon: BookOpen,
-      title: "知识库查询",
-      // 不写「随时查阅」——知识库现在只有企业版无限，其余档位按次计费，
-      // 「随时」就成了一句兑现不了的话
-      desc: `约 ${FACTS.wordsWan} 万字符编导资料，分 ${FACTS.libraries} 个专题库，问一句就能查`,
-      benefits: ["五个专题分库", "起号36+1计", "开篇36计"],
-      color: "indigo"
-    },
-    /*
-     * 2026-09-29/30 新上的四个。产品方："新上的功能首页没有的，同步到首页"。
-     * 说的都是真做到的事（见各板块的实现），不写做不到的。
-     */
-    {
-      // 2026-10-02 新上
-      icon: Compass,
-      title: "创作方向",
-      desc: "告诉 AI 你拍视频是为了什么，按你的账号铺开方向和思路，推荐最值得先做的一个",
-      benefits: [`${PURPOSES.length} 种目的可选`, "勾选方向直接去写", "推荐先做哪个"],
-      color: "orange",
-      isNew: true,
-    },
-    {
+      group: "找灵感",
       icon: Clapperboard,
       title: "拆解爆款",
       desc: "传一条参考视频，结合画面与口播拆出开篇、结构和拍法",
       benefits: ["前3分钟切镜头、截图", "口播自动识别", "拆解卡片与档案历史"],
       color: "purple",
-      isNew: true,
     },
     {
+      group: "找灵感",
       icon: Shuffle,
       title: "跨行业二创",
       desc: "借别的行业爆款的开篇、结构、拍法，换成你自己的行业来拍",
       benefits: ["11 个层次自由选", "拆解完一键带过来", "改写自查与档案历史"],
       color: "green",
-      isNew: true,
     },
     {
-      icon: FileSearch,
-      title: "前采建档",
-      desc: "贴前采记录或传 Word，AI 提取成账号档案，逐项核对后再写入",
-      benefits: ["每项标原文依据", "AI 逐项核对", "补问清单"],
-      color: "blue",
-      isNew: true,
-    },
-    {
-      icon: GraduationCap,
-      title: "新手课堂",
-      desc: "6 关学会抖音怎么推荐、怎么拍、怎么发，完全不懂也能上手",
-      benefits: ["刷视频式学习", "每关一道题", "毕业接 7 天起号"],
+      group: "找灵感",
+      icon: Lightbulb,
+      title: "选题策划",
+      /*
+       * 原来写「AI实时分析热点趋势」「每日热点追踪」「爆款概率预测」。
+       * 系统没有任何热点数据源，提示词里只是让模型"结合当前热点"——
+       * 那是模型自己训练时的旧知识，谈不上实时；"概率预测"更是完全没有。
+       */
+      desc: "按八大爆款元素的句式出选题，贴着你的账号定位，出过的不重复",
+      benefits: ["八大爆款元素句式", "对标账号参考", "每条附开篇钩子"],
       color: "yellow",
-      isNew: true,
-    },
-    /*
-     * 2026-10-02 新上的三个（产品方："把所有新上的功能同步到工作台首页和宣传页"）。
-     * 高阶自由对话原来压根没有卡片；联网、六附件、勾选带走都是真做到的（见 lib/web-query、
-     * Dify 文件上传上限 6、components/workspace/CreationLinks）
-     */
-    {
-      icon: MessagesSquare,
-      title: "高阶自由对话",
-      desc: "什么都能问：按需联网查最新信息，读图片和文档；回答里的选题、方向、脚本能勾选带去接着做",
-      benefits: ["联网结果标来源链接", "一次最多 6 个附件", "回答可勾选、可收藏"],
-      color: "blue",
-      isNew: true,
     },
     {
+      group: "找灵感",
+      icon: Rocket,
+      title: "起号",
+      desc: `起号 ${FACTS.tactics} 计，按你的资源条件挑出能拍的那几计，排成起号方案`,
+      benefits: [`起号 ${FACTS.tactics} 计`, "每计带结构公式", "新手课毕业接 7 天起号"],
+      color: "orange",
+    },
+    {
+      group: "写出来",
+      icon: Sparkles,
+      title: "开篇设计",
+      desc: `开篇 ${FACTS.cards} 计、分 ${FACTS.cardCategories} 大类，专攻前 3 秒留住人`,
+      benefits: [`${FACTS.cards} 计开篇公式`, "按心理机制分类", "直接带去写脚本"],
+      color: "pink",
+    },
+    {
+      group: "写出来",
+      icon: FileText,
+      title: "脚本生成",
+      // 「多版本对比」「一键多版本」没有做——只能重新生成、在历史里翻旧版
+      desc: `AI 生成完整口播脚本，${FACTS.structures} 种脚本结构任选，写成你的口吻`,
+      benefits: ["内置编导知识库", `${FACTS.structures}种脚本结构`, "结合账号档案与人设事实卡"],
+      color: "green",
+    },
+    {
+      group: "写出来",
+      icon: CheckCircle,
+      title: "审稿优化",
+      desc: "诊断节奏、情绪曲线、冲突设计，直接给出改好的完整稿",
+      benefits: ["完播率诊断", "情绪起伏分析", "改好的完整稿"],
+      color: "pink",
+    },
+    {
+      group: "写出来",
+      icon: Zap,
+      title: "标题与封面文案",
+      // 生成数量可选 3/5/8/10，默认 5，所以说"最多"
+      desc: "一次最多出 10 个标题+封面文案，方便 A/B 测试",
+      benefits: ["标题公式库", "情绪钩子植入", "A/B测试建议"],
+      color: "orange",
+    },
+    {
+      group: "拍出来",
+      icon: Film,
+      title: "分镜脚本",
+      desc: "镜头表与拍摄清单，景别、运镜、时长、道具一目了然",
+      benefits: ["镜头语言规划", "场景道具清单", "时长节奏把控"],
+      color: "purple",
+    },
+    {
+      group: "拍出来",
+      icon: Camera,
+      title: "拍摄交付包",
+      desc: "一键导出整套拍摄资料：口播稿、手机提词大字稿、镜头清单，拍完一个勾一个",
+      benefits: ["口播 TXT 与完整交付包", "提词字号 22～48 可调", "镜头清单逐个打勾"],
+      color: "indigo",
+      isNew: true,
+    },
+    {
+      group: "管起来",
       icon: Bookmark,
       title: "素材库",
       desc: "任何板块生成的好内容一键收藏，按选题、脚本、方向思路等分类，随时拿去继续创作",
-      benefits: ["勾几条存几条", `${LIBRARY_CATEGORIES.length} 个分类`, "一键继续创作"],
+      benefits: ["勾几条存几条", `${LIBRARY_CATEGORIES.length} 个分类`, "真实素材、认可的好稿分开管"],
       color: "pink",
-      isNew: true,
     },
     {
+      group: "管起来",
       icon: ListChecks,
       title: "创作进度",
       desc: "每条内容做到哪一步、拍没拍、发没发，一眼看清；做好没拍、拍完没发会提醒",
       benefits: ["选题到标题逐环节", "还没拍 / 已拍摄 / 已发布", "多久没动会提醒"],
       color: "indigo",
+    },
+    {
+      group: "管起来",
+      icon: LineChart,
+      title: "数据复盘",
+      desc: "发布后录入播放、完播、互动、涨粉、咨询、成交，选题和方向按这个号的真实数据调整",
+      benefits: ["粘贴平台后台表格导入", "同目的、同平台对比", "每千播放涨粉 / 咨询 / 成交"],
+      color: "green",
       isNew: true,
     },
+    {
+      group: "管起来",
+      icon: Users,
+      title: "多账号档案",
+      desc: "一个账号做好几个号：每个档案的内容、记录、素材、进度完全隔离，互不串",
+      benefits: ["人设事实卡固定格子", "风格预设", "切换档案即切换全部内容"],
+      color: "blue",
+    },
+    {
+      group: "管起来",
+      icon: Download,
+      title: "数据导出",
+      desc: "你的内容是你的：档案、作品、生成记录、素材库、对话，一键导出全部",
+      benefits: ["个人全部内容", "云端保存、换设备接着用", "按账号权限隔离"],
+      color: "indigo",
+    },
+    {
+      group: "AI 助理",
+      icon: MessagesSquare,
+      title: "高阶自由对话",
+      desc: "什么都能问：按需联网查最新信息，读图片和文档表格；回答里的选题、方向、脚本能勾选带去接着做",
+      benefits: ["联网结果标来源链接", `一次最多 ${MAX_CHAT_FILES} 个附件`, "回答可勾选、可收藏"],
+      color: "blue",
+    },
+    {
+      group: "AI 助理",
+      icon: Telescope,
+      title: "深度研究报告",
+      desc: `帮你上网查一圈、读几十个网页，整理成带出处的研究报告，每句话标来源，点开就是原网页`,
+      benefits: [`一次读 ${DEPTHS.quick.sources * DEPTHS.quick.questions[0]}～${DEPTHS.deep.sources * DEPTHS.deep.questions[1]} 个网页`, "先给计划、确认才查", "找不到出处的数字标【未核实】"],
+      color: "purple",
+      isNew: true,
+    },
+    {
+      group: "AI 助理",
+      icon: ClipboardList,
+      title: "出方案",
+      desc: `活动、运营、直播、招商……${PLAN_CATEGORIES.length} 类 ${PLAN_CATEGORIES.reduce((n, c) => n + c.scenarios.length, 0)} 个场景，先出大纲你确认，再写完整方案`,
+      benefits: ["可基于你上传的资料", "缺的信息标【待确认】", "Word / PDF 下载"],
+      color: "orange",
+      isNew: true,
+    },
+    {
+      group: "AI 助理",
+      icon: PenLine,
+      title: "结果画布",
+      desc: "在结果上直接改，或选中一段让 AI 改；每改一次存一版，可以切换、逐行对照",
+      benefits: ["选段让 AI 改", "改稿版本可切换", "不许加原文没有的细节"],
+      color: "pink",
+      isNew: true,
+    },
+    {
+      group: "AI 助理",
+      icon: BookOpen,
+      title: "知识库查询",
+      desc: `约 ${FACTS.wordsWan} 万字符编导资料，分 ${FACTS.libraries} 个专题库，问一句就能查`,
+      benefits: ["五个专题分库", `起号${FACTS.tactics}计`, `开篇${FACTS.cards}计`],
+      color: "indigo",
+    },
+    {
+      group: "学起来",
+      icon: GraduationCap,
+      title: "新手课堂",
+      desc: "6 关学会抖音怎么推荐、怎么拍、怎么发，完全不懂也能上手",
+      benefits: ["刷视频式学习", "每关一道题", "毕业接 7 天起号"],
+      color: "yellow",
+    },
+  ];
+
+  /*
+   * 开物能解决的问题（痛点 → 怎么解决 → 在哪个板块）。
+   */
+  const problems: { icon: typeof Target; pain: string; fix: string; where: string }[] = [
+    { icon: Compass, pain: "想做短视频，但不知道拍什么", fix: `选你拍视频的目的（${PURPOSES.length} 种），按你的账号铺开方向，告诉你最该先做哪个；选题按八大爆款元素出，每条带开篇钩子`, where: "创作方向 · 选题策划" },
+    { icon: Target, pain: "账号没定位，拍了没人看", fix: "账号、商业、内容定位和创作简报四件套，先出核心几节让你马上看到方向", where: "账号定位" },
+    { icon: FileText, pain: "写不出脚本，写了也不像样", fix: `${FACTS.structures} 种脚本结构任选，结合你的账号档案写成你的口吻；开篇 ${FACTS.cards} 计专攻前 3 秒`, where: "脚本生成 · 开篇设计" },
+    { icon: Camera, pain: "脚本写好了，不知道怎么拍", fix: "分镜出镜头表和拍摄清单；拍摄交付包一键导出口播稿、手机提词大字稿、镜头清单", where: "分镜脚本 · 拍摄交付包" },
+    { icon: Clapperboard, pain: "看到别人爆了，学不会", fix: "传一条视频自动切镜头、识别口播，拆出开篇、结构、拍法；还能把别的行业的爆款换成你的行业来拍", where: "拆解爆款 · 跨行业二创" },
+    { icon: SearchX, pain: "AI 写的东西假大空、乱编", fix: "账号档案 + 人设事实卡 + 禁忌清单；每次生成自动体检，资料里没有的标【待确认】，不替你编", where: "全部板块" },
+    { icon: LineChart, pain: "拍完发完，不知道效果好不好", fix: "粘贴平台后台表格就能导入数据，播放、完播、涨粉、咨询、成交一目了然，选题按真实数据调整", where: "数据复盘" },
+    { icon: FolderOpen, pain: "东西做多了乱，找不到", fix: `素材库 ${LIBRARY_CATEGORIES.length} 个分类一键收藏；创作进度记着每条做到哪一步、拍没拍、发没发`, where: "素材库 · 创作进度" },
+    { icon: ClipboardList, pain: "要写方案、做调研、看资料", fix: "出方案先大纲后全文；深度研究读几十个网页出带出处的报告；文档表格直接读，Word / PDF 直接下载", where: "高阶自由对话" },
+    { icon: GraduationCap, pain: "完全不懂短视频", fix: "新手课堂 6 关，刷视频一样学会抖音怎么推荐、怎么拍、怎么发，毕业接 7 天起号", where: "新手课堂" },
+    { icon: Users, pain: "手上有好几个号，或者帮客户做", fix: "多个账号档案，内容、记录、素材、进度按档案完全隔离，互不串", where: "账号档案" },
+  ];
+
+  /*
+   * 对比表（产品方：这是一大杀器）。三列如实写：自己写 / 请编导、通用 AI 聊天工具、开物。
+   * 「编导月薪数千到上万」是行业常识，产品方确认可以写。
+   */
+  const compareRows: { item: string; old: string; ai: string; us: string }[] = [
+    { item: "编导方法", old: "靠个人经验，自己收集整理", ai: "没有体系，全看提示词写得好不好", us: `${FACTS.methods} 条带公式的方法，按目的自动套用` },
+    { item: "懂你的账号", old: "每次都要重新讲一遍", ai: "聊完就忘，换个对话从头说", us: "账号档案 + 人设事实卡，所有板块共用" },
+    { item: "乱编风险", old: "低，但慢", ai: "常编数据、编经历、编来源", us: "自动体检，资料里没有的标【待确认】" },
+    { item: "全流程", old: "多个工具来回倒腾", ai: "一问一答，前后不连贯", us: `${FACTS.boards} 个板块互通，结果勾选就带走` },
+    { item: "拍摄落地", old: "自己整理拍摄清单", ai: "给你一段文字", us: "分镜 + 拍摄交付包 + 手机提词大字稿" },
+    { item: "拆解爆款", old: "一帧帧看、手动记", ai: "大多看不了视频", us: "自动切镜头、识别口播、拆出拍法" },
+    { item: "发布复盘", old: "表格自己算", ai: "没有", us: "数据导入、同类对比，按真实数据调方向" },
+    { item: "研究与方案", old: "花半天查资料、写方案", ai: "能写，但常常没出处", us: "深度研究每句标出处，方案先大纲后全文" },
+    { item: "费用", old: "请编导月薪数千到上万", ai: "订阅费 + 自己磨提示词的时间", us: `¥${SUBSCRIPTION_PLANS.basic.price}～${SUBSCRIPTION_PLANS.enterprise.price}/月，免费可体验` },
+  ];
+
+  /*
+   * 一条内容怎么做出来：主流程 FACTS.pipeline 之后接审稿、拍摄、发布复盘。
+   */
+  const flowSteps: { name: string; note: string }[] = [
+    { name: FACTS.pipeline[0], note: "按目的找方向" },
+    { name: FACTS.pipeline[1], note: "八大爆款元素出题" },
+    { name: FACTS.pipeline[2], note: `${FACTS.cards} 计抓住前 3 秒` },
+    { name: FACTS.pipeline[3], note: `${FACTS.structures} 种结构任选` },
+    { name: "审稿优化", note: "改好的完整稿" },
+    { name: FACTS.pipeline[4], note: "镜头表与清单" },
+    { name: FACTS.pipeline[5], note: "一次出 3～10 个" },
+    { name: "拍摄交付", note: "提词稿、镜头打勾" },
+    { name: "发布复盘", note: "按真实数据调方向" },
   ];
 
   /*
@@ -298,7 +430,23 @@ export default function HomePage() {
     },
     {
       q: "和其他AI工具有什么区别？",
-      a: `核心优势在于：①约 ${FACTS.wordsWan} 万字符的专业编导资料（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库）；②${FACTS.methods} 条公式与句式——四大脚本各对一个生意目的，起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种、爆款元素 ${FACTS.elements} 类，其中脚本结构附情绪曲线与避坑说明；③${FACTS.boards} 个创作板块互通：任何板块的结果都能勾选几条带去别的板块，自动填好接着做；④结合账号档案组织创作背景，好内容可收藏进素材库，创作进度记着每条做到哪一步、拍没拍发没发。`
+      a: `核心区别在于：①约 ${FACTS.wordsWan} 万字符的专业编导资料（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库）和 ${FACTS.methods} 条公式与句式——四大脚本各对一个生意目的，起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种、爆款元素 ${FACTS.elements} 类；②记得住你的账号：账号档案、人设事实卡、成交理由、风格预设所有板块共用，不用每次重新讲；③不乱编：每次生成自动体检，资料里没有的标【待确认】；④${FACTS.boards} 个创作板块互通，从方向、脚本、分镜到拍摄交付包、发布后的数据复盘，一条内容一路做完；⑤高阶自由对话能出方案、做带出处的深度研究报告、读文档表格，直接下载 Word / PDF。`
+    },
+    {
+      q: "AI 会不会乱编？",
+      a: "这是我们花力气最多的地方。你的从业年限、籍贯、主卖什么写在人设事实卡里，所有板块以它为准；禁忌和不想用的信息写进档案，生成时避开。每次生成都会自动体检：有没有踩禁忌、有没有用你排除的信息、年限和事实卡对不对、有没有资料里找不到的价格、地名、荣誉。资料里没有的信息标【待确认】，不替你编；在画布里改写时，也不许加原文没有的人名、时间、数字。后台每晚还会用固定案例自动回归一遍，质量下滑能第一时间发现。"
+    },
+    {
+      q: "深度研究报告是什么？",
+      a: `在高阶自由对话里点「深度研究」，写下想研究的问题。它先给你看研究计划（拆成几个子问题和搜索词，你可以改），确认后自动上网搜索、打开网页读正文，一次读 ${DEPTHS.quick.sources * DEPTHS.quick.questions[0]}～${DEPTHS.deep.sources * DEPTHS.deep.questions[1]} 个网页，整理成带出处的报告：每句话后面标来源编号，点开就是原网页；来源里找不到的数字标【未核实】。研究在服务器上跑，关掉页面也会继续。专业会员每月 ${DEEP_RESEARCH_LIMITS.pro} 份、高频会员每月 ${DEEP_RESEARCH_LIMITS.enterprise} 份，不占对话和联网次数。`
+    },
+    {
+      q: "能帮我写方案、看资料吗？",
+      a: `能。高阶自由对话里的「出方案」覆盖 ${PLAN_CATEGORIES.length} 类 ${PLAN_CATEGORIES.reduce((n, c) => n + c.scenarios.length, 0)} 个场景（开业活动、直播、招商、私域、年会、团队管理、危机处理……），写不进去的可以自定义；先出大纲你确认、改好，再写完整方案。可以上传你的资料让它照着写，缺的信息先问你或标【待确认】。一次能带 ${MAX_CHAT_FILES} 个附件（图片、PDF、Word、Excel、PPT、CSV 等），表格里的数据也能读出来分析。所有回答都能下载成 Word 或 PDF。`
+    },
+    {
+      q: "我有好几个号，能分开管吗？",
+      a: "能。每个号建一个账号档案，切换档案后，生成记录、素材库、创作进度、对话都只显示这个号的，互不串。每个档案有自己的人设事实卡、成交理由和风格预设。"
     },
     {
       // 2026-10-02：板块互通、素材库、创作进度上线后加
@@ -317,7 +465,7 @@ export default function HomePage() {
     },
     {
       q: "如何保证数据安全？",
-      a: "数据存放在 Supabase（Postgres），按账号进行权限隔离。已保存的历史可查看、复制和删除；拆解报告和二创方案按档案保存，未主动删除就持续保留。生成与视频处理会使用第三方服务，具体处理范围请查看隐私政策。"
+      a: "数据存放在 Supabase（Postgres），按账号进行权限隔离，多个档案之间也互相隔离。已保存的历史可查看、复制和删除；在「我的账户」里可以一键导出你的全部内容（档案、作品、生成记录、素材库、对话等）。生成与视频处理会使用第三方服务，具体处理范围请查看隐私政策。"
     },
     {
       q: "可以开发票吗？",
@@ -357,9 +505,11 @@ export default function HomePage() {
               <BrandWordmark />
             </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">核心功能</a>
+          <nav className="hidden md:flex items-center gap-5 lg:gap-8">
+            <a href="#problems" className="hidden text-sm font-medium hover:text-primary transition-colors lg:inline">能解决什么</a>
             <a href="#advantages" className="text-sm font-medium hover:text-primary transition-colors">核心优势</a>
+            <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">全部功能</a>
+            <a href="#compare" className="hidden text-sm font-medium hover:text-primary transition-colors lg:inline">对比</a>
             {/* 原来是「成功案例」指向 #cases，而页面上根本没有这个版块——点了不会有
                 任何反应。而且我们手上没有可公开的真实客户案例，编一个就是另一种形式的
                 假数据。换成真正能说服人、也抄不走的东西：方法本身 */}
@@ -432,6 +582,27 @@ export default function HomePage() {
             sub: `${FACTS.pipeline.join(' → ')}，每一步结果都能带去下一步`,
             suffix: '',
           },
+          {
+            key: 'structures',
+            value: FACTS.structures,
+            label: '种脚本结构',
+            sub: '每种附结构公式、情绪曲线、适用场景和避坑说明，也可以让 AI 推荐',
+            suffix: '',
+          },
+          {
+            key: 'scenarios',
+            value: PLAN_CATEGORIES.reduce((n, c) => n + c.scenarios.length, 0),
+            label: '个方案场景',
+            sub: `${PLAN_CATEGORIES.length} 大类：营销、直播电商、门店经营、私域、招商、活动、团队管理……先出大纲再写全文`,
+            suffix: '',
+          },
+          {
+            key: 'research',
+            value: DEPTHS.deep.sources * DEPTHS.deep.questions[1],
+            label: '个网页，深度研究一次读完',
+            sub: '深入档的读取量。整理成带出处的报告，每句标来源，找不到出处的数字标【未核实】',
+            suffix: '',
+          },
         ].filter((t) => typeof t.value === 'number' && t.value > 0);
 
         if (tiles.length === 0) return null;
@@ -440,7 +611,7 @@ export default function HomePage() {
           <section className="py-16 bg-white/50 dark:bg-muted/50 backdrop-blur-xl border-y border-border/40">
             <div className="container mx-auto px-4">
               <div
-                className={`grid grid-cols-1 gap-8 max-w-4xl mx-auto ${
+                className={`grid grid-cols-2 gap-x-6 gap-y-10 max-w-5xl mx-auto ${
                   tiles.length >= 3 ? 'md:grid-cols-3' : tiles.length === 2 ? 'md:grid-cols-2' : ''
                 }`}
               >
@@ -463,7 +634,41 @@ export default function HomePage() {
         );
       })()}
 
-      {/* 三大核心优势 */}
+      {/* 能解决什么问题（2026-10-04 首页卖点整理）：先让人看到「这说的就是我」 */}
+      <section id="problems" className="py-20 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
+              <Fingerprint className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">你是不是也遇到过</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+              <span className="brand-gradient bg-clip-text text-transparent">做短视频的难处，开物都接得住</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">从不知道拍什么，到拍完不知道效果，每一个卡住的地方都有对应的板块</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {problems.map((p) => {
+              const Icon = p.icon;
+              return (
+                <div key={p.pain} className="glass-panel rounded-2xl border border-border p-5 transition-colors hover:border-primary/40">
+                  <div className="mb-3 flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary"><Icon className="h-[18px] w-[18px]" /></span>
+                    <span className="font-bold text-foreground">{p.pain}</span>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{p.fix}</p>
+                  <p className="mt-3 text-xs font-medium text-primary">→ {p.where}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/*
+        八大核心优势（原来是三大：知识库、AI 生成、板块协同）。
+        每一条都是线上已经能用的；不用「顶级」「最强」「第一」这类词（广告法禁止的绝对化用语），用具体数字和做法说话。
+      */}
       <section id="advantages" className="py-20 px-4 bg-primary/10">
         <div className="container mx-auto">
           <div className="text-center mb-16">
@@ -472,81 +677,138 @@ export default function HomePage() {
               <span className="text-sm font-medium text-accent">为什么选择我们</span>
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-              <span className="brand-gradient bg-clip-text text-transparent">三大核心优势</span>
+              <span className="brand-gradient bg-clip-text text-transparent">八大核心优势</span>
             </h2>
-            <p className="text-xl text-muted-foreground dark:text-foreground max-w-2xl mx-auto">专业编导知识 + AI技术 + 持续迭代，让您的创作始终领先一步</p>
+            <p className="text-xl text-muted-foreground dark:text-foreground max-w-3xl mx-auto">有方法、懂你的号、不乱编、能落地开拍、能看数据调方向——不只是一个会写字的 AI</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity" />
-              <div className="relative glass-panel rounded-2xl p-8 border-2 border-border hover:border-primary/40 transition-all hover:shadow-2xl h-full">
-                <div className="w-16 h-16 bg-primary/15 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-8 h-8 text-primary" />
+          <div className="grid md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+            {[
+              {
+                icon: BookOpen, color: "text-primary bg-primary/15", no: "01", title: "有方法，不是瞎写",
+                lead: <>约 <b className="text-primary">{FACTS.wordsWan} 万字符</b>、{FACTS.docs} 篇编导资料，分 {FACTS.libraries} 个专题库，提炼出 <b className="text-primary">{FACTS.methods} 条</b>带公式的方法</>,
+                points: [
+                  "四大脚本（教知识 / 聊观点 / 晒过程 / 讲故事）各对一个生意目的",
+                  `八大爆款元素、起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种`,
+                  "每条有名字、机制、结构公式、适用范围；脚本结构附情绪曲线与避坑说明",
+                  "通用 AI 问你想要什么风格，开物先问这条是要涨粉、要信任、还是要成交",
+                ],
+              },
+              {
+                icon: Layers, color: "text-accent bg-accent/15", no: "02", title: `一条龙：${FACTS.boards} 个板块全流程打通`,
+                lead: <>从创作方向、账号定位到拍摄交付、<b className="text-accent">发布后的数据复盘</b>，一条内容一路做完</>,
+                points: [
+                  "任何板块的结果都能勾选几条，带去别的板块接着做，自动填好",
+                  "好内容一键收藏进素材库，按选题、脚本、方向思路分类取用",
+                  "创作进度记着每条做到哪一步、拍没拍、发没发",
+                  "换页、刷新、换设备，接着上次继续，不用重来",
+                ],
+              },
+              {
+                icon: UserCheck, color: "text-emerald-500 bg-emerald-500/15", no: "03", title: "越用越懂你的账号",
+                lead: <>账号档案所有板块共用，写出来就是<b className="text-emerald-500">你的口吻、你的店</b></>,
+                points: [
+                  "人设事实卡：出镜人、从业年限、籍贯、在本地多久、主卖什么，做成固定格子",
+                  "前采建档：贴采访记录或传 Word，AI 提取成档案，每项标原文依据",
+                  `成交理由：${DEAL_REASONS.length} 个理由逐个打分，找到客人凭什么选你`,
+                  "风格预设：你认可的好稿和写法存下来，生成自动带上",
+                ],
+              },
+              {
+                icon: ShieldCheck, color: "text-amber-500 bg-amber-500/15", no: "04", title: "不乱编，质量有人把关",
+                lead: <>每次生成<b className="text-amber-500">自动体检</b>，资料里没有的标【待确认】，不替你编</>,
+                points: [
+                  "查禁忌、查你排除的信息、查内容配比、查年限和事实卡对不对",
+                  "资料里找不到的价格、地名、荣誉会被标出来",
+                  "改写时不许加原文没有的人名、时间、数字",
+                  "后台质检看板，每晚用固定案例自动回归",
+                ],
+              },
+              {
+                icon: MessagesSquare, color: "text-primary bg-primary/15", no: "05", title: "AI 助理：高阶自由对话",
+                lead: <>能聊、能查、能读、能写方案、能做<b className="text-primary">带出处的深度研究</b></>,
+                points: [
+                  `联网查最新信息并附来源；一次读 ${MAX_CHAT_FILES} 个附件，表格数据也能分析`,
+                  `出方案：${PLAN_CATEGORIES.length} 类 ${PLAN_CATEGORIES.reduce((n, c) => n + c.scenarios.length, 0)} 个场景，先大纲后全文，可基于你的资料写`,
+                  `深度研究：一次读 ${DEPTHS.quick.sources * DEPTHS.quick.questions[0]}～${DEPTHS.deep.sources * DEPTHS.deep.questions[1]} 个网页，每句标出处`,
+                  "结果画布直接改、选段让 AI 改，所有回答可下载 Word / PDF",
+                ],
+              },
+              {
+                icon: Camera, color: "text-accent bg-accent/15", no: "06", title: "写完就能拍",
+                lead: <>分镜、审稿、标题之后，还有一键导出的<b className="text-accent">拍摄交付包</b></>,
+                points: [
+                  "分镜：景别、运镜、时长、画面、台词、道具清单",
+                  "手机提词大字稿，字号 22～48 可调；镜头清单拍完一个勾一个",
+                  "审稿直接给出改好的完整稿，不只是挑毛病",
+                  "标题封面一次出 3～10 个，方便 A/B 测试",
+                ],
+              },
+              {
+                icon: LineChart, color: "text-emerald-500 bg-emerald-500/15", no: "07", title: "看数据调方向",
+                lead: <>发布后的数据录进来，<b className="text-emerald-500">下一条按真实数据调整</b></>,
+                points: [
+                  "播放、完播、三秒留存、互动、涨粉、咨询、成交都能记",
+                  "从平台后台复制表格直接粘贴，按标题自动对上作品",
+                  "同目的、同平台对比，算出每千播放涨粉 / 咨询 / 成交",
+                  "选题、方向、起号、自由对话会参考这个号的真实数据",
+                ],
+              },
+              {
+                icon: Download, color: "text-amber-500 bg-amber-500/15", no: "08", title: "内容是你的，随时带走",
+                lead: <>多账号档案互相隔离，全部内容<b className="text-amber-500">一键导出</b></>,
+                points: [
+                  "一个账号做好几个号，档案之间内容、记录、素材、进度互不串",
+                  "素材库分开管 AI 好稿、你认可的好稿、真实素材（原话照用）",
+                  "历史全部云端保存，换设备接着用",
+                  "档案、作品、生成记录、素材库、对话可以一键导出",
+                ],
+              },
+            ].map((a) => {
+              const Icon = a.icon;
+              return (
+                <div key={a.no} className="glass-panel rounded-2xl border-2 border-border p-6 transition-all hover:border-primary/40 hover:shadow-xl sm:p-7">
+                  <div className="mb-4 flex items-center gap-3">
+                    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${a.color}`}><Icon className="h-6 w-6" /></span>
+                    <div>
+                      <div className="text-xs font-mono text-muted-foreground">{a.no}</div>
+                      <h3 className="text-xl font-bold text-foreground sm:text-2xl">{a.title}</h3>
+                    </div>
+                  </div>
+                  <p className="mb-4 text-muted-foreground dark:text-foreground">{a.lead}</p>
+                  <ul className="space-y-2.5">
+                    {a.points.map((pt) => (
+                      <li key={pt} className="flex items-start gap-2"><Check className="mt-0.5 h-5 w-5 shrink-0 text-green-500" /><span className="text-sm">{pt}</span></li>
+                    ))}
+                  </ul>
                 </div>
-                <h3 className="text-2xl font-bold mb-4">约 {FACTS.wordsWan} 万字符编导资料</h3>
-                {/*
-                  原来写「150+ 篇、73 个方法」。两个数都把自己说小了：
-                  现数是 153 篇、约 29.6 万全文字符，方法包含 19 种脚本结构。
-                  数字一律从 FACTS 取，那里每一个都有测试对着源头现数。
-                */}
-                <p className="text-muted-foreground dark:text-foreground mb-6">
-                  <span className="font-semibold text-primary">约 {FACTS.wordsWan} 万字符</span>、
-                  <span className="font-semibold text-primary">{FACTS.docs}</span> 篇专业编导资料，
-                  拆成 <span className="font-semibold text-primary">{FACTS.libraries}</span> 个专题分库，
-                  提炼出 <span className="font-semibold text-primary">{FACTS.methods}</span> 条带公式的方法
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">四大脚本（教知识/聊观点/晒过程/讲故事）各对一个生意目的</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">八大爆款元素、起号 {FACTS.tactics} 计、开篇 {FACTS.cards} 计、脚本结构 {FACTS.structures} 种</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">公式与句式可套用，脚本结构附情绪曲线与避坑说明</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">来自成体系的编导课程，不是网上抓的碎片</span></li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="group relative">
-              <div className="absolute inset-0 brand-gradient rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity" />
-              <div className="relative glass-panel rounded-2xl p-8 border-2 border-border hover:border-accent/40 transition-all hover:shadow-2xl h-full">
-                <div className="w-16 h-16 bg-accent/15 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Brain className="w-8 h-8 text-accent" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">AI 智能生成</h3>
-                <p className="text-muted-foreground dark:text-foreground mb-6">
-                  <span className="font-semibold text-accent">AI 智能生成</span>，
-                  结合编导知识库，智能理解您的需求，生成专业级脚本
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">结合账号档案，自动生成完整脚本</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">脚本结构可选，也可让 AI 推荐</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">不满意就重新生成，历次结果都存在云端</span></li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-600 to-orange-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity" />
-              <div className="relative glass-panel rounded-2xl p-8 border-2 border-border hover:border-accent/40 transition-all hover:shadow-2xl h-full">
-                <div className="w-16 h-16 bg-accent/15 dark:bg-pink-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Layers className="w-8 h-8 text-accent" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">{FACTS.boards} 个板块协同创作</h3>
-                {/* 2026-10-02 更新：板块之间已经全通（勾选带走、自动填好），加了素材库和创作进度 */}
-                <p className="text-muted-foreground dark:text-foreground mb-6">
-                  从创作方向、账号定位到拍摄发布，覆盖短视频创作的<span className="font-semibold text-accent">主要环节</span>，
-                  板块之间互通，内容自动带入
-                </p>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">任何板块的结果都能勾选几条，带去别的板块接着做，自动填好</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">好内容一键收藏进素材库，按选题、脚本、方向思路分类取用</span></li>
-                  <li className="flex items-start gap-2"><Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" /><span className="text-sm">创作进度记着每条做到哪一步、拍没拍、发没发</span></li>
-                </ul>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
+      {/* 一条内容怎么做出来：主流程一路到拍摄、发布复盘 */}
+      <section id="flow" className="py-20 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+              <span className="brand-gradient bg-clip-text text-transparent">一条内容，从想法到数据</span>
+            </h2>
+            <p className="text-lg text-muted-foreground">每一步的结果都能带去下一步，不用来回复制粘贴</p>
+          </div>
+          <ol className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-9">
+            {flowSteps.map((s, i) => (
+              <li key={s.name} className="relative glass-panel rounded-xl border border-border px-3 py-4 text-center">
+                <div className="mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full brand-gradient text-xs font-bold text-white">{i + 1}</div>
+                <div className="text-sm font-bold text-foreground">{s.name}</div>
+                <div className="mt-1 text-[11px] leading-snug text-muted-foreground">{s.note}</div>
+                {i < flowSteps.length - 1 && <ChevronRight className="absolute -right-3 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-primary lg:block" />}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
       {/*
         编导方法库。
@@ -714,64 +976,220 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 核心功能。下面列了 8 个最常用的；板块总数统一从 FACTS 取 */}
-      <section id="features" className="py-20 px-4 glass-panel">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
-              <Star className="w-4 h-4 text-primary" />
-              {/* 素材库、创作进度是整理内容的地方，不算创作板块（FACTS.boards 不数它们），所以分开说 */}
-              <span className="text-sm font-medium text-primary">{FACTS.boards} 个创作板块 + 素材库、创作进度</span>
+      {/*
+        高阶自由对话专区（2026-10-04）：深度研究、出方案、读文档表格、结果画布。
+        说的都是线上能用的：深度研究只给专业会员、高频会员，次数从 DEEP_RESEARCH_LIMITS 取。
+      */}
+      <section id="assistant" className="py-20 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/15 dark:bg-purple-900/30 rounded-full mb-4">
+              <MessagesSquare className="w-4 h-4 text-accent" />
+              <span className="text-sm font-medium text-accent">高阶自由对话</span>
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-              <span className="brand-gradient bg-clip-text text-transparent">
-                策划与创作支持
-              </span>
+              <span className="brand-gradient bg-clip-text text-transparent">不止短视频：方案、研究、资料都能做</span>
             </h2>
-            <p className="text-xl text-muted-foreground">
-              从想方向、拆爆款、定位到拍摄发布，每一步的结果都能带去下一步
-            </p>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">和各板块共用记忆，刚生成的内容可以直接接着聊；所有回答都能下载成 Word / PDF</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, idx) => {
-              const Icon = feature.icon;
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              {
+                icon: Telescope, tag: `专业会员 ${DEEP_RESEARCH_LIMITS.pro} 份/月 · 高频会员 ${DEEP_RESEARCH_LIMITS.enterprise} 份/月`, title: "深度研究报告",
+                desc: "写下想研究的问题，它上网查一圈、打开网页读正文，整理成一份带出处的研究报告。",
+                points: [
+                  "先给你看研究计划：拆成几个子问题和搜索词，你改好了才开始查",
+                  `快速、标准、深入三档，一次读 ${DEPTHS.quick.sources * DEPTHS.quick.questions[0]}～${DEPTHS.deep.sources * DEPTHS.deep.questions[1]} 个网页`,
+                  "每句话标来源编号，点开就是原网页；来源里找不到的数字标【未核实】",
+                  "在服务器上跑，关掉页面也会继续；没查完的部分可以补查",
+                ],
+              },
+              {
+                icon: ClipboardList, tag: `${PLAN_CATEGORIES.length} 类 ${PLAN_CATEGORIES.reduce((n, c) => n + c.scenarios.length, 0)} 个场景 + 自定义`, title: "出方案",
+                desc: "开业活动、直播、招商、私域、年会、团队管理、危机处理……各行各业的方案都能出。",
+                points: [
+                  "先出大纲：章节和要点你可以改、删、加、调顺序，确认后再写全文",
+                  "可以上传你的资料，方案里的事实以资料为准",
+                  "缺的信息先问你，或在方案里标【待确认】，不替你编",
+                  "缺章能补写，写完直接下载 Word / PDF",
+                ],
+              },
+              {
+                icon: Paperclip, tag: `一次 ${MAX_CHAT_FILES} 个附件`, title: "读文档、表格、图片",
+                desc: "把资料直接丢进来：图片、PDF、Word、Excel、PPT、CSV、TXT，问什么答什么。",
+                points: [
+                  "表格里的数据能读出来做分析，不只是看个大概",
+                  "按需联网查最新信息，回答附来源链接",
+                  "附件随对话保存在云端，换设备也能接着问",
+                  "读不出来的会明说，不会拿别的内容冒充",
+                ],
+              },
+              {
+                icon: PenLine, tag: "改稿版本随时切换", title: "结果画布",
+                desc: "对回答不满意，不用重新生成整篇：在画布里直接改，或选中一段让 AI 改。",
+                points: [
+                  "每改一次存一版，可以切换、逐行对照改了哪里",
+                  "改写时不许加原文没有的人名、时间、数字",
+                  "改好的内容可以收藏，或带去别的板块接着做",
+                  "停止生成、重新生成、改一下再问、引用追问都有",
+                ],
+              },
+            ].map((x) => {
+              const Icon = x.icon;
               return (
-                <div key={idx} className="group relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative glass-panel rounded-2xl p-6 border-2 border-border hover:border-primary/50 transition-all hover:shadow-xl h-full">
-                    <div className={`w-14 h-14 ${colorClasses[feature.color]} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                      <Icon className="w-7 h-7" />
-                    </div>
-                    <h3 className="mb-3 flex items-center gap-2 text-xl font-bold text-foreground">
-                      {feature.title}
-                      {"isNew" in feature && feature.isNew && (
-                        <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-500">新</span>
-                      )}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                      {feature.desc}
-                    </p>
-                    <ul className="space-y-2">
-                      {feature.benefits.map((benefit, bidx) => (
-                        <li key={bidx} className="flex items-start gap-2 text-xs text-muted-foreground">
-                          <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                          <span>{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
+                <div key={x.title} className="glass-panel rounded-2xl border-2 border-border p-6 transition-all hover:border-accent/40 hover:shadow-xl sm:p-7">
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon className="h-6 w-6" /></span>
+                    <h3 className="text-2xl font-bold text-foreground">{x.title}</h3>
+                    <span className="rounded-full bg-primary/12 px-2.5 py-0.5 text-[11px] font-medium text-primary">{x.tag}</span>
                   </div>
+                  <p className="mb-4 text-muted-foreground dark:text-foreground">{x.desc}</p>
+                  <ul className="space-y-2.5">
+                    {x.points.map((pt) => (
+                      <li key={pt} className="flex items-start gap-2"><Check className="mt-0.5 h-5 w-5 shrink-0 text-green-500" /><span className="text-sm">{pt}</span></li>
+                    ))}
+                  </ul>
                 </div>
               );
             })}
           </div>
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"><Globe className="h-3.5 w-3.5" />联网搜索各档另有独立次数；深度研究不占对话和联网次数</p>
+        </div>
+      </section>
+
+      {/* 全部功能（2026-10-04 按用途分组，每一项都是线上能用的） */}
+      <section id="features" className="py-20 px-4 glass-panel">
+        <div className="container mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
+              <Star className="w-4 h-4 text-primary" />
+              {/* 素材库、创作进度是整理内容的地方，不算创作板块（FACTS.boards 不数它们），所以分开说 */}
+              <span className="text-sm font-medium text-primary">{FACTS.boards} 个创作板块 + 素材库、创作进度、数据复盘</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+              <span className="brand-gradient bg-clip-text text-transparent">
+                全部功能
+              </span>
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              想清楚、找灵感、写出来、拍出来、管起来，每一步的结果都能带去下一步
+            </p>
+          </div>
+
+          <div className="space-y-12">
+            {FEATURE_GROUPS.map((group) => (
+              <div key={group}>
+                <h3 className="mb-4 flex items-center gap-3 text-sm font-semibold tracking-widest text-muted-foreground">
+                  {group}<span className="h-px flex-1 bg-border" />
+                </h3>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+                  {features.filter((f) => f.group === group).map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                      <div key={feature.title} className="group relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="relative glass-panel rounded-2xl p-6 border-2 border-border hover:border-primary/50 transition-all hover:shadow-xl h-full">
+                          <div className={`w-12 h-12 ${colorClasses[feature.color]} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                            <Icon className="w-6 h-6" />
+                          </div>
+                          <h4 className="mb-2.5 flex items-center gap-2 text-lg font-bold text-foreground">
+                            {feature.title}
+                            {feature.isNew && (
+                              <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-500">新</span>
+                            )}
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                            {feature.desc}
+                          </p>
+                          <ul className="space-y-2">
+                            {feature.benefits.map((benefit) => (
+                              <li key={benefit} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                                <span>{benefit}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
 
           <div className="text-center mt-12">
-            <Link 
-              href={REGISTER_URL} 
+            <Link
+              href={REGISTER_URL}
               className="inline-flex items-center gap-2 px-8 py-4 brand-gradient text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg"
             >
               立即体验全部功能
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/*
+        对比表（产品方：一大杀器）。三列如实对比：自己写 / 请编导、通用 AI 聊天工具、开物。
+        手机上横向滑动看，第一列固定。
+      */}
+      <section id="compare" className="py-20 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/15 dark:bg-blue-900/30 rounded-full mb-4">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">放在一起比一比</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+              <span className="brand-gradient bg-clip-text text-transparent">请编导、用通用 AI，还是用开物？</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              请编导月薪数千到上万，通用 AI 不懂编导、聊完就忘还爱乱编；开物把编导方法、你的账号和整条创作流程装在一起，每月 ¥{SUBSCRIPTION_PLANS.basic.price} 起
+            </p>
+          </div>
+          {/* 手机上：一项一张卡，开物那一格放最上面、高亮；表格横着滑会把开物那一列藏到屏幕外 */}
+          <div className="space-y-3 md:hidden">
+            {compareRows.map((r) => (
+              <div key={r.item} className="glass-panel rounded-2xl border border-border p-4">
+                <div className="mb-2 text-sm font-bold text-foreground">{r.item}</div>
+                <div className="flex items-start gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" /><span><BrandWordmark />：{r.us}</span>
+                </div>
+                <div className="mt-2 space-y-1 px-1 text-xs text-muted-foreground">
+                  <p><span className="text-foreground/70">请编导：</span>{r.old}</p>
+                  <p><span className="text-foreground/70">通用 AI：</span>{r.ai}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-2xl border-2 border-border shadow-xl md:block">
+            <table className="w-full min-w-[40rem] border-collapse text-sm sm:text-base">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-10 bg-muted p-3 text-left font-bold sm:p-4">对比项</th>
+                  <th className="bg-muted p-3 text-center font-bold text-muted-foreground sm:p-4">自己写 / 请编导</th>
+                  <th className="bg-muted p-3 text-center font-bold text-muted-foreground sm:p-4">通用 AI 聊天工具</th>
+                  <th className="bg-primary/15 p-3 text-center text-primary sm:p-4"><BrandWordmark /></th>
+                </tr>
+              </thead>
+              <tbody>
+                {compareRows.map((r) => (
+                  <tr key={r.item} className="border-t border-border">
+                    <td className="sticky left-0 z-10 bg-card p-3 font-semibold text-foreground sm:p-4">{r.item}</td>
+                    <td className="bg-card p-3 text-center text-muted-foreground sm:p-4">{r.old}</td>
+                    <td className="bg-card p-3 text-center text-muted-foreground sm:p-4">{r.ai}</td>
+                    <td className="bg-primary/[0.07] p-3 text-center font-semibold text-primary sm:p-4">
+                      <span className="inline-flex items-start gap-1.5 text-left"><Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />{r.us}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="text-center mt-10">
+            <Link href={REGISTER_URL} className="inline-flex items-center gap-2 px-8 py-4 brand-gradient text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg">
+              免费试一试
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -794,44 +1212,6 @@ export default function HomePage() {
             <p className="text-xl text-muted-foreground">
               从免费体验到高频创作，总有一款适合您
             </p>
-          </div>
-
-          {/* 传统方式 vs 开物对比 */}
-          <div className="max-w-5xl mx-auto mb-16 overflow-x-auto">
-            <div className="glass-panel min-w-[32rem] rounded-2xl border-2 border-border overflow-hidden shadow-xl text-sm sm:text-base">
-              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="bg-muted dark:bg-muted p-3 sm:p-4 font-bold text-center">对比项</div>
-                <div className="bg-muted dark:bg-muted p-3 sm:p-4 font-bold text-center">传统方式</div>
-                <div className="bg-primary/10 p-3 sm:p-4 text-center text-primary"><BrandWordmark /></div>
-                <div className="bg-emerald-500/10 p-3 sm:p-4 font-bold text-center text-green-500">创作支持</div>
-              </div>
-              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">脚本产出</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">手动整理与撰写</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">AI 生成完整脚本</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">可继续细化</div>
-              </div>
-              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">编导方法</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">自行收集整理</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">{FACTS.methods} 条公式与句式</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">结构可选</div>
-              </div>
-              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">月度订阅</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">费用依工具而定</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">
-                  ¥{SUBSCRIPTION_PLANS.basic.price}-{SUBSCRIPTION_PLANS.enterprise.price}
-                </div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">按需选择</div>
-              </div>
-              <div className="grid grid-cols-4 gap-px bg-muted dark:bg-muted">
-                <div className="glass-panel p-3 sm:p-4">参考拆解</div>
-                <div className="glass-panel p-3 sm:p-4 text-center text-muted-foreground">手动整理画面口播</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-semibold text-primary">画面与口播分析</div>
-                <div className="glass-panel p-3 sm:p-4 text-center font-bold text-green-500">可接跨行业二创</div>
-              </div>
-            </div>
           </div>
 
           {/* 4个定价方案 */}
@@ -972,7 +1352,7 @@ export default function HomePage() {
           </h2>
           <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
             {/* 原来写「加入1280+创作者」，那个数字是编的 */}
-            从账号定位开始，一条内容从选题到分镜一路做完
+            从创作方向开始，一条内容从选题、脚本、分镜一路做到拍摄交付和数据复盘
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
@@ -1007,7 +1387,7 @@ export default function HomePage() {
                 </span>
               </div>
               <p className="text-sm leading-relaxed">
-                AI 智能生成的短视频创作助手，让创作更简单、更高效。
+                懂编导的 AI 短视频搭档：从想拍什么，到写好、拍好、发出去、看数据，一站搞定。
               </p>
             </div>
             

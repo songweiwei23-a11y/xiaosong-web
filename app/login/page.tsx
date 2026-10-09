@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { LogIn, Mail, Lock, ArrowLeft, Home, Ticket } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowLeft, Home, Ticket, Eye, EyeOff, Gift } from "lucide-react";
+import { LoginGreeting, DailyTip, rememberLoginName, freeTrialLine } from "@/components/auth/LoginExtras";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AuthTransition } from "@/components/auth/AuthTransition";
@@ -13,6 +14,7 @@ import { FACTS } from "@/lib/showcase";
 import { track } from "@/lib/funnel";
 import { authErrorText } from "@/lib/auth-errors";
 import { postRegistration } from "@/lib/auth-register-request";
+import { INVITE_CONTACT } from "@/lib/landing";
 
 
 export default function LoginPage() {
@@ -26,8 +28,12 @@ export default function LoginPage() {
   /** 验证通过、正在把人交接给工作台。这期间全屏过渡层不撤 */
   const [handingOff, setHandingOff] = useState(false);
   const [message, setMessage] = useState("");
-  /** 码是从首页链接带过来的（公开体验码）：输入框下面换一句话，告诉他不用管 */
+  /** 码是从链接带过来的（管理员发的带码注册链接）：输入框下面换一句话，告诉他不用管 */
   const [codeFromLink, setCodeFromLink] = useState(false);
+  /** 小眼睛：看看密码到底输的是啥（2026-10-04 产品方） */
+  const [showPassword, setShowPassword] = useState(false);
+  /** 大写锁定开着：输错密码最常见的原因，打字时提醒一句 */
+  const [capsOn, setCapsOn] = useState(false);
   const mounted = useRef(false);
   // React 更新按钮前，同一轮事件里也只能提交一次。
   const authBusy = useRef(false);
@@ -38,7 +44,7 @@ export default function LoginPage() {
   const loginTabTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /*
-   * 从首页点"免费试用 / 免费注册体验"进来：地址是 /login?mode=register&code=体验码。
+   * 从首页点"免费试用 / 免费注册体验"进来：地址是 /login?mode=register（2026-10-04 起不再自动带码，邀请码找管理员要）；管理员发的链接可能带 &code=邀请码，会自动填好。
    * 直接打开注册、码已填好——完全不懂的小白手上没有邀请码，看到要填码就走了。
    * 读地址用 window.location 而不是 useSearchParams：后者要求整页包一层 Suspense。
    *
@@ -72,7 +78,6 @@ export default function LoginPage() {
       if (loginTabTimer.current) clearTimeout(loginTabTimer.current);
     };
     // 只在进页面时读一次
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 转化漏斗：打开了注册页（从首页链接进来的，或者自己切到注册的；匿名，一天记一次）
@@ -88,6 +93,8 @@ export default function LoginPage() {
    */
   const goDashboard = (to: string = "/dashboard") => {
     handoffTarget.current = to;
+    // 下次打开登录页叫得出名字（只存邮箱 @ 前面那段，在本机；登录页上「不是你？」能清掉）
+    if (email.includes("@")) rememberLoginName(email.trim());
     navigationPending.current = true;
     authBusy.current = true;
     setLoading(true);
@@ -224,11 +231,13 @@ export default function LoginPage() {
               <BrandWordmark latin />
             </h1>
           </Link>
-          <p className="text-muted-foreground">AI驱动的短视频脚本创作工具</p>
+          <p className="text-muted-foreground">懂编导的 AI 短视频搭档 · 从选题到拍完、发完、看数据</p>
         </div>
 
         {/* Login Form */}
         <div className="glass-panel rounded-2xl p-6 sm:p-8 shadow-xl">
+          {/* 按时段问候；这台电脑上登录过的叫得出名字（components/auth/LoginExtras） */}
+          <LoginGreeting isLogin={isLogin} />
           {/* 登录/注册切换 */}
           <div className="flex gap-2 mb-6">
             <button
@@ -313,20 +322,40 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => setCapsOn(e.getModifierState?.("CapsLock") ?? false)}
+                  onKeyUp={(e) => setCapsOn(e.getModifierState?.("CapsLock") ?? false)}
+                  onBlur={() => setCapsOn(false)}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   placeholder="至少6位密码"
-                  className="w-full pl-10 pr-4 py-3 bg-background/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/25 focus:border-primary text-foreground placeholder:text-muted-foreground transition-colors"
+                  className="w-full pl-10 pr-12 py-3 bg-background/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/25 focus:border-primary text-foreground placeholder:text-muted-foreground transition-colors"
                   required
                   minLength={6}
                 />
+                {/* 小眼睛：点一下显示密码，确认没输错；再点一下藏起来 */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                  aria-pressed={showPassword}
+                  title={showPassword ? "隐藏密码" : "显示密码"}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
+              {capsOn && <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">⚠️ 大写锁定已开启，密码区分大小写</p>}
             </div>
 
             {/* 邀请码：只在注册时出现 */}
             {!isLogin && (
               <div>
+                {/* 注册送什么说清楚（从免费版配置算） */}
+                <p className="mb-4 flex items-start gap-1.5 rounded-lg bg-primary/[0.07] px-3 py-2 text-xs leading-relaxed text-foreground">
+                  <Gift className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />{freeTrialLine()}
+                </p>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
                   邀请码
                 </label>
@@ -344,9 +373,10 @@ export default function LoginPage() {
                   />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
+                  {/* 2026-10-04：首页不再自动带体验码，邀请码找管理员要；管理员发的带码链接仍会自动填好 */}
                   {codeFromLink
-                    ? "体验码已经帮你填好了，填上邮箱和密码就能注册。"
-                    : "目前为邀请制，需要邀请码才能注册。没有的话请联系我们获取。"}
+                    ? "邀请码已经帮你填好了，填上邮箱和密码就能注册。"
+                    : INVITE_CONTACT}
                 </p>
               </div>
             )}
@@ -402,7 +432,7 @@ export default function LoginPage() {
           功能亮点。三个数字原来是「8 核心功能 / 10000+ 知识库 / 10秒 生成脚本」，
           三个都不对：
             · 板块早就 15 个了，不是 8 个；
-            · 知识库是 153 篇文档，「10000+」没有出处；
+            · 知识库是 154 篇文档，「10000+」没有出处；
             · **最要命的是「10秒生成脚本」**——脚本要跑一两分钟、定位要几分钟。
               先许诺 10 秒，用户等 90 秒就会觉得"卡死了"。
               这一条等于在亲手制造"这产品很慢"的印象。
@@ -429,6 +459,9 @@ export default function LoginPage() {
             </div>
           ))}
         </div>
+
+        {/* 今日一计：还没登录先送一招真方法（每天换） */}
+        <DailyTip />
 
         {/* 底部链接 */}
         <div className="mt-6 text-center">

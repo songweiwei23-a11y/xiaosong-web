@@ -18,6 +18,16 @@ const chosen: CreationSettings = {
 };
 const original = '今天这串牛肉，我切给你看。每天到店后先检查纹路，再顺纹路分块，切成适合穿串的大小。数量是X串，待核实。';
 
+it('旧历史的自动时长不会覆盖优化稿的80秒，明确用户时长仍优先', () => {
+  const result = '**建议时长：80秒**\n优化稿正文';
+  const automatic = settingsForResult(result, [{ result, input_data: { duration: 'AI 按内容判断' } }], {});
+  expect(automatic.duration).toBe('80秒');
+  const explicit = settingsForResult(result, [{ result, input_data: { duration: '45秒' } }], {});
+  expect(explicit.duration).toBe('45秒');
+  const restored = resolveCreationSettings({ from: '审稿优化', sourceContent: result, settings: { duration: 'AI 推荐' } }, ctx);
+  expect(restored.duration).toBe('80秒');
+});
+
 describe('全部内容板块一键承接设置', () => {
   it.each(['script','review','storyboard','title','growth'] as const)('作品直接打开 %s 也恢复原方向与精确时长', target => {
     const setup = workCreationHandoff({ id:'work', title:chosen.topic!, profile_id:'a', is_done:false, items:[
@@ -100,9 +110,9 @@ describe('全部内容板块一键承接设置', () => {
     expect(data.scriptContent).toBe('先看牛肉纹路。\n分块，再切成穿串大小。\n看看今天怎么备菜。');
     expect(data.sourceContent).toContain('补拍手部画面');
   });
-  it('单独选择二创方案使用本方案类型和结构，其他方案不得串入', () => {
+  it('二创方案的 AI 标签不能覆盖用户已明确选择的类型、结构和人群', () => {
     const payload = buildCreationHandoff('remix','script','### 方案2\n脚本类型：讲故事型\n脚本结构：故事型\n目标人群：新店创业者\n口播乙',{settings:chosen});
-    expect(resolveCreationSettings(payload,ctx)).toMatchObject({scriptType:'story',structure:'story',audience:'新店创业者'});
+    expect(resolveCreationSettings(payload,ctx)).toMatchObject({scriptType:chosen.scriptType,structure:chosen.structure,audience:chosen.audience});
   });
   it('旧历史参数和新历史设置都能恢复，历史甲不使用正在编辑乙的设置', () => {
     expect(settingsFromInput({scriptType:'晒过程型',platform:'快手',duration:'30秒',scriptStructure:'train',scriptRole:'变现型'})).toMatchObject({scriptType:'show',structure:'train',purpose:'变现型'});
@@ -112,8 +122,8 @@ describe('全部内容板块一键承接设置', () => {
   });
   it('缺失或非法选项不乱补，并保留精确时长范围', () => {
     const result = resolveCreationSettings({from:'旧稿',sourceContent:'备菜过程',settings:{scriptType:'不存在',structure:'auto',duration:'跟原片',openingCards:['不存在的卡']}},ctx);
-    // 非法的丢掉，不再按「备菜过程」猜成晒过程 / 火车节；时长用档案的
-    expect(result).toMatchObject({duration:'60秒'});
+    // 非法的丢掉，不再按「备菜过程」猜成晒过程 / 火车节；时长没写明就空着（=AI 推荐），不再拿档案常拍时长或 60 秒顶上（2026-10-06）
+    expect(result.duration).toBeUndefined();
     expect(result.scriptType).toBeUndefined();
     expect(result.structure).toBeUndefined();
     expect(result.openingCards).toEqual([]);

@@ -6,8 +6,9 @@ import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVI
 
 
 import { useRouter } from "next/navigation";
-import { putHandoff, takeHandoff, parseTopicOptions } from "@/lib/handoff";
-import { creationReference, originForResult, continuationRules } from '@/lib/creation-continuation';
+import { takeHandoff, parseTopicOptions } from "@/lib/handoff";
+import { openCreationSafely } from "@/lib/creation-session";
+import { topicReference, carriesScript, carriedIntent, intentBlock, originForResult, continuationRules } from '@/lib/creation-continuation';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from "@/lib/viral-elements";
@@ -16,11 +17,10 @@ import { CONTENT_ROLE_LIST, ROLE_SPECS, rolesGuide, roleBrief, type ContentRole 
 import { resolveMix, mixPromptBlock, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
 import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
 import { taboosPromptBlock } from "@/lib/taboos";
-import { ROUTE_LIST, ROUTE_HINTS, ROUTES_GUIDE, routeAssignment, tacticIndex, tacticInText, topicTacticsOf, type CreativeRoute } from "@/lib/creative-routes";
+import { ROUTE_LIST, ROUTE_HINTS, ROUTES_GUIDE, tacticIndex, tacticInText, topicTacticsOf, type CreativeRoute } from "@/lib/creative-routes";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { notifyGenerated } from "@/lib/upgrade";
 import { createWork, listWorks, type Work } from "@/lib/works";
-import { stageRoute, workStageUrl } from "@/lib/resume";
 import { TopicList, type TopicStage } from "@/components/workspace/TopicList";
 import { TopicLibrary } from "@/components/workspace/TopicLibrary";
 import { splitTopicSections, removeTopicSection, batchBelongsToProfile } from "@/lib/topic-library";
@@ -53,6 +53,7 @@ import type { TopicHistory, Profile, Positioning } from './types';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { postSafely } from '@/lib/safe-post';
+import { topicSourceRules, topicDesignStandards, topicRoutePrompt, topicDesignFinalCheck, topicPreferredTactic } from '@/lib/topic-design';
 
 export default function TopicPage() {
   const beginProfileRequest = useProfileRequestGuard();
@@ -125,6 +126,8 @@ export default function TopicPage() {
   const [benchmarkAccounts, setBenchmarkAccounts] = useState("");
   const [viralCases, setViralCases] = useState("");
   const [topicCount, setTopicCount] = useState(10);
+  // 快速 3 条（2026-10-09 产品方要的档位）：用户自己选了快，才压篇幅；默认档位照旧不设上限
+  const [quickTopics, setQuickTopics] = useState(false);
   const [withHook, setWithHook] = useState(true);
   const [difficulty, setDifficulty] = useState("中等创意");
   /**
@@ -137,10 +140,13 @@ export default function TopicPage() {
    * 产出里几乎看不见 36 计。现在默认两套都出；指定了某一计时整批都用那一计。
    */
   const [route, setRoute] = useState<CreativeRoute>('两种都出');
+  const [routeExplicit, setRouteExplicit] = useState(false);
   /** 已有的作品，给选题清单标出"已在做"的那几条 */
   const [works, setWorks] = useState<Work[]>([]);
+  // 只看当前档案的作品（lib/works 按档案取）；切了档案重新取，别的档案在做的不标
   useEffect(() => {
     listWorks(50).then(setWorks);
+    return onActiveProfileChange(() => { listWorks(50).then(setWorks); });
   }, []);
 
   /**
@@ -152,7 +158,8 @@ export default function TopicPage() {
    */
   const sendTopic = async (title: string, stage: TopicStage, body?: string) => {
     const workId = await createWork(title, selectedProfileId || null);
-    putHandoff({
+    // 持久保存后再跳（lib/creation-session）：刷新、换设备都能接着这一条
+    await openCreationSafely({
       ...buildCreationHandoff('topic', stage === '脚本生成' ? 'script' : stage === '标题封面' ? 'title' : 'growth', body || title, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title }), originContent: originForResult(result, history, originContent || sourceReference) }),
       from: "选题策划",
       topic: title,
@@ -165,8 +172,7 @@ export default function TopicPage() {
         stage === "脚本生成" && body
           ? buildCreationHandoff('topic', 'script', body, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title }), originContent: originForResult(result, history, originContent || sourceReference) }).note
           : undefined,
-    });
-    router.push(workId ? workStageUrl(workId, stage) : stageRoute(stage));
+    }, (u) => router.push(u), (m) => notify(m, 'error'));
   };
   const [personalRequirement, setPersonalRequirement] = useState("");
   const [sourceReference, setSourceReference] = useState("");
@@ -515,7 +521,7 @@ export default function TopicPage() {
     if (handed) setOriginContent(handed.originContent || handed.sourceContent || '');
     if (handed?.tactic) setTactic(handed.tactic);
     if (handed?.sourceContent) {
-      setSourceReference(creationReference(handed));
+      setSourceReference(topicReference(handed));
       setSourceFrom(handed.from);
       setMode('quick');
     }
@@ -534,10 +540,23 @@ export default function TopicPage() {
     setSelectedTracks(s.industry ? s.industry.split('、').map((x) => x.trim()).filter(Boolean) : []);
     setSelectedContentTypes(s.scriptType && REVIEW_SCRIPT_TYPES[s.scriptType] ? [REVIEW_SCRIPT_TYPES[s.scriptType]] : []);
     setSelectedStyles(s.style ? [s.style] : []);
-    setTopicRole(s.purpose ?? '按配比'); setTopicCount(Math.min(30, Math.max(1, s.topicCount || 5)));
+    /*
+     * 目的按原方向写的来（2026-10-05）：写了两种（「人设型+变现型混合」）就按配比、只在这两种里分，
+     * 原来只取第一种，整批成了「全部人设型」；写了一种就整批是这一种
+     */
+    const roles = carriedIntent(incomingSetup).roles;
+    if (roles.length >= 2) {
+      setTopicRole('按配比');
+      const share = Math.floor(100 / roles.length);
+      setMixOverride({ preset: 'custom', custom: { 流量型: 0, 人设型: 0, 变现型: 0, ...Object.fromEntries(roles.map((r, i) => [r, i === 0 ? 100 - share * (roles.length - 1) : share])) } });
+    } else setTopicRole(roles[0] ?? s.purpose ?? '按配比');
+    setTopicCount(Math.min(30, Math.max(1, s.topicCount || 5)));
     setSelectedElements(s.elements || []); if (s.tactic) setTactic(s.tactic);
     setSelectedDealReasons(topicReasonIds(s.dealReasons || []));
-    setKeyword1(s.topic ?? ''); setPersonalRequirement(s.direction ?? '');
+    setKeyword1(s.topic ?? '');
+    // 带来的是具体脚本时，最早那个大方向不再填进「个人要求」——那里写着「所有选题必须围绕」，
+    // 会把选题拉回大方向、另编和脚本无关的故事（2026-10-05 线上）。方向作为背景已经在参考内容里
+    setPersonalRequirement(carriesScript(incomingSetup) ? '' : s.direction ?? '');
   });
   const currentSettings = resolveCreationSettings({ from: '选题策划', sourceContent: sourceReference || keyword1 || personalRequirement, settings: mergeCreationSettings(autoSetup.settings, {
     topic: keyword1, direction: personalRequirement, platform: selectedPlatforms[0], industry: selectedTracks.join('、'),
@@ -638,6 +657,7 @@ export default function TopicPage() {
         topicType: topicType,
         topicRole: topicRole,
         route: tactic ? undefined : route,
+        routeExplicit,
         // 传递完整的档案和定位信息，而不是ID
         profileInfo: profileInfo ? JSON.stringify(profileInfo) : "",
         positioningInfo: positioningInfo ? JSON.stringify(positioningInfo) : "",
@@ -656,6 +676,7 @@ export default function TopicPage() {
           return reason ? reason.label : id;
         }).join("、"),
         keywords: [keyword1, keyword2, keyword3].filter(k => k).join("、"),
+        personalRequirement,
         benchmarkAccounts: benchmarkAccounts,
         viralCases: viralCases,
         topicCount: topicCount,
@@ -671,6 +692,31 @@ export default function TopicPage() {
 
       // 构建详细的prompt
       let query = `【工作任务】生成${topicCount}条${topicType}\n\n`;
+      /*
+       * 带着内容来的：这份内容是这批选题的出发点，放在最前面、说清楚是硬要求（2026-10-05）。
+       * 原来它夹在配比、36 计清单中间，后面还有「结合当前热点」「个人要求：所有选题必须围绕大方向」，
+       * 模型按大方向另编了一批故事，和带过来的脚本不相干
+       */
+      const sourced = Boolean(sourceReference.trim());
+      if (sourced) {
+        // 原方向的方向、目的、思路、拍法（2026-10-05 产品方：带去做选题要基于原来的方向、思路、目的设计）
+        const intent = intentBlock(carriedIntent(incomingSetup));
+        query += `【这批选题从带来的内容出发】🚨 最重要，压过下面所有设置\n`;
+        if (carriesScript(incomingSetup)) {
+          query += `下面是编导从「${sourceFrom || '前一步'}」带过来的一条脚本。${topicCount} 条选题每一条都必须直接取材于这条脚本里的具体人物、事件、场景、细节、对话或观点，同时守住原方向的思路和目的，比如：\n`;
+          query += `- 同一件事换一个角度、换一个人的视角讲\n- 把其中一个细节、一句对话放大成一条\n- 拆成前因、经过、后续，做成系列\n- 把里面的观点或做法单独拿出来讲透\n`;
+          query += `不许只沿用大方向、系列名或账号定位，另编和这条脚本无关的新故事；也不要通用的行业选题。\n`;
+        } else {
+          query += `下面是编导从「${sourceFrom || '前一步'}」带过来的内容（方向 / 方案 / 思路）。${topicCount} 条选题每一条都必须按它的方向、核心思路和目的来设计：是这个方向下面能拍的具体一期，拍法照它写的来。\n`;
+          query += `- 它写了目的，每条选题的目的就从这里面选，不出别的目的\n`;
+          query += `不许借这个方向的名头，出和它的核心思路无关的选题；也不要通用的行业选题。\n`;
+        }
+        query += `下面的配比、打法、爆款元素都在这个范围里用。\n\n`;
+        query += `${topicSourceRules(carriesScript(incomingSetup))}\n\n`;
+        if (intent) query += `${intent}\n`;
+        query += `${sourceReference}${continuationRules('topic')}\n\n`;
+      }
+      query += `${topicDesignStandards({ source: sourceReference, direction: personalRequirement, userIntent: currentSettings.userIntent || [keyword1, keyword2, keyword3].filter(Boolean).join('、') })}\n\n`;
       query += `🚨 核心原则：可落地、易执行\n`;
       query += describeExecutionConstraints(selectedProfile ?? null) + `\n`;
       query += `- 真实性：基于真实场景，不能天马行空或过度夸张\n\n`;
@@ -777,9 +823,6 @@ export default function TopicPage() {
       // 高级设置
       
       // 个人要求
-      if (sourceReference.trim()) {
-        query += `\n【来自${sourceFrom || '前一步'}的创作参考】\n${sourceReference}${continuationRules('topic')}\n\n`;
-      }
       if (personalRequirement) {
         query += `\n【🎯 个人要求】\n`;
         query += `${personalRequirement}\n`;
@@ -813,8 +856,12 @@ export default function TopicPage() {
         }
       } else {
         // 没整批指定某一计：按用户选的路子分配，36 计连公式一起给，只给计名模型不知道怎么拍
-        query += `${routeAssignment(route, topicCount)}\n\n${ROUTES_GUIDE}\n\n`;
-        if (route !== '四大脚本') {
+        const preferred = topicPreferredTactic({ source: sourceReference, direction: personalRequirement, explicit: routeExplicit });
+        query += `${topicRoutePrompt({ route, count: topicCount, sourced, explicit: routeExplicit })}\n\n`;
+        if (preferred) {
+          query += `【承接原拍法】本轮所有选题继续用${preferred}，差异来自问题与追问。四大脚本只用于组织真实回答，不另换节目。\n${tacticBrief(preferred)}\n\n`;
+        } else query += `${ROUTES_GUIDE}\n\n`;
+        if (!preferred && route !== '四大脚本') {
           const blocked = tacticsBlockedBy(
             [selectedProfile?.content_restrictions, selectedProfile?.avoid_content, selectedProfile ? taboosPromptBlock(selectedProfile) : ''].filter(Boolean).join('\n')
           );
@@ -824,15 +871,17 @@ export default function TopicPage() {
       }
 
       query += `【创新要求】🎨 重要！\n`;
-      query += `- ⚡ 追求新颖角度，避免常见套路和老梗\n`;
+      query += `- ⚡ 新意来自更好的问题、证据和表达，先把用户最想拍的那一期做扎实，不为追求冷门绕开它\n`;
       query += `- 🎯 每条选题都要有独特的切入点\n`;
-      query += `- 💡 结合当前热点、时事、流行文化\n`;
+      // 带着内容来的，新意在这份内容里找；去追热点就跑出原内容了
+      query += sourced ? `- 💡 新角度在带来的内容范围里找，不另外去追热点、时事\n` : `- 💡 结合当前热点、时事、流行文化\n`;
       query += `- 🔥 创造记忆点，让人眼前一亮\n\n`;
 
       query += `【选题三关】（小黄第17节）每条都要过：覆盖的人够不够多、给了什么明确价值、是不是比用户多一步认知\n\n`;
       query += `【输出格式要求】\n`;
       query += `每条选题必须包含以下部分：\n\n`;
       query += `## 选题X：[标题]\n\n`;
+      if (sourced) query += `**承接**：这条取自带来内容里的哪一处（引原文一句，或点名那个细节、那条思路）\n\n`;
       query += `**0️⃣ 视频目的**\n`;
       query += `流量型 / 人设型 / 变现型，只写一个，后面一句话说为什么\n\n`;
       // 这一行的写法固定，页面要从它认出用的哪一计，带到脚本页
@@ -850,32 +899,30 @@ export default function TopicPage() {
       } else {
         query += `四大脚本的选题用2-3个元素及应用方式；36计的选题叠1个就够，不叠写"无"\n\n`;
       }
-      query += `**2️⃣ 开篇钩子（重要！）**\n`;
-      query += `⚠️ 必须结合本地知识库和现有知识库优化，3秒内抓住注意力\n`;
-      query += `⚠️ 只写文案，不要写画面描述！\n`;
-      query += `- 第1秒：[开场文案/悬念]\n`;
-      query += `- 第2秒：[冲突/好奇]\n`;
-      query += `- 第3秒：[钩子/承诺]\n\n`;
+      query += `**2️⃣ 开篇钩子**\n`;
+      query += withHook ? `结合知识库设计一句能实际说出口的开头，尽快进入这条的真实问题。尚未采访时写「今天去问/到底有没有变化」的提问型开头，不能写「我问过/发现/没想到」的结果型开头。只写文案，不拆成三个每秒一句的口号。\n\n` : `用户本次不需要开篇钩子，不生成开头文案。\n\n`;
       query += `**3️⃣ 内容方向及目的（重中之重！）**\n`;
       query += `⚠️ 这是整个选题的核心，决定视频成败\n`;
       query += `- 核心内容方向：[这条视频到底要讲什么？用1句话说清楚]\n`;
-      query += `- 关键画面（3个）：[必拍的3个核心画面]\n`;
+      query += `- 核心问题与观众价值：[具体要弄明白什么，目标人群为什么在意]\n`;
+      query += `- 取材与内容推进：[对象怎么选，主问题及追问/验证动作是什么，真实材料怎样一步步回答问题；采访稿要给可直接问出口的问题]\n`;
+      query += `- 事实边界：[哪些素材已提供，哪些需现场获得；不同结果出现时如何呈现，不编受访者答案]\n`;
+      query += `- 关键画面（3个）：[需采集的动作、采访问题或现场证据；受访者回答写「保留现场原话」，不写示范答案]\n`;
       query += `- 场景设置：[在哪拍？什么环境？]\n`;
-      query += `- 拍摄目的：[为什么这样拍？想达到什么效果？]\n`;
-      query += `- 用户价值：[用户看完能获得什么？]\n\n`;
+      query += `以上已经讲清观众价值，不再重复一段空泛的共鸣、焦虑或认知说明。\n\n`;
       query += `**4️⃣ 脚本结构**\n`;
       /*
        * 原来是"从 19 种结构中推荐 3 个"：解题/推荐/揭秘/案例/火车节/论证/故事/对比/清单/
        * 时间线/问答/情景剧/测评/挑战/教程/反转/盘点/采访/观察——大半是知识库里没有的
        * 通用词，而且跟这条视频的目的无关。现在从目的对应的结构里挑（知识库原文）。
        */
-      query += `从这条目的对应的结构里挑 1 个最合适的（见上面「三种视频」），写出骨架套到这条上是什么样（每段最多10字）。\n`;
+      query += `从这条目的对应的结构里挑1个最合适的（见上面「三种视频」），把每步对应的具体问题、动作或证据写清楚，能直接指导拍摄和剪辑。结构标签不能替代内容。\n`;
       query += `用 36 计的：计的公式管事件怎么走，这里的结构管话怎么讲，两者叠加；纯按计的公式拍、不另套结构的，写"按计的公式走"\n\n`;
       query += `**5️⃣ 结尾行动指令**\n`;
       query += `只写一个，按目的来：流量型要关注或评论，人设型要关注或看主页，变现型要私信、到店或留资中的一个\n\n`;
       query += `**6️⃣ 执行要点**\n`;
-      query += `⚠️ 必须可落地：手机拍、一个人、低成本\n`;
-      query += `难度/资源/注意事项（每项最多10字）\n\n`;
+      query += `按本轮已提供的人员、设备、时间与预算落地，不擅自安排全天跟拍或多人剧情。\n`;
+      query += `写清素材准备、对象沟通、收声与必要注意事项，详略以实际能执行为准。\n\n`;
       
       if (topicRole !== '流量型' && topicRole !== '人设型') {
         query += `**7️⃣ 成交理由**（只有变现型选题写这一项）\n`;
@@ -889,13 +936,17 @@ export default function TopicPage() {
       query += `- 生成的选题必须100%可执行，不能天马行空\n`;
       query += describeExecutionConstraints(selectedProfile ?? null) + `\n`;
       query += `- 贴合现实：基于真实场景，不能太夸张\n\n`;
+      if (sourced) query += `🔗 交稿前逐条检查：这条能在带来的内容里找到出处吗？找不到就换成找得到的\n\n`;
       query += `📋 具体要求：\n`;
-      query += `1. 开篇钩子：只写文案，不要画面描述！必须结合知识库优化\n`;
+      query += withHook ? `1. 开篇钩子只写文案，结合知识库优化，不能先编出现场结论\n` : `1. 用户不需要开头文案，本批不生成开篇钩子\n`;
       query += `2. 内容方向及目的是重中之重：核心方向一句话，用户价值要明确\n`;
       query += `3. 每条都写「🅰 打法」；用 36 计的，计名和清单一字不差，公式要落在事件上，不是只在标题提一句\n`;
       query += `4. 每条只担一个目的；脚本结构和结尾行动指令都按目的来，结尾指令只要一个\n`;
       query += `5. 变现型选题必须写成交理由和转化路径（最多15字）\n`;
-      query += `6. 每条选题严格控制在220字以内！去废话！\n`;
+      // 原来「严格控制在220字以内」：把选题的内容方向、关键画面压得太薄（2026-10-06 产品方：不框死上限，先保证质量）
+      query += `6. 每条把上面各项写清楚、写具体，去废话、不注水；不用为了凑短省掉关键画面和内容方向。最后不用再写总览表和「自检确认」清单（页面会自动核对），篇幅留给选题本身\n`;
+      if (quickTopics && topicCount <= 3) query += `7. 用户选的是「快速 3 条」：每条只写视频目的、打法、开篇钩子、脚本结构（三四行）、结尾行动指令，每项一两句；爆款元素、执行要点、成交理由合成一句写在结构后面。每条 500 字以内\n`;
+      query += `\n${topicDesignFinalCheck()}\n`;
 
       
       // 这里原本还有一道「最终过滤」，对**整条提示词**逐行扫描，命中
@@ -960,6 +1011,8 @@ export default function TopicPage() {
     }
   };
 
+  // 结果下方「继续创作」和两个快捷按钮共用：目的、人群、结构、源资料一起往下带
+  const topicFlow = { settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, originContent || sourceReference) };
   return (
     <WorkspaceLayout
       sidebar={
@@ -1104,7 +1157,7 @@ export default function TopicPage() {
             <Field
               label="用哪套打法"
               stacked
-              hint={tactic ? `已指定第 ${GROWTH_TACTICS.find((t) => t.name === tactic)?.no} 计，整批都按它拍` : ROUTE_HINTS[route]}
+              hint={tactic ? `已指定第 ${GROWTH_TACTICS.find((t) => t.name === tactic)?.no} 计，整批都按它拍` : sourceReference && !routeExplicit ? '按原方向自动选最合适的拍法；点击下面选项可手动指定' : ROUTE_HINTS[route]}
             >
               <div className="grid grid-cols-3 gap-1.5">
                 {ROUTE_LIST.map((r) => {
@@ -1115,6 +1168,7 @@ export default function TopicPage() {
                       type="button"
                       onClick={() => {
                         setRoute(r);
+                        setRouteExplicit(true);
                         setTactic("");
                       }}
                       aria-pressed={picked}
@@ -1325,13 +1379,24 @@ export default function TopicPage() {
           <CollapsibleSection title="输出设置" defaultOpen>
             <Field label="生成数量" optional>
               <div className="glass-panel inline-flex gap-0.5 rounded-xl p-1">
+                <button
+                  onClick={() => { setTopicCount(3); setQuickTopics(true); }}
+                  aria-pressed={quickTopics}
+                  className={`rounded-lg px-3 py-1.5 text-[12px] transition-colors ${
+                    quickTopics
+                      ? "bg-primary/20 font-medium text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  快速 3 条
+                </button>
                 {[5, 10, 15, 20].map((n) => (
                   <button
                     key={n}
-                    onClick={() => setTopicCount(n)}
-                    aria-pressed={topicCount === n}
+                    onClick={() => { setTopicCount(n); setQuickTopics(false); }}
+                    aria-pressed={!quickTopics && topicCount === n}
                     className={`rounded-lg px-3 py-1.5 text-[12px] transition-colors ${
-                      topicCount === n
+                      !quickTopics && topicCount === n
                         ? "bg-primary/20 font-medium text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -1340,6 +1405,7 @@ export default function TopicPage() {
                   </button>
                 ))}
               </div>
+              {quickTopics && <p className="mt-1.5 text-[11.5px] text-muted-foreground">只出 3 条、每条写要点（目的、打法、开头、结构、结尾），大约一分钟出来；想看完整版就选 5 条以上</p>}
             </Field>
 
             <Field label="创意难度" optional>
@@ -1382,7 +1448,7 @@ export default function TopicPage() {
         result={result}
         isGenerating={isGenerating}
         title="选题方案"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, originContent || sourceReference) }}
+        flowContext={topicFlow}
         showStats={false}
         emptyIcon={Lightbulb}
         emptyTitle="填好条件就能出选题"
@@ -1414,7 +1480,9 @@ export default function TopicPage() {
                   ? (await createWork(options[0], selectedProfileId || null)) ?? undefined
                   : undefined;
 
-              putHandoff({
+              await openCreationSafely({
+                // 目的、人群、结构、源资料跟着走（原来这个按钮只带题目清单，到脚本页这些都丢了）
+                ...buildCreationHandoff('topic', 'script', body, topicFlow),
                 from: "选题策划",
                 topicOptions: options,
                 topic: options.length === 1 ? options[0] : undefined,
@@ -1423,8 +1491,7 @@ export default function TopicPage() {
                 tactic: tactic || (options.length === 1 ? tacticInText(body) : undefined),
                 // 每条各自标的是哪一计：到脚本页挑中哪条，就自动带上那一条的计
                 topicTactics: tactic ? undefined : topicTacticsOf(body),
-              });
-              router.push("/dashboard/script");
+              }, (u) => router.push(u), (m) => notify(m, 'error'));
             },
           },
           {
@@ -1434,7 +1501,8 @@ export default function TopicPage() {
             icon: Sparkles,
             onClick: (body) => {
               const options = parseTopicOptions(body);
-              putHandoff({
+              openCreationSafely({
+                ...buildCreationHandoff('topic', 'growth', body, topicFlow),
                 from: "选题策划",
                 // 整批都带过去，让他在开篇页自己挑给哪条写开头。
                 // 只带第一条的话，等于替他做了选择——而这一批本来就是给他挑的
@@ -1442,8 +1510,7 @@ export default function TopicPage() {
                 topic: options[0] || "",
                 tab: "opening",
                 tactic: tactic || undefined,
-              });
-              router.push("/dashboard/growth");
+              }, (u) => router.push(u), (m) => notify(m, 'error'));
             },
           },
         ]}

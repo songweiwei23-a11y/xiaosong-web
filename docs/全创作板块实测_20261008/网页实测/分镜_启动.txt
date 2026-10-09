@@ -1,0 +1,244 @@
+2026-10-08T04:40:02.906Z
+https://www.biandao.icu/dashboard/storyboard
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "分镜脚本" [level=1]
+    - paragraph: 把口播脚本拆成可执行的分镜：景别、运镜、画面与时长
+    - button "填入示例"
+    - paragraph:
+      - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+      - link "换一个":
+        - /url: /dashboard/profiles
+    - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+    - paragraph:
+      - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+      - link "在档案里调整":
+        - /url: /dashboard/profiles
+    - paragraph:
+      - text: 还没生成创作简报，这次只能用档案里的字段。
+      - link "去生成":
+        - /url: /dashboard/creative-brief
+      - text: （做完选题、脚本、分镜都会自动用上）
+    - button "脚本内容" [expanded]:
+      - generic: 脚本内容
+    - generic: 脚本内容
+    - generic: 必填
+    - textbox "例如：我要拍美食探店，先拍店门口招牌，再进店拍环境，然后特写拍菜品，最后拍我吃的反应": 买衣柜前，先别急着看颜色。今天就在店里这个样柜上看一眼：柜门打开后，要占到哪儿；抽屉拉出来，前面还剩多少位置。把自己家的门、床和过道位置记下来，到店对着样柜试一试。款式喜欢，还得在自己家用得顺手。
+    - generic: AI 会根据内容自动选择镜头语言
+    - button "让 AI 推荐参数":
+      - text: 让 AI 推荐参数
+    - button "拍摄设置" [expanded]:
+      - generic: 拍摄设置
+    - generic: 发布平台
+    - generic: 可选
+    - combobox:
+      - option "抖音" [selected]
+      - option "快手"
+      - option "视频号"
+      - option "小红书"
+      - option "B站"
+    - generic: 视频时长
+    - generic: 可选
+    - combobox:
+      - option "按脚本长度（推荐）"
+      - option "15秒"
+      - option "30秒" [selected]
+      - option "60秒"
+      - option "90秒"
+      - option "3-5分钟"
+    - generic: 内容类型
+    - generic: 可选
+    - button "已按原稿自动选择内容类型" [pressed]
+    - generic: 口播类
+    - button "🎙️ 口播":
+      - generic: 🎙️
+      - generic: 口播
+    - button "💡 知识讲解":
+      - generic: 💡
+      - generic: 知识讲解
+    - generic: 展示类
+    - button "🍜 美食":
+      - generic: 🍜
+      - generic: 美食
+    - button "📚 教程":
+      - generic: 📚
+      - generic: 教程
+    - button "📦 产品":
+      - generic: 📦
+      - generic: 产品
+    - button "⚖️ 测评对比":
+      - generic: ⚖️
+      - generic: 测评对比
+    - button "🔧 晒过程":
+      - generic: 🔧
+      - generic: 晒过程
+    - generic: 场景类
+    - button "🏪 探店":
+      - generic: 🏪
+      - generic: 探店
+    - button "📹 VLOG":
+      - generic: 📹
+      - generic: VLOG
+    - button "🎯 挑战体验":
+      - generic: 🎯
+      - generic: 挑战体验
+    - generic: 叙事类
+    - button "🎬 剧情故事":
+      - generic: 🎬
+      - generic: 剧情故事
+    - button "🏆 客户案例":
+      - generic: 🏆
+      - generic: 客户案例
+    - button "🎤 访谈对话":
+      - generic: 🎤
+      - generic: 访谈对话
+    - generic: AI 会据此选择合适的景别与运镜
+    - generic: 视觉风格
+    - generic: 可选
+    - button "🎥 电影感":
+      - generic: 🎥
+      - generic: 电影感
+    - button "☀️ 明亮清新" [pressed]:
+      - generic: ☀️
+      - generic: 明亮清新
+    - button "🌅 温暖治愈":
+      - generic: 🌅
+      - generic: 温暖治愈
+    - button "🌃 冷酷科技":
+      - generic: 🌃
+      - generic: 冷酷科技
+    - button "📷 复古怀旧":
+      - generic: 📷
+      - generic: 复古怀旧
+    - button "⬜ 简约高级":
+      - generic: ⬜
+      - generic: 简约高级
+    - button "补充说明" [expanded]:
+      - generic: 补充说明
+    - generic: 其他要求
+    - generic: 可选
+    - textbox "例如：需要航拍镜头、避免快速剪辑…": 【测试】原台词逐字保留，不增加事实。只有一人一部手机，没有助手、三脚架、稳定器或灯。只拍现有样柜，先给不需额外设备的拍法，禁止一人同时出镜与手持推镜。
+    - button "生成中…" [disabled]:
+      - text: 生成中…
+  - main:
+    - heading "分镜脚本" [level=2]
+    - text: 创作中
+    - paragraph: 正在拆解镜头…
+- alert

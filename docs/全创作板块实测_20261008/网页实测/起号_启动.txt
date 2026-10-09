@@ -1,0 +1,157 @@
+2026-10-08T04:39:36.069Z
+https://www.biandao.icu/dashboard/growth
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - heading "起号" [level=1]
+  - paragraph: 起号 36+1 计决定「拍什么套路」，开篇 36 计决定「前三秒怎么说」。 两套都按你的真实资源来挑，不是把方法摆出来让你自己猜。
+  - button "起号打法37 计"
+  - button "开篇钩子36 张卡"
+  - paragraph:
+    - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+    - link "换一个":
+      - /url: /dashboard/profiles
+  - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+  - paragraph:
+    - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+    - link "在档案里调整":
+      - /url: /dashboard/profiles
+  - paragraph:
+    - text: 还没生成创作简报，这次只能用档案里的字段。
+    - link "去生成":
+      - /url: /dashboard/creative-brief
+    - text: （做完选题、脚本、分镜都会自动用上）
+  - paragraph: 默认按你的资源条件从 37 计里挑。知识库的选择矩阵是这样分的：
+  - list:
+    - listitem: · 单人、低预算、专业强 → 行业避坑、内幕揭秘、冷知识…
+    - listitem: · 有产品 / 门店 → 情境还原、以物换物、正确做法VS错误做法…
+    - listitem: · 有表演与搭档 → 一人分饰多角、角色扮演、整蛊…
+    - listitem: · 有真实项目过程 → 对比改造、接受网友挑战、互联网嘴替/替网友做…
+    - listitem: · 擅长故事 / 文案 → 借物喻人、一句话设定故事感、加入人物关系…
+  - button "✨ 让 AI 先推荐几个，我再选" [disabled]
+  - button "或者从 37 计里自己圈定"
+  - generic: 补充说明（选填）
+  - textbox "比如：老板不太愿意出镜、这阵子只有周末能拍": 【测试】一人手机，基础剪辑，家具展厅真实样柜；每周总共只有2小时集中拍摄。不能安排顾客演戏，不编客户故事、价格、厘米标准或免费服务。请给低成本可持续起号安排，区分建议与事实，不承诺涨粉或成交。
+  - generic: 内容配比：系统推荐（刚起号）
+  - button "这次改一下"
+  - generic: 流量型 65%
+  - generic: 人设型 25%
+  - generic: 变现型 10%
+  - button "正在挑打法… 0:00" [disabled]
+  - heading "起号方案" [level=2]
+- alert

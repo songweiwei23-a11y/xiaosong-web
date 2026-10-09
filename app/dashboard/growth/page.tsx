@@ -38,7 +38,8 @@ import {
   type TacticCandidate,
   type TacticTestStat,
 } from '@/lib/growth-standards'
-import { takeHandoff, putHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
+import { takeHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
+import { openCreationSafely } from '@/lib/creation-session'
 import { creationReference, continuationRules } from '@/lib/creation-continuation'
 import { buildCreationHandoff } from '@/lib/creation-flow'
 import { createWork, recordStage } from '@/lib/works'
@@ -411,7 +412,7 @@ export default function GrowthPage() {
     return run(
       '开篇钩子',
       buildOpeningPrompt({
-        contextBlock: buildContextBlock(context, 'script'),
+        contextBlock: buildContextBlock(context, 'script') + creationSettingsBlock(currentSettings),
         topic,
         currentOpening,
         picked: pickedCards.length ? pickedCards : undefined,
@@ -867,7 +868,8 @@ export default function GrowthPage() {
                               notify('先在上面选一条选题')
                               return
                             }
-                            putHandoff({
+                            // 持久保存后再跳（lib/creation-session），刷新、换设备都能接着
+                            openCreationSafely({
                               ...buildCreationHandoff('growth', 'script', o.line, { topic, settings: mergeCreationSettings(currentSettings, { openingLine: o.line, openingCards: [o.card] }), originContent: originContent || referenceContent }),
                               from: '开篇钩子',
                               topic,
@@ -878,12 +880,7 @@ export default function GrowthPage() {
                               note: `${buildCreationHandoff('growth', 'script', o.line, { topic, settings: mergeCreationSettings(currentSettings, { openingLine: o.line, openingCards: [o.card] }), originContent: originContent || referenceContent }).note}\n开头承诺的，正文必须兑现：${o.deliver || '承接原稿'}`,
                               // 作品一路带下去，写出来的脚本才挂得回同一条内容
                               workId: currentOpeningWork ?? undefined,
-                            })
-                            router.push(
-                              currentOpeningWork
-                                ? workStageUrl(currentOpeningWork, '脚本生成')
-                                : '/dashboard/script'
-                            )
+                            }, (u) => router.push(u), (m) => notify(m, 'error'))
                           }}
                           className="rounded-lg border border-primary/40 bg-primary/[0.08] px-3 py-1.5 text-[12px] font-medium text-primary"
                         >
@@ -921,8 +918,7 @@ export default function GrowthPage() {
                           notify('没认出用的是哪一计，先在上面圈一个')
                           return
                         }
-                        putHandoff({ ...buildCreationHandoff('growth', 'topic', result, { settings: currentSettings }), from: '起号打法', tactic: picked[0] })
-                        router.push('/dashboard/topic')
+                        openCreationSafely({ ...buildCreationHandoff('growth', 'topic', result, { settings: currentSettings, originContent: originContent || referenceContent }), from: '起号打法', tactic: picked[0] }, (u) => router.push(u), (m) => notify(m, 'error'))
                       }}
                       className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
                     >
@@ -932,16 +928,13 @@ export default function GrowthPage() {
                     <button
                       onClick={() => {
                         const cards = pickedCards.length ? pickedCards : detectOpeningCards(result)
-                        putHandoff({
+                        openCreationSafely({
                           ...buildCreationHandoff('growth', 'title', result, { topic, settings: mergeCreationSettings(currentSettings, { openingLine: openings[0]?.line, openingCards: pickedCards }), originContent: originContent || referenceContent }),
                           from: '开篇钩子',
                           topic,
                           openingCards: cards.slice(0, 3),
                           workId: currentOpeningWork ?? undefined,
-                        })
-                        router.push(
-                          currentOpeningWork ? workStageUrl(currentOpeningWork, '标题封面') : '/dashboard/title'
-                        )
+                        }, (u) => router.push(u), (m) => notify(m, 'error'))
                       }}
                       className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground hover:text-primary"
                     >
@@ -955,7 +948,7 @@ export default function GrowthPage() {
             {/* 继续创作 / 收藏：放在最底部（2026-10-02，原来在正文上面，用户容易看不到） */}
             {result && !busy && (
               <div className="mt-6">
-                <CreationLinks body={result} context={{ settings: mergeCreationSettings(currentSettings, tab === 'opening' ? { openingLine: openings[0]?.line, openingCards: openings[0] ? [openings[0].card] : pickedCards } : {}), topic: tab === 'opening' ? topic : undefined, workId: tab === 'opening' ? currentOpeningWork ?? undefined : undefined, originContent: tab === 'opening' ? originContent || referenceContent : undefined }} />
+                <CreationLinks body={result} context={{ settings: mergeCreationSettings(currentSettings, tab === 'opening' ? { openingLine: openings[0]?.line, openingCards: openings[0] ? [openings[0].card] : pickedCards } : {}), topic: tab === 'opening' ? topic : undefined, workId: tab === 'opening' ? currentOpeningWork ?? undefined : undefined, originContent: originContent || referenceContent }} />
               </div>
             )}
           </div>

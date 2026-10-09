@@ -1,0 +1,28 @@
+{
+  "scope": "正式Dify附件通道，两个明确的功能测试文件，不含客户资料；不覆盖网站上传、存储和限额界面",
+  "files": [
+    {
+      "name": "正文识别测试.txt",
+      "type": "document",
+      "status": 201
+    },
+    {
+      "name": "视觉识别测试.png",
+      "type": "image",
+      "status": 201
+    }
+  ],
+  "time": "2026-10-08T03:47:03.607Z",
+  "ok": true,
+  "elapsedMs": 8420,
+  "answer": "根据您提供的资料：\n\n1. **项目暗号**：松果7319\n\n2. **预算金额**：24680 元\n\n3. **图片颜色（从左到右）**：红色、绿色、蓝色",
+  "usage": {
+    "prompt_tokens": 1507,
+    "completion_tokens": 66,
+    "total_tokens": 1573,
+    "latency": 3.293,
+    "total_price": 0,
+    "currency": "USD",
+    "elapsed_time": 7.538153
+  }
+}

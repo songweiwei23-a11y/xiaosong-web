@@ -1,0 +1,632 @@
+2026-10-08T04:40:12.494Z
+https://www.biandao.icu/dashboard/script?work=6e09b803-34d3-4c50-86b8-e03b3ded7ad5
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - heading "脚本生成" [level=1]
+  - paragraph: 专业级短视频脚本创作工具
+  - button "📝 内容创作"
+  - button "💰 广告引流"
+  - paragraph:
+    - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+    - link "换一个":
+      - /url: /dashboard/profiles
+  - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+  - paragraph:
+    - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+    - link "在档案里调整":
+      - /url: /dashboard/profiles
+  - paragraph:
+    - text: 还没生成创作简报，这次只能用档案里的字段。
+    - link "去生成":
+      - /url: /dashboard/creative-brief
+    - text: （做完选题、脚本、分镜都会自动用上）
+  - button "基础设置" [expanded]:
+    - text: 基础设置
+  - generic: 脚本类型
+  - generic: 必填
+  - button "教知识 教学类内容，传授技能和知识" [pressed]:
+    - generic: 教知识
+    - generic: 教学类内容，传授技能和知识
+  - button "晒过程 展示类内容，分享经历和成果":
+    - generic: 晒过程
+    - generic: 展示类内容，分享经历和成果
+  - button "聊话题 观点类内容，表达看法和思考":
+    - generic: 聊话题
+    - generic: 观点类内容，表达看法和思考
+  - button "讲故事 故事类内容，讲述经历和案例":
+    - generic: 讲故事
+    - generic: 故事类内容，讲述经历和案例
+  - generic: 这条视频的目的
+  - button "自动（变现型）"
+  - button "流量型" [pressed]
+  - button "人设型"
+  - button "变现型"
+  - generic: 流量型：让更多新用户看到账号：扩曝光、拉新粉。结尾只要关注或评论，二选一（"你们那边也这样吗？评论区说说"）
+  - generic: 视频主题
+  - generic: 必填
+  - textbox "例如：普通人做短视频最容易踩的3个坑": 【测试】挑衣柜时观察柜门与抽屉打开后的占位。用展厅现有样柜演示，给本地装修家庭看，一人只有手机，30秒以内，平实口语。不造客户经历、尺寸标准、价格、免费服务。只讲真实动作与检查方法。
+  - generic: 发布平台
+  - generic: 必填
+  - combobox:
+    - option "抖音" [selected]
+    - option "小红书"
+    - option "视频号"
+    - option "B站"
+    - option "快手"
+  - generic: 视频时长
+  - generic: 必填
+  - button "预设"
+  - button "自定义"
+  - button "✨ AI推荐"
+  - combobox:
+    - option "15秒"
+    - option "30秒" [selected]
+    - option "60秒"
+    - option "90秒"
+    - option "3-5分钟"
+  - button "✨ 根据平台智能推荐"
+  - generic: 行业分类
+  - generic: 必填
+  - combobox:
+    - option "选择行业..." [selected]
+    - option "自媒体运营"
+    - option "知识分享"
+    - option "职场技能"
+    - option "副业赚钱"
+    - option "摄影摄像"
+    - option "剪辑后期"
+    - option "写作文案"
+    - option "设计美工"
+    - option "情感心理"
+    - option "亲子育儿"
+    - option "家庭教育"
+    - option "学习方法"
+    - option "读书分享"
+    - option "电影解说"
+    - option "音乐舞蹈"
+    - option "美食烹饪"
+    - option "旅行探店"
+    - option "时尚穿搭"
+    - option "美妆护肤"
+    - option "健身运动"
+    - option "数码科技"
+    - option "游戏电竞"
+    - option "宠物养护"
+    - option "生活技巧"
+  - textbox "或自定义...": 家具零售
+  - generic: 当前：家具零售
+  - button "目标定位" [expanded]:
+    - text: 目标定位
+  - generic: 目标人群
+  - generic: 可选
+  - combobox:
+    - option "选择目标人群..." [selected]
+    - option "00后学生"
+    - option "95后职场新人"
+    - option "90后职场人"
+    - option "85后管理层"
+    - option "80后中产"
+    - option "70后企业主"
+    - option "银发族"
+    - option "大学生"
+    - option "研究生"
+    - option "白领"
+    - option "金领"
+    - option "创业者"
+    - option "小老板"
+    - option "自由职业者"
+    - option "全职宝妈"
+    - option "职场宝妈"
+    - option "月入3k以下"
+    - option "月入3-8k"
+    - option "月入8k-2w"
+    - option "月入2w-5w"
+    - option "月入5w+"
+    - option "美食爱好者"
+    - option "旅行达人"
+    - option "健身狂"
+    - option "宠物主"
+    - option "摄影师"
+    - option "游戏玩家"
+    - option "二次元"
+    - option "准妈妈"
+    - option "新手妈妈"
+    - option "二胎妈妈"
+    - option "考研党"
+    - option "考公党"
+    - option "求职者"
+    - option "技能学习者"
+    - option "自媒体人"
+    - option "内容创作者"
+    - option "知识博主"
+    - option "副业探索者"
+    - option "转行者"
+    - option "斜杠青年"
+    - option "生活方式追求者"
+    - option "精致女性"
+    - option "都市白领"
+    - option "下沉市场用户"
+    - option "Z世代"
+    - option "健身爱好者"
+    - option "旅行爱好者"
+  - textbox "或自定义...": 本地正在装修的家庭
+  - generic: 当前：本地正在装修的家庭
+  - generic: 内容风格
+  - generic: 可选
+  - button "专业" [pressed]
+  - button "幽默"
+  - button "犀利"
+  - button "温暖"
+  - button "励志"
+  - button "治愈"
+  - button "反转"
+  - button "悬疑"
+  - button "干货"
+  - button "搞笑"
+  - button "走心"
+  - button "高冷"
+  - button "亲切"
+  - button "激情"
+  - button "文艺"
+  - button "创意设计" [expanded]:
+    - text: 创意设计
+  - generic: 拍法（起号 36+1 计）
+  - generic: 可选
+  - combobox:
+    - option "AI 按目的挑一计（推荐）" [selected]
+    - option "不用，只按四大脚本"
+    - option "1. 反向操作"
+    - option "2. 扮猪吃虎"
+    - option "3. 以物换物"
+    - option "4. 借物喻人"
+    - option "5. 跨界硬组合"
+    - option "6. 软组合：用A方式做B事"
+    - option "7. 一句话设定故事感"
+    - option "8. 加入人物关系"
+    - option "9. 一人分饰多角"
+    - option "10. 情境还原"
+    - option "11. Rap+行业"
+    - option "12. 借势点评"
+    - option "13. 跟着博主做"
+    - option "14. 模仿电影片段"
+    - option "15. 正确做法VS错误做法"
+    - option "16. 整蛊"
+    - option "17. 互联网嘴替/替网友做"
+    - option "18. 求助网友"
+    - option "19. 对比改造"
+    - option "20. 拟人化"
+    - option "21. 拟物化"
+    - option "22. 行业避坑"
+    - option "23. 内幕揭秘"
+    - option "24. 懒人学习"
+    - option "25. 暴躁态度"
+    - option "26. 推荐建议"
+    - option "27. 互换身份"
+    - option "28. 怀旧复古"
+    - option "29. 吐槽奇葩现象"
+    - option "30. 角色扮演"
+    - option "31. 南北/地域差异"
+    - option "32. 换个视角"
+    - option "33. 宠妻/宠夫反差"
+    - option "34. 接受网友挑战"
+    - option "35. 街头采访"
+    - option "36. 冷知识"
+    - option "37. 赠送：身份反差"
+  - generic: AI 按这条的目的（流量型）挑一计叠在四大脚本上，挑不出合适的就不叠
+  - generic: 开场钩子
+  - generic: 可选
+  - button "🤖 AI推荐" [pressed]:
+    - generic: 🤖
+    - generic: AI推荐
+  - button "💰 金钱型":
+    - generic: 💰
+    - generic: 金钱型
+  - button "🎁 盲盒型":
+    - generic: 🎁
+    - generic: 盲盒型
+  - button "⚔️ 对抗型":
+    - generic: ⚔️
+    - generic: 对抗型
+  - button "🔍 验证型":
+    - generic: 🔍
+    - generic: 验证型
+  - button "🌟 温暖型":
+    - generic: 🌟
+    - generic: 温暖型
+  - button "💗 共鸣型":
+    - generic: 💗
+    - generic: 共鸣型
+  - generic: 脚本结构
+  - generic: 可选
+  - button "🎯 AI推荐" [pressed]:
+    - generic: 🎯
+    - generic: AI推荐
+  - button "📌 解题型":
+    - generic: 📌
+    - generic: 解题型
+  - button "👍 推荐型":
+    - generic: 👍
+    - generic: 推荐型
+  - button "🔓 揭秘型":
+    - generic: 🔓
+    - generic: 揭秘型
+  - button "📖 案例型":
+    - generic: 📖
+    - generic: 案例型
+  - button "🚂 火车节":
+    - generic: 🚂
+    - generic: 火车节
+  - button "💬 论证型":
+    - generic: 💬
+    - generic: 论证型
+  - button "📚 故事型":
+    - generic: 📚
+    - generic: 故事型
+  - button "⚖️ 对比型":
+    - generic: ⚖️
+    - generic: 对比型
+  - button "📝 清单型":
+    - generic: 📝
+    - generic: 清单型
+  - button "⏰ 时间线型":
+    - generic: ⏰
+    - generic: 时间线型
+  - button "❓ 问答型":
+    - generic: ❓
+    - generic: 问答型
+  - button "🎬 情景剧型":
+    - generic: 🎬
+    - generic: 情景剧型
+  - button "🔍 测评型":
+    - generic: 🔍
+    - generic: 测评型
+  - button "💪 挑战型":
+    - generic: 💪
+    - generic: 挑战型
+  - button "📐 教程型":
+    - generic: 📐
+    - generic: 教程型
+  - button "🔄 反转型":
+    - generic: 🔄
+    - generic: 反转型
+  - button "📊 盘点型":
+    - generic: 📊
+    - generic: 盘点型
+  - button "🎤 采访型":
+    - generic: 🎤
+    - generic: 采访型
+  - button "🔬 观察型":
+    - generic: 🔬
+    - generic: 观察型
+  - generic: 爆款元素
+  - generic: 可选
+  - button "💰 成本":
+    - generic: 💰
+    - generic: 成本
+  - button "👥 人群":
+    - generic: 👥
+    - generic: 人群
+  - button "⭐ 头牌":
+    - generic: ⭐
+    - generic: 头牌
+  - button "🤪 奇葩":
+    - generic: 🤪
+    - generic: 奇葩
+  - button "💩 最差":
+    - generic: 💩
+    - generic: 最差
+  - button "⚡ 反差":
+    - generic: ⚡
+    - generic: 反差
+  - button "📼 怀旧":
+    - generic: 📼
+    - generic: 怀旧
+  - button "💕 荷尔蒙":
+    - generic: 💕
+    - generic: 荷尔蒙
+  - generic: 可多选，建议 2–3 个
+  - button "专业控制":
+    - text: 专业控制
+  - button "成交理由":
+    - text: 成交理由
+  - button "账号定位":
+    - text: 账号定位
+  - button "补充说明" [expanded]:
+    - text: 补充说明
+  - generic: 其他要求
+  - generic: 可选
+  - textbox "其他要求或特殊需求…": 保留观点：先看家里门能不能开，再看柜子摆得好不好看。只用现有样柜，不安排助手、顾客、额外收音或运镜。没有标准厘米数。
+  - button "生成专业脚本":
+    - text: 生成专业脚本
+  - heading "生成结果" [level=2]
+  - text: 口播 140 字
+  - text: 念完约 28秒
+  - button "继续创作":
+    - text: 继续创作
+  - button "在画布里改":
+    - text: 在画布里改
+  - button "继续对话":
+    - text: 继续对话
+  - button "复制纯文案":
+    - text: 复制纯文案
+  - button "复制":
+    - text: 复制
+  - button "下载":
+    - text: 下载
+  - article:
+    - heading "【测试】挑衣柜时观察柜门与抽屉打开后的占位" [level=1]
+    - separator
+    - heading "第1步：脚本策略卡" [level=2]
+    - paragraph:
+      - strong: 核心问题
+      - text: ：本地装修家庭挑衣柜时，如何判断柜门和抽屉打开后会不会挡路、够不够用？
+    - paragraph:
+      - strong: 用户目的
+      - text: ：流量型——通过实用的检查方法吸引本地装修人群关注
+    - paragraph:
+      - strong: 目标人群
+      - text: ：本地正在装修的家庭，面临选购衣柜的决策困惑
+    - paragraph:
+      - strong: 所选形式
+      - text: ：教知识-对比型结构。用A方案（错误：只看摆好的样子）vs B方案（正确：先看家里门能不能开，再看柜子摆得好不好看）的对比，展示真实检查动作。
+    - paragraph:
+      - strong: 材料递进逻辑
+      - text: ：
+    - list:
+      - listitem: 开场：提出多数人只看外观的错误做法
+      - listitem: A方案：展示只看外观导致的问题（门打不开、抽屉拉不出）
+      - listitem: B方案：演示正确检查方法（实际拉开柜门和抽屉，观察占位）
+      - listitem: 差异揭示：点明核心观点——先看功能再看美观
+      - listitem: 自然收束：不强加CTA
+    - paragraph:
+      - strong: 事实边界
+      - text: ：
+    - list:
+      - listitem: 只用展厅现有样柜演示真实动作
+      - listitem: 不提尺寸标准（无具体厘米数）
+      - listitem: 不编造客户经历、价格、免费服务
+      - listitem: 一人手机拍摄，无助手无顾客配合
+      - listitem: 平实口语，不刻意制造情绪高潮
+    - separator
+    - heading "第2步：纯文字文案" [level=2]
+    - paragraph: 很多人挑衣柜，只看摆在那儿好不好看。
+    - paragraph: 结果买回家才发现，柜门一开，房门就推不开了。
+    - paragraph: 抽屉拉出来，人根本过不去。
+    - paragraph: 其实挑衣柜，得先看家里的门能不能开。
+    - paragraph: 你看这个柜门，我拉开以后，站这儿，人能正常走过去。
+    - paragraph: 再看抽屉，全拉出来，也不会挡住过道。
+    - paragraph: 这才叫选对了。
+    - paragraph: 别光看样子好看，回家发现挡路就麻烦了。
+    - paragraph: 记住，先看门能不能开，再看柜子摆得好不好看。
+    - separator
+    - heading "第3步:完整分镜脚本" [level=2]
+    - paragraph:
+      - strong: 【镜头1】0-5秒 | 开场钩子
+    - list:
+      - strong: 画面
+      - text: ：站在展厅某个衣柜前，手机固定中景，老板面对镜头
+      - strong: 台词
+      - text: ："很多人挑衣柜,只看摆在那儿好不好看。结果买回家才发现,柜门一开,房门就推不开了。"
+      - strong: 拍摄要点
+      - text: ：老板平实表达,语速正常,不夸张
+    - separator
+    - paragraph:
+      - strong: 【镜头2】5-10秒 | A方案:错误后果
+    - list:
+      - strong: 画面
+      - text: ：手机跟随老板走到另一个样柜前,手指向柜门位置
+      - strong: 台词
+      - text: :"抽屉拉出来,人根本过不去。"
+      - strong: 拍摄要点
+      - text: :用手势示意抽屉拉开的位置,但不实际演示(留给下一段)
+    - separator
+    - paragraph:
+      - strong: 【镜头3】10-20秒 | B方案:正确检查动作
+    - list:
+      - strong: 画面
+      - text: :老板实际拉开一扇柜门,停顿让镜头看清门占据的空间,然后人站在门边走动演示
+      - strong: 台词
+      - text: :"其实挑衣柜,得先看家里的门能不能开。你看这个柜门,我拉开以后,站这儿,人能正常走过去。"
+      - strong: 拍摄要点
+      - text: :手机固定或缓慢跟随,保持画面稳定,清楚拍到柜门打开后的占位和人走过去的空间
+    - separator
+    - paragraph:
+      - strong: 【镜头4】20-26秒 | B方案:抽屉检查
+    - list:
+      - strong: 画面
+      - text: :老板拉开衣柜抽屉,手机拍清抽屉拉出后占据的距离
+      - strong: 台词
+      - text: :"再看抽屉,全拉出来,也不会挡住过道。这才叫选对了。"
+      - strong: 拍摄要点
+      - text: :抽屉完全拉开,镜头从侧面或斜角度展示占位情况
+    - separator
+    - paragraph:
+      - strong: 【镜头5】26-30秒 | 差异揭示+收束
+    - list:
+      - strong: 画面
+      - text: :老板收回抽屉,转向镜头
+      - strong: 台词
+      - text: :"别光看样子好看,回家发现挡路就麻烦了。记住,先看门能不能开,再看柜子摆得好不好看。"
+      - strong: 拍摄要点
+      - text: :平实收尾,不刻意停顿等反应
+    - separator
+    - heading "第4步:执行与优化建议" [level=2]
+    - paragraph:
+      - strong: 拍摄前准备
+      - text: ":"
+    - list:
+      - listitem: 选展厅里门和抽屉都能完全打开的样柜(确认硬件功能正常)
+      - listitem: 确认拍摄位置:保证柜门、抽屉打开后,手机能拍清占位空间
+      - listitem: 提前走位一遍,确认"人走过去"的演示动作自然不尴尬
+    - paragraph:
+      - strong: 现场执行要点
+      - text: ":"
+    - list:
+      - listitem: 镜头3和4是核心:柜门和抽屉必须真实拉开,停留1-2秒让观众看清楚
+      - listitem: 人走动演示时不用刻意表演,正常速度走过去即可
+      - listitem: 如果一条拍不顺,分镜头单独拍,后期剪辑时保证动作连贯
+    - paragraph:
+      - strong: 优化方向
+      - text: ":"
+    - list:
+      - listitem: 如果30秒内讲不完,优先保留镜头3和4的真实演示动作,开场可以压缩到3秒
+      - listitem: 后期可加字幕强调"柜门打开后"、"抽屉全拉出"等关键信息
+      - listitem: 发布时选封面:定格在柜门或抽屉打开的画面,直观展示主题
+    - paragraph:
+      - strong: 资料缺口
+      - text: ":"
+    - list:
+      - listitem: 无需补充其他信息,现有展厅样柜即可完成拍摄
+    - paragraph:
+      - strong: 不建议做的
+      - text: ":"
+    - list:
+      - listitem: 不要临时找人配合演示(人设卡明确只有老板一人)
+      - listitem: 不要口播具体尺寸(如"至少留60厘米"),没有标准数据支持
+      - listitem: 不要加"到店免费测量"等服务承诺,用户未提供该信息
+  - generic: 结构检查
+  - generic: 格式要素齐全
+  - paragraph: 只看钩子、金句、秒数、镜头这些格式要素齐不齐，不代表内容好坏，也不核对事实。
+  - paragraph:
+    - strong: 结构检查
+    - text: ：格式要素齐全
+  - paragraph: 继续创作 · 内容自动带入
+  - button "收藏到素材库":
+    - text: 收藏到素材库
+  - checkbox "另存为新作品，保留当前作品"
+  - text: 另存为新作品，保留当前作品
+  - button "审稿优化":
+    - generic: 审稿优化
+  - button "分镜脚本":
+    - generic: 分镜脚本
+  - button "标题封面":
+    - generic: 标题封面
+  - button "更多板块":
+    - generic: 更多板块
+  - heading "历史脚本" [level=3]
+  - generic: "1"
+  - button "载入：【测试】挑衣柜时观察柜门与抽屉打开后的占位":
+    - paragraph: 【测试】挑衣柜时观察柜门与抽屉打开后的占位
+    - generic: 刚刚
+    - text: "140"
+    - text: 28秒
+    - generic: 结构齐全
+    - button "继续对话":
+    - button "删除":
+- alert

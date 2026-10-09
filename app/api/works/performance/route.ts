@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   let q = supabase.from('works').select('id, title, profile_id, metrics, published_at').eq('user_id', guard.userId!).not('metrics', 'is', null).order('published_at', { ascending: false }).limit(200)
   if (profileId) q = q.eq('profile_id', profileId)
   const { data: works, error } = await q
-  if (error) return NextResponse.json({ count: 0, byPurpose: [], byTactic: [], best: [], worst: [], insights: [], unavailable: /metrics/.test(error.message) })
+  if (error) return NextResponse.json({ ...summarizePerformance([]), unavailable: /metrics/.test(error.message) })
   if (!works?.length) return NextResponse.json(summarizePerformance([]))
 
   // 每条作品当时的创作设置：优先脚本那一步的，没有就用选题的
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     if (!metrics) return []
     const s = settingsOf.get(w.id)?.s ?? {}
     const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
-    return [{ title: w.title, purpose: str(s.purpose), tactic: str(s.tactic), scriptType: str(s.scriptType) ? SCRIPT_TYPE_LABELS[str(s.scriptType)!] ?? str(s.scriptType) : null, metrics, publishedAt: w.published_at }]
+    return [{ title: w.title, purpose: str(s.purpose), tactic: str(s.tactic), scriptType: str(s.scriptType) ? SCRIPT_TYPE_LABELS[str(s.scriptType)!] ?? str(s.scriptType) : null, metrics, platform: metrics.platform || str(s.platform), publishedAt: w.published_at }]
   })
   return NextResponse.json(summarizePerformance(rows))
 }

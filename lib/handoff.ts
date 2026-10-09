@@ -29,6 +29,8 @@ export interface HandoffPayload {
   /** 最初选中的创作方案，跨多次跳转仍保留，不被标题等短结果替换。 */
   originContent?: string;
   settings?: CreationSettings;
+  /** 本次用户选择的时间，用于区分跳转前的旧历史与跳转后新生成的设置。 */
+  intentUpdatedAt?: string;
   sourceTitle?: string;
   /** 视频主题 / 选题：脚本页、标题页用 */
   topic?: string;

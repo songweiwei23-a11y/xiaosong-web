@@ -1,0 +1,399 @@
+[
+  {
+    "name": "图片、文本和Word",
+    "seconds": 15,
+    "answer": "1. 图片从左到右三块分别是：**红色、绿色、蓝色**\n\n2. TXT 项目暗号是：**松果7319**，预算是：**24680 元**\n\n3. Word 的暗号是：**梧桐5826**",
+    "errors": [],
+    "nodes": [
+      {
+        "title": "开始",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "筛选文档附件",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "Tavily Search",
+        "status": "succeeded",
+        "error": null,
+        "output": {
+          "text": "**Answer:** The Document Extractor node converts uploaded files into plain‑text that LLMs can read, handling most text‑based formats—including TXT, Markdown, HTML, DOCX (with tables converted to Markdown), PDF (text‑based), DOC, ODT, Excel (.xls/.xlsx) and CSV (as Markdown tables), PowerPoint (.ppt/.pptx), email files (EML, MSG), EPUB, VTT subtitles, JSON/YAML and Properties files—while binary‑only files (images, audio, video) need separate tools. It outputs the extracted content in a variable named `text` as a single string for one file or an array of strings for multiple files. Dify’s built‑in “Dify Extractor” is specially optimized for Doc files, can extract and store images from documents, returning image URLs, and when a multimodal embedding model is used the extracted images are attached to their corresponding chunks (up to 10 images per chunk). If no images are extracted, Dify will automatically pull JPG, JPEG, PNG and GIF images under 2 MB referenced via Markdown URLs.\n\n# Result 1: [Step 2: Orchestrate Knowledge Pipeline - Dify Docs](https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration)\n\n**URL:** https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration\n\n**Relevance Score:** 0.87166095\n\n**Content:**\n`alt text`\n `alt text`\n\nIf you select a multimodal embedding model (marked with a Vision icon) in index settings, the extracted images will also be embedded and indexed for retrieval.\n\n#### ​ Doc Extractor\n\nAs an information processing center, document extractor node identifies and reads files from input variables, extracts information, and finally converts them into a format that works with the next node.\n\nFor more information, please refer to the Document Extractor.\n\n#### ​ Dify Extractor\n\nDify Extractor is a built-in document parser presented by Dify. It supports multiple common file formats and is specially optimized for Doc files. It can extract and store images from documents and return image URLs.\n\n#### ​ Unstructured [...] To develop a custom data processing plugin that extracts multimodal data for multimodal embedding and retrieval, see Build Tool Plugins for Multimodal Data Processing in Knowledge Pipelines.\n\n### ​ Doc Processor\n\nDocuments come in different formats - PDF, XLSX, DOCX. However, LLM can’t read these files directly. That’s where extractors come in. They support multiple formats and handle the conversion, so your content is ready for the next step of the LLMs. You can choose Dify’s Doc Extractor to process files, or select tools based on your needs from Marketplace which offers Dify Extractor and third-party tools such as Unstructured. \n\nFor images in documents [...] For images in documents\n\nImages in documents can be extracted using appropriate document processors. Extracted images are attached to their corresponding chunks, can be managed independently, and are returned alongside those chunks during retrieval.URLs of extracted images remain in the chunk text, but you can safely remove these URLs to keep the text clean—this won’t affect the extracted images.Each chunk supports up to 10 image attachments; images beyond this limit will not be extracted.If no images are extracted by the selected processor, Dify will automatically extract JPG, JPEG, PNG, and GIF images under 2 MB that are referenced via accessible URLs using the following Markdown syntax:\n\n `alt text`\n `alt text`\n\n---\n\n# Result 2: [Document Extractor - Dify Docs](https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor)\n\n**URL:** https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor\n\n**Relevance Score:** 0.86713725\n\n**Content:**\n> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\nNodes\n\n# Document Extractor\n\nExtract text content from uploaded documents for AI processing\n\nThe Document Extractor node converts uploaded files into text that LLMs can process. Since language models can’t directly read document formats like PDF or DOCX, this node serves as the essential bridge between file uploads and AI analysis.\n\nDocument Extractor Node Configuration\n\nDocument Extractor Node Configuration\n\n## ​ Supported File Types [...] ### ​ Workflow Setup\n\nFile Upload Configuration - Enable file input in your Start node to accept document uploads from users. Text Extraction - Connect the Document Extractor to process uploaded files and extract their text content. AI Processing - Use the extracted text in LLM prompts for analysis, summarization, or question answering.\n\nDocument Processing in Action\n\nDocument Processing in Action\n\nChat Interface with Document Upload\n\nChat Interface with Document Upload\n\n## ​ Processing Considerations\n\nThe Document Extractor uses specialized parsing libraries optimized for different file formats. It preserves text structure and formatting where possible, making extracted content more useful for LLM processing.\n\n### ​ File Format Processing [...] ## ​ Supported File Types\n\nThe node handles most text-based document formats: Text Documents - TXT, Markdown, HTML files with direct text content Office Documents - DOCX files from Microsoft Word and compatible applications PDF Documents - Text-based PDFs Office Files - DOCX files parse directly, with tables converted to Markdown. DOC and ODT files are also supported. Spreadsheets - Excel (.xls/.xlsx) and CSV files converted to Markdown tables Presentations - PowerPoint (.ppt/.pptx) files Email Formats - EML and MSG files for email content extraction Specialized Formats - EPUB books, VTT subtitles, JSON/YAML data, and Properties files Files containing primarily binary content like images, audio, or video require specialized processing tools or external services.\n\n## ​ Input and Output\n\n---\n\n# Result 3: [Dify Extractor](http://marketplace.dify.ai/plugin/langgenius/dify_extractor)\n\n**URL:** http://marketplace.dify.ai/plugin/langgenius/dify_extractor\n\n**Relevance Score:** 0.85097736\n\n**Content:**\nDify Extractor converts uploaded documents into Markdown plus structured document records for RAG pipelines and workflows.\n\n---\n\n# Result 4: [文档提取器 - Dify Docs](https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor)\n\n**URL:** https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor\n\n**Relevance Score:** 0.8364614\n\n**Content:**\n> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\n节点\n\n# 文档提取器\n\n> 本文档由 AI 自动翻译。如有任何不准确之处，请参考 英文原版。\n\n文档提取器节点将上传的文件转换为大型语言模型可以处理的文本。由于语言模型无法直接读取 PDF 或 DOCX 等文档格式，此节点作为文件上传和 AI 分析之间的重要桥梁。\n\n文档提取器节点配置\n\n文档提取器节点配置\n\n## ​ 支持的文件类型\n\n该节点处理大多数基于文本的文档格式： 文本文档 - TXT、Markdown、HTML 文件，包含直接文本内容 办公文档 - Microsoft Word 和兼容应用的 DOCX 文件 PDF 文档 - 基于文本的 PDF 办公文件 - DOCX 文件可直接解析，表格会转换为 Markdown。也支持 DOC 和 ODT 文件。 电子表格 - Excel（.xls/.xlsx）和 CSV 文件转换为 Markdown 表格 演示文稿 - PowerPoint（.ppt/.pptx）文件 邮件格式 - EML 和 MSG 文件用于邮件内容提取 专业格式 - EPUB 电子书、VTT 字幕、JSON/YAML 数据和 Properties 文件 主要包含二进制内容（如图像、音频或视频）的文件需要专门的处理工具或外部服务。 [...] ## ​ 输入和输出\n\n### ​ 输入配置\n\n配置节点以接受： 来自文件变量的 单个文件 输入（通常来自开始节点） 用于批量文档处理的 多个文件 数组\n\n### ​ 输出结构\n\n节点输出提取的文本内容：\n\n 单个文件输入产生包含提取文本的`string`\n 多个文件输入产生包含每个文件内容的`array[string]`\n\n输出变量命名为`text`，包含准备用于下游处理的原始文本内容。\n\n## ​ 实现示例\n\n以下是使用文档提取器的完整文档问答工作流：\n\nChatPDF 风格的工作流实现\n\nChatPDF风格的工作流实现\n\n### ​ 工作流设置\n\n文件上传配置 - 在开始节点中启用文件输入，接受用户上传的文档。 文本提取 - 连接文档提取器处理上传的文件并提取其文本内容。 AI 处理 - 在大型语言模型提示词中使用提取的文本进行分析、摘要或问答。\n\n## ​ 常见用例\n\n文档问答应用 - 构建 ChatPDF 风格的应用，用户上传文档并询问其内容相关问题。 内容分析 - 处理合同、报告或研究论文以提取关键信息和见解。 批量文档处理 - 同时从多个文档提取文本用于分析、索引或迁移。 文档转换 - 将各种文档格式转换为纯文本以进行进一步处理或存储。\n\n## ​ 处理注意事项\n\n文档提取器使用针对不同文件格式优化的专用解析库。它尽可能保留文本结构和格式，使提取的内容对大型语言模型处理更加有用。\n\n### ​ 文件格式处理 [...] ### ​ 文件格式处理\n\n编码检测 - 使用 chardet 库自动检测文件编码，基于文本的文件使用 UTF-8 作为后备 表格转换 - Excel 和 CSV 数据转换为 Markdown 表格，以便大型语言模型更好地理解 文档结构 - DOCX 文件保持段落和表换 多行内容 - VTT 字幕文件合并同一发言者的连续话语 对于非常大的文档，请考虑大型语言模型的上下文限制，如果需要，可以实施分段策略。提取的文本保持原始文档的逻辑结构，以保留含义和上下文。\n\n---\n\n# Result 5: [Doc Extractor: AI Summarizer - Dify Marketplace](https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba)\n\n**URL:** https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba\n\n**Relevance Score:** 0.82895297\n\n**Content:**\n## Setup steps\n\n1. Install the OpenAI plugin from the Plugin Marketplace.\n2. Authorize OpenAI in Dify by navigating to Tools → OpenAI → Authorize and entering your API key.\n3. In the User Input (Start) node, the user uploads a document file (PDF, Word, TXT, etc.).\n4. The Doc Extractor node automatically parses the uploaded file and extracts its full text — no configuration required.\n5. Select an LLM in the LLM node to read the extracted text and produce a clean, organized summary.\n6. The Output node returns the summary to the user.\n\nTYPE\n\nWorkflow\n\nCATEGORY\n\nknowledge\n\nPLUGINS\n\napp icon\n\nOpenai\n\nDify Compatibility\n\n1.13.0\n\nSUPPORTED LANGUAGES\n\nLAST UPDATED\n\nMay 12, 2026\n\nGive a rate\n\nSHARE WITH [...] 📝\n\n# Doc Extractor: AI Summarizer\n\nNo ratings yet\n\n2.7kL\n\nlanggenius\n\nOpen in Dify\n\nUpload a file and get a clean and organized summary.\n\nKnowledge\n\nReact Flow\n\nPress enter or space to select a node.You can then use the arrow keys to move the node around.Press delete to remove it and escape to cancel.\n\nPress enter or space to select an edge. You can then press delete to remove it or escape to cancel.\n\n## Setup steps\n\n---\n\n# Result 6: [Article Reader Using File Upload - Dify Docs](https://docs.dify.ai/en/learn/tutorials/article-reader)\n\n**URL:** https://docs.dify.ai/en/learn/tutorials/article-reader\n\n**Relevance Score:** 0.82694983\n\n**Content:**\n### ​ Doc Extractor\n\nLLM cannot read files directly. This is a common misconception among many users when they first use file upload, as they might think simply using the file as a variable in an LLM node would work. However, in reality, the LLM reads nothing from file variables. Thus, Dify introduced the doc extractor node, which can extract text from the file variable and output it as a text variable. The doc extractor node takes the file variable from the start node as input and converts document files into text output.\n\n### ​ LLM\n\nIn this experiment, two LLM nodes need to be designed: structure extraction and question generation.\n\n#### ​ Structure Extraction [...] Read the following article content and perform the task Read the following article content and perform the task{{Result variable of the document extractor}}{{Result variable of the document extractor}} # Task # Task  - Main Objective: Thoroughly analyze the structure of the article. - Main Objective: Thoroughly analyze the structure of the article. - Objective: Detail the content of each part of the article. - Objective: Detail the content of each part of the article. - Requirements: Analyze as detailed as possible. - Requirements: Analyze as detailed as possible. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Expected Output: A detailed [...] ## ​ Prerequisites\n\nCreate a Chatflow in Dify. Make sure you have added a model provider and have sufficient quota.\n\n## ​ Add Nodes\n\nIn this experiment, at least four types of nodes are required: start node, document extractor node, LLM node, and answer node.\n\n### ​ Start Node\n\n---\n",
+          "files": [],
+          "json": [
+            {
+              "answer": "The Document Extractor node converts uploaded files into plain‑text that LLMs can read, handling most text‑based formats—including TXT, Markdown, HTML, DOCX (with tables converted to Markdown), PDF (text‑based), DOC, ODT, Excel (.xls/.xlsx) and CSV (as Markdown tables), PowerPoint (.ppt/.pptx), email files (EML, MSG), EPUB, VTT subtitles, JSON/YAML and Properties files—while binary‑only files (images, audio, video) need separate tools. It outputs the extracted content in a variable named `text` as a single string for one file or an array of strings for multiple files. Dify’s built‑in “Dify Extractor” is specially optimized for Doc files, can extract and store images from documents, returning image URLs, and when a multimodal embedding model is used the extracted images are attached to their corresponding chunks (up to 10 images per chunk). If no images are extracted, Dify will automatically pull JPG, JPEG, PNG and GIF images under 2 MB referenced via Markdown URLs.",
+              "follow_up_questions": null,
+              "images": [],
+              "query": "Dify documentation document extractor",
+              "request_id": "333c0fe5-528c-4efc-898b-d2a1b935d858",
+              "response_time": 0,
+              "results": [
+                {
+                  "content": "`alt text`\n `alt text`\n\nIf you select a multimodal embedding model (marked with a Vision icon) in index settings, the extracted images will also be embedded and indexed for retrieval.\n\n#### ​ Doc Extractor\n\nAs an information processing center, document extractor node identifies and reads files from input variables, extracts information, and finally converts them into a format that works with the next node.\n\nFor more information, please refer to the Document Extractor.\n\n#### ​ Dify Extractor\n\nDify Extractor is a built-in document parser presented by Dify. It supports multiple common file formats and is specially optimized for Doc files. It can extract and store images from documents and return image URLs.\n\n#### ​ Unstructured [...] To develop a custom data processing plugin that extracts multimodal data for multimodal embedding and retrieval, see Build Tool Plugins for Multimodal Data Processing in Knowledge Pipelines.\n\n### ​ Doc Processor\n\nDocuments come in different formats - PDF, XLSX, DOCX. However, LLM can’t read these files directly. That’s where extractors come in. They support multiple formats and handle the conversion, so your content is ready for the next step of the LLMs. You can choose Dify’s Doc Extractor to process files, or select tools based on your needs from Marketplace which offers Dify Extractor and third-party tools such as Unstructured. \n\nFor images in documents [...] For images in documents\n\nImages in documents can be extracted using appropriate document processors. Extracted images are attached to their corresponding chunks, can be managed independently, and are returned alongside those chunks during retrieval.URLs of extracted images remain in the chunk text, but you can safely remove these URLs to keep the text clean—this won’t affect the extracted images.Each chunk supports up to 10 image attachments; images beyond this limit will not be extracted.If no images are extracted by the selected processor, Dify will automatically extract JPG, JPEG, PNG, and GIF images under 2 MB that are referenced via accessible URLs using the following Markdown syntax:\n\n `alt text`\n `alt text`",
+                  "id": "affa91-00",
+                  "raw_content": null,
+                  "score": 0.87166095,
+                  "title": "Step 2: Orchestrate Knowledge Pipeline - Dify Docs",
+                  "url": "https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration"
+                },
+                {
+                  "content": "> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\nNodes\n\n# Document Extractor\n\nExtract text content from uploaded documents for AI processing\n\nThe Document Extractor node converts uploaded files into text that LLMs can process. Since language models can’t directly read document formats like PDF or DOCX, this node serves as the essential bridge between file uploads and AI analysis.\n\nDocument Extractor Node Configuration\n\nDocument Extractor Node Configuration\n\n## ​ Supported File Types [...] ### ​ Workflow Setup\n\nFile Upload Configuration - Enable file input in your Start node to accept document uploads from users. Text Extraction - Connect the Document Extractor to process uploaded files and extract their text content. AI Processing - Use the extracted text in LLM prompts for analysis, summarization, or question answering.\n\nDocument Processing in Action\n\nDocument Processing in Action\n\nChat Interface with Document Upload\n\nChat Interface with Document Upload\n\n## ​ Processing Considerations\n\nThe Document Extractor uses specialized parsing libraries optimized for different file formats. It preserves text structure and formatting where possible, making extracted content more useful for LLM processing.\n\n### ​ File Format Processing [...] ## ​ Supported File Types\n\nThe node handles most text-based document formats: Text Documents - TXT, Markdown, HTML files with direct text content Office Documents - DOCX files from Microsoft Word and compatible applications PDF Documents - Text-based PDFs Office Files - DOCX files parse directly, with tables converted to Markdown. DOC and ODT files are also supported. Spreadsheets - Excel (.xls/.xlsx) and CSV files converted to Markdown tables Presentations - PowerPoint (.ppt/.pptx) files Email Formats - EML and MSG files for email content extraction Specialized Formats - EPUB books, VTT subtitles, JSON/YAML data, and Properties files Files containing primarily binary content like images, audio, or video require specialized processing tools or external services.\n\n## ​ Input and Output",
+                  "id": "356dba-01",
+                  "raw_content": null,
+                  "score": 0.86713725,
+                  "title": "Document Extractor - Dify Docs",
+                  "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor"
+                },
+                {
+                  "content": "Dify Extractor converts uploaded documents into Markdown plus structured document records for RAG pipelines and workflows.",
+                  "id": "5fc062-02",
+                  "raw_content": null,
+                  "score": 0.85097736,
+                  "title": "Dify Extractor",
+                  "url": "http://marketplace.dify.ai/plugin/langgenius/dify_extractor"
+                },
+                {
+                  "content": "> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\n节点\n\n# 文档提取器\n\n> 本文档由 AI 自动翻译。如有任何不准确之处，请参考 英文原版。\n\n文档提取器节点将上传的文件转换为大型语言模型可以处理的文本。由于语言模型无法直接读取 PDF 或 DOCX 等文档格式，此节点作为文件上传和 AI 分析之间的重要桥梁。\n\n文档提取器节点配置\n\n文档提取器节点配置\n\n## ​ 支持的文件类型\n\n该节点处理大多数基于文本的文档格式： 文本文档 - TXT、Markdown、HTML 文件，包含直接文本内容 办公文档 - Microsoft Word 和兼容应用的 DOCX 文件 PDF 文档 - 基于文本的 PDF 办公文件 - DOCX 文件可直接解析，表格会转换为 Markdown。也支持 DOC 和 ODT 文件。 电子表格 - Excel（.xls/.xlsx）和 CSV 文件转换为 Markdown 表格 演示文稿 - PowerPoint（.ppt/.pptx）文件 邮件格式 - EML 和 MSG 文件用于邮件内容提取 专业格式 - EPUB 电子书、VTT 字幕、JSON/YAML 数据和 Properties 文件 主要包含二进制内容（如图像、音频或视频）的文件需要专门的处理工具或外部服务。 [...] ## ​ 输入和输出\n\n### ​ 输入配置\n\n配置节点以接受： 来自文件变量的 单个文件 输入（通常来自开始节点） 用于批量文档处理的 多个文件 数组\n\n### ​ 输出结构\n\n节点输出提取的文本内容：\n\n 单个文件输入产生包含提取文本的`string`\n 多个文件输入产生包含每个文件内容的`array[string]`\n\n输出变量命名为`text`，包含准备用于下游处理的原始文本内容。\n\n## ​ 实现示例\n\n以下是使用文档提取器的完整文档问答工作流：\n\nChatPDF 风格的工作流实现\n\nChatPDF风格的工作流实现\n\n### ​ 工作流设置\n\n文件上传配置 - 在开始节点中启用文件输入，接受用户上传的文档。 文本提取 - 连接文档提取器处理上传的文件并提取其文本内容。 AI 处理 - 在大型语言模型提示词中使用提取的文本进行分析、摘要或问答。\n\n## ​ 常见用例\n\n文档问答应用 - 构建 ChatPDF 风格的应用，用户上传文档并询问其内容相关问题。 内容分析 - 处理合同、报告或研究论文以提取关键信息和见解。 批量文档处理 - 同时从多个文档提取文本用于分析、索引或迁移。 文档转换 - 将各种文档格式转换为纯文本以进行进一步处理或存储。\n\n## ​ 处理注意事项\n\n文档提取器使用针对不同文件格式优化的专用解析库。它尽可能保留文本结构和格式，使提取的内容对大型语言模型处理更加有用。\n\n### ​ 文件格式处理 [...] ### ​ 文件格式处理\n\n编码检测 - 使用 chardet 库自动检测文件编码，基于文本的文件使用 UTF-8 作为后备 表格转换 - Excel 和 CSV 数据转换为 Markdown 表格，以便大型语言模型更好地理解 文档结构 - DOCX 文件保持段落和表换 多行内容 - VTT 字幕文件合并同一发言者的连续话语 对于非常大的文档，请考虑大型语言模型的上下文限制，如果需要，可以实施分段策略。提取的文本保持原始文档的逻辑结构，以保留含义和上下文。",
+                  "id": "c9fa42-03",
+                  "raw_content": null,
+                  "score": 0.8364614,
+                  "title": "文档提取器 - Dify Docs",
+                  "url": "https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor"
+                },
+                {
+                  "content": "## Setup steps\n\n1. Install the OpenAI plugin from the Plugin Marketplace.\n2. Authorize OpenAI in Dify by navigating to Tools → OpenAI → Authorize and entering your API key.\n3. In the User Input (Start) node, the user uploads a document file (PDF, Word, TXT, etc.).\n4. The Doc Extractor node automatically parses the uploaded file and extracts its full text — no configuration required.\n5. Select an LLM in the LLM node to read the extracted text and produce a clean, organized summary.\n6. The Output node returns the summary to the user.\n\nTYPE\n\nWorkflow\n\nCATEGORY\n\nknowledge\n\nPLUGINS\n\napp icon\n\nOpenai\n\nDify Compatibility\n\n1.13.0\n\nSUPPORTED LANGUAGES\n\nLAST UPDATED\n\nMay 12, 2026\n\nGive a rate\n\nSHARE WITH [...] 📝\n\n# Doc Extractor: AI Summarizer\n\nNo ratings yet\n\n2.7kL\n\nlanggenius\n\nOpen in Dify\n\nUpload a file and get a clean and organized summary.\n\nKnowledge\n\nReact Flow\n\nPress enter or space to select a node.You can then use the arrow keys to move the node around.Press delete to remove it and escape to cancel.\n\nPress enter or space to select an edge. You can then press delete to remove it or escape to cancel.\n\n## Setup steps",
+                  "id": "870999-04",
+                  "raw_content": null,
+                  "score": 0.82895297,
+                  "title": "Doc Extractor: AI Summarizer - Dify Marketplace",
+                  "url": "https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba"
+                },
+                {
+                  "content": "### ​ Doc Extractor\n\nLLM cannot read files directly. This is a common misconception among many users when they first use file upload, as they might think simply using the file as a variable in an LLM node would work. However, in reality, the LLM reads nothing from file variables. Thus, Dify introduced the doc extractor node, which can extract text from the file variable and output it as a text variable. The doc extractor node takes the file variable from the start node as input and converts document files into text output.\n\n### ​ LLM\n\nIn this experiment, two LLM nodes need to be designed: structure extraction and question generation.\n\n#### ​ Structure Extraction [...] Read the following article content and perform the task Read the following article content and perform the task{{Result variable of the document extractor}}{{Result variable of the document extractor}} # Task # Task  - Main Objective: Thoroughly analyze the structure of the article. - Main Objective: Thoroughly analyze the structure of the article. - Objective: Detail the content of each part of the article. - Objective: Detail the content of each part of the article. - Requirements: Analyze as detailed as possible. - Requirements: Analyze as detailed as possible. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Expected Output: A detailed [...] ## ​ Prerequisites\n\nCreate a Chatflow in Dify. Make sure you have added a model provider and have sufficient quota.\n\n## ​ Add Nodes\n\nIn this experiment, at least four types of nodes are required: start node, document extractor node, LLM node, and answer node.\n\n### ​ Start Node",
+                  "id": "261bb5-05",
+                  "raw_content": null,
+                  "score": 0.82694983,
+                  "title": "Article Reader Using File Upload - Dify Docs",
+                  "url": "https://docs.dify.ai/en/learn/tutorials/article-reader"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "title": "读取文档正文",
+        "status": "succeeded",
+        "error": null,
+        "extracted": {
+          "text": [
+            "仅用于功能验收。项目暗号是：松果7319。预算金额为 24680 元。不要把测试当成真实客户资料。",
+            "文件识别测试\n本测试的 Word 暗号是：梧桐5826。负责人代称：测试员。"
+          ]
+        }
+      },
+      {
+        "title": "知识检索",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 5",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 3",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 2",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 4",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "Claude 编导助手",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "输出",
+        "status": "succeeded",
+        "error": null
+      }
+    ]
+  },
+  {
+    "name": "Excel、PPT和PDF",
+    "seconds": 11,
+    "answer": "根据上传的文档内容：\n\n1. **Excel 两行 amount 总和**：130 + 270 = **400**\n\n2. **PPT validation code**：**CEDAR-9462**\n\n3. **PDF validation code**：**MAPLE-8047**",
+    "errors": [],
+    "nodes": [
+      {
+        "title": "开始",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "筛选文档附件",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "Tavily Search",
+        "status": "succeeded",
+        "error": null,
+        "output": {
+          "text": "**Answer:** The Document Extractor node converts uploaded files into plain‑text that LLMs can read, handling most text‑based formats—including TXT, Markdown, HTML, DOCX (with tables converted to Markdown), PDF (text‑based), DOC, ODT, Excel (.xls/.xlsx) and CSV (as Markdown tables), PowerPoint (.ppt/.pptx), email files (EML, MSG), EPUB, VTT subtitles, JSON/YAML and Properties files—while binary‑only files (images, audio, video) need separate tools. It outputs the extracted content in a variable named `text` as a single string for one file or an array of strings for multiple files. Dify’s built‑in “Dify Extractor” is specially optimized for Doc files, can extract and store images from documents, returning image URLs, and when a multimodal embedding model is used the extracted images are attached to their corresponding chunks (up to 10 images per chunk). If no images are extracted, Dify will automatically pull JPG, JPEG, PNG and GIF images under 2 MB referenced via Markdown URLs.\n\n# Result 1: [Step 2: Orchestrate Knowledge Pipeline - Dify Docs](https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration)\n\n**URL:** https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration\n\n**Relevance Score:** 0.87166095\n\n**Content:**\n`alt text`\n `alt text`\n\nIf you select a multimodal embedding model (marked with a Vision icon) in index settings, the extracted images will also be embedded and indexed for retrieval.\n\n#### ​ Doc Extractor\n\nAs an information processing center, document extractor node identifies and reads files from input variables, extracts information, and finally converts them into a format that works with the next node.\n\nFor more information, please refer to the Document Extractor.\n\n#### ​ Dify Extractor\n\nDify Extractor is a built-in document parser presented by Dify. It supports multiple common file formats and is specially optimized for Doc files. It can extract and store images from documents and return image URLs.\n\n#### ​ Unstructured [...] To develop a custom data processing plugin that extracts multimodal data for multimodal embedding and retrieval, see Build Tool Plugins for Multimodal Data Processing in Knowledge Pipelines.\n\n### ​ Doc Processor\n\nDocuments come in different formats - PDF, XLSX, DOCX. However, LLM can’t read these files directly. That’s where extractors come in. They support multiple formats and handle the conversion, so your content is ready for the next step of the LLMs. You can choose Dify’s Doc Extractor to process files, or select tools based on your needs from Marketplace which offers Dify Extractor and third-party tools such as Unstructured. \n\nFor images in documents [...] For images in documents\n\nImages in documents can be extracted using appropriate document processors. Extracted images are attached to their corresponding chunks, can be managed independently, and are returned alongside those chunks during retrieval.URLs of extracted images remain in the chunk text, but you can safely remove these URLs to keep the text clean—this won’t affect the extracted images.Each chunk supports up to 10 image attachments; images beyond this limit will not be extracted.If no images are extracted by the selected processor, Dify will automatically extract JPG, JPEG, PNG, and GIF images under 2 MB that are referenced via accessible URLs using the following Markdown syntax:\n\n `alt text`\n `alt text`\n\n---\n\n# Result 2: [Document Extractor - Dify Docs](https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor)\n\n**URL:** https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor\n\n**Relevance Score:** 0.86713725\n\n**Content:**\n> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\nNodes\n\n# Document Extractor\n\nExtract text content from uploaded documents for AI processing\n\nThe Document Extractor node converts uploaded files into text that LLMs can process. Since language models can’t directly read document formats like PDF or DOCX, this node serves as the essential bridge between file uploads and AI analysis.\n\nDocument Extractor Node Configuration\n\nDocument Extractor Node Configuration\n\n## ​ Supported File Types [...] ### ​ Workflow Setup\n\nFile Upload Configuration - Enable file input in your Start node to accept document uploads from users. Text Extraction - Connect the Document Extractor to process uploaded files and extract their text content. AI Processing - Use the extracted text in LLM prompts for analysis, summarization, or question answering.\n\nDocument Processing in Action\n\nDocument Processing in Action\n\nChat Interface with Document Upload\n\nChat Interface with Document Upload\n\n## ​ Processing Considerations\n\nThe Document Extractor uses specialized parsing libraries optimized for different file formats. It preserves text structure and formatting where possible, making extracted content more useful for LLM processing.\n\n### ​ File Format Processing [...] ## ​ Supported File Types\n\nThe node handles most text-based document formats: Text Documents - TXT, Markdown, HTML files with direct text content Office Documents - DOCX files from Microsoft Word and compatible applications PDF Documents - Text-based PDFs Office Files - DOCX files parse directly, with tables converted to Markdown. DOC and ODT files are also supported. Spreadsheets - Excel (.xls/.xlsx) and CSV files converted to Markdown tables Presentations - PowerPoint (.ppt/.pptx) files Email Formats - EML and MSG files for email content extraction Specialized Formats - EPUB books, VTT subtitles, JSON/YAML data, and Properties files Files containing primarily binary content like images, audio, or video require specialized processing tools or external services.\n\n## ​ Input and Output\n\n---\n\n# Result 3: [Dify Extractor](http://marketplace.dify.ai/plugin/langgenius/dify_extractor)\n\n**URL:** http://marketplace.dify.ai/plugin/langgenius/dify_extractor\n\n**Relevance Score:** 0.85097736\n\n**Content:**\nDify Extractor converts uploaded documents into Markdown plus structured document records for RAG pipelines and workflows.\n\n---\n\n# Result 4: [文档提取器 - Dify Docs](https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor)\n\n**URL:** https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor\n\n**Relevance Score:** 0.8364614\n\n**Content:**\n> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\n节点\n\n# 文档提取器\n\n> 本文档由 AI 自动翻译。如有任何不准确之处，请参考 英文原版。\n\n文档提取器节点将上传的文件转换为大型语言模型可以处理的文本。由于语言模型无法直接读取 PDF 或 DOCX 等文档格式，此节点作为文件上传和 AI 分析之间的重要桥梁。\n\n文档提取器节点配置\n\n文档提取器节点配置\n\n## ​ 支持的文件类型\n\n该节点处理大多数基于文本的文档格式： 文本文档 - TXT、Markdown、HTML 文件，包含直接文本内容 办公文档 - Microsoft Word 和兼容应用的 DOCX 文件 PDF 文档 - 基于文本的 PDF 办公文件 - DOCX 文件可直接解析，表格会转换为 Markdown。也支持 DOC 和 ODT 文件。 电子表格 - Excel（.xls/.xlsx）和 CSV 文件转换为 Markdown 表格 演示文稿 - PowerPoint（.ppt/.pptx）文件 邮件格式 - EML 和 MSG 文件用于邮件内容提取 专业格式 - EPUB 电子书、VTT 字幕、JSON/YAML 数据和 Properties 文件 主要包含二进制内容（如图像、音频或视频）的文件需要专门的处理工具或外部服务。 [...] ## ​ 输入和输出\n\n### ​ 输入配置\n\n配置节点以接受： 来自文件变量的 单个文件 输入（通常来自开始节点） 用于批量文档处理的 多个文件 数组\n\n### ​ 输出结构\n\n节点输出提取的文本内容：\n\n 单个文件输入产生包含提取文本的`string`\n 多个文件输入产生包含每个文件内容的`array[string]`\n\n输出变量命名为`text`，包含准备用于下游处理的原始文本内容。\n\n## ​ 实现示例\n\n以下是使用文档提取器的完整文档问答工作流：\n\nChatPDF 风格的工作流实现\n\nChatPDF风格的工作流实现\n\n### ​ 工作流设置\n\n文件上传配置 - 在开始节点中启用文件输入，接受用户上传的文档。 文本提取 - 连接文档提取器处理上传的文件并提取其文本内容。 AI 处理 - 在大型语言模型提示词中使用提取的文本进行分析、摘要或问答。\n\n## ​ 常见用例\n\n文档问答应用 - 构建 ChatPDF 风格的应用，用户上传文档并询问其内容相关问题。 内容分析 - 处理合同、报告或研究论文以提取关键信息和见解。 批量文档处理 - 同时从多个文档提取文本用于分析、索引或迁移。 文档转换 - 将各种文档格式转换为纯文本以进行进一步处理或存储。\n\n## ​ 处理注意事项\n\n文档提取器使用针对不同文件格式优化的专用解析库。它尽可能保留文本结构和格式，使提取的内容对大型语言模型处理更加有用。\n\n### ​ 文件格式处理 [...] ### ​ 文件格式处理\n\n编码检测 - 使用 chardet 库自动检测文件编码，基于文本的文件使用 UTF-8 作为后备 表格转换 - Excel 和 CSV 数据转换为 Markdown 表格，以便大型语言模型更好地理解 文档结构 - DOCX 文件保持段落和表换 多行内容 - VTT 字幕文件合并同一发言者的连续话语 对于非常大的文档，请考虑大型语言模型的上下文限制，如果需要，可以实施分段策略。提取的文本保持原始文档的逻辑结构，以保留含义和上下文。\n\n---\n\n# Result 5: [Doc Extractor: AI Summarizer - Dify Marketplace](https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba)\n\n**URL:** https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba\n\n**Relevance Score:** 0.82895297\n\n**Content:**\n## Setup steps\n\n1. Install the OpenAI plugin from the Plugin Marketplace.\n2. Authorize OpenAI in Dify by navigating to Tools → OpenAI → Authorize and entering your API key.\n3. In the User Input (Start) node, the user uploads a document file (PDF, Word, TXT, etc.).\n4. The Doc Extractor node automatically parses the uploaded file and extracts its full text — no configuration required.\n5. Select an LLM in the LLM node to read the extracted text and produce a clean, organized summary.\n6. The Output node returns the summary to the user.\n\nTYPE\n\nWorkflow\n\nCATEGORY\n\nknowledge\n\nPLUGINS\n\napp icon\n\nOpenai\n\nDify Compatibility\n\n1.13.0\n\nSUPPORTED LANGUAGES\n\nLAST UPDATED\n\nMay 12, 2026\n\nGive a rate\n\nSHARE WITH [...] 📝\n\n# Doc Extractor: AI Summarizer\n\nNo ratings yet\n\n2.7kL\n\nlanggenius\n\nOpen in Dify\n\nUpload a file and get a clean and organized summary.\n\nKnowledge\n\nReact Flow\n\nPress enter or space to select a node.You can then use the arrow keys to move the node around.Press delete to remove it and escape to cancel.\n\nPress enter or space to select an edge. You can then press delete to remove it or escape to cancel.\n\n## Setup steps\n\n---\n\n# Result 6: [Article Reader Using File Upload - Dify Docs](https://docs.dify.ai/en/learn/tutorials/article-reader)\n\n**URL:** https://docs.dify.ai/en/learn/tutorials/article-reader\n\n**Relevance Score:** 0.82694983\n\n**Content:**\n### ​ Doc Extractor\n\nLLM cannot read files directly. This is a common misconception among many users when they first use file upload, as they might think simply using the file as a variable in an LLM node would work. However, in reality, the LLM reads nothing from file variables. Thus, Dify introduced the doc extractor node, which can extract text from the file variable and output it as a text variable. The doc extractor node takes the file variable from the start node as input and converts document files into text output.\n\n### ​ LLM\n\nIn this experiment, two LLM nodes need to be designed: structure extraction and question generation.\n\n#### ​ Structure Extraction [...] Read the following article content and perform the task Read the following article content and perform the task{{Result variable of the document extractor}}{{Result variable of the document extractor}} # Task # Task  - Main Objective: Thoroughly analyze the structure of the article. - Main Objective: Thoroughly analyze the structure of the article. - Objective: Detail the content of each part of the article. - Objective: Detail the content of each part of the article. - Requirements: Analyze as detailed as possible. - Requirements: Analyze as detailed as possible. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Expected Output: A detailed [...] ## ​ Prerequisites\n\nCreate a Chatflow in Dify. Make sure you have added a model provider and have sufficient quota.\n\n## ​ Add Nodes\n\nIn this experiment, at least four types of nodes are required: start node, document extractor node, LLM node, and answer node.\n\n### ​ Start Node\n\n---\n",
+          "files": [],
+          "json": [
+            {
+              "answer": "The Document Extractor node converts uploaded files into plain‑text that LLMs can read, handling most text‑based formats—including TXT, Markdown, HTML, DOCX (with tables converted to Markdown), PDF (text‑based), DOC, ODT, Excel (.xls/.xlsx) and CSV (as Markdown tables), PowerPoint (.ppt/.pptx), email files (EML, MSG), EPUB, VTT subtitles, JSON/YAML and Properties files—while binary‑only files (images, audio, video) need separate tools. It outputs the extracted content in a variable named `text` as a single string for one file or an array of strings for multiple files. Dify’s built‑in “Dify Extractor” is specially optimized for Doc files, can extract and store images from documents, returning image URLs, and when a multimodal embedding model is used the extracted images are attached to their corresponding chunks (up to 10 images per chunk). If no images are extracted, Dify will automatically pull JPG, JPEG, PNG and GIF images under 2 MB referenced via Markdown URLs.",
+              "follow_up_questions": null,
+              "images": [],
+              "query": "Dify documentation document extractor",
+              "request_id": "5fd36f7d-0426-4da5-8a74-483cae3c0c44",
+              "response_time": 0,
+              "results": [
+                {
+                  "content": "`alt text`\n `alt text`\n\nIf you select a multimodal embedding model (marked with a Vision icon) in index settings, the extracted images will also be embedded and indexed for retrieval.\n\n#### ​ Doc Extractor\n\nAs an information processing center, document extractor node identifies and reads files from input variables, extracts information, and finally converts them into a format that works with the next node.\n\nFor more information, please refer to the Document Extractor.\n\n#### ​ Dify Extractor\n\nDify Extractor is a built-in document parser presented by Dify. It supports multiple common file formats and is specially optimized for Doc files. It can extract and store images from documents and return image URLs.\n\n#### ​ Unstructured [...] To develop a custom data processing plugin that extracts multimodal data for multimodal embedding and retrieval, see Build Tool Plugins for Multimodal Data Processing in Knowledge Pipelines.\n\n### ​ Doc Processor\n\nDocuments come in different formats - PDF, XLSX, DOCX. However, LLM can’t read these files directly. That’s where extractors come in. They support multiple formats and handle the conversion, so your content is ready for the next step of the LLMs. You can choose Dify’s Doc Extractor to process files, or select tools based on your needs from Marketplace which offers Dify Extractor and third-party tools such as Unstructured. \n\nFor images in documents [...] For images in documents\n\nImages in documents can be extracted using appropriate document processors. Extracted images are attached to their corresponding chunks, can be managed independently, and are returned alongside those chunks during retrieval.URLs of extracted images remain in the chunk text, but you can safely remove these URLs to keep the text clean—this won’t affect the extracted images.Each chunk supports up to 10 image attachments; images beyond this limit will not be extracted.If no images are extracted by the selected processor, Dify will automatically extract JPG, JPEG, PNG, and GIF images under 2 MB that are referenced via accessible URLs using the following Markdown syntax:\n\n `alt text`\n `alt text`",
+                  "id": "61cd77-00",
+                  "raw_content": null,
+                  "score": 0.87166095,
+                  "title": "Step 2: Orchestrate Knowledge Pipeline - Dify Docs",
+                  "url": "https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration"
+                },
+                {
+                  "content": "> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\nNodes\n\n# Document Extractor\n\nExtract text content from uploaded documents for AI processing\n\nThe Document Extractor node converts uploaded files into text that LLMs can process. Since language models can’t directly read document formats like PDF or DOCX, this node serves as the essential bridge between file uploads and AI analysis.\n\nDocument Extractor Node Configuration\n\nDocument Extractor Node Configuration\n\n## ​ Supported File Types [...] ### ​ Workflow Setup\n\nFile Upload Configuration - Enable file input in your Start node to accept document uploads from users. Text Extraction - Connect the Document Extractor to process uploaded files and extract their text content. AI Processing - Use the extracted text in LLM prompts for analysis, summarization, or question answering.\n\nDocument Processing in Action\n\nDocument Processing in Action\n\nChat Interface with Document Upload\n\nChat Interface with Document Upload\n\n## ​ Processing Considerations\n\nThe Document Extractor uses specialized parsing libraries optimized for different file formats. It preserves text structure and formatting where possible, making extracted content more useful for LLM processing.\n\n### ​ File Format Processing [...] ## ​ Supported File Types\n\nThe node handles most text-based document formats: Text Documents - TXT, Markdown, HTML files with direct text content Office Documents - DOCX files from Microsoft Word and compatible applications PDF Documents - Text-based PDFs Office Files - DOCX files parse directly, with tables converted to Markdown. DOC and ODT files are also supported. Spreadsheets - Excel (.xls/.xlsx) and CSV files converted to Markdown tables Presentations - PowerPoint (.ppt/.pptx) files Email Formats - EML and MSG files for email content extraction Specialized Formats - EPUB books, VTT subtitles, JSON/YAML data, and Properties files Files containing primarily binary content like images, audio, or video require specialized processing tools or external services.\n\n## ​ Input and Output",
+                  "id": "42a6e2-01",
+                  "raw_content": null,
+                  "score": 0.86713725,
+                  "title": "Document Extractor - Dify Docs",
+                  "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor"
+                },
+                {
+                  "content": "Dify Extractor converts uploaded documents into Markdown plus structured document records for RAG pipelines and workflows.",
+                  "id": "b2fa4a-02",
+                  "raw_content": null,
+                  "score": 0.85097736,
+                  "title": "Dify Extractor",
+                  "url": "http://marketplace.dify.ai/plugin/langgenius/dify_extractor"
+                },
+                {
+                  "content": "> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\n节点\n\n# 文档提取器\n\n> 本文档由 AI 自动翻译。如有任何不准确之处，请参考 英文原版。\n\n文档提取器节点将上传的文件转换为大型语言模型可以处理的文本。由于语言模型无法直接读取 PDF 或 DOCX 等文档格式，此节点作为文件上传和 AI 分析之间的重要桥梁。\n\n文档提取器节点配置\n\n文档提取器节点配置\n\n## ​ 支持的文件类型\n\n该节点处理大多数基于文本的文档格式： 文本文档 - TXT、Markdown、HTML 文件，包含直接文本内容 办公文档 - Microsoft Word 和兼容应用的 DOCX 文件 PDF 文档 - 基于文本的 PDF 办公文件 - DOCX 文件可直接解析，表格会转换为 Markdown。也支持 DOC 和 ODT 文件。 电子表格 - Excel（.xls/.xlsx）和 CSV 文件转换为 Markdown 表格 演示文稿 - PowerPoint（.ppt/.pptx）文件 邮件格式 - EML 和 MSG 文件用于邮件内容提取 专业格式 - EPUB 电子书、VTT 字幕、JSON/YAML 数据和 Properties 文件 主要包含二进制内容（如图像、音频或视频）的文件需要专门的处理工具或外部服务。 [...] ## ​ 输入和输出\n\n### ​ 输入配置\n\n配置节点以接受： 来自文件变量的 单个文件 输入（通常来自开始节点） 用于批量文档处理的 多个文件 数组\n\n### ​ 输出结构\n\n节点输出提取的文本内容：\n\n 单个文件输入产生包含提取文本的`string`\n 多个文件输入产生包含每个文件内容的`array[string]`\n\n输出变量命名为`text`，包含准备用于下游处理的原始文本内容。\n\n## ​ 实现示例\n\n以下是使用文档提取器的完整文档问答工作流：\n\nChatPDF 风格的工作流实现\n\nChatPDF风格的工作流实现\n\n### ​ 工作流设置\n\n文件上传配置 - 在开始节点中启用文件输入，接受用户上传的文档。 文本提取 - 连接文档提取器处理上传的文件并提取其文本内容。 AI 处理 - 在大型语言模型提示词中使用提取的文本进行分析、摘要或问答。\n\n## ​ 常见用例\n\n文档问答应用 - 构建 ChatPDF 风格的应用，用户上传文档并询问其内容相关问题。 内容分析 - 处理合同、报告或研究论文以提取关键信息和见解。 批量文档处理 - 同时从多个文档提取文本用于分析、索引或迁移。 文档转换 - 将各种文档格式转换为纯文本以进行进一步处理或存储。\n\n## ​ 处理注意事项\n\n文档提取器使用针对不同文件格式优化的专用解析库。它尽可能保留文本结构和格式，使提取的内容对大型语言模型处理更加有用。\n\n### ​ 文件格式处理 [...] ### ​ 文件格式处理\n\n编码检测 - 使用 chardet 库自动检测文件编码，基于文本的文件使用 UTF-8 作为后备 表格转换 - Excel 和 CSV 数据转换为 Markdown 表格，以便大型语言模型更好地理解 文档结构 - DOCX 文件保持段落和表换 多行内容 - VTT 字幕文件合并同一发言者的连续话语 对于非常大的文档，请考虑大型语言模型的上下文限制，如果需要，可以实施分段策略。提取的文本保持原始文档的逻辑结构，以保留含义和上下文。",
+                  "id": "a3d73d-03",
+                  "raw_content": null,
+                  "score": 0.8364614,
+                  "title": "文档提取器 - Dify Docs",
+                  "url": "https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor"
+                },
+                {
+                  "content": "## Setup steps\n\n1. Install the OpenAI plugin from the Plugin Marketplace.\n2. Authorize OpenAI in Dify by navigating to Tools → OpenAI → Authorize and entering your API key.\n3. In the User Input (Start) node, the user uploads a document file (PDF, Word, TXT, etc.).\n4. The Doc Extractor node automatically parses the uploaded file and extracts its full text — no configuration required.\n5. Select an LLM in the LLM node to read the extracted text and produce a clean, organized summary.\n6. The Output node returns the summary to the user.\n\nTYPE\n\nWorkflow\n\nCATEGORY\n\nknowledge\n\nPLUGINS\n\napp icon\n\nOpenai\n\nDify Compatibility\n\n1.13.0\n\nSUPPORTED LANGUAGES\n\nLAST UPDATED\n\nMay 12, 2026\n\nGive a rate\n\nSHARE WITH [...] 📝\n\n# Doc Extractor: AI Summarizer\n\nNo ratings yet\n\n2.7kL\n\nlanggenius\n\nOpen in Dify\n\nUpload a file and get a clean and organized summary.\n\nKnowledge\n\nReact Flow\n\nPress enter or space to select a node.You can then use the arrow keys to move the node around.Press delete to remove it and escape to cancel.\n\nPress enter or space to select an edge. You can then press delete to remove it or escape to cancel.\n\n## Setup steps",
+                  "id": "753c50-04",
+                  "raw_content": null,
+                  "score": 0.82895297,
+                  "title": "Doc Extractor: AI Summarizer - Dify Marketplace",
+                  "url": "https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba"
+                },
+                {
+                  "content": "### ​ Doc Extractor\n\nLLM cannot read files directly. This is a common misconception among many users when they first use file upload, as they might think simply using the file as a variable in an LLM node would work. However, in reality, the LLM reads nothing from file variables. Thus, Dify introduced the doc extractor node, which can extract text from the file variable and output it as a text variable. The doc extractor node takes the file variable from the start node as input and converts document files into text output.\n\n### ​ LLM\n\nIn this experiment, two LLM nodes need to be designed: structure extraction and question generation.\n\n#### ​ Structure Extraction [...] Read the following article content and perform the task Read the following article content and perform the task{{Result variable of the document extractor}}{{Result variable of the document extractor}} # Task # Task  - Main Objective: Thoroughly analyze the structure of the article. - Main Objective: Thoroughly analyze the structure of the article. - Objective: Detail the content of each part of the article. - Objective: Detail the content of each part of the article. - Requirements: Analyze as detailed as possible. - Requirements: Analyze as detailed as possible. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Expected Output: A detailed [...] ## ​ Prerequisites\n\nCreate a Chatflow in Dify. Make sure you have added a model provider and have sufficient quota.\n\n## ​ Add Nodes\n\nIn this experiment, at least four types of nodes are required: start node, document extractor node, LLM node, and answer node.\n\n### ​ Start Node",
+                  "id": "fc0590-05",
+                  "raw_content": null,
+                  "score": 0.82694983,
+                  "title": "Article Reader Using File Upload - Dify Docs",
+                  "url": "https://docs.dify.ai/en/learn/tutorials/article-reader"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "title": "读取文档正文",
+        "status": "succeeded",
+        "error": null,
+        "extracted": {
+          "text": [
+            "| item | amount |\n| ---- | ------ |\n| test-alpha | 130 |\n| test-beta | 270 |\n\n",
+            "PPT reading test\nThe validation code is CEDAR-9462.",
+            "PDF reading test. The validation code is MAPLE-8047."
+          ]
+        }
+      },
+      {
+        "title": "知识检索",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 3",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 2",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 4",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 5",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "Claude 编导助手",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "输出",
+        "status": "succeeded",
+        "error": null
+      }
+    ]
+  },
+  {
+    "name": "无附件与联网",
+    "seconds": 18,
+    "answer": "根据 Dify 官方文档，**Document Extractor** 支持以下文件格式：\n\n## 支持的文件类型\n\n### 文本文档\n- TXT\n- Markdown\n- HTML\n\n### 办公文档\n- **DOCX**（Microsoft Word，表格会转换为 Markdown）\n- **DOC**\n- **ODT**\n\n### PDF 文档\n- 基于文本的 PDF\n\n### 电子表格\n- **Excel**（.xls / .xlsx，转换为 Markdown 表格）\n- **CSV**（转换为 Markdown 表格）\n\n### 演示文稿\n- **PowerPoint**（.ppt / .pptx）\n\n### 邮件格式\n- **EML**\n- **MSG**\n\n### 专业格式\n- **EPUB**（电子书）\n- **VTT**（字幕文件）\n- **JSON**\n- **YAML**\n- **Properties 文件**\n\n---\n\n## 官方文档链接\n\n1. **Document Extractor 节点说明**  \n   [https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor](https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor)\n\n2. **知识库管道编排（包含 Doc Extractor 应用场景）**  \n   [https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration](https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration)\n\n---\n\n## 补充说明\n\n- **二进制文件**（图像、音频、视频）需要使用专门的处理工具或外部服务\n- **Dify Extractor** 是 Dify 内置的文档解析器，对 Doc 文件做了特别优化，可以提取并存储文档中的图像并返回图像 URL\n- 使用多模态嵌入模型时，提取的图像会附加到对应的文本块中（每个块最多支持 10 张图片）",
+    "errors": [],
+    "nodes": [
+      {
+        "title": "开始",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "筛选文档附件",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "Tavily Search",
+        "status": "succeeded",
+        "error": null,
+        "output": {
+          "text": "**Answer:** The Document Extractor node converts uploaded files into plain‑text that LLMs can read, handling most text‑based formats—including TXT, Markdown, HTML, DOCX (with tables converted to Markdown), PDF (text‑based), DOC, ODT, Excel (.xls/.xlsx) and CSV (as Markdown tables), PowerPoint (.ppt/.pptx), email files (EML, MSG), EPUB, VTT subtitles, JSON/YAML and Properties files—while binary‑only files (images, audio, video) need separate tools. It outputs the extracted content in a variable named `text` as a single string for one file or an array of strings for multiple files. Dify’s built‑in “Dify Extractor” is specially optimized for Doc files, can extract and store images from documents, returning image URLs, and when a multimodal embedding model is used the extracted images are attached to their corresponding chunks (up to 10 images per chunk). If no images are extracted, Dify will automatically pull JPG, JPEG, PNG and GIF images under 2 MB referenced via Markdown URLs.\n\n# Result 1: [Step 2: Orchestrate Knowledge Pipeline - Dify Docs](https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration)\n\n**URL:** https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration\n\n**Relevance Score:** 0.87166095\n\n**Content:**\n`alt text`\n `alt text`\n\nIf you select a multimodal embedding model (marked with a Vision icon) in index settings, the extracted images will also be embedded and indexed for retrieval.\n\n#### ​ Doc Extractor\n\nAs an information processing center, document extractor node identifies and reads files from input variables, extracts information, and finally converts them into a format that works with the next node.\n\nFor more information, please refer to the Document Extractor.\n\n#### ​ Dify Extractor\n\nDify Extractor is a built-in document parser presented by Dify. It supports multiple common file formats and is specially optimized for Doc files. It can extract and store images from documents and return image URLs.\n\n#### ​ Unstructured [...] To develop a custom data processing plugin that extracts multimodal data for multimodal embedding and retrieval, see Build Tool Plugins for Multimodal Data Processing in Knowledge Pipelines.\n\n### ​ Doc Processor\n\nDocuments come in different formats - PDF, XLSX, DOCX. However, LLM can’t read these files directly. That’s where extractors come in. They support multiple formats and handle the conversion, so your content is ready for the next step of the LLMs. You can choose Dify’s Doc Extractor to process files, or select tools based on your needs from Marketplace which offers Dify Extractor and third-party tools such as Unstructured. \n\nFor images in documents [...] For images in documents\n\nImages in documents can be extracted using appropriate document processors. Extracted images are attached to their corresponding chunks, can be managed independently, and are returned alongside those chunks during retrieval.URLs of extracted images remain in the chunk text, but you can safely remove these URLs to keep the text clean—this won’t affect the extracted images.Each chunk supports up to 10 image attachments; images beyond this limit will not be extracted.If no images are extracted by the selected processor, Dify will automatically extract JPG, JPEG, PNG, and GIF images under 2 MB that are referenced via accessible URLs using the following Markdown syntax:\n\n `alt text`\n `alt text`\n\n---\n\n# Result 2: [Document Extractor - Dify Docs](https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor)\n\n**URL:** https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor\n\n**Relevance Score:** 0.86713725\n\n**Content:**\n> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\nNodes\n\n# Document Extractor\n\nExtract text content from uploaded documents for AI processing\n\nThe Document Extractor node converts uploaded files into text that LLMs can process. Since language models can’t directly read document formats like PDF or DOCX, this node serves as the essential bridge between file uploads and AI analysis.\n\nDocument Extractor Node Configuration\n\nDocument Extractor Node Configuration\n\n## ​ Supported File Types [...] ### ​ Workflow Setup\n\nFile Upload Configuration - Enable file input in your Start node to accept document uploads from users. Text Extraction - Connect the Document Extractor to process uploaded files and extract their text content. AI Processing - Use the extracted text in LLM prompts for analysis, summarization, or question answering.\n\nDocument Processing in Action\n\nDocument Processing in Action\n\nChat Interface with Document Upload\n\nChat Interface with Document Upload\n\n## ​ Processing Considerations\n\nThe Document Extractor uses specialized parsing libraries optimized for different file formats. It preserves text structure and formatting where possible, making extracted content more useful for LLM processing.\n\n### ​ File Format Processing [...] ## ​ Supported File Types\n\nThe node handles most text-based document formats: Text Documents - TXT, Markdown, HTML files with direct text content Office Documents - DOCX files from Microsoft Word and compatible applications PDF Documents - Text-based PDFs Office Files - DOCX files parse directly, with tables converted to Markdown. DOC and ODT files are also supported. Spreadsheets - Excel (.xls/.xlsx) and CSV files converted to Markdown tables Presentations - PowerPoint (.ppt/.pptx) files Email Formats - EML and MSG files for email content extraction Specialized Formats - EPUB books, VTT subtitles, JSON/YAML data, and Properties files Files containing primarily binary content like images, audio, or video require specialized processing tools or external services.\n\n## ​ Input and Output\n\n---\n\n# Result 3: [Dify Extractor](http://marketplace.dify.ai/plugin/langgenius/dify_extractor)\n\n**URL:** http://marketplace.dify.ai/plugin/langgenius/dify_extractor\n\n**Relevance Score:** 0.85097736\n\n**Content:**\nDify Extractor converts uploaded documents into Markdown plus structured document records for RAG pipelines and workflows.\n\n---\n\n# Result 4: [文档提取器 - Dify Docs](https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor)\n\n**URL:** https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor\n\n**Relevance Score:** 0.8364614\n\n**Content:**\n> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\n节点\n\n# 文档提取器\n\n> 本文档由 AI 自动翻译。如有任何不准确之处，请参考 英文原版。\n\n文档提取器节点将上传的文件转换为大型语言模型可以处理的文本。由于语言模型无法直接读取 PDF 或 DOCX 等文档格式，此节点作为文件上传和 AI 分析之间的重要桥梁。\n\n文档提取器节点配置\n\n文档提取器节点配置\n\n## ​ 支持的文件类型\n\n该节点处理大多数基于文本的文档格式： 文本文档 - TXT、Markdown、HTML 文件，包含直接文本内容 办公文档 - Microsoft Word 和兼容应用的 DOCX 文件 PDF 文档 - 基于文本的 PDF 办公文件 - DOCX 文件可直接解析，表格会转换为 Markdown。也支持 DOC 和 ODT 文件。 电子表格 - Excel（.xls/.xlsx）和 CSV 文件转换为 Markdown 表格 演示文稿 - PowerPoint（.ppt/.pptx）文件 邮件格式 - EML 和 MSG 文件用于邮件内容提取 专业格式 - EPUB 电子书、VTT 字幕、JSON/YAML 数据和 Properties 文件 主要包含二进制内容（如图像、音频或视频）的文件需要专门的处理工具或外部服务。 [...] ## ​ 输入和输出\n\n### ​ 输入配置\n\n配置节点以接受： 来自文件变量的 单个文件 输入（通常来自开始节点） 用于批量文档处理的 多个文件 数组\n\n### ​ 输出结构\n\n节点输出提取的文本内容：\n\n 单个文件输入产生包含提取文本的`string`\n 多个文件输入产生包含每个文件内容的`array[string]`\n\n输出变量命名为`text`，包含准备用于下游处理的原始文本内容。\n\n## ​ 实现示例\n\n以下是使用文档提取器的完整文档问答工作流：\n\nChatPDF 风格的工作流实现\n\nChatPDF风格的工作流实现\n\n### ​ 工作流设置\n\n文件上传配置 - 在开始节点中启用文件输入，接受用户上传的文档。 文本提取 - 连接文档提取器处理上传的文件并提取其文本内容。 AI 处理 - 在大型语言模型提示词中使用提取的文本进行分析、摘要或问答。\n\n## ​ 常见用例\n\n文档问答应用 - 构建 ChatPDF 风格的应用，用户上传文档并询问其内容相关问题。 内容分析 - 处理合同、报告或研究论文以提取关键信息和见解。 批量文档处理 - 同时从多个文档提取文本用于分析、索引或迁移。 文档转换 - 将各种文档格式转换为纯文本以进行进一步处理或存储。\n\n## ​ 处理注意事项\n\n文档提取器使用针对不同文件格式优化的专用解析库。它尽可能保留文本结构和格式，使提取的内容对大型语言模型处理更加有用。\n\n### ​ 文件格式处理 [...] ### ​ 文件格式处理\n\n编码检测 - 使用 chardet 库自动检测文件编码，基于文本的文件使用 UTF-8 作为后备 表格转换 - Excel 和 CSV 数据转换为 Markdown 表格，以便大型语言模型更好地理解 文档结构 - DOCX 文件保持段落和表换 多行内容 - VTT 字幕文件合并同一发言者的连续话语 对于非常大的文档，请考虑大型语言模型的上下文限制，如果需要，可以实施分段策略。提取的文本保持原始文档的逻辑结构，以保留含义和上下文。\n\n---\n\n# Result 5: [Doc Extractor: AI Summarizer - Dify Marketplace](https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba)\n\n**URL:** https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba\n\n**Relevance Score:** 0.82895297\n\n**Content:**\n## Setup steps\n\n1. Install the OpenAI plugin from the Plugin Marketplace.\n2. Authorize OpenAI in Dify by navigating to Tools → OpenAI → Authorize and entering your API key.\n3. In the User Input (Start) node, the user uploads a document file (PDF, Word, TXT, etc.).\n4. The Doc Extractor node automatically parses the uploaded file and extracts its full text — no configuration required.\n5. Select an LLM in the LLM node to read the extracted text and produce a clean, organized summary.\n6. The Output node returns the summary to the user.\n\nTYPE\n\nWorkflow\n\nCATEGORY\n\nknowledge\n\nPLUGINS\n\napp icon\n\nOpenai\n\nDify Compatibility\n\n1.13.0\n\nSUPPORTED LANGUAGES\n\nLAST UPDATED\n\nMay 12, 2026\n\nGive a rate\n\nSHARE WITH [...] 📝\n\n# Doc Extractor: AI Summarizer\n\nNo ratings yet\n\n2.7kL\n\nlanggenius\n\nOpen in Dify\n\nUpload a file and get a clean and organized summary.\n\nKnowledge\n\nReact Flow\n\nPress enter or space to select a node.You can then use the arrow keys to move the node around.Press delete to remove it and escape to cancel.\n\nPress enter or space to select an edge. You can then press delete to remove it or escape to cancel.\n\n## Setup steps\n\n---\n\n# Result 6: [Article Reader Using File Upload - Dify Docs](https://docs.dify.ai/en/learn/tutorials/article-reader)\n\n**URL:** https://docs.dify.ai/en/learn/tutorials/article-reader\n\n**Relevance Score:** 0.82694983\n\n**Content:**\n### ​ Doc Extractor\n\nLLM cannot read files directly. This is a common misconception among many users when they first use file upload, as they might think simply using the file as a variable in an LLM node would work. However, in reality, the LLM reads nothing from file variables. Thus, Dify introduced the doc extractor node, which can extract text from the file variable and output it as a text variable. The doc extractor node takes the file variable from the start node as input and converts document files into text output.\n\n### ​ LLM\n\nIn this experiment, two LLM nodes need to be designed: structure extraction and question generation.\n\n#### ​ Structure Extraction [...] Read the following article content and perform the task Read the following article content and perform the task{{Result variable of the document extractor}}{{Result variable of the document extractor}} # Task # Task  - Main Objective: Thoroughly analyze the structure of the article. - Main Objective: Thoroughly analyze the structure of the article. - Objective: Detail the content of each part of the article. - Objective: Detail the content of each part of the article. - Requirements: Analyze as detailed as possible. - Requirements: Analyze as detailed as possible. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Expected Output: A detailed [...] ## ​ Prerequisites\n\nCreate a Chatflow in Dify. Make sure you have added a model provider and have sufficient quota.\n\n## ​ Add Nodes\n\nIn this experiment, at least four types of nodes are required: start node, document extractor node, LLM node, and answer node.\n\n### ​ Start Node\n\n---\n",
+          "files": [],
+          "json": [
+            {
+              "answer": "The Document Extractor node converts uploaded files into plain‑text that LLMs can read, handling most text‑based formats—including TXT, Markdown, HTML, DOCX (with tables converted to Markdown), PDF (text‑based), DOC, ODT, Excel (.xls/.xlsx) and CSV (as Markdown tables), PowerPoint (.ppt/.pptx), email files (EML, MSG), EPUB, VTT subtitles, JSON/YAML and Properties files—while binary‑only files (images, audio, video) need separate tools. It outputs the extracted content in a variable named `text` as a single string for one file or an array of strings for multiple files. Dify’s built‑in “Dify Extractor” is specially optimized for Doc files, can extract and store images from documents, returning image URLs, and when a multimodal embedding model is used the extracted images are attached to their corresponding chunks (up to 10 images per chunk). If no images are extracted, Dify will automatically pull JPG, JPEG, PNG and GIF images under 2 MB referenced via Markdown URLs.",
+              "follow_up_questions": null,
+              "images": [],
+              "query": "Dify documentation document extractor",
+              "request_id": "82325acf-c71d-4e71-9436-01af031c3499",
+              "response_time": 0,
+              "results": [
+                {
+                  "content": "`alt text`\n `alt text`\n\nIf you select a multimodal embedding model (marked with a Vision icon) in index settings, the extracted images will also be embedded and indexed for retrieval.\n\n#### ​ Doc Extractor\n\nAs an information processing center, document extractor node identifies and reads files from input variables, extracts information, and finally converts them into a format that works with the next node.\n\nFor more information, please refer to the Document Extractor.\n\n#### ​ Dify Extractor\n\nDify Extractor is a built-in document parser presented by Dify. It supports multiple common file formats and is specially optimized for Doc files. It can extract and store images from documents and return image URLs.\n\n#### ​ Unstructured [...] To develop a custom data processing plugin that extracts multimodal data for multimodal embedding and retrieval, see Build Tool Plugins for Multimodal Data Processing in Knowledge Pipelines.\n\n### ​ Doc Processor\n\nDocuments come in different formats - PDF, XLSX, DOCX. However, LLM can’t read these files directly. That’s where extractors come in. They support multiple formats and handle the conversion, so your content is ready for the next step of the LLMs. You can choose Dify’s Doc Extractor to process files, or select tools based on your needs from Marketplace which offers Dify Extractor and third-party tools such as Unstructured. \n\nFor images in documents [...] For images in documents\n\nImages in documents can be extracted using appropriate document processors. Extracted images are attached to their corresponding chunks, can be managed independently, and are returned alongside those chunks during retrieval.URLs of extracted images remain in the chunk text, but you can safely remove these URLs to keep the text clean—this won’t affect the extracted images.Each chunk supports up to 10 image attachments; images beyond this limit will not be extracted.If no images are extracted by the selected processor, Dify will automatically extract JPG, JPEG, PNG, and GIF images under 2 MB that are referenced via accessible URLs using the following Markdown syntax:\n\n `alt text`\n `alt text`",
+                  "id": "e790e7-00",
+                  "raw_content": null,
+                  "score": 0.87166095,
+                  "title": "Step 2: Orchestrate Knowledge Pipeline - Dify Docs",
+                  "url": "https://docs.dify.ai/en/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration"
+                },
+                {
+                  "content": "> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\nNodes\n\n# Document Extractor\n\nExtract text content from uploaded documents for AI processing\n\nThe Document Extractor node converts uploaded files into text that LLMs can process. Since language models can’t directly read document formats like PDF or DOCX, this node serves as the essential bridge between file uploads and AI analysis.\n\nDocument Extractor Node Configuration\n\nDocument Extractor Node Configuration\n\n## ​ Supported File Types [...] ### ​ Workflow Setup\n\nFile Upload Configuration - Enable file input in your Start node to accept document uploads from users. Text Extraction - Connect the Document Extractor to process uploaded files and extract their text content. AI Processing - Use the extracted text in LLM prompts for analysis, summarization, or question answering.\n\nDocument Processing in Action\n\nDocument Processing in Action\n\nChat Interface with Document Upload\n\nChat Interface with Document Upload\n\n## ​ Processing Considerations\n\nThe Document Extractor uses specialized parsing libraries optimized for different file formats. It preserves text structure and formatting where possible, making extracted content more useful for LLM processing.\n\n### ​ File Format Processing [...] ## ​ Supported File Types\n\nThe node handles most text-based document formats: Text Documents - TXT, Markdown, HTML files with direct text content Office Documents - DOCX files from Microsoft Word and compatible applications PDF Documents - Text-based PDFs Office Files - DOCX files parse directly, with tables converted to Markdown. DOC and ODT files are also supported. Spreadsheets - Excel (.xls/.xlsx) and CSV files converted to Markdown tables Presentations - PowerPoint (.ppt/.pptx) files Email Formats - EML and MSG files for email content extraction Specialized Formats - EPUB books, VTT subtitles, JSON/YAML data, and Properties files Files containing primarily binary content like images, audio, or video require specialized processing tools or external services.\n\n## ​ Input and Output",
+                  "id": "7ab1f5-01",
+                  "raw_content": null,
+                  "score": 0.86713725,
+                  "title": "Document Extractor - Dify Docs",
+                  "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/doc-extractor"
+                },
+                {
+                  "content": "Dify Extractor converts uploaded documents into Markdown plus structured document records for RAG pipelines and workflows.",
+                  "id": "7a27ac-02",
+                  "raw_content": null,
+                  "score": 0.85097736,
+                  "title": "Dify Extractor",
+                  "url": "http://marketplace.dify.ai/plugin/langgenius/dify_extractor"
+                },
+                {
+                  "content": "> ## Documentation Index\n>\n> Fetch the complete documentation index at:</llms.txt>\n>\n> Use this file to discover all available pages before exploring further.\n\nDify Docs home pagelight logodark logo\n\n GitHub\n Try Dify\n\nDify Docs home pagelight logodark logo\n\n节点\n\n# 文档提取器\n\n> 本文档由 AI 自动翻译。如有任何不准确之处，请参考 英文原版。\n\n文档提取器节点将上传的文件转换为大型语言模型可以处理的文本。由于语言模型无法直接读取 PDF 或 DOCX 等文档格式，此节点作为文件上传和 AI 分析之间的重要桥梁。\n\n文档提取器节点配置\n\n文档提取器节点配置\n\n## ​ 支持的文件类型\n\n该节点处理大多数基于文本的文档格式： 文本文档 - TXT、Markdown、HTML 文件，包含直接文本内容 办公文档 - Microsoft Word 和兼容应用的 DOCX 文件 PDF 文档 - 基于文本的 PDF 办公文件 - DOCX 文件可直接解析，表格会转换为 Markdown。也支持 DOC 和 ODT 文件。 电子表格 - Excel（.xls/.xlsx）和 CSV 文件转换为 Markdown 表格 演示文稿 - PowerPoint（.ppt/.pptx）文件 邮件格式 - EML 和 MSG 文件用于邮件内容提取 专业格式 - EPUB 电子书、VTT 字幕、JSON/YAML 数据和 Properties 文件 主要包含二进制内容（如图像、音频或视频）的文件需要专门的处理工具或外部服务。 [...] ## ​ 输入和输出\n\n### ​ 输入配置\n\n配置节点以接受： 来自文件变量的 单个文件 输入（通常来自开始节点） 用于批量文档处理的 多个文件 数组\n\n### ​ 输出结构\n\n节点输出提取的文本内容：\n\n 单个文件输入产生包含提取文本的`string`\n 多个文件输入产生包含每个文件内容的`array[string]`\n\n输出变量命名为`text`，包含准备用于下游处理的原始文本内容。\n\n## ​ 实现示例\n\n以下是使用文档提取器的完整文档问答工作流：\n\nChatPDF 风格的工作流实现\n\nChatPDF风格的工作流实现\n\n### ​ 工作流设置\n\n文件上传配置 - 在开始节点中启用文件输入，接受用户上传的文档。 文本提取 - 连接文档提取器处理上传的文件并提取其文本内容。 AI 处理 - 在大型语言模型提示词中使用提取的文本进行分析、摘要或问答。\n\n## ​ 常见用例\n\n文档问答应用 - 构建 ChatPDF 风格的应用，用户上传文档并询问其内容相关问题。 内容分析 - 处理合同、报告或研究论文以提取关键信息和见解。 批量文档处理 - 同时从多个文档提取文本用于分析、索引或迁移。 文档转换 - 将各种文档格式转换为纯文本以进行进一步处理或存储。\n\n## ​ 处理注意事项\n\n文档提取器使用针对不同文件格式优化的专用解析库。它尽可能保留文本结构和格式，使提取的内容对大型语言模型处理更加有用。\n\n### ​ 文件格式处理 [...] ### ​ 文件格式处理\n\n编码检测 - 使用 chardet 库自动检测文件编码，基于文本的文件使用 UTF-8 作为后备 表格转换 - Excel 和 CSV 数据转换为 Markdown 表格，以便大型语言模型更好地理解 文档结构 - DOCX 文件保持段落和表换 多行内容 - VTT 字幕文件合并同一发言者的连续话语 对于非常大的文档，请考虑大型语言模型的上下文限制，如果需要，可以实施分段策略。提取的文本保持原始文档的逻辑结构，以保留含义和上下文。",
+                  "id": "0e27df-03",
+                  "raw_content": null,
+                  "score": 0.8364614,
+                  "title": "文档提取器 - Dify Docs",
+                  "url": "https://docs.dify.ai/zh/cloud/use-dify/nodes/doc-extractor"
+                },
+                {
+                  "content": "## Setup steps\n\n1. Install the OpenAI plugin from the Plugin Marketplace.\n2. Authorize OpenAI in Dify by navigating to Tools → OpenAI → Authorize and entering your API key.\n3. In the User Input (Start) node, the user uploads a document file (PDF, Word, TXT, etc.).\n4. The Doc Extractor node automatically parses the uploaded file and extracts its full text — no configuration required.\n5. Select an LLM in the LLM node to read the extracted text and produce a clean, organized summary.\n6. The Output node returns the summary to the user.\n\nTYPE\n\nWorkflow\n\nCATEGORY\n\nknowledge\n\nPLUGINS\n\napp icon\n\nOpenai\n\nDify Compatibility\n\n1.13.0\n\nSUPPORTED LANGUAGES\n\nLAST UPDATED\n\nMay 12, 2026\n\nGive a rate\n\nSHARE WITH [...] 📝\n\n# Doc Extractor: AI Summarizer\n\nNo ratings yet\n\n2.7kL\n\nlanggenius\n\nOpen in Dify\n\nUpload a file and get a clean and organized summary.\n\nKnowledge\n\nReact Flow\n\nPress enter or space to select a node.You can then use the arrow keys to move the node around.Press delete to remove it and escape to cancel.\n\nPress enter or space to select an edge. You can then press delete to remove it or escape to cancel.\n\n## Setup steps",
+                  "id": "6445e7-04",
+                  "raw_content": null,
+                  "score": 0.82895297,
+                  "title": "Doc Extractor: AI Summarizer - Dify Marketplace",
+                  "url": "https://marketplace.dify.ai/template/langgenius/008cedde-aa22-4d9b-8628-5ef272f5ecba"
+                },
+                {
+                  "content": "### ​ Doc Extractor\n\nLLM cannot read files directly. This is a common misconception among many users when they first use file upload, as they might think simply using the file as a variable in an LLM node would work. However, in reality, the LLM reads nothing from file variables. Thus, Dify introduced the doc extractor node, which can extract text from the file variable and output it as a text variable. The doc extractor node takes the file variable from the start node as input and converts document files into text output.\n\n### ​ LLM\n\nIn this experiment, two LLM nodes need to be designed: structure extraction and question generation.\n\n#### ​ Structure Extraction [...] Read the following article content and perform the task Read the following article content and perform the task{{Result variable of the document extractor}}{{Result variable of the document extractor}} # Task # Task  - Main Objective: Thoroughly analyze the structure of the article. - Main Objective: Thoroughly analyze the structure of the article. - Objective: Detail the content of each part of the article. - Objective: Detail the content of each part of the article. - Requirements: Analyze as detailed as possible. - Requirements: Analyze as detailed as possible. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Restrictions: No specific format restrictions, but the analysis must be organized and logical. - Expected Output: A detailed [...] ## ​ Prerequisites\n\nCreate a Chatflow in Dify. Make sure you have added a model provider and have sufficient quota.\n\n## ​ Add Nodes\n\nIn this experiment, at least four types of nodes are required: start node, document extractor node, LLM node, and answer node.\n\n### ​ Start Node",
+                  "id": "2373b8-05",
+                  "raw_content": null,
+                  "score": 0.82694983,
+                  "title": "Article Reader Using File Upload - Dify Docs",
+                  "url": "https://docs.dify.ai/en/learn/tutorials/article-reader"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "title": "读取文档正文",
+        "status": "succeeded",
+        "error": null,
+        "extracted": {
+          "text": []
+        }
+      },
+      {
+        "title": "知识检索",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 2",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 3",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 4",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "知识检索 5",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "Claude 编导助手",
+        "status": "succeeded",
+        "error": null
+      },
+      {
+        "title": "输出",
+        "status": "succeeded",
+        "error": null
+      }
+    ]
+  }
+]

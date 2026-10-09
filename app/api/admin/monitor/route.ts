@@ -50,11 +50,14 @@ export async function GET() {
       readAllRows<RawGeneration>((from, to) => supabase
         .from('script_history')
         .select('id, user_id, task_type, created_at, work_id')
+        // 画布改稿（lib/result-versions）是用户改的稿子，不是一次生成，不算进生成统计
+        .is('input_data->>canvasOf', null)
         .gte('created_at', since).lte('created_at', upper)
         .order('created_at', { ascending: false }).order('id').range(from, to)),
       supabase
         .from('script_history')
         .select('id, user_id, task_type, created_at, work_id, input_data, result')
+        .is('input_data->>canvasOf', null)
         .lte('created_at', upper)
         .order('created_at', { ascending: false })
         .limit(DETAIL_ROWS),
@@ -66,7 +69,7 @@ export async function GET() {
       readAllUsers(supabase),
       readAllRows<RawProfile>((from, to) => supabase.from('user_profiles').select('id, user_id, profile_name').order('id').range(from, to)),
       readAllRows<RawSubscription>((from, to) => supabase.from('subscriptions').select('user_id, plan, status, end_date').order('user_id').range(from, to)),
-      supabase.from('script_history').select('id', { count: 'exact', head: true }).lte('created_at', upper),
+      supabase.from('script_history').select('id', { count: 'exact', head: true }).is('input_data->>canvasOf', null).lte('created_at', upper),
     ]);
 
     // 主数据拉不到就明确报错，不能拿一片 0 冒充"没人用"

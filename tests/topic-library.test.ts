@@ -140,7 +140,8 @@ describe('逐条删除', () => {
 describe('不重复：把出过的明明白白告诉 AI', () => {
   it('清单里列出每一条，并禁止换个说法重出', () => {
     const block = buildNoRepeatBlock(['甲选题', '乙选题']);
-    expect(block).toContain('一条都不能重复');
+    expect(block).toContain('避免机械重复');
+    expect(block).toContain('不能覆盖本轮创作目的');
     expect(block).toContain('1. 甲选题');
     expect(block).toContain('2. 乙选题');
     expect(block).toMatch(/改标点.*调换语序|调换语序.*改标点/);
@@ -191,14 +192,14 @@ describe('接线：生成和追问都用上', () => {
   it('生成选题前附上出过的清单', () => {
     expect(stream).toMatch(
       // 第二个参数是档案：清单只取这个档案出过的（见 tests/profile-memory）
-      /if \(NO_REPEAT_TASKS\.has\(body\.taskType\)\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!, [^;]+\);\s*query \+= buildNoRepeatBlock\(prior\)/
+      /if \(NO_REPEAT_TASKS\.has\(body\.taskType\)\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!, [^;]+\);[\s\S]{0,500}query \+= buildNoRepeatBlock\(prior, \{ developSelected \}\)/
     );
   });
 
   it('生成选题不接共用会话，也不写回去', () => {
     expect(stream).toMatch(/const isolated = ISOLATED_TASKS\.has\(body\.taskType\)/);
     expect(stream).toMatch(/isolated \? null : await getDifyConversationId\(/);
-    expect(stream).toMatch(/if \(!isolated && [^{]*\)\s*\{\s*await saveDifyConversationId\(/);
+    expect(stream).toMatch(/if \(\(!isolated \|\| CURRENT_CREATIVE_TASKS\.has\(body\.taskType\)\) && generationCompleted/);
   });
 
   it('清单覆盖所有历史批次，删掉的也算出过、排在最前', () => {

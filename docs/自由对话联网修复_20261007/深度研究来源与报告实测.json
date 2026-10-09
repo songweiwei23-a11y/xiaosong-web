@@ -1,0 +1,267 @@
+{
+  "time": "2026-10-06T17:34:28.261Z",
+  "scope": "真实三轮检索、公开正文、三分节和汇总报告；不写用户数据、不验证真实任务租约与计费",
+  "elapsedMs": 71477,
+  "evidence": [
+    {
+      "question": "LLM Memory 和会话变量有哪些作用域差别，跨会话历史保存有什么边界？",
+      "query": "site:docs.dify.ai Dify官方文档 LLM Memory 会话变量 跨会话持久化",
+      "searchHits": [
+        {
+          "url": "https://docs.dify.ai/zh/learn/key-concepts",
+          "title": "核心概念- Dify Docs",
+          "chars": 3016
+        },
+        {
+          "url": "https://docs.dify.ai/zh/use-dify/tutorials/customer-service-bot",
+          "title": "使用知识库搭建智能客服机器人",
+          "chars": 2962
+        },
+        {
+          "url": "https://docs.dify.ai/zh/self-host/deploy/configuration/environments",
+          "title": "环境变量",
+          "chars": 4917
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/learn-more/extended-reading/dify-docs-mcp",
+          "title": "部署 Dify Docs MCP 服务，与文档进行对话",
+          "chars": 1849
+        },
+        {
+          "url": "https://docs.dify.ai/zh/learn/tutorials/customer-service-bot",
+          "title": "使用知识库搭建智能客服机器人",
+          "chars": 2672
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/getting-started/readme/features-and-specifications",
+          "title": "特性与技术规格",
+          "chars": 1706
+        },
+        {
+          "url": "https://docs.dify.ai/zh/learn/tutorials/twitter-chatflow",
+          "title": "ChatFlow 实战：搭建Twitter 账号分析助手- Dify Docs",
+          "chars": 3000
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/guides/workflow/readme",
+          "title": "工作流",
+          "chars": 1038
+        }
+      ],
+      "selected": [
+        {
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md",
+          "title": "Variable Assigner",
+          "fetched": "full",
+          "chars": 4969
+        },
+        {
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md",
+          "title": "LLM",
+          "fetched": "full",
+          "chars": 7986
+        }
+      ],
+      "elapsedMs": 15826
+    },
+    {
+      "question": "Vision high detail 有何取舍，文档与图片附件怎样送入LLM？",
+      "query": "site:docs.dify.ai Dify官方文档 LLM Vision high detail document extractor",
+      "searchHits": [
+        {
+          "url": "https://docs.dify.ai/zh/quick-start",
+          "title": "30 分钟快速入门",
+          "chars": 4927
+        },
+        {
+          "url": "https://docs.dify.ai/zh/use-dify/tutorials/customer-service-bot",
+          "title": "使用知识库搭建智能客服机器人",
+          "chars": 2962
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/getting-started/intro-to-dify%29?fallback=true",
+          "title": "Dify",
+          "chars": 463
+        },
+        {
+          "url": "https://docs.dify.ai/zh/learn/tutorials/customer-service-bot",
+          "title": "使用知识库搭建智能客服机器人",
+          "chars": 2672
+        },
+        {
+          "url": "https://docs.dify.ai/zh/use-dify/nodes/knowledge-retrieval",
+          "title": "知识检索",
+          "chars": 1366
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/plugins/api-documentation/agent",
+          "title": "Dify",
+          "chars": 484
+        },
+        {
+          "url": "https://docs.dify.ai/zh/learn/key-concepts",
+          "title": "核心概念- Dify Docs",
+          "chars": 3016
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/getting-started/readme/features-and-specifications",
+          "title": "特性与技术规格",
+          "chars": 1706
+        }
+      ],
+      "selected": [
+        {
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md",
+          "title": "LLM",
+          "fetched": "full",
+          "chars": 7986
+        },
+        {
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md",
+          "title": "Knowledge Retrieval",
+          "fetched": "full",
+          "chars": 6897
+        }
+      ],
+      "elapsedMs": 16526
+    },
+    {
+      "question": "知识检索节点怎样把来源送入LLM，能否当作长期会话记忆？",
+      "query": "site:docs.dify.ai Dify官方文档 知识检索节点 LLM Context",
+      "searchHits": [
+        {
+          "url": "https://docs.dify.ai/zh/use-dify/tutorials/customer-service-bot",
+          "title": "使用知识库搭建智能客服机器人",
+          "chars": 2962
+        },
+        {
+          "url": "https://docs.dify.ai/zh/learn/tutorials/workflow-101/lesson-07",
+          "title": "第7 课：增强工作流（工具）",
+          "chars": 4205
+        },
+        {
+          "url": "https://docs.dify.ai/zh/learn/tutorials/workflow-101/lesson-04",
+          "title": "第4 课：小抄（知识检索）",
+          "chars": 3776
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/getting-started/intro-to-dify%29?fallback=true",
+          "title": "Dify",
+          "chars": 463
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/getting-started/readme/features-and-specifications",
+          "title": "特性与技术规格",
+          "chars": 1706
+        },
+        {
+          "url": "https://docs.dify.ai/zh-hans/community/support",
+          "title": "寻求支持 - Dify Docs",
+          "chars": 185
+        },
+        {
+          "url": "https://docs.dify.ai/zh/learn/tutorials/customer-service-bot",
+          "title": "使用知识库搭建智能客服机器人",
+          "chars": 2672
+        },
+        {
+          "url": "https://docs.dify.ai/zh/cloud/use-dify/knowledge/readme",
+          "title": "知识库- Dify Docs",
+          "chars": 966
+        }
+      ],
+      "selected": [
+        {
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md",
+          "title": "LLM",
+          "fetched": "full",
+          "chars": 7986
+        },
+        {
+          "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md",
+          "title": "Knowledge Retrieval",
+          "fetched": "full",
+          "chars": 6897
+        }
+      ],
+      "elapsedMs": 16801
+    }
+  ],
+  "sources": [
+    {
+      "n": 1,
+      "step": 0,
+      "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md",
+      "title": "Variable Assigner",
+      "site": "docs.dify.ai",
+      "published": "",
+      "fetched": "full",
+      "content": "> ## Documentation Index\n> Fetch the complete documentation index at: https://docs.dify.ai/llms.txt\n> Use this file to discover all available pages before exploring further.\n\n# Variable Assigner\n\n> Manage persistent conversation variables in Chatflow applications\n\nThe Variable Assigner node manages persistent data in Chatflow applications by writing to conversation variables (Understand the different types of variables [here](/en/learn/key-concepts#variables)). Unlike regular workflow variables that reset with each execution, conversation variables persist throughout an entire chat session.\n\n<Frame caption=\"Variable Assigner Node Configuration\">\n  ![Variable Assigner Node Configuration](https://assets-docs.dify.ai/2024/11/83d0b9ef4c1fad947b124398d472d656.png)\n</Frame>\n\n## Conversation Variables vs Workflow Variables\n\n**Workflow Variables** exist only during a single workflow execution and reset when the workflow completes.\n\n**Conversation Variables** persist across multiple conversation turns within the same chat session, enabling stateful interactions and contextual memory.\n\nThis persistence enables contextual conversations, user personalization, stateful workflows, and progress tracking across multiple user interactions.\n\n## Configuration\n\nConfigure which conversation variables to update and specify their source data. You can assign multiple variables in a single node.\n\n<Frame caption=\"Variable Assignment Configuration Interface\">\n  ![Variable Assignment Configuration Interface](https://assets-docs.dify.ai/2024/11/ee15dee864107ba5a93b459ebdfc32cf.png)\n</Frame>\n\n**Variable** - Select the conversation variable to write to\n\n**Set Variable** - Choose the source data from upstream workflow nodes\n\n**Operation Mode** - Determine how to update the variable (overwrite, append, clear, etc.)\n\n## Operation Modes\n\nDifferent variable types support different operations based on their data structure:\n\n<Tabs>\n  <Tab title=\"String\">\n    * **Overwrite** - Replace with another string variable\n\n    * **Clear** - Remove the current value\n\n    * **Set** - Manually assign a fixed value\n  </Tab>\n\n  <Tab title=\"Number\">\n    * **Overwrite** - Replace with another number variable\n\n    * **Clear** - Remove the current value\n\n    * **Set** - Manually assign a fixed value\n\n    * **Arithmetic** - Add, subtract, multiply, or divide the current value by another number\n  </Tab>\n\n  <Tab title=\"Boolean\">\n    * **Overwrite** - Replace with another boolean variable\n\n    * **Clear** - Remove the current value\n\n    * **Set** - Manually assign a fixed value\n  </Tab>\n\n  <Tab title=\"Object\">\n    * **Overwrite** - Replace with another object variable\n\n    * **Clear** - Remove the current value\n\n    * **Set** - Manually define the object structure and values\n  </Tab>\n\n  <Tab title=\"Array\">\n    * **Overwrite** - Replace with another array variable of the same type\n\n    * **Clear** - Remove all elements from the array\n\n    * **Append** - Add a single element to the end of the array\n\n    * **Extend** - Add all elements from another array of the same type\n\n    * **Remove First/Last** - Remove the first or last element from the array\n\n    <Tip>\n      Array operations are particularly powerful for building memory systems, checklists, and conversation histories that grow over time.\n    </Tip>\n  </Tab>\n</Tabs>\n\n## Common Implementation Patterns\n\n### Smart Memory System\n\nBuild chatbots that automatically detect and store important information from conversations:\n\n<Frame caption=\"Smart Memory System Workflow\">\n  ![Smart Memory System Workflow](https://assets-docs.dify.ai/dify-enterprise-mintlify/en/guides/workflow/node/8d0492814b1515f50e87b2900ff400db.png)\n</Frame>\n\nThe system analyzes user input for memorable facts, extracts structured information, and appends it to a persistent memories array for future reference in conversations.\n\n### User Preferences Storage\n\nStore user preferences like language settings, notification preferences, or display options:\n\n<Frame caption=\"User Preferences Management\">\n  ![User Preferences Management](https://assets-docs.dify.ai/dify-enterprise-mintlify/en/guides/workflow/node/1867d608a7d009431b73377ed65b427b.png)\n</Frame>\n\nUse **Overwrite** mode to capture initial preferences from user input, then reference them in all subsequent LLM responses for personalized interactions.\n\n### Progressive Checklists\n\nBuild guided workflows that track completion status across multiple conversation turns:\n\n<Frame caption=\"Progressive Checklist Implementation\">\n  ![Progressive Checklist Implementation](https://assets-docs.dify.ai/dify-enterprise-mintlify/en/guides/workflow/node/c4362b01298b12e7d6fcd9e798f3165a.png)\n</Frame>\n\nUse array conversation variables to track completed items. The Variable Assigner updates the checklist each turn, while the LLM references it to guide users through remaining tasks.\n\n\nThis documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.",
+      "collected_at": "2026-10-06T17:33:19.199Z"
+    },
+    {
+      "n": 2,
+      "step": 0,
+      "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md",
+      "title": "LLM",
+      "site": "docs.dify.ai",
+      "published": "",
+      "fetched": "full",
+      "content": "> ## Documentation Index\n> Fetch the complete documentation index at: https://docs.dify.ai/llms.txt\n> Use this file to discover all available pages before exploring further.\n\n# LLM\n\n> Invoke language models for text generation and analysis\n\nThe LLM node invokes language models to process text, images, and documents. It sends prompts to your configured models and captures their responses, supporting structured outputs, context management, and multimodal inputs.\n\n<Frame caption=\"LLM Node Configuration Interface\">\n  ![LLM Node Configuration Interface](https://assets-docs.dify.ai/dify-enterprise-mintlify/en/guides/workflow/node/85730fbfa1d441d12d969b89adf2670e.png)\n</Frame>\n\n<Info>\n  Configure at least one model provider in **Integrations** > **Model Provider** before using LLM nodes.\n</Info>\n\n## Model Selection and Parameters\n\nChoose from any model provider you've configured. Different models excel at different tasks - GPT-4 and Claude 3.5 handle complex reasoning well but cost more, while GPT-3.5 Turbo balances capability with affordability.\n\n<Frame caption=\"Model Selection and Parameter Configuration\">\n  ![Model Selection and Parameter Configuration](https://assets-docs.dify.ai/dify-enterprise-mintlify/en/guides/workflow/node/43f81418ea70d4d79e3705505e777b1b.png)\n</Frame>\n\nModel parameters control response generation. **Temperature** ranges from 0 (deterministic) to 1 (creative). **Top P** limits word choices by probability. **Frequency Penalty** reduces repetition. **Presence Penalty** encourages new topics. You can also use presets: **Precise**, **Balanced**, or **Creative**.\n\n### Share a Model Configuration Across Nodes\n\nWhen several LLM nodes should run on the same model, store the model selection in an environment variable instead of configuring each node separately. Editing the variable, such as pointing it at a different model, updates every node bound to it.\n\nOpen the **Environment Variables** panel, add a variable of the **LLM** type, and choose a model with its parameters.\n\nThen, in each LLM node, switch the **Model** field to variable mode, and pick the variable. The variable carries the provider, model, and model parameters; prompts and other settings stay with each node.\n\n## Prompt Configuration\n\nYour interface adapts based on model type. Chat models use message roles (**System** for behavior, **User** for input, **Assistant** for examples), while completion models use simple text continuation.\n\nReference workflow variables in prompts using double curly braces: `{{variable_name}}`. Variables are replaced with actual values before reaching the model.\n\n```text theme={null}\nSystem: You are a technical documentation expert.\nUser: {{user_input}}\n```\n\n## Context Variables\n\nContext variables inject external knowledge while preserving source attribution. This enables RAG applications where LLMs answer questions using your specific documents.\n\n<Frame caption=\"Using Context Variables for RAG Applications\">\n  ![Using Context Variables for RAG Applications](https://assets-docs.dify.ai/dify-enterprise-mintlify/en/guides/workflow/node/5aefed96962bd994f8f05bac96b11e22.png)\n</Frame>\n\nConnect a Knowledge Retrieval node's output to your LLM node's context input, then reference it:\n\n```text theme={null}\nAnswer using only this context:\n{{knowledge_retrieval.result}}\n\nQuestion: {{user_question}}\n```\n\nWhen using context variables from knowledge retrieval, Dify automatically tracks citations so users see information sources.\n\n## Structured Outputs\n\nForce models to return specific data formats like JSON for programmatic use. Configure through three methods:\n\n<Tabs>\n  <Tab title=\"Visual Editor\">\n    User-friendly interface for simple structures. Add fields with names and types, mark required fields, set descriptions. The editor generates JSON Schema automatically.\n  </Tab>\n\n  <Tab title=\"JSON Schema\">\n    Write schemas directly for complex structures with nested objects, arrays, and validation rules.\n\n    ```json theme={null}\n    {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sentiment\": {\n          \"type\": \"string\",\n          \"enum\": [\"positive\", \"negative\", \"neutral\"]\n        }\n      },\n      \"required\": [\"sentiment\"]\n    }\n    ```\n  </Tab>\n\n  <Tab title=\"AI Generation\">\n    Describe needs in plain language and let AI generate the schema.\n  </Tab>\n</Tabs>\n\n<Warning>\n  Models with native JSON support handle structured outputs reliably. For others, Dify includes the schema in prompts, but results may vary.\n</Warning>\n\n## Memory and File Processing\n\n<Frame>\n  <img src=\"https://mintcdn.com/dify-6c0370d8/gyesM3ime6gTaYSO/images/use-dify/workflow/llm-memory.png?fit=max&auto=format&n=gyesM3ime6gTaYSO&q=85&s=64bb594e25b3fc81ddc1149a1ad8b73c\" alt=\"LLM Memory\" width=\"1084\" height=\"668\" data-path=\"images/use-dify/workflow/llm-memory.png\" />\n</Frame>\n\nEnable Memory to maintain context across multiple LLM calls within a Chatflow conversation. When enabled, previous interactions will be included in subsequent prompts as formatted user - assistant outputs. You can customize what goes into the user prompts by editing the `USER` template. Memory is node-specific and doesn't persist between different conversations.\n\nFor **File Processing**, add file variables to prompts for multimodal models. GPT-4V handles images, Claude processes PDFs directly, while other models might need preprocessing.\n\n### Vision Configuration\n\nWhen processing images, you can control the detail level:\n\n* **High detail** - Better accuracy for complex images but uses more tokens\n* **Low detail** - Faster processing with fewer tokens for simple images\n\nThe default variable selector for vision is `userinput.files` which automatically picks up files from the User Input node.\n\n<Frame caption=\"File Processing with Multimodal LLMs\">\n  ![File Processing with Multimodal LLMs](https://assets-docs.dify.ai/2024/11/05b3d4a78038bc7afbb157078e3b2b26.png)\n</Frame>\n\n## Jinja2 Template Support\n\nLLM prompts support Jinja2 templating for advanced variable handling. When you use Jinja2 mode (`edition_type: \"jinja2\"`), you can:\n\n```jinja theme={null}\n{% for item in search_results %}\n{{ loop.index }}. {{ item.title }}: {{ item.content }}\n{% endfor %}\n```\n\nJinja2 variables are processed separately from regular variable substitution, allowing for loops, conditionals, and complex data transformations within prompts.\n\n## Streaming Output\n\nLLM nodes support streaming output by default. Each text chunk is yielded as a `RunStreamChunkEvent`, enabling real-time response display. File outputs (images, documents) are processed and saved automatically during streaming.\n\n## Separate Reasoning from Responses\n\nSome reasoning models wrap their thinking in `<think>...</think>` tags inside their response. By default, those tags are included in the `text` output, so the reasoning flows downstream together with the answer.\n\nTurn on the **Enable reasoning tag separation** toggle to split them: the `text` output keeps only the answer, and the thinking moves to a separate `reasoning_content` output variable. While the toggle is off, `reasoning_content` stays empty.\n\nIn API calls, this toggle appears as the `reasoning_format` parameter. When the toggle is on, `reasoning_format` is `separated`, and streaming API clients receive the reasoning as dedicated `reasoning_chunk` events, outside the answer stream. For event details, see [Send Chat Message](/en/api-reference/chat-messages/send-chat-message) and [Run Workflow](/en/api-reference/workflow-runs/run-workflow).\n\n<Info>\n  This setting affects only models that wrap their reasoning in `<think>` tags.\n</Info>\n\n## Error Handling\n\nConfigure retry behavior for failed LLM calls. Set maximum retry attempts, intervals between retries, and backoff multipliers. Define fallback strategies like default values, error routing, or alternative models when retries aren't sufficient.\n\n\nThis documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.",
+      "collected_at": "2026-10-06T17:33:19.199Z"
+    },
+    {
+      "n": 3,
+      "step": 1,
+      "url": "https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md",
+      "title": "Knowledge Retrieval",
+      "site": "docs.dify.ai",
+      "published": "",
+      "fetched": "full",
+      "content": "> ## Documentation Index\n> Fetch the complete documentation index at: https://docs.dify.ai/llms.txt\n> Use this file to discover all available pages before exploring further.\n\n# Knowledge Retrieval\n\n> Retrieve relevant content from knowledge bases and use it as context for downstream nodes\n\nUse the Knowledge Retrieval node to integrate existing knowledge bases into your workflows. The node searches specific knowledge for information relevant to queries and outputs results as contextual content for use in downstream nodes (e.g., LLMs).\n\nBelow is an example of using the Knowledge Retrieval node in a Chatflow:\n\n1. The **User Input** node collects the user query.\n\n2. The **Knowledge Retrieval** node searches the selected knowledge base(s) for content related to the user query and outputs the retrieval results.\n\n3. The **LLM** node generates a response based on both the user query and the retrieved knowledge.\n\n4. The **Answer** node returns the LLM's response to the user.\n\n<Frame>\n  <img src=\"https://mintcdn.com/dify-6c0370d8/gyesM3ime6gTaYSO/images/use-dify/workflow/knowledge-retrieval-node-example.png?fit=max&auto=format&n=gyesM3ime6gTaYSO&q=85&s=b019d605170890aa9ec679b17a9c5cd6\" alt=\"Knowledge Retrieval Node Use Case\" width=\"2022\" height=\"580\" data-path=\"images/use-dify/workflow/knowledge-retrieval-node-example.png\" />\n</Frame>\n\nBefore using a Knowledge Retrieval node, ensure that you have at least one available knowledge base. To learn about creating knowledge bases, see [Knowledge](/en/cloud/use-dify/knowledge/readme#create-knowledge).\n\n<Info>\n  Knowledge retrieval operations are subject to per-minute rate limits that vary by subscription plan. See [Knowledge Request Rate Limit](/en/cloud/use-dify/knowledge/knowledge-request-rate-limit) for the per-plan numbers.\n</Info>\n\n## Configure the Node\n\nTo make the Knowledge Retrieval node work properly, you need to specify:\n\n* *What* it should search for (the query)\n\n* *Where* it should search (the knowledge base)\n\n* *How* to process the retrieval results (the node-level retrieval settings)\n\nYou can also use document metadata to enable filter-based searches and further improve retrieval precision.\n\n### Specify the Query\n\nProvide the query content that the node should search for in the selected knowledge base(s).\n\n* **Query Text**: Select a text variable. For example, use `userinput.query` to reference user input in Chatflows, or a custom text-type user input variable in Workflows.\n\n* **Query Images**: Select an image variable, e.g., the image(s) uploaded by the user through a User Input node, to search by image. Each image must be 2 MB or smaller.\n\n  <Info>\n    The **Query Images** option is available only when at least one multimodal knowledge base is added.\n\n    Such knowledge bases are marked with the **Vision** tag, indicating that they are using a multimodal embedding model.\n  </Info>\n\n### Select Knowledge to Search\n\nAdd one or more existing knowledge bases for the node to search for content relevant to the query.\n\nWhen multiple knowledge bases are added, knowledge is first retrieved from all of them simultaneously, then combined and processed according to the [node-level retrieval settings](#configure-node-level-retrieval-settings).\n\n<Info>\n  Knowledge bases marked with the **Vision** tag support cross-modal retrieval: they return both text and images based on semantic relevance.\n</Info>\n\nYou can click the **Edit** icon next to any added knowledge base to modify its [settings](/en/cloud/use-dify/knowledge/manage-knowledge/introduction).\n\n### Configure Node-Level Retrieval Settings\n\nTo fine-tune how the node processes retrieval results after they are fetched from the knowledge base(s), click **Retrieval Setting**.\n\n<Info>\n  Retrieval settings exist at two layers: the knowledge base level and the knowledge retrieval node level.\n\n  Think of them as two consecutive filters: the knowledge base settings determine the initial pool of results, and the node settings further rerank the results or narrow down the pool.\n</Info>\n\n* **Rerank Settings**\n\n  * **Weighted Score**\n\n    The relative weight between semantic similarity and keyword matching during reranking. Higher semantic weight favors meaning relevance, while higher keyword weight favors exact matches.\n\n    Weighted Score is available only when all added knowledge bases are indexed with **High Quality** mode.\n\n  * **Rerank Model**\n\n    The rerank model to re-score and reorder all the results based on their relevance to the query.\n\n    <Note>\n      If any multimodal knowledge bases are added, select a multimodal rerank model (marked with a **Vision** tag) as well. Otherwise, retrieved images will be excluded from reranking and the final output.\n    </Note>\n\n* **Top K**\n\n  The maximum number of top results to return after reranking.\n\n  When a rerank model is selected, this value will be automatically adjusted based on the model's maximum input capacity (how much text the model can process at once).\n\n* **Score Threshold**\n\n  The minimum similarity score for returned results. Results scoring below this threshold are excluded. Use higher thresholds for stricter relevance or lower thresholds to include broader matches.\n\n### Enable Metadata Filtering\n\nBy default, retrieval searches across the entire knowledge base. To restrict retrieval to specific documents, enable manual or automatic metadata filtering.\n\nThis improves retrieval precision, especially when your knowledge base is large or contains content for different contexts.\n\nFor creating and managing document metadata, see [Metadata](/en/cloud/use-dify/knowledge/metadata).\n\n## Output\n\nThe Knowledge Retrieval node outputs the retrieval results as a variable named `result`, which is an array of retrieved document chunks containing their content, metadata, title, and other attributes.\n\nWhen the retrieval results contain image attachments, the `result` variable also includes a field named `files` containing image details.\n\n## Use with LLM Nodes\n\nTo use the retrieval results as context in an LLM node:\n\n1. In **Context**, select the Knowledge Retrieval node's `result` variable.\n\n2. In the system instruction, reference the `Context` variable.\n\n3. Optional: If the LLM is vision-capable, enable **Vision** so it can process image attachments in the retrieval results.\n\n   <Info>\n     You don't need to specify the retrieval results as the vision input. Once **Vision** is enabled, the LLM will automatically access any retrieved images.\n   </Info>\n\nIn chatflows, citations are shown alongside responses that reference knowledge by default. You can turn this off by disabling **[Citation and Attributions](/en/cloud/use-dify/build/additional-features#citations-and-attributions)** in **Features** at the top right corner of the canvas.\n\n\nThis documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.",
+      "collected_at": "2026-10-06T17:33:39.770Z"
+    }
+  ],
+  "steps": [
+    {
+      "status": "done",
+      "note": "### 会话变量的持久范围\n\nDify 工作流中的变量分为两类：工作流变量（Workflow Variables）和会话变量（Conversation Variables）。工作流变量仅在单次工作流执行期间存在，工作流完成后就会重置[1]。会话变量则在同一个聊天会话（chat session）的多个对话轮次中持续存在，可以实现有状态的交互和上下文记忆[1]。\n\n在 Chatflow 应用中，可以通过 Variable Assigner 节点向会话变量写入数据，实现跨轮次的数据管理[1]。这种持久性使得系统能够支持上下文对话、用户个性化、有状态工作流，以及跨多个用户交互的进度跟踪[1]。\n\n### LLM Memory 的作用边界\n\nLLM 节点的 Memory 功能用于在 Chatflow 对话中维护多次 LLM 调用之间的上下文[2]。启用 Memory 后，之前的交互会以格式化的 user-assistant 输出形式包含在后续提示词中，用户可以通过编辑 `USER` 模板来自定义用户提示词的内容[2]。\n\n但这个 Memory 有两个明确的边界：一是它属于节点级别（node-specific），二是它不会在不同的对话（conversations）之间持久化[2]。（推断）这意味着 LLM Memory 的作用域限定在单个对话会话内的特定 LLM 节点，换一个新对话时历史记录不会延续。\n\n### 资料缺口\n\n公开资料里没找到会话变量在会话结束后是否能跨会话访问、会话数据的具体存储时长、以及 LLM Memory 与会话变量在技术实现上的关联关系。",
+      "sources": [
+        1,
+        2
+      ],
+      "searched": 8,
+      "read": 2
+    },
+    {
+      "status": "done",
+      "note": "### Vision high detail 的取舍\n\nLLM 节点在处理图片时提供了两个精度选项。**High detail** 模式能提升复杂图像的识别准确度，但会消耗更多 token；**Low detail** 模式处理速度更快、token 消耗更少，适合简单图片场景[2]。文档未给出具体的 token 消耗倍数或成本差异（公开资料里没找到不同 detail 级别的量化对比数据），选择时需要在准确性与成本之间权衡。\n\n### 文档与图片附件的送入方式\n\n在 LLM 节点中，通过 **File Processing** 功能向多模态模型传递文件变量。默认的 vision 变量选择器是 `userinput.files`，会自动获取 User Input 节点上传的文件[2]。不同模型对文件格式的支持存在差异：GPT-4V 可处理图像，Claude 能直接处理 PDF，而其他模型可能需要预处理步骤[2]。\n\n用户可以通过编辑 `USER` 模板自定义文件在 prompt 中的组织方式[2]。需要注意的是，LLM 节点内的 Memory 配置是节点特定的，不会跨对话持久化[2]（推断：文件处理也遵循这一隔离机制）。\n\n### 知识库中的多模态检索\n\nKnowledge Retrieval 节点支持图片查询功能。在 **Query Images** 选项中可选择图片变量（例如用户通过 User Input 节点上传的图片），每张图片大小不得超过 2 MB[3]。该功能仅在添加了多模态知识库时可用——这类知识库使用多模态嵌入模型，界面上标有 **Vision** 标签[3]。\n\n添加多个知识库时，系统会先并行检索所有库，再根据节点级检索设置合并处理结果[3]。当选择 Rerank Model 时，如果已添加多模态知识库，必须同时选择带 **Vision** 标签的多模态 rerank 模型，否则检索到的图片会被排除在重排序和最终输出之外[3]。",
+      "sources": [
+        2,
+        3
+      ],
+      "searched": 8,
+      "read": 2
+    },
+    {
+      "status": "done",
+      "note": "### 知识检索的输出流向\n\n知识检索节点查询知识库后，会将检索结果作为\"上下文内容\"（contextual content）输出给下游节点使用[3]。在官方示例的Chatflow中，工作流程是：用户输入节点收集查询 → 知识检索节点搜索知识库并输出检索结果 → LLM节点基于用户查询和检索到的知识生成响应[3]。这意味着知识检索的内容是通过节点间的数据传递送入LLM的，而非直接写入模型配置。\n\n### 与长期会话记忆的本质区别\n\n（推断）知识检索节点**不能**替代长期会话记忆。从来源[3]的工作流程可以看出，知识检索每次执行时都是\"搜索特定知识库中与查询相关的信息\"[3]，输出的是当次检索命中的片段，属于即时检索结果而非持续累积的对话历史。这与Memory机制存储跨轮次对话记录的功能完全不同。\n\n来源[2]虽然详细说明了LLM节点如何处理文本、图像和文档输入，以及如何管理上下文[2]，但对于LLM节点是否能将知识检索结果持久化为会话记忆、或者知识检索结果在多轮对话中的留存机制，公开资料里没找到明确说明。\n\n### 使用建议\n\n如果需要在工作流中引用外部知识，应当在每轮对话中都连接知识检索节点，将检索结果作为该轮的临时上下文传入LLM[3]；如果需要记住用户在本次会话中说过的内容（如偏好、已提问题），则需依赖Memory节点而非知识检索。",
+      "sources": [
+        2,
+        3
+      ],
+      "searched": 8,
+      "read": 2
+    }
+  ],
+  "summaryOK": true,
+  "markdown": "# 深度研究联网验收\n\n> 研究主题：Dify LLM Memory、Vision 与知识检索的配置区别\n> 2026年10月7日 · 快速研究 · 引用 3 个来源\n\n## 核心结论\n\n- **会话变量可跨轮次持久，LLM Memory 不跨对话**：会话变量在同一聊天会话的多个对话轮次中持续存在[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)，而 LLM Memory 属于节点级别且不会在不同对话之间持久化[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。\n\n- **Vision high detail 提升识别但增加成本**：High detail 模式能提升复杂图像识别准确度但消耗更多 token，Low detail 模式处理更快、成本更低[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。\n\n- **多模态检索必须匹配 Vision 标签的 rerank 模型**：使用多模态知识库时，若选择 Rerank Model 必须同时选择带 Vision 标签的多模态 rerank 模型，否则检索到的图片会被排除在最终输出之外[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)。\n\n- **知识检索输出即时上下文而非累积记忆**：知识检索节点每次执行输出当次命中的片段作为临时上下文传入 LLM[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)，不能替代跨轮次累积对话历史的 Memory 机制[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。\n\n## 一、LLM Memory 和会话变量有哪些作用域差别，跨会话历史保存有什么边界？\n\n### 会话变量的持久范围\n\nDify 工作流中的变量分为两类：工作流变量（Workflow Variables）和会话变量（Conversation Variables）。工作流变量仅在单次工作流执行期间存在，工作流完成后就会重置[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。会话变量则在同一个聊天会话（chat session）的多个对话轮次中持续存在，可以实现有状态的交互和上下文记忆[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。\n\n在 Chatflow 应用中，可以通过 Variable Assigner 节点向会话变量写入数据，实现跨轮次的数据管理[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。这种持久性使得系统能够支持上下文对话、用户个性化、有状态工作流，以及跨多个用户交互的进度跟踪[[1]](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md)。\n\n### LLM Memory 的作用边界\n\nLLM 节点的 Memory 功能用于在 Chatflow 对话中维护多次 LLM 调用之间的上下文[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。启用 Memory 后，之前的交互会以格式化的 user-assistant 输出形式包含在后续提示词中，用户可以通过编辑 `USER` 模板来自定义用户提示词的内容[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。\n\n但这个 Memory 有两个明确的边界：一是它属于节点级别（node-specific），二是它不会在不同的对话（conversations）之间持久化[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。（推断）这意味着 LLM Memory 的作用域限定在单个对话会话内的特定 LLM 节点，换一个新对话时历史记录不会延续。\n\n### 资料缺口\n\n公开资料里没找到会话变量在会话结束后是否能跨会话访问、会话数据的具体存储时长、以及 LLM Memory 与会话变量在技术实现上的关联关系。\n\n## 二、Vision high detail 有何取舍，文档与图片附件怎样送入LLM？\n\n### Vision high detail 的取舍\n\nLLM 节点在处理图片时提供了两个精度选项。**High detail** 模式能提升复杂图像的识别准确度，但会消耗更多 token；**Low detail** 模式处理速度更快、token 消耗更少，适合简单图片场景[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。文档未给出具体的 token 消耗倍数或成本差异（公开资料里没找到不同 detail 级别的量化对比数据），选择时需要在准确性与成本之间权衡。\n\n### 文档与图片附件的送入方式\n\n在 LLM 节点中，通过 **File Processing** 功能向多模态模型传递文件变量。默认的 vision 变量选择器是 `userinput.files`，会自动获取 User Input 节点上传的文件[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。不同模型对文件格式的支持存在差异：GPT-4V 可处理图像，Claude 能直接处理 PDF，而其他模型可能需要预处理步骤[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。\n\n用户可以通过编辑 `USER` 模板自定义文件在 prompt 中的组织方式[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)。需要注意的是，LLM 节点内的 Memory 配置是节点特定的，不会跨对话持久化[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)（推断：文件处理也遵循这一隔离机制）。\n\n### 知识库中的多模态检索\n\nKnowledge Retrieval 节点支持图片查询功能。在 **Query Images** 选项中可选择图片变量（例如用户通过 User Input 节点上传的图片），每张图片大小不得超过 2 MB[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)。该功能仅在添加了多模态知识库时可用——这类知识库使用多模态嵌入模型，界面上标有 **Vision** 标签[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)。\n\n添加多个知识库时，系统会先并行检索所有库，再根据节点级检索设置合并处理结果[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)。当选择 Rerank Model 时，如果已添加多模态知识库，必须同时选择带 **Vision** 标签的多模态 rerank 模型，否则检索到的图片会被排除在重排序和最终输出之外[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)。\n\n## 三、知识检索节点怎样把来源送入LLM，能否当作长期会话记忆？\n\n### 知识检索的输出流向\n\n知识检索节点查询知识库后，会将检索结果作为\"上下文内容\"（contextual content）输出给下游节点使用[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)。在官方示例的Chatflow中，工作流程是：用户输入节点收集查询 → 知识检索节点搜索知识库并输出检索结果 → LLM节点基于用户查询和检索到的知识生成响应[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)。这意味着知识检索的内容是通过节点间的数据传递送入LLM的，而非直接写入模型配置。\n\n### 与长期会话记忆的本质区别\n\n（推断）知识检索节点**不能**替代长期会话记忆。从来源[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)的工作流程可以看出，知识检索每次执行时都是\"搜索特定知识库中与查询相关的信息\"[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)，输出的是当次检索命中的片段，属于即时检索结果而非持续累积的对话历史。这与Memory机制存储跨轮次对话记录的功能完全不同。\n\n来源[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)虽然详细说明了LLM节点如何处理文本、图像和文档输入，以及如何管理上下文[[2]](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md)，但对于LLM节点是否能将知识检索结果持久化为会话记忆、或者知识检索结果在多轮对话中的留存机制，公开资料里没找到明确说明。\n\n### 使用建议\n\n如果需要在工作流中引用外部知识，应当在每轮对话中都连接知识检索节点，将检索结果作为该轮的临时上下文传入LLM[[3]](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md)；如果需要记住用户在本次会话中说过的内容（如偏好、已提问题），则需依赖Memory节点而非知识检索。\n\n## 局限与待核实\n\n- 本报告读了 3 个网页来源，其中 3 个读到了全文。\n- 数字文本匹配未发现异常；这不代表事实、口径或数字含义已核实。\n- 公开网页的信息可能滞后或片面；涉及钱、合同、法规、医疗的决定，请以官方原文和专业意见为准。\n\n## 参考来源\n\n1. [Variable Assigner](https://docs.dify.ai/en/cloud/use-dify/nodes/variable-assigner.md) — docs.dify.ai · 获取于 2026/10/7\n2. [LLM](https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md) — docs.dify.ai · 获取于 2026/10/7\n3. [Knowledge Retrieval](https://docs.dify.ai/en/cloud/use-dify/nodes/knowledge-retrieval.md) — docs.dify.ai · 获取于 2026/10/7",
+  "check": {
+    "cited": 3,
+    "removed": 0,
+    "unverified": 0,
+    "sources": 3,
+    "fullText": 3,
+    "failedSteps": 0
+  }
+}

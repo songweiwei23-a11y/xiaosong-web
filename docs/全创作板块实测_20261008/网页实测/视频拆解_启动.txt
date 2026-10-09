@@ -1,0 +1,142 @@
+2026-10-08T04:37:57.559Z
+https://www.biandao.icu/dashboard/breakdown
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "拆解爆款" [level=1]
+    - paragraph: 传一条爆款视频，逐镜头拆出它为什么火、你能学走什么
+    - button "拆视频" [pressed]
+    - button "拆文案 / 方案"
+    - button "历史记录（0）":
+      - generic: 历史记录（0）
+    - button "上传视频" [expanded]:
+      - generic: 上传视频
+    - generic: 开物_即梦参考_14秒.mp4
+    - generic: 0.6MB
+    - paragraph: 抖音里点「分享 → 保存本地」就能拿到视频。视频本身不上传，只在你的浏览器里截图；截图和口播会交给 AI 分析，不保存。
+    - button "补充信息（选填，填了拆得更准）":
+      - generic: 补充信息（选填，填了拆得更准）
+    - checkbox "结合「测试_青禾家具店_全板块验收20261008」，最后给 3 个能直接拍的选题 侧边栏切换档案，这里跟着变"
+    - text: 结合「测试_青禾家具店_全板块验收20261008」，最后给 3 个能直接拍的选题
+    - generic: 侧边栏切换档案，这里跟着变
+    - button "拆解中…" [disabled]:
+      - text: 拆解中…
+    - list:
+      - listitem: 拆画面：找镜头切换、截图
+      - listitem: 识别口播
+      - listitem: 把截图交给 AI
+      - listitem: AI 逐镜头拆解
+      - listitem: 一条 3 分钟的视频大约 5 分钟；请停在这个页面
+  - main:
+    - paragraph: 正在准备画面和口播…
+    - paragraph: 拆开篇怎么留人、结构怎么搭、每个镜头拍了什么，最后告诉你能学走什么
+    - list:
+      - listitem: · 挑和你同行业、或者你想学的那一类
+      - listitem: · 点赞是粉丝的几倍才算真爆——填上数据拆得更准
+      - listitem: · 拆完可以结合你的档案，直接给 3 个能拍的选题
+- alert

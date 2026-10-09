@@ -9,6 +9,10 @@ export interface CreationSettings {
   topic?: string; direction?: string; audience?: string; industry?: string;
   platform?: string; duration?: string; scriptType?: string; structure?: string;
   purpose?: '流量型' | '人设型' | '变现型'; style?: string; tactic?: string;
+  /** 原始用户要求与混合目的，不能由 AI 成稿反推覆盖。 */
+  userIntent?: string; purposeText?: string;
+  /** 用户勾选的具体方案，后续拓展必须从这条主线出发。 */
+  focusContent?: string;
   openingLine?: string; openingCards?: string[]; hookType?: string;
   elements?: string[]; dealReasons?: string[]; notes?: string;
   scene?: string; device?: string; budget?: string; personnel?: string;
@@ -16,10 +20,18 @@ export interface CreationSettings {
   titleType?: string; titleFormula?: string; keywordStrategy?: string;
   topicCount?: number; titleCount?: number;
   workingScript?: string;
+  /** Verbatim user constraints; explicit [] means unlock, not inherit. */
+  lockedTexts?: string[];
 }
 
-const STRING_FIELDS = ['topic', 'direction', 'audience', 'industry', 'platform', 'duration', 'scriptType', 'structure', 'style', 'tactic', 'openingLine', 'hookType', 'notes', 'scene', 'device', 'budget', 'personnel', 'contentType', 'visualStyle', 'titleType', 'titleFormula', 'keywordStrategy', 'workingScript'] as const;
-const ARRAY_FIELDS = ['openingCards', 'elements', 'dealReasons'] as const;
+const STRING_FIELDS = ['topic', 'direction', 'audience', 'industry', 'platform', 'duration', 'scriptType', 'structure', 'style', 'tactic', 'openingLine', 'hookType', 'notes', 'scene', 'device', 'budget', 'personnel', 'contentType', 'visualStyle', 'titleType', 'titleFormula', 'keywordStrategy', 'workingScript', 'userIntent', 'purposeText', 'focusContent'] as const;
+
+/** 数据库旧 RPC 会合并旧设置；显式空值阻止已清掉的目的/旧稿被合并回来。 */
+export function creationSettingsForPersistence(settings: CreationSettings): Record<string, unknown> {
+  const keys = [...STRING_FIELDS, 'purpose', 'openingCards', 'elements', 'dealReasons', 'lockedTexts', 'topicCount', 'titleCount'];
+  return { ...Object.fromEntries(keys.map(key => [key, null])), ...mergeCreationSettings(settings) };
+}
+const ARRAY_FIELDS = ['openingCards', 'elements', 'dealReasons', 'lockedTexts'] as const;
 const PLATFORMS = ['抖音', '小红书', '视频号', 'B站', '快手'];
 export const SCRIPT_TYPE_LABELS: Record<string, string> = Object.fromEntries(Object.entries(SCRIPT_TYPES).map(([id, value]) => [id, value.label]));
 export const REVIEW_SCRIPT_TYPES: Record<string, string> = { teach: '教知识型', show: '晒过程型', discuss: '聊观点型', story: '讲故事型', ad_lead: '教知识型', ad_group: '测评型', ad_offline: '探店型', ad_product: '测评型' };
@@ -56,6 +68,7 @@ export function mergeCreationSettings(...values: unknown[]): CreationSettings {
     for (const key of STRING_FIELDS) if (typeof v[key] === 'string' && v[key].trim() && !PLACEHOLDERS.has(v[key].trim())) out[key] = v[key].trim();
     for (const key of ARRAY_FIELDS) if (Array.isArray(v[key])) out[key] = v[key].filter((x): x is string => typeof x === 'string' && Boolean(x.trim())).map(x => x.trim());
     if (v.purpose === '流量型' || v.purpose === '人设型' || v.purpose === '变现型') out.purpose = v.purpose;
+    else if (typeof v.purposeText === 'string' && v.purposeText.trim()) delete out.purpose;
     for (const key of ['topicCount', 'titleCount'] as const) if (typeof v[key] === 'number' && Number.isFinite(v[key]) && v[key] > 0) out[key] = Math.round(v[key]);
   }
   return out;
@@ -97,8 +110,8 @@ export function cleanTitle(title: string): string {
 export function purposeOf(roleLine: string): CreationSettings['purpose'] {
   const line = roleLine.trim();
   if (!line) return undefined;
-  const typed = (['流量型', '人设型', '变现型'] as const).find((r) => line.includes(r));
-  if (typed) return typed;
+  const typed = (['流量型', '人设型', '变现型'] as const).filter((r) => line.includes(r));
+  if (typed.length) return typed.length === 1 ? typed[0] : undefined;
   const hits = (
     [
       ['人设型', /立人设|人设|记住(?:老板|你|这个人)|建立信任|让人信你/],
@@ -133,23 +146,27 @@ export function settingsFromText(body: string): CreationSettings {
   const roleLine = labelled(clean, ['视频目的', '内容目的', '对应目的', '目的']);
   // 没有目的那一行时，标题里明写了「×型」才算；标题里的"到店""成交"这类字不拿来猜
   const role = roleLine || (['流量型', '人设型', '变现型'].find((r) => heading.includes(r)) ?? '');
+  const headingRoles = ['流量型', '人设型', '变现型'].filter(r => heading.includes(r));
+  const fullRole = headingRoles.length > 1 ? `${headingRoles.join('、')}：${role}` : role;
   const duration = labelled(clean, ['视频时长', '建议时长', '目标时长', '时长']);
   const platform = labelled(clean, ['发布平台', '目标平台', '平台']);
   return mergeCreationSettings({
     topic: cleanTitle(labelled(clean, ['视频主题', '主题', '选题'])),
     // 创作方向的每一条写的是「核心思路」，选题写的是「核心内容方向」
-    direction: labelled(clean, ['内容方向', '核心内容方向', '创作方向', '方向', '核心思路', '核心观点', '核心创意', '视频目的说明']),
+    direction: labelled(clean, ['内容方向', '核心内容方向', '创作方向', '方向', '核心思路', '核心角度', '核心观点', '核心创意', '视频目的说明']),
     audience: labelled(clean, ['目标受众', '目标人群', '写作人群', '受众人群', '目标用户', '写给谁', '受众', '人群']),
     industry: labelled(clean, ['行业领域', '行业', '赛道']),
     platform: PLATFORMS.find(p => platform.includes(p)),
     duration: duration.match(/\d+(?:\s*[-~至]\s*\d+)?\s*(?:秒|分钟)/)?.[0].replace(/\s/g, ''),
     scriptType, structure,
-    purpose: purposeOf(role),
+    purpose: purposeOf(fullRole), purposeText: fullRole && !purposeOf(fullRole) ? fullRole : undefined,
     style: labelled(clean, ['内容风格', '写作风格', '风格', '口吻']),
     openingLine: labelled(clean, ['确定的开头', '已选开头']),
     openingCards: labelled(clean, ['开篇卡']) ? labelled(clean, ['开篇卡']).split('、').filter(Boolean) : undefined,
     tactic: labelled(clean, ['用的计', '使用打法', '拍法', '起号打法']).split(/[（(]/)[0].trim(),
     scene: labelled(clean, ['场景', '拍摄场地']),
+    // 内容规划的一个方向写着「本月条数：3 条」：带去选题页就出这么多条
+    topicCount: Number(labelled(clean, ['本月条数']).match(/\d+/)?.[0]) || undefined,
   });
 }
 
@@ -173,7 +190,11 @@ export function settingsFromInput(input: Record<string, unknown> | null | undefi
 
 export function settingsForResult(result: string, history: Array<{ result: string; input_data?: Record<string, unknown> | null }>, current: CreationSettings): CreationSettings {
   const record = history.find(item => item.result === result);
-  return record ? mergeCreationSettings(settingsFromText(result), settingsFromInput(record.input_data)) : current;
+  if (!record) return current;
+  const saved = settingsFromInput(record.input_data);
+  // 旧审稿的“AI 推荐时长”不是具体要求，不能盖住最终稿已经明确的时长。
+  if (saved.duration && !/\d+(?:\.\d+)?(?:\s*[-~至]\s*\d+)?\s*(?:秒|分钟)/.test(saved.duration)) delete saved.duration;
+  return mergeCreationSettings(settingsFromText(result), saved);
 }
 
 /**
@@ -202,7 +223,12 @@ export function resolveCreationSettings(data: HandoffPayload, context?: CreatorC
   const audience = explicit.audience || [text(p?.target_age), text(p?.target_occupation), text(p?.target_interests)].filter(Boolean).join('；') || undefined;
   const industry = explicit.industry || text(p?.account_track) || text((p as unknown as Record<string, unknown>)?.content_category) || undefined;
   const normalizeDuration = (value: string) => value.match(/\d+(?:\.\d+)?(?:\s*[-~至]\s*\d+)?\s*(?:秒|分钟)/)?.[0].replace(/\s/g, '').replace(/[~至]/g, '-') || '';
-  const duration = normalizeDuration(explicit.duration || '') || normalizeDuration(text(p?.video_duration).split(/[、,]/)[0]) || '60秒';
+  /*
+   * 时长只认写明了的（编导选的、稿子里写的）。原来找不到就填档案里常拍的第一档、再不行填「60秒」——
+   * 编导在上一页选了「AI 推荐」，到下一页被锁成 60 秒，模型照 60 秒压缩内容（2026-10-06 产品方：
+   * 没选就给最优结果、不替用户定上限）。现在没写明就空着，下一页按「AI 推荐」走
+   */
+  const duration = normalizeDuration(explicit.duration || '') || normalizeDuration(fromSource.duration || '') || normalizeDuration(fromOriginal.duration || '') || undefined;
   const cardNames = mergeCreationSettings({ openingCards: data.openingCards }, explicit).openingCards;
   const openingCards = cardNames?.filter(name => OPENING_CARDS.some(c => c.name === name)) ?? [];
   // 主题：带过来的 > 稿子里写明的 > 这一条的标题。整批的总标题、问句不算主题
@@ -224,12 +250,13 @@ export function resolveCreationSettings(data: HandoffPayload, context?: CreatorC
     // 这几样由脚本类型推出来：类型是写明的才推
     contentType: type ? ({ show: 'process', teach: 'knowledge', story: 'story', discuss: 'talking' } as Record<string, string>)[type] : undefined,
     visualStyle: type ? (type === 'story' ? 'warm' : 'bright') : undefined,
-    titleType: type ? (type === 'story' ? 'story' : 'question') : undefined,
-    titleFormula: type ? (type === 'story' ? 'time-twist' : 'why-reason') : undefined,
+    // A script type does not constitute a user choice of title formula.
+    // Explicit saved title settings are merged below; otherwise the title page chooses automatically.
   }, explicit);
   // 非法或 AI推荐的旧值不能盖过已解析出的有效设置。
   resolved.scriptType = type; resolved.structure = structure; resolved.platform = PLATFORMS.find(v => (explicit.platform || resolved.platform || '').includes(v)) || '抖音';
-  resolved.duration = duration; resolved.openingCards = openingCards;
+  if (duration) resolved.duration = duration; else delete resolved.duration;
+  resolved.openingCards = openingCards;
   // 主题、方向用清理过的（上面 merge 时带过来的原值会把「方向1：」又盖回去）
   if (titled) resolved.topic = titled; else delete resolved.topic;
   const direction = explicit.direction && cleanTitle(explicit.direction) !== titled ? explicit.direction : undefined;
@@ -249,8 +276,18 @@ export function durationSeconds(value: string): number {
   return /分钟/.test(value) ? Math.round(n * 60) : Math.round(n);
 }
 
+/** 完整承接材料足以继续创作，不再混入档案共用窗口里的其他旧稿。 */
+export function hasExplicitCreationContext(settings: unknown): boolean {
+  const s = mergeCreationSettings(settings);
+  return Boolean(s.focusContent || s.workingScript || (s.userIntent && (s.topic || s.direction)));
+}
+
 export function creationSettingsBlock(settings: CreationSettings): string {
   const b = mergeCreationSettings(settings);
+  if (b.lockedTexts?.length) b.notes = [b.notes, '以下用户锁定片段必须逐字保留，不得改写或删除：', ...b.lockedTexts.map(t => `【锁定片段】${t}`)].filter(Boolean).join('\n');
   const lines = [['主题', b.topic], ['内容方向', b.direction], ['目标人群', b.audience], ['行业', b.industry], ['发布平台', b.platform], ['视频时长', b.duration], ['脚本类型', b.scriptType && SCRIPT_TYPE_LABELS[b.scriptType]], ['脚本结构', SCRIPT_STRUCTURES.find(s => s.id === b.structure)?.label], ['视频目的', b.purpose], ['内容风格', b.style], ['拍法', b.tactic], ['确定的开头', b.openingLine], ['开篇卡', b.openingCards?.join('、')], ['成交理由', b.dealReasons?.join('、')], ['拍摄场地', b.scene], ['设备', b.device], ['预算', b.budget], ['人员', b.personnel], ['补充要求', b.notes]].filter(([, v]) => v);
-  return lines.length ? `\n\n【本条创作的连续设置】\n${lines.map(([k, v]) => `- ${k}：${v}`).join('\n')}\n这些是本条内容的创作设置，优先于通用行业模板，后续环节保持一致。方向、人群、目的、结构和时长不得擅自更换；保留已选开头。不得把过程展示改成无关创业故事，也不得把人设稿改成促销广告。缺失的信息不能编造成经营事实；次数、销量、价格和经历没有原稿依据时用待核实占位，建议和优化稿也不能擅自填数字。` : '';
+  if (b.purposeText && !b.purpose) lines.push(['完整目的', b.purposeText]);
+  if (b.userIntent) lines.push(['原始用户想法', b.userIntent]);
+  if (b.focusContent) lines.push(['用户当前选定的具体主线', b.focusContent + '\n后续方向、选题、脚本及优化全部从这条具体主线展开，不退回更宽泛的大方向，不混入未勾选方案。原始想法保留目的、人群和限制；新选题可变化，但核心议题与角度必须承接。用户之后明确修改时才改主线。']);
+  return lines.length ? `\n\n【本条创作的连续设置】\n${lines.map(([k, v]) => `- ${k}：${v}`).join('\n')}\n这些是本条内容的创作设置，优先于通用行业模板，后续环节保持一致。方向、人群、目的、结构和时长不得擅自更换；保留已选开头。不得把过程展示改成无关创业故事，也不得把人设稿改成促销广告。用户本轮明确修改优先；原始用户想法中的目的、立场、人群和限制继续生效，原先“生成标题/审稿”等操作指令不重复执行，改为完成当前板块的任务。原意约束适用于整份成稿、结尾和后续建议：不卖课/不推销/不引导私信等禁止项不能改成“本条暂时不做、后续转化”；没有来源的第一人称经历、客户对话、顾客反馈不得冒充事实，需要例子用明确假设表达。自动推荐、默认配比、知识库示例和 AI 稿中反推的标签都不能替换用户目的；未标明目的时不要仅因有私信或到店结尾就改判变现型。缺失的信息不能编造成经营事实；次数、销量、价格和经历没有原稿依据时用待核实占位，建议和优化稿也不能擅自填数字。` : '';
 }

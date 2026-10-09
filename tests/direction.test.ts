@@ -88,11 +88,12 @@ describe('按格式出的结果，勾选列表认得出、跳得过去', () => {
     expect(CREATION_SOURCES.direction).toBe('创作方向');
   });
 
-  it('也能作为目的地：别的板块的内容带进来填进「已有的想法」', () => {
+  it('也能作为目的地：别的板块带进来的是「要拓展的方向」，单独放、当主线（不再塞进「已有的想法」）', () => {
     expect(CREATION_DESTINATIONS.some((d) => d.id === 'direction')).toBe(true);
     expect(NOTE_TARGETS.has('direction')).toBe(true);
     expect(buildCreationHandoff('free-chat', 'direction', '我想下个月开第二家店').target).toBe('/dashboard/direction');
-    expect(readCode('app/dashboard/direction/page.tsx')).toMatch(/setIdeas\(incomingNote\(data\)\)/);
+    expect(readCode('app/dashboard/direction/page.tsx')).toContain('setExpandContent(ref)');
+    expect(readCode('app/dashboard/direction/page.tsx')).not.toMatch(/setIdeas\(incomingNote\(data\)\)/);
   });
 });
 

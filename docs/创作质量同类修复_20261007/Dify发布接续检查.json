@@ -1,0 +1,169 @@
+{
+  "checkedAt": "2026-10-07T19:19:26.868Z",
+  "appName": "开物",
+  "appId": "23cccfab-db7d-4337-8643-b5bdf325bdb1",
+  "status": "published_content_acceptance_failed",
+  "published": true,
+  "productionModified": true,
+  "block": null,
+  "baseline": ".tmp/dify-free-chat-system-template_20261007.txt",
+  "template": "docs/创作质量同类修复_20261007/Dify系统提示词_完整修正版.txt",
+  "bytes": 28813,
+  "characters": 10801,
+  "sha256": "aec17cdf0fdaab6a33f946f7cbc4d39e8f99d7f2b8c8771e1d7edd240b01e998",
+  "checks": {
+    "freeBranchPreserved": true,
+    "legacyBranchPreserved": true,
+    "variablesPreserved": true,
+    "variables": [
+      "kb1",
+      "kb2",
+      "kb3",
+      "kb4",
+      "kb5",
+      "web_context"
+    ],
+    "exactlyOneAdaptiveMarker": true,
+    "branchCount": {
+      "if": 1,
+      "elif": 1,
+      "else": 1,
+      "endif": 1
+    }
+  },
+  "liveTemplateAndMappingsVerified": true,
+  "postPublishModelRetestPerformed": true,
+  "availableCredentialKinds": [
+    "application service keys",
+    "dataset key"
+  ],
+  "availablePublishScriptFound": false,
+  "nextSteps": [
+    "区分用户真实素材与AI参考稿事实来源，做实际上下文对照，重新验证同一目的与采访状态。",
+    "下一版重做八项合成验收并人工核对具体句子，不能以0警告或模型高分代替内容验收。",
+    "已登录网页验证连续创作与实际复制结果；不重复发布当前26或未通过的候选增强模板。"
+  ],
+  "browserRecovery": {
+    "checkedAt": "2026-10-07T15:56:22.868Z",
+    "restored": true,
+    "initialCause": "node_repl.exe 被运行中的工具进程占用，沙盒更新读取/执行权限时返回 os error 32。",
+    "actions": [
+      "重置 node_repl 与 cua_repl 会话。",
+      "读取沙盒日志和进程身份。",
+      "停止已确认属于当前 Codex 的四个 node_repl 工具进程：14204、23924、7504、34624。",
+      "重新验证沙盒与两个浏览器通道。"
+    ],
+    "remainingCause": null,
+    "requiredNextAction": null,
+    "productionChanged": false,
+    "logs": [
+      "C:/Users/DELL/.codex/.sandbox/setup_error.json",
+      "C:/Users/DELL/.codex/.sandbox/sandbox.2026-10-07.log"
+    ],
+    "afterFullAppRestart": {
+      "checkedAt": "2026-10-07T15:58:54.286Z",
+      "backendRestartConfirmed": true,
+      "backendPid": 9172,
+      "runtimePids": [
+        36492,
+        33192
+      ],
+      "restored": false,
+      "error": "helper_unknown_error: setup refresh had errors; node_repl.exe 文件占用 os error 32。两个控制通道初始化仍失败。",
+      "suggestedNextStep": "用户手动将 config.toml 的 [windows] sandbox 从 elevated 改为官方备用 unelevated，然后重启再验证。隔离强度会降低；尚未修改该配置。",
+      "productionChanged": false
+    },
+    "selectedBrowserRecovery": {
+      "checkedAt": "2026-10-07T16:03:52.414Z",
+      "browser": "Codex In-app Browser",
+      "controlRestored": true,
+      "difyPageOpened": true,
+      "state": "authenticated_and_published",
+      "extensionBrowserIssue": "Unable to load browser request-header policy",
+      "authReview": "Google Accounts navigation blocked by automatic approval review; user chose to complete Dify authentication manually.",
+      "userLoginConfirmed": true
+    },
+    "restoredVerifiedAt": "2026-10-07T19:19:26.868Z",
+    "historicalRemainingCause": "VCRUNTIME140_1.dll 仍被占用，沙盒初始化继续返回 os error 32；node_repl 与 cua_repl 均返回 Transport closed。"
+  },
+  "postPublishHarness": {
+    "source": ".tmp/craft-postpublish_20261008.ts",
+    "compiled": ".tmp/craft-postpublish_20261008.cjs",
+    "reportDirectory": "docs/创作质量同类修复_20261007/Dify发布后复测_20261008",
+    "compiledSuccessfully": true,
+    "modelCallsPerformed": 8,
+    "requiresPublicationVerification": false,
+    "transportSuccessful": 8,
+    "contentAcceptancePassed": false
+  },
+  "publishedAt": "2026-10-07T16:08:01.887Z",
+  "publishedVersion": 26,
+  "previousPublishedVersion": 25,
+  "liveVerification": {
+    "baselineNormalizedExactMatch": true,
+    "replacementNormalizedExactMatch": true,
+    "systemJinjaEnabled": true,
+    "model": "claude-sonnet-4-6",
+    "memoryWindow": 20,
+    "visionEnabled": true,
+    "variableMappings": {
+      "current_query": "开始/query",
+      "kb1": "知识检索/result",
+      "kb2": "知识检索 2/result",
+      "kb3": "知识检索 3/result",
+      "kb4": "知识检索 4/result",
+      "kb5": "知识检索 5/result",
+      "web_context": "本轮联网参考/output"
+    },
+    "evidence": "Dify正式发布_20261008.png",
+    "backup": "Dify发布前_System_20261008.txt",
+    "savedTemplate": "Dify已保存_System_20261008.txt"
+  },
+  "historicalBrowserBlock": "node_repl 与 cua_repl 在初始化时退出；Windows sandbox helper_unknown_error: setup refresh had errors；重置重试仍失败。",
+  "contentAcceptancePassed": false,
+  "remainingIssue": "生成内容仍出现未采访完成式、预设答案差异、无依据技术断言及执行问题；完整登录后网页连续创作验收尚未完成。",
+  "additionalProbe": {
+    "source": ".tmp/craft-finalcheck_20261008.ts",
+    "reportDirectory": "docs/创作质量同类修复_20261007/Dify补丁复测_20261008",
+    "modelCallsPerformed": 8,
+    "transportSuccessful": 8,
+    "additionalServerPromptDeployed": false,
+    "contentAcceptancePassed": false
+  },
+  "draftExperiment": {
+    "template": "docs/创作质量同类修复_20261007/Dify系统提示词_候选增强_20261008.txt",
+    "previewCalls": 1,
+    "published": false,
+    "contentAcceptancePassed": false,
+    "adaptiveBranchVerified": true,
+    "restoredToVersion26": true,
+    "restoredNormalizedExactMatch": true,
+    "evidence": "docs/创作质量同类修复_20261007/Dify草稿恢复与正式26_20261008.png",
+    "actualInputSummary": "docs/创作质量同类修复_20261007/Dify草稿分支实际核对_20261008.json"
+  },
+  "currentWebsiteDeployment": {
+    "buildId": "2dKmm1z9LvoB8VWqoO_zl",
+    "files": 3,
+    "verification": "docs/创作质量同类修复_20261007/检查修复上线验证_20261008.json",
+    "backup": "/var/www/xiaosong-backup-20261008_craft_checks",
+    "allTestsPassed": 3039,
+    "failedTests": 0,
+    "typescriptPassed": true,
+    "scope": [
+      "lib/quality-checks.ts",
+      "lib/script-copy.ts",
+      "lib/storyboard-standards.ts"
+    ]
+  },
+  "report": "docs/创作质量同类修复_20261007/Dify发布与内容验收_20261008.md",
+  "cleanSourceControl": {
+    "source": ".tmp/craft-clean-source-control_20261008.ts",
+    "report": "docs/创作质量同类修复_20261007/Dify纯计划对照_20261008/正式模型对照.json",
+    "modelCallsPerformed": 1,
+    "transportSuccessful": 1,
+    "aiDraftSupplied": false,
+    "additionalServerPromptSupplied": false,
+    "contentAcceptancePassed": false,
+    "failedTitle": "国庆后，我去这条街问了每家店的老板"
+  }
+}

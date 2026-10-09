@@ -1,0 +1,79 @@
+/**
+ * 「按资料修正」（2026-10-05 质量整改）：结果下面列出了几处没有出处的说法（lib/quality-checks 的 unsupportedFacts），
+ * 用户点一下，只改这几句——删掉无依据的判断、见证、承诺，或用【待确认：…】占位；其余一字不动。
+ * 改完程序再核对一遍；没被标出的句子大多被改了就不采用，防止它借机重写全文。
+ * 接口 app/api/fact-fix；页面 components/workspace/FactCheckNotice。
+ */
+import { sentences } from './preferences';
+import { creationSettingsBlock } from './creation-settings';
+import type { CreationContext } from './creation-flow';
+
+export const FACT_FIX_MAX_CHARS = 20_000;
+export const FACT_FIX_CONTEXT_MAX_CHARS = 20_000;
+
+/** 明确主题与受众也是核对依据；AI 执行稿不作为事实证明。 */
+export function factCheckCreationSource(context?: CreationContext): string {
+  const s = context?.settings;
+  return [context?.originContent, s?.userIntent, s?.topic, s?.direction, s?.audience, s?.industry]
+    .filter(Boolean).join('\n');
+}
+
+/** 修正同样承接用户原意，放在账号通用背景之前，防止修正成另一条内容。 */
+export function buildFactFixContext(context?: CreationContext, accountContext = ''): string {
+  const intent = creationSettingsBlock(context?.settings ?? {});
+  const source = factCheckCreationSource(context);
+  return [intent, source && `【本条用户原始材料与要求】\n${source}`, accountContext]
+    .filter(Boolean).join('\n\n').slice(0, FACT_FIX_CONTEXT_MAX_CHARS);
+}
+/** 没被标出的句子至少要原样留下这个比例 */
+export const FACT_FIX_MIN_KEPT = 0.8;
+
+export function buildFactFixPrompt(p: { text: string; issues: string[]; context?: string }): string {
+  const ctx = p.context?.trim() ? `【本条创作原意、用户材料与账号背景】\n${p.context.trim().slice(0, FACT_FIX_CONTEXT_MAX_CHARS)}\n\n` : '';
+  return `【高阶自由对话】${ctx}【任务】下面这份稿子里，有几处说法在账号资料和素材里找不到出处。**只改这几处**，其余内容一个字都不要动。
+
+【要改的几处】
+${p.issues.map((i, n) => `${n + 1}. ${i}`).join('\n')}
+
+【怎么改，按情况选一种】
+- 核对提醒可能误判。县城、返乡、评论区等普通词不是具体地名；用户已给出的主题、人群、立场和限制必须保留，不能把具体主题泛化成“这个选择”，不能把讨论改成促销。提示误报或已有用户材料依据的句子保持原样。
+- 编出来的价格、百分比、分店数、获奖：删除无依据的判断或标【待确认】。不能把未知价格改成“价格很亲民”，也不能把“90%的人”改成“不少人”；没有数字也可能是假事实。
+- 编出来的顾客见证（「有位顾客说……」「很多客人都说……」）：删除无依据的经历；不能改成老板自己的“我常推荐”“我见过”而继续编造另一种经历。可改为不预设答案的检查问题或已提供的实物演示。
+- 老板没说过的经营承诺（送、包、保证、打折）：删掉
+- 用户尚未提供采访素材却写成「问了一圈/采访了/发现大家都…」的采访经历：标题和开头改成准备验证的问题或准备去问的行动，删掉已获答案、人数和发现；保留原主题、具体主问题、追问、前后比较与取材安排。
+- 被标出的预设采访结果（如“每家答案不一样”“有人说回暖有人说冷清”“店里突然安静下来”）：没有原始用户实录支持时改成问题或待验证行动，不能只加“采访后可用”就继续预写事实，也不要移到另一处。
+- 确实需要具体数字的地方：用【待确认：这里填……】占位，让用户自己填
+- 模型自称「自检通过、无编造」这类话：删掉
+- 账号背景里有对应事实的：改成背景里的说法
+
+【原稿】
+${p.text}
+
+【输出】只输出改好后的完整稿子，结构、格式、未被标出的内容保持原样。标题被标为虚假经历时也要改成待验证的问题。不要解释你改了什么，不要加开场白，不要用代码块包起来。`;
+}
+
+const norm = (s: string) => s.replace(/[\s\p{P}\p{S}]/gu, '');
+
+/** 标出来的几处，取「」里的原句片段，按标点切成小段，用来认出原稿里哪几句是允许改的 */
+function flaggedParts(issues: string[]): string[] {
+  return issues.flatMap((i) => [...i.matchAll(/「([^」]+)」/g)].map((m) => m[1]))
+    .flatMap((s) => s.split(/[，。！？、；：,.!?;:#…\n]+/))
+    .map(norm)
+    .filter((s) => s.length >= 3);
+}
+
+/**
+ * 改动是不是超出了「那几句」：原稿里没被标出的句子，改完至少要原样留下 80%。
+ * 不能用「改动超过一半」：稿子短、编的多时，正当的修正本来就要改掉一大半（2026-10-05 真实模型实测被误拒）。
+ */
+export function fixTooBig(before: string, after: string, issues: string[]): boolean {
+  const parts = flaggedParts(issues);
+  const unflagged = sentences(before).filter((s) => {
+    const n = norm(s);
+    return n.length > 0 && !parts.some((p) => n.includes(p) || p.includes(n));
+  });
+  if (!unflagged.length) return false;
+  const out = norm(after);
+  const kept = unflagged.filter((s) => out.includes(norm(s))).length;
+  return kept / unflagged.length < FACT_FIX_MIN_KEPT;
+}

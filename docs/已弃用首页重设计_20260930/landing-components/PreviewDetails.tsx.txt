@@ -1,0 +1,70 @@
+import { ArrowRight, BookOpen, Check, ChevronDown, Compass, FileSearch, Film, Layers3, Lightbulb, MessageCircle, Sparkles } from 'lucide-react';
+import { FACTS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, SHOWCASE_TACTICS } from '@/lib/showcase';
+import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
+
+const groups = [
+  { icon: Compass, name: '先把客户看清楚', desc: '整理行业、人群、卖点和拍摄条件，创作有自己的方向。', tags:['前采建档','账号定位','商业定位','内容定位','创作简报'] },
+  { icon: Lightbulb, name: '找到值得拍的角度', desc: '选题、起号打法和开篇钩子，把思路打开，再选一个继续。', tags:['选题策划','起号方案','开篇钩子','成交理由'] },
+  { icon: Film, name: '写成一套可拍方案', desc: '从口播到镜头表，兼顾表达、节奏和手上的拍摄条件。', tags:['脚本生成','分镜脚本','审稿优化','标题与封面文案'] },
+  { icon: Layers3, name: '拆解、迁移、继续创作', desc: '从参考内容学方法，落到自己的行业；成果留在各自档案里。', tags:['拆解爆款','跨行业二创','自由对话','知识库查询'] },
+];
+const planLabels = {
+  free: { name:'免费体验', description:'先走通一条创作流程', caption:'新账号一次性体验额度', cta:'看看怎么开始' },
+  basic: { name:'基础会员', description:'适合日常创作', caption:'按月计费', cta:'了解创作流程' },
+  pro: { name:'专业会员', description:'适合持续创作与多客户服务', caption:'按月计费', cta:'体验创作流程' },
+  enterprise: { name:'企业版', description:'适合高频使用', caption:'按月计费', cta:'了解全部能力' },
+};
+const FAQ = [
+  ['会得到什么样的内容？','从选题、口播脚本，到镜头表、拍摄清单和标题与封面文案。你可以选择需要的板块，查看结果后继续细化。'],
+  ['多个客户可以分别使用吗？','可以创建、切换客户档案。各板块参考当前档案的相关背景，历史成果按账号和档案区分，方便分别查看和继续创作。'],
+  ['拆解与跨行业二创怎么配合？','上传参考视频后，结合截图与口播分析开篇、结构和拍法；再把拆解带去二创，选择借哪几层，围绕当前档案的行业与产品改写。视频拆解当前分析前3分钟。'],
+  ['历史会保留多久？','创作历史保存在账号的云端，未主动删除就持续保留。拆解和二创还能恢复正文与当时的设置，新一轮生成参考当前档案的近期成果。'],
+  ['免费体验和会员主要差在哪？','主要是可使用的次数。免费额度是新账号的一次性体验，不按月重置；会员每期一个月，当期剩余次数不累积到下一期。部分创作板块共享同一类额度。'],
+  ['购买后如何开通？','正式网站支持微信或支付宝转账并上传凭证，管理员核对后开通。购买前可先免费体验，确认适合你的实际创作需求。'],
+];
+
+export function PreviewDetails() {
+  return <>
+    <section id="method" className="p-section">
+      <div className="p-eyebrow"><BookOpen size={15} /> 方法有体系，创作有章法</div>
+      <h2 className="p-section-title">把编导方法，<br className="sm:hidden" />用进每一条内容</h2>
+      <p className="p-section-copy">{FACTS.methods} 条公式与句式，覆盖起号、开篇、脚本结构和爆款元素。你可以选方向，也能看懂内容怎样展开。</p>
+      <div className="mt-10 grid gap-5 md:grid-cols-3">
+        <div className="p-method-card"><div className="p-method-kicker">起号方法 <span>{FACTS.tactics}</span></div><h3>{SHOWCASE_TACTICS[2].name}</h3><p>{SHOWCASE_TACTICS[2].mechanism}</p><div className="p-formula">{SHOWCASE_TACTICS[2].formula}</div><small>从观众在意的问题找到内容入口</small></div>
+        <div className="p-method-card"><div className="p-method-kicker">开篇方法 <span>{FACTS.cards}</span></div><h3>{SHOWCASE_CARDS[1].name}</h3><p>{SHOWCASE_CARDS[1].psychology}</p><div className="p-formula">{SHOWCASE_CARDS[1].formula}</div><small>开头给出继续看的理由</small></div>
+        <div className="p-method-card"><div className="p-method-kicker">脚本结构 <span>{FACTS.structures}</span></div><h3>{SHOWCASE_STRUCTURES[0].name}</h3><p>{SHOWCASE_STRUCTURES[0].coreLogic}</p><div className="p-formula">{SHOWCASE_STRUCTURES[0].formula}</div><small>情绪：{SHOWCASE_STRUCTURES[0].emotionCurve}</small></div>
+      </div>
+      <div className="p-knowledge-strip"><BookOpen size={20} className="shrink-0 text-sky-300" /><div><strong>{FACTS.docs} 篇编导资料 · {FACTS.libraries} 个专题知识库</strong><span>定位选题、脚本文案、拍摄执行等专业资料，为创作提供方法参考。</span></div><span className="p-tag hidden shrink-0 sm:inline-flex">另有 {FACTS.elements} 类爆款元素句式</span></div>
+    </section>
+    <section id="features" className="p-section">
+      <div className="p-eyebrow"><Sparkles size={15} /> 一套工作台，多个创作环节</div>
+      <h2 className="p-section-title">从认识客户，<br className="sm:hidden" />到准备开拍</h2>
+      <p className="p-section-copy">{FACTS.boards} 个创作板块，按任务使用。从前采和定位开始，也可以直接从眼前的选题、脚本或参考视频开始。</p>
+      <div className="mt-10 grid gap-5 sm:grid-cols-2">{groups.map((g,i)=><div className="p-feature-card" key={g.name}><div className="flex items-start justify-between"><div className="p-feature-icon"><g.icon size={22} /></div><span className="font-mono text-[12px] text-slate-600">0{i+1}</span></div><h3>{g.name}</h3><p>{g.desc}</p><div className="mt-5 flex flex-wrap gap-2">{g.tags.map(t=><span key={t} className="p-tag">{t}</span>)}</div></div>)}</div>
+    </section>
+    <section id="pricing" className="p-section">
+      <div className="p-eyebrow">按创作频率，选择适合的额度</div>
+      <h2 className="p-section-title">先体验，再决定</h2>
+      <p className="p-section-copy">核心创作板块均可体验。需要更多创作次数时，再选择与你的工作量匹配的套餐。</p>
+      <div className="p-pricing-grid mt-11">{(Object.keys(planLabels) as (keyof typeof planLabels)[]).map(id=>{
+        const plan=SUBSCRIPTION_PLANS[id]; const label=planLabels[id]; const pro=id==='pro';
+        const quota=(n:number)=>n===-1?'不限次数':`${n} 次${id==='free'?'':' / 月'}`;
+        return <article key={id} className={`p-price-card ${pro?'is-featured':''}`}>
+          {pro&&<span className="p-price-ribbon">适合持续创作</span>}
+          <h3>{label.name}</h3><p className="p-price-description">{label.description}</p>
+          <div className="p-price-value"><span>¥</span>{plan.price}<small>{id==='free'?'':' / 月'}</small></div>
+          <p className="mb-6 text-[11px] text-slate-500">{label.caption}</p>
+          <ul className="space-y-3 text-[12px] text-slate-300">{[['脚本额度',quota(plan.quotas.script)],['拆解额度',quota(plan.quotas.breakdown)],['二创额度',quota(plan.quotas.remix)],['知识查询',quota(plan.quotas.knowledge)],['档案与云端历史','各档均可使用']].map(([name,value])=><li key={name} className="flex items-center gap-2"><Check size={13} className="shrink-0 text-sky-300" /><span>{name}</span><span className="ml-auto text-slate-100">{value}</span></li>)}</ul>
+          <a href="#studio" className={`p-button mt-7 w-full ${pro?'p-button-primary':'p-button-secondary'}`}>{label.cta}<ArrowRight size={14} /></a>
+          <details className="p-quota-details"><summary>查看全部额度 <ChevronDown size={12} /></summary><div>{COUNTED_FEATURES.map(f=><p key={f.key}><span>{f.name==='标题封面'?'标题与封面文案':f.name}</span><span>{quota(plan.quotas[f.key])}</span></p>)}</div></details>
+        </article>;
+      })}</div>
+      <div className="p-pricing-note"><strong>额度按类别计量，部分板块共享次数。</strong>账号定位、商业定位、内容定位与创作简报共用定位额度；脚本生成、起号方案与开篇钩子共用脚本额度。会员按月计费，当期未用完的次数不累计。</div>
+    </section>
+    <section className="p-section p-faq-section">
+      <div><div className="p-eyebrow"><MessageCircle size={15} /> 你可能还想了解</div><h2 className="p-section-title">开始之前，<br />把问题说清楚</h2><p className="p-section-copy">知道能做什么、会得到什么，<br className="hidden lg:block" />再开始你的第一轮创作。</p></div>
+      <div className="p-faq-list">{FAQ.map(([q,a])=><details key={q}><summary>{q}<ChevronDown size={16} /></summary><p>{a}</p></details>)}</div>
+    </section>
+    <section className="p-section pt-0"><div className="p-bottom-cta"><div className="p-eyebrow"><FileSearch size={15} /> 开物 · AI 编导工作台</div><h2>下一条内容，<br />有方法，也有你的生意</h2><p>把客户背景整理好，让想法一步步变成可拍的方案。</p><a className="p-button p-button-primary" href="#try">先看看你的行业怎么拍 <ArrowRight size={16} /></a></div></section>
+  </>;
+}

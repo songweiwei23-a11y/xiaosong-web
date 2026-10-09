@@ -40,7 +40,8 @@ describe('创作闭环', () => {
 
   it.each(CREATION_DESTINATIONS.map((d) => d.id))('「%s」能接收带过来的内容', (board) => {
     expect(fs.existsSync(path.join(DASH, board, 'page.tsx')), `${board} 页面不存在`).toBe(true);
-    expect(pageCode(board), `${board} 没有 takeHandoff，带过去的内容会丢`).toMatch(/takeHandoff\(/);
+    const receiver = pageCode(board).includes('useCreationBridge(') ? readCode('hooks/useCreationBridge.ts') : pageCode(board);
+    expect(receiver, `${board} 没有交接接收者，带过去的内容会丢`).toMatch(/takeHandoff\(/);
   });
 
   it('定位类和成交理由能进：带入的内容进补充说明 / 店铺特色，点生成就纳入分析', () => {
@@ -67,7 +68,8 @@ describe('创作闭环', () => {
       expect(md, `${file} 没找到正文`).toBeGreaterThan(-1);
       expect(links, `${file} 的继续创作在正文前面`).toBeGreaterThan(md);
     };
-    after('components/workspace/ResultPanel.tsx', /<Markdown>\{body\}<\/Markdown>/);
+    // 正文显示的是 view：在画布里改过就是最新一版，否则就是生成稿（2026-10-04）
+    after('components/workspace/ResultPanel.tsx', /<Markdown>\{view\}<\/Markdown>/);
     after('app/dashboard/growth/page.tsx', /<Markdown>\{result\}<\/Markdown>/);
     after('components/positioning/DeepDivePage.tsx', /<Markdown>\{result\}<\/Markdown>/);
     // 顶部留一个跳到底部的按钮，结果很长时也找得到

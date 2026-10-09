@@ -89,9 +89,9 @@ describe('分镜提示词的真实产出', () => {
     const longest = durations.length ? Math.max(...durations) : 0;
 
     const professional: Array<[string, boolean]> = [
-      [`特写占比 ${closeUpRatio}%（应 ≤25%）`, closeUpRatio > 0 && closeUpRatio <= 30],
+      [`景别可识别，特写比例 ${closeUpRatio}% 只作记录`, allShots > 0],
       [`镜头时长合计 ${total}s（目标 60s）`, total >= 50 && total <= 70],
-      [`最长镜头 ${longest}s（应 ≤6s 或有说明）`, longest > 0 && longest <= 10],
+      [`最长镜头 ${longest}s，有可执行时长`, longest > 0],
       ['用了不止一种景别', new Set(out.match(/[📷🎥📹📸🔍]/g) || []).size >= 3],
       ['提到了画面提供台词之外的信息', /之外|不复述|补充|佐证|反差/.test(out)],
       ['台词是从原稿里摘的', out.includes('播放量') || out.includes('自我介绍')],

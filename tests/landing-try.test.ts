@@ -1,14 +1,14 @@
 /**
- * 首页首屏「一句话开始」+ 首页公开体验码。
+ * 首页首屏「一句话开始」+ 注册入口。
  *
  * 首屏给完全不懂的小白：说一句自己是做什么的 → 当场看到这一行的选题样例 → 注册。
- * 邀请制保留，但从首页进注册时自动带上公开体验码——小白手上没有码，看到要填码就走了。
+ * 邀请制：2026-10-04 起首页不再自动带公开体验码，注册必须找管理员要邀请码（公开码 START26 已作废）。
  * 这里守的都是"不报错、只是人流失"的那类：认错行业、码对不上、按钮还指向老地方。
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { INDUSTRY_SAMPLES, PUBLIC_TRIAL_CODE, REGISTER_URL, matchIndustry } from '@/lib/landing';
+import { INDUSTRY_SAMPLES, INVITE_CONTACT, REGISTER_URL, matchIndustry } from '@/lib/landing';
 import { readCode } from './helpers/source';
 
 describe('认行业', () => {
@@ -82,12 +82,14 @@ describe('首屏', () => {
   });
 });
 
-describe('首页公开体验码', () => {
+describe('注册必须用邀请码（2026-10-04 产品方：首页不再自动带码，邀请码找管理员）', () => {
   const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260928_public_trial_code.sql'), 'utf8');
+  const revoke = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261004_revoke_public_trial_code.sql'), 'utf8');
 
-  it('代码里的码和迁移里插入的码是同一个（对不上就是注册时"邀请码不存在"）', () => {
-    expect(migration).toContain(`'${PUBLIC_TRIAL_CODE}'`);
-    expect(REGISTER_URL).toBe(`/login?mode=register&code=${PUBLIC_TRIAL_CODE}`);
+  it('首页注册链接不带码；公开码 START26 由迁移作废', () => {
+    expect(REGISTER_URL).toBe('/login?mode=register');
+    expect(REGISTER_URL).not.toMatch(/code=/);
+    expect(revoke).toMatch(/SET status = 'revoked'[\s\S]*upper\(code\) = 'START26'/);
   });
 
   it('兑换函数支持多人共用，一次性的旧码行为不变', () => {
@@ -99,17 +101,20 @@ describe('首页公开体验码', () => {
     expect(migration).toMatch(/REVOKE ALL ON FUNCTION claim_invitation_code\(TEXT, UUID\) FROM anon/);
   });
 
-  it('首页所有"开始用"的按钮都进注册（码已填好），不再把人扔到登录框', () => {
+  it('首页所有"开始用"的按钮都进注册页，不再把人扔到登录框', () => {
     const home = readCode('app/page.tsx');
     expect((home.match(/href=\{REGISTER_URL\}/g) ?? []).length).toBeGreaterThanOrEqual(3);
     expect(readCode('components/landing/hero/TryHero.tsx')).toMatch(/href=\{REGISTER_URL\}/);
     expect(readCode('components/landing/LandingNavCTA.tsx')).toMatch(/href=\{REGISTER_URL\}[\s\S]{0,200}免费试用/);
   });
 
-  it('登录页保留首页注册链接的参数：直接打开注册、码填好', () => {
+  it('注册页：没带码时写清楚找管理员要；管理员发的带码链接仍自动填好', () => {
     const login = readCode('app/login/page.tsx');
     expect(login).toMatch(/q\.get\("mode"\) === "register"\) setIsLogin\(false\)/);
     expect(login).toMatch(/setInviteCode\(code\)/);
-    expect(login).toContain('体验码已经帮你填好了');
+    expect(login).toContain('邀请码已经帮你填好了');
+    expect(login).toMatch(/: INVITE_CONTACT\}/);
+    expect(INVITE_CONTACT).toMatch(/管理员微信 13240286600/);
+    expect(login).not.toContain('体验码已经帮你填好了');
   });
 });

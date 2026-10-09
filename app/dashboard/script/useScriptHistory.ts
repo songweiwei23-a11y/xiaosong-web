@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { profileHistoryQuery } from '@/lib/profile-history';
 import { confirmDialog, notify } from "@/components/ui/feedback";
+import { postSafely } from "@/lib/safe-post";
 
 /**
  * 脚本历史记录 + 持续对话弹窗状态。
@@ -91,7 +92,7 @@ export function useScriptHistory() {
       setIsDeleting(true);
       
       try {
-        const response = await fetch(`/api/script-history?id=${id}`, { method: "DELETE" });
+        const response = await postSafely(`/api/script-history?id=${id}`, { method: "DELETE" });
         if (response.ok) {
           setScriptHistory(prev => prev.filter(item => item.id !== id));
           notify("✓ 删除成功");

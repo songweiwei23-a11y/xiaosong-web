@@ -119,9 +119,11 @@ describe('标题提示词', () => {
     expect(p).toContain('教你看懂');
   });
 
-  it('要求每个标题赌的动机不同，A/B 测试才有意义', () => {
+  it('标题候选在同一主问题内比较表达，不强凑不同动机', () => {
     const p = buildTitlePrompt(base);
-    expect(p).toContain('点击动机必须不同');
+    expect(p).toContain('围绕同一主问题');
+    expect(p).toContain('允许使用同一钩子卡');
+    expect(p).not.toContain('点击动机必须不同');
   });
 
   it('生成数量如实传达', () => {
@@ -161,8 +163,9 @@ describe('分镜提示词', () => {
 
   it('把景别节奏和镜头时长写清楚了', () => {
     const p = buildStoryboardPrompt(base);
-    expect(p).toContain('2-4 秒');
-    expect(p).toContain('开场 3 秒内至少切');
+    expect(p).toContain('2-4秒');
+    expect(p).toContain('不强制前3秒切两镜');
+    expect(p).not.toContain('开场 3 秒内至少切');
   });
 
   it('运镜带手机拍摄的现实约束', () => {

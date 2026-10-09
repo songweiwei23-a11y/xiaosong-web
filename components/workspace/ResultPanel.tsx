@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from 'next/navigation';
 import { Markdown } from "@/components/markdown";
-import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, ArrowDown, FileText, type LucideIcon } from "lucide-react";
+import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, ArrowDown, FileText, PenLine, type LucideIcon } from "lucide-react";
+import { ResultCanvas } from '@/components/chat/ResultCanvas';
+import { addVersion, type CanvasVersion } from '@/lib/canvas';
+import { CANVAS_TASK_BY_BOARD, saveResultVersions } from '@/lib/result-versions';
+import { getActiveProfileId } from '@/lib/active-profile';
+import { buildContextBlock, type ContextModule } from '@/lib/creator-context';
 import { notify } from "@/components/ui/feedback";
 import { extractPlainCopy } from "@/lib/script-copy";
 import {
   splitQualityReport,
   parseQualitySummary,
-  estimateSpeechStats,
+  displayQualityReport,
+  resultStats,
   formatDuration,
 } from "@/lib/script-result-utils";
 import { EmptyState } from "./EmptyState";
@@ -19,8 +25,12 @@ import type { CreationContext } from '@/lib/creation-flow';
 import { CREATION_SOURCES } from '@/lib/creation-flow';
 import { splitRemixPlans } from '@/lib/remix-plans';
 import { TabooScan } from './TabooScan';
+import { FactCheckNotice } from './FactCheckNotice';
+import { stripSelfCert } from '@/lib/self-cert';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { PreferenceHint } from '@/components/preferences/PreferenceHint';
 import { reportQuality } from '@/lib/quality-report';
+import { buildFactFixContext, factCheckCreationSource } from '@/lib/fact-fix';
 import type { ResolvedMix } from '@/lib/content-mix';
 
 /**
@@ -33,6 +43,12 @@ import type { ResolvedMix } from '@/lib/content-mix';
  * 质量评分是脚本页独有的，做成可选：其余页面传 showQuality={false} 即可，
  * 组件内部照样会把误拼进正文的报告段落剥掉，避免复制时带出来。
  */
+/** 画布改写时带哪个板块的账号背景（口吻、禁忌） */
+const CONTEXT_BOARD: Record<string, ContextModule> = {
+  topic: 'topic', script: 'script', storyboard: 'storyboard', review: 'review', title: 'title',
+  growth: 'growth', remix: 'remix', breakdown: 'breakdown', direction: 'direction', 'deal-reason': 'dealReason',
+};
+
 /** 生成完之后可以直接去的下一步 */
 export interface NextAction {
   label: string;
@@ -61,6 +77,7 @@ export function ResultPanel({
   flowContext,
   individualPlans = false,
   qualityMix,
+  canvasTaskType,
 }: {
   result: string;
   isGenerating: boolean;
@@ -95,26 +112,79 @@ export function ResultPanel({
   individualPlans?: boolean;
   /** 按配比出的（选题、方向）：生成完体检时核对条数 */
   qualityMix?: { resolved: ResolvedMix; count: number } | null;
+  /** 画布版本存成哪种任务的记录；不传按板块定（开篇页一页两种任务，自己传） */
+  canvasTaskType?: string;
 }) {
   // 拆分与统计只依赖 result，用 memo 避免流式输出时逐字符重算
   const pathname = usePathname();
   const supportsCreationLinks = Boolean(CREATION_SOURCES[pathname?.split('/')[2] || '']);
   const { body, report, stats, quality } = useMemo(() => {
     const split = splitQualityReport(result);
+    // 模型自称「自检通过 / 无虚构」一律删掉再展示、复制、带去下一步（lib/self-cert）：它不可信，真假以程序核对为准
+    const cleanBody = stripSelfCert(split.body);
     return {
-      body: split.body,
+      body: cleanBody,
       report: split.report,
-      stats: estimateSpeechStats(split.body),
+      stats: resultStats(cleanBody),
       quality: parseQualitySummary(split.report),
     };
   }, [result]);
-  const planParts = useMemo(() => individualPlans ? splitRemixPlans(body) : null, [body, individualPlans]);
+  /*
+   * 结果画布（2026-10-04 接入各创作板块）：直接改、选中一段让 AI 改、锁定原文、比较版本。
+   * 保存的版本存成一条「画布改稿」历史记录（lib/result-versions），之后这里显示、复制、继续创作都用最新一版；
+   * 重新生成了新结果，画布和改稿状态跟着清掉。
+   */
+  const segment = pathname?.split('/')[2] || '';
+  const canvasTask = canvasTaskType ?? CANVAS_TASK_BY_BOARD[segment];
+  const [canvasOpen, setCanvasOpen] = useState(false);
+  const [canvas, setCanvas] = useState<{ base: string; id: string | null; versions: CanvasVersion[] } | null>(null);
+  const adopted = canvas && canvas.base === body && canvas.versions.length > 1 ? canvas.versions[canvas.versions.length - 1].content : null;
+  const view = adopted ?? body;
+  useEffect(() => { if (isGenerating) setCanvasOpen(false); }, [isGenerating]);
+  const openCanvas = () => {
+    if (!canvas || canvas.base !== body) setCanvas({ base: body, id: null, versions: [{ content: body, at: Date.now(), note: '生成稿' }] });
+    setCanvasOpen(true);
+  };
+  const saveCanvas = async (versions: CanvasVersion[]): Promise<boolean> => {
+    if (!canvas || !canvasTask) return false;
+    try {
+      const id = await saveResultVersions({
+        id: canvas.id, taskType: canvasTask, workId: flowContext?.workId ?? null, profileId: getActiveProfileId(), versions,
+        base: { creationSettings: flowContext?.settings, originContent: flowContext?.originContent },
+      });
+      setCanvas({ base: canvas.base, id, versions });
+      return true;
+    } catch (e) {
+      notify((e as Error).message, 'error');
+      return false;
+    }
+  };
+  /** 「按资料修正」改好的稿子：存成画布里新的一版（原稿还在，能对比、能退回） */
+  const adoptFix = async (fixed: string): Promise<boolean> => {
+    if (!canvasTask) return false;
+    const same = !!canvas && canvas.base === body;
+    const base: CanvasVersion[] = same ? canvas!.versions : [{ content: body, at: Date.now(), note: '生成稿' }];
+    const versions = addVersion(base, fixed, '按资料修正');
+    try {
+      const id = await saveResultVersions({
+        id: same ? canvas!.id : null, taskType: canvasTask, workId: flowContext?.workId ?? null, profileId: getActiveProfileId(), versions,
+        base: { creationSettings: flowContext?.settings, originContent: flowContext?.originContent },
+      });
+      setCanvas({ base: body, id, versions });
+      notify('已按资料修正，存成新的一版；原稿在画布里还能看到');
+      return true;
+    } catch (e) {
+      notify((e as Error).message, 'error');
+      return false;
+    }
+  };
+  const planParts = useMemo(() => individualPlans ? splitRemixPlans(view) : null, [view, individualPlans]);
   /*
    * 结果里有「纯文字文案」这一节（脚本生成、审稿优化都有）就在顶部给「复制纯文案」：
    * 只要念出来的话，去提词器、配音、发给出镜的人。
    * 原来这个按钮是脚本页传进来的 nextActions，有了「继续创作」之后 nextActions 不再显示，按钮跟着没了
    */
-  const plainCopy = useMemo(() => (isGenerating ? '' : extractPlainCopy(body)), [body, isGenerating]);
+  const plainCopy = useMemo(() => (isGenerating ? '' : extractPlainCopy(view)), [view, isGenerating]);
   const proseClassName = `prose prose-slate dark:prose-invert max-w-none prose-headings:tracking-tight prose-headings:font-semibold prose-h1:text-xl prose-h2:text-[17px] prose-h3:text-[15px] prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px] prose-strong:text-foreground prose-hr:border-border/60 ${bodyClassName ?? ''}`;
 
   /*
@@ -135,13 +205,16 @@ export function ResultPanel({
    */
   const { context: qualityCtx } = useCreatorContext();
   const generatingBefore = useRef(false);
+  /** 刚生成完的那份原稿：只对它自动按资料修正（翻历史、刷新恢复的不自动跑） */
+  const [freshBody, setFreshBody] = useState<string | null>(null);
   useEffect(() => {
     if (generatingBefore.current && !isGenerating && body) {
       const seg = pathname?.split('/')[2] || '';
-      reportQuality({ taskType: CREATION_SOURCES[seg] || seg || '生成', output: body, profile: qualityCtx.profile, mix: qualityMix });
+      reportQuality({ taskType: CREATION_SOURCES[seg] || seg || '生成', output: body, profile: qualityCtx.profile, mix: qualityMix, source: flowContext?.originContent });
+      setFreshBody(body);
     }
     generatingBefore.current = isGenerating;
-  }, [isGenerating, body, pathname, qualityCtx.profile, qualityMix]);
+  }, [isGenerating, body, pathname, qualityCtx.profile, qualityMix, flowContext?.originContent]);
 
   if (!result && !isGenerating) {
     return (
@@ -162,10 +235,11 @@ export function ResultPanel({
             </span>
           ) : (
             showStats &&
-            stats.chars > 0 && (
+            stats.totalChars > 0 && (
               <div className="flex items-center gap-1.5">
-                <Stat icon={Type} text={`${stats.chars} 字`} />
-                <Stat icon={Clock} text={`约 ${formatDuration(stats.seconds)}`} />
+                {/* 整份字数和真正要念的分开（2026-10-07 体检 B01）：认不出台词就不估时长 */}
+                <Stat icon={Type} text={stats.spokenChars ? `口播 ${stats.spokenChars} 字` : `${stats.totalChars} 字`} />
+                {stats.spokenChars > 0 && <Stat icon={Clock} text={`念完约 ${formatDuration(stats.seconds)}`} />}
               </div>
             )
           )}
@@ -174,11 +248,12 @@ export function ResultPanel({
         {body && !isGenerating && (
           <div className="flex gap-2">
             {supportsCreationLinks && <ActionButton icon={ArrowDown} label="继续创作" onClick={() => document.getElementById(individualPlans ? "remix-continuation" : "creation-links")?.scrollIntoView({ behavior: "smooth", block: "start" })} />}
+            {canvasTask && supportsCreationLinks && <ActionButton icon={PenLine} label={adopted ? `画布第 ${canvas!.versions.length} 版` : "在画布里改"} onClick={openCanvas} />}
             {onContinue && <ActionButton icon={MessageCircle} label="继续对话" onClick={onContinue} />}
-            {/* 复制与下载只取正文，不含质量报告 */}
+            {/* 复制与下载只取正文，不含质量报告；在画布里改过的取最新一版 */}
             {plainCopy && <ActionButton icon={FileText} label="复制纯文案" onClick={() => { navigator.clipboard?.writeText(plainCopy); notify("纯文案已复制：只有要念的话，可以直接贴进提词器"); }} />}
-            {onCopy && <ActionButton icon={Copy} label="复制" onClick={() => onCopy(body)} />}
-            {onDownload && <ActionButton icon={Download} label="下载" onClick={() => onDownload(body)} />}
+            {onCopy && <ActionButton icon={Copy} label="复制" onClick={() => onCopy(view)} />}
+            {onDownload && <ActionButton icon={Download} label="下载" onClick={() => onDownload(view)} />}
           </div>
         )}
       </div>
@@ -196,6 +271,12 @@ export function ResultPanel({
         </>
       ) : body ? (
         <article className="glass-panel rounded-2xl px-4 py-5 sm:px-7 sm:py-6">
+          {adopted && !isGenerating && (
+            <p className="mb-3 flex flex-wrap items-center gap-2 text-[12px] text-primary">
+              <PenLine className="h-3.5 w-3.5" />这是在画布里改过的第 {canvas!.versions.length} 版（已保存），复制、继续创作都用这一版
+              <button type="button" onClick={openCanvas} className="underline">打开画布</button>
+            </p>
+          )}
           <div
             className={`prose prose-slate dark:prose-invert max-w-none
                        prose-headings:tracking-tight prose-headings:font-semibold
@@ -203,7 +284,7 @@ export function ResultPanel({
                        prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px]
                        prose-strong:text-foreground prose-hr:border-border/60 ${bodyClassName ?? ""}`}
           >
-            <Markdown>{body}</Markdown>
+            <Markdown>{view}</Markdown>
           </div>
 
           {isGenerating && (
@@ -219,23 +300,54 @@ export function ResultPanel({
         </div>
       )}
 
+      {/* 这几处请核对（2026-10-05）：资料里找不到出处的价格、百分比、见证、承诺……查到才出现 */}
+      {body && !isGenerating && (
+        <FactCheckNotice
+          text={view}
+          taskType={CREATION_SOURCES[segment] || segment}
+          profile={qualityCtx.profile}
+          source={factCheckCreationSource(flowContext)}
+          context={buildFactFixContext(flowContext, buildContextBlock(qualityCtx, CONTEXT_BOARD[segment] ?? 'script'))}
+          onFix={canvasTask ? adoptFix : undefined}
+          autoFix={!!canvasTask && freshBody === body}
+          autoKey={body}
+        />
+      )}
       {showQuality && report && !isGenerating && <QualityCard report={report} quality={quality} />}
 
       {/* 各页面自己的核对结果。紧跟正文，因为它说的就是上面这份内容对不对 */}
       {body && !isGenerating && footer}
       {/* 禁忌兜底：平台红线 + 行业禁忌词（lib/taboos），命中了就标出来 */}
-      {body && !isGenerating && <TabooScan body={body} onContinue={onContinue} />}
+      {/* 我的创作偏好：这次按哪些偏好写的（lib/preferences），写稿类板块才有 */}
+      {body && !isGenerating && <PreferenceHint board={CONTEXT_BOARD[segment] ?? 'script'} />}
+      {body && !isGenerating && <TabooScan body={view} onContinue={onContinue} />}
       {/*
        * 继续创作 / 收藏：放在正文底部（2026-10-02 产品方要求）。原来在正文上面，
        * 用户读完往下找下一步找不到；而且顶部那时还没读内容，不知道该勾哪几条。
        * 顶部按钮排里留了一个「继续创作 ↓」跳到这里，结果很长时也找得到。
        */}
-      {body && !isGenerating && !individualPlans && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={body} context={flowContext} /></div>}
-      {body && !isGenerating && planParts && <RemixContinuation body={body} plans={planParts.plans} context={flowContext} />}
+      {body && !isGenerating && !individualPlans && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={view} context={flowContext} /></div>}
+      {body && !isGenerating && planParts && <RemixContinuation body={view} plans={planParts.plans} context={flowContext} />}
+
+      {/* 画布：右侧抽屉（手机全屏）。关掉时有未保存修改会先确认，草稿留在本机 */}
+      {canvasOpen && canvas && (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/30">
+          <ResultCanvas
+            versions={canvas.versions}
+            onChange={saveCanvas}
+            onClose={() => setCanvasOpen(false)}
+            profileContext={buildContextBlock(qualityCtx, CONTEXT_BOARD[segment] ?? 'script')}
+            profileId={getActiveProfileId()}
+            creationContext={flowContext}
+            draftKey={`result:${segment}:${canvas.base.length}:${canvas.base.slice(0, 40)}`}
+          />
+        </div>
+      )}
 
       {/* 接下来：放在正文之后，因为它是「读完再决定」的动作，
           摆在顶部会和复制下载抢位置，也不符合阅读顺序 */}
       {body && !isGenerating && !individualPlans && !supportsCreationLinks && nextActions && nextActions.length > 0 && (
+        // 只有不支持「继续创作」的板块才显示这一排；传给按钮的是最新一版
         <div className="glass-panel rounded-2xl p-4 sm:p-5">
           <p className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
             接下来
@@ -245,7 +357,7 @@ export function ResultPanel({
               <button
                 key={a.label}
                 type="button"
-                onClick={() => a.onClick(body)}
+                onClick={() => a.onClick(view)}
                 className="glass-panel glass-interactive group flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium text-foreground"
               >
                 <a.icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
@@ -291,7 +403,11 @@ function ActionButton({
   );
 }
 
-/** 分数用横条表示——读「9.0 / 10.0」要在脑子里换算，看条子一眼就有概念 */
+/**
+ * 结构检查（2026-10-05 质量整改）：原来显示「9.0 / 10 · MCN级 · 达标」。那个分只看格式要素齐不齐，
+ * 没经过编导校准、不核对事实，包装成分数和等级给了过强的可信感。现在只说格式要素齐不齐、还缺哪几项；
+ * 事实核对在正文下面另一块（FactCheckNotice）。旧记录里的分数、等级也不再显示。
+ */
 function QualityCard({
   report,
   quality,
@@ -299,56 +415,15 @@ function QualityCard({
   report: string;
   quality: ReturnType<typeof parseQualitySummary>;
 }) {
-  const score = quality.score;
-  const pct = score !== null ? Math.max(0, Math.min(100, score * 10)) : 0;
-  const tone = score === null ? "muted" : score >= 9 ? "emerald" : score >= 8 ? "amber" : "rose";
-
-  const bar = {
-    muted: "bg-foreground/30",
-    emerald: "bg-emerald-500",
-    amber: "bg-amber-500",
-    rose: "bg-rose-500",
-  }[tone];
-  const text = {
-    muted: "text-muted-foreground",
-    emerald: "text-emerald-500",
-    amber: "text-amber-500",
-    rose: "text-rose-500",
-  }[tone];
-
+  const label = quality.structure || (quality.passed ? "格式要素基本齐全" : "有待补的格式要素");
+  const ok = /齐全/.test(label);
   return (
     <div className="glass-panel rounded-2xl p-4 sm:p-5">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <span className="text-[13px] font-medium text-foreground">脚本质量</span>
-        {score !== null && (
-          <>
-            <span className={`text-lg font-semibold tabular-nums ${text}`}>
-              {score.toFixed(1)}
-              <span className="ml-0.5 text-[11px] font-normal text-muted-foreground">/ 10</span>
-            </span>
-            {quality.level && (
-              <span className="rounded-full bg-foreground/[0.06] px-2 py-0.5 text-[11px] text-muted-foreground">
-                {quality.level}
-              </span>
-            )}
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] ${
-                quality.passed
-                  ? "bg-emerald-500/15 text-emerald-500"
-                  : "bg-rose-500/15 text-rose-500"
-              }`}
-            >
-              {quality.passed ? "达标" : "需改进"}
-            </span>
-          </>
-        )}
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <span className="text-[13px] font-medium text-foreground">结构检查</span>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] ${ok ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"}`}>{label}</span>
       </div>
-
-      {score !== null && (
-        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
-          <div className={`h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} />
-        </div>
-      )}
+      <p className="mb-3 text-[11.5px] text-muted-foreground">只看钩子、金句、秒数、镜头这些格式要素齐不齐，不代表内容好坏，也不核对事实。</p>
 
       <div
         className="prose prose-slate dark:prose-invert max-w-none
@@ -356,7 +431,7 @@ function QualityCard({
                    prose-h2:hidden prose-h3:text-[12px] prose-h3:mt-3 prose-h3:mb-1.5
                    prose-h3:text-muted-foreground prose-strong:text-foreground"
       >
-        <Markdown>{report}</Markdown>
+        <Markdown>{displayQualityReport(report)}</Markdown>
       </div>
     </div>
   );

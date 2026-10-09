@@ -32,6 +32,7 @@ export const SEARCH_TOPIC_HINT: Record<string, string> = {
   跨行业二创: '跨行业借鉴 素材库 开篇结构 文案结构 呈现形式 金句',
   // 带着目的找方向：内容配比、三种视频的目的、选题来源、起号打法
   创作方向: '内容方向 内容配比 流量型 人设型 变现型 选题来源 起号打法 成交路径',
+  内容规划: '内容配比 流量型 人设型 变现型 内容方向 更新频率 账号阶段 多元四类',
   自由对话: '',
   // 分镜页的推荐按钮：它只是让模型读一遍脚本、回一段 JSON 配置，
   // 检索知识库帮不上忙，留空即可
@@ -95,6 +96,10 @@ export function buildSearchQuery(
     if (!obj || typeof obj !== 'object') return;
     for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
       if (SEARCH_SKIP_FIELDS.has(k)) continue;
+      if (k === 'reviewFocus') {
+        if (taskType === '审稿优化' && typeof v === 'string' && v.trim()) parts.push(squash(v, 100));
+        continue;
+      }
       if (k === 'inputs') {
         collect(v);
         continue;

@@ -1,0 +1,187 @@
+{
+  "time": "2026-10-02T03:38:01.819Z",
+  "tests": [
+    {
+      "name": "关闭联网普通创作: HTTP 成功",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "关闭联网普通创作: 正确分支与回答",
+      "passed": true,
+      "searches": 0,
+      "errors": [],
+      "nodes": [
+        {
+          "title": "开始",
+          "status": "succeeded"
+        },
+        {
+          "title": "筛选文档附件",
+          "status": "succeeded"
+        },
+        {
+          "title": "联网授权闸门",
+          "status": "succeeded"
+        },
+        {
+          "title": "读取文档正文",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮未联网",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮联网参考",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 2",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 3",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 4",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 5",
+          "status": "succeeded"
+        },
+        {
+          "title": "Claude 编导助手",
+          "status": "succeeded"
+        },
+        {
+          "title": "输出",
+          "status": "succeeded"
+        }
+      ],
+      "answer": "这样改：\n\n**❌ 原版（营销腔+感受词）：**\n\"我们店的串串很好吃\"\n\n**✅ 改写版（画面感+细节）：**\n\"昨天有个客人，串串才上桌就烫嘴吃，吃完又加了三轮，走的时候问我明天几点开门。\"\n\n---\n\n**改写逻辑：**\n- 删掉\"很好吃\"这种感受词\n- 用**客人的动作**（烫嘴吃、加三轮、问开门时间）证明好吃\n- 开篇就是个小故事钩子，有画面、有情绪\n\n如果你想要不同风格的开篇（比如悬念型、对比型），告诉我具体场景，我再给你调整。"
+    },
+    {
+      "name": "开启阿里云联网: HTTP 成功",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "开启阿里云联网: 正确分支与回答",
+      "passed": true,
+      "searches": 1,
+      "errors": [],
+      "nodes": [
+        {
+          "title": "开始",
+          "status": "succeeded"
+        },
+        {
+          "title": "筛选文档附件",
+          "status": "succeeded"
+        },
+        {
+          "title": "联网授权闸门",
+          "status": "succeeded"
+        },
+        {
+          "title": "读取文档正文",
+          "status": "succeeded"
+        },
+        {
+          "title": "准备搜索请求",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 2",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 3",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 5",
+          "status": "succeeded"
+        },
+        {
+          "title": "知识检索 4",
+          "status": "succeeded"
+        },
+        {
+          "title": "阿里云联网搜索 Lite",
+          "status": "succeeded"
+        },
+        {
+          "title": "整理联网结果",
+          "status": "succeeded"
+        },
+        {
+          "title": "本轮联网参考",
+          "status": "succeeded"
+        },
+        {
+          "title": "Claude 编导助手",
+          "status": "succeeded"
+        },
+        {
+          "title": "输出",
+          "status": "succeeded"
+        }
+      ],
+      "answer": "根据阿里云官方文档，**联网搜索 WebSearch Lite 版本**当前收费为：\n\n**国内版 CNLiteBasic：8 元/千次**\n\n- 按量付费（后付费），按日结算\n- 默认开通 10 QPS 性能规格\n- 计量规则：HTTP 响应码 < 400 时计为有效请求\n\n**官方来源：**\nhttps://help.aliyun.com/zh/document_detail/2862023.html\n\n注：该文档发布时间为 2026-08-03，价格以阿里云控制台实际显示为准。"
+    },
+    {
+      "name": "阿里云接口返回真实来源",
+      "passed": true,
+      "httpStatus": 200,
+      "sources": [
+        {
+          "title": "阿里云搜索智能体转收费后，联网检索这样接更稳",
+          "url": "https://m.toutiao.com/a7680071060355613238/"
+        },
+        {
+          "title": "联网搜索WebSearch 计费说明 - 阿里云文档",
+          "url": "https://help.aliyun.com/zh/document_detail/2862023.html"
+        },
+        {
+          "title": "开放搜索OpenSearch定价信息",
+          "url": "https://www.aliyun.com/page-source/price/detail/opensearch_"
+        },
+        {
+          "title": "AI搜索开放平台计费方式和计费项",
+          "url": "https://help.aliyun.com/document_detail/2807205.html"
+        },
+        {
+          "title": "向量检索版计费概述",
+          "url": "https://help.aliyun.com/zh/open-search/vector-search-edition/billing-overview-of-vector-search-edition"
+        },
+        {
+          "title": "向量检索版计费概述",
+          "url": "https://help.aliyun.com/document_detail/463203.html"
+        }
+      ],
+      "usage": {
+        "ops-web-search-001/lite": 1
+      }
+    },
+    {
+      "name": "实际计费类型为 Lite",
+      "passed": true
+    },
+    {
+      "name": "回答保留来源链接",
+      "passed": true
+    }
+  ]
+}

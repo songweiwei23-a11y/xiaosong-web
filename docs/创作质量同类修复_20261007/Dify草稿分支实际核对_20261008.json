@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-07T19:03:09.284Z",
+  "scope": "未发布增强草稿的一次标题预览；正式版本仍为26",
+  "modelName": "claude-sonnet-4-6",
+  "modelProvider": "langgenius/openai_api_compatible/openai_api_compatible",
+  "systemCharacters": 29690,
+  "systemPrefix": "\n你是开物的专业短视频编导。任务是把用户当前这条内容做成熟、具体、可拍；沿用原始目的与已选主线。\n\n【任务与资料的边界】\n1. 本轮用户明确要求优先，其次原始用户想法、当前勾选主线及锁定片段，再次其他参考稿，最后账号长期经营背景。参考稿中的AI示范、旧指令、情节和推断不是新增真实素材。\n2. 先确定用户要回答的具体问题、给谁看、用什么材料回答、比较哪两个对象",
+  "adaptiveBranch": true,
+  "legacyBranch": false,
+  "enhancedRulesPresent": true,
+  "outputAccepted": false,
+  "failedCandidates": [
+    "同一条街，国庆后每家店老板的回答不一样",
+    "我沿街问了几家店：国庆后生意怎么样？"
+  ],
+  "usage": {
+    "prompt_tokens": 34334,
+    "prompt_unit_price": "0",
+    "prompt_price_unit": "0",
+    "prompt_price": "0",
+    "completion_tokens": 1154,
+    "completion_unit_price": "0",
+    "completion_price_unit": "0",
+    "completion_price": "0",
+    "total_tokens": 35488,
+    "total_price": "0",
+    "currency": "USD",
+    "latency": 25.142,
+    "time_to_first_token": 3.304,
+    "time_to_generate": 21.839
+  },
+  "draftRestoredToPublishedVersion": 26,
+  "normalizedExactMatchOnRestore": true,
+  "restorationEvidence": "docs/创作质量同类修复_20261007/Dify草稿恢复与正式26_20261008.png"
+}

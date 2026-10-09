@@ -19,7 +19,7 @@ export const OUTPUT_LIBRARIES: OutputLibrary[] = [
   { id: 'review', label: '审稿库', taskTypes: ['审稿优化'], board: 'review' },
   { id: 'title', label: '标题库', taskTypes: ['标题封面'], board: 'title' },
   { id: 'opening', label: '开篇库', taskTypes: ['开篇钩子'], board: 'growth' },
-  { id: 'direction', label: '方向库', taskTypes: ['创作方向'], board: 'direction' },
+  { id: 'direction', label: '方向库', taskTypes: ['创作方向', '内容规划'], board: 'direction' },
   { id: 'plan', label: '起号方案库', taskTypes: ['起号方案'], board: 'growth' },
   { id: 'remix', label: '二创库', taskTypes: ['跨行业二创'], board: 'remix' },
   { id: 'breakdown', label: '拆解库', taskTypes: ['拆解爆款'], board: 'breakdown' },

@@ -9,6 +9,7 @@ import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import { InterviewEntry, InterviewNotesCard } from '@/components/interview/InterviewEntry'
 import { postSafely } from '@/lib/safe-post'
 import { droppedColumnsNotice } from '@/lib/persona-facts'
+import { PreferenceCard } from '@/components/preferences/PreferenceCard'
 
 /**
  * 编辑已有档案。
@@ -148,6 +149,9 @@ export default function EditProfilePage() {
               onCleared={() => setProfile({ ...profile, interview_notes: null, interview_highlights: null })}
             />
           )}
+
+          {/* 我的创作偏好（lib/preferences）：从修改、收藏、发布里学到的写法，看得见、改得了 */}
+          <PreferenceCard profileId={id} />
 
           <ProfileForm
             initial={profile}

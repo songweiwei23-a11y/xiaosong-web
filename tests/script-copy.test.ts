@@ -42,6 +42,10 @@ describe('取出纯文字文案', () => {
     expect(extractPlainCopy('### 第1步：脚本策略卡\n- x\n### 第2步：正文脚本\n镜头')).toBe('');
     expect(extractPlainCopy('')).toBe('');
   });
+  it('采访执行标记不进入提词器，主问、追问和真实台词原样保留', () => {
+    const md = '## 纯文案版本\n国庆前后，这条街上的生意到底有什么变化？\n**[第一家店]**\n老板您好。\n（按现场真实回答）\n[根据回答选择追问方向]\n能说一件让您这样判断的具体事吗？\n（继续追问）\n我说（也可能没变），您实际是哪种？\n## 分镜\n镜头1';
+    expect(extractPlainCopy(md)).toBe('国庆前后，这条街上的生意到底有什么变化？\n老板您好。\n能说一件让您这样判断的具体事吗？\n我说（也可能没变），您实际是哪种？');
+  });
 });
 
 describe('脚本页的输出顺序', () => {
@@ -52,8 +56,10 @@ describe('脚本页的输出顺序', () => {
     const steps = ['### 第1步：脚本策略卡', '### 第2步：纯文字文案', '### 第3步：正文脚本', '### 第4步：优化建议'];
     for (const s of steps) expect(at(s), s).toBeGreaterThan(0);
     for (let i = 1; i < steps.length; i++) expect(at(steps[i])).toBeGreaterThan(at(steps[i - 1]));
-    // 原来第2步正文脚本的格式硬要求原样还在
-    for (const keep of ['【开场钩子】0-8秒', '**金句**', '【镜头X】', '至少标注3处情绪波点']) expect(src).toContain(keep);
+    // 复制与镜头格式保留，但不再锁住会改变原意的金句/波点数量要求。
+    for (const keep of ['【开场钩子】0-8秒', '【镜头X】', '台词必须和这段逐字一致']) expect(src).toContain(keep);
+    expect(src).not.toContain('至少标注3处情绪波点');
+    expect(src).toContain('不强制字数，不编感悟');
     expect(src).not.toContain('### 第2步：正文脚本');
     expect(src).not.toContain('### 第3步：优化建议');
   });
@@ -86,7 +92,7 @@ describe('审稿优化的纯文字文案', () => {
 
   it('问题清单和优化稿都就近写着「不许编数字和经历」（实测编出「开车50公里」「回头客占8成」）', () => {
     const prompt = buildReviewPrompt(p);
-    const rule = /原稿和档案里\*\*没有\*\*的数字[\s\S]*?写成 X[\s\S]*?【换成你的：……】/;
+    const rule = /没有的数字、经历、事件[\s\S]*?都不补造[\s\S]*?未提供的必要信息写在文案外说明待补/;
     const list = prompt.slice(prompt.indexOf('### 3. 问题清单'), prompt.indexOf('优化后的完整脚本'));
     const opt = prompt.slice(prompt.indexOf('优化后的完整脚本'), prompt.indexOf('纯文字文案'));
     expect(list).toMatch(rule);
@@ -115,7 +121,7 @@ describe('审稿优化的纯文字文案', () => {
 
   it('结果面板顶部统一给「复制纯文案」：脚本、审稿都能用', () => {
     const panel = readCode('components/workspace/ResultPanel.tsx');
-    expect(panel).toMatch(/extractPlainCopy\(body\)/);
+    expect(panel).toMatch(/extractPlainCopy\(view\)/); // 画布里改过的取最新一版
     expect(panel).toMatch(/label="复制纯文案"/);
   });
 });

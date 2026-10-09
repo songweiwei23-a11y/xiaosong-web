@@ -1,0 +1,50 @@
+{
+  "time": "2026-10-04T03:27:02.746Z",
+  "checks": [
+    {
+      "name": "Dify six image/document attachments",
+      "status": 200,
+      "passed": true,
+      "types": [
+        "image",
+        "document"
+      ],
+      "limit": 6
+    },
+    {
+      "name": "Anonymous access denied: v_user_account_status",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "Anonymous access denied: archive_summary",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "Production route /login",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Production route /api/creator-presets",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "Production route /api/creation-sessions",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "Production route /api/result-versions",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "Production route /api/account/export",
+      "status": 401,
+      "passed": true
+    }
+  ]
+}

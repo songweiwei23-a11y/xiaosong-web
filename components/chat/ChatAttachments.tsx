@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Paperclip, FileText, Loader2, X, Download } from 'lucide-react';
 import { CHAT_FILE_ACCEPT, MAX_CHAT_FILES, MAX_CHAT_FILE_BYTES, chatFileType, chatFileUrl, chatFileSize, sanitizeAttachments, type ChatAttachment } from '@/lib/chat-attachments';
 import { throwApiError } from '@/lib/api-error';
@@ -21,11 +21,21 @@ export function AttachmentList({ files, onRemove }: { files: ChatAttachment[]; o
   </div>;
 }
 
-/** 独立草稿作用域由父级 key 决定，切换档案/会话会取消旧上传。 */
-export function AttachmentComposer({ files, onChange, onBusy, disabled }: {
+/** 上传格式说明：紧凑模式下放到上传按钮的悬停提示里 */
+export const ATTACHMENT_HINT = 'PDF、Word、Excel、PPT、文本和图片 · 每个 10 MB · 最多 6 个 · 可拖到输入框';
+
+/** 紧凑模式下由外面的工具栏按钮打开选择框、或把拖进来的文件交给它 */
+export interface AttachmentComposerHandle { open: () => void; upload: (files: File[]) => void }
+
+/**
+ * 独立草稿作用域由父级 key 决定，切换档案/会话会取消旧上传。
+ * compact（2026-10-04 自由对话一体式输入框）：不画自己那一排上传按钮和说明，只显示已选附件和报错；
+ * 上传按钮在输入框下面的工具栏里，通过 ref 的 open / upload 调用。上传逻辑完全不变。
+ */
+export const AttachmentComposer = forwardRef<AttachmentComposerHandle, {
   files: ChatAttachment[]; onChange: (files: ChatAttachment[]) => void;
-  onBusy: (busy: boolean) => void; disabled: boolean;
-}) {
+  onBusy: (busy: boolean) => void; disabled: boolean; compact?: boolean;
+}>(function AttachmentComposer({ files, onChange, onBusy, disabled, compact = false }, ref) {
   const picker = useRef<HTMLInputElement>(null);
   const current = useRef(files);
   current.current = files;
@@ -86,7 +96,12 @@ export function AttachmentComposer({ files, onChange, onBusy, disabled }: {
     if (live.current && pending.current === 0) { setUploading(false); onBusy(false); }
   };
 
-  return <div className="mx-auto mb-2 max-w-3xl"
+  useImperativeHandle(ref, () => ({
+    open: () => { if (!disabled && !uploading && files.length < MAX_CHAT_FILES) picker.current?.click(); },
+    upload: (selected: File[]) => { void upload(selected); },
+  }));
+
+  return <div className={compact ? '' : 'mx-auto mb-2 max-w-3xl'}
     onDragOver={e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
     onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); void upload(Array.from(e.dataTransfer.files)); } }}>
     <AttachmentList files={files} onRemove={disabled ? undefined : file => {
@@ -94,14 +109,14 @@ export function AttachmentComposer({ files, onChange, onBusy, disabled }: {
     }} />
     <input ref={picker} type="file" accept={CHAT_FILE_ACCEPT} multiple className="hidden" aria-label="选择图片或文档"
       onChange={e => { const selected = Array.from(e.target.files || []); e.target.value = ''; void upload(selected); }} />
-    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+    {!compact && <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       <button type="button" disabled={disabled || uploading || files.length >= MAX_CHAT_FILES}
         onClick={() => picker.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 hover:bg-muted disabled:opacity-50">
         {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
         {uploading ? '正在上传…' : '上传图片 / 文件'}
       </button>
       <span>PDF、Word、Excel、PPT、文本和图片 · 每个 10 MB · 最多 6 个 · 可拖到这里</span>
-    </div>
-    {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+    </div>}
+    {error && <p role="alert" className={compact ? 'mb-2 text-xs text-destructive' : 'mt-2 text-xs text-destructive'}>{error}</p>}
   </div>;
-}
+});

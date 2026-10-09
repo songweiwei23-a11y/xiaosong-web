@@ -75,7 +75,7 @@ describe('parseQualitySummary 解析评分', () => {
   });
 
   it('空输入不抛错', () => {
-    expect(parseQualitySummary('')).toEqual({ score: null, level: '', passed: false });
+    expect(parseQualitySummary('')).toEqual({ score: null, level: '', passed: false, structure: '' });
   });
 });
 

@@ -59,6 +59,8 @@ export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   跨行业二创: 'remix',
   // 创作方向（2026-10-02）：说目的 → 铺开方向和思路 → 推荐一个；单独一项额度
   创作方向: 'direction',
+  // 当月内容规划（2026-10-09）：和创作方向同属"先定方向"的策划，共用这一项额度，不另开库表列
+  内容规划: 'direction',
   // 前采建档（interview）不在这张表里：它不走 /api/dify/stream，有自己的接口
   // （app/api/interview/extract），直接按 'interview' 扣次数，也没有历史记录可点回去
 };

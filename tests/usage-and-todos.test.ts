@@ -34,9 +34,9 @@ describe('额度：企业版也要滚周期', () => {
   });
 
   it('每次扣减都记一条使用记录，带上任务名', () => {
-    expect(guard).toMatch(/const base = \{ user_id: userId, feature, task_type: taskType \?\? null \}/);
-    expect(guard).toMatch(/from\('usage_events'\)\.insert\(row\)/);
-    expect(readCode('app/api/dify/stream/route.ts')).toMatch(/incrementUsageServer\(userId, getFeatureFromTaskType\(body\.taskType\), body\.taskType\)/);
+    expect(guard).toContain('settleCreation(reservation, true, taskType, detail)');
+    expect(fs.readFileSync('supabase/migrations/20261003_creation_quota_reservations.sql', 'utf8')).toContain('INSERT INTO public.usage_events(user_id,feature,task_type,detail)');
+    expect(readCode('app/api/dify/stream/route.ts')).toMatch(/incrementUsageServer\(userId, getFeatureFromTaskType\(body\.taskType\), body\.taskType, undefined, reservation\)/);
   });
 
   it('额度接口每一种返回都带 monthUsed（少一个分支，那种套餐的首页就又是 0）', () => {

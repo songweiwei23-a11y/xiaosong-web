@@ -77,8 +77,9 @@ describe('接口和卡片', () => {
 
   it('可以折叠：收起后只剩标题行和进度条，收没收记在本机', () => {
     const card = readCode('components/dashboard/LaunchPlanCard.tsx');
-    expect(card).toMatch(/const COLLAPSE_KEY = "kaiwu:launch-plan-collapsed"/);
-    expect(card).toMatch(/localStorage\.setItem\(COLLAPSE_KEY, c \? "0" : "1"\)/);
+    // 2026-10-03 起按账号分开记（lib/home-prefs，老的公共键会被沿用一次），见 tests/home-entry.test.ts
+    expect(card).toMatch(/useCollapsed\("launchPlan", false\)/);
+    expect(readCode('lib/home-prefs.ts')).toMatch(/launchPlan: 'kaiwu:launch-plan-collapsed'/);
     // 进行中和没开始两种状态都能收
     expect((card.match(/onClick=\{toggleCollapsed\}/g) ?? []).length).toBe(2);
     expect(card).toMatch(/\{!collapsed && \(<>/);

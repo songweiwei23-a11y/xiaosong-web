@@ -188,8 +188,10 @@ describe('接到全站', () => {
   it('拆解爆款 → 二创：拆完一键带过去（整份报告走 sessionStorage）', () => {
     const breakdown = readCode('app/dashboard/breakdown/page.tsx');
     expect(breakdown).toMatch(/label: "拿去二创到我的店"/);
-    expect(breakdown).toMatch(/putHandoff\(\{ from: BREAKDOWN_TASK_TYPE, remixSource: \{ title: loadedFileName \|\| file\?\.name, text: body \} \}\)/);
-    expect(breakdown).toMatch(/router\.push\("\/dashboard\/remix"\)/);
+    // 2026-10-04：和「继续创作」同一套，持久保存后跳（刷新、换设备能接着），整份报告仍放在 remixSource
+    expect(breakdown).toMatch(/buildCreationHandoff\('breakdown', 'remix', body,/);
+    expect(breakdown).toMatch(/remixSource: \{ title: loadedFileName \|\| file\?\.name, text: body \}/);
+    expect(breakdown).toMatch(/openCreationSafely\(/);
     const remix = readCode('app/dashboard/remix/page.tsx');
     expect(remix).toMatch(/const h = takeHandoff\(\);\s*if \(h\) setIncomingSetup\(h\);\s*if \(h\?\.remixSource\?\.text\)/);
     // 二创页也能从拆过的视频里挑

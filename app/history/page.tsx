@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
@@ -14,6 +14,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { historyOpenUrl } from "@/lib/resume";
+import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
+import { profileHistoryQuery } from "@/lib/profile-history";
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<any[]>([]);
@@ -29,6 +31,9 @@ export default function HistoryPage() {
     if (mounted) {
       checkUserAndLoadHistory();
     }
+    // 侧边栏切了档案，换成那个档案的记录
+    return onActiveProfileChange(() => { checkUserAndLoadHistory(); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
 
   const checkUserAndLoadHistory = async () => {
@@ -54,7 +59,8 @@ export default function HistoryPage() {
     
     setLoading(true);
     try {
-      const response = await fetch('/api/script-history?taskType=all', { cache: 'no-store' });
+      // 只看当前档案的记录（2026-10-04 按档案隔离）；没选档案时看没挂档案的旧记录
+      const response = await fetch(`/api/script-history?taskType=all${profileHistoryQuery(getActiveProfileId())}`, { cache: 'no-store' });
       if (!response.ok) throw new Error('历史读取失败');
       const data = await response.json();
       setHistory(Array.isArray(data) ? data : []);

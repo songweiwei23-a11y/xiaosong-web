@@ -205,13 +205,13 @@ describe('定位做完直接能去简报', () => {
   it('定位页有一键入口并带上交接标记', () => {
     const code = readCode('app/dashboard/positioning/page.tsx');
     expect(code).toContain('一键生成创作简报');
-    expect(code).toMatch(/putHandoff\(\{\s*from:\s*'账号定位'\s*\}\)/);
-    expect(code).toContain('/dashboard/creative-brief');
+    expect(code).toContain("buildCreationHandoff('positioning', 'creative-brief', result, bridge.flowContext(result))");
+    expect(code).toContain('openCreationSafely');
   });
 
   it('简报页收到交接就自动开跑', () => {
     const code = readCode('app/dashboard/creative-brief/page.tsx');
-    expect(code).toContain('takeHandoff');
+    expect(code).toContain('useCreationBridge');
     expect(code).toMatch(/from !== '账号定位'/);
     // 只跑一次，不能每次渲染都触发
     expect(code).toContain('autoRan');

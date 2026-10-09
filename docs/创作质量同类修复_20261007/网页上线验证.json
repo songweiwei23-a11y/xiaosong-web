@@ -1,0 +1,134 @@
+{
+  "time": "2026-10-07T15:44:06.588Z",
+  "base": "https://www.biandao.icu",
+  "buildId": "kVnT4uX4YF2SrDANaAwwH",
+  "files": [
+    {
+      "file": "lib/script-design.ts",
+      "sha256": "27284726fd5d67e333cf3e58657263248707a5e5e5367dab94020ab4780ab392",
+      "match": true
+    },
+    {
+      "file": "lib/creative-craft.ts",
+      "sha256": "f38bfb2f8f4f37c7d6c262309ead68c2cfe71a1ad91c1cb353e316d2abc169c0",
+      "match": true
+    },
+    {
+      "file": "lib/enhance-prompt.ts",
+      "sha256": "5d00a1b35f75f235d47150fd5b762ea66889023ef18bc0880f60c2a4857d978b",
+      "match": true
+    },
+    {
+      "file": "lib/content-roles.ts",
+      "sha256": "773db46c852abe071c5cd1f05bd738784ac0f367b120c6477913449c549d22dd",
+      "match": true
+    },
+    {
+      "file": "lib/review-standards.ts",
+      "sha256": "c8b07bf24f16645daec93d4e640cac97a2d1412d87474160a15e4f110e78b290",
+      "match": true
+    },
+    {
+      "file": "lib/quality-checker.ts",
+      "sha256": "a49d3153dc038780b4fd88c861fa36a8f030a57139181f0d6ff5476822901fa1",
+      "match": true
+    },
+    {
+      "file": "lib/direction.ts",
+      "sha256": "7a8643a884d72dc6c50a0a7a03620742eba660a2a62449fd440a5f1d4466c00d",
+      "match": true
+    },
+    {
+      "file": "lib/storyboard-standards.ts",
+      "sha256": "36907d93442dc60b17b7f34c57ddf3ec5b8a5fd289af84fc6ff152b74172ed31",
+      "match": true
+    },
+    {
+      "file": "lib/growth-standards.ts",
+      "sha256": "61856b90ed26c8ff8e6712bcd5a13053a35849945148a808c2174965213ec186",
+      "match": true
+    },
+    {
+      "file": "lib/title-standards.ts",
+      "sha256": "2cbc5c7e8b25e0422392634efbea159ee4c6a6a3a4e89a41e0c8b92d3f8f652f",
+      "match": true
+    },
+    {
+      "file": "lib/creation-settings.ts",
+      "sha256": "2eef784ce8ab3967ff65ba453f82e29ad02f50e5016f95130c8c553557bd0d28",
+      "match": true
+    },
+    {
+      "file": "lib/quality-checks.ts",
+      "sha256": "86f649e98637e7450e7c38e1f80571a7d7588250a033c2a6023ea910c01b262c",
+      "match": true
+    },
+    {
+      "file": "lib/fact-fix.ts",
+      "sha256": "092fd81ad9a579fa0442e48ba18d9422efaa2f9149c0c7123a51b8150ecb05a2",
+      "match": true
+    },
+    {
+      "file": "app/dashboard/script/page.tsx",
+      "sha256": "65bd4b6afb73bc1fdd40fcc2dafb9e93924261413b595e53426f66165354df9a",
+      "match": true
+    },
+    {
+      "file": "app/dashboard/title/page.tsx",
+      "sha256": "06000ac0baaa4acba2d09590c3d4f7b85bbe7650cec41b8f7d0c2f067e5be3b0",
+      "match": true
+    },
+    {
+      "file": "app/dashboard/free-chat/page.tsx",
+      "sha256": "cb080692567102c8c9c66370d8fddee8274d60dd5fb41fa7b70e656f75e49a7b",
+      "match": true
+    },
+    {
+      "file": "app/dashboard/storyboard/page.tsx",
+      "sha256": "5a9f9f5c8fe999624278864b738086e8537628375fc102a967e3e6bf0dc2bd3a",
+      "match": true
+    },
+    {
+      "file": "app/dashboard/direction/page.tsx",
+      "sha256": "467476c6d2fed7731724405f39cae6da4b59c5d80e34f04b01d3260be617bbe4",
+      "match": true
+    },
+    {
+      "file": "app/dashboard/growth/page.tsx",
+      "sha256": "40bc2812e8f1503cb29f60c816012990632aa0ce9a89e2b9a038e7da9b5da9aa",
+      "match": true
+    }
+  ],
+  "checks": [
+    {
+      "route": "/",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "route": "/login",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "route": "/pricing",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "route": "/api/public/ping",
+      "status": 204,
+      "ok": true
+    },
+    {
+      "route": "/api/dify/stream (unauthenticated)",
+      "status": 401,
+      "location": null,
+      "ok": true
+    }
+  ],
+  "dify": "历史2026-10-07网页部署记录：Dify于2026-10-08发布26，随后内容复验未通过；当前网页构建与三项增量修复另见检查修复上线验证_20261008.json",
+  "backup": "/var/www/xiaosong-backup-20261007_craft_quality",
+  "continuationUpdatedAt": "2026-10-07T19:19:26.868Z",
+  "latestVerification": "docs/创作质量同类修复_20261007/检查修复上线验证_20261008.json"
+}

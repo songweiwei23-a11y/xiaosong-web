@@ -1,4 +1,7 @@
 import { NextRequest } from 'next/server';
+import { askDify } from '@/lib/dify-task';
+import { reviewSource, reviewVerificationPrompt, combinedReviewUsage, reconcileReviewSpeechStats } from '@/lib/review-verification';
+import { reserveCreation, releaseCreation, recordCreationCompletion, completionUsage, type CreationCompletion, type CreationReservation } from '@/lib/creation-quota';
 import { requireUser, requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { readJsonBody, BodyError } from '@/lib/read-body';
 import { buildSearchQuery } from '@/lib/search-query';
@@ -14,6 +17,8 @@ import {
   NO_REPEAT_LIMIT,
   NO_REPEAT_TASKS,
   ISOLATED_TASKS,
+  CURRENT_CREATIVE_TASKS,
+  wantsNewTopics,
 } from '@/lib/topic-library';
 import { loadPriorTopicTitles } from '@/lib/topic-library-server';
 import { difyErrorCode, difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
@@ -23,7 +28,13 @@ import { DURABLE_CREATIVE_TASKS, loadCreativeMemory, ownsCreativeProfile, persis
 import { PROFILE_UUID } from '@/lib/profile-history';
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { difyWebStatus } from '@/lib/dify-web-status';
-import { mergeCreationSettings, creationSettingsBlock } from '@/lib/creation-settings';
+import { mergeCreationSettings, creationSettingsBlock, hasExplicitCreationContext } from '@/lib/creation-settings';
+import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
+
+/** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
+const NO_FACT_GUARD_TASKS = new Set(['AI推荐', '前采建档']);
+import { reconcileTitleCounts, hasObviousCutoff } from '@/lib/result-reconciliation';
+import { boundedResultIssues, boundedRepairPrompt } from '@/lib/bounded-result-check';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -44,6 +55,8 @@ function difyImageFiles(ids: unknown): { files?: { type: 'image'; transfer_metho
 }
 
 export async function POST(req: NextRequest) {
+  let reservation: CreationReservation | undefined;
+  let generationCompleted = false;
   try {
     /*
      * 请求体可能是压缩 / 分块发来的（lib/safe-post：用户线路差时超过约 8KB 的 POST 会被切断）。
@@ -114,7 +127,9 @@ export async function POST(req: NextRequest) {
     // 知识库检索用的短查询，与发给模型的长指令分离，
     // 由 Dify 工作流的 5 个知识检索节点消费（start.search_query）
     const searchQuery = buildSearchQuery(body.taskType, body, originalQuery);
-    if (historyDb) query += await loadCreativeMemory(historyDb, guard.userId!, body.taskType, historyProfileId);
+    const creationSettings = mergeCreationSettings(body.creationSettings || body.historyInput?.creationSettings);
+    const explicitCreation = hasExplicitCreationContext(creationSettings);
+    if (historyDb && !explicitCreation) query += await loadCreativeMemory(historyDb, guard.userId!, body.taskType, historyProfileId);
 
     /*
      * 选题：把"已经出过的"明明白白告诉模型，禁止重出。
@@ -131,12 +146,32 @@ export async function POST(req: NextRequest) {
     if (NO_REPEAT_TASKS.has(body.taskType)) {
       // 按档案取：只防这个号自己出过的，别的号的选题不相干
       const prior = await loadPriorTopicTitles(guard.userId!, body.profileId || body.profile_id || null);
-      query += buildNoRepeatBlock(prior);
-      console.log(`[no-repeat] ${body.taskType}：附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`);
+      const source = body.inputs?.sourceReference;
+      const developSelected = typeof source === 'string' && !!source.trim()
+        && !wantsNewTopics(typeof body.inputs?.personalRequirement === 'string' ? body.inputs.personalRequirement : '');
+      query += buildNoRepeatBlock(prior, { developSelected });
+      console.log(`[no-repeat] ${body.taskType}：${developSelected ? '落实已选方向' : `附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`}`);
     }
 
-    const creationSettings = mergeCreationSettings(body.creationSettings || body.historyInput?.creationSettings);
-    if (Object.keys(creationSettings).length) query += creationSettingsBlock(creationSettings) + '\n本轮以当前带入的原稿、当前版本和这些设置为准；历史中的其他选题、方案、人群和时长不得替换本轮选择。旧 AI 稿不是已核实经营事实。';
+    const settingsBlock = creationSettingsBlock(creationSettings);
+    if (Object.keys(creationSettings).length && !query.includes(settingsBlock.trim())) query += settingsBlock + '\n本轮以当前带入的原稿、当前版本和这些设置为准；历史中的其他选题、方案、人群和时长不得替换本轮选择。旧 AI 稿不是已核实经营事实。';
+
+    /*
+     * 事实护栏（lib/fact-guard，2026-10-09 全板块实测）：档案关键事实原话 + 拼在最末尾的「别把设想写成真事」。
+     * 只给生成内容的板块；只读这个用户自己的档案
+     */
+    if (!NO_FACT_GUARD_TASKS.has(body.taskType)) {
+      const pid = body.profileId || body.profile_id || historyProfileId;
+      let profileRow: Record<string, unknown> | null = null;
+      if (typeof pid === 'string' && PROFILE_UUID.test(pid)) {
+        const { data } = await getServiceSupabase().from('user_profiles').select('product_category,account_track,competitive_advantage,unique_selling_point,team_structure').eq('id', pid).eq('user_id', guard.userId!).maybeSingle();
+        profileRow = data as Record<string, unknown> | null;
+      }
+      query += profileFactsBlock(profileRow);
+      const said = (v: unknown) => (typeof v === 'string' ? v.slice(0, 2000) : '');
+      // 用户原话可能在连续设置、个人要求，或页面带来的最初原话里（自由对话 → 方向 → 选题这条链上就是后者）
+      query += factGuardTail(userDonts([creationSettings.userIntent, creationSettings.notes, said(body.inputs?.personalRequirement), said(body.inputs?.originContent), said(body.historyInput?.originContent)]));
+    }
 
     // 【方案6：工作流 + 手动记忆】
     // 构建 Dify 请求体：query 在顶层，conversation_history 在 inputs
@@ -177,7 +212,7 @@ export async function POST(req: NextRequest) {
      * 它们需要的背景都已经明确写进这一次的提示词里了，不需要会话来带。
      * 返回的新会话 id 也不存：存了会把其他板块共用的那个窗口顶掉。
      */
-    const isolated = ISOLATED_TASKS.has(body.taskType);
+    const isolated = ISOLATED_TASKS.has(body.taskType) || explicitCreation;
     const existingConversationId = isolated ? null : await getDifyConversationId(guard.userId!, profileId);
     if (existingConversationId) {
       difyRequestBody.conversation_id = existingConversationId;
@@ -205,6 +240,9 @@ export async function POST(req: NextRequest) {
       return result;
     };
 
+    const reserved = await reserveCreation(guard.userId!, getFeatureFromTaskType(body.taskType), req, body);
+    if (!reserved.ok) return reserved.response;
+    reservation = reserved.reservation;
     let response = await callDify();
 
     // 会话可能因过期、被删或应用重建而失效。若不处理，本地存着的旧 id
@@ -223,6 +261,7 @@ export async function POST(req: NextRequest) {
     console.log('Dify response status:', response.status);
 
     if (!response.ok) {
+      await releaseCreation(reservation);
       const err = await response.text();
       console.error('Dify Error:', err);
       return new Response(JSON.stringify({ error: 'API调用失败' }), {
@@ -235,7 +274,15 @@ export async function POST(req: NextRequest) {
     let fullResponse = ''; // 收集完整回复用于保存
     let capturedConversationId = '';
     let capturedMessageId = '';
+    let completionTerminal: CreationCompletion['terminal'] | undefined;
+    let usageMetadata: Record<string,unknown> = {};
     const userId = guard.userId!;
+    const sourceForReview = body.taskType === '审稿优化' ? reviewSource(body) : '';
+    const boundedTask = body.taskType === '标题封面' || body.taskType === '跨行业二创';
+    const holdResponse = !!sourceForReview || boundedTask;
+    const expectedCount = body.taskType === '标题封面' ? creationSettings.titleCount : body.historyInput?.count;
+    // 兼容尚未刷新页面的旧客户端：主题是用户直接输入，不能扫描含通用规则的query。
+    const boundedIntent = creationSettings.userIntent || creationSettings.topic || '';
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
@@ -281,15 +328,14 @@ export async function POST(req: NextRequest) {
           try {
             while (true) {
               const { done, value } = await reader.read();
-              if (done) return creativeTask && !receivedEnd ? { kind: 'broken', error: new Error('上游缺少完成标记') } : { kind: 'done' };
-              buffer += decoder.decode(value, { stream: true });
+              buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
               const lines = buffer.split('\n');
               buffer = lines.pop() || '';
               for (const line of lines) {
-                if (!line.trim() || !line.startsWith('data: ')) continue;
+                if (!line.trim() || !line.startsWith('data:')) continue;
                 let data: any;
                 try {
-                  data = JSON.parse(line.slice(6));
+                  data = JSON.parse(line.slice(5).trim());
                 } catch (e) {
                   console.warn('Parse error:', e);
                   continue;
@@ -310,10 +356,13 @@ export async function POST(req: NextRequest) {
                 const webStatus = difyWebStatus(data);
                 if (webStatus) send({ event: 'web_search', ...webStatus, quota: webSession.quota });
                 if (failure) return { kind: 'error', message: failure };
-                if (data.event === 'message_end' || data.event === 'workflow_finished') receivedEnd = true;
+                if (data.event === 'message_end' || data.event === 'workflow_finished') {
+                  receivedEnd = true; completionTerminal = data.event;
+                  usageMetadata = {...usageMetadata,...completionUsage(data)};
+                }
 
                 // 支持两种事件类型：Chatbot 的 message 和工作流的 text_chunk
-                const text = data.answer || data.text || '';
+                const text = typeof data.answer === 'string' ? data.answer : typeof data.text === 'string' ? data.text : '';
                 const isContent = (data.event === 'message' || data.event === 'text_chunk') && text;
                 if (isContent) {
                   totalChunks++;
@@ -321,13 +370,14 @@ export async function POST(req: NextRequest) {
                   if (totalChunks === 1) {
                     console.log('✅ 开始接收内容，事件类型:', data.event);
                   }
-                  send({
+                  if (!holdResponse) send({
                     answer: text,
                     conversation_id: capturedConversationId || data.conversation_id,
                     message_id: capturedMessageId || undefined,
                   });
                 }
               }
+              if (done) return totalChunks > 0 && !receivedEnd ? { kind: 'broken', error: new Error('上游缺少完成标记') } : { kind: 'done' };
             }
           } catch (error) {
             return { kind: 'broken', error };
@@ -375,25 +425,68 @@ export async function POST(req: NextRequest) {
             if (got.status === 'done') {
               fullResponse = got.answer;
               totalChunks = Math.max(totalChunks, 1);
-              send({ event: 'message_replace', answer: got.answer, conversation_id: capturedConversationId, message_id: capturedMessageId });
+              if (!holdResponse) send({ event: 'message_replace', answer: got.answer, conversation_id: capturedConversationId, message_id: capturedMessageId });
               outcome = { kind: 'done' };
+              completionTerminal = 'recovered_message';
             } else if (got.status === 'error') {
               outcome = { kind: 'error', message: got.message };
             }
           }
 
+          if (outcome.kind === 'done' && sourceForReview && fullResponse.trim()) {
+            const requirements = typeof body.personalRequirements === 'string' ? body.personalRequirements : '';
+            const verified = await askDify(reviewVerificationPrompt(sourceForReview, requirements, fullResponse), userId, '审稿 原稿事实校对', { signal: AbortSignal.timeout(180_000) })
+              .catch(() => ({ ok: false as const, message: '审稿校对未完成' }));
+            if (!verified.ok) {
+              outcome = { kind: 'error', message: '审稿校对未完成，请重试' };
+            } else {
+              fullResponse = reconcileReviewSpeechStats(verified.text);
+              usageMetadata = combinedReviewUsage(usageMetadata, verified.completion.usage ?? {});
+              capturedConversationId = verified.completion.conversationId || capturedConversationId;
+              capturedMessageId = verified.completion.messageId || capturedMessageId;
+              completionTerminal = verified.completion.terminal;
+            }
+          }
+
+          if (outcome.kind === 'done' && boundedTask && fullResponse.trim()) {
+            const issues = boundedResultIssues(fullResponse, body.taskType, expectedCount, boundedIntent);
+            if (issues.length) {
+              const corrected = await askDify(boundedRepairPrompt(query, fullResponse, issues, boundedIntent), userId, searchQuery, {signal:AbortSignal.timeout(180_000)})
+                .catch(() => ({ok:false as const,message:'交付校对未完成'}));
+              if (!corrected.ok || boundedResultIssues(corrected.text, body.taskType, expectedCount, boundedIntent).length) {
+                outcome = {kind:'error',message:'结果未满足本轮数量或事实状态要求，请重试'};
+              } else {
+                usageMetadata = combinedReviewUsage(usageMetadata, corrected.completion.usage ?? {}, 'result_check_steps');
+                fullResponse = corrected.text;
+                capturedConversationId = corrected.completion.conversationId || capturedConversationId;
+                capturedMessageId = corrected.completion.messageId || capturedMessageId;
+                completionTerminal = corrected.completion.terminal;
+              }
+            }
+          }
+          if (outcome.kind === 'done' && hasObviousCutoff(fullResponse)) {
+            outcome = { kind: 'error', message: '回答在结构标签处中断，请重试' };
+          }
+          if (outcome.kind === 'done' && body.taskType === '标题封面') {
+            const reconciled = reconcileTitleCounts(fullResponse);
+            if (reconciled !== fullResponse) {
+              fullResponse = reconciled;
+            }
+          }
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
-            send({ event: 'error', message: friendlyDifyError(outcome.message), code: difyErrorCode(outcome.message) });
+            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
+            else send({ event: 'error', message: friendlyDifyError(outcome.message), code: difyErrorCode(outcome.message) });
           } else if (outcome.kind === 'broken') {
             console.error('Stream error:', outcome.error);
             send({ event: 'error', message: '和 AI 的连接断了，请重试' });
-          } else if (totalChunks === 0) {
+          } else if (totalChunks === 0 || !fullResponse.trim()) {
             // 正常结束却一个字没有：原来页面上就是"点了没反应"，现在明说
             console.warn('Dify 正常结束但没有任何正文');
             send({ event: 'error', message: '这次没有生成出内容，请重试' });
           } else {
             console.log('Stream done. Total chunks:', totalChunks);
+            if (holdResponse) send({ answer: fullResponse, conversation_id: capturedConversationId, message_id: capturedMessageId });
             if (historyDb && durableHistory) {
               let saved = false;
               try {
@@ -405,6 +498,12 @@ export async function POST(req: NextRequest) {
               } catch (error) { console.error('[creative-history] 存档异常', error instanceof Error ? error.message : 'unknown'); }
               send({ event: 'history_saved', saved });
             }
+            // Commit before completion: ambiguous commit failure must not release a successful generation.
+            generationCompleted = true;
+            try {
+              await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: usageMetadata }, body.taskType);
+              await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation); }
+            catch { send({ event: 'quota_warning', message: '内容已生成，额度同步稍有延迟，请保留结果' }); }
             // 结束标记：页面据此区分"写完了"和"半路断了"
             send({ event: 'message_end', conversation_id: capturedConversationId, message_id: capturedMessageId });
           }
@@ -418,15 +517,12 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // 生成成功（有内容）后，服务端扣减一次配额
-          if (outcome.kind === 'done' && totalChunks > 0) {
-            await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType);
-          }
+          if (!generationCompleted) await releaseCreation(reservation);
 
           // 持久化会话 id，使下一次同作用域的生成延续本轮对话。
           // 仅在确有内容产出时保存，避免把失败的空会话记下来。
           // 独立会话不写回共用窗口（见上面 isolated 的说明）
-          if (!isolated && outcome.kind === 'done' && totalChunks > 0 && capturedConversationId) {
+          if ((!isolated || CURRENT_CREATIVE_TASKS.has(body.taskType)) && generationCompleted && outcome.kind === 'done' && totalChunks > 0 && capturedConversationId) {
             await saveDifyConversationId(
               userId,
               capturedConversationId,
@@ -440,6 +536,7 @@ export async function POST(req: NextRequest) {
           }
         } catch (err) {
           clearInterval(heartbeat);
+          if (!generationCompleted) await releaseCreation(reservation);
           console.error('Stream error:', err);
           try {
             controller.error(err);
@@ -458,9 +555,11 @@ export async function POST(req: NextRequest) {
         'Connection': 'keep-alive',
         // 告诉 Nginx 别缓冲，来一段转一段
         'X-Accel-Buffering': 'no',
+        'X-Generation-Id': reservation!.requestId,
       }
     });
   } catch (error) {
+    if (!generationCompleted) await releaseCreation(reservation);
     console.error('API Error:', error);
     return new Response(JSON.stringify({ error: '服务器错误' }), { 
       status: 500,

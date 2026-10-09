@@ -1,0 +1,12 @@
+{
+  "shots": 27,
+  "totalSeconds": 89,
+  "target": 67,
+  "diff": 22,
+  "longest": 6,
+  "closeUpRatio": 4,
+  "moveRatio": 11,
+  "issues": [
+    "文中总时长写 78s，但镜头表实际合计 89s，需要核对总数"
+  ]
+}

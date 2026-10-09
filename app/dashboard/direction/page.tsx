@@ -21,8 +21,10 @@ import { createHistoryId } from "@/lib/history-id";
 import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
 import { readDifyStream } from "@/lib/sse-stream";
-import { takeHandoff } from "@/lib/handoff";
-import { incomingNote } from "@/lib/creation-flow";
+import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
+import { mergeCreationSettings, settingsFromInput, settingsForResult, creationSettingsBlock, purposeOf } from '@/lib/creation-settings';
+import { creationBridgeData, creationBridgePrompt } from '@/lib/creation-bridge';
+import { creationReference, carriedIntent, intentBlock, originForResult } from "@/lib/creation-continuation";
 import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summary";
 import { buildContextBlock } from "@/lib/creator-context";
 import { resolveMix, mixPromptBlock, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
@@ -75,11 +77,21 @@ export default function DirectionPage() {
   const [depth, setDepth] = useState<"quick" | "full">("full");
   const [industry, setIndustry] = useState("");
   const [handoffFrom, setHandoffFrom] = useState("");
+  // 别的板块带过来、要在它上面继续拓展的方向（2026-10-06：原来塞进「已有的想法」一并参考，出来的方向跑题）
+  const [expandContent, setExpandContent] = useState("");
+  const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
+  const bridge = creationBridgeData(incomingSetup);
+  const selectedGoals = purposes.map(id => PURPOSES.find(p => p.id === id)?.label).filter(Boolean).join('、');
+  const currentSettings = mergeCreationSettings(bridge.creationSettings, {
+    purpose: purposeOf(selectedGoals), purposeText: selectedGoals || undefined,
+    userIntent: bridge.creationSettings.userIntent || [selectedGoals, customGoal, ideas].filter(Boolean).join('\n'),
+    notes: [bridge.creationSettings.notes, customGoal, ideas].filter(Boolean).join('\n'),
+  });
   // 内容配比：默认按档案（或系统推荐）把方向分到流量 / 人设 / 变现；只想跟着目的走的可以关掉
-  const [useMix, setUseMix] = useState(true);
+  const [useMix, setUseMix] = useState(false);
   const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
   const [mixUsed, setMixUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
-  const goalText = [customGoal, ideas].filter(Boolean).join("；");
+  const goalText = [customGoal, ideas, expandContent].filter(Boolean).join("；");
   const resolvedMix = resolveMix(profile, mixOverride, goalText);
 
   const [running, setRunning] = useState(false);
@@ -91,6 +103,7 @@ export default function DirectionPage() {
 
   const restoreHistory = (item: HistoryItem) => {
     const d = (item.input_data ?? {}) as Record<string, unknown>;
+    setIncomingSetup({ from: typeof d.expandFrom === 'string' ? d.expandFrom : '创作方向', sourceContent: typeof d.expandContent === 'string' ? d.expandContent : '', originContent: typeof d.originContent === 'string' ? d.originContent : '', settings: settingsFromInput(d) });
     setResult(item.result);
     if (Array.isArray(d.purposes)) setPurposes(d.purposes.map(String));
     if (typeof d.customGoal === "string") setCustomGoal(d.customGoal);
@@ -101,6 +114,8 @@ export default function DirectionPage() {
     if (typeof d.horizon === "string") setHorizon(d.horizon);
     if (COUNT_OPTIONS.includes(d.count as DirectionCount)) setCount(d.count as DirectionCount);
     if (d.depth === "quick" || d.depth === "full") setDepth(d.depth);
+    setExpandContent(typeof d.expandContent === "string" ? d.expandContent : "");
+    setHandoffFrom(typeof d.expandFrom === "string" ? d.expandFrom : "");
   };
 
   // 切页面回来：结果和当时的选择一起取回来（别的板块带内容过来时不覆盖）
@@ -108,7 +123,6 @@ export default function DirectionPage() {
     if (!resultScope || !lastResult || !history[0] || restoredScope.current === resultScope) return;
     restoredScope.current = resultScope;
     if (!incoming.current && !running && (!result || result === lastResult)) restoreHistory(history[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultScope, lastResult, history, running, result]);
   useRestoreLastResult(lastResult, setResult, resultScope);
 
@@ -117,14 +131,20 @@ export default function DirectionPage() {
     const data = takeHandoff();
     if (!data?.sourceContent) return;
     incoming.current = true;
-    setIdeas(incomingNote(data));
+    setIncomingSetup(data);
+    // 带过来的就是要拓展的那个方向：单独放，提示词里当主线；「已有的想法」留给编导自己写
+    const ref = creationReference(data).trim();
+    setExpandContent(ref);
     setHandoffFrom(data.from || "其他板块");
+    // 拓展一个已经定了目的的方向：默认不按账号配比去拆（那样会把一个流量型方向拆成人设、变现），想按配比可以再打开
+    setUseMix(false);
   }, []);
 
   const start = async () => {
     if (running) return;
     if (ctxLoading) { notify("正在读取当前档案，稍等一秒再点"); return; }
-    if (!hasGoal({ purposes, customGoal })) { notify("先勾一个目的，或者自己写一句想达到什么", "error"); return; }
+    // 带着要拓展的方向来的，目的就是它原本的目的，不用再勾
+    if (!hasGoal({ purposes, customGoal }) && !expandContent.trim()) { notify("先勾一个目的，或者自己写一句想达到什么", "error"); return; }
     const isCurrent = beginProfileRequest();
     setRunning(true);
     const historyOwnerId = await getHistoryOwner();
@@ -132,7 +152,7 @@ export default function DirectionPage() {
     if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) { openUpgrade("direction"); setRunning(false); return; }
     setResult("");
-    const historyInput = { purposes, customGoal, ideas, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null };
+    const historyInput = { purposes, customGoal, ideas, expandFrom: expandContent.trim() ? handoffFrom : "", expandContent, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null, creationSettings: currentSettings, originContent: bridge.originContent || [customGoal, ideas, selectedGoals].filter(Boolean).join('\n') };
     try {
       const historyId = createHistoryId();
       const query = buildDirectionPrompt({
@@ -142,12 +162,13 @@ export default function DirectionPage() {
         contextBlock: buildContextBlock(context, "direction"),
         industry: profile ? undefined : industry,
         mixBlock: useMix ? mixPromptBlock(resolvedMix, { count, unit: "个" }) : undefined,
-      });
+        expand: expandContent.trim() ? { from: handoffFrom || "其他板块", content: expandContent, intent: intentBlock(carriedIntent({ sourceContent: expandContent, originContent: "" })) } : undefined,
+      }) + creationBridgePrompt(incomingSetup) + creationSettingsBlock(currentSettings);
       setMixUsed(useMix ? { resolved: resolvedMix, count } : null);
       const res = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskType: DIRECTION_TASK_TYPE, query, profileId: profile ? (profile.id as string) : null, historyId, historyInput, historyOwnerId }),
+        body: JSON.stringify({ taskType: DIRECTION_TASK_TYPE, query, profileId: profile ? (profile.id as string) : null, historyId, historyInput, historyOwnerId, creationSettings: currentSettings }),
       });
       if (!res.ok) await throwApiError(res, "生成失败");
       const full = await readDifyStream(res, {
@@ -176,13 +197,21 @@ export default function DirectionPage() {
             <HistoryPanel items={history} title="出过的方向" showStats={false} onLoad={restoreHistory} onDelete={(id) => deleteHistory(id)} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="1. 你拍视频是为了什么（可多选）" defaultOpen>
+          {expandContent && (
+            <CollapsibleSection title={`要拓展的方向（来自「${handoffFrom || "其他板块"}」）`} defaultOpen>
+              <p className="mb-2 text-[12px] text-muted-foreground">出来的方向都会守住它的主题、目的和核心角度，在它上面往下拓展。可以直接改这段。</p>
+              <textarea aria-label="要拓展的方向" value={expandContent} onChange={(e) => setExpandContent(e.target.value)} rows={6} className={TEXTAREA_CLS} />
+              <button type="button" onClick={() => { setExpandContent(""); setHandoffFrom(""); setIncomingSetup(null); }} className="mt-1.5 text-[12px] text-muted-foreground underline">不按它拓展，从零出方向</button>
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection title={expandContent ? "1. 另外想达到的目的（选填，不选就按上面方向原本的目的）" : "1. 你拍视频是为了什么（可多选）"} defaultOpen>
             <ChoiceGrid items={PURPOSES} isOn={(id) => purposes.includes(id)} onToggle={(id) => setPurposes((p) => toggle(p, id))} />
             <Field label="也可以自己写" optional stacked>
               <textarea value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} rows={2} className={TEXTAREA_CLS} placeholder="例如：下个月开第二家店，想先在那个小区把名气做起来" />
             </Field>
-            <Field label="你已经有的想法" optional stacked hint={handoffFrom ? `已带入来自「${handoffFrom}」的内容，直接点生成就会一并考虑` : "有就写，AI 会认真看：好的展开成方向，不靠谱的直说哪里不行"}>
-              <textarea value={ideas} onChange={(e) => setIdeas(e.target.value)} rows={handoffFrom ? 5 : 2} className={TEXTAREA_CLS} placeholder="例如：想拍老板每天凌晨去市场挑肉" />
+            <Field label="你已经有的想法" optional stacked hint="有就写，AI 会认真看：好的展开成方向，不靠谱的直说哪里不行">
+              <textarea value={ideas} onChange={(e) => setIdeas(e.target.value)} rows={2} className={TEXTAREA_CLS} placeholder="例如：想拍老板每天凌晨去市场挑肉" />
             </Field>
           </CollapsibleSection>
 
@@ -247,6 +276,7 @@ export default function DirectionPage() {
         result={result}
         isGenerating={running}
         title="创作方向与思路"
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, bridge.originContent || [customGoal, ideas, selectedGoals].filter(Boolean).join('\n')) }}
         showStats={false}
         emptyIcon={Compass}
         emptyTitle="带着目的去拍，而不是为了拍而拍"

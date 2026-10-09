@@ -55,6 +55,7 @@ const navGroups: {
       // 紧跟权限管理：两者一起回答"谁能动这个站、动过什么"
       { name: "操作日志", href: "/admin/logs", icon: ScrollText },
       { name: "系统设置", href: "/admin/settings", icon: Settings },
+      { name: "联网搜索密钥", href: "/admin/search-key", icon: Settings },
     ],
   },
 ];

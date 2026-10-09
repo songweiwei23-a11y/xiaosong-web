@@ -1,0 +1,29 @@
+{
+  "images": [
+    {
+      "file": "01_专业封面_99元_设计稿.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1615380
+    },
+    {
+      "file": "02_基础封面_49元_设计稿.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1676420
+    },
+    {
+      "file": "03_咨询长图_设计稿.png",
+      "width": 793,
+      "height": 1983,
+      "bytes": 1520658
+    }
+  ],
+  "status": "design_samples",
+  "checks": [
+    "prices and quotas visually checked",
+    "account and customer identifiers excluded",
+    "long footer fully visible",
+    "interface labelled illustration"
+  ]
+}

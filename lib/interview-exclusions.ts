@@ -89,6 +89,13 @@ function grams(text: string, n = 3): Set<string> {
   return s;
 }
 
+/** 单独出现不代表"提到了排除的事"的通用词：设备、身份、日常用语 */
+const GENERIC_WORDS = new Set(['手机', '相机', '电脑', '三脚架', '视频', '客人', '顾客', '客户', '老板', '价格', '质量', '服务', '店里', '门店', '家具', '口播', '图文']);
+/** 片段里带这些字多半是虚词组合（的问题、怎么挑、不着急），不是特征词 */
+const FUNCTION_CHARS = /[的了是吗呢吧着过都也就还再很不没怎么什这那一个和与或在把被让给要会能可]/;
+/** 带这些常用词的片段也不当特征（愿意投、效果好、万播放：哪篇稿子都可能有） */
+const COMMON_IN_GRAM = /愿意|意投|投入|效果|播放|喜欢|时候|觉得|东西|事情|热点/;
+
 /**
  * 排除内容的特征片段（去掉"××里的："这种前缀；店名人名里的字不算）。
  * 编导手动写的往往很短（"公益""不提直播"）：拆开后两到六个字的整词直接当关键词，长的再切三字片段
@@ -100,12 +107,18 @@ function exclusionGrams(excluded: string[], stopText: string): string[][] {
     const m = e.match(/^([^：]{1,16})：/);
     const body = m && (m[1].endsWith('里的') || LABELS.has(m[1])) ? e.slice(m[0].length) : e;
     const needles = new Set<string>();
+    /*
+     * 2026-10-09 全板块实测：原来每段都切三字片段，「不用担心钱的问题」切出「的问题」、「不着急再看看」切出「不着急」，
+     * 「设备条件：手机、相机」直接拿「手机」当关键词——质检满屏误报，更糟的是 stripExcluded 拿同一套关键词
+     * 删档案句子，凡是提到手机、怎么挑的档案句子都被删掉，模型看到的档案变少了。
+     * 现在：六个字以内的整段只按整段认（通用词不算）；长的切四字片段，带虚词的片段不要
+     */
     for (const piece of segmentsOf(body)) {
       const core = piece.replace(/^(?:不要|不提|不做|不拍|不说|别提|别拍|别)/, '').replace(/(?:相关的事|相关的|相关|的事|内容|这类)$/, '').trim();
       const han = (core.match(/\p{Script=Han}/gu) ?? []).length;
-      // 短的整词也算（"公益"只有两个字，切不出三字片段）；三字片段照样切（"床给贫困户"里的"贫困户"）
-      if (han >= 2 && core.length <= 6) needles.add(core);
-      for (const g of grams(core)) needles.add(g);
+      if (core.length <= 6 && han >= 2 && !GENERIC_WORDS.has(core)) needles.add(core);
+      // 三字片段照样切（「通过村书记找贫困户」里的「村书记」「贫困户」），但带虚词的不要（的问题、不着急、怎么挑）
+      for (const g of grams(core)) if (!FUNCTION_CHARS.test(g) && !COMMON_IN_GRAM.test(g) && !GENERIC_WORDS.has(g)) needles.add(g);
     }
     return [...needles].filter((x) => !stop.has(x));
   });

@@ -1,0 +1,252 @@
+2026-10-08T04:40:40.848Z
+https://www.biandao.icu/dashboard/title
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - generic: 进行中
+  - link "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题策划（已做） 脚本生成 分镜脚本 审稿优化 标题封面 下一步：脚本生成":
+    - /url: /dashboard/script?work=8ddc5b74-dc52-410d-ad44-62ef41b8bf0a
+    - paragraph: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+    - generic "选题策划（已做）"
+    - generic "脚本生成"
+    - generic "分镜脚本"
+    - generic "审稿优化"
+    - generic "标题封面"
+    - generic: 下一步：脚本生成
+  - button "删除作品：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "标题封面" [level=1]
+    - paragraph: 生成高点击率的爆款标题，一次给出多个方案做对比
+    - paragraph:
+      - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+      - link "换一个":
+        - /url: /dashboard/profiles
+    - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+    - paragraph:
+      - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+      - link "在档案里调整":
+        - /url: /dashboard/profiles
+    - paragraph:
+      - text: 还没生成创作简报，这次只能用档案里的字段。
+      - link "去生成":
+        - /url: /dashboard/creative-brief
+      - text: （做完选题、脚本、分镜都会自动用上）
+    - button "脚本 / 创作参考" [expanded]:
+      - generic: 脚本 / 创作参考
+    - textbox "脚本或创作参考":
+      - /placeholder: 可粘贴脚本；从其他板块跳转时自动带入内容
+      - text: 【测试原稿】买衣柜前，先别急着看颜色。今天就在店里这个样柜上看一眼：柜门打开后，要占到哪儿；抽屉拉出来，前面还剩多少位置。把自己家的门、床和过道位置记下来，到店对着样柜试一试。款式喜欢，还得在自己家用得顺手。没有客户经历、比例、价格或损失数据。
+    - button "基础信息" [expanded]:
+      - generic: 基础信息
+    - generic: 视频主题
+    - generic: 必填
+    - textbox "例如：教你3招拍出电影感视频": 买衣柜前观察柜门与抽屉的开合位置
+    - generic: 目标平台
+    - generic: 必填
+    - button "抖音" [pressed]
+    - button "小红书"
+    - button "快手"
+    - button "B站"
+    - button "视频号"
+    - generic: 目标人群
+    - generic: 可选
+    - textbox "例如：25-35 岁职场女性": 本地正在装修的家庭
+    - button "标题风格" [expanded]:
+      - generic: 标题风格
+    - generic: 标题类型
+    - generic: 可选
+    - button "已按原稿自动选择标题类型" [pressed]
+    - button "🔮 悬念式":
+      - generic: 🔮
+      - generic: 悬念式
+    - button "🔢 数字式":
+      - generic: 🔢
+      - generic: 数字式
+    - button "⚖️ 对比式":
+      - generic: ⚖️
+      - generic: 对比式
+    - button "❓ 疑问式":
+      - generic: ❓
+      - generic: 疑问式
+    - button "❗ 惊叹式":
+      - generic: ❗
+      - generic: 惊叹式
+    - button "💢 痛点式":
+      - generic: 💢
+      - generic: 痛点式
+    - generic: 生成数量
+    - generic: 可选
+    - button "3个 快速测试" [pressed]:
+      - generic: 3个
+      - generic: 快速测试
+    - button "5个 标准版":
+      - generic: 5个
+      - generic: 标准版
+    - button "8个 充分选择":
+      - generic: 8个
+      - generic: 充分选择
+    - button "10个 全面对比":
+      - generic: 10个
+      - generic: 全面对比
+    - button "生成中…" [disabled]:
+      - text: 生成中…
+  - main:
+    - heading "标题方案" [level=2]
+    - text: 创作中
+    - article:
+      - heading "标题方案" [level=1]
+      - heading "1. 挑衣柜别只看柜门，抽屉打开才知道挡不挡床" [level=3]
+      - list:
+        - strong: 字数
+        - text: ：22字
+        - strong: 目的
+        - text: ：流量型（让更多本地装修家庭看到这个避坑角度）
+        - strong: 用的钩子
+        - text: ：警告避坑（千万别做X + 后果 + 规避承诺）
+        - strong: 赌的动机
+        - text: ：恐惧——正在装修的人担心买回去才发现问题，"挡不挡床"这个具体后果让他们停下来看
+        - strong: 核心卖点
+        - text: ：衣柜抽屉拉开后占多少空间，现场演示给你看，避免买回去打不开
+        - strong: 埋的关键词
+        - text: ：无（推荐流场景，依靠内容匹配而非搜索）
+        - strong: 适合场景
+        - text: ：起号初期，需要快速拉新、建立"实用避坑"人设时优先用
+      - separator
+      - heading "2. 卧室放衣柜，先别急着看款式，抽屉能不能拉开？" [level=3]
+      - list:
+        - strong: 字数
+        - text: ：23字
+        - strong: 目的
+        - text: ：流量型
+        - strong: 用的钩子
+        - text: ：直接提问（问题 + 意外事实 + 答案承诺）
+        - strong: 赌的动机
+        - text: ：好奇 + 认同——"先别急着看款式"打破常规选家具的顺序，"抽屉能不能拉开"是个大多数人没想过的盲区
+        - strong: 核心卖点
+        - text: ：提醒用户买衣柜时要先考虑开合位置而非外观，店里样柜可以现场验证
+        - strong: 埋的关键词
+        - text: ：无
+        - strong: 适合场景
+        - text: ：前一个标题数据好但完播率不够高时换这个，疑问句能拉住犹豫的用户
+      - separator
+      - heading "3. 量过房的都知道，衣柜抽屉一拉，床前只剩一条缝" [level=3]
+      - list:
+        - strong: 字数
+        - text: ：23字
+        - strong: 目的
+        - text: ：流量型
+        - strong: 用的钩子
+        - text: ：引发共鸣（共同处境 + 被理解的判断 + 后续解释）
+        - strong: 赌的动机
+        - text: ：认同——"量过房的都知道"圈定精准人群（已经在装修流程中的人），"只剩一条缝"是具体画面，有过类似担心的人会点进来确认自己的判断
+        - strong: 核心卖点
+        - text: ：说出装修家庭的真实顾虑，用样柜演示解决他们的尺寸焦虑
+        - strong: 埋的关键词
+        - text: ：无
+        - strong: 适合场景
+        - text: ：评
+- alert

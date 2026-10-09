@@ -81,7 +81,8 @@ describe('入口和存储', () => {
   it('首页卡片先学后做：新手课在 7 天计划上面；两张都能折叠', () => {
     const home = readCode('app/dashboard/page.tsx');
     expect(home.indexOf('<CourseCard')).toBeLessThan(home.indexOf('<LaunchPlanCard'));
-    expect(readCode('components/dashboard/CourseCard.tsx')).toMatch(/const COLLAPSE_KEY = "kaiwu:course-card-collapsed"/);
+    // 收没收按账号分开记（lib/home-prefs）；毕业了默认收起
+    expect(readCode('components/dashboard/CourseCard.tsx')).toMatch(/useCollapsed\("course", ready \? graduated\(passed\) : null\)/);
   });
 
   it('毕业后引到 7 天起号计划，锚点在计划卡片上', () => {

@@ -64,7 +64,8 @@ describe('收藏入口', () => {
   it('素材库里的素材能继续创作，按分类推荐下一步，不再显示收藏按钮', () => {
     expect(CREATION_SOURCES.library).toBe('素材库');
     const page = readCode('app/dashboard/library/page.tsx');
-    expect(page).toMatch(/<CreationLinks body=\{it\.content\} hideFavorite recommended=\{CATEGORY_NEXT/);
+    // 列表只有预览：正文点开（或点继续创作）时取回，再交给 CreationLinks
+    expect(page).toMatch(/<CreationLinks body=\{full\.content\} hideFavorite recommended=\{CATEGORY_NEXT/);
   });
 
   it('接口：按本人读写、同一段内容只存一次、迁移没跑时说清楚', () => {

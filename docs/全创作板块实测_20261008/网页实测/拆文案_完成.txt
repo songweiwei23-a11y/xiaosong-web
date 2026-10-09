@@ -1,0 +1,514 @@
+2026-10-08T04:37:58.095Z
+https://www.biandao.icu/dashboard/breakdown
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "拆解爆款" [level=1]
+    - paragraph: 拆解已有文案与创作方案，找出值得保留的表达和可优化的部分
+    - button "拆视频"
+    - button "拆文案 / 方案" [pressed]
+    - paragraph: 文字已承接，点击开始拆解即可。画面与声音需上传视频后分析。
+    - button "历史记录（1）":
+      - generic: 历史记录（1）
+    - button "待拆解文案 / 方案" [expanded]:
+      - generic: 待拆解文案 / 方案
+    - generic: 这条的数据
+    - generic: 可选
+    - textbox "点赞"
+    - textbox "评论"
+    - textbox "收藏"
+    - textbox "转发"
+    - textbox "账号粉丝"
+    - generic: 有粉丝数才能判断是不是真爆
+    - generic: 标题 / 发布文案
+    - generic: 可选
+    - textbox
+    - generic: 行业
+    - generic: 可选
+    - textbox "例如：烧烤店、美甲、装修"
+    - generic: 想重点看什么
+    - generic: 可选
+    - textbox "例如：开头怎么留人、怎么引导到店": 【测试】评估结构和可拍性；不把未提供的客户故事、数字、损失、服务承诺写进改稿；平实演示不必硬加危机。
+    - generic: 文案 / 方案内容
+    - generic: 必填
+    - textbox: 买衣柜前，先别急着看颜色。今天就在店里这个样柜上看一眼：柜门打开后，要占到哪儿；抽屉拉出来，前面还剩多少位置。把自己家的门、床和过道位置记下来，到店对着样柜试一试。款式喜欢，还得在自己家用得顺手。
+    - generic: 跳转带入的内容已填好，可以直接开始拆解
+    - checkbox "结合「测试_青禾家具店_全板块验收20261008」，最后给 3 个能直接拍的选题 侧边栏切换档案，这里跟着变" [checked]
+    - text: 结合「测试_青禾家具店_全板块验收20261008」，最后给 3 个能直接拍的选题
+    - generic: 侧边栏切换档案，这里跟着变
+    - button "开始拆解":
+      - text: 开始拆解
+  - main:
+    - heading "拆解报告" [level=2]
+    - button "继续创作":
+      - text: 继续创作
+    - button "在画布里改":
+      - text: 在画布里改
+    - button "复制":
+      - text: 复制
+    - article:
+      - heading "📋 文案拆解与优化方案" [level=1]
+      - heading "一、原稿定位分析" [level=2]
+      - heading "🎯 核心要素识别" [level=3]
+      - table:
+        - rowgroup:
+          - row "维度 识别结果 依据":
+            - columnheader "维度"
+            - columnheader "识别结果"
+            - columnheader "依据"
+        - rowgroup:
+          - row "主题 衣柜选购的空间适配方法 开篇\"买衣柜前\"，全文围绕尺寸与空间关系展开":
+            - cell "主题":
+              - strong: 主题
+            - cell "衣柜选购的空间适配方法"
+            - cell "开篇\"买衣柜前\"，全文围绕尺寸与空间关系展开"
+          - row "核心方向 教知识型·解题型 场景难题（不知道衣柜占多大空间）→ 具体解决方法（到店试样柜）→ 操作步骤":
+            - cell "核心方向":
+              - strong: 核心方向
+            - cell "教知识型·解题型"
+            - cell "场景难题（不知道衣柜占多大空间）→ 具体解决方法（到店试样柜）→ 操作步骤"
+          - row "目标人群 正在装修、准备买衣柜的本地家庭 \"买衣柜前\"\"自己家的门、床和过道位置\"":
+            - cell "目标人群":
+              - strong: 目标人群
+            - cell "正在装修、准备买衣柜的本地家庭"
+            - cell "\"买衣柜前\"\"自己家的门、床和过道位置\""
+          - row "视频目的 变现型（推断） 结尾\"到店对着样柜试一试\"指向到店行动，属于变现导向":
+            - cell "视频目的":
+              - strong: 视频目的
+            - cell "变现型（推断）":
+              - strong: 变现型
+              - text: （推断）
+            - cell "结尾\"到店对着样柜试一试\"指向到店行动，属于变现导向"
+          - row "成交理由 实在不坑 + 便利性（推断） \"款式喜欢，还得在自己家用得顺手\"体现实用主义；\"到店试\"体现服务便利":
+            - cell "成交理由":
+              - strong: 成交理由
+            - cell "实在不坑 + 便利性（推断）":
+              - strong: 实在不坑 + 便利性
+              - text: （推断）
+            - cell "\"款式喜欢，还得在自己家用得顺手\"体现实用主义；\"到店试\"体现服务便利"
+      - paragraph:
+        - strong: 明确标注
+        - text: ：目的、成交理由为推断；主题、方向、人群由文案直接体现。
+      - separator
+      - heading "二、结构拆解（逐项引证）" [level=2]
+      - heading "1️⃣ 开篇钩子" [level=3]
+      - paragraph:
+        - strong: 原文
+        - text: ："买衣柜前，先别急着看颜色。"
+      - paragraph:
+        - strong: 类型
+        - text: ：
+        - strong: 反认知型钩子
+        - text: （36计·第1计 反向操作的变体）
+      - list:
+        - strong: 机制
+        - text: ：打破常规预期（大家先看颜色）→ 引发好奇"那应该看什么"
+        - strong: 有效性
+        - text: ：✅ 3秒内建立信息缺口
+        - strong: 问题
+        - text: ：缺乏具体场景痛点，情绪强度偏弱
+      - separator
+      - heading "2️⃣ 脚本结构" [level=3]
+      - paragraph:
+        - strong: 识别为
+        - text: ：教知识型·解题型（简化版）
+      - table:
+        - rowgroup:
+          - row "环节 原文对应 标准公式要求":
+            - columnheader "环节"
+            - columnheader "原文对应"
+            - columnheader "标准公式要求"
+        - rowgroup:
+          - row "场景难题 \"买衣柜前\" ✅ 有场景，但未放大危机":
+            - cell "场景难题"
+            - cell "\"买衣柜前\""
+            - cell "✅ 有场景，但未放大危机"
+          - row "低成本解决 \"今天就在店里这个样柜上看一眼\" ✅ 明确动作":
+            - cell "低成本解决"
+            - cell "\"今天就在店里这个样柜上看一眼\""
+            - cell "✅ 明确动作"
+          - row "具体操作 \"柜门打开后占到哪儿/抽屉拉出来剩多少位置/记下来到店试\" ✅ 有步骤，但顺序略跳跃":
+            - cell "具体操作"
+            - cell "\"柜门打开后占到哪儿/抽屉拉出来剩多少位置/记下来到店试\""
+            - cell "✅ 有步骤，但顺序略跳跃"
+          - row "见效快/反馈短 \"款式喜欢，还得在自己家用得顺手\" ⚠️ 缺少验证环节（试完会怎样）":
+            - cell "见效快/反馈短"
+            - cell "\"款式喜欢，还得在自己家用得顺手\""
+            - cell "⚠️ 缺少验证环节（试完会怎样）"
+      - separator
+      - heading "3️⃣ 信息递进" [level=3]
+      - paragraph:
+        - strong: 逻辑链
+        - text: ：
+      - list:
+        - listitem: 反认知开场（别看颜色）
+        - listitem: 空间演示（柜门/抽屉占位）
+        - listitem: 行动指令（记尺寸、到店试）
+        - listitem: 价值强化（用得顺手）
+      - paragraph:
+        - strong: 问题
+        - text: ：
+      - list:
+        - listitem: 第2步"今天就在店里"突然切换到演示场景，缺过渡
+        - listitem: 第3步"把自己家的位置记下来"与第2步"在店里看样柜"顺序矛盾（应该先记家里尺寸，再到店对比）
+      - separator
+      - heading "4️⃣ 情绪设计" [level=3]
+      - paragraph:
+        - strong: 波点分布
+        - text: ：
+      - list:
+        - listitem: 开场：轻反认知（情绪强度 ★★☆☆☆）
+        - listitem: 中段：平铺直叙（无明显波点）
+        - listitem: 结尾：理性收尾（无情绪爆发点）
+      - paragraph:
+        - strong: 问题
+        - text: ：全程情绪平稳，缺少"这一步很多人踩坑"类的危机感放大。
+      - separator
+      - heading "5️⃣ 结尾行动" [level=3]
+      - paragraph:
+        - strong: 原文
+        - text: ："到店对着样柜试一试"
+      - paragraph:
+        - strong: 指令清晰度
+        - text: ：✅ 明确（到店）
+        - strong: 匹配度
+        - text: ：✅ 符合变现型目的
+        - strong: 问题
+        - text: ：缺少金句回收，结尾偏平淡
+      - separator
+      - heading "三、保留价值 vs 优化问题" [level=2]
+      - heading "✅ 能保留的创意" [level=3]
+      - list:
+        - strong: 反认知角度
+        - text: ："别急着看颜色"切入新颖，符合家具行业"重外观轻功能"的用户误区
+        - strong: 具体动作可视化
+        - text: ："柜门打开占到哪儿""抽屉拉出来剩多少"画面感强，适合手机一人拍摄
+        - strong: 低行动成本
+        - text: ："到店试样柜"门槛低，比"量尺寸出图纸"更接地气
+        - strong: 真实场景
+        - text: ："门、床、过道"精准描述家庭实际困扰
+      - separator
+      - heading "⚠️ 需要优化的问题" [level=3]
+      - table:
+        - rowgroup:
+          - row "问题点 具体表现 改进方向":
+            - columnheader "问题点"
+            - columnheader "具体表现"
+            - columnheader "改进方向"
+        - rowgroup:
+          - row "危机感不足 只说\"别急着看颜色\"，但没说\"看错会怎样\" 补充痛点场景：买回家柜门打不开、抽屉卡床":
+            - cell "危机感不足":
+              - strong: 危机感不足
+            - cell "只说\"别急着看颜色\"，但没说\"看错会怎样\""
+            - cell "补充痛点场景：买回家柜门打不开、抽屉卡床"
+          - row "逻辑顺序跳跃 先说\"在店里看样柜\"，再说\"记下自己家尺寸\" 调整为：先记家里→再到店对比":
+            - cell "逻辑顺序跳跃":
+              - strong: 逻辑顺序跳跃
+            - cell "先说\"在店里看样柜\"，再说\"记下自己家尺寸\""
+            - cell "调整为：先记家里→再到店对比"
+          - row "缺少验证环节 没说\"试完会避免什么坑\" 加结果：试完就知道哪款能装、哪款会卡":
+            - cell "缺少验证环节":
+              - strong: 缺少验证环节
+            - cell "没说\"试完会避免什么坑\""
+            - cell "加结果：试完就知道哪款能装、哪款会卡"
+          - row "情绪波点单薄 全程平铺，缺少\"很多人在这儿吃亏\"类强调 中段插入常见踩坑案例（不点名同行）":
+            - cell "情绪波点单薄":
+              - strong: 情绪波点单薄
+            - cell "全程平铺，缺少\"很多人在这儿吃亏\"类强调"
+            - cell "中段插入常见踩坑案例（不点名同行）"
+          - row "结尾无金句 \"用得顺手\"表达平淡 改为口语化、可转发的短句":
+            - cell "结尾无金句":
+              - strong: 结尾无金句
+            - cell "\"用得顺手\"表达平淡"
+            - cell "改为口语化、可转发的短句"
+          - row "开场钩子可更强 \"别急着看颜色\"吸引力中等 可升级为结果型钩子：\"买衣柜回家柜门打不开，问题出在这\"":
+            - cell "开场钩子可更强":
+              - strong: 开场钩子可更强
+            - cell "\"别急着看颜色\"吸引力中等"
+            - cell "可升级为结果型钩子：\"买衣柜回家柜门打不开，问题出在这\""
+      - separator
+      - heading "四、优化后的完整脚本" [level=2]
+      - heading "🎬 视频目的" [level=3]
+      - paragraph:
+        - strong: 变现型
+        - text: （到店体验，建立"实在不坑+便利性"成交理由）
+      - heading "📝 完整文案" [level=3]
+      - paragraph:
+        - strong: 【开篇·反认知钩子 + 痛点场景】
+        - text: 买衣柜回家，柜门打不开、抽屉卡床，很多人栽在这儿——先别急着看颜色，今天在店里这个样柜上，教你看一眼就能避开的坑。
+      - paragraph:
+        - strong: 【放大危机】
+        - text: 柜门打开后，要占到哪儿？如果你家门正对着柜子,门一开柜门就撞墙上了。抽屉拉出来,前面还剩多少位置?有些家庭床尾离柜子就一米,抽屉一拉,人站都站不下。
+      - paragraph:
+        - strong: 【低成本解决方案】
+        - text: 其实来店里之前,只需要做一件事:把你家卧室门开的方向、床头床尾到墙的距离、过道能不能并排过两个人——拍张照或者记在手机里。
+      - paragraph:
+        - strong: 【具体操作步骤】
+        - text: "到店之后,对着这个样柜试:"
+        - text: 第一步,开柜门,看它打开后占多宽——对比你家门的位置会不会挡。
+        - text: 第二步,拉抽屉,看拉到底伸出来多长——对比你家床和柜子之间够不够蹲下来拿东西。
+        - text: 第三步,站在柜子前比划一下开门、拿衣服的动作——感受一下你每天用会不会别扭。
+      - paragraph:
+        - strong: 【结果验证】
+        - text: 试完这三步,你就知道哪款能装、哪款会卡。款式再好看,在自己家用不顺手,那就是白搭。
+      - paragraph:
+        - strong: 【结尾金句 + 行动指令】
+        - text: 家具不是买回去看的,是天天要用的。记下你家尺寸,到店试试样柜,比听十个人说强。
+      - separator
+      - heading "📊 优化对比表" [level=3]
+      - table:
+        - rowgroup:
+          - row "维度 原稿 优化稿 提升点":
+            - columnheader "维度"
+            - columnheader "原稿"
+            - columnheader "优化稿"
+            - columnheader "提升点"
+        - rowgroup:
+          - row "开场吸引力 ★★☆☆☆ ★★★★☆ 加入结果痛点\"打不开\"\"卡床\"":
+            - cell "开场吸引力"
+            - cell "★★☆☆☆"
+            - cell "★★★★☆"
+            - cell "加入结果痛点\"打不开\"\"卡床\""
+          - row "危机感 无 有 补充具体场景\"门撞墙\"\"人站不下\"":
+            - cell "危机感"
+            - cell "无"
+            - cell "有"
+            - cell "补充具体场景\"门撞墙\"\"人站不下\""
+          - row "逻辑顺序 跳跃 清晰 先记家里尺寸→再到店试":
+            - cell "逻辑顺序"
+            - cell "跳跃"
+            - cell "清晰"
+            - cell "先记家里尺寸→再到店试"
+          - row "操作步骤 3句话略散 标序号\"第一步/第二步/第三步\" 便于记忆和执行":
+            - cell "操作步骤"
+            - cell "3句话略散"
+            - cell "标序号\"第一步/第二步/第三步\""
+            - cell "便于记忆和执行"
+          - row "情绪波点 1个 3个 开场痛点、中段危机、结尾验证":
+            - cell "情绪波点"
+            - cell "1个"
+            - cell "3个"
+            - cell "开场痛点、中段危机、结尾验证"
+          - row "结尾金句 无 \"家具不是买回去看的,是天天要用的\" ≤20字,可转发":
+            - cell "结尾金句"
+            - cell "无"
+            - cell "\"家具不是买回去看的,是天天要用的\""
+            - cell "≤20字,可转发"
+      - separator
+      - heading "五、下一步延伸方向" [level=2]
+      - heading "🔄 同主题二创方向" [level=3]
+      - table:
+        - rowgroup:
+          - row "方向 承接点 新角度":
+            - columnheader "方向"
+            - columnheader "承接点"
+            - columnheader "新角度"
+        - rowgroup:
+          - row "1. 床的尺寸避坑 同样\"到店试样品\"逻辑 \"床买回家下不去?很多人量错了这个地方\"":
+            - cell "1. 床的尺寸避坑":
+              - strong: 1. 床的尺寸避坑
+            - cell "同样\"到店试样品\"逻辑"
+            - cell "\"床买回家下不去?很多人量错了这个地方\""
+          - row "2. 沙发深度选择 同样\"空间适配\"方法 \"沙发坐着累,可能是你家客厅进深不够——到店试坐前先量这个\"":
+            - cell "2. 沙发深度选择":
+              - strong: 2. 沙发深度选择
+            - cell "同样\"空间适配\"方法"
+            - cell "\"沙发坐着累,可能是你家客厅进深不够——到店试坐前先量这个\""
+          - row "3. 反向:客户踩坑案例 用真实故事强化\"试样柜\"价值 \"上周一个客人买回去又退,就因为没试这一步\"(讲故事型)":
+            - cell "3. 反向:客户踩坑案例":
+              - strong: 3. 反向:客户踩坑案例
+            - cell "用真实故事强化\"试样柜\"价值"
+            - cell "\"上周一个客人买回去又退,就因为没试这一步\"(讲故事型)"
+      - separator
+      - heading "🆕 其他选题方向（基于\"实在不坑\"成交理由）" [level=3]
+      - heading "选题1:教知识·避坑型" [level=4]
+      - paragraph:
+        - strong: 标题
+        - text: :定制衣柜,别只看商家给的效果图——这三个地方不写进合同,后期全是坑
+        - strong: 开篇钩子
+        - text: :"效果图画得再好看,交钱之后板材、五金、封边全给你换——今天就说说合同里必须写清楚的三件事"
+        - strong: 承接点
+        - text: :同样是"帮客户避坑",从尺寸延伸到合同条款
+      - heading "选题2:晒过程·透明化" [level=4]
+      - paragraph:
+        - strong: 标题
+        - text: :今天有个客人专门跑三家店,就为了验证我说的这句话是不是真的
+        - strong: 开篇钩子
+        - text: :"他说网上都说商家柜门打开里面偷工减料,今天我当着他的面把样柜全拆了"
+        - strong: 承接点
+        - text: :用"到店验证"行为,升级为"透明展示"故事
+      - heading "选题3:36计·第17计 替网友做" [level=4]
+      - paragraph:
+        - strong: 标题
+        - text: :粉丝让我去隔壁建材城,看看X元一米的定制柜到底什么配置
+        - strong: 开篇钩子
+        - text: :"评论区问了三天,今天我真去了——现场让老板报价,你们自己看值不值"
+        - strong: 承接点
+        - text: :把"到店试样柜"变成"替观众探店测评"
+      - separator
+      - heading "六、总结与建议" [level=2]
+      - heading "✅ 原稿核心价值" [level=3]
+      - list:
+        - strong: 切入角度准
+        - text: :反认知+空间适配,击中装修人群真实痛点
+        - strong: 可执行性强
+        - text: :一人一机可拍,样柜演示真实可信
+        - strong: 符合变现目的
+        - text: :自然引导到店,不硬推销
+      - heading "🔧 关键改进点" [level=3]
+      - list:
+        - strong: 开场加危机感
+        - text: :用结果痛点("打不开""卡床")替代平淡提示
+        - strong: 中段补情绪波点
+        - text: :插入"很多人栽在这儿""有些家庭就一米"类强调
+        - strong: 理顺操作逻辑
+        - text: :先记家里尺寸→再到店对比
+        - strong: 结尾加金句
+        - text: :用口语化短句收束,强化"天天要用"的价值感
+      - heading "🎯 下一步行动" [level=3]
+      - list:
+        - strong: 本条视频
+        - text: :用优化稿拍摄,重点演示柜门/抽屉打开的占位空间
+        - strong: 系列延伸
+        - text: :复制"到店试样品"逻辑,做床、沙发的尺寸避坑系列
+        - strong: 长期人设
+        - text: :持续输出"帮客户避坑"的实在不坑型内容,建立"靠谱、透明"标签
+      - separator
+      - paragraph:
+        - strong: 📌 核心机制保留
+        - text: :反认知开场 + 具体动作可视化 + 低门槛行动指令
+        - strong: 📌 优化重点
+        - text: :危机感、情绪波点、结尾金句
+        - strong: 📌 延伸方向
+        - text: :尺寸避坑系列 or 透明展示故事
+    - paragraph: 继续创作 · 内容自动带入
+    - button "收藏到素材库":
+      - text: 收藏这 5 条
+    - paragraph:
+      - text: 勾选要带走的脚本
+      - generic: 已选 5/5
+    - button "全不选"
+    - group "选择要带走的脚本":
+      - checkbox "1. 开篇钩子" [checked]:
+        - generic: 1. 开篇钩子
+      - checkbox "2. 脚本结构" [checked]:
+        - generic: 2. 脚本结构
+      - checkbox "3. 信息递进" [checked]:
+        - generic: 3. 信息递进
+      - checkbox "4. 情绪设计" [checked]:
+        - generic: 4. 情绪设计
+      - checkbox "5. 结尾行动" [checked]:
+        - generic: 5. 结尾行动
+    - paragraph: 再点下面的板块：整份带过去，自动填好，点生成就行
+    - button "跨行业二创":
+      - generic: 跨行业二创
+    - button "生成选题":
+      - generic: 生成选题
+    - button "更多板块":
+      - generic: 更多板块
+- alert

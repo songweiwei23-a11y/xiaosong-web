@@ -1,0 +1,24 @@
+{
+  "ok": false,
+  "elapsedMs": 16900,
+  "initialIssues": [
+    "用户尚未采访：标题与封面不得写已采访动作、已知回答或预定差异；只交付开放问题或明确计划式表达。"
+  ],
+  "remaining": [
+    "用户尚未采访：标题与封面不得写已采访动作、已知回答或预定差异；只交付开放问题或明确计划式表达。"
+  ],
+  "completion": {
+    "terminal": "workflow_finished",
+    "conversationId": "b8f256e4-7061-41e5-8c37-0ca7d29e7cc6",
+    "messageId": "dc65b276-0d5a-4300-a5cd-45c1b6766355",
+    "usage": {
+      "prompt_tokens": 27116,
+      "completion_tokens": 814,
+      "total_tokens": 27930,
+      "latency": 11.11,
+      "total_price": 0,
+      "currency": "USD",
+      "elapsed_time": 14.985859
+    }
+  }
+}

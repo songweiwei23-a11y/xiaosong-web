@@ -1,0 +1,25 @@
+{
+  "ok": false,
+  "elapsedMs": 20259,
+  "initialIssues": [
+    "不可用候选不能占用交付名额；必须换成同主线、材料支持的可用标题。",
+    "用户尚未采访：标题与封面不得写已采访动作、已知回答或预定差异；只交付开放问题或明确计划式表达。"
+  ],
+  "remaining": [
+    "用户尚未采访：标题与封面不得写已采访动作、已知回答或预定差异；只交付开放问题或明确计划式表达。"
+  ],
+  "completion": {
+    "terminal": "workflow_finished",
+    "conversationId": "e008defb-0b6f-4038-8fab-cf2518f35b0e",
+    "messageId": "d6f50973-4690-499e-b6ea-337b0423ef12",
+    "usage": {
+      "prompt_tokens": 27594,
+      "completion_tokens": 1014,
+      "total_tokens": 28608,
+      "latency": 14.702,
+      "total_price": 0,
+      "currency": "USD",
+      "elapsed_time": 18.188136
+    }
+  }
+}

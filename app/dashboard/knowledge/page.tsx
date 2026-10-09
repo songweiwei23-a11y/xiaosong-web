@@ -19,6 +19,8 @@ import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from '@/lib/creator-context';
+import { settingsFromText, settingsForResult } from '@/lib/creation-settings';
+import { originForResult } from '@/lib/creation-continuation';
 
 // 历史里用它区分本页记录。与发给 Dify 的 taskType 无关——成交理由页发的
 // 也是「知识库查询」，两页若共用同一个 task_type，历史会互相串。
@@ -49,7 +51,7 @@ export default function KnowledgePage() {
   const [result, setResult] = useState("");
   const { context: creatorContext } = useCreatorContext();
 
-  const { lastResult, resultScope } = useGenerationPage({ taskType: HISTORY_TASK_TYPE });
+  const { history, loadHistory, lastResult, resultScope } = useGenerationPage({ taskType: HISTORY_TASK_TYPE });
   useRestoreLastResult(lastResult, setResult, resultScope);
 
   const handleSearch = async () => {
@@ -85,7 +87,6 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
 3. 如果有案例，请举例说明
 4. 如果知识库没有，请明确说明`,
           platform: "抖音",
-          duration: "60秒",
           style: "专业"
         }),
       });
@@ -100,7 +101,8 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
 
       // 存一份到云端，换页面或刷新后才能取回来
       if (full.trim()) {
-        await saveGenerationHistory(HISTORY_TASK_TYPE, { query, category: selectedCategory, profileId: creatorContext.profile?.id || null }, full);
+        await saveGenerationHistory(HISTORY_TASK_TYPE, { query, category: selectedCategory, profileId: creatorContext.profile?.id || null, originContent: query, creationSettings: { ...settingsFromText(query), userIntent: query } }, full);
+        void loadHistory();
       }
     } catch (error: any) {
       notify(error.message || "查询失败");
@@ -206,6 +208,7 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
       }
     >
       <ResultPanel
+        flowContext={{ settings: settingsForResult(result, history, { ...settingsFromText(query), userIntent: query }), originContent: originForResult(result, history, query) }}
         result={result}
         isGenerating={isSearching}
         title="查询结果"

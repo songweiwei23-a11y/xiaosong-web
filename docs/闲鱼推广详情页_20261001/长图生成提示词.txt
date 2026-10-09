@@ -1,0 +1,88 @@
+Use case: ads-marketing
+Asset type: A single finished Chinese product detail long image for Xianyu, portrait approximately 1024×3072, 1:3 aspect ratio.
+Primary request: Produce an elegant, readable, premium commercial detail page for 开物 AI短视频创作工作台. Image 1 is ONLY a brand/palette reference, not an edit target. Make a completely new composition and use the exact new content below; do not reuse outdated feature descriptions or single-plan pricing from the reference.
+Style: Professional Chinese SaaS product marketing. Keep the established deep navy, electric blue, cyan and white brand identity. Much calmer, more spacious and polished than the reference: restrained glow, a strong editorial hierarchy, clean large Chinese typography, crisp aligned rounded panels, generous padding. It should look like a real polished software product detail page, not a sci-fi poster or a wall of tiny text. Use meaningful simple line icons. No watermark.
+Composition: One vertically flowing page, each section has its own clear rhythm. Large attractive hero, a subtle frosted software-window silhouette labelled “界面轮廓示意”, two-column capability cards, a simple continuation workflow, cloud history and file capabilities, three equal pricing cards, shared-quota notes and purchase explanation. Keep all footer text comfortably readable. No real screenshots, real account details, readable internal prompts, fabricated UI results or performance metrics. Do not add people or unrelated decorative props.
+Text: Render the following Simplified Chinese wording verbatim, with no invented claims or extra text. Use typography to emphasize headlines and prices. The pricing digits must be exactly 49, 99 and 199.
+
+HERO
+开物
+AI短视频创作工作台
+把一个想法
+变成一套创作方案
+选题 · 开篇 · 脚本 · 审稿 · 分镜 · 标题
+¥49/月起
+实体商家 / 个人创作者 / 编导与代运营
+界面轮廓示意
+
+SECTION 01
+围绕你的账号，做好内容
+账号档案
+前采建档 · 定位与创作简报
+整理行业、产品、人群与表达方向
+选题与开篇
+批量找选题 · 设计第一句话
+给创作一个明确的起点
+脚本与分镜
+口播脚本 · 文字镜头表
+把台词、画面与时长讲清楚
+审稿与标题
+发现问题 · 提供改写建议
+生成标题方案与封面文案
+拆解与二创
+分析参考 · 结合行业与场景
+选定一个方案，继续创作
+高阶自由对话
+连续追问 · 联网检索
+上传图片与文档，辅助创作
+
+SECTION 02
+9个内容板块，接着创作
+从任何创作环节开始
+原稿、方向、人群、结构、时长与选定开头
+跳转后自动承接，缺失选项结合原稿与档案补齐
+选定方案 → 审稿优化 → 分镜脚本
+也可自由选择其他创作去向，直接点击生成
+
+SECTION 03
+内容有历史，账号有档案
+拆解、二创、对话与稿件按账号和档案保存
+重新打开，继续创作与优化
+多档案切换 · 作品续作 · 云端历史
+辅助功能：知识查询 / 新手课堂 / 7天任务 / 工作台待办
+
+SECTION 04
+让资料参与创作
+联网检索 · 图片理解 · 文档问答
+高阶对话支持图片、文字型PDF、DOCX、XLSX、PPTX、TXT等
+每条消息最多6个附件，单个不超过10MB
+视频拆解分析前3分钟；也支持文案与方案拆解
+
+SECTION 05
+官网同价 · 按月付费
+基础会员
+¥49/月
+每类创作额度各50次/期
+知识查询100次/期
+专业会员
+¥99/月
+每类创作额度各120次/期
+知识查询300次/期
+企业版
+¥199/月
+功能计量不限次数
+知识查询不限次数
+三档付费套餐均开放全部创作板块，主要区别是额度
+账号定位、商业定位、内容定位、创作简报共享定位额度
+脚本生成、起号方案、开篇钩子共享脚本额度
+每期一个月，剩余额度到期清零，不结转
+新账号可一次性体验，体验额度不按月重置
+
+FOOTER
+买到什么：网页软件会员使用权
+开通后核对套餐、到期时间与额度
+先了解用途与演示，确认适合再购买
+AI辅助创作，生成内容需核对
+提供文案与文字镜头表，不含拍摄、剪辑或代运营
+
+Constraints: Do not show a URL, QR code, phone number, WeChat handle, payment link, off-platform contact, fake testimonials, customer records, fabricated statistics, registration mark ®, certification badge, original price, promotional discount, company licence claim, official endorsement, unlimited file/context promise, guaranteed views/followers/sales, automatic video creation/editing/publishing, plagiarism detection, claimed Claude-equivalent functionality or third-party course author endorsements. Do not make the lower half cramped or use unreadable fine print. Leave a clean outer safe margin and use the entire long canvas to make all wording readable.

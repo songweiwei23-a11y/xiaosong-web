@@ -193,9 +193,11 @@ describe('开篇钩子提示词', () => {
     expect(p).toContain('每一种各写一条');
   });
 
-  it('要求每条用不同的计，并给出推荐', () => {
+  it('优先适配当前内容，允许同一机制，并给出推荐', () => {
     const p = buildOpeningPrompt({ topic: 'x' });
-    expect(p).toContain('每条用不同的计');
+    expect(p).not.toContain('每条用不同的计');
+    expect(p).toContain('允许同一机制');
+    expect(p).toContain('最多给 6 条');
     expect(p).toContain('我推荐哪一条');
     // 挑最适合这个号的，不是最刺激的
     expect(p).toContain('不是挑最刺激的那条');

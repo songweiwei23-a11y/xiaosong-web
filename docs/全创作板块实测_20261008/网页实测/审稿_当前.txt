@@ -1,0 +1,183 @@
+2026-10-08T03:58:17.536Z
+https://www.biandao.icu/dashboard/review
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "审稿优化" [level=1]
+    - paragraph: 逐条指出问题并给出改写建议，可对照标杆脚本做差距分析
+    - paragraph:
+      - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+      - link "换一个":
+        - /url: /dashboard/profiles
+    - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+    - paragraph:
+      - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+      - link "在档案里调整":
+        - /url: /dashboard/profiles
+    - paragraph:
+      - text: 还没生成创作简报，这次只能用档案里的字段。
+      - link "去生成":
+        - /url: /dashboard/creative-brief
+      - text: （做完选题、脚本、分镜都会自动用上）
+    - button "待审脚本" [expanded]:
+      - generic: 待审脚本
+    - generic: 草稿内容
+    - generic: 必填
+    - textbox "把要审的脚本粘贴进来…": 买衣柜前，先别急着看颜色。今天就在店里这个样柜上看一眼：柜门打开后，要占到哪儿；抽屉拉出来，前面还剩多少位置。把自己家的门、床和过道位置记下来，到店对着样柜试一试。款式喜欢，还得在自己家用得顺手。
+    - generic: 86 字 · 口播约 17 秒
+    - button "个人要求（优先级最高）" [expanded]:
+      - generic: 个人要求（优先级最高）
+    - generic: 你的要求
+    - generic: 可选
+    - textbox "个人要求":
+      - /placeholder: "比如：\n原稿太短，扩到 60 秒左右\n第二段价格写错了，应该是 19.9 元\n开头那句保留不要改"
+      - text: 【测试】给本地装修家庭看，30秒以内，一人手机自然演示；原意保留，只修改确有问题的地方；不加客户经历、厘米标准、免费服务或价格销量，不为造冲突而夸大。
+    - generic: 写了就以它为准，和其它设置冲突时按你的来：时长、错误、语气、要保留的句子都可以写
+    - button "基础信息" [expanded]:
+      - generic: 基础信息
+    - generic: 发布平台
+    - generic: 可选
+    - combobox:
+      - option "抖音" [selected]
+      - option "快手"
+      - option "视频号"
+      - option "小红书"
+      - option "B站"
+    - generic: 视频时长
+    - generic: 可选
+    - combobox "视频时长":
+      - option "AI 推荐"
+      - option "15秒"
+      - option "30秒" [selected]
+      - option "60秒"
+      - option "3分钟"
+      - option "5分钟"
+      - option "长视频"
+      - option "自定义…"
+    - generic: 优化稿会按这个时长补足或删减
+    - generic: 脚本类型
+    - generic: 可选
+    - button "教知识型"
+    - button "晒过程型"
+    - button "聊观点型"
+    - button "讲故事型"
+    - button "测评型"
+    - button "探店型"
+    - button "剧情型"
+    - button "混剪型"
+    - button "审稿维度":
+      - generic: 审稿维度
+    - button "优化目标":
+      - generic: 优化目标
+    - button "审稿中…" [disabled]:
+      - text: 审稿中…
+  - main:
+    - heading "审稿意见" [level=2]
+    - text: 创作中
+    - paragraph: 正在逐句审阅…
+- alert

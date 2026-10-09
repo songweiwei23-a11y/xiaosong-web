@@ -1,0 +1,337 @@
+{
+  "time": "2026-10-07T08:55:46.697Z",
+  "build": "QsGqjjnAe3KwBkZeiooLE",
+  "scope": "read-only metadata, HTTP health and anonymous isolation; no customer content or configuration changes",
+  "http": [
+    {
+      "path": "/",
+      "status": 200,
+      "ms": 27,
+      "location": null,
+      "cache": "s-maxage=31536000",
+      "length": 14587
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "ms": 7,
+      "location": null,
+      "cache": "s-maxage=31536000",
+      "length": 21127
+    },
+    {
+      "path": "/pricing",
+      "status": 200,
+      "ms": 5,
+      "location": null,
+      "cache": "s-maxage=31536000",
+      "length": 39046
+    },
+    {
+      "path": "/privacy",
+      "status": 200,
+      "ms": 5,
+      "location": null,
+      "cache": "s-maxage=31536000",
+      "length": 22012
+    },
+    {
+      "path": "/terms",
+      "status": 200,
+      "ms": 5,
+      "location": null,
+      "cache": "s-maxage=31536000",
+      "length": 19396
+    },
+    {
+      "path": "/dashboard",
+      "status": 307,
+      "ms": 6,
+      "location": "/login",
+      "cache": "private, no-cache, no-store, must-revalidate, max-age=0",
+      "length": 6
+    },
+    {
+      "path": "/admin",
+      "status": 307,
+      "ms": 4,
+      "location": "/login",
+      "cache": "private, no-cache, no-store, must-revalidate, max-age=0",
+      "length": 6
+    },
+    {
+      "path": "/api/profiles",
+      "status": 401,
+      "ms": 4,
+      "location": null,
+      "cache": null,
+      "length": 15
+    },
+    {
+      "path": "/api/library",
+      "status": 401,
+      "ms": 5,
+      "location": null,
+      "cache": null,
+      "length": 16
+    },
+    {
+      "path": "/api/works",
+      "status": 401,
+      "ms": 5,
+      "location": null,
+      "cache": null,
+      "length": 16
+    },
+    {
+      "path": "/api/account",
+      "status": 401,
+      "ms": 5,
+      "location": null,
+      "cache": null,
+      "length": 16
+    },
+    {
+      "path": "/api/admin/stats",
+      "status": 403,
+      "ms": 4,
+      "location": null,
+      "cache": null,
+      "length": 18
+    },
+    {
+      "path": "/api/research",
+      "status": 401,
+      "ms": 5,
+      "location": null,
+      "cache": null,
+      "length": 16
+    }
+  ],
+  "db": [
+    {
+      "table": "user_profiles",
+      "filters": [],
+      "count": 6,
+      "error": null
+    },
+    {
+      "table": "script_history",
+      "filters": [],
+      "count": 218,
+      "error": null
+    },
+    {
+      "table": "works",
+      "filters": [],
+      "count": 17,
+      "error": null
+    },
+    {
+      "table": "creation_sessions",
+      "filters": [],
+      "count": 28,
+      "error": null
+    },
+    {
+      "table": "material_library",
+      "filters": [],
+      "count": 31,
+      "error": null
+    },
+    {
+      "table": "chat_conversations",
+      "filters": [],
+      "count": 10,
+      "error": null
+    },
+    {
+      "table": "payment_orders",
+      "filters": [],
+      "count": 1,
+      "error": null
+    },
+    {
+      "table": "subscriptions",
+      "filters": [],
+      "count": 4,
+      "error": null
+    },
+    {
+      "table": "research_jobs",
+      "filters": [],
+      "count": 3,
+      "error": null
+    },
+    {
+      "table": "creation_requests",
+      "filters": [],
+      "count": 66,
+      "error": null
+    },
+    {
+      "table": "creation_completion_evidence",
+      "filters": [],
+      "count": 66,
+      "error": null
+    },
+    {
+      "table": "creation_requests",
+      "filters": [
+        [
+          "eq",
+          "status",
+          "pending"
+        ]
+      ],
+      "count": 0,
+      "error": null
+    },
+    {
+      "table": "creation_requests",
+      "filters": [
+        [
+          "eq",
+          "status",
+          "pending"
+        ],
+        [
+          "lt",
+          "expires_at",
+          "2026-10-07T08:55:54.249Z"
+        ]
+      ],
+      "count": 0,
+      "error": null
+    },
+    {
+      "table": "research_jobs",
+      "filters": [
+        [
+          "in",
+          "status",
+          [
+            "running",
+            "writing"
+          ]
+        ],
+        [
+          "lt",
+          "heartbeat_at",
+          "2026-10-07T08:52:54.693Z"
+        ]
+      ],
+      "count": 0,
+      "error": null
+    },
+    {
+      "table": "payment_orders",
+      "filters": [
+        [
+          "in",
+          "status",
+          [
+            "pending",
+            "reviewing"
+          ]
+        ]
+      ],
+      "count": 1,
+      "error": null
+    }
+  ],
+  "anonymous": [
+    {
+      "table": "user_profiles",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "script_history",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "works",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "creation_sessions",
+      "status": 401,
+      "rows": null,
+      "error": "42501"
+    },
+    {
+      "table": "material_library",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "chat_conversations",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "payment_orders",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "subscriptions",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "user_quotas",
+      "status": 200,
+      "rows": 0,
+      "error": null
+    },
+    {
+      "table": "research_jobs",
+      "status": 401,
+      "rows": null,
+      "error": "42501"
+    },
+    {
+      "table": "creation_requests",
+      "status": 401,
+      "rows": null,
+      "error": "42501"
+    },
+    {
+      "table": "creation_completion_evidence",
+      "status": 401,
+      "rows": null,
+      "error": "42501"
+    }
+  ],
+  "process": [
+    {
+      "name": "xiaosong-web",
+      "status": "online",
+      "restarts": 199,
+      "uptime": 1791348118733,
+      "memory": 73154560,
+      "cpu": 0.1
+    }
+  ],
+  "host": {
+    "ramTotal": 2058960896,
+    "ramFree": 1468276736,
+    "load": [
+      0.16,
+      0.03,
+      0.01
+    ],
+    "disk": "Filesystem      Size  Used Avail Use% Mounted on\n/dev/vda2        50G   38G  9.2G  81% /"
+  }
+}

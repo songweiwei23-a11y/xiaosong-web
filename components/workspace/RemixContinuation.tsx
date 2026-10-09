@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { CreationLinks } from './CreationLinks';
 import type { CreationContext } from '@/lib/creation-flow';
 import type { RemixPlan } from '@/lib/remix-plans';
+import { selectedCreationContext } from '@/lib/creation-selection';
 
 /** 读完方案后，在底部先选方案，再选下一步。 */
 export function RemixContinuation({ body, plans, context }: { body: string; plans: RemixPlan[]; context?: CreationContext }) {
@@ -22,7 +23,7 @@ export function RemixContinuation({ body, plans, context }: { body: string; plan
     </div>
     {selectedBody ? <div className="mt-4 border-t border-border/60 pt-4">
       <p className="mb-3 break-words text-[12px] leading-5 text-foreground" aria-live="polite">已选：{selectedTitle}</p>
-      <CreationLinks body={selectedBody} context={{ ...context, title: selectedTitle }} heading="2. 选择下一步 · 内容会自动带入" allDestinations embedded />
+      <CreationLinks body={selectedBody} context={selectedId === 'all' ? { ...context, title: selectedTitle } : selectedCreationContext(context, selectedBody, selectedTitle || '所选方案')} heading="2. 选择下一步 · 内容会自动带入" allDestinations embedded />
     </div> : <p className="mt-4 text-[12px] text-muted-foreground">选好方案后，再选择审稿、分镜、选题等创作去向。</p>}
   </section>;
 }

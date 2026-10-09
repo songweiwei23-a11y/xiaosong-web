@@ -1,0 +1,775 @@
+2026-10-08T04:37:57.948Z
+https://www.biandao.icu/dashboard/topic
+- complementary:
+  - generic: 开
+  - generic: 开物
+  - generic: AI 短视频创作智能体
+  - navigation:
+    - link "工作台":
+      - /url: /dashboard
+      - generic: 工作台
+    - link "新手课堂":
+      - /url: /dashboard/course
+      - generic: 新手课堂
+    - link "素材库":
+      - /url: /dashboard/library
+      - generic: 素材库
+    - link "创作进度":
+      - /url: /dashboard/works
+      - generic: 创作进度
+    - button "内容创作" [expanded]:
+      - text: 内容创作
+    - link "创作方向":
+      - /url: /dashboard/direction
+      - generic: 创作方向
+    - link "拆解爆款":
+      - /url: /dashboard/breakdown
+      - generic: 拆解爆款
+    - link "跨行业二创":
+      - /url: /dashboard/remix
+      - generic: 跨行业二创
+    - link "选题策划":
+      - /url: /dashboard/topic
+      - generic: 选题策划
+    - link "脚本生成":
+      - /url: /dashboard/script
+      - generic: 脚本生成
+    - link "分镜脚本":
+      - /url: /dashboard/storyboard
+      - generic: 分镜脚本
+    - link "审稿优化":
+      - /url: /dashboard/review
+      - generic: 审稿优化
+    - link "标题封面":
+      - /url: /dashboard/title
+      - generic: 标题封面
+    - button "账号运营" [expanded]:
+      - text: 账号运营
+    - link "前采建档":
+      - /url: /dashboard/interview
+      - generic: 前采建档
+    - link "账号定位":
+      - /url: /dashboard/positioning
+      - generic: 账号定位
+    - link "商业定位":
+      - /url: /dashboard/business-positioning
+      - generic: 商业定位
+    - link "内容定位":
+      - /url: /dashboard/content-positioning
+      - generic: 内容定位
+    - link "创作简报":
+      - /url: /dashboard/creative-brief
+      - generic: 创作简报
+    - link "起号":
+      - /url: /dashboard/growth
+      - generic: 起号
+    - link "成交理由":
+      - /url: /dashboard/deal-reason
+      - generic: 成交理由
+    - link "个人档案":
+      - /url: /dashboard/profiles
+      - generic: 个人档案
+    - button "助手与资料" [expanded]:
+      - text: 助手与资料
+    - link "高阶自由":
+      - /url: /dashboard/free-chat
+      - generic: 高阶自由
+    - link "知识库":
+      - /url: /dashboard/knowledge
+      - generic: 知识库
+    - button "账户" [expanded]:
+      - text: 账户
+    - link "我的账户":
+      - /url: /dashboard/account
+      - generic: 我的账户
+    - link "会员中心":
+      - /url: /dashboard/membership
+      - generic: 会员中心
+  - generic: 当前工作档案
+  - generic: 测试_青禾家具店_全板块验收20261008
+  - generic: 抖音
+  - generic: • 0-1万
+  - generic: 档案完整度
+  - generic: 50%
+  - button "还差 13 项：年龄段、职业标签、凭什么选你 等 · 去补"
+  - generic: 🎬 家居装修
+  - button "切换档案 5":
+    - text: 切换档案
+    - generic: "5"
+- button "白噪音设置":
+  - generic: 白噪音
+- button "切换":
+- button "播放":
+- button "外观设置":
+- link "我的账户":
+  - /url: /dashboard/account
+  - generic: song.weiwei23@gmail.com
+- button "退出登录":
+  - generic: 退出
+- main:
+  - complementary:
+    - heading "选题策划" [level=1]
+    - paragraph: 结合账号定位与爆款元素，一次给出多条可直接拍的选题
+    - button "⚡ 快速模式" [pressed]
+    - button "🎨 自定义"
+    - paragraph:
+      - text: 已自动使用档案：测试_青禾家具店_全板块验收20261008
+      - link "换一个":
+        - /url: /dashboard/profiles
+    - paragraph: 人设事实卡已带上（出镜人、年限、在卖什么以它为准）✓
+    - paragraph:
+      - text: 已避开 13 条禁忌（平台红线 + 家居装修）
+      - link "在档案里调整":
+        - /url: /dashboard/profiles
+    - paragraph:
+      - text: 还没生成创作简报，这次只能用档案里的字段。
+      - link "去生成":
+        - /url: /dashboard/creative-brief
+      - text: （做完选题、脚本、分镜都会自动用上）
+    - button "打法（四大脚本 / 起号 36 计）" [expanded]:
+      - generic: 打法（四大脚本 / 起号 36 计）
+    - generic: 用哪套打法
+    - button "两种都出" [pressed]
+    - button "四大脚本"
+    - button "三十六计"
+    - generic: 一半按四大脚本 + 爆款元素，一半按起号 36 计，每条标明用的哪套
+    - generic: 指定某一计
+    - generic: 可选
+    - combobox:
+      - option "不指定" [selected]
+      - option "1. 反向操作（服务、教学、美食、摄影）"
+      - option "2. 扮猪吃虎（技能、体育、职场、艺术）"
+      - option "3. 以物换物（实体商品、探店、手工、地方文化）"
+      - option "4. 借物喻人（情感、哲理、数码、生活）"
+      - option "5. 跨界硬组合（窄赛道、知识、故事、才艺）"
+      - option "6. 软组合：用A方式做B事（服务、餐饮、宠物、门店）"
+      - option "7. 一句话设定故事感（穿搭、做饭、设计、唱歌、Vlog）"
+      - option "8. 加入人物关系（家庭、教学、健身、探房、美食）"
+      - option "9. 一人分饰多角（知识、品牌测评、段子、内幕）"
+      - option "10. 情境还原（专业服务、教学、亲子、带货）"
+      - option "11. Rap+行业（枯燥知识、内幕、汽车、教育）"
+      - option "12. 借势点评（服装、医美、咖啡、减脂等）"
+      - option "13. 跟着博主做（教程、美食、运动、穿搭、测评）"
+      - option "14. 模仿电影片段（品牌、门店、剧情、职场）"
+      - option "15. 正确做法VS错误做法（健身、育儿、英语、沟通）"
+      - option "16. 整蛊（家庭、办公室、产品剧情）"
+      - option "17. 互联网嘴替/替网友做（实验、测评、美食、穿搭、减脂）"
+      - option "18. 求助网友（知识探索、亲子、乐器、产品共创）"
+      - option "19. 对比改造（装修、美妆、理发、汽修、健身）"
+      - option "20. 拟人化（美食、宠物、数码、家居）"
+      - option "21. 拟物化（健身、生活、宠物、段子）"
+      - option "22. 行业避坑（所有有决策成本的行业）"
+      - option "23. 内幕揭秘（服装、二手车、租车、加盟）"
+      - option "24. 懒人学习（技能、健康常识、美妆、美食、读书）"
+      - option "25. 暴躁态度（教育、工程、评论、行业吐槽）"
+      - option "26. 推荐建议（工具、账号、书影、产品）"
+      - option "27. 互换身份（职场、探店、关系、剧情）"
+      - option "28. 怀旧复古（音乐、美食、服装、探店、地方文化）"
+      - option "29. 吐槽奇葩现象（服装、教育、职场、地域生活）"
+      - option "30. 角色扮演（医疗科普、职场、古装、情侣、品牌）"
+      - option "31. 南北/地域差异（美食、市场、婚俗、生活服务）"
+      - option "32. 换个视角（宠物、亲子、服务、生活纪录）"
+      - option "33. 宠妻/宠夫反差（家庭、育儿、生活带货）"
+      - option "34. 接受网友挑战（运动、租房、探店、运营、旅行）"
+      - option "35. 街头采访（租房、情感、数码、美食、穿搭）"
+      - option "36. 冷知识（历史、珠宝、法律、生活、行业知识）"
+      - option "37. 赠送：身份反差（音乐、服装、职业知识、才艺）"
+    - generic: 不指定就按上面的打法，由 AI 按每条的目的挑计。想看每一计的详细说明，去「起号方案」
+    - button "爆款元素" [expanded]:
+      - generic: 爆款元素
+    - generic: 爆款元素
+    - generic: 可选
+    - button "头牌":
+      - generic: 头牌
+    - button "怀旧":
+      - generic: 怀旧
+    - button "对立":
+      - generic: 对立
+    - button "最差":
+      - generic: 最差
+    - button "荷尔蒙":
+      - generic: 荷尔蒙
+    - button "猎奇":
+      - generic: 猎奇
+    - button "圈人群":
+      - generic: 圈人群
+    - button "成本":
+      - generic: 成本
+    - generic: 建议选 2–3 个，AI 会在选题里明确标注
+    - generic: 这批选题的目的
+    - button "按配比"
+    - button "流量型" [pressed]
+    - button "人设型"
+    - button "变现型"
+    - generic: 让更多新用户看到账号：扩曝光、拉新粉
+    - generic: 成交理由
+    - generic: 可选
+    - button "颜值高"
+    - button "效果好"
+    - button "选择多"
+    - button "有特色"
+    - button "便利性"
+    - button "老板好"
+    - button "服务好"
+    - button "案例多"
+    - button "有面子"
+    - button "性价比"
+    - button "质量好"
+    - button "生意好"
+    - button "好评多"
+    - button "专业强"
+    - button "规模大"
+    - button "稀缺唯一"
+    - button "实在不坑"
+    - generic: 流量型选题不写成交理由，这里选了也不用
+    - button "进阶设置" [expanded]:
+      - generic: 进阶设置
+    - generic: 关键词
+    - generic: 可选
+    - textbox "关键词 1": 衣柜开合位置
+    - textbox "关键词 2"
+    - textbox "关键词 3"
+    - generic: 想让选题围绕的具体词
+    - generic: 对标账号
+    - generic: 可选
+    - textbox "想参考的同赛道账号…"
+    - generic: 爆款案例
+    - generic: 可选
+    - textbox "见过的爆款选题，AI 会参考套路…"
+    - generic: 定位补充
+    - generic: 可选
+    - textbox "账号特色、目标、禁忌…"
+    - generic: 生成的选题必须符合这里写的定位
+    - generic: 个人要求
+    - generic: 可选
+    - textbox "其他特殊要求…": 【测试】本地装修家庭、一人手机、样柜演示，30秒内，不编厘米标准、客户故事、价格与免费服务；五条方向各有差异。
+    - button "输出设置" [expanded]:
+      - generic: 输出设置
+    - generic: 生成数量
+    - generic: 可选
+    - button "5 条" [pressed]
+    - button "10 条"
+    - button "15 条"
+    - button "20 条"
+    - generic: 创意难度
+    - generic: 可选
+    - button "容易执行" [pressed]
+    - button "中等创意"
+    - button "高创意"
+    - button "生成 5 条选题":
+      - text: 生成 5 条选题
+  - main:
+    - heading "选题方案" [level=2]
+    - button "继续创作":
+      - text: 继续创作
+    - button "在画布里改":
+      - text: 在画布里改
+    - button "继续对话":
+      - text: 继续对话
+    - button "复制":
+      - text: 复制
+    - button "下载":
+      - text: 下载
+    - article:
+      - heading "📝 流量型选题（5条）" [level=1]
+      - heading "选题1：挑衣柜时别只看颜色，打开这两个门你就知道能不能买" [level=2]
+      - paragraph:
+        - strong: 0️⃣ 视频目的
+        - text: 流量型 —— 用反认知角度切入装修家庭的真实痛点，扩大覆盖面，吸引正在挑家具的新用户
+      - paragraph:
+        - strong: 🅰 打法
+        - text: 36计·第1计 反向操作：常规挑衣柜看颜色、材质 → 现场演示先看开门位置、抽屉会不会打架 → 顾客反应"原来这才是关键"
+      - paragraph:
+        - strong: 1️⃣ 爆款元素
+      - list:
+        - strong: 反差元素
+        - text: ：大家都在看外观，我先看开合位置
+        - strong: 成本元素
+        - text: ：买错了要退换货，还可能装上才发现门打不开
+      - paragraph:
+        - strong: 2️⃣ 开篇钩子
+        - text: "\"挑衣柜时别光看好不好看,这两个门你不打开,买回家可能就后悔了\""
+      - paragraph:
+        - strong: 3️⃣ 内容方向及目的（重中之重！）
+      - list:
+        - strong: 核心内容方向
+        - text: ：演示衣柜的柜门和抽屉同时打开时的空间占用情况
+        - strong: 核心问题与观众价值
+        - text: ：很多人买衣柜只看外观和价格,忽略了开门后的实际使用空间,导致装回家后发现柜门挡门、抽屉打不开等问题;本条用现场演示帮他们避坑
+        - strong: 取材与内容推进
+        - text: ：
+        - list:
+          - listitem: 开场点出大多数人挑衣柜的误区(只看外观)
+          - listitem: 镜头对准样柜,先打开柜门,再拉出抽屉,展示两者同时开启时的空间需求
+          - listitem: 用手机测量或目测说明"这个距离大概需要XX"(不编具体厘米数,用"一只手臂长""两步距离"等描述)
+          - listitem: 给出判断方法:到店试开,想象家里走道宽度
+        - strong: 事实边界
+        - text: ：基于店内现有样柜真实演示,不编造客户退货案例;如果样柜有多款,选一款演示即可;尺寸用模糊描述替代精确数字
+        - strong: 关键画面（3个）
+        - text: ：
+        - list:
+          - listitem: 手部动作:先打开柜门,再拉开抽屉(特写)
+          - listitem: 全景展示:两者同时打开后占据的空间范围
+          - listitem: 手指指向走道方向,比划"这个宽度"
+        - strong: 场景设置
+        - text: ：店铺展厅,样柜前,自然光或室内灯光
+      - paragraph:
+        - strong: 4️⃣ 脚本结构
+        - text: "按36计的公式走(反向操作),结合聊观点型的争议开篇:"
+      - list:
+        - listitem: 开篇质疑常规做法(只看颜色材质)
+        - listitem: 现场演示反向重点(开门+抽屉空间)
+        - listitem: 给出判断标准(想象家里环境,现场试开)
+        - listitem: 结论强化(不试开就买,可能白跑一趟)
+      - paragraph:
+        - strong: 5️⃣ 结尾行动指令
+        - text: "\"你家衣柜买的时候试开了吗?评论区说说\""
+      - paragraph:
+        - strong: 6️⃣ 执行要点
+      - list:
+        - listitem: 一人拍摄:手机架在样柜对面,拍摄者出镜演示开门拉抽屉动作
+        - listitem: 时长控制在30秒内:开篇5秒+演示15秒+结论5秒+结尾5秒
+        - listitem: 不需要额外道具,用手部动作和口播完成
+        - listitem: 光线充足时直接拍,注意柜门反光可调整角度
+      - separator
+      - heading "选题2：衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过" [level=2]
+      - paragraph:
+        - strong: 0️⃣ 视频目的
+        - text: 流量型 —— 用"冷知识"角度引发好奇,让从未想过这个问题的人停下来看
+      - paragraph:
+        - strong: 🅰 打法
+        - text: 36计·第36计 冷知识:反常识结论(很多衣柜柜门和抽屉会"打架")→ 现场证据(演示打不开的情况)→ 原理(内部结构限制)→ 应用(买之前必须试)
+      - paragraph:
+        - strong: 1️⃣ 爆款元素
+      - list:
+        - strong: 奇葩元素
+        - text: :外行人不知道的设计细节
+        - strong: 人群元素
+        - text: :第一次买衣柜的年轻人
+      - paragraph:
+        - strong: 2️⃣ 开篇钩子
+        - text: "\"衣柜的柜门和抽屉能不能同时打开?我刚才试了一下,发现了个事儿\""
+      - paragraph:
+        - strong: 3️⃣ 内容方向及目的（重中之重！）
+      - list:
+        - strong: 核心内容方向
+        - text: :演示衣柜柜门打开后,抽屉是否能顺利拉出(或反之)
+        - strong: 核心问题与观众价值
+        - text: :大部分人不知道有些衣柜设计存在"柜门挡住抽屉"的结构问题,买回家才发现某些抽屉用不了;这条帮他们提前注意
+        - strong: 取材与内容推进
+        - text: ":"
+        - list:
+          - listitem: 开场提出疑问:柜门和抽屉能同时开吗?
+          - listitem: 镜头跟随:先打开柜门,再尝试拉抽屉(如果样柜确实存在这个问题就拍真实情况;如果不存在就演示"有些款式会这样")
+          - listitem: 指出原因:内部结构、铰链位置等(用通俗语言,不讲专业术语)
+          - listitem: 给建议:买之前两个都试开一遍
+        - strong: 事实边界
+        - text: :基于样柜真实演示,如果店内样柜都不存在此问题,改为"有些款式会这样,咱家这款不会"的对比角度;不编造"之前有顾客退货"等情节
+        - strong: 关键画面(3个)
+        - text: ":"
+        - list:
+          - listitem: 手部打开柜门(特写)
+          - listitem: 尝试拉抽屉的动作(拉到一半卡住,或顺利拉出)
+          - listitem: 指向铰链或内部结构的位置
+        - strong: 场景设置
+        - text: :店铺展厅,样柜侧面或正面,突出手部动作
+      - paragraph:
+        - strong: 4️⃣ 脚本结构
+        - text: "按36计公式(冷知识):"
+      - list:
+        - listitem: 反常识结论开场(柜门和抽屉可能打架)
+        - listitem: 现场证据(演示过程)
+        - listitem: 原理解释(为什么会这样)
+        - listitem: 应用建议(买之前怎么判断)
+      - paragraph:
+        - strong: 5️⃣ 结尾行动指令
+        - text: "\"你家的衣柜有这个问题吗?评论区告诉我\""
+      - paragraph:
+        - strong: 6️⃣ 执行要点
+      - list:
+        - listitem: 一人拍摄:手机固定机位或手持跟拍
+        - listitem: 30秒内完成:开场提问3秒+演示12秒+解释10秒+结尾5秒
+        - listitem: 如果样柜不存在此问题,口播改为"咱这款不会,但有些款式要注意"
+        - listitem: 不需要道具,纯演示+口播
+      - separator
+      - heading "选题3：南方人和北方人挑衣柜,第一眼看的地方居然不一样" [level=2]
+      - paragraph:
+        - strong: 0️⃣ 视频目的
+        - text: 流量型 —— 用地域差异话题引发站队和讨论,扩大传播面
+      - paragraph:
+        - strong: 🅰 打法
+        - text: 36计·第31计 南北/地域差异:同一任务(挑衣柜)南北做法不同 → 差异展示(南方人看防潮,北方人看承重) → 文化/环境原因 → 评论区交流
+      - paragraph:
+        - strong: 1️⃣ 爆款元素
+      - list:
+        - strong: 对立元素
+        - text: :南方人vs北方人
+        - strong: 怀旧元素
+        - text: :老一辈传下来的挑选习惯
+      - paragraph:
+        - strong: 2️⃣ 开篇钩子
+        - text: "\"南方人和北方人挑衣柜,第一眼看的地方真不一样,你是哪种?\""
+      - paragraph:
+        - strong: 3️⃣ 内容方向及目的(重中之重!)
+      - list:
+        - strong: 核心内容方向
+        - text: :对比南北方人挑衣柜时的不同关注点
+        - strong: 核心问题与观众价值
+        - text: :地域环境不同导致需求侧重不同(南方潮湿关注防潮,北方干燥关注承重),这条帮大家理解"为什么老家人这样挑"
+        - strong: 取材与内容推进
+        - text: ":"
+        - list:
+          - listitem: 开场抛话题:南北挑衣柜不一样
+          - listitem: 演示"南方视角":打开柜门,检查底部、背板(是否离地、通风)
+          - listitem: 演示"北方视角":检查层板、抽屉(能放多少东西)
+          - listitem: 解释原因:气候差异(不展开科普,点到即止)
+          - listitem: 引导互动:你是哪里人?你家怎么挑?
+        - strong: 事实边界
+        - text: :基于地域常识和店内样柜演示,不编造"我遇到过XX顾客"等故事;南北差异用合理推测,不夸大
+        - strong: 关键画面(3个)
+        - text: ":"
+        - list:
+          - listitem: 手指底部或背板(代表南方关注点)
+          - listitem: 手摸层板或往抽屉里放重物(代表北方关注点)
+          - listitem: 对镜头摊手"你是哪种?"
+        - strong: 场景设置
+        - text: :店铺展厅,样柜前,一人出镜演示
+      - paragraph:
+        - strong: 4️⃣ 脚本结构
+        - text: "按36计公式(南北差异):"
+      - list:
+        - listitem: 提出差异现象(南北挑衣柜不同)
+        - listitem: 分别演示两种做法
+        - listitem: 点出环境原因
+        - listitem: 引导评论区站队交流
+      - paragraph:
+        - strong: 5️⃣ 结尾行动指令
+        - text: "\"南方的北方的都来评论区报个到,说说你家怎么挑\""
+      - paragraph:
+        - strong: 6️⃣ 执行要点
+      - list:
+        - listitem: 一人拍摄:手机固定或手持,出镜演示
+        - listitem: 30秒内:开场3秒+南方视角8秒+北方视角8秒+原因5秒+互动6秒
+        - listitem: 不需要道具,用手部动作指示重点部位
+        - listitem: 语气轻松,避免地域攻击,强调"理解差异"
+      - separator
+      - heading "选题4：老师傅挑衣柜从来不问价格,上来就看这个位置" [level=2]
+      - paragraph:
+        - strong: 0️⃣ 视频目的
+        - text: 流量型 —— 用"内行经验"角度吸引想学方法的用户,同时塑造专业感
+      - paragraph:
+        - strong: 🅰 打法
+        - text: 四大脚本·教知识(拆解型):反常识开篇(老师傅不问价格)→ 讲清原理(这个位置决定耐用性)→ 操作示范(怎么看)
+      - paragraph:
+        - strong: 1️⃣ 爆款元素
+      - list:
+        - strong: 头牌元素
+        - text: :借"老师傅"的权威感
+        - strong: 反差元素
+        - text: :不问价格,先看细节
+        - strong: 内幕元素
+        - text: :外行不知道的判断方法
+      - paragraph:
+        - strong: 2️⃣ 开篇钩子
+        - text: "\"老师傅挑衣柜从来不问价格,上来就看这个位置,一看就知道能用几年\""
+      - paragraph:
+        - strong: 3️⃣ 内容方向及目的(重中之重!)
+      - list:
+        - strong: 核心内容方向
+        - text: :演示检查衣柜铰链、抽屉滑轨等关键五金件的位置和状态
+        - strong: 核心问题与观众价值
+        - text: :很多人挑衣柜只看板材和外观,忽略了决定使用寿命的五金件;这条教一个简单判断方法
+        - strong: 取材与内容推进
+        - text: ":"
+        - list:
+          - listitem: 开场引出"老师傅经验"(不编具体人物,泛指行业经验)
+          - listitem: 镜头对准铰链:打开柜门,展示铰链安装位置、开合顺畅度
+          - listitem: 镜头对准抽屉:拉开抽屉,展示滑轨(不讲品牌,只讲"顺不顺、有没有异响")
+          - listitem: 给判断标准:多开关几次,听声音、感受手感
+        - strong: 事实边界
+        - text: :基于样柜真实演示,不编"老师傅说"的具体对话;五金件质量用"顺畅/有阻力"等模糊描述,不涉及具体品牌和价格
+        - strong: 关键画面(3个)
+        - text: ":"
+        - list:
+          - listitem: 手部特写:开关柜门,铰链运动(慢动作更佳)
+          - listitem: 手部特写:拉抽屉,滑轨运动
+          - listitem: 耳朵靠近柜门/抽屉,做"听声音"的动作
+        - strong: 场景设置
+        - text: :店铺展厅,样柜前,近景+特写为主
+      - paragraph:
+        - strong: 4️⃣ 脚本结构
+        - text: "教知识·拆解型:"
+      - list:
+        - listitem: 反常识开篇(老师傅不问价格)
+        - listitem: 讲清原理(五金件决定寿命)
+        - listitem: 操作示范(怎么看铰链和滑轨)
+        - listitem: 总结方法(多试几次,听声音摸手感)
+      - paragraph:
+        - strong: 5️⃣ 结尾行动指令
+        - text: "\"学会了吗?下次挑衣柜试试这个方法,关注我下期讲别的\""
+      - paragraph:
+        - strong: 6️⃣ 执行要点
+      - list:
+        - listitem: 一人拍摄:手机近景拍摄,突出手部动作和五金件
+        - listitem: 30秒内:开场5秒+铰链演示10秒+滑轨演示10秒+总结5秒
+        - listitem: 可配音效:柜门/抽屉开关的声音
+        - listitem: 不露五金件品牌,避免广告嫌疑
+      - separator
+      - heading "选题5：为什么有人买衣柜要蹲下来看?我今天才明白" [level=2]
+      - paragraph:
+        - strong: 0️⃣ 视频目的
+        - text: 流量型 —— 用"我也是刚知道"的共鸣角度,引发好奇和转发
+      - paragraph:
+        - strong: 🅰 打法
+        - text: 四大脚本·聊观点(观点并列):提出现象(有人蹲下看衣柜)→ 3个原因(看底部、看拼接、看是否离地)→ 总结(原来这么多讲究)
+      - paragraph:
+        - strong: 1️⃣ 爆款元素
+      - list:
+        - strong: 人群元素
+        - text: :第一次买家具的年轻人
+        - strong: 奇葩元素
+        - text: :外行不懂的"奇怪"动作
+      - paragraph:
+        - strong: 2️⃣ 开篇钩子
+        - text: "\"为什么有人买衣柜要蹲下来看?我今天才明白,原来有这么多讲究\""
+      - paragraph:
+        - strong: 3️⃣ 内容方向及目的(重中之重!)
+      - list:
+        - strong: 核心内容方向
+        - text: :演示"蹲下看衣柜底部"这个动作能发现什么
+        - strong: 核心问题与观众价值
+        - text: :很多人不知道衣柜底部藏着关键信息(是否离地、封边质量、板材拼接),这条解释"为什么要蹲下看"
+        - strong: 取材与内容推进
+        - text: ":"
+        - list:
+          - listitem: 开场抛疑问:为什么要蹲下看?
+          - listitem: 镜头跟随蹲下:第一视角展示底部
+          - text: "逐一指出3个观察点:"
+          - list:
+            - listitem: 是否离地(防潮)
+            - listitem: 封边是否完整(防甲醛、防磕碰)
+            - listitem: 板材拼接是否平整(做工)
+          - listitem: 总结:原来底部能看出这么多
+        - strong: 事实边界
+        - text: :基于样柜真实演示,不编"我看过XX家不合格"等对比;技术点用通俗语言,不展开专业术语
+        - strong: 关键画面(3个)
+        - text: ":"
+        - list:
+          - listitem: 蹲下的动作(从站姿到蹲姿的转换)
+          - listitem: 手指指向底部的离地空隙
+          - listitem: 手指沿着封边划过(检查封边)
+        - strong: 场景设置
+        - text: :店铺展厅,样柜前,一人出镜
+      - paragraph:
+        - strong: 4️⃣ 脚本结构
+        - text: "聊观点·观点并列:"
+      - list:
+        - listitem: 提出现象(有人蹲下看)
+        - listitem: 论据1:看是否离地
+        - listitem: 论据2:看封边
+        - listitem: 论据3:看拼接
+        - listitem: 总结:原来有这么多讲究
+      - paragraph:
+        - strong: 5️⃣ 结尾行动指令
+        - text: "\"你买家具会蹲下看吗?评论区说说你的方法\""
+      - paragraph:
+        - strong: 6️⃣ 执行要点
+      - list:
+        - listitem: 一人拍摄:手机手持或固定低角度拍摄,跟随蹲下动作
+        - listitem: 30秒内:开场3秒+蹲下演示20秒(3个点各6-7秒)+总结7秒
+        - listitem: 注意蹲下时镜头稳定,可提前找好拍摄角度
+        - listitem: 不需要道具,纯演示+口播
+      - separator
+      - heading "✅ 五条选题总结" [level=2]
+      - table:
+        - rowgroup:
+          - row "选题 打法 核心差异点 爆款元素":
+            - columnheader "选题"
+            - columnheader "打法"
+            - columnheader "核心差异点"
+            - columnheader "爆款元素"
+        - rowgroup:
+          - row "选题1 36计·反向操作 不看外观,先看开合位置 反差+成本":
+            - cell "选题1"
+            - cell "36计·反向操作"
+            - cell "不看外观,先看开合位置"
+            - cell "反差+成本"
+          - row "选题2 36计·冷知识 柜门和抽屉会\"打架\" 奇葩+人群":
+            - cell "选题2"
+            - cell "36计·冷知识"
+            - cell "柜门和抽屉会\"打架\""
+            - cell "奇葩+人群"
+          - row "选题3 36计·南北差异 地域导致挑选重点不同 对立+怀旧":
+            - cell "选题3"
+            - cell "36计·南北差异"
+            - cell "地域导致挑选重点不同"
+            - cell "对立+怀旧"
+          - row "选题4 四大脚本·教知识 老师傅看五金件 头牌+反差+内幕":
+            - cell "选题4"
+            - cell "四大脚本·教知识"
+            - cell "老师傅看五金件"
+            - cell "头牌+反差+内幕"
+          - row "选题5 四大脚本·聊观点 蹲下看底部的讲究 人群+奇葩":
+            - cell "选题5"
+            - cell "四大脚本·聊观点"
+            - cell "蹲下看底部的讲究"
+            - cell "人群+奇葩"
+      - paragraph:
+        - strong: 共同特点
+        - text: ":"
+      - list:
+        - listitem: 全部30秒内可完成
+        - listitem: 一人一机可落地
+        - listitem: 基于店内样柜真实演示
+        - listitem: 不编造数字、客户故事、价格承诺
+        - listitem: 每条方向独立,覆盖不同切入点(操作动作/地域差异/内行经验/冷知识/反常识)
+    - paragraph: 自动修正没成功，下面这几处请你核对
+    - button "这几处请核对：账号资料和素材里找不到出处（1 处）" [expanded]:
+      - generic: 这几处请核对：账号资料和素材里找不到出处（1 处）
+    - list:
+      - generic: ·
+      - generic: 百分比「同时开?这个动作90%的人没做」没有出处
+    - button "按资料修正":
+      - text: 按资料修正
+    - generic: 是真的就不用管（比如你口头告诉过它的）；点「按资料修正」只改这几句，其余不动，不扣次数。
+    - paragraph: 继续创作 · 内容自动带入
+    - button "收藏到素材库":
+      - text: 收藏这 5 条
+    - paragraph:
+      - text: 勾选要带走的选题
+      - generic: 已选 5/5
+    - button "全不选"
+    - group "选择要带走的选题":
+      - checkbox "1. 挑衣柜时别只看颜色，打开这两个门你就知道能不能买 选题1：挑衣柜时别只看颜色，打开这两个门你就知道能不能买" [checked]:
+        - generic: 1. 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+        - generic: 选题1：挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+      - checkbox "2. 衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过 选题2：衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过" [checked]:
+        - generic: 2. 衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过
+        - generic: 选题2：衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过
+      - checkbox "3. 南方人和北方人挑衣柜,第一眼看的地方居然不一样 选题3：南方人和北方人挑衣柜,第一眼看的地方居然不一样" [checked]:
+        - generic: 3. 南方人和北方人挑衣柜,第一眼看的地方居然不一样
+        - generic: 选题3：南方人和北方人挑衣柜,第一眼看的地方居然不一样
+      - checkbox "4. 老师傅挑衣柜从来不问价格,上来就看这个位置 选题4：老师傅挑衣柜从来不问价格,上来就看这个位置" [checked]:
+        - generic: 4. 老师傅挑衣柜从来不问价格,上来就看这个位置
+        - generic: 选题4：老师傅挑衣柜从来不问价格,上来就看这个位置
+      - checkbox "5. 为什么有人买衣柜要蹲下来看?我今天才明白 选题5：为什么有人买衣柜要蹲下来看?我今天才明白" [checked]:
+        - generic: 5. 为什么有人买衣柜要蹲下来看?我今天才明白
+        - generic: 选题5：为什么有人买衣柜要蹲下来看?我今天才明白
+    - paragraph: 再点下面的板块：整份带过去，自动填好，点生成就行
+    - button "脚本生成":
+      - generic: 脚本生成
+    - button "开篇钩子":
+      - generic: 开篇钩子
+    - button "更多板块":
+      - generic: 更多板块
+    - heading "挑一条接着做" [level=3]
+    - generic: 共 5 条 · 做过的会存进「创作进度」，隔多久都能接着做
+    - list:
+      - generic: "1"
+      - generic: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - generic: "2"
+      - generic: 衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - generic: "3"
+      - generic: 南方人和北方人挑衣柜,第一眼看的地方居然不一样
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - generic: "4"
+      - generic: 老师傅挑衣柜从来不问价格,上来就看这个位置
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - generic: "5"
+      - generic: 为什么有人买衣柜要蹲下来看?我今天才明白
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+    - heading "选题库 共 5 条" [level=3]:
+      - text: 选题库
+      - generic: 共 5 条
+    - generic: 出过的每一条都在这里；删掉的会被记住，不会再推荐给你
+    - textbox:
+      - /placeholder: 搜选题或内容，比如：夜市、拒单、装修
+    - button "全部"
+    - button "没做过"
+    - button "在做的"
+    - list:
+      - button "挑衣柜时别只看颜色，打开这两个门你就知道能不能买 10/8":
+        - generic: 挑衣柜时别只看颜色，打开这两个门你就知道能不能买
+        - generic: 10/8
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - button "删除选题：挑衣柜时别只看颜色，打开这两个门你就知道能不能买":
+      - button "衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过 10/8":
+        - generic: 衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过
+        - generic: 10/8
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - button "删除选题：衣柜的抽屉和柜门能不能同时开?这个动作90%的人没做过":
+      - button "南方人和北方人挑衣柜,第一眼看的地方居然不一样 10/8":
+        - generic: 南方人和北方人挑衣柜,第一眼看的地方居然不一样
+        - generic: 10/8
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - button "删除选题：南方人和北方人挑衣柜,第一眼看的地方居然不一样":
+      - button "老师傅挑衣柜从来不问价格,上来就看这个位置 10/8":
+        - generic: 老师傅挑衣柜从来不问价格,上来就看这个位置
+        - generic: 10/8
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - button "删除选题：老师傅挑衣柜从来不问价格,上来就看这个位置":
+      - button "为什么有人买衣柜要蹲下来看?我今天才明白 10/8":
+        - generic: 为什么有人买衣柜要蹲下来看?我今天才明白
+        - generic: 10/8
+      - button "写脚本":
+        - text: 写脚本
+      - button "设计开篇":
+        - text: 设计开篇
+      - button "起标题":
+        - text: 起标题
+      - button "删除选题：为什么有人买衣柜要蹲下来看?我今天才明白":
+    - heading "历史选题" [level=3]
+    - generic: "1"
+    - button "载入：📝 流量型选题（5条）":
+      - paragraph: 📝 流量型选题（5条）
+      - generic: 刚刚
+      - button "继续对话":
+      - button "删除":
+- alert

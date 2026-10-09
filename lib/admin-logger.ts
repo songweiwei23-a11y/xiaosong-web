@@ -34,6 +34,7 @@ export enum AdminActions {
   REVOKE_ADMIN = 'revoke_admin',
   GENERATE_INVITATIONS = 'generate_invitations',
   REVOKE_INVITATION = 'revoke_invitation',
+  DELETE_USER = 'delete_user',
 }
 
 /**
@@ -61,6 +62,7 @@ export const ACTION_LABELS: Record<string, string> = {
   [AdminActions.REVOKE_ADMIN]: '撤销管理员',
   [AdminActions.GENERATE_INVITATIONS]: '生成邀请码',
   [AdminActions.REVOKE_INVITATION]: '作废邀请码',
+  [AdminActions.DELETE_USER]: '删除用户',
 };
 
 /**
@@ -74,6 +76,7 @@ export const SENSITIVE_ACTIONS = new Set<string>([
   AdminActions.GRANT_ADMIN,
   AdminActions.REVOKE_ADMIN,
   AdminActions.RESET_USER_PASSWORD,
+  AdminActions.DELETE_USER,
 ]);
 
 /**

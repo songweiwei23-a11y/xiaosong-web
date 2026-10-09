@@ -107,16 +107,14 @@ export const FORBIDDEN_PHRASES = {
     "第一点第二点",
   ],
   
-  // 三级禁忌：空洞表达（必须具体化）
+  // 三级禁忌：空洞的夸（能具体就具体）
+  // 2026-10-07 体检 A05：原来还有「我觉得、可能、应该、大概」——那是有分寸的说法，不是空洞。
+  // 一律扣分，审稿就把「可能有效，先试试」改成「一定有效」，没依据也写得斩钉截铁
   level3: [
     "非常好",
     "特别棒",
     "超级赞",
     "真的很不错",
-    "我觉得",
-    "可能",
-    "应该",
-    "大概",
   ],
 };
 
@@ -165,7 +163,7 @@ export function findForbiddenOpenings(script: string): string[] {
 }
 
 // 4. 质量评分函数（严格版）
-export function evaluateScriptQualityStrict(script: string): {
+export function evaluateScriptQualityStrict(script: string, options: { adaptive?: boolean } = {}): {
   score: number;
   level: string;
   issues: string[];
@@ -190,11 +188,14 @@ export function evaluateScriptQualityStrict(script: string): {
   
   let basicScore = 0;
   
-  for (const element of REQUIRED_ELEMENTS.basic) {
+  const basic = options.adaptive ? REQUIRED_ELEMENTS.basic.filter(e => e.id === 'timing' || e.id === 'scene') : REQUIRED_ELEMENTS.basic;
+  const advanced = options.adaptive ? [] : REQUIRED_ELEMENTS.advanced;
+  const applicableWeight = [...basic, ...advanced].reduce((n,e) => n + e.weight, 0);
+  for (const element of basic) {
     if ('minCount' in element) {
       const matches = script.match(element.check as RegExp);
       const count = matches ? matches.length : 0;
-      if (count >= element.minCount!) {
+      if (count >= (options.adaptive ? 1 : element.minCount!)) {
         basicScore += element.weight;
       } else if (count > 0) {
         basicScore += element.weight * 0.5;
@@ -211,7 +212,7 @@ export function evaluateScriptQualityStrict(script: string): {
     }
   }
   
-  for (const element of REQUIRED_ELEMENTS.advanced) {
+  for (const element of advanced) {
     if (element.check) {
       const match = script.match(element.check as RegExp);
       if (match) {
@@ -230,29 +231,28 @@ export function evaluateScriptQualityStrict(script: string): {
         issues.push(`缺少${element.name}`);
       }
     } else if (element.phrases) {
+      /*
+       * 口语化不靠几个固定词来认（2026-10-07 体检 A05）：原来没出现「你妈、手指头、划走」就记「缺少接地气表达」，
+       * 审稿照着往品牌口吻、县城观察、采访稿里塞同一套俚语，人设都改成一个腔调。
+       * 现在只给提示、不扣分，怎么说话以人设和稿件类型为准
+       */
+      basicScore += element.weight;
       const count = element.phrases.filter(phrase => script.includes(phrase)).length;
-      if (count >= element.minCount!) {
-        basicScore += element.weight;
-      } else if (count > 0) {
-        basicScore += element.weight * 0.5;
-        suggestions.push(`接地气表达不足：需要${element.minCount}处，实际${count}处`);
-      } else {
-        issues.push(`缺少${element.name}（如"你妈给的点赞""手指头都划走了"）`);
-      }
+      if (count === 0) suggestions.push(`口语化：没认出明显的口语说法，看看这个人设是不是需要更像聊天（品牌、采访类稿件不需要就忽略）`);
     }
   }
   
-  score = basicScore;
+  score = applicableWeight ? basicScore * 100 / applicableWeight : 0;
   
   const level2Violations = FORBIDDEN_PHRASES.level2.filter(phrase => script.includes(phrase));
-  if (level2Violations.length > 0) {
+  if (!options.adaptive && level2Violations.length > 0) {
     score -= level2Violations.length * 5;
     issues.push(`存在书面语：${level2Violations.join('、')}`);
     suggestions.push("用口语化表达替换书面语");
   }
   
   const level3Violations = FORBIDDEN_PHRASES.level3.filter(phrase => script.includes(phrase));
-  if (level3Violations.length > 0) {
+  if (!options.adaptive && level3Violations.length > 0) {
     score -= level3Violations.length * 2;
     suggestions.push(`空洞表达需具体化：${level3Violations.join('、')}`);
   }
@@ -313,16 +313,19 @@ export function getRelevantExample(
 }
 
 // 6. 格式化质量报告
+/*
+ * 2026-10-05 质量整改：不再给用户看「9.0 分」「MCN级」「✅ 达标」。
+ * 这个分只看格式要素（钩子、金句、秒数、镜头……）齐不齐，没有编导校准过，也不核对事实——
+ * 包装成等级和分数，会让用户以为内容好、事实对。现在只说结构要素齐不齐、还缺哪几项。
+ * 标题行「## 🟢 脚本质量评分」是给程序拆分正文和报告用的标记（lib/script-result-utils），页面上不显示。
+ */
 export function formatQualityReport(evaluation: ReturnType<typeof evaluateScriptQualityStrict>): string {
-  const scoreColor = evaluation.score >= 9 ? "🟢" : evaluation.score >= 8 ? "🟡" : "🔴";
-  
-  let report = `## ${scoreColor} 脚本质量评分\n\n`;
-  report += `**得分**：${evaluation.score.toFixed(1)} / 10.0 分\n`;
-  report += `**等级**：${evaluation.level}\n`;
-  report += `**状态**：${evaluation.passCheck ? "✅ 达标" : "❌ 需要改进"}\n\n`;
-  
+  const missing = evaluation.issues.length;
+  let report = `## ${missing === 0 ? "🟢" : "🟡"} 脚本质量评分\n\n`;
+  report += `**结构检查**：${missing === 0 ? "格式要素齐全" : `还缺 ${missing} 项格式要素`}\n\n`;
+
   if (evaluation.issues.length > 0) {
-    report += `### 发现的问题\n`;
+    report += `### 还缺的\n`;
     evaluation.issues.forEach(issue => {
       report += `- ${issue}\n`;
     });

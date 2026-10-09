@@ -441,10 +441,10 @@ describe('页面本身的几条硬要求', () => {
     expect(page).not.toMatch(/snap\??!?\.online\b/);
   });
 
-  it('自由对话把提问和回答记进使用记录；detail 列没建时退回不带它写，不少记次数', () => {
+  it('自由对话把提问和回答与额度确认在同一事务保存', () => {
     expect(readCode('app/api/dify/chat/route.ts')).toMatch(/incrementUsageServer\(guard\.userId, 'freeChat', '自由对话', \{\s*question:/);
     const guard = readCode('lib/api-guard.ts');
-    expect(guard).toMatch(/if \(eventError && detail\)[\s\S]{0,120}insert\(base\)/);
+    expect(guard).toContain('settleCreation(reservation, true, taskType, detail)');
     expect(read('supabase/migrations/20260926_usage_events_detail.sql')).toMatch(/add column if not exists detail jsonb/);
   });
 });

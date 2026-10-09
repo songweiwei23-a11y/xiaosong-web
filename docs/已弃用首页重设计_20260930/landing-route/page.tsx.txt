@@ -1,0 +1,13 @@
+import type { Metadata } from 'next';
+import { LandingPreview } from '@/components/landing-preview/LandingPreview';
+import './preview.css';
+
+export const metadata: Metadata = {
+  title: '开物首页预览｜围绕你的生意创作',
+  description: '开物 AI 编导工作台首页预览：客户档案、编导方法、视频拆解、跨行业二创与创作历史。',
+  robots: { index: false, follow: false },
+};
+
+export default function LandingPreviewPage() {
+  return <LandingPreview />;
+}

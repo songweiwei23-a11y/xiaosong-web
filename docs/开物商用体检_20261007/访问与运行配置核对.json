@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-07",
+  "build": "QsGqjjnAe3KwBkZeiooLE",
+  "https": {
+    "url": "https://www.biandao.icu",
+    "result": "curl exit 35: schannel SSL/TLS handshake failed",
+    "server443Listening": false,
+    "nginxEnabledListen": ["80 default_server", "[::]:80 default_server"],
+    "sslConfigurationObserved": false,
+    "note": "Supabase browser authentication is separate HTTPS traffic. This finding concerns transport between browser and the Kaiwu site."
+  },
+  "server": {
+    "platform": "Linux",
+    "appListener": "*:3000",
+    "directPublicPortProbe": "curl exit 52: empty reply, exposure not confirmed",
+    "nginxReadTimeoutSeconds": 300,
+    "cronObserved": ["0 3 * * * /home/ubuntu/quality-nightly.sh"],
+    "supabaseBackupPlanVerified": false,
+    "nextInstalled": "16.3.0",
+    "sharpInstalled": "0.35.3"
+  },
+  "localWorkflowSnapshot": {
+    "path": "docs/dify/开物.yml",
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.5,
+    "topP": 0.9,
+    "maxTokens": 50000,
+    "memoryWindow": 20,
+    "note": "Local DSL snapshot, not freshly read from the published Dify editor. Output ceiling is not actual billed usage."
+  },
+  "knowledgeRouting": { "enabled": false, "source": "lib/kb-routing.ts" },
+  "typeCheck": { "command": "npm run type-check", "exitCode": 0 },
+  "mutationScope": "Audit artifacts only; no business code, dependency, production configuration or customer data changes."
+}

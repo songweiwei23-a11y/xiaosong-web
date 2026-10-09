@@ -4,6 +4,10 @@
  * 只在服务端用。
  */
 import { difyEventError, friendlyDifyError } from './dify-errors';
+import { completionUsage, type CreationCompletion } from './creation-quota';
+import { toDifyFiles } from './chat-attachments-server';
+import type { ChatAttachment } from './chat-attachments';
+import { hasObviousCutoff } from './result-reconciliation';
 
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1';
 
@@ -15,16 +19,19 @@ const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1';
 export async function askDify(
   query: string,
   userId: string,
-  searchQuery: string
-): Promise<{ ok: true; text: string } | { ok: false; message: string }> {
+  searchQuery: string,
+  options: { signal?: AbortSignal; files?: ChatAttachment[] } = {}
+): Promise<{ ok: true; text: string; completion: Omit<CreationCompletion,'result'> } | { ok: false; message: string }> {
   const res = await fetch(`${DIFY_BASE_URL}/chat-messages`, {
     method: 'POST',
+    signal: options.signal,
     headers: { Authorization: `Bearer ${process.env.DIFY_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      inputs: { query, search_query: searchQuery, conversation_history: '', dealReasons: '', web_search_enabled: '0', web_search_note: '本轮仅整理和核对用户提供的前采资料，不执行联网搜索。' },
+      inputs: { query, search_query: searchQuery, conversation_history: '', dealReasons: '', web_search_enabled: '0', web_search_note: '本轮不执行联网搜索；依据当前用户材料与可检索的知识库作答，缺少依据的保持未知。' },
       query,
       response_mode: 'streaming',
       user: userId,
+      ...(options.files?.length ? { files: toDifyFiles(options.files) } : {}),
     }),
   });
   if (!res.ok || !res.body) {
@@ -36,27 +43,40 @@ export async function askDify(
   const decoder = new TextDecoder();
   let buffer = '';
   let text = '';
-  while (true) {
+  let terminal: CreationCompletion['terminal'] | undefined;
+  let conversationId: string | undefined;
+  let messageId: string | undefined;
+  let usage: Record<string,unknown> = {};
+  try { while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
+      if (!line.startsWith('data:')) continue;
       let data: Record<string, unknown>;
       try {
-        data = JSON.parse(line.slice(6));
+        data = JSON.parse(line.slice(5).trim());
       } catch {
         continue;
       }
       const failure = difyEventError(data);
       if (failure) return { ok: false, message: friendlyDifyError(failure) };
-      const chunk = (data.answer || data.text || '') as string;
+      if (typeof data.conversation_id==='string') conversationId=data.conversation_id;
+      if (typeof data.message_id==='string') messageId=data.message_id;
+      if (data.event==='message_end' || data.event==='workflow_finished') {
+        terminal=data.event;
+        usage={...usage,...completionUsage(data)};
+      }
+      const chunk = typeof data.answer === 'string' ? data.answer : typeof data.text === 'string' ? data.text : '';
       if ((data.event === 'message' || data.event === 'text_chunk') && chunk) text += chunk;
     }
-  }
-  return text ? { ok: true, text } : { ok: false, message: '这次没读出结果，请重试' };
+    if (done) break;
+  } } finally { reader.releaseLock(); }
+  if (!text.trim()) return { ok:false,message:'这次没读出结果，请重试' };
+  if (!terminal) return { ok:false,message:'回答没有完整结束，请重试' };
+  if (hasObviousCutoff(text)) return { ok:false,message:'回答在结构标签处中断，请重试' };
+  return { ok:true,text,completion:{terminal,conversationId,messageId,usage} };
 }
 
 /**
