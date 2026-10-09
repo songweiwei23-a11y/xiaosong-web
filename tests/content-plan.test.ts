@@ -17,7 +17,7 @@ const sample = `# 2026年10月内容规划（共 8 条）
 
 ### 方向1：装修避坑知识
 - **视频目的**：流量型
-- **内容类型**：教知识
+- **内容类型**：冷知识
 - **内容方向**：讲买家具前要注意的事
 - **本月条数**：4 条
 - **为什么**：新号先拿流量
@@ -47,6 +47,14 @@ describe('当月内容规划', () => {
     expect(q).toContain('系统里记录的已发布作品 2 条');
     expect(q).toContain('月底店庆');
     expect(q).toContain('### 方向1：');
+  });
+  it('提示词：方向写满 15～20 个，流量型不许出现教知识', () => {
+    const q = buildContentPlanPrompt({ lastMonth: '1-4', recordedLastMonth: 2, count: 16, focus: [], events: '', notes: '', resolved, today: new Date(2026, 9, 9) });
+    expect(q).toContain('15～20 个');
+    expect(q).toContain('少于 15 个不算完成');
+    expect(q).toContain('流量型那一行只写流量打法');
+    expect(q).toContain('教知识、行业干货、避坑一律归变现型');
+    expect(q).not.toContain('3～6 个');
   });
   it('解析方向并核对配比', () => {
     expect(parsePlanDirections(sample).map((d) => [d.role, d.count])).toEqual([['流量型', 4], ['人设型', 2], ['变现型', 2]]);
@@ -78,7 +86,7 @@ describe('当月内容规划', () => {
     expect(RECOMMENDED_NEXT['content-plan']).toEqual(['direction', 'topic', 'script']);
     const payload = buildCreationHandoff('content-plan', 'topic', parts.items[0].body, { from: '内容规划' });
     expect(payload.settings?.purpose).toBe('流量型');
-    expect(payload.settings?.scriptType).toBe('teach');
+    expect(payload.settings?.scriptType).not.toBe('teach');
     expect(payload.settings?.topicCount).toBe(4);
     expect(payload.target).toBe('/dashboard/topic');
   });
