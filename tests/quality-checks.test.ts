@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { runQualityChecks, yearConflicts, sanitizeQualityReport, summarizeQuality, outputKey, type QualityRow } from '@/lib/quality-checks';
-import { resolveMix } from '@/lib/content-mix';
+import { mixToCounts, resolveMix } from '@/lib/content-mix';
 import { regressionCases, runRegression, readDifyAnswer, REGRESSION_PROFILE } from '@/lib/quality-regression';
 import { readCode } from './helpers/source';
 
@@ -84,7 +84,7 @@ describe('每晚回归', () => {
     expect(cases.map((c) => c.task)).toEqual(['回归:创作方向', '回归:审稿优化', '回归:画布改写', '回归:美甲选题', '回归:家具开篇', '回归:无价格引流脚本', '回归:只换开头']);
     expect(cases[0].query).toContain('人设事实卡');
     expect(cases[0].query).toContain('刻意去掉的信息');
-    expect(cases[0].query).toContain('流量型 3 个');
+    expect(cases[0].query).toMatch(/流量型 \d+ 个/);
     expect(cases[1].query).toContain('全城最正宗');
     expect(cases[1].query).toContain('18 年');
     expect(cases[2].query).toContain('只换说法，不加事实');
@@ -94,7 +94,11 @@ describe('每晚回归', () => {
     let n = 0;
     const out = await runRegression(async () => {
       n++;
-      if (n === 1) return '### 方向1：A\n- **视频目的**：流量型\n### 方向2：B\n- **视频目的**：流量型\n### 方向3：C\n- **视频目的**：流量型\n### 方向4：D\n- **视频目的**：人设型\n### 方向5：E\n- **视频目的**：变现型';
+      if (n === 1) {
+        const want = mixToCounts(resolveMix(REGRESSION_PROFILE).mix, 20);
+        const roles = (['流量型', '人设型', '变现型'] as const).flatMap((r) => Array<string>(want[r]).fill(r));
+        return roles.map((r, i) => `### 方向${i + 1}：X${i + 1}\n- **视频目的**：${r}`).join('\n');
+      }
       if (n === 2) return '### 3. 问题清单\n原稿写「全城最正宗」「在南乐干了 18 年」\n### 4. 优化后的完整脚本\n我是成都来的老王，做川菜 9 年，来南乐半年。\n### 5. 纯文字文案\n…';
       throw new Error('超时');
     });

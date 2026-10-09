@@ -73,7 +73,7 @@ export default function DirectionPage() {
   const [onCamera, setOnCamera] = useState("");
   const [capacity, setCapacity] = useState("");
   const [horizon, setHorizon] = useState("");
-  const [count, setCount] = useState<DirectionCount>(5);
+  const [count, setCount] = useState<DirectionCount>(20);
   const [depth, setDepth] = useState<"quick" | "full">("full");
   const [industry, setIndustry] = useState("");
   const [handoffFrom, setHandoffFrom] = useState("");

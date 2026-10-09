@@ -62,7 +62,7 @@ export const HORIZON: Choice[] = [
   { id: 'long', label: '长期经营', hint: '' },
 ];
 
-export const COUNT_OPTIONS = [3, 5, 8, 10] as const;
+export const COUNT_OPTIONS = [20, 25, 30] as const;
 export type DirectionCount = typeof COUNT_OPTIONS[number];
 
 export const DEPTHS: Choice<'quick' | 'full'>[] = [
@@ -78,7 +78,7 @@ export interface DirectionInput {
   onCamera?: string;
   capacity?: string;
   horizon?: string;
-  count: DirectionCount;
+  count: number;
   depth: 'quick' | 'full';
   /** 账号档案摘要（lib/profile-summary）；没有档案时为空，用 industry */
   profileSummary?: string;

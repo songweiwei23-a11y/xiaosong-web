@@ -55,11 +55,11 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
     {
       task: '回归:创作方向',
       query: buildDirectionPrompt({
-        purposes: ['fans', 'store'], formats: ['any'], count: 5, depth: 'quick',
+        purposes: ['fans', 'store'], formats: ['any'], count: 20, depth: 'quick',
         profileSummary: buildProfileSummary(profile as unknown as Record<string, unknown>), contextBlock: buildContextBlock(ctx, 'direction'),
-        mixBlock: mixPromptBlock(mix, { count: 5, unit: '个' }),
+        mixBlock: mixPromptBlock(mix, { count: 20, unit: '个' }),
       }),
-      mixCount: 5,
+      mixCount: 20,
     },
     {
       task: '回归:审稿优化',

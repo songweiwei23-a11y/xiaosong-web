@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildDirectionPrompt } from '@/lib/direction';
+import { buildDirectionPrompt, COUNT_OPTIONS } from '@/lib/direction';
 
 const base = { purposes: ['fans'], formats: ['any'], count: 5 as const, depth: 'quick' as const };
 
 describe('创作方向沿用内容规划的结构', () => {
+  it('方向数至少 20 个，默认 20', () => {
+    expect(Math.min(...COUNT_OPTIONS)).toBe(20);
+  });
+
   it('有思路、内容方向、内容类型、先别做的，并保留方向标题', () => {
     const p = buildDirectionPrompt(base);
     expect(p).toContain('## 📌 这个方向的思路');
