@@ -41,13 +41,13 @@
    *
    * 深浅两套的分层机制根本不同：深色靠亮度差（卡片比背景亮就"浮"起来），
    * 浅色的背景已接近白，卡片没法更亮，只能靠阴影。因此浅色这套的要点是
-   * ——背景用极浅冷灰而非纯白，卡片才有地方"白"出来；层次靠柔和阴影，
+   * ——背景用带一点蓝的浅灰而非纯白，卡片才有地方"白"出来；层次靠柔和阴影，
    * 不靠加深边框；玻璃保留，但白色要半透明、模糊要轻，光晕透上来才有质感。
    *
    * 主色定为沉稳的靛蓝：浅色界面本身明亮，强调色再鲜艳就会吵。
    */
   :root {
-    --background: 220 16% 97%;
+    --background: 222 32% 93%;
     --foreground: 226 22% 16%;
 
     --card: 0 0% 100%;
@@ -56,7 +56,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 225 20% 14%;
 
-    --primary: 226 56% 42%;
+    --primary: 226 64% 46%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 225 20% 94%;
@@ -76,15 +76,15 @@
      */
     --muted-foreground: 225 12% 40%;
 
-    --accent: 226 56% 42%;
+    --accent: 258 52% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 225 18% 89%;
-    --input: 225 18% 89%;
-    --ring: 226 56% 42%;
+    --border: 225 22% 84%;
+    --input: 225 22% 84%;
+    --ring: 226 64% 46%;
 
     --radius: 1rem;
 
@@ -110,12 +110,12 @@
     --panel-shadow-hover: 0 2px 4px hsl(225 20% 14% / 0.05), 0 8px 24px -8px hsl(225 20% 14% / 0.1);
 
     /* 浅底的光晕要淡，但得看得见：玻璃要有颜色可透，光晕太弱质感就出不来 */
-    --glow-primary: 226 56% 60%;
-    --glow-accent: 250 40% 78%;
-    --glow-opacity: 0.14;
+    --glow-primary: 224 80% 68%;
+    --glow-accent: 262 70% 76%;
+    --glow-opacity: 0.26;
 
-    --brand-from: 226 56% 48%;
-    --brand-to: 232 50% 38%;
+    --brand-from: 226 64% 50%;
+    --brand-to: 258 52% 46%;
   }
 
   .dark {

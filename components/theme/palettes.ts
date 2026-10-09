@@ -36,7 +36,7 @@ export const PALETTES: PaletteMeta[] = [
     id: "midnight",
     name: "墨蓝",
     desc: "深蓝夜色，沉稳专业",
-    swatch: ["hsl(220 40% 7%)", "hsl(219 35% 15%)", "hsl(208 62% 74%)"],
+    swatch: ["hsl(221 46% 7%)", "hsl(218 42% 15%)", "hsl(210 88% 68%)"],
   },
   {
     id: "ember",
