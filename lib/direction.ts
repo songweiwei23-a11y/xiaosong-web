@@ -63,8 +63,14 @@ export const HORIZON: Choice[] = [
   { id: 'long', label: '长期经营', hint: '' },
 ];
 
-export const COUNT_OPTIONS = [20, 25, 30] as const;
-export type DirectionCount = typeof COUNT_OPTIONS[number];
+export const DIRECTION_COUNT_MIN = 10;
+export const DIRECTION_COUNT_MAX = 40;
+export const DEFAULT_DIRECTION_COUNT = 20;
+
+export function clampDirectionCount(n: number): number {
+  if (!Number.isFinite(n)) return DEFAULT_DIRECTION_COUNT;
+  return Math.min(DIRECTION_COUNT_MAX, Math.max(DIRECTION_COUNT_MIN, Math.round(n)));
+}
 
 export const DEPTHS: Choice<'quick' | 'full'>[] = [
   { id: 'quick', label: '快速', hint: '每个方向几行：思路、拍什么、为什么' },

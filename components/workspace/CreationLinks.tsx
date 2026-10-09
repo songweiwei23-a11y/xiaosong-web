@@ -9,7 +9,7 @@ import { getActiveProfileId } from '@/lib/active-profile';
 import { isNetworkError, NETWORK_ERROR_HINT } from '@/lib/api-error';
 import { draftFromBody, draftFromItem, saveToLibrary } from '@/lib/library';
 import { buildCreationHandoff, creationScript, CREATION_DESTINATIONS, CREATION_SOURCES, RECOMMENDED_NEXT, type CreationContext, type CreationTarget } from '@/lib/creation-flow';
-import { itemsNoun, selectionBody, splitCreationItems } from '@/lib/creation-items';
+import { defaultPickIds, itemsNoun, selectionBody, splitCreationItems } from '@/lib/creation-items';
 import { selectedCreationContext } from '@/lib/creation-selection';
 
 const NEXT_BY_NOUN: Record<string, CreationTarget[]> = {
@@ -50,14 +50,14 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
   // 审稿的总评、评分和问题清单是报告章节，不能当成几份脚本供选择。
   const parts = useMemo(() => singleDocument ? splitCreationItems('') : source === 'review' ? splitCreationItems(creationScript('review', body)) : splitCreationItems(body), [body, source, singleDocument]);
   const selectable = parts.items.length >= 2;
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(parts.items.map((it) => it.id)));
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(defaultPickIds(parts)));
   const noun = selectable ? itemsNoun(parts.items) : '';
   /*
    * 认出是选题/方向/方案/脚本时直接展开勾选列表；认不出类型的普通条目（报告小节、附件清单……）
    * 折成一行，想挑再点开——线上真实回答里这类占了一半，全展开太乱
    */
   const [pickOpen, setPickOpen] = useState(noun !== '内容');
-  useEffect(() => { setPicked(new Set(parts.items.map((it) => it.id))); setPickOpen(!parts.items.length || itemsNoun(parts.items) !== '内容'); }, [parts]);
+  useEffect(() => { setPicked(new Set(defaultPickIds(parts))); setPickOpen(!parts.items.length || itemsNoun(parts.items) !== '内容'); }, [parts]);
   // 换了内容、改了勾选，收藏状态重新来
   useEffect(() => setFav('idle'), [parts, picked, pickOpen]);
   if (!CREATION_SOURCES[source] || !body.trim()) return null;

@@ -225,6 +225,12 @@ export function splitCreationItems(markdown: string): CreationItems {
 
 const KIND_NAME: Record<CreationItemKind, string> = { topic: '选题', script: '脚本', direction: '方向思路', plan: '方案建议', title: '标题', item: '内容' };
 
+/** 创作方向默认只勾前五个和推荐的那一个，其余留给用户自己勾；别的板块照旧全勾 */
+export function defaultPickIds(parts: CreationItems): string[] {
+  if (itemsNoun(parts.items) !== '方向思路') return parts.items.map((it) => it.id);
+  return parts.items.filter((it, i) => i < 5 || /我推荐/.test(`${it.label}${it.body}`)).map((it) => it.id);
+}
+
 /**
  * 这一批主要是什么：「勾选要带走的选题」。
  * 几类创作内容混在一起（两条方向、两条做法、一条选题）叫「创作内容」，照样展开给勾；

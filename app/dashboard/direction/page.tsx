@@ -30,8 +30,8 @@ import { buildContextBlock } from "@/lib/creator-context";
 import { resolveMix, mixPromptBlock, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
 import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
 import {
-  CAPACITY, COUNT_OPTIONS, DEPTHS, DIRECTION_TASK_TYPE, FORMATS, HORIZON, ON_CAMERA, PURPOSES,
-  buildDirectionPrompt, hasGoal, type Choice, type DirectionCount,
+  CAPACITY, DEFAULT_DIRECTION_COUNT, DIRECTION_COUNT_MAX, DIRECTION_COUNT_MIN, DEPTHS, DIRECTION_TASK_TYPE, FORMATS, HORIZON, ON_CAMERA, PURPOSES,
+  buildDirectionPrompt, clampDirectionCount, hasGoal, type Choice,
 } from "@/lib/direction";
 
 /** 一组可点的选项：标签 + 一句说明 */
@@ -73,7 +73,8 @@ export default function DirectionPage() {
   const [onCamera, setOnCamera] = useState("");
   const [capacity, setCapacity] = useState("");
   const [horizon, setHorizon] = useState("");
-  const [count, setCount] = useState<DirectionCount>(20);
+  const [countText, setCountText] = useState(String(DEFAULT_DIRECTION_COUNT));
+  const count = clampDirectionCount(Number(countText));
   const [depth, setDepth] = useState<"quick" | "full">("full");
   const [industry, setIndustry] = useState("");
   const [handoffFrom, setHandoffFrom] = useState("");
@@ -112,7 +113,7 @@ export default function DirectionPage() {
     if (typeof d.onCamera === "string") setOnCamera(d.onCamera);
     if (typeof d.capacity === "string") setCapacity(d.capacity);
     if (typeof d.horizon === "string") setHorizon(d.horizon);
-    if (COUNT_OPTIONS.includes(d.count as DirectionCount)) setCount(d.count as DirectionCount);
+    if (typeof d.count === "number") setCountText(String(clampDirectionCount(d.count)));
     if (d.depth === "quick" || d.depth === "full") setDepth(d.depth);
     setExpandContent(typeof d.expandContent === "string" ? d.expandContent : "");
     setHandoffFrom(typeof d.expandFrom === "string" ? d.expandFrom : "");
@@ -234,7 +235,10 @@ export default function DirectionPage() {
 
           <CollapsibleSection title="3. 出几个、写多细" defaultOpen>
             <Field label="出几个方向" stacked>
-              <div className="flex gap-1.5">{COUNT_OPTIONS.map((n) => <button key={n} type="button" onClick={() => setCount(n)} aria-pressed={count === n} className={chipCls(count === n)}>{n} 个</button>)}</div>
+              <div className="flex items-center gap-2">
+                <input type="number" inputMode="numeric" min={DIRECTION_COUNT_MIN} max={DIRECTION_COUNT_MAX} value={countText} onChange={(e) => setCountText(e.target.value)} onBlur={() => setCountText(String(count))} className="w-24 rounded-lg border border-white/15 bg-transparent px-3 py-1.5 text-sm" />
+                <span className="text-sm opacity-70">个（{DIRECTION_COUNT_MIN}～{DIRECTION_COUNT_MAX}，可自由调）</span>
+              </div>
             </Field>
             <Field label="写多细" stacked>
               <ChoiceGrid items={DEPTHS} isOn={(id) => depth === id} onToggle={(id) => setDepth(id as "quick" | "full")} />
