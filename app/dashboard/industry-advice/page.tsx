@@ -72,6 +72,8 @@ export default function IndustryAdvicePage() {
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
   const [profileName, setProfileName] = useState('')
   const [baseline, setBaseline] = useState('')
+  const [businessBaseline, setBusinessBaseline] = useState('')
+  const [contentBaseline, setContentBaseline] = useState('')
   const [choice, setChoice] = useState<Choice>(DEFAULT_CHOICE)
   const [result, setResult] = useState('')
   const [saved, setSaved] = useState<Row | null>(null)
@@ -96,8 +98,10 @@ export default function IndustryAdvicePage() {
           const j = await r.json().catch(() => null)
           return Array.isArray(j) && j[0] ? (j[0] as Row) : null
         }
-        const [baseRes, mineRes] = await Promise.all([get('账号定位'), get(ADVICE_TYPE)])
+        const [baseRes, bizRes, conRes, mineRes] = await Promise.all([get('账号定位'), get('商业定位'), get('内容定位'), get(ADVICE_TYPE)])
         setBaseline((await first(baseRes))?.full_content || '')
+        setBusinessBaseline((await first(bizRes))?.full_content || '')
+        setContentBaseline((await first(conRes))?.full_content || '')
         const mine = await first(mineRes)
         setSaved(mine)
         if (mine) {
@@ -147,6 +151,8 @@ export default function IndustryAdvicePage() {
       const query = buildIndustryAdvicePrompt({
         profileSummary: buildProfileSummary(profile as any),
         baseline: baseline || undefined,
+        businessBaseline: businessBaseline || undefined,
+        contentBaseline: contentBaseline || undefined,
         input: { purpose: choice.purpose, stage: choice.stage, situation: choice.situation, goal: choice.goal },
         performanceBlock: performancePromptBlock(performance),
         taboos: taboosPromptBlock(profile as any),

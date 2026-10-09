@@ -33,7 +33,10 @@ import { performancePromptBlock, type PerformanceSummary } from './performance';
 import { PRESET_BOARDS, presetPromptBlock, type CreatorPreset } from './creator-presets';
 import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from './preferences';
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
-import { adviceContextBlock } from './industry-advice';
+import { adviceContextBlock, threeHavesBlock } from './industry-advice';
+
+/** 三有自检只给产出选题、脚本、方向的板块（见 lib/industry-advice 的 threeHavesBlock） */
+const THREE_HAVE_BOARDS = new Set<ContextModule>(['topic', 'script', 'direction']);
 
 export interface CreatorProfile {
   id: string;
@@ -348,6 +351,7 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
   // 行业建议（药方）：这个号当前阶段的打法，所有板块都照它执行
   const advice = adviceContextBlock(ctx.advice);
   if (advice) parts.push('', advice);
+  if (THREE_HAVE_BOARDS.has(module)) parts.push('', threeHavesBlock());
 
   // 数据回流：这个号发出去的真实数据（lib/performance），规划类板块用它调整方向和拍法
   if (PERFORMANCE_BOARDS.has(module)) {

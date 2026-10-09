@@ -76,6 +76,29 @@ describe('adviceContextBlock', () => {
   });
 });
 
+describe('行业建议 · 药方取材与三有', () => {
+  it('药方提示词带上商业定位和内容定位，并要求标明出处', () => {
+    const p = buildIndustryAdvicePrompt({
+      profileSummary: 'x',
+      businessBaseline: '商业定位：到店咨询是主路径',
+      contentBaseline: '内容定位：烧烤做法系列',
+      input: { purpose: 'monetize', stage: 'scale', situation: '' },
+    });
+    expect(p).toContain('商业定位：到店咨询是主路径');
+    expect(p).toContain('内容定位：烧烤做法系列');
+    expect(p).toContain('标明出自「内容定位」的哪一条');
+    expect(p).toContain('三有');
+  });
+
+  it('三有自检只给选题、脚本、方向板块', () => {
+    const ctx = base({ advice: null, profile: null, positioning: { name: 'n', summary: 's', full: 'f' } });
+    for (const b of ALL_BOARDS) {
+      const has = buildContextBlock(ctx, b).includes('三有自检');
+      expect(has, b).toBe(['topic', 'script', 'direction'].includes(b));
+    }
+  });
+});
+
 describe('行业建议 · 注入创作上下文', () => {
   const advice = '## 诊断\n起号期，先找到能起量的一类内容。';
 

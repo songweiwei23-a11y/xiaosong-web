@@ -49,12 +49,16 @@ export function buildIndustryAdvicePrompt(params: {
   profileSummary: string;
   /** 已确定的账号定位（六维地基）。没有就写明没有，让模型把话说圆 */
   baseline?: string;
+  /** 商业定位深挖结论：成交路径、凭什么信你。没有就不带这一段 */
+  businessBaseline?: string;
+  /** 内容定位深挖结论：内容方向、系列、配比。没有就不带这一段 */
+  contentBaseline?: string;
   input: AdviceInput;
   /** 作品数据汇总（lib/performance 的 performancePromptBlock）。没有就空 */
   performanceBlock?: string;
   taboos?: string;
 }): string {
-  const { profileSummary, baseline, input, performanceBlock, taboos } = params;
+  const { profileSummary, baseline, businessBaseline, contentBaseline, input, performanceBlock, taboos } = params;
   const purpose = ADVICE_PURPOSES.find((p) => p.key === input.purpose);
   const stage = ADVICE_STAGES.find((s) => s.key === input.stage);
 
@@ -76,6 +80,8 @@ ${profileSummary}
 
 ${baseline ? `## 已确定的账号定位（这份方案必须与它一致）\n\n${baseline.slice(0, 6000)}` : '## 账号定位\n\n这个号还没有生成过账号定位。方案里要说明：哪些判断是基于档案推断的，定位出来后需要复核。'}
 
+${contentBaseline ? `## 已做过的内容定位（内容方向的来源，方案要引用它）\n\n${contentBaseline.slice(0, 4000)}\n` : ''}
+${businessBaseline ? `## 已做过的商业定位（成交路径的来源，方案要引用它）\n\n${businessBaseline.slice(0, 4000)}\n` : ''}
 ${performanceBlock ? `${performanceBlock}\n` : ''}${taboos ? `${taboos}\n` : ''}
 ## 输出要求
 
@@ -88,6 +94,8 @@ ${performanceBlock ? `${performanceBlock}\n` : ''}${taboos ? `${taboos}\n` : ''}
    - 三类视频的配比（大流量 / 人设型 / 变现型），配比说的是目的，不是脚本类型，每类写一句它在这一阶段负责什么
    - 每类的结尾指令，每类只一个动作
    - 优先做什么、暂时停做什么
+   - 每个内容方向标明出自「内容定位」的哪一条；每类结尾的成交动作标明出自「商业定位」的哪一条。找不到出处的写【待确认】，不要凭空补
+   - 每个内容方向说清靠什么满足三有：有用处（观众带走什么）、有兴趣（开头为什么停下来）、有共鸣（说出他们心里的哪句话）。三条都说不出来的方向不要列
 5. **接下来 30 天的三条硬规则**：选题和脚本必须遵守的具体约束
 6. **进入下一阶段的条件**：出现哪些数据或迹象，就该换阶段，并写清换的时候重心怎么变
 7. **不要做的事**：3 条，说明为什么
@@ -98,6 +106,22 @@ ${performanceBlock ? `${performanceBlock}\n` : ''}${taboos ? `${taboos}\n` : ''}
 - 与账号档案的事实冲突时以档案为准
 - 禁忌里写的不能说、不能拍，方案里一律不出现
 - 不输出寒暄和过程说明，只输出方案正文`;
+}
+
+/**
+ * 三有自检（知识库《小黄本课程》：内容被喜爱的三有原则）。
+ * 只给产出选题、脚本、方向的板块：每条都要能说出靠什么满足三有。
+ */
+export function threeHavesBlock(): string {
+  return [
+    '## ✅ 三有自检（每一条都要过）',
+    '',
+    '- **有用处**：观众看完能带走一个具体的东西（一招、一个判断、一个避坑）。说不出来的，不出。',
+    '- **有兴趣**：开头要让目标人群停下来，和他们的问题、场景直接相关，不是泛泛的知识。',
+    '- **有共鸣**：说出他们心里想说却没说的话，或者他们正经历的处境。',
+    '',
+    '三条里说不出靠什么满足的，这条选题/脚本/方向就不要给；宁可少给，不凑数。',
+  ].join('\n');
 }
 
 /**
