@@ -355,4 +355,4 @@ Write-Host "  $($localHash.Count) 个文件全部比对一致" -ForegroundColor 
 Write-Host ""
 Write-Host "部署完成，服务已就绪！" -ForegroundColor Green
 Write-Host "现在可以访问 http://$serverIP 使用，不会再落到重启窗口里。" -ForegroundColor Cyan
-pause
+if (-not $Yes) { pause }
