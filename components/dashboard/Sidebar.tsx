@@ -12,7 +12,7 @@ import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Rocket, UserCog, Crown, Bookmark, ListChecks, Compass, GraduationCap, FileSearch, Clapperboard, Shuffle, CalendarRange,
+  Wallet, LayoutList, ClipboardList, Stethoscope, Rocket, UserCog, Crown, Bookmark, ListChecks, Compass, GraduationCap, FileSearch, Clapperboard, Shuffle, CalendarRange,
 } from "lucide-react";
 
 /*
@@ -73,6 +73,8 @@ const navGroups: {
       { name: "内容定位", href: "/dashboard/content-positioning", icon: LayoutList },
       // 简报是把定位转译成各板块直接能用的指令，所以紧跟在定位后面
       { name: "创作简报", href: "/dashboard/creative-brief", icon: ClipboardList },
+      // 药方：按目的和阶段给打法，存好后所有创作板块照它执行
+      { name: "行业建议", href: "/dashboard/industry-advice", icon: Stethoscope },
       // 定位定完，起号决定"拍什么套路、前三秒怎么说"
       { name: "起号", href: "/dashboard/growth", icon: Rocket },
       { name: "成交理由", href: "/dashboard/deal-reason", icon: Award },

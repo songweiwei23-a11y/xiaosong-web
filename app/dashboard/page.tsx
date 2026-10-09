@@ -20,7 +20,7 @@ import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   MessagesSquare, ChevronRight, ChevronDown, Clock, Crown, User, History,
-  ClipboardList, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass, CalendarRange,
+  ClipboardList, Stethoscope, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass, CalendarRange,
   type LucideIcon,
 } from "lucide-react";
 
@@ -130,6 +130,13 @@ const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; 
     href: "/dashboard/creative-brief",
     step: "3",
   },
+  {
+    name: "行业建议",
+    desc: "按目的和阶段开药方，存好后所有创作板块照它执行",
+    icon: Stethoscope,
+    href: "/dashboard/industry-advice",
+    step: "4",
+  },
 ];
 
 const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }[] = [
@@ -161,6 +168,7 @@ const TASK_ROUTES: Record<string, string> = {
   商业定位: "/dashboard/business-positioning",
   内容定位: "/dashboard/content-positioning",
   创作简报: "/dashboard/creative-brief",
+  行业建议: "/dashboard/industry-advice",
   拆解爆款: "/dashboard/breakdown",
   跨行业二创: "/dashboard/remix",
   创作方向: "/dashboard/direction",

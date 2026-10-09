@@ -35,6 +35,7 @@ export const CREATION_SOURCES: Record<string, string> = {
   'free-chat': '高阶自由对话', positioning: '账号定位', 'deal-reason': '成交理由', knowledge: '知识库',
   // 2026-10-02 补：这三个生成完原来是断头路
   'content-positioning': '内容定位', 'business-positioning': '商业定位', 'creative-brief': '创作简报',
+  'industry-advice': '行业建议',
   // 素材库里收藏的素材也能拿去继续创作（推荐的下一步按分类给，见 lib/library 的 CATEGORY_NEXT）
   library: '素材库',
   direction: '创作方向',

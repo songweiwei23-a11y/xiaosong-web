@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { CreatorContext, CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { BRIEF_TYPE } from "@/lib/creative-brief";
+import { ADVICE_TYPE } from "@/lib/industry-advice";
 import { fetchActivePreset } from "@/lib/creator-presets";
 import { fetchActivePreferences } from "@/lib/preferences-client";
 
@@ -39,7 +40,7 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
   const task = (async (): Promise<CreatorContext> => {
     // 三个来源互不依赖，并行拉。任何一个失败都不该让整块上下文消失——
     // 有档案没定位，照样比什么都没有强
-    const [profileRes, posRes, dealRes0, briefRes] = await Promise.all([
+    const [profileRes, posRes, dealRes0, briefRes, adviceRes] = await Promise.all([
       fetch("/api/profiles").catch(() => null),
       // 只要六维地基。商业定位和内容定位是它的深挖，拿来当"账号方向"会跑偏
       fetch("/api/positioning?type=" + encodeURIComponent("账号定位")).catch(() => null),
@@ -47,6 +48,8 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       profileId ? fetch(`/api/deal-reasons?profileId=${encodeURIComponent(profileId)}`).catch(() => null) : Promise.resolve(null),
       // 创作简报：有它就优先用它，它是按板块切好片的，比截断定位原文有用得多
       fetch("/api/positioning?type=" + encodeURIComponent(BRIEF_TYPE)).catch(() => null),
+      // 行业建议（药方）：当前阶段的打法，所有创作板块都照它执行（见 lib/industry-advice）
+      fetch("/api/positioning?type=" + encodeURIComponent(ADVICE_TYPE)).catch(() => null),
     ]);
 
     let profile: CreatorProfile | null = null;
@@ -103,6 +106,15 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       }
     }
 
+    let advice: string | null = null;
+    if (adviceRes?.ok) {
+      const list = await adviceRes.json().catch(() => null);
+      if (Array.isArray(list) && list.length > 0) {
+        const own = profile ? list.find((x: any) => x.profile_id === profile!.id) : null;
+        advice = own?.full_content || null;
+      }
+    }
+
     // 数据回流（lib/performance）：这个号录了数据的作品汇总，选题、方向、起号、自由对话会参考
     let performance: CreatorContext["performance"] = null;
     if (profile) {
@@ -118,7 +130,7 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     // 我的创作偏好（lib/preferences）：学习开着时生效的那几条；读不到当没有，不挡生成
     const preferences = await fetchActivePreferences(profile?.id ?? profileId);
 
-    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, preset, preferences };
+    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, preset, preferences, advice };
     if (version === cacheVersion) cache.set(key, ctx);
     return ctx;
   })();

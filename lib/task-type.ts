@@ -46,6 +46,8 @@ export const TASK_TYPE_TO_FEATURE: Record<string, FeatureCode> = {
   商业定位: 'positioning',
   内容定位: 'positioning',
   创作简报: 'positioning',
+  // 行业建议（药方）：同属定位这一族，共用定位额度（见 lib/industry-advice）
+  行业建议: 'positioning',
   // 起号板块。方法论已经在提示词里结构化了，走 script 的额度——
   // 它产出的是可拍的方案和开头，和脚本同属创作
   起号方案: 'script',

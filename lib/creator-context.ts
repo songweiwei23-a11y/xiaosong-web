@@ -33,6 +33,7 @@ import { performancePromptBlock, type PerformanceSummary } from './performance';
 import { PRESET_BOARDS, presetPromptBlock, type CreatorPreset } from './creator-presets';
 import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from './preferences';
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
+import { adviceContextBlock } from './industry-advice';
 
 export interface CreatorProfile {
   id: string;
@@ -121,6 +122,8 @@ export interface CreatorContext {
   preset?: CreatorPreset | null;
   /** 我的创作偏好（lib/preferences）：从修改、收藏、发布里学到的，只有生效的那几条 */
   preferences?: PreferenceItem[] | null;
+  /** 行业建议（药方）的 markdown 原文，见 lib/industry-advice。所有创作板块都带 */
+  advice?: string | null;
 }
 
 /** 规划类板块才带真实数据：选题、方向、起号、自由对话（写脚本、分镜这些单条内容用不上） */
@@ -249,7 +252,7 @@ export function describeRestrictions(p: CreatorProfile): string {
 export function buildContextBlock(ctx: CreatorContext, module: ContextModule): string {
   // 建档时刻意没选的（排除清单）：相关的句子先从档案里拿掉，再拼进提示词（见 lib/interview-exclusions）
   const p = ctx.profile ? scrubProfile(ctx.profile, readTabooSettings(ctx.profile.taboo_settings).excluded) ?? null : null;
-  if (!p && !ctx.positioning && ctx.dealReasons.length === 0) return '';
+  if (!p && !ctx.positioning && ctx.dealReasons.length === 0 && !ctx.advice) return '';
 
   const parts: string[] = [];
   const title = p?.profile_name ? `## 📇 账号背景：${p.profile_name}` : '## 📇 账号背景';
@@ -341,6 +344,10 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
         '（这一段是从定位原文截断来的。生成一份「创作简报」可以让各板块拿到完整方向。）');
     }
   }
+
+  // 行业建议（药方）：这个号当前阶段的打法，所有板块都照它执行
+  const advice = adviceContextBlock(ctx.advice);
+  if (advice) parts.push('', advice);
 
   // 数据回流：这个号发出去的真实数据（lib/performance），规划类板块用它调整方向和拍法
   if (PERFORMANCE_BOARDS.has(module)) {

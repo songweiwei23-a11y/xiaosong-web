@@ -23,7 +23,7 @@ export const OUTPUT_LIBRARIES: OutputLibrary[] = [
   { id: 'plan', label: '起号方案库', taskTypes: ['起号方案'], board: 'growth' },
   { id: 'remix', label: '二创库', taskTypes: ['跨行业二创'], board: 'remix' },
   { id: 'breakdown', label: '拆解库', taskTypes: ['拆解爆款'], board: 'breakdown' },
-  { id: 'positioning', label: '定位库', taskTypes: ['账号定位', '商业定位', '内容定位', '创作简报'], board: 'positioning' },
+  { id: 'positioning', label: '定位库', taskTypes: ['账号定位', '商业定位', '内容定位', '创作简报', '行业建议'], board: 'positioning' },
   { id: 'deal', label: '成交理由库', taskTypes: ['成交理由'], board: 'deal-reason' },
   { id: 'other', label: '知识问答', taskTypes: ['知识库查询'], board: 'knowledge' },
 ];
@@ -46,7 +46,7 @@ const videoTopic = (input?: Record<string, unknown> | null) => {
   }
   return '';
 };
-const POSITIONING_TASKS = new Set(['账号定位', '商业定位', '内容定位', '创作简报']);
+const POSITIONING_TASKS = new Set(['账号定位', '商业定位', '内容定位', '创作简报', '行业建议']);
 
 /**
  * 一条产出的标题。按线上真实数据定的顺序（2026-10-02 实测：分镜库全是「1. 分镜表」、审稿库全是「1. 总评」、
