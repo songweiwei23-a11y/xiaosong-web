@@ -280,6 +280,7 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push('4. **换个人能不能用**——如果这个标题套在任何视频上都成立，它就太空了');
   parts.push('5. **是否命中风险词**');
   parts.push('6. **钩子卡是真用上了，还是只贴了个名字**——机制要能在标题里看出来');
+  parts.push('7. **标题里的数字、结果、身份是否都有材料或档案支持**——没有就改成材料能证明的说法，或标注「待核实」，不写成既定事实');
   parts.push('');
 
   parts.push('## 📤 输出格式');

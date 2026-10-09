@@ -981,6 +981,8 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
     parts.push('');
     parts.push(products);
   }
+  parts.push('');
+  parts.push('档案里没填的项（写着「未填」、「待补充」或留空的），不要凭行业印象补成具体事实——不编门店数字、客单价、客群比例、获客来源、过往业绩。需要它才能下结论的地方，写"待确认：缺哪一项"，并给出先要补的那一条信息。');
   if (p.additionalNotes?.trim()) {
     /*
      * 原来只写"优先级高于档案"，实测压不住：用户写了"做有影响力的IP，既有大流量又能变现"，

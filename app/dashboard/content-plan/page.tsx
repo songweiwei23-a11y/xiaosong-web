@@ -58,6 +58,7 @@ export default function ContentPlanPage() {
   const track = profile ? asText(profile.account_track) : "";
 
   const [lastMonth, setLastMonth] = useState<LastMonthId | "">("");
+  const [needLastMonth, setNeedLastMonth] = useState(false);
   const [recorded, setRecorded] = useState<number | null>(null);
   const [count, setCount] = useState(8);
   const [countTouched, setCountTouched] = useState(false);
@@ -97,6 +98,7 @@ export default function ContentPlanPage() {
 
   const pickLastMonth = (id: LastMonthId) => {
     setLastMonth(id);
+    setNeedLastMonth(false);
     if (!countTouched) setCount(suggestMonthCount(id));
   };
 
@@ -125,7 +127,7 @@ export default function ContentPlanPage() {
   const start = async () => {
     if (running) return;
     if (ctxLoading) { notify("正在读取当前档案，稍等一秒再点"); return; }
-    if (!lastMonth) { notify("先勾一下上个月发了多少条", "error"); return; }
+    if (!lastMonth) { setNeedLastMonth(true); notify("先勾一下上个月发了多少条", "error"); return; }
     if (!count || count < 1 || count > 60) { notify("这个月发几条：填 1 到 60 之间的数", "error"); return; }
     const isCurrent = beginProfileRequest();
     setRunning(true);
@@ -239,6 +241,7 @@ export default function ContentPlanPage() {
             )}
           </CollapsibleSection>
 
+          {needLastMonth && !lastMonth && <p role="alert" className="mb-1.5 text-[12px] text-amber-600">先在上面「1. 上个月发了多少条」里勾一个，再点规划</p>}
           <button type="button" onClick={start} disabled={ctxLoading || running} className={GENERATE_BTN}>
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
             {running ? "正在排这个月…" : `规划这个月的 ${count || 0} 条`}

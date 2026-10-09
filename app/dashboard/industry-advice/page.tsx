@@ -211,8 +211,13 @@ export default function IndustryAdvicePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-[13px] text-muted-foreground">加载中…</p>
+      <div className="min-h-screen bg-background py-8" aria-busy="true" aria-label="加载中">
+        <div className="mx-auto max-w-4xl animate-pulse space-y-4 px-4 sm:px-6 lg:px-8">
+          <div className="h-7 w-32 rounded bg-muted" />
+          <div className="h-4 w-3/4 rounded bg-muted" />
+          <div className="h-40 rounded-xl bg-muted" />
+          <div className="h-24 rounded-xl bg-muted" />
+        </div>
       </div>
     )
   }
