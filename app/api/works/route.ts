@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
 /**
  * 选题这一步永远算做完：作品就是"从一批选题里挑定了这一条"才建的，标题本身就是选题。
  * 原来按"有没有挂着选题记录"算，而选题那一批从来不挂到作品上，于是永远是"没做"——
- * 侧边栏「进行中」每一条都显示"下一步：选题策划"，点进去永远回到选题页。
+ * 顶栏「进行中」每一条都显示"下一步：选题策划"，点进去永远回到选题页。
  */
 function stageDone(stage: string, done: string[]): boolean {
   return stage === '选题策划' || done.includes(stage)

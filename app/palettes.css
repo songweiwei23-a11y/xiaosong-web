@@ -5,9 +5,11 @@
  * 原因：浅色下分层靠阴影、玻璃会发灰，每换一个色相都要重新调阴影与对比度
  * 才不显脏，成本高收益低；深色则天然适合这种质感，换色相几乎不影响可读性。
  *
- * 每套只改色相相关的变量，玻璃、圆角、阴影等质感规则共用 globals.css 中的定义。
+ * 每套主要改色相相关的变量；玻璃的结构规则共用 globals.css，这里只调透明度、模糊、饱和与光晕，
+ * 四套取值一致，磨砂的通透感才统一。
  * 取向上统一压低饱和度——界面的高级感来自克制：低饱和、少色相、
  * 层次靠明暗而非彩色；饱和度一高，整个界面都在喊，反而显得廉价。
+ * 但主色要够亮够清楚，太灰就显得淡、没有质感。
  */
 
 /* ============================================================
@@ -16,32 +18,41 @@
    ============================================================ */
 .dark[data-palette="graphite"] {
   /* 微冷的极深灰，不是纯黑：纯黑会让所有层级糊成一片 */
-  --background: 240 8% 7%;
+  --background: 240 10% 6%;
   --foreground: 240 10% 94%;
-  --card: 240 7% 11%;
+  --card: 240 12% 12%;
   --card-foreground: 240 10% 94%;
   --popover: 240 8% 10%;
   --popover-foreground: 240 10% 94%;
-  --primary: 220 60% 72%;
+  --primary: 222 80% 76%;
   --primary-foreground: 240 15% 8%;
   --secondary: 240 6% 17%;
   --secondary-foreground: 240 10% 94%;
   --muted: 240 6% 16%;
-  --muted-foreground: 240 6% 62%;
-  --accent: 220 60% 72%;
+  --muted-foreground: 240 8% 70%;
+  --accent: 222 80% 76%;
   --accent-foreground: 240 15% 8%;
   --border: 240 6% 20%;
   --input: 240 6% 22%;
-  --ring: 220 60% 72%;
-  --glass-bg: 240 7% 13%;
-  --glass-opacity: 0.6;
+  --ring: 222 80% 76%;
+  /* 玻璃：填充压低，让底下的光晕透得出来；模糊与饱和度加大，磨砂的通透感才出得来 */
+  --glass-bg: 240 12% 12%;
+  --glass-opacity: 0.34;
+  --glass-blur: 26px;
+  --panel-blur: 26px;
+  --glass-saturate: 1.85;
+  --panel-saturate: 1.85;
+  --glass-sheen: 0.1;
   --glass-border: 0 0% 100%;
-  --glass-border-opacity: 0.07;
-  --glow-primary: 220 55% 64%;
-  --glow-accent: 240 30% 50%;
-  --glow-opacity: 0.12;
-  --brand-from: 220 60% 74%;
-  --brand-to: 226 52% 62%;
+  --glass-border-opacity: 0.14;
+  --panel-shadow: 0 18px 40px -18px hsl(0 0% 0% / 0.6);
+  --panel-shadow-hover: 0 22px 48px -18px hsl(0 0% 0% / 0.7);
+  --panel-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.14);
+  --glow-primary: 222 70% 62%;
+  --glow-accent: 262 45% 58%;
+  --glow-opacity: 0.34;
+  --brand-from: 222 80% 78%;
+  --brand-to: 232 66% 64%;
 }
 
 /* ============================================================
@@ -55,26 +66,34 @@
   --card-foreground: 213 25% 93%;
   --popover: 219 38% 11%;
   --popover-foreground: 213 25% 93%;
-  --primary: 208 55% 70%;
+  --primary: 208 62% 74%;
   --primary-foreground: 220 45% 9%;
   --secondary: 218 28% 18%;
   --secondary-foreground: 213 25% 93%;
   --muted: 218 25% 17%;
   --muted-foreground: 215 15% 63%;
-  --accent: 192 40% 62%;
+  --accent: 192 50% 64%;
   --accent-foreground: 220 45% 9%;
   --border: 218 25% 21%;
   --input: 218 25% 23%;
-  --ring: 208 55% 70%;
+  --ring: 208 62% 74%;
   --glass-bg: 219 35% 14%;
-  --glass-opacity: 0.58;
+  --glass-opacity: 0.36;
+  --glass-blur: 26px;
+  --panel-blur: 26px;
+  --glass-saturate: 1.85;
+  --panel-saturate: 1.85;
+  --glass-sheen: 0.1;
   --glass-border: 0 0% 100%;
-  --glass-border-opacity: 0.08;
-  --glow-primary: 210 50% 58%;
-  --glow-accent: 192 40% 52%;
-  --glow-opacity: 0.12;
-  --brand-from: 208 55% 72%;
-  --brand-to: 196 45% 60%;
+  --glass-border-opacity: 0.14;
+  --panel-shadow: 0 18px 40px -18px hsl(0 0% 0% / 0.6);
+  --panel-shadow-hover: 0 22px 48px -18px hsl(0 0% 0% / 0.7);
+  --panel-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.14);
+  --glow-primary: 210 62% 62%;
+  --glow-accent: 192 50% 52%;
+  --glow-opacity: 0.34;
+  --brand-from: 208 62% 78%;
+  --brand-to: 196 55% 64%;
 }
 
 /* ============================================================
@@ -90,26 +109,34 @@
   --card-foreground: 40 15% 92%;
   --popover: 30 10% 10%;
   --popover-foreground: 40 15% 92%;
-  --primary: 40 55% 70%;
+  --primary: 40 68% 72%;
   --primary-foreground: 30 20% 9%;
   --secondary: 32 8% 17%;
   --secondary-foreground: 40 15% 92%;
   --muted: 32 8% 16%;
   --muted-foreground: 38 8% 62%;
-  --accent: 24 40% 64%;
+  --accent: 24 58% 66%;
   --accent-foreground: 30 20% 9%;
   --border: 32 8% 20%;
   --input: 32 8% 22%;
-  --ring: 40 55% 70%;
+  --ring: 40 68% 72%;
   --glass-bg: 30 9% 13%;
-  --glass-opacity: 0.6;
+  --glass-opacity: 0.36;
+  --glass-blur: 26px;
+  --panel-blur: 26px;
+  --glass-saturate: 1.85;
+  --panel-saturate: 1.85;
+  --glass-sheen: 0.1;
   --glass-border: 40 30% 100%;
-  --glass-border-opacity: 0.07;
-  --glow-primary: 38 50% 58%;
-  --glow-accent: 22 42% 52%;
-  --glow-opacity: 0.1;
-  --brand-from: 42 58% 72%;
-  --brand-to: 28 45% 60%;
+  --glass-border-opacity: 0.14;
+  --panel-shadow: 0 18px 40px -18px hsl(0 0% 0% / 0.6);
+  --panel-shadow-hover: 0 22px 48px -18px hsl(0 0% 0% / 0.7);
+  --panel-highlight: inset 0 1px 0 hsl(40 30% 100% / 0.14);
+  --glow-primary: 38 65% 60%;
+  --glow-accent: 22 58% 56%;
+  --glow-opacity: 0.34;
+  --brand-from: 42 66% 76%;
+  --brand-to: 28 56% 62%;
 }
 
 /* ============================================================
@@ -123,24 +150,32 @@
   --card-foreground: 175 15% 92%;
   --popover: 195 28% 9%;
   --popover-foreground: 175 15% 92%;
-  --primary: 165 50% 62%;
+  --primary: 165 60% 64%;
   --primary-foreground: 195 40% 7%;
   --secondary: 195 20% 16%;
   --secondary-foreground: 175 15% 92%;
   --muted: 195 18% 15%;
   --muted-foreground: 185 10% 60%;
-  --accent: 188 40% 58%;
+  --accent: 188 50% 60%;
   --accent-foreground: 195 40% 7%;
   --border: 195 18% 19%;
   --input: 195 18% 21%;
-  --ring: 165 50% 62%;
+  --ring: 165 60% 64%;
   --glass-bg: 195 25% 12%;
-  --glass-opacity: 0.58;
+  --glass-opacity: 0.36;
+  --glass-blur: 26px;
+  --panel-blur: 26px;
+  --glass-saturate: 1.85;
+  --panel-saturate: 1.85;
+  --glass-sheen: 0.1;
   --glass-border: 0 0% 100%;
-  --glass-border-opacity: 0.07;
-  --glow-primary: 165 45% 48%;
-  --glow-accent: 190 40% 48%;
-  --glow-opacity: 0.11;
-  --brand-from: 165 50% 64%;
-  --brand-to: 186 42% 54%;
+  --glass-border-opacity: 0.14;
+  --panel-shadow: 0 18px 40px -18px hsl(0 0% 0% / 0.6);
+  --panel-shadow-hover: 0 22px 48px -18px hsl(0 0% 0% / 0.7);
+  --panel-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.14);
+  --glow-primary: 165 60% 52%;
+  --glow-accent: 190 55% 52%;
+  --glow-opacity: 0.34;
+  --brand-from: 165 60% 68%;
+  --brand-to: 186 50% 58%;
 }

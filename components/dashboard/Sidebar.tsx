@@ -4,10 +4,6 @@ import ProfileSwitcher from '@/app/dashboard/components/ProfileSwitcher';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
-import { listWorks, deleteWork, type Work } from "@/lib/works";
-import { onActiveProfileChange } from "@/lib/active-profile";
-import { nextStage, workStageUrl } from "@/lib/resume";
-import { confirmDialog, notify } from "@/components/ui/feedback";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
@@ -103,9 +99,6 @@ const navGroups: {
   },
 ];
 
-/** 侧边栏只露最近几条，其余去「创作进度」看 */
-const SIDEBAR_WORKS = 3;
-
 const COLLAPSE_KEY = "xiaosong-sidebar-collapsed";
 
 interface SidebarCtx { open: boolean; setOpen: (v: boolean) => void; toggle: () => void; }
@@ -132,7 +125,6 @@ export function Sidebar() {
 
   /** 哪些分组被收起来了。记在本地，下次进来保持上次的样子 */
   const [collapsed, setCollapsed] = useState<string[]>([]);
-  const [works, setWorks] = useState<Work[]>([]);
 
   useEffect(() => { setOpen(false); }, [pathname, setOpen]);
 
@@ -147,37 +139,6 @@ export function Sidebar() {
       // 读不到就全部展开，不影响使用
     }
   }, []);
-
-  // 进行中的作品。路由变化时重新取一次——刚生成完的内容应当立刻反映在这里
-  // 只列当前档案的（lib/works 按档案取）；侧边栏切了档案立刻换成那个档案的
-  const [moreWorks, setMoreWorks] = useState(false);
-  const [profileTick, setProfileTick] = useState(0);
-  useEffect(() => onActiveProfileChange(() => setProfileTick((n) => n + 1)), []);
-  useEffect(() => {
-    let cancelled = false;
-    listWorks(12).then((list) => {
-      if (cancelled) return;
-      // 已经标了拍摄/发布的不算进行中（落地状态，2026-10-02）
-      const active = list.filter((w) => !w.is_done && (w.shoot_status ?? "none") === "none");
-      setWorks(active.slice(0, SIDEBAR_WORKS));
-      setMoreWorks(active.length > SIDEBAR_WORKS || list.length > active.length);
-    });
-    return () => { cancelled = true; };
-  }, [pathname, profileTick]);
-
-  const removeWork = async (w: Work) => {
-    const ok = await confirmDialog(
-      `从「进行中」删掉「${w.title}」？\n已经写好的脚本、分镜这些内容不会删，仍然在各板块的历史记录里。`,
-      { tone: "danger", confirmText: "删除", title: "删除作品" }
-    );
-    if (!ok) return;
-    if (await deleteWork(w.id)) {
-      setWorks((prev) => prev.filter((x) => x.id !== w.id));
-      notify("已删除");
-    } else {
-      notify("删除失败，请重试");
-    }
-  };
 
   const toggleGroup = (id: string) => {
     setCollapsed((prev) => {
@@ -205,7 +166,7 @@ export function Sidebar() {
         且背景光晕正好从它下面透上来，是最能体现质感的位置。
       */}
       {/*
-        手机上整个抽屉一起滚：「进行中」的作品、菜单、底部的档案切换叠起来比矮屏还高，
+        手机上整个抽屉一起滚：菜单加上底部的档案切换比矮屏还高，
         原来只有中间的菜单能滚，被挤得只剩两三项；电脑上照旧只滚菜单。
       */}
       <aside
@@ -235,75 +196,6 @@ export function Sidebar() {
             <X className="h-5 w-5" />
           </button>
         </div>
-
-        {/*
-          进行中的作品。放在导航之上，因为「接着上次那条做下去」比
-          「挑一个功能用」更接近日常的真实动作；没有作品时整块不出现，
-          不给新用户看一个空壳。
-        */}
-        {works.length > 0 && (
-          <div className="shrink-0 px-3 pb-3">
-            <div className="px-3 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-              进行中
-            </div>
-            <div className="space-y-1">
-              {works.map((w) => {
-                /*
-                 * 原来的链接是光秃秃的页面地址（/dashboard/topic），不带作品编号——
-                 * 点进去页面不知道要接着做哪一条，看到的是空白或别的内容。
-                 * 而且"下一步"永远算成选题策划，永远把人送回选题页。
-                 * 现在带上 ?work=，目标页会把这个作品的内容取回来接着做。
-                 */
-                const next = nextStage(w.stages);
-                const href = workStageUrl(w.id, next ?? "标题封面");
-                return (
-                  <div key={w.id} className="group relative">
-                    <Link
-                      href={href}
-                      className="block rounded-xl px-3 py-2.5 pr-8 transition-colors hover:bg-foreground/[0.06]"
-                    >
-                      <p className="truncate text-[12.5px] font-medium text-foreground">{w.title}</p>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        {/* 做完的填实、没做的空心，一眼看出卡在第几步 */}
-                        <span className="flex items-center gap-1">
-                          {w.stages.map((s) => (
-                            <span
-                              key={s.name}
-                              title={`${s.name}${s.done ? "（已做）" : ""}`}
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                s.done ? "bg-primary" : "bg-foreground/15"
-                              }`}
-                            />
-                          ))}
-                        </span>
-                        <span className="truncate text-[11px] text-muted-foreground">
-                          {next ? `下一步：${next}` : "都做完了"}
-                        </span>
-                      </div>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => removeWork(w)}
-                      aria-label={`删除作品：${w.title}`}
-                      title="删除这条作品（内容不会删）"
-                      className="absolute right-1.5 top-2 rounded-md p-1 text-muted-foreground [@media(hover:hover)]:opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            {moreWorks && (
-              <Link
-                href="/dashboard/works"
-                className="mt-1 block px-3 text-[11.5px] text-muted-foreground hover:text-primary"
-              >
-                全部进度 →
-              </Link>
-            )}
-          </div>
-        )}
 
         <nav className="flex-[1_0_auto] px-3 pb-4 md:flex-1 md:overflow-y-auto">
           {navGroups.map((group, gi) => {

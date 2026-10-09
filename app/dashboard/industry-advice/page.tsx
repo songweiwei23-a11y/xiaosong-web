@@ -206,6 +206,9 @@ export default function IndustryAdvicePage() {
       const row = (await res.json().catch(() => null)) as Row | null
       setSaved(row)
       invalidateCreatorContext()
+    } else {
+      const err = (await res.json().catch(() => null)) as { error?: string } | null
+      notify(`行业建议没有保存成功：${err?.error || '保存失败'}`, 'error')
     }
   }
 

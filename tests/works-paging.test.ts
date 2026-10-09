@@ -77,7 +77,7 @@ describe('作品按档案隔离（档案 1 的作品档案 2 看不到）', () =
     expect((await get('/api/works?profileId=乱写')).status).toBe(400);
   });
 
-  it('前端取作品一律带上当前档案（侧边栏进行中、创作进度、首页、选题页都走这里）', async () => {
+  it('前端取作品一律带上当前档案（顶栏进行中、创作进度、首页、选题页都走这里）', async () => {
     const calls: string[] = [];
     vi.stubGlobal('fetch', async (url: string) => { calls.push(url); return new Response('[]'); });
     vi.stubGlobal('localStorage', { getItem: () => P2, setItem() {}, removeItem() {} });
@@ -91,8 +91,8 @@ describe('作品按档案隔离（档案 1 的作品档案 2 看不到）', () =
     vi.unstubAllGlobals();
   });
 
-  it('切换档案后各处重新取：侧边栏、创作进度、首页、历史、素材库、选题页', () => {
-    expect(readCode('components/dashboard/Sidebar.tsx')).toMatch(/onActiveProfileChange\(\(\) => setProfileTick/);
+  it('切换档案后各处重新取：顶栏进行中、创作进度、首页、历史、素材库、选题页', () => {
+    expect(readCode('components/dashboard/InProgressStrip.tsx')).toMatch(/onActiveProfileChange\(\(\) => setProfileTick/);
     expect(readCode('app/dashboard/works/page.tsx')).toMatch(/onActiveProfileChange\(\(\) => \{ refreshCounts\(\); setProfileTick/);
     expect(readCode('app/dashboard/page.tsx')).toMatch(/loadProfileWork\(\)\.catch/);
     expect(readCode('app/history/page.tsx')).toMatch(/profileHistoryQuery\(getActiveProfileId\(\)\)/);

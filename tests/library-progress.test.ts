@@ -112,7 +112,7 @@ describe('创作进度', () => {
     expect(api).toMatch(/body\.shootStatus === 'none'\) \{ patch\.shot_at = null; patch\.published_at = null \}/);
   });
 
-  it('侧边栏「进行中」不再显示已拍摄、已发布的', () => {
-    expect(readCode('components/dashboard/Sidebar.tsx')).toMatch(/!w\.is_done && \(w\.shoot_status \?\? "none"\) === "none"/);
+  it('顶栏「进行中」不再显示已拍摄、已发布的', () => {
+    expect(readCode('components/dashboard/InProgressStrip.tsx')).toMatch(/!w\.is_done && \(w\.shoot_status \?\? "none"\) === "none"/);
   });
 });

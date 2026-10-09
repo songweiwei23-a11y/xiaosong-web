@@ -94,6 +94,10 @@
     --glass-blur: 24px;
     /* 卡片的模糊半径比侧边栏轻，卡片数量多 */
     --panel-blur: 16px;
+    /* 饱和度与顶部反光可由配色覆盖；这里的默认值与原先硬编码一致 */
+    --glass-saturate: 1.4;
+    --panel-saturate: 1.3;
+    --glass-sheen: 0;
     /* 边缘高光。玻璃之所以看着像玻璃，很大程度来自顶边那道亮线——
        浅色下不需要，白底上再加白线看不见。
        写成零尺寸透明阴影而不是 none：它要参与 box-shadow 的列表组合，
@@ -145,19 +149,22 @@
     --input: 240 12% 24%;
     --ring: 252 26% 76%;
 
-    /* 深色玻璃：暗底 + 半透明亮面才有透光感 */
+    /* 深色玻璃：暗底 + 半透明亮面才有透光感。各配色的玻璃参数在 palettes.css，这里是紫霞 */
     --glass-bg: 240 14% 14%;
-    --glass-opacity: 0.55;
-    --glass-blur: 20px;
+    --glass-opacity: 0.36;
+    --glass-blur: 26px;
     /* 卡片也开模糊。原先卡片是「伪玻璃」——半透明但不模糊，
        背后的东西原样透出来，看着是浑浊而不是磨砂。
-       14px 比侧边栏的 20px 轻，卡片数量多，够出效果就行 */
-    --panel-blur: 14px;
-    /* 顶边那道极淡的白线。玻璃的「边」是它区别于半透明色块的关键，
+       和侧边栏、顶栏用同一档模糊，磨砂的通透感才统一 */
+    --panel-blur: 26px;
+    --glass-saturate: 1.85;
+    --panel-saturate: 1.85;
+    --glass-sheen: 0.1;
+    /* 顶边那道白线。玻璃的「边」是它区别于半透明色块的关键，
        少了这一道，卡片只是一块透色的方形 */
-    --panel-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.07);
+    --panel-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.14);
     --glass-border: 0 0% 100%;
-    --glass-border-opacity: 0.08;
+    --glass-border-opacity: 0.14;
     /*
      * 深色下不要投影，分层靠亮度差。
      *
@@ -172,12 +179,12 @@
     --panel-shadow: 0 0 #0000;
     --panel-shadow-hover: 0 0 #0000;
 
-    --glow-primary: 252 30% 70%;
-    --glow-accent: 262 25% 62%;
-    --glow-opacity: 0.14;
+    --glow-primary: 252 36% 68%;
+    --glow-accent: 262 32% 62%;
+    --glow-opacity: 0.34;
 
-    --brand-from: 252 26% 78%;
-    --brand-to: 258 24% 66%;
+    --brand-from: 252 34% 80%;
+    --brand-to: 258 30% 68%;
   }
 }
 
@@ -226,11 +233,12 @@
    */
   .glass {
     background-color: hsl(var(--glass-bg) / var(--glass-opacity));
+    background-image: linear-gradient(160deg, hsl(0 0% 100% / var(--glass-sheen)), transparent 55%);
     /* 模糊半径由变量控制：浅色下较轻，深色下较重 */
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
-    box-shadow: var(--panel-shadow);
+    box-shadow: var(--panel-shadow), var(--panel-highlight);
   }
 
   /*
@@ -246,8 +254,9 @@
    */
   .glass-panel {
     background-color: hsl(var(--card) / var(--glass-opacity));
-    -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
-    backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
+    background-image: linear-gradient(160deg, hsl(0 0% 100% / var(--glass-sheen)), transparent 55%);
+    -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
+    backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
     /* 浅色靠阴影分层，深色靠顶边高光勾出玻璃的边 */
     box-shadow: var(--panel-shadow), var(--panel-highlight);
@@ -272,8 +281,8 @@
     border-color: hsl(var(--primary) / 0.6);
     background-color: hsl(var(--primary) / 0.1);
     /* 选中的卡片也保留模糊与顶边高光，否则一选中质感就掉了一截 */
-    -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
-    backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
+    -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
+    backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
     box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25), 0 8px 24px -12px hsl(var(--primary) / 0.5),
       var(--panel-highlight);
   }
@@ -491,6 +500,10 @@
 @keyframes kwEq {
   0%, 100% { transform: scaleY(0.35); }
   50% { transform: scaleY(1); }
+}
+@keyframes workStripIn {
+  from { opacity: 0; transform: translateY(calc(var(--strip-dir, 1) * 10px)); }
+  to { opacity: 1; transform: none; }
 }
 /* 暂停时音柱停住、变淡 */
 .kw-eq.kw-eq-paused > span { animation: none; transform: scaleY(0.35); opacity: 0.5; }

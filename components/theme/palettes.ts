@@ -29,26 +29,26 @@ export const PALETTES: PaletteMeta[] = [
   {
     id: "graphite",
     name: "石墨",
-    desc: "近中性冷灰，克制耐看",
-    swatch: ["hsl(240 8% 7%)", "hsl(240 7% 15%)", "hsl(220 60% 72%)"],
+    desc: "冷灰底，雾蓝光感，玻璃通透",
+    swatch: ["hsl(240 10% 6%)", "hsl(240 12% 12%)", "hsl(222 80% 76%)"],
   },
   {
     id: "midnight",
     name: "墨蓝",
     desc: "深蓝夜色，沉稳专业",
-    swatch: ["hsl(220 40% 7%)", "hsl(219 35% 15%)", "hsl(208 55% 70%)"],
+    swatch: ["hsl(220 40% 7%)", "hsl(219 35% 15%)", "hsl(208 62% 74%)"],
   },
   {
     id: "ember",
     name: "暖炭",
     desc: "暖灰香槟金，有温度",
-    swatch: ["hsl(30 10% 7%)", "hsl(30 9% 15%)", "hsl(40 55% 70%)"],
+    swatch: ["hsl(30 10% 7%)", "hsl(30 9% 15%)", "hsl(40 68% 72%)"],
   },
   {
     id: "teal",
     name: "松石",
     desc: "深青翡翠，冷静清爽",
-    swatch: ["hsl(195 30% 6%)", "hsl(195 25% 14%)", "hsl(165 50% 62%)"],
+    swatch: ["hsl(195 30% 6%)", "hsl(195 25% 14%)", "hsl(165 60% 64%)"],
   },
   {
     id: "default",

@@ -7,15 +7,17 @@ import { AmbientPill } from "@/components/ambient/AmbientPill";
 import { UpgradePrompt } from "@/components/upgrade/UpgradePrompt";
 import { Menu } from "lucide-react";
 import { Suspense } from 'react';
-import { TopBarSlotProvider, TopBarSlotTarget } from '@/components/dashboard/TopBarSlot';
+import { TopBarSlotProvider, TopBarSlotTarget, useTopBarSlotClaimed } from '@/components/dashboard/TopBarSlot';
+import { InProgressStrip } from '@/components/dashboard/InProgressStrip';
 import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate';
 import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
 
 function TopBar() {
   const { toggle } = useSidebar();
+  const slotClaimed = useTopBarSlotClaimed();
   return (
-    // 真玻璃：常驻且高度固定，模糊开销可控；只留下边框，避免和侧边栏形成双线
-    <div className="glass sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-x-0 border-t-0 px-3 sm:gap-4 sm:px-4 md:h-[72px] md:justify-end md:px-8">
+    // 真玻璃：常驻；电脑上一行 72px，手机上「进行中」换到第二行，顶栏随之变高
+    <div className="glass sticky top-0 z-20 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-x-0 border-t-0 px-3 py-2.5 sm:gap-x-4 sm:px-4 md:h-[72px] md:flex-nowrap md:justify-end md:px-8 md:py-0">
       <button
         type="button"
         onClick={toggle}
@@ -24,9 +26,16 @@ function TopBar() {
       >
         <Menu className="h-5 w-5" />
       </button>
-      {/* 左边空位：自由对话页把标题行放在这里（components/dashboard/TopBarSlot），别的页面空着 */}
+      {/* 中间空位：自由对话页把标题行放在这里（components/dashboard/TopBarSlot），别的页面空着 */}
       <TopBarSlotTarget />
-      <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
+      <InProgressStrip
+        className={
+          slotClaimed
+            ? "order-last basis-full md:hidden"
+            : "order-last basis-full md:order-none md:basis-auto md:flex-1"
+        }
+      />
+      <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-3 md:ml-0">
         <AmbientPill />
         <ThemeToggle />
         <UserProfile />

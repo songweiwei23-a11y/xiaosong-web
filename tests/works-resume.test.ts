@@ -17,7 +17,7 @@ import { readCode } from './helpers/source';
  *
  * 【原来的问题】
  * - 板块之间靠 sessionStorage 一次性交接，隔一天、刷新一下就没了
- * - 侧边栏「进行中」和首页「接着上次」的链接不带作品编号，点进去页面不知道做哪条
+ * - 「进行中」和首页「接着上次」的链接不带作品编号，点进去页面不知道做哪条
  * - "下一步"永远算成选题策划（选题那批记录从不挂到作品上），永远把人送回选题页
  * - 离开脚本页再回来，恢复了正文却没恢复作品，再生成就建出同名作品
  *   （线上「20年前濮阳老板怎么招客」06:52、06:57 各一个）
@@ -128,7 +128,7 @@ describe('作品接口', () => {
 });
 
 describe('「进行中」和首页带着作品走', () => {
-  for (const f of ['components/dashboard/Sidebar.tsx', 'app/dashboard/page.tsx']) {
+  for (const f of ['components/dashboard/InProgressStrip.tsx', 'app/dashboard/page.tsx']) {
     it(`${f} 的链接带作品编号、下一步不再永远是选题`, () => {
       const code = readCode(f);
       expect(code).toContain('workStageUrl(');
@@ -138,8 +138,8 @@ describe('「进行中」和首页带着作品走', () => {
     });
   }
 
-  it('侧边栏能删除作品，删之前要确认，并说清内容不会删', () => {
-    const code = readCode('components/dashboard/Sidebar.tsx');
+  it('顶栏「进行中」能删除作品，删之前要确认，并说清内容不会删', () => {
+    const code = readCode('components/dashboard/InProgressStrip.tsx');
     expect(code).toContain('deleteWork(');
     expect(code).toContain('confirmDialog(');
     expect(code).toMatch(/内容不会删/);
