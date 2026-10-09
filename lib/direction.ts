@@ -9,7 +9,8 @@
  */
 
 import { creativeCraftRules } from './creative-craft';
-import { CONTENT_TYPE_RULE } from './content-plan';
+import { tacticIndex, tacticsBlockedBy } from './creative-routes';
+import { SCRIPT_FAMILIES } from './viral-elements';
 
 export const DIRECTION_TASK_TYPE = '创作方向';
 
@@ -119,7 +120,7 @@ export function buildDirectionPrompt(i: DirectionInput): string {
   const purposeField = i.mixBlock?.trim()
     ? `- **视频目的**：流量型 / 人设型 / 变现型，只写一个\n`
     : `- **对应目的**：这个方向主要服务上面哪个目的\n`;
-  const contentTypeField = `- **内容类型**：${CONTENT_TYPE_RULE}；用户选了形式的，就从那个形式里挑最接近的结构\n`;
+  const contentTypeField = `- **内容类型**：从下面的 36 计清单里选一计，写计名（一字不差）。流量型只用流量计，人设型只用人设计，变现型只用变现计；教知识只放变现型；用户选了形式的，优先挑形式最接近的计\n- **讲法**：从四大脚本里挑一个结构（聊观点 / 晒过程 / 教知识 / 讲故事），写清话怎么讲；36 计定事件怎么走，四大脚本定话怎么讲\n`;
   const fields = purposeField + contentTypeField + (full
     ? `- **内容方向**：一两句话说清这一类拍什么范围、从哪类素材取材（不写具体哪一条）
 - **为什么能达到目的**：说清楚因果，结合这个账号的实际情况
@@ -159,6 +160,8 @@ ${goal}`;
   const opening = ex
     ? '## 📌 这个方向的思路\n三到五行：这个方向的核心是什么（主题、目的、为什么能起量），这个账号做它的最大优势和最大短板是什么。'
     : '## 📌 这个方向的思路\n三到五行：他的目的拆开是哪几件事、这个账号做这件事的最大优势和最大短板是什么，这一批方向怎么分工。';
+  const scriptFamilies = SCRIPT_FAMILIES.map((s) => `- **${s.name}**（${s.purpose}）：${s.note}`).join('\n');
+  const tactics = `## 起号 36 计（小黄）：每个方向的拍法主要从这里挑\n每一计的结构公式要落在片子的**事件**上，不是只在标题里提一句。禁忌里不能碰的计已经去掉。\n\n${tacticIndex({ exclude: tacticsBlockedBy(i.contextBlock) })}\n\n## 四大脚本（薛老师）：辅助，管话怎么讲\n${scriptFamilies}\n\n`;
   const mixTable = i.mixBlock?.trim()
     ? `## 📊 配比一览\n| 目的 | 条数 | 主要用什么类型 |\n三行，流量型 / 人设型 / 变现型。**流量型那一行只写流量打法**（反向操作、冷知识、借势、地域差异、街头采访、整蛊等），不写教知识、行业干货、避坑；教知识只放变现型那一行。\n\n`
     : '';
@@ -177,7 +180,7 @@ ${i.contextBlock?.trim() ? `\n${i.contextBlock.trim()}\n` : ''}${mix}
 ## 输出格式（Markdown，标题和字段名原样保留）
 ${opening}
 
-${mixTable}## 🧭 内容方向（勾选想做的方向，带去选题或脚本接着做）
+${tactics}${mixTable}## 🧭 内容方向（勾选想做的方向，带去选题或脚本接着做）
 
 然后出 ${i.count} 个方向，每个都用这个样子，方向之间用 --- 隔开：
 
