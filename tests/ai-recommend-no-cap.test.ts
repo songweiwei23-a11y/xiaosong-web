@@ -35,8 +35,8 @@ describe('各板块页面', () => {
     expect(page).toMatch(/useState<"preset" \| "custom" \| "ai">\("ai"\)/);
     expect(page).toMatch(/if \(!s\.duration\) setDurationMode\('ai'\)/);
     expect(page).not.toMatch(/setDurationMode\("preset"\); setDuration\("60秒"\)/);
-    // AI 推荐时：按内容需要定、不压缩；不拿 60 秒范例
-    expect(page).toMatch(/时长由你按内容需要定：\$\{AI_LENGTH_RULE\}/);
+    // AI 推荐时：时长不限、以效果为准；不压缩；不拿 60 秒范例
+    expect(page).toMatch(/时长不限，以效果最好为准：\$\{AI_LENGTH_RULE\}/);
     expect(page).toMatch(/const durationForCalc = isAiDuration \? "" : finalDuration/);
   });
 

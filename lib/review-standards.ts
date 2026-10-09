@@ -170,7 +170,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   if (p.platform) parts.push(`- 目标平台：${p.platform}`);
   if (!p.duration || p.duration === AI_DURATION) {
     // AI 推荐 = 要质量最好的那一版，不设上限（2026-10-06 产品方）：原稿里好的情节、细节不为了变短删掉
-    parts.push(`- 目标时长：由你按内容需要定——${AI_LENGTH_RULE}。原稿里讲得好的情节、细节不要为了变短删掉；在优化后的完整脚本开头用一行标注「建议时长：XX秒」，并在总评里用一句话说明为什么是这个时长`);
+    parts.push(`- 目标时长：不限，以效果最好为准——${AI_LENGTH_RULE}。原稿里讲得好的情节、细节不要为了变短删掉；不需要标注时长`);
   } else {
     parts.push(`- 目标时长：${p.duration}`);
   }

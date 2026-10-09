@@ -667,7 +667,7 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
 
 ### 第3步：正文脚本
 - ${isAiDuration
-  ? `时长由你按内容需要定：${AI_LENGTH_RULE}（在脚本开头用一行标注：建议时长：XX秒，后面写一句为什么），再据此完整输出可直接拍摄的脚本`
+  ? `时长不限，以效果最好为准：${AI_LENGTH_RULE}。不需要标注时长，据此完整输出可直接拍摄的脚本`
   : `按${finalDuration}完整输出可直接拍摄的脚本`}
 - 必须包含秒数、镜头/画面、口播台词、字幕/音效/动作建议
 - 开头3秒直接进入冲突、痛点、反常识或利益点，禁止废话开场
@@ -751,7 +751,7 @@ ${executionContext}
 - **广告类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
 - **行业**：${selectedIndustry}
 - **平台**：${platform}
-- **时长**：${isAiDuration ? "由AI根据主题与平台智能判断（请在脚本开头标注建议时长）" : finalDuration}
+- **时长**：${isAiDuration ? "不限，以效果最好为准" : finalDuration}
 - **主题/活动**：${topic}
 
 ${profileInfo}${positioningInfo}
@@ -827,7 +827,7 @@ ${executionContext}
 - **内容类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
 - **行业领域**：${selectedIndustry}
 - **平台**：${platform}
-- **时长**：${isAiDuration ? "由AI根据主题与平台智能判断（请在脚本开头标注建议时长）" : finalDuration}
+- **时长**：${isAiDuration ? "不限，以效果最好为准" : finalDuration}
 - **主题**：${topic}
 
 ${profileInfo}${positioningInfo}
@@ -1223,7 +1223,7 @@ ${formatRequirements}
                 {/* AI推荐提示 */}
                 {durationMode === "ai" && (
                   <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] leading-snug text-primary">
-                    ✨ AI 将根据主题、平台和内容复杂度自动判断最佳时长，并在脚本开头标注建议时长
+                    ✨ 时长不限，AI 按效果最好的长度来写
                   </div>
                 )}
               </div>

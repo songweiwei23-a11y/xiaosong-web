@@ -423,7 +423,7 @@ export default function ReviewPage() {
               label="视频时长"
               optional
               stacked
-              hint={durationIsCustom ? "随便填，比如 45秒、2分半；只填数字按秒算" : duration === AI_DURATION ? "AI 按内容和平台判断，优化稿开头会写明建议时长" : "优化稿会按这个时长补足或删减"}
+              hint={durationIsCustom ? "随便填，比如 45秒、2分半；只填数字按秒算" : duration === AI_DURATION ? "时长不限，以效果最好为准" : "优化稿会按这个时长补足或删减"}
             >
               <select
                 aria-label="视频时长"
