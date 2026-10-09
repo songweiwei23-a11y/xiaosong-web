@@ -149,6 +149,11 @@ describe('登录注册页与独立页面：手机上一定有路可走', () => {
     expect(src).not.toMatch(/absolute top-0 left-0 right-0/);
   });
 
+  it('登录页的小按钮：点击区域不低于 36px（忘记密码、今日一计的换一个）', () => {
+    expect(readCode('app/login/page.tsx')).toMatch(/-my-3 py-3 pl-3 text-xs text-primary/);
+    expect(readCode('components/auth/LoginExtras.tsx')).toMatch(/-my-2\.5 inline-flex[^"]*py-2\.5/);
+  });
+
   it('扫描：没有页面把整屏内容垂直居中又裁掉溢出（手机上内容一高，上面那截就看不到、点不到）', () => {
     const files = [...listFiles('app'), ...listFiles('components')];
     expect(files.length).toBeGreaterThan(100); // 自证不是空转

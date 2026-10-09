@@ -307,7 +307,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowForgot((v) => !v)}
-                    className="-my-2 py-2 pl-3 text-xs text-primary hover:underline"
+                    className="-my-3 py-3 pl-3 text-xs text-primary hover:underline"
                   >
                     忘记密码？
                   </button>

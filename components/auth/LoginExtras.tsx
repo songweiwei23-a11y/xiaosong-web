@@ -92,7 +92,7 @@ export function DailyTip() {
           <Sparkles className="h-4 w-4 text-primary" />今日一计
           <span className="font-normal text-muted-foreground">· {tip.kind}「{tip.name}」</span>
         </p>
-        <button type="button" onClick={() => setI((i + 1) % TIPS.length)} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+        <button type="button" onClick={() => setI((i + 1) % TIPS.length)} className="-my-2.5 inline-flex items-center gap-1 py-2.5 text-xs text-primary hover:underline">
           <RefreshCw className="h-3 w-3" />换一个
         </button>
       </div>
