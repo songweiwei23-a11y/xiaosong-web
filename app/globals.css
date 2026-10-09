@@ -26,7 +26,7 @@
 }
 
 /*
- * 设计基调：深色为主的紫粉调，玻璃质感。
+ * 设计基调：克制的高级感，玻璃质感。深色是五套配色方案（见 palettes.css），浅色单独一套。
  *
  * 关于毛玻璃的两条硬规则，改配色时请一并遵守，否则质感会塌：
  * 1. 玻璃要有东西可透。页面必须垫一层带光晕的背景（AmbientBackground），
@@ -42,13 +42,13 @@
    * 深浅两套的分层机制根本不同：深色靠亮度差（卡片比背景亮就"浮"起来），
    * 浅色的背景已接近白，卡片没法更亮，只能靠阴影。因此浅色这套的要点是
    * ——背景用极浅冷灰而非纯白，卡片才有地方"白"出来；层次靠柔和阴影，
-   * 不靠加深边框；玻璃在这里关掉（白色半透明压浅底只会发灰）。
+   * 不靠加深边框；玻璃保留，但白色要半透明、模糊要轻，光晕透上来才有质感。
    *
    * 主色定为沉稳的靛蓝：浅色界面本身明亮，强调色再鲜艳就会吵。
    */
   :root {
-    --background: 225 25% 97%;
-    --foreground: 225 20% 14%;
+    --background: 220 16% 97%;
+    --foreground: 226 22% 16%;
 
     --card: 0 0% 100%;
     --card-foreground: 225 20% 14%;
@@ -56,7 +56,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 225 20% 14%;
 
-    --primary: 224 70% 50%;
+    --primary: 226 56% 42%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 225 20% 94%;
@@ -76,7 +76,7 @@
      */
     --muted-foreground: 225 12% 40%;
 
-    --accent: 224 70% 50%;
+    --accent: 226 56% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
@@ -84,70 +84,69 @@
 
     --border: 225 18% 89%;
     --input: 225 18% 89%;
-    --ring: 224 70% 50%;
+    --ring: 226 56% 42%;
 
     --radius: 1rem;
 
-    /* 浅色不开玻璃：卡片用纯白、完全不透明，层次交给阴影 */
+    /* 浅色玻璃：白色半透明加轻模糊，质感靠背景光晕透出来；层次仍交给阴影 */
     --glass-bg: 0 0% 100%;
-    --glass-opacity: 1;
-    --glass-blur: 0px;
-    /* 卡片的模糊半径。浅色下为 0：白色半透明压在浅底上只会发灰，
-       模糊再多也出不来质感，白实底配阴影反而干净 */
-    --panel-blur: 0px;
+    --glass-opacity: 0.62;
+    --glass-blur: 24px;
+    /* 卡片的模糊半径比侧边栏轻，卡片数量多 */
+    --panel-blur: 16px;
     /* 边缘高光。玻璃之所以看着像玻璃，很大程度来自顶边那道亮线——
        浅色下不需要，白底上再加白线看不见。
        写成零尺寸透明阴影而不是 none：它要参与 box-shadow 的列表组合，
        none 出现在列表里会让整条声明非法 */
     --panel-highlight: 0 0 #0000;
-    --glass-border: 225 20% 14%;
-    --glass-border-opacity: 0.07;
+    --glass-border: 0 0% 100%;
+    --glass-border-opacity: 0.8;
     /* 阴影是浅色模式唯一的分层手段，必须足够柔和才不显脏 */
     --panel-shadow: 0 1px 2px hsl(225 20% 14% / 0.04), 0 4px 16px -6px hsl(225 20% 14% / 0.08);
     --panel-shadow-hover: 0 2px 4px hsl(225 20% 14% / 0.05), 0 8px 24px -8px hsl(225 20% 14% / 0.1);
 
-    /* 浅底上的光晕要极淡，否则整片背景会显脏 */
-    --glow-primary: 224 70% 55%;
-    --glow-accent: 224 60% 60%;
-    --glow-opacity: 0.05;
+    /* 浅底的光晕要淡，但得看得见：玻璃要有颜色可透，光晕太弱质感就出不来 */
+    --glow-primary: 226 56% 60%;
+    --glow-accent: 250 40% 78%;
+    --glow-opacity: 0.14;
 
-    --brand-from: 224 72% 52%;
-    --brand-to: 232 70% 46%;
+    --brand-from: 226 56% 48%;
+    --brand-to: 232 50% 38%;
   }
 
   .dark {
-    /* 深色：带紫调的深底，不用纯黑 */
-    --background: 265 35% 7%;
-    --foreground: 260 25% 94%;
+    /* 深色（紫霞）：近中性的深底，不用纯黑；强调色收成低饱和的银紫 */
+    --background: 240 18% 7%;
+    --foreground: 230 20% 93%;
 
-    --card: 265 28% 12%;
-    --card-foreground: 260 25% 94%;
+    --card: 240 14% 13%;
+    --card-foreground: 230 20% 93%;
 
-    --popover: 265 30% 11%;
-    --popover-foreground: 260 25% 94%;
+    --popover: 240 16% 11%;
+    --popover-foreground: 230 20% 93%;
 
-    --primary: 270 85% 68%;
-    --primary-foreground: 265 45% 10%;
+    --primary: 252 26% 76%;
+    --primary-foreground: 240 18% 7%;
 
-    --secondary: 265 22% 18%;
-    --secondary-foreground: 260 25% 94%;
+    --secondary: 240 12% 18%;
+    --secondary-foreground: 230 20% 93%;
 
-    --muted: 265 20% 17%;
-    --muted-foreground: 260 15% 65%;
+    --muted: 240 12% 16%;
+    --muted-foreground: 230 10% 66%;
 
-    --accent: 330 85% 68%;
-    --accent-foreground: 265 45% 10%;
+    --accent: 262 22% 72%;
+    --accent-foreground: 240 18% 7%;
 
     --destructive: 0 65% 52%;
     --destructive-foreground: 0 0% 100%;
 
     /* 边框极淡：深色下靠亮度差分层，重边框会让界面显得"格子化" */
-    --border: 265 20% 22%;
-    --input: 265 20% 24%;
-    --ring: 270 85% 68%;
+    --border: 240 12% 22%;
+    --input: 240 12% 24%;
+    --ring: 252 26% 76%;
 
-    /* 深色才开玻璃：暗底 + 半透明亮面才有透光感 */
-    --glass-bg: 265 28% 14%;
+    /* 深色玻璃：暗底 + 半透明亮面才有透光感 */
+    --glass-bg: 240 14% 14%;
     --glass-opacity: 0.55;
     --glass-blur: 20px;
     /* 卡片也开模糊。原先卡片是「伪玻璃」——半透明但不模糊，
@@ -173,12 +172,12 @@
     --panel-shadow: 0 0 #0000;
     --panel-shadow-hover: 0 0 #0000;
 
-    --glow-primary: 270 90% 62%;
-    --glow-accent: 330 90% 62%;
-    --glow-opacity: 0.16;
+    --glow-primary: 252 30% 70%;
+    --glow-accent: 262 25% 62%;
+    --glow-opacity: 0.14;
 
-    --brand-from: 270 85% 65%;
-    --brand-to: 330 85% 65%;
+    --brand-from: 252 26% 78%;
+    --brand-to: 258 24% 66%;
   }
 }
 
@@ -227,8 +226,7 @@
    */
   .glass {
     background-color: hsl(var(--glass-bg) / var(--glass-opacity));
-    /* 模糊半径由变量控制：浅色下是 0，因为白色半透明压在浅底上只会发灰，
-       模糊再多也出不来质感，白实底配阴影反而干净 */
+    /* 模糊半径由变量控制：浅色下较轻，深色下较重 */
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
@@ -244,14 +242,14 @@
    *
    * 改成开模糊，但半径比侧边栏小（14px vs 20px）。backdrop-filter
    * 在现代浏览器里走 GPU 合成，一屏几十个卡片的量级没有问题；
-   * 当初那份担心过于保守。浅色下仍为 0——白色半透明压在浅底上只会发灰。
+   * 当初那份担心过于保守。
    */
   .glass-panel {
     background-color: hsl(var(--card) / var(--glass-opacity));
     -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
     backdrop-filter: blur(var(--panel-blur)) saturate(1.3);
     border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
-    /* 浅色靠阴影分层（深色下为 none），深色靠顶边高光勾出玻璃的边 */
+    /* 浅色靠阴影分层，深色靠顶边高光勾出玻璃的边 */
     box-shadow: var(--panel-shadow), var(--panel-highlight);
   }
 
@@ -329,7 +327,7 @@
   /* 主按钮：渐变 + 柔光投影，投影用品牌色而非黑色，才有"发光"感 */
   .btn-brand {
     background-image: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
-    color: #fff;
+    color: hsl(var(--primary-foreground));
     box-shadow: 0 8px 24px -8px hsl(var(--brand-from) / 0.6);
     transition: box-shadow 0.2s ease, transform 0.2s ease, filter 0.2s ease;
   }

@@ -209,7 +209,7 @@ export function Sidebar() {
         原来只有中间的菜单能滚，被挤得只剩两三项；电脑上照旧只滚菜单。
       */}
       <aside
-        className={`glass fixed inset-y-0 left-0 z-40 flex h-screen h-dvh w-[272px] flex-col overflow-y-auto overscroll-contain border-y-0 border-l-0 transition-transform duration-300 md:static md:overflow-visible md:translate-x-0 ${
+        className={`glass fixed inset-y-0 left-0 z-40 flex h-screen h-dvh w-[272px] flex-col overflow-y-auto overscroll-contain border-y-0 border-l-0 transition-transform duration-300 md:static md:self-start md:m-3 md:h-[calc(100dvh-1.5rem)] md:rounded-[20px] md:border md:overflow-visible md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
