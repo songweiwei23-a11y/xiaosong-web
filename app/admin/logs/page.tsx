@@ -87,9 +87,8 @@ export default function AdminLogsPage() {
     return qs;
   }, [page, action, from, to]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/logs?${query()}`);
       if (!res.ok) throw new Error(await readError(res, "读取失败"));
@@ -101,9 +100,15 @@ export default function AdminLogsPage() {
     }
   }, [query]);
 
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchData();
+  }, [fetchData]);
 
   const exportCsv = async () => {
     setExporting(true);

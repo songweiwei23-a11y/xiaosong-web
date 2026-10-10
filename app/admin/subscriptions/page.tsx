@@ -74,11 +74,11 @@ export default function SubscriptionsManagement() {
 
   const [extending, setExtending] = useState<Sub | null>(null);
   const [extendDays, setExtendDays] = useState(30);
+  const [extendOpenedAt, setExtendOpenedAt] = useState(0);
   const [extendBusy, setExtendBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const qs = new URLSearchParams({ offset: String((page - 1) * PAGE_SIZE), limit: String(PAGE_SIZE) });
       if (tab === "expiring") qs.set("expiringDays", "7");
@@ -97,9 +97,15 @@ export default function SubscriptionsManagement() {
     }
   }, [tab, q, page]);
 
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchData();
+  }, [fetchData]);
 
   const submitSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -117,7 +123,7 @@ export default function SubscriptionsManagement() {
     if (!editing) return;
     const ok = await confirmDialog(
       `把 ${editing.email} 的会员改为「${SUBSCRIPTION_PLANS[editPlan as keyof typeof SUBSCRIPTION_PLANS]?.name ?? editPlan}」，${editEnd ? `到期日改为 ${editEnd}（北京时间当天结束）` : "到期日不变"}？`,
-      { tone: "danger", confirmText: "确定修改", title: "修改会员" }
+      { tone: "danger", confirmText: "确定修改", title: "修改会员套餐" }
     );
     if (!ok) return;
     setSaving(true);
@@ -247,9 +253,9 @@ export default function SubscriptionsManagement() {
       className: "text-right",
       render: (s) => (
         <div className="flex flex-wrap justify-end gap-1.5">
-          <Button size="sm" variant="default" onClick={() => { setExtending(s); setExtendDays(30); }} disabled={s.plan === "free"}>延期</Button>
+          <Button size="sm" variant="default" onClick={() => { setExtending(s); setExtendDays(30); setExtendOpenedAt(Date.now()); }} disabled={s.plan === "free"}>延期</Button>
           <Button size="sm" variant="default" onClick={() => openEdit(s)}>改套餐</Button>
-          <Button size="sm" variant="default" onClick={() => void resetQuota(s)}>清额度</Button>
+          <Button size="sm" variant="default" onClick={() => void resetQuota(s)}>重置额度</Button>
         </div>
       ),
     },
@@ -262,10 +268,11 @@ export default function SubscriptionsManagement() {
   ];
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const extendUntil = extending?.endDate && new Date(extending.endDate).getTime() > Date.now() ? extending.endDate : null;
+  // 「还没过期」用打开延期框时的时间判断；渲染期间不读 Date.now()
+  const extendUntil = extending?.endDate && new Date(extending.endDate).getTime() > extendOpenedAt ? extending.endDate : null;
 
   return (
-    <AdminPage title="会员管理" subtitle="看每个会员的套餐、额度和到期时间；可以延期、改套餐、清零额度">
+    <AdminPage title="会员管理" subtitle="看每个会员的套餐、额度和到期时间；可以延期、改套餐、重置额度">
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard label="全部会员" value={counts?.all ?? "—"} />
         <StatCard label="7 天内到期" value={counts?.expiringSoon ?? "—"} tone={counts && counts.expiringSoon > 0 ? "warn" : "default"} href="/admin/subscriptions?expiringDays=7" hint="可以提前提醒续费" />
@@ -370,7 +377,7 @@ export default function SubscriptionsManagement() {
       <Dialog
         open={!!editing}
         onClose={() => setEditing(null)}
-        title="修改套餐"
+        title="修改会员套餐"
         busy={saving}
         footer={
           <>

@@ -70,9 +70,8 @@ export default function AdminOrdersPage() {
     if (s && TABS.some((t) => t.value === s)) setTab(s);
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const qs = new URLSearchParams({ status: tab, offset: String((page - 1) * PAGE_SIZE), limit: String(PAGE_SIZE) });
       if (q) qs.set("q", q);
@@ -91,9 +90,15 @@ export default function AdminOrdersPage() {
     }
   }, [tab, q, from, to, page]);
 
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchData();
+  }, [fetchData]);
 
   const submitSearch = (e: FormEvent) => {
     e.preventDefault();

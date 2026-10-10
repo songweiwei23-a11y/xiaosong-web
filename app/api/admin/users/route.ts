@@ -111,8 +111,8 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ users, total, page, pageSize, search: query });
-  } catch (error: any) {
-    console.error('[用户管理] 查询失败:', error?.message);
+  } catch (error: unknown) {
+    console.error('[用户管理] 查询失败:', (error as Error | undefined)?.message);
     return NextResponse.json({ error: '读取用户列表失败' }, { status: 500 });
   }
 }
@@ -191,8 +191,8 @@ async function loadUserDetail(userId: string) {
         };
       }),
     });
-  } catch (error: any) {
-    console.error('[用户管理] 详情读取失败:', error?.message);
+  } catch (error: unknown) {
+    console.error('[用户管理] 详情读取失败:', (error as Error | undefined)?.message);
     return NextResponse.json({ error: '读取用户详情失败' }, { status: 500 });
   }
 }
@@ -437,8 +437,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '未知操作' }, { status: 400 });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[用户管理] 操作失败:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

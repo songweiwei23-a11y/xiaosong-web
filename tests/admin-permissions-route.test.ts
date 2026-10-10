@@ -128,6 +128,19 @@ describe('设为管理员（admin_roles 授权）', () => {
     expect(res.status).toBe(400);
   });
 
+  it('授予运营角色：写入 operator，提示语说的是「运营」', async () => {
+    const res = await post({ action: 'add_admin', email: '2323111680@qq.com', role: 'operator' });
+    expect(res.status).toBe(200);
+    expect(state.roles).toEqual([{ user_id: 'user-9', role: 'operator' }]);
+    expect((await res.json()).message).toContain('已设为运营');
+  });
+
+  it('页面不能直接授予超级管理员（developer）：返回 400，不写任何记录', async () => {
+    const res = await post({ action: 'add_admin', email: '2323111680@qq.com', role: 'developer' });
+    expect(res.status).toBe(400);
+    expect(state.roles).toHaveLength(0);
+  });
+
   it('源码里不再用 upsert(onConflict) 写 admin_roles', () => {
     const code = readCode('app/api/admin/permissions/route.ts');
     expect(code).not.toMatch(/onConflict/);

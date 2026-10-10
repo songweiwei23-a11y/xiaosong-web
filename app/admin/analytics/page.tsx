@@ -51,9 +51,8 @@ export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/analytics?timeRange=${range}`);
       if (!res.ok) throw new Error(await readError(res, "读取失败"));
@@ -65,7 +64,13 @@ export default function AdminAnalyticsPage() {
     }
   }, [range]);
 
-  useEffect(() => { void load(); }, [load]);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const rangeLabel = RANGES.find((r) => r.value === range)?.label ?? "";
 
@@ -149,7 +154,7 @@ export default function AdminAnalyticsPage() {
 
         <Panel
           title="套餐分布"
-          action={<span className="text-[11.5px] text-muted-foreground">没有订阅记录的用户按免费版计</span>}
+          action={<span className="text-[11.5px] text-muted-foreground">没有会员记录的用户按免费版计</span>}
         >
           <div className="space-y-3.5">
             {(Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => {

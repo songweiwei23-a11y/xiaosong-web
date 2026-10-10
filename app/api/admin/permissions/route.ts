@@ -67,7 +67,7 @@ export async function GET() {
       }));
 
     return NextResponse.json({ admins });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[admin/permissions] GET 失败:', error);
     return NextResponse.json({ error: '读取管理员列表失败' }, { status: 500 });
   }
@@ -80,7 +80,16 @@ export async function POST(request: Request) {
     if (!admin) return NextResponse.json({ error: '无权管理管理员：这项操作需要管理员权限' }, { status: 403 });
 
     const supabase = getServiceSupabase();
-    const { action, email, userId } = await request.json();
+    const { action, email, userId, role: rawRole } = await request.json();
+
+    /*
+     * 授予时可选角色。页面只能给「管理员」或「运营」；超级管理员（developer）只能在数据库里直接设置，
+     * 不允许通过页面授予，避免权限被一路往上抬。
+     */
+    const grantRole = rawRole === undefined || rawRole === null || rawRole === '' ? 'admin' : rawRole;
+    if (action === 'add_admin' && grantRole !== 'admin' && grantRole !== 'operator') {
+      return NextResponse.json({ error: '只能授予「管理员」或「运营」角色' }, { status: 400 });
+    }
 
     // 按邮箱找人。listUsers 一页 1000，够用；超出再翻页
     const resolveUser = async () => {
@@ -123,8 +132,8 @@ export async function POST(request: Request) {
       const error = readError
         ? readError
         : existing && existing.length > 0
-          ? (await supabase.from('admin_roles').update({ role: 'admin' }).eq('user_id', user.id)).error
-          : (await supabase.from('admin_roles').insert({ user_id: user.id, role: 'admin' })).error;
+          ? (await supabase.from('admin_roles').update({ role: grantRole }).eq('user_id', user.id)).error
+          : (await supabase.from('admin_roles').insert({ user_id: user.id, role: grantRole })).error;
 
       if (error) {
         console.error('[admin/permissions] 授权失败:', error);
@@ -136,10 +145,11 @@ export async function POST(request: Request) {
         action: AdminActions.GRANT_ADMIN,
         target_type: 'user',
         target_id: user.id,
-        details: { email: user.email },
+        details: { email: user.email, role: grantRole },
       });
 
-      return NextResponse.json({ success: true, message: `${user.email} 已设为管理员` });
+      const label = grantRole === 'operator' ? '运营' : '管理员';
+      return NextResponse.json({ success: true, message: `${user.email} 已设为${label}` });
     }
 
     if (action === 'remove_admin') {
@@ -184,7 +194,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ error: '无效的操作' }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[admin/permissions] POST 失败:', error);
     return NextResponse.json({ error: '操作失败' }, { status: 500 });
   }

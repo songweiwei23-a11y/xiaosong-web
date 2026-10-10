@@ -31,9 +31,8 @@ export default function AdminQRCodesPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       // 走服务端：表加了 RLS 之后浏览器读不到，而且这本来就该经过管理员校验
       const res = await fetch("/api/admin/qrcodes");
@@ -46,9 +45,15 @@ export default function AdminQRCodesPage() {
     }
   }, []);
 
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchData();
+  }, [fetchData]);
 
   const upload = async (method: "alipay" | "wechat", file: File) => {
     const label = METHODS.find((m) => m.value === method)?.label ?? method;
@@ -60,7 +65,8 @@ export default function AdminQRCodesPage() {
     setBusy(method);
     try {
       const fileExt = file.name.split(".").pop();
-      const fileName = `qrcode-${method}-${Date.now()}.${fileExt}`;
+      // 随机后缀保证文件名唯一（不依赖时间戳，避免同一毫秒内重名）
+      const fileName = `qrcode-${method}-${crypto.randomUUID().slice(0, 8)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("payment-qrcodes")

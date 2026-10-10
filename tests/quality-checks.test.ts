@@ -112,7 +112,9 @@ describe('每晚回归', () => {
     const route = readCode('app/api/admin/quality/regression/route.ts');
     expect(route).toMatch(/secret\.length < 16/);
     expect(route).toMatch(/timingSafeEqual/);
-    expect(route).toMatch(/!cronAuthorized\(request\) && !\(await requireAdmin\(\)\)/);
+    // 暗号判断在前（定时任务同步跑完）；管理员判断在后（手动运行改为后台执行）
+    expect(route).toMatch(/if \(cronAuthorized\(request\)\)[\s\S]{0,1200}requireAdmin\(\)/);
+    expect(route).toContain('无权运行');
   });
 });
 

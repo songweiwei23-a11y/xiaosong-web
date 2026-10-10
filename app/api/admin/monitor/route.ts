@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
-import { readAllRows, readAllUsersCached, chinaDayStart } from '@/lib/admin-monitor-data';
+import { readAllRows, readAllUsersCached, chinaDayStart, coalesce } from '@/lib/admin-monitor-data';
+
+/** 快照缓存时长：大屏 5 秒一次心跳，多个管理员同时看时共享同一份结果（见 coalesce） */
+const SNAPSHOT_TTL_MS = 5_000;
 import {
   buildEvents,
   buildDirectory,
@@ -40,6 +43,7 @@ export async function GET() {
   }
 
   try {
+    const payload = await coalesce('monitor-snapshot', SNAPSHOT_TTL_MS, async () => {
     const supabase = getServiceSupabase();
     const now = Date.now();
     const upper = new Date(now).toISOString();
@@ -98,7 +102,7 @@ export async function GET() {
     const todayOrders = orders.filter((o) => isToday(o.created_at, now));
     const active = activeUsers({ users, generations, usage, dir, now });
 
-    return NextResponse.json({
+    return {
       now: new Date(now).toISOString(),
       active,
       onlineCount: active.filter((u) => u.minutesAgo <= ONLINE_WINDOW_MIN).length,
@@ -119,7 +123,9 @@ export async function GET() {
       byFeature: featureBreakdown(generations, now),
       // 带正文的只有最近 DETAIL_ROWS 条，事件流也只用这些，免得后面几百条只剩一个功能名
       events: buildEvents({ generations: detailed, usage, users, orders, dir, now }).slice(0, 60),
-    }, { headers: { 'Cache-Control': 'private, no-store' } });
+    };
+    });
+    return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error('[admin/monitor] 取数失败:', msg);

@@ -5,6 +5,7 @@ import { Activity, Bell, BellOff, Users, Zap, Wallet, AlertTriangle, Wifi, WifiO
 import { soundFor, newEventsSince, rememberSeen, maskEmail, ONLINE_WINDOW_MIN, ACTIVE_WINDOW_HOURS, type MonitorEvent, type ActiveUser } from "@/lib/monitor";
 import { useMonitorQuery, useRealtimeMonitor } from '@/hooks/useRealtimeMonitor';
 import { scheduleSound, createOutput, DEFAULT_VOLUME, type SoundKind } from "@/lib/monitor-sound";
+import { useLocalPref } from "@/lib/local-pref";
 import { FunnelPanel, ActiveUserCard, EventCard, Kpi, EmptyBox, Panel } from '@/components/admin/monitor/parts';
 
 /**
@@ -41,14 +42,10 @@ function useSound() {
   const ctxRef = useRef<AudioContext | null>(null);
   const outRef = useRef<GainNode | null>(null);
   const [enabled, setEnabled] = useState(false);
-  // 音量记在本机浏览器里；读不到（隐私模式等）就用默认
-  const [volume, setVolumeState] = useState(DEFAULT_VOLUME);
-  useEffect(() => {
-    try {
-      const v = Number(localStorage.getItem(VOLUME_KEY));
-      if (localStorage.getItem(VOLUME_KEY) !== null && Number.isFinite(v)) setVolumeState(Math.min(1, Math.max(0, v)));
-    } catch {}
-  }, []);
+  // 音量记在本机浏览器里；读不到（隐私模式等）就用默认。见 lib/local-pref
+  const [volumeRaw, setVolumeRaw] = useLocalPref(VOLUME_KEY, String(DEFAULT_VOLUME));
+  const parsed = Number(volumeRaw);
+  const volume = Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : DEFAULT_VOLUME;
 
   const unlock = useCallback(async () => {
     try {
@@ -79,11 +76,10 @@ function useSound() {
   }, []);
 
   const setVolume = useCallback((v: number) => {
-    setVolumeState(v);
+    setVolumeRaw(String(v));
     const ctx = ctxRef.current;
     if (ctx && outRef.current) outRef.current.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-    try { localStorage.setItem(VOLUME_KEY, String(v)); } catch {}
-  }, []);
+  }, [setVolumeRaw]);
 
   const disable = useCallback(() => setEnabled(false), []);
 
@@ -105,23 +101,12 @@ export default function MonitorPage() {
    * 投屏打码。默认不打——管理员要看清是谁、做了什么；
    * 大屏投到会议室或要截图外发时，自己点一下遮住邮箱和内容。记在本机。
    */
-  const [privacy, setPrivacy] = useState(false);
+  const [privacyRaw, setPrivacyRaw] = useLocalPref("monitor-privacy", "0");
+  const privacy = privacyRaw === "1";
   /** 点了某个活跃用户：动态只看他的 */
   const [focusUser, setFocusUser] = useState<{ id: string; email: string } | null>(null);
 
-  useEffect(() => {
-    try {
-      setPrivacy(localStorage.getItem("monitor-privacy") === "1");
-    } catch {}
-  }, []);
-  const togglePrivacy = () => {
-    setPrivacy((p) => {
-      try {
-        localStorage.setItem("monitor-privacy", p ? "0" : "1");
-      } catch {}
-      return !p;
-    });
-  };
+  const togglePrivacy = () => setPrivacyRaw(privacy ? "0" : "1");
   const showEmail = (email: string) => (privacy ? maskEmail(email) : email);
 
   const sound = useSound();
@@ -131,7 +116,10 @@ export default function MonitorPage() {
    * 通过 ref 读取当前播放函数；开关声音不触发历史事件重新播放。
    */
   const playRef = useRef(sound.play);
-  playRef.current = sound.play;
+  // 在 effect 里更新 ref，而不是在渲染期间写它（渲染期间写 ref 会导致结果不稳定）
+  useEffect(() => {
+    playRef.current = sound.play;
+  }, [sound.play]);
 
   useEffect(() => {
     const t = setInterval(() => setClock(new Date().toLocaleTimeString("zh-CN", { hour12: false })), 1000);

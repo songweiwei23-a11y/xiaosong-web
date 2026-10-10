@@ -66,9 +66,8 @@ export default function AdminInvitationsPage() {
   const [notes, setNotes] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const params = new URLSearchParams({ status: filter });
       if (keyword.trim()) params.set("q", keyword.trim());
@@ -84,7 +83,13 @@ export default function AdminInvitationsPage() {
     }
   }, [filter, keyword]);
 
-  useEffect(() => { void load(); }, [load]);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const generate = async () => {
     if (!Number.isInteger(count) || count < 1 || count > 200) {

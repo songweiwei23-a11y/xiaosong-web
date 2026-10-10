@@ -79,9 +79,8 @@ export default function UsersPage() {
   const [tempPw, setTempPw] = useState<{ email: string; password: string } | null>(null);
   const [del, setDel] = useState<{ user: User; preview: { email: string; counts: Record<string, number>; paidOrders: number } | null; error: string; input: string; busy: boolean } | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize), search });
       const res = await fetch(`/api/admin/users?${qs}`);
@@ -96,9 +95,15 @@ export default function UsersPage() {
     }
   }, [page, pageSize, search]);
 
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchData();
+  }, [fetchData]);
 
   const act = async (userId: string, action: string, extra: Record<string, unknown> = {}) => {
     const res = await fetch("/api/admin/users", {
@@ -137,14 +142,14 @@ export default function UsersPage() {
     if (!editing) return;
     const confirmed = await confirmDialog(
       `把 ${editing.email} 的会员改为「${planOptionLabel(editPlan)}」，到期${editEndDate ? `为 ${editEndDate}（北京时间当天结束）` : "设为永久"}？`,
-      { tone: "danger", confirmText: "确定修改", title: "修改会员" }
+      { tone: "danger", confirmText: "确定修改", title: "修改会员套餐" }
     );
     if (!confirmed) return;
     setSaving(true);
     const { ok, error: err } = await act(editing.user_id, "update_membership", { plan: editPlan, endDate: editEndDate || null });
     setSaving(false);
     if (ok) {
-      notify("会员等级已更新", "success");
+      notify("会员套餐已更新", "success");
       setEditing(null);
       void load();
     } else notify(err || "更新失败", "error");
@@ -252,8 +257,8 @@ export default function UsersPage() {
       render: (u) => (
         <div className="flex flex-wrap justify-end gap-1.5">
           <Button size="sm" variant="default" onClick={() => void openDetail(u)}>详情</Button>
-          <Button size="sm" variant="default" onClick={() => openEdit(u)}>改会员</Button>
-          <Button size="sm" variant="default" onClick={() => void resetQuota(u)}>清额度</Button>
+          <Button size="sm" variant="default" onClick={() => openEdit(u)}>改套餐</Button>
+          <Button size="sm" variant="default" onClick={() => void resetQuota(u)}>重置额度</Button>
           <Button size="sm" variant="default" onClick={() => void resetPassword(u)}>重置密码</Button>
           <Button size="sm" variant={u.subscription_status === "active" ? "danger" : "default"} onClick={() => void toggleBan(u)}>
             {u.subscription_status === "active" ? "封禁" : "解封"}
@@ -382,7 +387,7 @@ export default function UsersPage() {
       <Dialog
         open={!!editing}
         onClose={() => setEditing(null)}
-        title="修改会员"
+        title="修改会员套餐"
         busy={saving}
         footer={
           <>

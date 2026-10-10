@@ -103,6 +103,8 @@ export async function GET(request: Request) {
 
 /** 顶部统计：全部会员按套餐的数量，以及 7 天内到期的付费会员数 */
 async function countPlans(db: ReturnType<typeof getServiceSupabase>): Promise<Record<string, number>> {
+  // 计数查询的构造器泛型很深（select / eq / neq 每一步类型都不同），这里只关心最后能 await 出 count
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 查询构造器，见上面的说明
   const countOf = async (apply: (q: any) => any) => {
     const { count } = await apply(db.from('subscriptions').select('id', { count: 'exact', head: true }));
     return count ?? 0;
@@ -264,7 +266,7 @@ export async function PATCH(request: Request) {
     });
 
     return NextResponse.json({ success: true, message: '会员信息已更新' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('更新会员失败:', error);
     return NextResponse.json({ error: '更新会员失败，请重试' }, { status: 500 });
   }

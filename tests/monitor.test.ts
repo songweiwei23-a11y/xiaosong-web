@@ -432,7 +432,9 @@ describe('页面本身的几条硬要求', () => {
 
   it('页面默认不打码，打码是管理员自己开的开关', () => {
     const page = monitorCode();
-    expect(page).toMatch(/const \[privacy, setPrivacy\] = useState\(false\)/);
+    // 默认值是 "0"（不打码）；读写走 lib/local-pref，见 monitor 页面的注释
+    expect(page).toMatch(/useLocalPref\("monitor-privacy", "0"\)/);
+    expect(page).toMatch(/const privacy = privacyRaw === "1"/);
     expect(page).toContain('投屏打码');
     expect(page).toContain('ActiveUserCard');
     expect(page).toContain('/api/admin/monitor/record');

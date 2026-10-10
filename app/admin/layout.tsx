@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
@@ -68,8 +68,6 @@ const navGroups: {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  // 点了菜单项跳过去，菜单自己收起
-  useEffect(() => setMenuOpen(false), [pathname]);
   const currentName =
     navGroups
       .flatMap((g) => g.items)
@@ -113,6 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={() => setMenuOpen(false)}
                       aria-current={isActive ? "page" : undefined}
                       className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-[13.5px] transition-colors ${
                         isActive
@@ -156,7 +155,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <main className="relative min-w-0 flex-1 overflow-auto rounded-3xl">
         {/* 手机上的顶栏：打开菜单 + 当前是哪一页 */}
-        <div className="glass-panel sticky top-0 z-20 mb-2 flex h-14 items-center gap-3 rounded-2xl px-3 md:hidden">
+        {/* 右侧留出空间给浮动的主题切换按钮，否则它会压在顶栏上 */}
+        <div className="glass-panel sticky top-0 z-20 mb-2 flex h-14 items-center gap-3 rounded-2xl pl-3 pr-24 md:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}

@@ -41,9 +41,8 @@ export default function QualityPage() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/quality?days=${days}`);
       if (!res.ok) throw new Error(await readError(res, "读取失败"));
@@ -55,7 +54,20 @@ export default function QualityPage() {
     }
   }, [days]);
 
-  useEffect(() => { void load(); }, [load]);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
+
+  interface RunStatus {
+    status: "idle" | "running" | "done" | "failed";
+    passed?: number;
+    total?: number;
+    error?: string;
+  }
 
   const runNow = async () => {
     if (running) return;
@@ -67,17 +79,33 @@ export default function QualityPage() {
     if (!ok) return;
     setRunning(true);
     try {
+      // 服务端立即返回「已开始」，回归在后台跑；这里每 5 秒看一次进度
       const res = await fetch("/api/admin/quality/regression", { method: "POST" });
       if (!res.ok) throw new Error(await readError(res, "运行失败"));
-      notify("回归已跑完", "success");
+      const started = (await res.json()) as RunStatus;
+      const done = started.status === "done" ? started : await waitForRun();
+      notify(`回归已跑完：${done.passed ?? 0}/${done.total ?? 0} 通过`, "success");
       await load();
     } catch (e) {
-      // 长请求中途被代理断开时，服务端通常仍在跑、结果会写进库。先刷新，再告诉管理员实情
+      // 轮询或代理中途断开时，服务端通常仍在跑、结果会写进库。先刷新，再告诉管理员实情
       await load();
-      notify(`${(e as Error).message || "运行中断"}。回归可能仍在后台完成，已刷新结果，稍后再刷新看一眼`, "warning");
+      notify(`${(e as Error).message || "运行中断"}。回归可能仍在后台完成，已刷新结果`, "warning");
     } finally {
       setRunning(false);
     }
+  };
+
+  /** 轮询回归进度，直到完成或失败。最多等 10 分钟 */
+  const waitForRun = async (): Promise<RunStatus> => {
+    for (let i = 0; i < 120; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const res = await fetch("/api/admin/quality/regression");
+      if (!res.ok) throw new Error(await readError(res, "读取回归进度失败"));
+      const s = (await res.json()) as RunStatus;
+      if (s.status === "done") return s;
+      if (s.status === "failed") throw new Error(s.error || "回归没有完成");
+    }
+    throw new Error("回归时间比预期长，仍在后台运行");
   };
 
   const passTone = data?.passRate === null || data?.passRate === undefined ? "default" : data.passRate < 90 ? "warn" : "ok";

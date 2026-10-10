@@ -61,7 +61,7 @@ export async function GET(request: Request) {
   const stats = { total: 0, active: 0, used: 0, revoked: 0, expired: 0 };
   for (const r of all) {
     stats.total += 1;
-    const s = withComputedStatus(r as any).status as keyof typeof stats;
+    const s = withComputedStatus(r).status as keyof typeof stats;
     if (s in stats) stats[s] += 1;
   }
 
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
    * 真撞上会整批插入失败。所以按批重试：只把没插进去的补上，
    * 而不是整批推倒重来。
    */
-  const created: any[] = [];
+  const created: Record<string, unknown>[] = [];
   let attempts = 0;
   while (created.length < count && attempts < 5) {
     attempts += 1;

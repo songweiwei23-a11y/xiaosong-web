@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdminPermission } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, activationPlan } from '@/lib/config/plans';
+import { approveViaRpc } from '@/lib/order-approval';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -71,6 +72,21 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    /*
+     * 优先走数据库事务函数（2026-10-10 巡检 P2-10）：订单、会员、额度一次提交，中途失败整体回滚。
+     * 函数还没在线上执行时返回 null，下面照常走老流程。
+     */
+    const viaTransaction = await approveViaRpc(supabase as never, {
+      orderId,
+      order,
+      approved: !!approved,
+      note,
+      planId,
+      adminId: admin.userId,
+      now,
+    });
+    if (viaTransaction) return viaTransaction;
 
     /*
      * 抢占订单：只有仍是「审核中」的才改得动（条件更新是原子的）。
@@ -220,8 +236,8 @@ export async function POST(request: Request) {
       message: approved ? '订单已通过，会员已开通' : '订单已拒绝',
       data: { orderId, status: newStatus },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('审核订单错误:', error);
-    return NextResponse.json({ error: error.message || '服务器错误' }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || '服务器错误' }, { status: 500 });
   }
 }

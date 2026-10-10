@@ -37,9 +37,8 @@ export default function AdminSecurityPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const [{ data: factors, error: fErr }, { data: aal }] = await Promise.all([
         supabase.auth.mfa.listFactors(),
@@ -57,9 +56,15 @@ export default function AdminSecurityPage() {
     }
   }, []);
 
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchData();
+  }, [fetchData]);
 
   /** 第一步：生成二维码。还没验证过的绑定会留在列表里，可以取消 */
   const startEnroll = async () => {

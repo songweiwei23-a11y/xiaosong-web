@@ -97,8 +97,10 @@ describe('大屏页面', () => {
     expect(page).toMatch(/setEnabled\(true\);[\s\S]{0,120}scheduleSound\(ctx, outRef\.current, "chime"\)/);
   });
 
-  it('音量存本机，读写都包 try/catch', () => {
-    expect(page).toMatch(/try \{[\s\S]{0,80}localStorage\.getItem\(VOLUME_KEY\)/);
-    expect(page).toMatch(/try \{ localStorage\.setItem\(VOLUME_KEY/);
+  it('音量存本机：读写都在 lib/local-pref 里包了 try/catch，页面用 useLocalPref 取值（不在 effect 里同步 setState）', () => {
+    const pref = readCode('lib/local-pref.ts');
+    expect(pref).toMatch(/try \{\s*return localStorage\.getItem\(key\)/);
+    expect(pref).toMatch(/try \{\s*localStorage\.setItem\(key, value\)/);
+    expect(page).toMatch(/useLocalPref\(VOLUME_KEY/);
   });
 });

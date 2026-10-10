@@ -22,17 +22,23 @@ interface AdminUser {
   is_self: boolean;
 }
 
+const ROLE_NAME: Record<string, string> = {
+  developer: "超级管理员",
+  admin: "管理员",
+  operator: "运营",
+};
+
 export default function AdminPermissionsPage() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [grantRole, setGrantRole] = useState<"admin" | "operator">("admin");
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取本身不同步改加载态（effect 里调用它，不会引起级联渲染）；加载态由 load 在触发前切换
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/permissions");
       if (!res.ok) throw new Error(await readError(res, "读取管理员列表失败"));
@@ -45,16 +51,26 @@ export default function AdminPermissionsPage() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const grant = async () => {
     const target = email.trim();
     if (!target) return notify("请输入对方的注册邮箱", "warning");
 
-    // 授予管理员等于把整个后台交出去，多一步确认，并且要对方真的是自己人
+    // 授予等于把后台的一部分交出去，多一步确认，并且要对方真的是自己人
+    const label = grantRole === "operator" ? "运营" : "管理员";
+    const scope = grantRole === "operator"
+      ? "对方将能审核订单、改会员、封禁用户、查看用户内容。不能授权他人、删除用户、改收款码、换密钥、导出数据。"
+      : "对方将能看到全部用户数据、审核订单、修改会员套餐、删除用户，并能授权或撤销他人。";
     const ok = await confirmDialog(
-      `把 ${target} 设为管理员？对方将能看到全部用户数据、审核订单、修改会员套餐，并能删除用户。`,
-      { tone: "danger", confirmText: "确定授予", title: "授予管理员权限" }
+      `把 ${target} 设为${label}？${scope}`,
+      { tone: "danger", confirmText: `确定授予${label}`, title: `授予${label}权限` }
     );
     if (!ok) return;
 
@@ -63,7 +79,7 @@ export default function AdminPermissionsPage() {
       const res = await fetch("/api/admin/permissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "add_admin", email: target }),
+        body: JSON.stringify({ action: "add_admin", email: target, role: grantRole }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -114,12 +130,21 @@ export default function AdminPermissionsPage() {
             aria-label="对方的注册邮箱"
             className={`${INPUT_CLS} min-w-[240px] flex-1`}
           />
+          <select
+            value={grantRole}
+            onChange={(e) => setGrantRole(e.target.value as "admin" | "operator")}
+            aria-label="授予的角色"
+            className={`${INPUT_CLS} w-auto`}
+          >
+            <option value="admin">管理员（全部权限）</option>
+            <option value="operator">运营（日常审单与会员）</option>
+          </select>
           <Button variant="primary" onClick={() => void grant()} busy={submitting}>
-            <UserPlus className="h-3.5 w-3.5" />设为管理员
+            <UserPlus className="h-3.5 w-3.5" />授予权限
           </Button>
         </div>
         <div className="mt-2.5">
-          <AdminPanelHint>对方必须已经注册过。授权立即生效，不需要重新登录。</AdminPanelHint>
+          <AdminPanelHint>对方必须已经注册过。授权立即生效，不需要重新登录。超级管理员只能在数据库里直接设置，页面不提供。</AdminPanelHint>
         </div>
       </Panel>
 
@@ -139,7 +164,10 @@ export default function AdminPermissionsPage() {
                     <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
                     <span className="break-all text-[13.5px] font-medium text-foreground">{a.email || "（邮箱未知）"}</span>
                     {a.is_self && <Badge tone="info">你自己</Badge>}
-                    {a.source === "user_settings" && <Badge tone="warn">历史遗留授权</Badge>}
+                    <Badge tone={a.role === "developer" ? "warn" : a.role === "operator" ? "accent" : "info"}>
+                      {ROLE_NAME[a.role] ?? a.role}
+                    </Badge>
+                    {a.source === "user_settings" && <Badge tone="neutral">历史遗留授权</Badge>}
                   </div>
                   <div className="mt-1 text-[11.5px] text-muted-foreground" suppressHydrationWarning>
                     {a.last_sign_in_at ? `最近登录 ${formatRelativeTime(a.last_sign_in_at)}` : "从未登录"}

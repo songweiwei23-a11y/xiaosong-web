@@ -42,6 +42,29 @@ export function resetUsersCache() {
   usersCache = null;
 }
 
+/*
+ * 同一份快照的合并器（2026-10-10 巡检 M4）。
+ * 多个管理员同时开大屏，或者一次实时信号触发很多次刷新时，原来每次都全量重算一遍。
+ * 现在：ttl 内只算一次，并发请求共享同一个进行中的结果；失败的结果不缓存，下次重试。
+ */
+const coalesced = new Map<string, { at: number; value: Promise<unknown> }>();
+
+export async function coalesce<T>(key: string, ttlMs: number, fn: () => Promise<T>, now = Date.now()): Promise<T> {
+  const hit = coalesced.get(key);
+  if (hit && now - hit.at < ttlMs) return hit.value as Promise<T>;
+  const value = fn();
+  coalesced.set(key, { at: now, value });
+  value.catch(() => {
+    if (coalesced.get(key)?.value === value) coalesced.delete(key);
+  });
+  return value;
+}
+
+/** 测试用：清掉合并器的缓存 */
+export function resetCoalesced() {
+  coalesced.clear();
+}
+
 /** 业务日统一为北京时间，不能随生产服务器的 UTC 时区改变。 */
 export function chinaDayStart(now: number): number {
   const offset = 8 * 60 * 60 * 1000;

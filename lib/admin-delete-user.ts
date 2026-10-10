@@ -10,8 +10,14 @@
  * 任何一张表删失败（表不存在除外）就停下，不删账号——管理员可以原样再点一次（每一步都可以重复执行）。
  * 不能删自己、不能删管理员，这两条在接口里拦。
  */
+/*
+ * 这里的 any 是有意的：from() 返回的是 Supabase 查询构造器，泛型深到无法在这里精确描述，
+ * 而且它只在本文件内部链式调用。把它改成精确类型，收益很小，调用处会全部报错。
+ */
 type Db = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 查询构造器，见上面的说明
   from: (t: string) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 同上
   storage: { from: (b: string) => any };
   auth: { admin: { deleteUser: (id: string) => Promise<{ error: { message: string } | null }> } };
 };

@@ -72,9 +72,8 @@ export default function AdminOverviewPage() {
     }
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // 读取不同步改状态（effect 里调用它，不引起级联渲染）；加载态由下面的 load 在点击时切换
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/overview");
       const json = await res.json();
@@ -87,8 +86,7 @@ export default function AdminOverviewPage() {
     }
   }, []);
 
-  const checkHealth = useCallback(async () => {
-    setHealth(null);
+  const fetchHealth = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/health");
       if (res.ok) setHealth(await res.json());
@@ -97,6 +95,18 @@ export default function AdminOverviewPage() {
       setHealth({ ok: false, label: "检查失败", note: "健康检查接口连不上", checks: [] });
     }
   }, []);
+
+  // 点击时才切到加载态；页面首次进入由 effect 直接读取
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    void fetchData();
+  }, [fetchData]);
+
+  const checkHealth = useCallback(() => {
+    setHealth(null);
+    void fetchHealth();
+  }, [fetchHealth]);
 
   useEffect(() => {
     (async () => {
@@ -115,10 +125,10 @@ export default function AdminOverviewPage() {
         router.push("/");
       }
     })();
-    void load();
+    void fetchData();
     void loadStats();
-    void checkHealth();
-  }, [load, loadStats, checkHealth, router]);
+    void fetchHealth();
+  }, [fetchData, loadStats, fetchHealth, router]);
 
   const todo = data?.todo;
   const maxBar = Math.max(1, ...(data?.trend ?? []).map((t) => Math.max(t.usage ?? 0, t.paid ?? 0)));
