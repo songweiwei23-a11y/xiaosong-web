@@ -25,6 +25,23 @@ export async function readAllUsers(db: SupabaseClient): Promise<User[]> {
   }
 }
 
+/** 用户目录的缓存时长。大屏每次刷新都要整份用户列表，60 秒内复用一次，减轻认证接口压力 */
+export const USERS_CACHE_MS = 60_000;
+let usersCache: { at: number; users: User[] } | null = null;
+
+/** 带 60 秒缓存的 readAllUsers。大屏高频刷新时不必每次翻完全部用户页 */
+export async function readAllUsersCached(db: SupabaseClient, now = Date.now()): Promise<User[]> {
+  if (usersCache && now - usersCache.at < USERS_CACHE_MS) return usersCache.users;
+  const users = await readAllUsers(db);
+  usersCache = { at: now, users };
+  return users;
+}
+
+/** 测试用：清掉缓存 */
+export function resetUsersCache() {
+  usersCache = null;
+}
+
 /** 业务日统一为北京时间，不能随生产服务器的 UTC 时区改变。 */
 export function chinaDayStart(now: number): number {
   const offset = 8 * 60 * 60 * 1000;

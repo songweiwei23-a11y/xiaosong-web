@@ -20,7 +20,8 @@ const state = {
 };
 
 vi.mock('@/lib/admin-auth', () => ({
-  requireAdmin: async () => ({ userId: 'admin-1' }),
+  requireAdmin: async () => ({ userId: 'admin-1', role: 'admin' }),
+  requireAdminPermission: async () => ({ userId: 'admin-1', role: 'admin' }),
   getServiceSupabase: () => ({
     from: (table: string) => builder(table),
     auth: {

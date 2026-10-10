@@ -51,6 +51,13 @@ export default function AdminPermissionsPage() {
     const target = email.trim();
     if (!target) return notify("请输入对方的注册邮箱", "warning");
 
+    // 授予管理员等于把整个后台交出去，多一步确认，并且要对方真的是自己人
+    const ok = await confirmDialog(
+      `把 ${target} 设为管理员？对方将能看到全部用户数据、审核订单、修改会员套餐，并能删除用户。`,
+      { tone: "danger", confirmText: "确定授予", title: "授予管理员权限" }
+    );
+    if (!ok) return;
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/admin/permissions", {

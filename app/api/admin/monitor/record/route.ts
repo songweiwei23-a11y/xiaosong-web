@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
+import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import {
   buildDirectory,
   inputFields,
@@ -24,9 +25,9 @@ const RESULT_CAP = 20000;
  * 全文在点开时单独取这一条。
  */
 export async function GET(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_content');
   if (!admin) {
-    return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+    return NextResponse.json({ error: '无权查看用户内容' }, { status: 403 });
   }
 
   const url = new URL(request.url);
@@ -50,6 +51,18 @@ export async function GET(request: Request) {
     if (!row) return NextResponse.json({ error: '这条记录已经不在了（可能被用户删了）' }, { status: 404 });
 
     const userId = row.user_id as string;
+
+    /*
+     * 点开一条动态 = 看了用户的生成全文。产品方要求邮箱不打码，所以这里不隐藏，
+     * 改为留痕：谁、什么时候、看了哪个用户的哪条记录，都能在操作日志里查到（2026-10-10 巡检 M4）。
+     */
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: AdminActions.VIEW_USER_CONTENT,
+      target_type: 'user',
+      target_id: userId,
+      details: { kind, recordId: id },
+    });
     const [userRes, profileRes, subRes, workRes] = await Promise.all([
       db.auth.admin.getUserById(userId),
       db.from('user_profiles').select('id, user_id, profile_name').eq('user_id', userId),

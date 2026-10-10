@@ -458,19 +458,21 @@ describe('后台视觉', () => {
   const layout = read('app/admin/layout.tsx');
   const page = monitorRaw();
 
-  it('整个后台固定深色，不跟随用户主题', () => {
-    /*
-     * 监控大屏的背景是写死的 #05070d，而侧边栏原本跟随主题——
-     * 用户切到浅色时，左边浅灰、右边近黑，中间一道硬边，
-     * 像两个产品拼在一起。
-     */
-    expect(layout).toMatch(/className="dark /);
+  it('后台跟随用户的浅色/深色主题，不再强制深色（2026-10-10 与主页统一）', () => {
+    // 之前强制 dark + 写死背景色，和主页是两套样子
+    expect(layout).not.toMatch(/className="dark /);
+    expect(layout).not.toContain('#070b12');
   });
 
-  it('侧边栏和大屏用同一套视觉语言', () => {
-    // 侧栏原来是一块扁平深灰面板，和青色霓虹的大屏毫无关系
-    expect(layout).toContain('admin-rail');
-    expect(read('app/globals.css')).toContain('.admin-rail');
+  it('侧栏是主页同款的玻璃面板，带品牌印章', () => {
+    expect(layout).toContain('glass-panel');
+    expect(layout).toContain('BrandSeal');
+    expect(read('app/globals.css')).not.toMatch(/^\s*\.admin-rail\s*\{/m);
+  });
+
+  it('监控大屏不再写死背景和 HUD 颜色，颜色走主题变量（浅色下也读得清）', () => {
+    expect(page).not.toMatch(/#05070d|#070b12|text-slate-\d|text-cyan-\d|bg-cyan-\d/);
+    expect(page).toMatch(/hsl\(var\(--glow-primary\)/);
   });
 
   it('脉搏图不依赖数据就能画出来', () => {
@@ -507,6 +509,5 @@ describe('后台视觉', () => {
     const css = read('app/globals.css');
     expect(css).toMatch(/prefers-reduced-motion[\s\S]{0,300}\.admin-anim/);
     expect(page).toContain('admin-anim');
-    expect(layout).toContain('admin-anim');
   });
 });

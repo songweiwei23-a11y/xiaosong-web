@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Copy, Search } from "lucide-react";
 import { notify, confirmDialog } from "@/components/ui/feedback";
 import { SUBSCRIPTION_PLANS, getPlan } from "@/lib/config/plans";
+import { beijingDate } from "@/lib/admin-dates";
 import { INPUT_CLS, SELECT_CLS } from "@/components/form/controls";
 import {
   AdminPage, Badge, Button, DataTable, Dialog, FilterBar, Pager, fieldLabel, readError, type Column,
@@ -129,11 +130,16 @@ export default function UsersPage() {
   const openEdit = (user: User) => {
     setEditing(user);
     setEditPlan(user.membership_level);
-    setEditEndDate(user.subscription_end ? new Date(user.subscription_end).toISOString().split("T")[0] : "");
+    setEditEndDate(beijingDate(user.subscription_end));
   };
 
   const saveMembership = async () => {
     if (!editing) return;
+    const confirmed = await confirmDialog(
+      `把 ${editing.email} 的会员改为「${planOptionLabel(editPlan)}」，到期${editEndDate ? `为 ${editEndDate}（北京时间当天结束）` : "设为永久"}？`,
+      { tone: "danger", confirmText: "确定修改", title: "修改会员" }
+    );
+    if (!confirmed) return;
     setSaving(true);
     const { ok, error: err } = await act(editing.user_id, "update_membership", { plan: editPlan, endDate: editEndDate || null });
     setSaving(false);

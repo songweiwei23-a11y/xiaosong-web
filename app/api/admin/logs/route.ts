@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
-import { ACTION_LABELS, SENSITIVE_ACTIONS, logTargetUserId } from '@/lib/admin-logger';
+import { ACTION_LABELS, AdminActions, SENSITIVE_ACTIONS, logAdminAction, logTargetUserId } from '@/lib/admin-logger';
 import { emailsByIds } from '@/lib/admin-users';
 import { toCsv } from '@/lib/csv';
+import { hasPermission } from '@/lib/admin-permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,9 @@ export async function GET(request: Request) {
   const from = dayStart(sp.get('from'));
   const to = dayEndExclusive(sp.get('to'));
   const csv = sp.get('format') === 'csv';
+  if (csv && !hasPermission(admin.role, 'export_data')) {
+    return NextResponse.json({ error: '无权导出：需要更高的管理员权限' }, { status: 403 });
+  }
 
   const db = getServiceSupabase();
   let query = db
@@ -106,6 +110,13 @@ export async function GET(request: Request) {
       { header: '对象', value: (r) => r.targetEmail ?? r.targetId ?? '' },
       { header: '细节', value: (r) => JSON.stringify(r.details) },
     ]);
+    // 导出本身也要留痕：谁导出了多少条操作日志（巡检 L1）
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: AdminActions.EXPORT_DATA,
+      target_type: 'admin_logs',
+      details: { scope: 'admin_logs', count: items.length, action: action || 'all' },
+    });
     const stamp = new Date().toISOString().slice(0, 10);
     return new NextResponse(body, {
       headers: {

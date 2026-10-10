@@ -71,8 +71,8 @@ describe('侧栏：手机上收起、浮在上面', () => {
 
   it('管理后台：手机上侧栏从左边滑出，有顶栏按钮打开', () => {
     const src = readCode('app/admin/layout.tsx');
-    expect(src).toMatch(/fixed inset-y-0 left-0 z-40[^`]*md:relative[^`]*md:translate-x-0/);
-    expect(src).toMatch(/menuOpen \? "translate-x-0" : "-translate-x-full"/);
+    expect(src).toMatch(/fixed inset-y-3 left-3 z-40[^`]*md:sticky/);
+    expect(src).toMatch(/menuOpen \? "translate-x-0" : "-translate-x-\[calc\(100%\+1rem\)\]"/);
     expect(src).toMatch(/aria-label="打开菜单"/);
   });
 });

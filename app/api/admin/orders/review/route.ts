@@ -1,6 +1,6 @@
 ﻿import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireAdminPermission } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, activationPlan } from '@/lib/config/plans';
 
@@ -11,10 +11,10 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    // 验证管理员权限
-    const admin = await requireAdmin();
+    // 验证管理员权限（审核订单需要 review_orders，见 lib/admin-permissions）
+    const admin = await requireAdminPermission('review_orders');
     if (!admin) {
-      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+      return NextResponse.json({ error: '无权审核订单' }, { status: 403 });
     }
 
     const { orderId, approved, note } = await request.json();

@@ -187,22 +187,22 @@ export default function MonitorPage() {
   const needsAction = (snap?.totals.pendingReview ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-[#05070d] text-slate-100">
+    <div className="relative min-h-[calc(100dvh-2rem)] overflow-hidden rounded-3xl text-foreground">
       {/* 背景网格 + 光晕，纯 CSS，不引额外依赖 */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 opacity-[0.18]"
+        className="pointer-events-none absolute inset-0 opacity-[0.18]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(34,211,238,.25) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,.25) 1px,transparent 1px)",
+            "linear-gradient(hsl(var(--glow-primary) / .25) 1px,transparent 1px),linear-gradient(90deg,hsl(var(--glow-primary) / .25) 1px,transparent 1px)",
           backgroundSize: "44px 44px",
           maskImage: "radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%)",
         }}
       />
       <div
         aria-hidden
-        className="pointer-events-none fixed -top-40 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full blur-[120px]"
-        style={{ background: "radial-gradient(circle,rgba(34,211,238,.20),transparent 65%)" }}
+        className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full blur-[120px]"
+        style={{ background: "radial-gradient(circle,hsl(var(--glow-primary) / .20),transparent 65%)" }}
       />
 
       <div className="relative mx-auto max-w-[1600px] px-6 py-6">
@@ -210,27 +210,27 @@ export default function MonitorPage() {
           顶栏。做成仪表台的样子：标题下面带一行英文代号和状态，
           时间用大字号等宽——这两样是"大屏感"最便宜也最有效的来源。
         */}
-        <header className="admin-anim relative mb-5 overflow-hidden rounded-2xl border border-cyan-400/15 bg-white/[0.02] px-5 py-4 backdrop-blur">
+        <header className="admin-anim relative mb-5 overflow-hidden rounded-2xl border border-primary/15 bg-foreground/[0.02] px-5 py-4 backdrop-blur">
           <span
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-px"
-            style={{ background: "linear-gradient(90deg,transparent,rgba(34,211,238,.75),transparent)" }}
+            style={{ background: "linear-gradient(90deg,transparent,hsl(var(--glow-primary) / .75),transparent)" }}
           />
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <span className="relative flex h-3 w-3">
                 {live && (
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-70" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
                 )}
-                <span className={`relative inline-flex h-3 w-3 rounded-full ${live ? "bg-cyan-400" : "bg-rose-500"}`} />
+                <span className={`relative inline-flex h-3 w-3 rounded-full ${live ? "bg-primary" : "bg-rose-500"}`} />
               </span>
               <div>
-                <h1 className="text-[21px] font-semibold leading-none tracking-[0.22em] text-cyan-300">
+                <h1 className="text-[21px] font-semibold leading-none tracking-[0.22em] text-primary">
                   实时监控中心
                 </h1>
-                <p className="mt-1.5 flex items-center gap-2 text-[10px] tracking-[0.22em] text-cyan-400/50">
+                <p className="mt-1.5 flex items-center gap-2 text-[10px] tracking-[0.22em] text-primary/60">
                   <span>LIVE OPS MONITOR</span>
-                  <span className="h-2.5 w-px bg-cyan-400/25" />
+                  <span className="h-2.5 w-px bg-primary/25" />
                   <span>{live ? mode === 'realtime' ? 'LIVE PUSH' : '1S REFRESH' : "DISCONNECTED"}</span>
                 </p>
               </div>
@@ -238,10 +238,10 @@ export default function MonitorPage() {
 
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="text-right">
-                <div className="font-mono text-[28px] leading-none tabular-nums tracking-[0.08em] text-cyan-200">
+                <div className="font-mono text-[28px] leading-none tabular-nums tracking-[0.08em] text-primary">
                   {clock || "--:--:--"}
                 </div>
-                <div className="mt-1 text-[10px] tracking-[0.2em] text-cyan-400/40">
+                <div className="mt-1 text-[10px] tracking-[0.2em] text-primary/50">
                   {new Date().toLocaleDateString("zh-CN")}
                 </div>
               </div>
@@ -251,7 +251,7 @@ export default function MonitorPage() {
                 className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[12.5px] transition-colors ${
                   privacy
                     ? "border-amber-400/50 bg-amber-400/10 text-amber-300"
-                    : "border-slate-500/40 bg-white/[0.03] text-slate-300"
+                    : "border-border bg-foreground/[0.03] text-foreground/85"
                 }`}
               >
                 {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -261,7 +261,7 @@ export default function MonitorPage() {
                 onClick={() => (sound.enabled ? sound.disable() : sound.unlock())}
                 className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[12.5px] transition-colors ${
                   sound.enabled
-                    ? "border-cyan-400/50 bg-cyan-400/10 text-cyan-300"
+                    ? "border-primary/50 bg-primary/10 text-primary"
                     : "border-amber-400/50 bg-amber-400/10 text-amber-300"
                 }`}
               >
@@ -269,7 +269,7 @@ export default function MonitorPage() {
                 {sound.enabled ? "声音已开" : "点击开启声音"}
               </button>
               {sound.enabled && (
-                <div className="flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-white/[0.03] px-3 py-1.5 text-[12px] text-cyan-200">
+                <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-foreground/[0.03] px-3 py-1.5 text-[12px] text-primary">
                   <span className="shrink-0">音量</span>
                   <input
                     type="range"
@@ -279,7 +279,7 @@ export default function MonitorPage() {
                     step={0.05}
                     value={sound.volume}
                     onChange={(e) => sound.setVolume(Number(e.target.value))}
-                    className="w-20 accent-cyan-400"
+                    className="w-20 accent-primary"
                   />
                   {([
                     ["ping", "使用"],
@@ -290,7 +290,7 @@ export default function MonitorPage() {
                       key={kind}
                       onClick={() => sound.play(kind)}
                       title={`试听「${label}」提示音`}
-                      className="rounded-md border border-cyan-400/30 px-1.5 py-0.5 hover:bg-cyan-400/10"
+                      className="rounded-md border border-primary/30 px-1.5 py-0.5 hover:bg-primary/10"
                     >
                       {label}
                     </button>
@@ -354,9 +354,9 @@ export default function MonitorPage() {
               title="最近一小时活跃脉搏"
               icon={Activity}
               right={
-                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <span
-                    className="h-1.5 w-1.5 rounded-full bg-cyan-400"
+                    className="h-1.5 w-1.5 rounded-full bg-primary"
                     style={{ animation: "adminFlicker 1.6s ease-in-out infinite" }}
                   />
                   {pulse.some((v) => v > 0) ? `峰值 ${peak} 次/分` : "静默"}
@@ -382,10 +382,10 @@ export default function MonitorPage() {
                     <span
                       aria-hidden
                       className="absolute inset-x-0 h-px"
-                      style={{ background: "rgba(148,163,184,.13)" }}
+                      style={{ background: "hsl(var(--foreground) / .13)" }}
                     />
                     {/* z-10：后面那个 <svg> 是兄弟元素，不加的话发光的折线会压在刻度值上 */}
-                    <span className="absolute -top-2 left-0 z-10 bg-[#05070d] pr-1.5 font-mono text-[9.5px] tabular-nums text-slate-600">
+                    <span className="absolute -top-2 left-0 z-10 bg-background pr-1.5 font-mono text-[9.5px] tabular-nums text-muted-foreground/70">
                       {Math.round(peak * r)}
                     </span>
                   </div>
@@ -410,22 +410,22 @@ export default function MonitorPage() {
                     strokeWidth="2"
                     strokeLinejoin="round"
                     strokeLinecap="round"
-                    style={{ filter: "drop-shadow(0 0 6px rgba(34,211,238,.75))" }}
+                    style={{ filter: "drop-shadow(0 0 6px hsl(var(--glow-primary) / .75))" }}
                   />
                 </svg>
 
                 {/* 来回扫的光标。不依赖数据，静默时这块也不会死掉 */}
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-y-0 w-px bg-cyan-300/50"
+                  className="pointer-events-none absolute inset-y-0 w-px bg-primary/50"
                   style={{
                     animation: "adminScanX 5.5s ease-in-out infinite",
-                    boxShadow: "0 0 12px 2px rgba(34,211,238,.4)",
+                    boxShadow: "0 0 12px 2px hsl(var(--glow-primary) / .4)",
                   }}
                 />
               </div>
 
-              <div className="mt-2 flex justify-between text-[11px] text-slate-500">
+              <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
                 <span>60 分钟前</span>
                 <span className="tabular-nums">
                   合计 {pulse.reduce((a, b) => a + b, 0)} 次
@@ -443,17 +443,17 @@ export default function MonitorPage() {
                     const max = snap!.byFeature[0].count || 1;
                     return (
                       <div key={f.name} className="flex items-center gap-3">
-                        <span className="w-20 shrink-0 truncate text-[12.5px] text-slate-300">{f.name}</span>
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-500/15">
+                        <span className="w-20 shrink-0 truncate text-[12.5px] text-foreground/85">{f.name}</span>
+                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
                           <div
                             className="h-full rounded-full"
                             style={{
                               width: `${(f.count / max) * 100}%`,
-                              background: "linear-gradient(90deg,rgba(139,92,246,.85),rgba(34,211,238,.9))",
+                              background: "linear-gradient(90deg,hsl(var(--glow-accent) / .85),hsl(var(--glow-primary) / .9))",
                             }}
                           />
                         </div>
-                        <span className="w-10 shrink-0 text-right font-mono text-[12.5px] tabular-nums text-cyan-300">
+                        <span className="w-10 shrink-0 text-right font-mono text-[12.5px] tabular-nums text-primary">
                           {f.count}
                         </span>
                       </div>
@@ -474,7 +474,7 @@ export default function MonitorPage() {
           <Panel
             title={`最近活跃用户（${snap?.active.length ?? 0}）`}
             icon={Wifi}
-            right={<span className="text-[11px] text-slate-500">{ACTIVE_WINDOW_HOURS} 小时内 · 点一个人只看他的动态</span>}
+            right={<span className="text-[11px] text-muted-foreground">{ACTIVE_WINDOW_HOURS} 小时内 · 点一个人只看他的动态</span>}
           >
             {(snap?.active ?? []).length === 0 ? (
               <EmptyBox text={`${ACTIVE_WINDOW_HOURS} 小时内没有人用过`} height={120} />
@@ -501,13 +501,13 @@ export default function MonitorPage() {
               focusUser ? (
                 <button
                   onClick={() => setFocusUser(null)}
-                  className="flex min-w-0 items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-400/10 px-2.5 py-1 text-[11px] text-cyan-200"
+                  className="flex min-w-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] text-primary"
                 >
                   <span className="truncate">只看 {showEmail(focusUser.email)}</span>
                   <X className="h-3 w-3 shrink-0" />
                 </button>
               ) : (
-                <span className="text-[11px] text-slate-500">谁 · 哪个档案 · 输入了什么 · 生成了什么</span>
+                <span className="text-[11px] text-muted-foreground">谁 · 哪个档案 · 输入了什么 · 生成了什么</span>
               )
             }
           >
@@ -536,7 +536,7 @@ export default function MonitorPage() {
           而是这些数字散落在各处没人汇总。放成一条等宽的状态带，
           既填了版面，也回答了"整体什么情况"这个问题。
         */}
-        <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-cyan-400/15 bg-cyan-400/10 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-primary/15 bg-primary/10 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { k: "数据链路", v: live ? mode === 'realtime' ? '实时推送' : '秒级更新' : "中断", ok: live },
             { k: "刷新间隔", v: mode === 'realtime' ? '变更即刷新' : '1 秒', ok: live },
@@ -545,11 +545,11 @@ export default function MonitorPage() {
             { k: "待付款", v: String(snap?.totals.pendingPay ?? 0), ok: true },
             { k: "累计生成", v: String(snap?.totals.generations ?? 0), ok: true },
           ].map((x) => (
-            <div key={x.k} className="bg-[#070b12] px-4 py-3">
-              <div className="text-[10.5px] tracking-[0.16em] text-slate-500">{x.k}</div>
+            <div key={x.k} className="bg-card px-4 py-3">
+              <div className="text-[10.5px] tracking-[0.16em] text-muted-foreground">{x.k}</div>
               <div
                 className={`mt-1 font-mono text-[15px] tabular-nums ${
-                  x.ok ? "text-cyan-300" : "text-rose-400"
+                  x.ok ? "text-primary" : "text-rose-400"
                 }`}
               >
                 {x.v}
@@ -567,7 +567,7 @@ export default function MonitorPage() {
               ? "border-rose-400/60 bg-rose-500/20"
               : flash.level === "good"
                 ? "border-emerald-400/60 bg-emerald-500/20"
-                : "border-cyan-400/50 bg-cyan-500/15"
+                : "border-primary/50 bg-primary/15"
           }`}
         >
           <div className="break-all text-[14px] font-medium text-white">

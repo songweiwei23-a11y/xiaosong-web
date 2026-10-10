@@ -5,6 +5,7 @@ import { Eye, Search } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { INPUT_CLS } from "@/components/form/controls";
 import { exportOrdersToCSV } from "@/lib/export-utils";
+import { beijingDate } from "@/lib/admin-dates";
 import {
   AdminPage, Badge, Button, DataTable, Dialog, FilterBar, Pager, fieldLabel, readError, type Column,
 } from "@/components/admin/kit";
@@ -207,6 +208,30 @@ export default function AdminOrdersPage() {
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  /** 导出含用户邮箱，先留痕，留痕成功才真正下载（巡检 L1） */
+  const exportPage = async () => {
+    try {
+      const res = await fetch("/api/admin/export-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "orders", count: orders.length }),
+      });
+      if (!res.ok) throw new Error(await readError(res, "导出留痕失败"));
+    } catch (e) {
+      notify((e as Error).message || "导出没有完成，请稍后重试", "error");
+      return;
+    }
+    exportOrdersToCSV(
+      orders.map((o) => ({
+        ...o,
+        proof_image_url: o.proof_image_url ?? undefined,
+        review_note: o.review_note ?? undefined,
+        reviewed_at: o.reviewed_at ?? undefined,
+      })),
+      `orders-${beijingDate(new Date().toISOString())}.csv`
+    );
+  };
+
   return (
     <AdminPage
       title="订单审核"
@@ -214,17 +239,7 @@ export default function AdminOrdersPage() {
       actions={
         <Button
           variant="default"
-          onClick={() =>
-            exportOrdersToCSV(
-              orders.map((o) => ({
-                ...o,
-                proof_image_url: o.proof_image_url ?? undefined,
-                review_note: o.review_note ?? undefined,
-                reviewed_at: o.reviewed_at ?? undefined,
-              })),
-              `orders-${new Date().toISOString().split("T")[0]}.csv`
-            )
-          }
+          onClick={() => void exportPage()}
           disabled={orders.length === 0}
         >
           导出本页（{orders.length}）

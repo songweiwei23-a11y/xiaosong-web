@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
-import { readAllRows, readAllUsers, chinaDayStart } from '@/lib/admin-monitor-data';
+import { readAllRows, readAllUsersCached, chinaDayStart } from '@/lib/admin-monitor-data';
 import {
   buildEvents,
   buildDirectory,
@@ -66,7 +66,7 @@ export async function GET() {
         .from('payment_orders')
         .select('id, user_id, plan_id, plan_name, amount, status, billing_cycle, created_at, proof_uploaded_at, reviewed_at')
         .lte('created_at', upper).order('created_at', { ascending: false }).order('id').range(from, to)),
-      readAllUsers(supabase),
+      readAllUsersCached(supabase),
       readAllRows<RawProfile>((from, to) => supabase.from('user_profiles').select('id, user_id, profile_name').order('id').range(from, to)),
       readAllRows<RawSubscription>((from, to) => supabase.from('subscriptions').select('user_id, plan, status, end_date').order('user_id').range(from, to)),
       supabase.from('script_history').select('id', { count: 'exact', head: true }).is('input_data->>canvasOf', null).lte('created_at', upper),

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ admin: true, status: vi.fn(), save: vi.fn(), search: vi.fn() }));
-vi.mock('@/lib/admin-auth', () => ({ requireAdmin: async () => mock.admin ? { userId: 'admin' } : null }));
+vi.mock('@/lib/admin-auth', () => ({
+  requireAdmin: async () => mock.admin ? { userId: 'admin', role: 'admin' } : null,
+  requireAdminPermission: async () => mock.admin ? { userId: 'admin', role: 'admin' } : null,
+}));
 vi.mock('@/lib/search-config', () => ({ DEFAULT_SEARCH_ENDPOINT: 'https://example.opensearch.aliyuncs.com/v3/web-search/example', searchConfigStatus: mock.status, saveSearchConfig: mock.save, validApiKey: (key: unknown) => typeof key === 'string' && key.length >= 16 ? key : null, validEndpoint: (endpoint: unknown) => typeof endpoint === 'string' && endpoint.startsWith('https://example.opensearch.aliyuncs.com/') ? endpoint : null }));
 vi.mock('@/lib/ali-search', () => ({ aliSearch: mock.search, SEARCH_FAILURE_TEXT: { auth: '密钥无权限', quota: '额度不足' } }));
 import { GET, POST } from '@/app/api/admin/search-key/route';

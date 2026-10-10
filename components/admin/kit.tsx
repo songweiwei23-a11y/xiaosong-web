@@ -22,13 +22,17 @@ export function AdminPage({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  // 外层的滚动由 layout 的 main 负责，这里不再另开滚动区域（否则会出现两层滚动条）
   return (
-    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
+    <div className="px-1 py-1 sm:py-2">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-[22px] font-semibold text-foreground">{title}</h1>
-            {subtitle && <div className="mt-1 text-[13px] text-muted-foreground">{subtitle}</div>}
+        <header className="glass-panel mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <span aria-hidden className="mt-1.5 h-5 w-1 shrink-0 rounded-full bg-primary" />
+            <div className="min-w-0">
+              <h1 className="text-[21px] font-semibold tracking-tight text-foreground">{title}</h1>
+              {subtitle && <div className="mt-1 text-[13px] text-muted-foreground">{subtitle}</div>}
+            </div>
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
@@ -187,45 +191,86 @@ export function DataTable<T>({
   empty?: ReactNode;
 }) {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
+
+  const placeholder =
+    loading && rows.length === 0 ? (
+      <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+    ) : rows.length === 0 ? (
+      empty
+    ) : null;
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] text-[13px]">
-        <thead className="border-b border-border/60 text-left text-[11.5px] text-muted-foreground">
-          <tr>
-            {columns.map((c) => (
-              <th key={c.key} className={`px-3 py-2.5 font-medium ${c.className ?? ""}`}>
-                {c.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/40">
-          {loading && rows.length === 0 ? (
+    <>
+      {/* 桌面：表格。小屏横向滚动会很难看，所以 md 以下改用卡片（见下） */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[40rem] text-[13px]">
+          <thead className="border-b border-border/60 text-left text-[11.5px] text-muted-foreground">
             <tr>
-              <td colSpan={columns.length} className="px-3 py-10 text-center">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
-              </td>
+              {columns.map((c) => (
+                <th key={c.key} className={`px-3 py-2.5 font-medium ${c.className ?? ""}`}>
+                  {c.header}
+                </th>
+              ))}
             </tr>
-          ) : rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="px-3 py-10 text-center text-muted-foreground">
-                {empty}
-              </td>
-            </tr>
-          ) : (
-            rows.map((row) => (
-              <tr key={rowKey(row)} className="align-top transition-colors hover:bg-foreground/[0.03]">
-                {columns.map((c) => (
-                  <td key={c.key} className={`px-3 py-3 text-foreground ${c.className ?? ""}`}>
-                    {c.render(row)}
-                  </td>
-                ))}
+          </thead>
+          <tbody className="divide-y divide-border/40">
+            {placeholder ? (
+              <tr>
+                <td colSpan={columns.length} className="px-3 py-10 text-center text-muted-foreground">
+                  {placeholder}
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+            ) : (
+              rows.map((row) => (
+                <tr key={rowKey(row)} className="align-top transition-colors hover:bg-foreground/[0.03]">
+                  {columns.map((c) => (
+                    <td key={c.key} className={`px-3 py-3 text-foreground ${c.className ?? ""}`}>
+                      {c.render(row)}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 手机：每行一张卡。第一列（通常是用户/订单的标识）放最上面，操作列放卡底 */}
+      <div className="md:hidden">
+        {placeholder ? (
+          <div className="px-3 py-10 text-center text-muted-foreground">{placeholder}</div>
+        ) : (
+          <ul className="space-y-2.5">
+            {rows.map((row) => (
+              <li key={rowKey(row)} className="rounded-2xl border border-border/60 bg-foreground/[0.02] p-3.5 text-[13px]">
+                {columns.map((c, i) => {
+                  if (c.key === "actions") {
+                    return (
+                      <div key={c.key} className="mt-3 flex flex-wrap gap-1.5 border-t border-border/50 pt-3">
+                        {c.render(row)}
+                      </div>
+                    );
+                  }
+                  if (i === 0) {
+                    return (
+                      <div key={c.key} className="min-w-0 text-foreground">
+                        {c.render(row)}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={c.key} className="mt-2 flex gap-3">
+                      <span className="w-16 shrink-0 pt-0.5 text-[11.5px] text-muted-foreground">{c.header}</span>
+                      <div className="min-w-0 flex-1 text-foreground">{c.render(row)}</div>
+                    </div>
+                  );
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
   );
 }
 

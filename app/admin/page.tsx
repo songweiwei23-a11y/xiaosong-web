@@ -37,7 +37,8 @@ interface Health {
 interface Stats {
   totalUsers: number;
   activeToday: number;
-  apiCallsToday: number;
+  /** 累计生成次数（从上线至今） */
+  totalGenerations: number;
   /** 键跟着接口走：free/basic/pro/enterprise（lib/admin-stats 的 buildPlanDistribution） */
   subscriptionStats: Record<string, number>;
 }
@@ -102,7 +103,9 @@ export default function AdminOverviewPage() {
       try {
         const res = await fetch("/api/admin/check-role");
         if (!res.ok) {
-          router.push("/");
+          // 绑定了验证器但本次没验：先去「账号安全」完成二次验证，而不是直接踢回首页
+          const body = await res.json().catch(() => ({}));
+          router.push(body.code === "mfa_required" ? "/admin/security" : "/");
           return;
         }
         const who = await res.json();
@@ -182,7 +185,7 @@ export default function AdminOverviewPage() {
           <StatCard label="近 7 天活跃" value={stats?.activeToday ?? "—"} hint="近 7 天有过用量变动的人数" />
           <StatCard label="付费会员" value={stats ? paidCount(stats.subscriptionStats) : "—"} tone="ok" hint="除免费版以外的全部档位" />
           <StatCard label="免费版" value={stats?.subscriptionStats.free ?? "—"} tone="muted" />
-          <StatCard label="累计生成次数" value={stats?.apiCallsToday ?? "—"} hint="从上线至今的生成总数" />
+          <StatCard label="累计生成次数" value={stats?.totalGenerations ?? "—"} hint="从上线至今的生成总数" />
         </div>
       </Panel>
 
@@ -229,14 +232,19 @@ export default function AdminOverviewPage() {
           </div>
           <div className="mt-4 border-t border-border/50 pt-4">
             <div className="mb-2 text-[12px] text-muted-foreground">常用入口</div>
-            <div className="grid grid-cols-2 gap-2 text-[13px]">
+            <div className="grid grid-cols-2 gap-2 text-[13px] sm:grid-cols-3">
               {[
                 ["用户管理", "/admin/users"],
                 ["会员管理", "/admin/subscriptions"],
                 ["订单审核", "/admin/orders"],
                 ["收款二维码", "/admin/qrcodes"],
-                ["操作日志", "/admin/logs"],
+                ["邀请码", "/admin/invitations"],
+                ["质检看板", "/admin/quality"],
+                ["数据分析", "/admin/analytics"],
                 ["实时监控", "/admin/monitor"],
+                ["操作日志", "/admin/logs"],
+                ["权限管理", "/admin/permissions"],
+                ["账号安全", "/admin/security"],
                 ["系统设置", "/admin/settings"],
               ].map(([label, href]) => (
                 <Link key={href} href={href} className="glass-panel glass-interactive rounded-xl border border-border/60 px-3 py-2 text-foreground/90">

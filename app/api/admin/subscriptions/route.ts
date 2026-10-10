@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdmin, requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, getPlan, sumCountedUsage } from '@/lib/config/plans';
 import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
 import { extendEndDate } from '@/lib/admin-membership';
+import { parseEndDateInput } from '@/lib/admin-dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,9 +125,10 @@ async function countPlans(db: ReturnType<typeof getServiceSupabase>): Promise<Re
 // PATCH - 更新会员信息
 export async function PATCH(request: Request) {
   try {
-    const admin = await requireAdmin();
+    // 改套餐、到期日、延期、清额度都属于会员管理（见 lib/admin-permissions）
+    const admin = await requireAdminPermission('manage_membership');
     if (!admin) {
-      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+      return NextResponse.json({ error: '无权修改会员：这项操作需要更高的管理员权限' }, { status: 403 });
     }
 
     const { userId, plan, endDate, action, days } = await request.json();
@@ -234,7 +236,14 @@ export async function PATCH(request: Request) {
       payload.status = 'active';
     }
 
-    if (endDate) payload.end_date = new Date(endDate).toISOString();
+    // 空值表示不改到期日；填了就按北京时间当天 23:59:59 算，格式不对直接拒绝
+    if (endDate) {
+      const parsed = parseEndDateInput(endDate);
+      if (!parsed.ok || !parsed.endIso) {
+        return NextResponse.json({ error: '到期日格式不对，请重新选择' }, { status: 400 });
+      }
+      payload.end_date = parsed.endIso;
+    }
 
     const { data: subRows, error } = await supabase
       .from('subscriptions')

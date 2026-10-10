@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Search } from "lucide-react";
 import { notify, confirmDialog } from "@/components/ui/feedback";
 import { SUBSCRIPTION_PLANS, quotaSummary } from "@/lib/config/plans";
+import { beijingDate } from "@/lib/admin-dates";
 import { INPUT_CLS, SELECT_CLS } from "@/components/form/controls";
 import {
   AdminPage, Badge, Button, DataTable, Dialog, FilterBar, Pager, StatCard, fieldLabel, readError, type Column,
@@ -109,11 +110,16 @@ export default function SubscriptionsManagement() {
   const openEdit = (s: Sub) => {
     setEditing(s);
     setEditPlan(s.plan);
-    setEditEnd(s.endDate ? s.endDate.split("T")[0] : "");
+    setEditEnd(beijingDate(s.endDate));
   };
 
   const saveEdit = async () => {
     if (!editing) return;
+    const ok = await confirmDialog(
+      `把 ${editing.email} 的会员改为「${SUBSCRIPTION_PLANS[editPlan as keyof typeof SUBSCRIPTION_PLANS]?.name ?? editPlan}」，${editEnd ? `到期日改为 ${editEnd}（北京时间当天结束）` : "到期日不变"}？`,
+      { tone: "danger", confirmText: "确定修改", title: "修改会员" }
+    );
+    if (!ok) return;
     setSaving(true);
     try {
       const res = await fetch("/api/admin/subscriptions", {

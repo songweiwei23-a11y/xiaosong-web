@@ -7,6 +7,19 @@ import { COUNTED_FEATURES, sumCountedUsage } from '@/lib/config/plans';
 import { accountStatus } from '@/lib/account-status';
 import { previewUserData, purgeUser } from '@/lib/admin-delete-user';
 import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
+import { parseEndDateInput } from '@/lib/admin-dates';
+import { hasPermission, type AdminPermission } from '@/lib/admin-permissions';
+
+/** 用户管理 POST 每个动作需要的权限。没列在这里的动作（比如未知动作）由 switch 的 default 返回 400 */
+const PERMISSION_FOR_ACTION: Record<string, AdminPermission> = {
+  update_membership: 'manage_membership',
+  reset_quota: 'manage_users',
+  ban_user: 'manage_users',
+  unban_user: 'manage_users',
+  reset_password: 'manage_users',
+  delete_preview: 'delete_user',
+  delete_user: 'delete_user',
+};
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,6 +27,25 @@ const supabase = createClient(
 );
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * 封禁 / 解封时只改订阅的状态，不动套餐和到期日。
+ * 改造前这里写的是 plan: 'free'，付费会员一被封，套餐就降成免费，解封也恢复不了（2026-10-10 巡检 H1）。
+ * 没有订阅行的用户才新建一行免费版；有行就只 update status。
+ */
+async function setSubscriptionStatus(userId: string, status: 'active' | 'inactive') {
+  const now = new Date().toISOString();
+  const { data: existing, error: readError } = await supabase
+    .from('subscriptions')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (readError) return { error: readError };
+  if (existing) {
+    return supabase.from('subscriptions').update({ status, updated_at: now }).eq('user_id', userId);
+  }
+  return supabase.from('subscriptions').insert({ user_id: userId, plan: 'free', status, updated_at: now });
+}
 
 /*
  * GET 两种用法：
@@ -180,11 +212,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
     }
 
+    // 按动作校验权限（矩阵见 lib/admin-permissions）。运营可以封禁、改会员，但不能删用户
+    const needed = PERMISSION_FOR_ACTION[action as string];
+    if (needed && !hasPermission(admin.role, needed)) {
+      return NextResponse.json({ error: '无权执行这项操作：需要更高的管理员权限' }, { status: 403 });
+    }
+
     switch (action) {
       case 'update_membership':
         // 更新会员等级
         if (!plan) {
           return NextResponse.json({ error: '缺少会员套餐参数' }, { status: 400 });
+        }
+
+        // 到期日按北京时间当天 23:59:59 算；填了但格式不对就拒绝，不写入 Invalid Date
+        const endParsed = parseEndDateInput(endDate);
+        if (!endParsed.ok) {
+          return NextResponse.json({ error: '到期日格式不对，请重新选择' }, { status: 400 });
         }
 
         // 更新或创建subscription
@@ -194,7 +238,7 @@ export async function POST(request: Request) {
             user_id: userId,
             plan: plan,
             status: 'active',
-            end_date: endDate || null,
+            end_date: endParsed.endIso,
             updated_at: new Date().toISOString()
           }, {
             onConflict: 'user_id'
@@ -277,17 +321,8 @@ export async function POST(request: Request) {
           );
         }
 
-        // 订阅状态一并置为 inactive，作为第二道判断（额度守卫会读它）。
-        // 必须用 upsert：没有订阅行的用户用 update 会静默影响 0 行
-        const { error: banSubError } = await supabase.from('subscriptions').upsert(
-          {
-            user_id: userId,
-            plan: 'free',
-            status: 'inactive',
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        );
+        // 订阅状态一并置为 inactive，作为第二道判断（额度守卫会读它）。只改状态，不动套餐
+        const { error: banSubError } = await setSubscriptionStatus(userId, 'inactive');
         if (banSubError) console.error('[用户管理] 订阅状态置 inactive 失败:', banSubError);
 
         await logAdminAction(admin.userId, AdminActions.BAN_USER, { targetUserId: userId });
@@ -315,16 +350,8 @@ export async function POST(request: Request) {
           );
         }
 
-        // 同样用 upsert：没有订阅行的用户用 update 会静默影响 0 行
-        const { error: unbanSubError } = await supabase.from('subscriptions').upsert(
-          {
-            user_id: userId,
-            plan: 'free',
-            status: 'active',
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        );
+        // 只恢复订阅状态，套餐和到期日保持原样
+        const { error: unbanSubError } = await setSubscriptionStatus(userId, 'active');
         if (unbanSubError) console.error('[用户管理] 订阅状态置 active 失败:', unbanSubError);
 
         await logAdminAction(admin.userId, AdminActions.UNBAN_USER, { targetUserId: userId });

@@ -36,7 +36,7 @@ export function FunnelPanel({ revision }: { revision: number }) {
                 type="button"
                 aria-pressed={days === d}
                 onClick={() => setDays(d)}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] ${days === d ? "bg-cyan-400/15 text-cyan-200" : "text-slate-500 hover:text-slate-300"}`}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] ${days === d ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground/85"}`}
               >
                 {d === 1 ? '今天' : `近 ${d} 天`}
               </button>
@@ -53,24 +53,24 @@ export function FunnelPanel({ revision }: { revision: number }) {
             <div className="space-y-2">
               {data.steps.map((s, i) => (
                 <div key={s.key} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-3 sm:grid-cols-[8rem_1fr_7rem]">
-                  <span className="truncate text-[12.5px] text-slate-300">{s.label}</span>
-                  <div className="h-5 overflow-hidden rounded-md bg-slate-500/10">
+                  <span className="truncate text-[12.5px] text-foreground/85">{s.label}</span>
+                  <div className="h-5 overflow-hidden rounded-md bg-foreground/10">
                     <div
                       className="h-full rounded-md"
                       style={{
                         width: `${Math.max(s.count > 0 ? 2 : 0, (s.count / top) * 100)}%`,
-                        background: i < 3 ? "rgba(34,211,238,.55)" : "linear-gradient(90deg,rgba(139,92,246,.85),rgba(34,211,238,.9))",
+                        background: i < 3 ? "hsl(var(--glow-primary) / .55)" : "linear-gradient(90deg,hsl(var(--glow-accent) / .85),hsl(var(--glow-primary) / .9))",
                       }}
                     />
                   </div>
-                  <span className="text-right font-mono text-[12.5px] tabular-nums text-cyan-200">
+                  <span className="text-right font-mono text-[12.5px] tabular-nums text-primary">
                     {s.count}
-                    {s.fromPrev !== null && s.key !== 'signup' && <span className="ml-1.5 text-[11px] text-slate-500">{s.fromPrev}%</span>}
+                    {s.fromPrev !== null && s.key !== 'signup' && <span className="ml-1.5 text-[11px] text-muted-foreground">{s.fromPrev}%</span>}
                   </span>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
               数据截至 {stamp(data.now)}:{new Date(data.now).getSeconds().toString().padStart(2, '0')}（北京时间）。前三步按所选时段的匿名访客去重；后三步按{days === 1 ? '今天' : `近 ${days} 天`}注册的同一批账号统计，首次创作不含自由对话和知识库查询，付费以审核通过时间为准。
               匿名访客与注册账号尚未关联，注册这一步不显示转化率；其余百分比为相邻阶段人数比。
             </p>
@@ -101,23 +101,23 @@ export function ActiveUserCard({
       type="button"
       onClick={onSelect}
       className={`block w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
-        selected ? "border-cyan-400/60 bg-cyan-400/[0.08]" : "border-white/[0.06] bg-white/[0.03] hover:border-cyan-400/30"
+        selected ? "border-primary/60 bg-primary/[0.08]" : "border-border/60 bg-foreground/[0.03] hover:border-primary/30"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
           <span
             className={`h-2 w-2 shrink-0 rounded-full ${
-              u.online ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.9)]" : "bg-slate-600"
+              u.online ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.9)]" : "bg-muted-foreground/50"
             }`}
             title={u.online ? `${ONLINE_WINDOW_MIN} 分钟内有操作` : ""}
           />
-          <span className="break-all text-[13px] font-medium text-slate-100">{email}</span>
+          <span className="break-all text-[13px] font-medium text-foreground">{email}</span>
         </span>
-        <span className="shrink-0 text-right text-[11px] leading-tight text-slate-500">
+        <span className="shrink-0 text-right text-[11px] leading-tight text-muted-foreground">
           {relativeTime(u.lastAt)}
           <br />
-          <span className="text-slate-600">{stamp(u.lastAt)}</span>
+          <span className="text-muted-foreground/70">{stamp(u.lastAt)}</span>
         </span>
       </div>
 
@@ -125,28 +125,28 @@ export function ActiveUserCard({
         <span className="rounded-full border border-violet-400/40 bg-violet-400/10 px-2 py-0.5 text-violet-200">{u.plan}</span>
         {u.profiles.length ? (
           u.profiles.map((p, i) => (
-            <span key={`${p}-${i}`} className="rounded-full border border-cyan-400/25 bg-cyan-400/[0.06] px-2 py-0.5 text-cyan-200/90">
+            <span key={`${p}-${i}`} className="rounded-full border border-primary/25 bg-primary/[0.06] px-2 py-0.5 text-primary/90">
               {p}
             </span>
           ))
         ) : (
-          <span className="text-slate-500">还没建档案</span>
+          <span className="text-muted-foreground">还没建档案</span>
         )}
       </div>
 
-      <div className="mt-1.5 break-all text-[12px] text-slate-300">
-        <span className="text-slate-500">最后：</span>
+      <div className="mt-1.5 break-all text-[12px] text-foreground/85">
+        <span className="text-muted-foreground">最后：</span>
         {hideContent ? u.lastAction.split(" · ")[0] : u.lastAction}
       </div>
 
-      <div className="mt-1 text-[11.5px] text-slate-400">
-        <span className="text-slate-500">今天 </span>
-        <span className="font-mono tabular-nums text-cyan-300">{u.todayCount}</span>
-        <span className="text-slate-500"> 次</span>
+      <div className="mt-1 text-[11.5px] text-muted-foreground">
+        <span className="text-muted-foreground">今天 </span>
+        <span className="font-mono tabular-nums text-primary">{u.todayCount}</span>
+        <span className="text-muted-foreground"> 次</span>
         {u.todayFeatures.length > 0 && (
-          <span className="text-slate-400"> · {u.todayFeatures.map((f) => `${f.name}×${f.count}`).join("、")}</span>
+          <span className="text-muted-foreground"> · {u.todayFeatures.map((f) => `${f.name}×${f.count}`).join("、")}</span>
         )}
-        {u.registeredAt && <span className="text-slate-600"> · 注册于 {stamp(u.registeredAt)}</span>}
+        {u.registeredAt && <span className="text-muted-foreground/70"> · 注册于 {stamp(u.registeredAt)}</span>}
       </div>
     </button>
   );
@@ -173,7 +173,7 @@ export function EventCard({ e, email, hideContent }: { e: MonitorEvent; email: s
       ? "border-rose-400 bg-rose-500/[0.10]"
       : e.level === "good"
         ? "border-emerald-400 bg-emerald-500/[0.08]"
-        : "border-cyan-400/50 bg-white/[0.025]";
+        : "border-primary/50 bg-foreground/[0.025]";
   const isUsage = e.type === "usage";
   // 下面一行已经写了是谁，标题里就不再重复邮箱（弹窗提示里的标题仍然带着）
   const heading = isUsage ? e.feature : e.user ? e.title.replace(`${e.user.email} `, "") : e.title;
@@ -181,36 +181,36 @@ export function EventCard({ e, email, hideContent }: { e: MonitorEvent; email: s
   return (
     <div className={`rounded-xl border-l-2 px-3 py-2.5 ${tone}`}>
       <div className="flex items-start justify-between gap-2">
-        <span className="min-w-0 break-all text-[13px] font-medium text-slate-100">{heading}</span>
-        <span className="shrink-0 text-right text-[11px] leading-tight text-slate-500">
+        <span className="min-w-0 break-all text-[13px] font-medium text-foreground">{heading}</span>
+        <span className="shrink-0 text-right text-[11px] leading-tight text-muted-foreground">
           {relativeTime(e.at)}
           <br />
-          <span className="text-slate-600">{stamp(e.at)}</span>
+          <span className="text-muted-foreground/70">{stamp(e.at)}</span>
         </span>
       </div>
 
       {(e.user || e.profile) && (
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
-          {e.user && <span className="break-all text-slate-200">{email}</span>}
+          {e.user && <span className="break-all text-foreground">{email}</span>}
           {e.user && <span className="text-violet-300/90">{e.user.plan}</span>}
           {e.profile && (
-            <span className="rounded-full border border-cyan-400/25 bg-cyan-400/[0.06] px-2 py-0.5 text-cyan-200/90">
+            <span className="rounded-full border border-primary/25 bg-primary/[0.06] px-2 py-0.5 text-primary/90">
               档案：{e.profile}
             </span>
           )}
-          {e.work && !hideContent && <span className="text-slate-400">作品：{e.work}</span>}
+          {e.work && !hideContent && <span className="text-muted-foreground">作品：{e.work}</span>}
         </div>
       )}
 
       {isUsage ? (
         hideContent ? (
-          <div className="mt-1 text-[11.5px] text-slate-500">{HIDDEN}</div>
+          <div className="mt-1 text-[11.5px] text-muted-foreground">{HIDDEN}</div>
         ) : (
           <>
-            {e.summary && <div className="mt-1 break-all text-[12px] text-slate-300">{e.summary}</div>}
+            {e.summary && <div className="mt-1 break-all text-[12px] text-foreground/85">{e.summary}</div>}
             {e.excerpt && (
-              <div className="mt-1 line-clamp-2 break-all text-[11.5px] text-slate-400">
-                <span className="text-slate-500">结果：</span>
+              <div className="mt-1 line-clamp-2 break-all text-[11.5px] text-muted-foreground">
+                <span className="text-muted-foreground">结果：</span>
                 {e.excerpt}
               </div>
             )}
@@ -218,7 +218,7 @@ export function EventCard({ e, email, hideContent }: { e: MonitorEvent; email: s
         )
       ) : (
         e.detail && !e.user?.email.includes(e.detail) && (
-          <div className="mt-0.5 break-all text-[11.5px] text-slate-400">{e.detail}</div>
+          <div className="mt-0.5 break-all text-[11.5px] text-muted-foreground">{e.detail}</div>
         )
       )}
 
@@ -226,7 +226,7 @@ export function EventCard({ e, email, hideContent }: { e: MonitorEvent; email: s
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="mt-1.5 flex items-center gap-1 text-[11.5px] text-cyan-300 hover:text-cyan-200"
+          className="mt-1.5 flex items-center gap-1 text-[11.5px] text-primary hover:text-primary"
         >
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
           {open ? "收起" : "看完整记录"}
@@ -257,14 +257,14 @@ export function RecordView({ refInfo }: { refInfo: RecordRef }) {
   }, [refInfo.kind, refInfo.id]);
 
   if (error) return <div className="mt-2 text-[12px] text-rose-300">{error}</div>;
-  if (!rec) return <div className="mt-2 text-[12px] text-slate-500">正在取完整记录…</div>;
+  if (!rec) return <div className="mt-2 text-[12px] text-muted-foreground">正在取完整记录…</div>;
 
   return (
-    <div className="mt-2 space-y-2 rounded-lg border border-white/[0.08] bg-black/30 p-3 text-[12px]">
+    <div className="mt-2 space-y-2 rounded-lg border border-border bg-foreground/[0.04] p-3 text-[12px]">
       {rec.note && <div className="text-amber-200/80">{rec.note}</div>}
       {rec.profiles.length > 0 && (
-        <div className="text-slate-400">
-          <span className="text-slate-500">他名下的档案：</span>
+        <div className="text-muted-foreground">
+          <span className="text-muted-foreground">他名下的档案：</span>
           {rec.profiles.join("、")}
         </div>
       )}
@@ -272,16 +272,16 @@ export function RecordView({ refInfo }: { refInfo: RecordRef }) {
         <dl className="space-y-1">
           {rec.fields.map((f, i) => (
             <div key={`${f.label}-${i}`} className="grid grid-cols-[5.5rem_1fr] gap-2">
-              <dt className="text-slate-500">{f.label}</dt>
-              <dd className="whitespace-pre-wrap break-all text-slate-200">{f.value}</dd>
+              <dt className="text-muted-foreground">{f.label}</dt>
+              <dd className="whitespace-pre-wrap break-all text-foreground">{f.value}</dd>
             </div>
           ))}
         </dl>
       )}
       {rec.result && (
         <div>
-          <div className="mb-1 text-slate-500">生成结果{rec.truncated ? "（太长，只显示前 2 万字）" : ""}</div>
-          <div className="whitespace-pre-wrap break-all leading-relaxed text-slate-200">{rec.result}</div>
+          <div className="mb-1 text-muted-foreground">生成结果{rec.truncated ? "（太长，只显示前 2 万字）" : ""}</div>
+          <div className="whitespace-pre-wrap break-all leading-relaxed text-foreground">{rec.result}</div>
         </div>
       )}
     </div>
@@ -326,7 +326,7 @@ export function Kpi({
   tone: "cyan" | "violet" | "emerald" | "amber";
 }) {
   const tones = {
-    cyan: { text: "text-cyan-300", border: "border-cyan-400/25", rgb: "34,211,238" },
+    cyan: { text: "text-primary", border: "border-primary/25", rgb: "34,211,238" },
     violet: { text: "text-violet-300", border: "border-violet-400/25", rgb: "139,92,246" },
     emerald: { text: "text-emerald-300", border: "border-emerald-400/25", rgb: "52,211,153" },
     amber: { text: "text-amber-300", border: "border-amber-400/25", rgb: "251,191,36" },
@@ -344,7 +344,7 @@ export function Kpi({
 
   return (
     <div
-      className={`admin-anim relative overflow-hidden rounded-2xl border bg-white/[0.025] p-4 backdrop-blur ${t.border} ${t.text}`}
+      className={`admin-anim relative overflow-hidden rounded-2xl border bg-foreground/[0.025] p-4 backdrop-blur ${t.border} ${t.text}`}
       style={{ boxShadow: `0 0 28px rgba(${t.rgb},.09)` }}
     >
       {/* 顶边的一道亮线：给每张卡一个"通电"的起点 */}
@@ -362,10 +362,10 @@ export function Kpi({
 
       <div className="mb-2 flex items-center gap-2">
         <Icon className="h-4 w-4" />
-        <span className="text-[11.5px] tracking-[0.14em] text-slate-400">{label}</span>
+        <span className="text-[11.5px] tracking-[0.14em] text-muted-foreground">{label}</span>
       </div>
       <div className="font-mono text-[36px] leading-none tabular-nums">{display}</div>
-      <div className="mt-1.5 text-[11px] text-slate-500">{hint}</div>
+      <div className="mt-1.5 text-[11px] text-muted-foreground">{hint}</div>
     </div>
   );
 }
@@ -388,12 +388,12 @@ export function EmptyBox({ text, height = 120 }: { text: string; height?: number
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(148,163,184,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.10) 1px,transparent 1px)",
+            "linear-gradient(hsl(var(--foreground) / .10) 1px,transparent 1px),linear-gradient(90deg,hsl(var(--foreground) / .10) 1px,transparent 1px)",
           backgroundSize: "18px 18px",
           maskImage: "radial-gradient(ellipse at center, black 20%, transparent 75%)",
         }}
       />
-      <span className="relative text-[12.5px] text-slate-500">{text}</span>
+      <span className="relative text-[12.5px] text-muted-foreground">{text}</span>
     </div>
   );
 }
@@ -417,7 +417,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`admin-anim relative overflow-hidden rounded-2xl border border-cyan-400/15 bg-white/[0.02] p-4 backdrop-blur ${className}`}
+      className={`admin-anim relative overflow-hidden rounded-2xl border border-primary/15 bg-foreground/[0.02] p-4 backdrop-blur ${className}`}
     >
       {/* 四角括号 */}
       {[
@@ -429,7 +429,7 @@ export function Panel({
         <span
           key={c}
           aria-hidden
-          className={`pointer-events-none absolute h-4 w-4 border-cyan-400/45 ${c}`}
+          className={`pointer-events-none absolute h-4 w-4 border-primary/45 ${c}`}
         />
       ))}
 
@@ -439,14 +439,14 @@ export function Panel({
         className="pointer-events-none absolute inset-y-0 w-1/3"
         style={{
           background:
-            "linear-gradient(90deg,transparent,rgba(34,211,238,.055),transparent)",
+            "linear-gradient(90deg,transparent,hsl(var(--glow-primary) / .055),transparent)",
           animation: "adminSweep 7s ease-in-out infinite",
         }}
       />
 
       <h2 className="relative mb-3 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[12.5px] tracking-[0.12em] text-slate-300">
-          <Icon className="h-4 w-4 text-cyan-400" />
+        <span className="flex items-center gap-2 text-[12.5px] tracking-[0.12em] text-foreground/85">
+          <Icon className="h-4 w-4 text-primary" />
           {title}
         </span>
         {right}

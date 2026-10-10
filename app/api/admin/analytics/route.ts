@@ -6,6 +6,7 @@ import {
   sumFeatureUsage,
   buildPlanDistribution,
 } from '@/lib/admin-stats';
+import { readAllRows } from '@/lib/admin-monitor-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,35 +37,52 @@ export async function GET(request: Request) {
     const totalUsers = await countAuthUsers(supabase);
     const newUsers = await countNewUsers(supabase, startDate);
 
-    const { data: activeRows } = await supabase
-      .from('user_quotas')
-      .select('user_id')
-      .gte('updated_at', startDate.toISOString());
-    const activeUsers = activeRows ? new Set(activeRows.map((q) => q.user_id)).size : 0;
+    // 全部分页读取，PostgREST 默认每次最多 1000 行（2026-10-10 巡检 M5）
+    const activeRows = await readAllRows<{ user_id: string }>((from, to) =>
+      supabase
+        .from('user_quotas')
+        .select('user_id')
+        .gte('updated_at', startDate.toISOString())
+        .order('user_id')
+        .range(from, to)
+    );
+    const activeUsers = new Set(activeRows.map((q) => q.user_id)).size;
 
-    // 营收。表不存在时 error 非空，按 0 处理而不是整个接口 500
+    /*
+     * 营收统一按「审核通过的时间」（reviewed_at）统计，和管理概览「今日付费」用同一个口径（巡检 M6）。
+     * 表不存在时按 0 处理而不是整个接口 500。
+     */
     let totalRevenue = 0;
     let paidOrderCount = 0;
-    const { data: paidOrders, error: orderError } = await supabase
-      .from('payment_orders')
-      .select('amount, created_at')
-      .eq('status', 'approved')
-      .gte('created_at', startDate.toISOString());
-
-    if (orderError) {
-      console.warn('[admin/analytics] 订单表不可用，营收按 0 计:', orderError.message);
-    } else {
-      paidOrderCount = paidOrders?.length ?? 0;
-      totalRevenue = (paidOrders ?? []).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+    try {
+      const paidOrders = await readAllRows<{ amount: number | string | null }>((from, to) =>
+        supabase
+          .from('payment_orders')
+          .select('amount')
+          .eq('status', 'approved')
+          .gte('reviewed_at', startDate.toISOString())
+          .order('id')
+          .range(from, to)
+      );
+      paidOrderCount = paidOrders.length;
+      totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+    } catch (orderError) {
+      console.warn('[admin/analytics] 订单表不可用，营收按 0 计:', (orderError as Error).message);
     }
 
-    const { data: allQuotas } = await supabase.from('user_quotas').select('*');
+    const allQuotas = await readAllRows<Record<string, unknown>>((from, to) =>
+      supabase.from('user_quotas').select('*').order('user_id').range(from, to)
+    );
     const featureUsage = sumFeatureUsage(allQuotas);
 
-    const { data: subs } = await supabase
-      .from('subscriptions')
-      .select('plan, status')
-      .eq('status', 'active');
+    const subs = await readAllRows<{ plan: string | null; status: string | null }>((from, to) =>
+      supabase
+        .from('subscriptions')
+        .select('plan, status')
+        .eq('status', 'active')
+        .order('user_id')
+        .range(from, to)
+    );
     const { distribution, paidUsers } = buildPlanDistribution(subs, totalUsers);
 
     const totalUsage = featureUsage.reduce((sum, f) => sum + f.usage, 0);

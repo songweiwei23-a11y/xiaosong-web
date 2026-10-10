@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdmin, requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import { generateInvitationCode } from '@/lib/invitation-code';
+import { emailsByIds } from '@/lib/admin-users';
+import { readAllRows } from '@/lib/admin-monitor-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,24 +54,20 @@ export async function GET(request: Request) {
   if (status === 'expired') rows = rows.filter((r) => r.status === 'expired');
 
   // 统计用全量算，不受上面的分页和筛选影响，否则「未使用 12 个」会随筛选变化
-  const { data: all } = await supabase
-    .from('invitation_codes')
-    .select('status, expires_at, used_by');
+  const all = await readAllRows<{ status: string; expires_at: string | null; used_by: string | null }>((from, to) =>
+    supabase.from('invitation_codes').select('status, expires_at, used_by').order('id').range(from, to)
+  );
 
   const stats = { total: 0, active: 0, used: 0, revoked: 0, expired: 0 };
-  for (const r of all ?? []) {
+  for (const r of all) {
     stats.total += 1;
     const s = withComputedStatus(r as any).status as keyof typeof stats;
     if (s in stats) stats[s] += 1;
   }
 
-  // 补上使用者的邮箱。一次 listUsers 内存配对，比逐条查少几十次往返
-  const usedIds = new Set(rows.map((r) => r.used_by).filter(Boolean) as string[]);
-  const emailById = new Map<string, string>();
-  if (usedIds.size > 0) {
-    const { data: users } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    for (const u of users?.users ?? []) if (u.email) emailById.set(u.id, u.email);
-  }
+  // 补上使用者的邮箱。emailsByIds 会分页取全，不会像原来的 listUsers 第一页那样，用户过千后新人显示成「已注销」
+  const usedIds = rows.map((r) => r.used_by).filter(Boolean) as string[];
+  const emailById = await emailsByIds(supabase, usedIds);
 
   return NextResponse.json({
     stats,
@@ -81,8 +79,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+  const admin = await requireAdminPermission('manage_invitations');
+  if (!admin) return NextResponse.json({ error: '无权生成邀请码' }, { status: 403 });
 
   const body = await request.json();
   const countRaw = Number(body.count);
@@ -150,8 +148,8 @@ export async function POST(request: Request) {
 
 /** 作废。已经用掉的不能作废——那只会把「谁用了这个码」的记录搞乱 */
 export async function PATCH(request: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+  const admin = await requireAdminPermission('manage_invitations');
+  if (!admin) return NextResponse.json({ error: '无权作废邀请码' }, { status: 403 });
 
   const { id, ids, action } = await request.json();
   const targets: string[] = ids ?? (id ? [id] : []);

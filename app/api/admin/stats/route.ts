@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
 import { countAuthUsers, sumFeatureUsage, buildPlanDistribution } from '@/lib/admin-stats';
 import { effectivePlanId } from '@/lib/config/plans';
+import { readAllRows } from '@/lib/admin-monitor-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,32 +32,41 @@ export async function GET() {
     // 近 7 天有过用量变动的算活跃
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const { data: activeRows } = await supabase
-      .from('user_quotas')
-      .select('user_id')
-      .gte('updated_at', sevenDaysAgo.toISOString());
-    const activeToday = activeRows ? new Set(activeRows.map((u) => u.user_id)).size : 0;
+    // 全部用分页读取：PostgREST 默认每次最多 1000 行，用户过千后不分页会悄悄少算（2026-10-10 巡检 M5）
+    const activeRows = await readAllRows<{ user_id: string }>((from, to) =>
+      supabase
+        .from('user_quotas')
+        .select('user_id')
+        .gte('updated_at', sevenDaysAgo.toISOString())
+        .order('user_id')
+        .range(from, to)
+    );
+    const activeToday = new Set(activeRows.map((u) => u.user_id)).size;
 
     /*
      * 按"此刻实际享有的套餐"统计。原来只看 status = active，
      * 到期日过了的订阅照样算付费会员——概览上的付费人数会虚高，
      * 和服务端实际放行的口径对不上。
      */
-    const { data: subs } = await supabase
-      .from('subscriptions')
-      .select('plan, status, end_date')
-      .eq('status', 'active');
-    const effective = (subs ?? []).map((s) => ({ plan: effectivePlanId(s), status: 'active' }));
+    const subs = await readAllRows<{ plan: string | null; status: string | null; end_date: string | null }>((from, to) =>
+      supabase
+        .from('subscriptions')
+        .select('plan, status, end_date')
+        .eq('status', 'active')
+        .order('user_id')
+        .range(from, to)
+    );
+    const effective = subs.map((s) => ({ plan: effectivePlanId(s), status: 'active' }));
     const { distribution } = buildPlanDistribution(effective, totalUsers);
 
-    const { data: quotas } = await supabase.from('user_quotas').select('*');
+    const quotas = await readAllRows<Record<string, unknown>>((from, to) =>
+      supabase.from('user_quotas').select('*').order('user_id').range(from, to)
+    );
     const totalGenerations = sumFeatureUsage(quotas).reduce((sum, f) => sum + f.usage, 0);
 
     return NextResponse.json({
       totalUsers,
       activeToday,
-      // 字段名沿用 apiCallsToday，管理概览页还在读它；语义是「累计生成次数」
-      apiCallsToday: totalGenerations,
       totalGenerations,
       subscriptionStats: distribution,
       timestamp: new Date().toISOString(),

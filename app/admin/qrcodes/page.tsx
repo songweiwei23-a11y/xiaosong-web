@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { notify } from "@/components/ui/feedback";
+import { notify, confirmDialog } from "@/components/ui/feedback";
 import { isUsableQrcodeUrl } from "@/lib/payment-qrcode";
 import { AdminPage, Badge, Button, ErrorState, Panel, readError } from "@/components/admin/kit";
 
@@ -51,6 +51,12 @@ export default function AdminQRCodesPage() {
   }, [load]);
 
   const upload = async (method: "alipay" | "wechat", file: File) => {
+    const label = METHODS.find((m) => m.value === method)?.label ?? method;
+    const ok = await confirmDialog(
+      `用「${file.name}」替换${label}收款码？上传后会立刻生效，用户付款时看到的就是这张图。`,
+      { tone: "danger", confirmText: "确定替换", title: "替换收款码" }
+    );
+    if (!ok) return;
     setBusy(method);
     try {
       const fileExt = file.name.split(".").pop();
@@ -83,6 +89,14 @@ export default function AdminQRCodesPage() {
   };
 
   const toggle = async (method: "alipay" | "wechat", isActive: boolean) => {
+    const label = METHODS.find((m) => m.value === method)?.label ?? method;
+    const ok = await confirmDialog(
+      isActive
+        ? `启用${label}收款码？启用后用户付款时会看到这张码。`
+        : `停用${label}收款码？停用后付款页将看不到这张码，用户可能无法付款。`,
+      { tone: isActive ? "default" : "danger", confirmText: isActive ? "确定启用" : "确定停用", title: isActive ? "启用收款码" : "停用收款码" }
+    );
+    if (!ok) return;
     setBusy(method);
     try {
       const res = await fetch("/api/admin/qrcodes", {

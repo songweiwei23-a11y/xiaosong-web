@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { PlayCircle, RefreshCw } from "lucide-react";
-import { notify } from "@/components/ui/feedback";
+import { notify, confirmDialog } from "@/components/ui/feedback";
 import { SELECT_CLS } from "@/components/form/controls";
 import { AdminPage, AdminPanelHint, Button, ErrorState, Panel, StatCard, readError } from "@/components/admin/kit";
 
@@ -59,6 +59,12 @@ export default function QualityPage() {
 
   const runNow = async () => {
     if (running) return;
+    // 回归会真实调用模型，约 3 分钟、产生调用费用，先确认
+    const ok = await confirmDialog(
+      "现在用固定档案真实调用一次模型做回归，约 3 分钟，会产生模型调用费用。确定现在跑？",
+      { confirmText: "确定运行", title: "立即跑一次回归" }
+    );
+    if (!ok) return;
     setRunning(true);
     try {
       const res = await fetch("/api/admin/quality/regression", { method: "POST" });
@@ -66,7 +72,9 @@ export default function QualityPage() {
       notify("回归已跑完", "success");
       await load();
     } catch (e) {
-      notify((e as Error).message, "error");
+      // 长请求中途被代理断开时，服务端通常仍在跑、结果会写进库。先刷新，再告诉管理员实情
+      await load();
+      notify(`${(e as Error).message || "运行中断"}。回归可能仍在后台完成，已刷新结果，稍后再刷新看一眼`, "warning");
     } finally {
       setRunning(false);
     }

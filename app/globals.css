@@ -408,26 +408,8 @@
 }
 
 /*
- * 管理后台侧边栏。
- *
- * 原来是一块扁平深灰面板，和旁边青色霓虹的监控大屏像两个产品拼在一起。
- * 统一成同一套视觉：同样的网格底纹、同样的青色、右边缘渐隐而不是硬线。
- * 颜色走变量，浅色主题下也不会糊成一片。
+ * 后台侧栏已改用主页同款的 glass-panel（见 app/admin/layout.tsx），不再需要专用的 .admin-rail 样式。
  */
-.admin-rail {
-  --rail-line: hsl(var(--primary) / 0.5);
-  --rail-edge: hsl(var(--primary) / 0.35);
-  background:
-    radial-gradient(120% 60% at 0% 0%, hsl(var(--primary) / 0.07), transparent 60%),
-    hsl(var(--card));
-}
-.dark .admin-rail {
-  --rail-line: hsl(var(--primary) / 0.55);
-  --rail-edge: hsl(var(--primary) / 0.45);
-  background:
-    radial-gradient(120% 60% at 0% 0%, hsl(var(--primary) / 0.10), transparent 60%),
-    #070b12;
-}
 
 @keyframes adminSpin { to { transform: rotate(360deg); } }
 

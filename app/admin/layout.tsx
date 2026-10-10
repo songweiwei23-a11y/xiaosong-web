@@ -4,18 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
+import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
-  UserCog, ScrollText, Menu,
+  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe,
 } from "lucide-react";
 
 /*
  * 后台导航。
  *
- * 改造前有两处对不上：
- *   - /admin/analytics 有三百多行代码，导航里却没有入口，谁也点不到；
- *   - 「权限管理」页压根不存在，而接口早就写好了，被删掉的 admin-debug
- *     还提示过「请在权限管理页面设置管理员」——要加管理员只能手改数据库。
+ * 外观和主页统一：跟随全站的浅色 / 深色主题，侧栏是悬浮的玻璃面板，品牌标识用主页同款的「开」印章。
+ * 之前后台强制深色、写死了背景色，和主页是两套产品的样子（2026-10-10 设计统一）。
  *
  * 分组是因为六七项平铺时，「订单审核」和「系统设置」看起来同等重要，
  * 而实际上前者是每天要看的，后者一个月碰一次。
@@ -47,7 +46,7 @@ const navGroups: {
     label: "内容质量",
     items: [
       // 自动质检（2026-10-03）：生成结果有没有踩禁忌、配比对不对、年限写没写错
-      { name: "质检看板", href: "/admin/quality", icon: ShieldCheck },
+      { name: "质检看板", href: "/admin/quality", icon: ClipboardCheck },
       // 数据分析页里有结果反馈（有用 / 没用）的汇总
       { name: "数据分析", href: "/admin/analytics", icon: BarChart },
     ],
@@ -58,9 +57,10 @@ const navGroups: {
       // 大屏：回答"此刻有没有人需要我动手"
       { name: "实时监控", href: "/admin/monitor", icon: Radar },
       { name: "操作日志", href: "/admin/logs", icon: ScrollText },
-      { name: "权限管理", href: "/admin/permissions", icon: ShieldCheck },
+      { name: "权限管理", href: "/admin/permissions", icon: KeyRound },
+      { name: "账号安全", href: "/admin/security", icon: ShieldCheck },
       { name: "系统设置", href: "/admin/settings", icon: Settings },
-      { name: "联网搜索密钥", href: "/admin/search-key", icon: Settings },
+      { name: "联网搜索密钥", href: "/admin/search-key", icon: Globe },
     ],
   },
 ];
@@ -76,139 +76,62 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .filter((i) => pathname === i.href || (i.href !== "/admin" && pathname.startsWith(i.href)))
       .sort((a, b) => b.href.length - a.href.length)[0]?.name ?? "管理后台";
 
-  /*
-   * 整个管理后台固定深色，不跟随用户的浅色/深色偏好。
-   *
-   * 【为什么】监控大屏的背景是写死的 #05070d，而侧边栏和其他后台页
-   * 原本跟随主题——用户切到浅色时，左边是浅灰侧栏、右边是近黑大屏，
-   * 中间一道硬边，像两个产品拼在一起。
-   *
-   * 后台是运维控制台，深色本来就是这类界面的默认；与其让两套颜色
-   * 在这里打架，不如整块定住。加 `dark` 类就能让子树用深色变量，
-   * 不影响用户在工作台那边的主题选择。
-   */
   return (
-    <div className="dark flex h-full bg-[#070b12] text-slate-100">
-      {/*
-        必须有 relative：底部那个「返回工作台」是绝对定位的，
-        没有定位祖先时它会以视口为基准，left-4 right-4 让它横跨整个屏幕底部，
-        而不是待在这条 256px 宽的侧栏里。改造前就是这样。
-        改为 flex 纵向布局 + mt-auto，不再依赖绝对定位。
-      */}
-      {/*
-        侧边栏和监控大屏原本是两套视觉：大屏是青色霓虹的科幻风，
-        侧栏是一块扁平的深灰面板，中间还有一条硬边——像两个产品拼在一起。
-        现在统一成同一套语言：同样的网格底纹、同样的青色、
-        选中态用 HUD 那种带辉光的指示条，右侧边缘做成渐隐而不是硬线。
-      */}
-      {/*
-        手机上侧栏收起，从左上角的按钮滑出来：原来固定 256px 宽，
-        手机屏幕才 375，右边的内容只剩一百来像素，表格和数字全挤成一团。
-      */}
+    <div className="flex min-h-screen gap-3 p-3 md:p-4">
+      {/* 手机上侧栏收起，从左上角的按钮滑出来：原来固定 256px 宽，手机屏幕才 375，内容只剩一百来像素 */}
       {menuOpen && (
-        <div className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
+        <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] md:hidden" onClick={() => setMenuOpen(false)} aria-hidden />
       )}
+
       <aside
-        className={`admin-rail fixed inset-y-0 left-0 z-40 flex h-full w-64 shrink-0 flex-col bg-[#070b12] transition-transform duration-300 md:relative md:z-auto md:translate-x-0 ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
+        className={`glass-panel fixed inset-y-3 left-3 z-40 flex w-64 flex-col rounded-3xl p-3 transition-transform duration-300 md:sticky md:top-4 md:z-auto md:h-[calc(100dvh-2rem)] md:translate-x-0 ${
+          menuOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)]"
         }`}
       >
-        {/* 网格底纹，和大屏同一套 */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.10]"
-          style={{
-            backgroundImage:
-              "linear-gradient(var(--rail-line) 1px,transparent 1px),linear-gradient(90deg,var(--rail-line) 1px,transparent 1px)",
-            backgroundSize: "32px 32px",
-            maskImage: "linear-gradient(to bottom, black 0%, transparent 70%)",
-          }}
-        />
-        {/* 右边缘的发光细线，代替原来那条硬边框 */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 w-px"
-          style={{
-            background:
-              "linear-gradient(to bottom, transparent, var(--rail-edge) 18%, var(--rail-edge) 72%, transparent)",
-          }}
-        />
-
-        <div className="relative flex h-16 items-center gap-3 px-5">
-          <span className="relative flex h-9 w-9 items-center justify-center">
-            {/* 转动的外环：让这个标识"活着"，而不是一个静止色块 */}
-            <span
-              aria-hidden
-              className="admin-anim absolute inset-0 rounded-xl border border-primary/40 border-t-primary"
-              style={{ animation: "adminSpin 6s linear infinite" }}
-            />
-            <span className="absolute inset-[3px] rounded-lg bg-primary/12" />
-            <BarChart className="relative h-4 w-4 text-primary" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[14.5px] font-semibold tracking-wide text-foreground">
-              管理后台
-            </span>
-            <span className="block text-[10px] tracking-[0.18em] text-primary/60">
-              CONSOLE
-            </span>
+        <div className="flex h-16 items-center gap-3 px-2">
+          <BrandSeal size={38} />
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[15px] font-semibold tracking-wide text-foreground">管理后台</span>
+            <span className="block text-[10px] font-medium tracking-[0.22em] text-muted-foreground/80">CONSOLE</span>
           </span>
         </div>
 
-        <nav className="relative flex-1 overflow-y-auto px-3 pb-4">
+        <nav className="flex-1 overflow-y-auto px-1 pb-3">
           {navGroups.map((group, gi) => (
             <div key={group.label ?? `g${gi}`} className={gi === 0 ? "" : "mt-5"}>
               {group.label && (
-                // 分组标题配一条延伸出去的细线，比孤零零两个灰字有结构
                 <div className="mb-2 flex items-center gap-2 px-3">
-                  <span className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground/70">
-                    {group.label}
-                  </span>
+                  <span className="text-[10.5px] font-medium tracking-[0.18em] text-muted-foreground/75">{group.label}</span>
                   <span className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                 </div>
               )}
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/admin" && pathname.startsWith(item.href));
-
+                    pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-[13.5px] transition-all ${
+                      aria-current={isActive ? "page" : undefined}
+                      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-[13.5px] transition-colors ${
                         isActive
-                          ? "bg-primary/[0.10] font-medium text-foreground"
+                          ? "bg-primary/12 font-medium text-foreground"
                           : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground"
                       }`}
                     >
                       {isActive && (
-                        <>
-                          {/* 左侧指示条带辉光，比一条纯色细杠有分量 */}
-                          <span
-                            className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
-                            style={{ boxShadow: "0 0 10px 1px hsl(var(--primary)/.7)" }}
-                          />
-                          {/* 选中项向右淡出的光晕 */}
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute inset-0"
-                            style={{
-                              background:
-                                "linear-gradient(90deg, hsl(var(--primary)/.14), transparent 60%)",
-                            }}
-                          />
-                        </>
+                        <span
+                          aria-hidden
+                          className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
+                        />
                       )}
                       <item.icon
-                        className={`relative h-[17px] w-[17px] shrink-0 transition-colors ${
-                          isActive
-                            ? "text-primary"
-                            : "text-muted-foreground/80 group-hover:text-foreground"
+                        className={`h-[17px] w-[17px] shrink-0 transition-colors ${
+                          isActive ? "text-primary" : "text-muted-foreground/80 group-hover:text-foreground"
                         }`}
                       />
-                      <span className="relative truncate">{item.name}</span>
+                      <span className="truncate">{item.name}</span>
                     </Link>
                   );
                 })}
@@ -217,24 +140,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
 
-        <div className="relative shrink-0 p-3">
-          <span
-            aria-hidden
-            className="mb-3 block h-px w-full bg-gradient-to-r from-transparent via-border to-transparent"
-          />
+        <div className="shrink-0 border-t border-border/60 pt-3">
           <Link
             href="/dashboard"
-            className="flex items-center justify-center gap-2 rounded-xl border border-border/70 px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            className="glass-panel glass-interactive flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             返回工作台
           </Link>
+          <p className="mt-3 text-center text-[10.5px] text-muted-foreground/60">
+            <BrandWordmark className="text-[11px]" /> · 管理后台
+          </p>
         </div>
       </aside>
 
-      <main className="relative min-w-0 flex-1 overflow-auto">
+      <main className="relative min-w-0 flex-1 overflow-auto rounded-3xl">
         {/* 手机上的顶栏：打开菜单 + 当前是哪一页 */}
-        <div className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-[#070b12]/90 px-4 backdrop-blur md:hidden">
+        <div className="glass-panel sticky top-0 z-20 mb-2 flex h-14 items-center gap-3 rounded-2xl px-3 md:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}

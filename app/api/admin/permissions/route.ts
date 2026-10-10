@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdmin, requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 
 export const dynamic = 'force-dynamic';
@@ -75,8 +75,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) return NextResponse.json({ error: '无管理员权限' }, { status: 403 });
+    // 授予、撤销管理员是最高权限，只有 admin / developer 能做（见 lib/admin-permissions）
+    const admin = await requireAdminPermission('manage_admins');
+    if (!admin) return NextResponse.json({ error: '无权管理管理员：这项操作需要管理员权限' }, { status: 403 });
 
     const supabase = getServiceSupabase();
     const { action, email, userId } = await request.json();

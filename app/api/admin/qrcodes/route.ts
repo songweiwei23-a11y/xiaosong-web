@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdmin, requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { isUsableQrcodeUrl } from '@/lib/payment-qrcode';
 
@@ -42,8 +42,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+  const admin = await requireAdminPermission('manage_payments');
+  if (!admin) return NextResponse.json({ error: '无权修改收款码' }, { status: 403 });
 
   const { paymentMethod, qrcodeUrl } = await request.json();
 
@@ -93,8 +93,8 @@ export async function PUT(request: Request) {
 
 /** 启用或停用。启用前确认库里已经有一张可用的收款码，不能把一个空地址或占位图启用 */
 export async function PATCH(request: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+  const admin = await requireAdminPermission('manage_payments');
+  if (!admin) return NextResponse.json({ error: '无权修改收款码' }, { status: 403 });
 
   const { paymentMethod, isActive } = await request.json();
   if (paymentMethod !== 'alipay' && paymentMethod !== 'wechat') {

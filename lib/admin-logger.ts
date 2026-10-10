@@ -37,6 +37,9 @@ export enum AdminActions {
   DELETE_USER = 'delete_user',
   EXTEND_MEMBERSHIP = 'extend_membership',
   TOGGLE_PAYMENT_QRCODE = 'toggle_payment_qrcode',
+  UPDATE_SEARCH_KEY = 'update_search_key',
+  EXPORT_DATA = 'export_data',
+  VIEW_USER_CONTENT = 'view_user_content',
 }
 
 /**
@@ -67,6 +70,9 @@ export const ACTION_LABELS: Record<string, string> = {
   [AdminActions.DELETE_USER]: '删除用户',
   [AdminActions.EXTEND_MEMBERSHIP]: '延长会员',
   [AdminActions.TOGGLE_PAYMENT_QRCODE]: '启用或停用收款码',
+  [AdminActions.UPDATE_SEARCH_KEY]: '更换联网搜索密钥',
+  [AdminActions.EXPORT_DATA]: '导出数据',
+  [AdminActions.VIEW_USER_CONTENT]: '查看用户内容',
 };
 
 /**
@@ -83,6 +89,9 @@ export const SENSITIVE_ACTIONS = new Set<string>([
   AdminActions.DELETE_USER,
   AdminActions.EXTEND_MEMBERSHIP,
   AdminActions.TOGGLE_PAYMENT_QRCODE,
+  AdminActions.UPDATE_SEARCH_KEY,
+  AdminActions.EXPORT_DATA,
+  AdminActions.VIEW_USER_CONTENT,
 ]);
 
 /**

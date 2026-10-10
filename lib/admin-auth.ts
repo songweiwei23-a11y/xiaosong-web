@@ -2,6 +2,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { supabaseFetch } from './supabase/fetch';
+import { hasPermission, type AdminPermission } from './admin-permissions';
+import { mfaStepPending } from './admin-mfa';
 
 /**
  * 统一的服务端管理员鉴权。
@@ -69,6 +71,12 @@ export async function requireAdmin(): Promise<AdminContext | null> {
     return null;
   }
 
+  // 绑定了验证器的管理员，本次会话必须已通过第二步验证（见 lib/admin-mfa）
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (mfaStepPending(aal)) {
+    return null;
+  }
+
   // 1) 优先查 admin_roles 表
   const { data: roleData } = await supabase
     .from('admin_roles')
@@ -93,4 +101,21 @@ export async function requireAdmin(): Promise<AdminContext | null> {
 
   // 3) 都不满足 => 非管理员
   return null;
+}
+
+/** 当前登录的管理员是否还差第二步验证。给 check-role 用，好让页面引导去「账号安全」 */
+export async function mfaPendingForCurrentUser(): Promise<boolean> {
+  const supabase = await getServerSupabase();
+  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  return mfaStepPending(data);
+}
+
+/**
+ * 管理员 + 具体权限。管理员身份不够（比如运营去删用户）返回 null，调用方应返回 403。
+ * 权限矩阵见 lib/admin-permissions.ts。
+ */
+export async function requireAdminPermission(perm: AdminPermission): Promise<AdminContext | null> {
+  const admin = await requireAdmin();
+  if (!admin) return null;
+  return hasPermission(admin.role, perm) ? admin : null;
 }
