@@ -107,10 +107,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '找不到这个用户，请确认邮箱是否注册过' }, { status: 404 });
       }
 
-      // 写 admin_roles——这是 requireAdmin 优先认的机制
-      const { error } = await supabase
+      /*
+       * 写 admin_roles——这是 requireAdmin 优先认的机制。
+       * 不用 upsert(onConflict: 'user_id')：线上这张表没有 user_id 的唯一约束，
+       * Postgres 报 "no unique or exclusion constraint matching the ON CONFLICT specification"，
+       * 授权一直失败。先查再写，不依赖唯一约束。
+       */
+      const { data: existing, error: readError } = await supabase
         .from('admin_roles')
-        .upsert({ user_id: user.id, role: 'admin' }, { onConflict: 'user_id' });
+        .select('user_id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      const error = readError
+        ? readError
+        : existing && existing.length > 0
+          ? (await supabase.from('admin_roles').update({ role: 'admin' }).eq('user_id', user.id)).error
+          : (await supabase.from('admin_roles').insert({ user_id: user.id, role: 'admin' })).error;
 
       if (error) {
         console.error('[admin/permissions] 授权失败:', error);
