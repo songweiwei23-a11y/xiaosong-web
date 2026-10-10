@@ -27,7 +27,7 @@ describe('后台账号状态', () => {
   it('接口不再拿 inactive 当默认值；页面也不把认不出的状态显示成封禁', () => {
     const api = readCode('app/api/admin/users/route.ts');
     expect(api).not.toMatch(/subscription\?\.status \|\| 'inactive'/);
-    expect(api).toMatch(/accountStatus\(authUser\.banned_until, subscription\?\.status\)/);
+    expect(api).toMatch(/accountStatus\(r\.banned_until, subscription\?\.status\)/);
     expect(readCode('app/admin/users/page.tsx')).not.toMatch(/configs\[status\] \|\| configs\.inactive/);
   });
 });

@@ -1,19 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  Ticket, Plus, Copy, Check, Ban, RotateCcw, Loader2, Download, Search, Info,
-} from "lucide-react";
+import { Copy, Check, Ban, RotateCcw, Download, Search } from "lucide-react";
 import { notify, confirmDialog } from "@/components/ui/feedback";
-import { Loading } from "@/components/ui/loading";
 import { SUBSCRIPTION_PLANS } from "@/lib/config/plans";
 import { formatRelativeTime } from "@/lib/script-result-utils";
+import { INPUT_CLS, SELECT_CLS } from "@/components/form/controls";
+import {
+  AdminPage, AdminPanelHint, Badge, Button, DataTable, FilterBar, Panel, StatCard, fieldLabel, type Column,
+} from "@/components/admin/kit";
 
 /*
- * 邀请码管理。
- *
- * invitation_codes 表早就存在（还有 100 个历史码），但代码里一处没引用，
- * 注册一直是完全开放的。这一页把它接上。
+ * 邀请码管理。注册是邀请制：没有有效邀请码无法注册（数据库触发器强制）。
+ * 生成后自动复制到剪贴板，直接粘贴发给对方即可。
  */
 
 interface Code {
@@ -36,26 +35,28 @@ interface Stats {
 }
 
 const FILTERS = [
-  { value: "all", label: "全部" },
   { value: "active", label: "未使用" },
   { value: "used", label: "已使用" },
   { value: "expired", label: "已过期" },
   { value: "revoked", label: "已作废" },
+  { value: "all", label: "全部" },
 ] as const;
 
-const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  active: { label: "未使用", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-  used: { label: "已使用", cls: "bg-muted text-muted-foreground" },
-  expired: { label: "已过期", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  revoked: { label: "已作废", cls: "bg-destructive/15 text-destructive" },
+const STATUS_BADGE: Record<string, { label: string; tone: "ok" | "neutral" | "warn" | "danger" }> = {
+  active: { label: "未使用", tone: "ok" },
+  used: { label: "已使用", tone: "neutral" },
+  expired: { label: "已过期", tone: "warn" },
+  revoked: { label: "已作废", tone: "danger" },
 };
 
 export default function AdminInvitationsPage() {
   const [codes, setCodes] = useState<Code[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filter, setFilter] = useState<string>("active");
   const [keyword, setKeyword] = useState("");
+  const [draftKeyword, setDraftKeyword] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
   // 生成表单
@@ -66,6 +67,8 @@ export default function AdminInvitationsPage() {
   const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
       const params = new URLSearchParams({ status: filter });
       if (keyword.trim()) params.set("q", keyword.trim());
@@ -74,16 +77,20 @@ export default function AdminInvitationsPage() {
       if (!res.ok) throw new Error(data.error || "读取失败");
       setCodes(data.codes || []);
       setStats(data.stats || null);
-    } catch (e: any) {
-      notify(e?.message || "读取邀请码失败");
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
   }, [filter, keyword]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const generate = async () => {
+    if (!Number.isInteger(count) || count < 1 || count > 200) {
+      notify("一次最多生成 200 个，请输入 1 到 200 之间的数字", "warning");
+      return;
+    }
     setGenerating(true);
     try {
       const res = await fetch("/api/admin/invitations", {
@@ -103,15 +110,15 @@ export default function AdminInvitationsPage() {
       const text = (data.codes || []).map((c: Code) => c.code).join("\n");
       try {
         await navigator.clipboard.writeText(text);
-        notify(`已生成 ${data.created} 个，并复制到剪贴板`);
+        notify(`已生成 ${data.created} 个，并复制到剪贴板`, "success");
       } catch {
-        notify(`已生成 ${data.created} 个`);
+        notify(`已生成 ${data.created} 个`, "success");
       }
       setNotes("");
       setFilter("active");
-      load();
-    } catch (e: any) {
-      notify(e?.message || "生成失败");
+      void load();
+    } catch (e) {
+      notify((e as Error).message || "生成失败", "error");
     } finally {
       setGenerating(false);
     }
@@ -123,18 +130,18 @@ export default function AdminInvitationsPage() {
       setCopied(code);
       setTimeout(() => setCopied(null), 1500);
     } catch {
-      notify("复制失败，请手动选中");
+      notify("复制失败，请手动选中", "error");
     }
   };
 
   const copyAllActive = async () => {
     const list = codes.filter((c) => c.status === "active").map((c) => c.code);
-    if (list.length === 0) return notify("当前列表里没有未使用的码");
+    if (list.length === 0) return notify("当前列表里没有未使用的码", "warning");
     try {
       await navigator.clipboard.writeText(list.join("\n"));
-      notify(`已复制 ${list.length} 个未使用的码`);
+      notify(`已复制 ${list.length} 个未使用的码`, "success");
     } catch {
-      notify("复制失败");
+      notify("复制失败", "error");
     }
   };
 
@@ -143,7 +150,7 @@ export default function AdminInvitationsPage() {
     const rows = codes.map((c) =>
       [
         c.code,
-        STATUS_STYLE[c.status]?.label ?? c.status,
+        STATUS_BADGE[c.status]?.label ?? c.status,
         SUBSCRIPTION_PLANS[c.plan_type as keyof typeof SUBSCRIPTION_PLANS]?.name ?? c.plan_type,
         c.used_by_email ?? "",
         c.used_at ? new Date(c.used_at).toLocaleString("zh-CN") : "",
@@ -176,223 +183,173 @@ export default function AdminInvitationsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      notify(restoring ? "已恢复" : "已作废");
-      load();
-    } catch (e: any) {
-      notify(e?.message || "操作失败");
+      notify(restoring ? "已恢复" : "已作废", "success");
+      void load();
+    } catch (e) {
+      notify((e as Error).message || "操作失败", "error");
     }
   };
 
-  if (loading) return <Loading />;
+  const columns: Column<Code>[] = [
+    {
+      key: "code",
+      header: "邀请码",
+      render: (c) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <code className="font-mono text-[13.5px] font-semibold tracking-wider text-foreground">{c.code}</code>
+          {(c.max_uses ?? 1) > 1 && <Badge tone="ok">公开码 · 已用 {c.use_count ?? 0} / {c.max_uses}</Badge>}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "状态",
+      render: (c) => {
+        const s = STATUS_BADGE[c.status] ?? STATUS_BADGE.active;
+        return <Badge tone={s.tone}>{s.label}</Badge>;
+      },
+    },
+    {
+      key: "plan",
+      header: "兑换后开通",
+      render: (c) => (c.plan_type === "free" ? <span className="text-muted-foreground">免费版</span> : <Badge tone="accent">{SUBSCRIPTION_PLANS[c.plan_type as keyof typeof SUBSCRIPTION_PLANS]?.name ?? c.plan_type}</Badge>),
+    },
+    {
+      key: "info",
+      header: "使用者 / 备注",
+      render: (c) => (
+        <div className="text-[12px] text-muted-foreground" suppressHydrationWarning>
+          {c.used_by_email ? (
+            <>
+              <div className="break-all text-foreground/90">{c.used_by_email}</div>
+              {c.used_at && <div>{formatRelativeTime(c.used_at)}</div>}
+            </>
+          ) : (
+            <>
+              {c.notes && <div>{c.notes}</div>}
+              {c.expires_at && <div>{new Date(c.expires_at).toLocaleDateString("zh-CN")} 到期</div>}
+              {!c.notes && !c.expires_at && <span>—</span>}
+            </>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      className: "text-right",
+      render: (c) => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => copyOne(c.code)} aria-label="复制">
+            {copied === c.code ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+          </Button>
+          {/* 已使用的不给作废按钮：那只会把「谁用了这个码」的记录搞乱 */}
+          {c.status !== "used" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleRevoke(c)}
+              aria-label={c.status === "revoked" ? "恢复" : "作废"}
+              className={c.status === "revoked" ? "" : "hover:text-destructive"}
+            >
+              {c.status === "revoked" ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-9">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-6">
-          <h1 className="text-[22px] font-semibold text-foreground">邀请码</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            注册需要邀请码。一个码只能用一次，用完自动失效。
-          </p>
-        </header>
+    <AdminPage title="邀请码" subtitle="注册是邀请制。一个码只能用一次，用完自动失效；选了付费套餐的码，对方注册即开通会员">
+      {stats && (
+        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+          <StatCard label="总数" value={stats.total} />
+          <StatCard label="未使用" value={stats.active} tone="ok" />
+          <StatCard label="已使用" value={stats.used} tone="muted" />
+          <StatCard label="已过期" value={stats.expired} tone="warn" />
+          <StatCard label="已作废" value={stats.revoked} tone="danger" />
+        </div>
+      )}
 
-        {stats && (
-          <section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
-            {([
-              ["总数", stats.total, "gray"],
-              ["未使用", stats.active, "emerald"],
-              ["已使用", stats.used, "gray"],
-              ["已过期", stats.expired, "amber"],
-              ["已作废", stats.revoked, "rose"],
-            ] as const).map(([label, value, tone]) => (
-              <div key={label} className="glass-panel rounded-2xl p-4">
-                <div className="text-[12px] text-muted-foreground">{label}</div>
-                <div
-                  className={`mt-1 text-[22px] font-semibold tabular-nums ${
-                    tone === "emerald"
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : tone === "amber"
-                        ? "text-amber-600 dark:text-amber-400"
-                        : tone === "rose"
-                          ? "text-destructive"
-                          : "text-foreground"
-                  }`}
-                >
-                  {value}
-                </div>
-              </div>
-            ))}
-          </section>
-        )}
-
-        {/* 生成 */}
-        <section className="glass-panel mb-4 rounded-2xl p-5">
-          <h2 className="mb-4 flex items-center gap-2 text-[14px] font-semibold text-foreground">
-            <Plus className="h-4 w-4" />
-            生成邀请码
-          </h2>
-
-          <div className="grid gap-3 md:grid-cols-4">
-            <label className="block">
-              <span className="mb-1.5 block text-[12px] text-muted-foreground">数量</span>
-              <input
-                type="number" min={1} max={200} value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
-                className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-[12px] text-muted-foreground">兑换后开通</span>
-              <select
-                value={planType} onChange={(e) => setPlanType(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                {(Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => (
-                  <option key={id} value={id}>{SUBSCRIPTION_PLANS[id].name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-[12px] text-muted-foreground">有效期（天）</span>
-              <input
-                type="number" min={1} value={validDays} placeholder="留空＝永久"
-                onChange={(e) => setValidDays(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-[12px] text-muted-foreground">备注</span>
-              <input
-                value={notes} placeholder="发给谁 / 什么活动"
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background/50 px-3 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-          </div>
-
-          <button
-            onClick={generate} disabled={generating}
-            className="brand-gradient mt-4 flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13.5px] font-medium text-white disabled:opacity-60"
-          >
-            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
-            生成 {count} 个
-          </button>
-
-          <p className="mt-2.5 flex items-start gap-1.5 text-[11.5px] text-muted-foreground">
-            <Info className="mt-px h-3.5 w-3.5 shrink-0" />
-            生成后会自动复制到剪贴板，直接粘贴发给对方即可。选了付费套餐的码，
-            对方注册完就是会员，不用再手动开通。
-          </p>
-        </section>
-
-        {/* 列表 */}
-        <section className="glass-panel rounded-2xl p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-1.5">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => setFilter(f.value)}
-                  className={`glass-interactive rounded-xl border px-3 py-1.5 text-[12.5px] ${
-                    filter === f.value ? "glass-selected text-foreground" : "glass-panel text-muted-foreground"
-                  }`}
-                >
-                  {f.label}
-                </button>
+      <Panel title="生成邀请码" className="mb-5">
+        <div className="grid gap-3 md:grid-cols-4">
+          <label className="block">
+            <span className={fieldLabel}>数量（最多 200）</span>
+            <input type="number" min={1} max={200} value={count} onChange={(e) => setCount(Number(e.target.value))} className={INPUT_CLS} />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>兑换后开通</span>
+            <select value={planType} onChange={(e) => setPlanType(e.target.value)} className={SELECT_CLS}>
+              {(Object.keys(SUBSCRIPTION_PLANS) as (keyof typeof SUBSCRIPTION_PLANS)[]).map((id) => (
+                <option key={id} value={id}>{SUBSCRIPTION_PLANS[id].name}</option>
               ))}
-            </div>
+            </select>
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>有效期（天）</span>
+            <input type="number" min={1} value={validDays} placeholder="留空＝永久" onChange={(e) => setValidDays(e.target.value)} className={INPUT_CLS} />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>备注</span>
+            <input value={notes} placeholder="发给谁 / 什么活动" onChange={(e) => setNotes(e.target.value)} className={INPUT_CLS} />
+          </label>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button variant="primary" onClick={() => void generate()} busy={generating}>生成 {count} 个</Button>
+          <AdminPanelHint>生成后会自动复制到剪贴板，直接粘贴发给对方即可。</AdminPanelHint>
+        </div>
+      </Panel>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  value={keyword} onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="搜索码"
-                  className="w-36 rounded-xl border border-border bg-background/50 py-1.5 pl-8 pr-3 text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none"
-                />
-              </div>
-              <button onClick={copyAllActive} className="glass-panel glass-interactive flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] text-foreground">
-                <Copy className="h-3.5 w-3.5" />
-                复制未使用
+      <div className="glass-panel rounded-2xl border border-border/60 p-2 sm:p-4">
+        <FilterBar>
+          <div className="flex flex-wrap gap-1.5">
+            {FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFilter(f.value)}
+                className={`glass-interactive rounded-xl border px-3 py-1.5 text-[12.5px] ${
+                  filter === f.value ? "glass-selected text-foreground" : "glass-panel text-muted-foreground"
+                }`}
+              >
+                {f.label}
               </button>
-              <button onClick={exportCsv} className="glass-panel glass-interactive flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] text-foreground">
-                <Download className="h-3.5 w-3.5" />
-                导出
-              </button>
-            </div>
+            ))}
           </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <form
+              onSubmit={(e) => { e.preventDefault(); setKeyword(draftKeyword.trim()); }}
+              className="relative"
+            >
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={draftKeyword}
+                onChange={(e) => setDraftKeyword(e.target.value)}
+                placeholder="搜索邀请码"
+                aria-label="搜索邀请码"
+                className={`${INPUT_CLS} w-44 py-1.5 pl-8 text-[12.5px]`}
+              />
+            </form>
+            <Button variant="default" size="sm" onClick={() => void copyAllActive()}>
+              <Copy className="h-3.5 w-3.5" />复制未使用
+            </Button>
+            <Button variant="default" size="sm" onClick={exportCsv} disabled={codes.length === 0}>
+              <Download className="h-3.5 w-3.5" />导出
+            </Button>
+          </div>
+        </FilterBar>
 
-          {codes.length === 0 ? (
-            <p className="py-8 text-center text-[12.5px] text-muted-foreground">没有符合条件的邀请码</p>
-          ) : (
-            <div className="space-y-1.5">
-              {codes.map((c) => {
-                const st = STATUS_STYLE[c.status] ?? STATUS_STYLE.active;
-                return (
-                  <div
-                    key={c.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-4 py-2.5"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <code className="font-mono text-[14px] font-semibold tracking-wider text-foreground">
-                        {c.code}
-                      </code>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] ${st.cls}`}>
-                        {st.label}
-                      </span>
-                      {c.plan_type !== "free" && (
-                        <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] text-primary">
-                          {SUBSCRIPTION_PLANS[c.plan_type as keyof typeof SUBSCRIPTION_PLANS]?.name}
-                        </span>
-                      )}
-                      {/* 公开码：一眼看到有多少人是从首页注册进来的 */}
-                      {(c.max_uses ?? 1) > 1 && (
-                        <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] text-emerald-600 dark:text-emerald-400">
-                          公开码 · 已用 {c.use_count ?? 0} / {c.max_uses}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3">
-                      <span className="truncate text-[11.5px] text-muted-foreground" suppressHydrationWarning>
-                        {c.used_by_email
-                          ? `${c.used_by_email} · ${c.used_at ? formatRelativeTime(c.used_at) : ""}`
-                          : c.notes
-                            ? c.notes
-                            : c.expires_at
-                              ? `${new Date(c.expires_at).toLocaleDateString("zh-CN")} 到期`
-                              : ""}
-                      </span>
-
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => copyOne(c.code)}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
-                          title="复制"
-                        >
-                          {copied === c.code ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                        </button>
-                        {/* 已使用的不给作废按钮：那只会把「谁用了这个码」的记录搞乱 */}
-                        {c.status !== "used" && (
-                          <button
-                            onClick={() => toggleRevoke(c)}
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/10 hover:text-destructive"
-                            title={c.status === "revoked" ? "恢复" : "作废"}
-                          >
-                            {c.status === "revoked" ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+        <DataTable
+          columns={columns}
+          rows={codes}
+          rowKey={(c) => c.id}
+          loading={loading}
+          error={error || undefined}
+          onRetry={() => void load()}
+          empty={keyword ? "没有符合搜索的邀请码" : "没有符合条件的邀请码"}
+        />
       </div>
-    </div>
+    </AdminPage>
   );
 }

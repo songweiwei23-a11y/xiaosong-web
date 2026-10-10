@@ -26,34 +26,39 @@ const navGroups: {
 }[] = [
   {
     label: null,
+    items: [{ name: "管理概览", href: "/admin", icon: Home }],
+  },
+  {
+    label: "用户与会员",
     items: [
-      { name: "管理概览", href: "/admin", icon: Home },
-      // 大屏放最上面：它要回答的是"此刻有没有人需要我动手"，
-      // 而不是"上个月数据怎么样"。排在配置项里就没人会开了
-      { name: "实时监控", href: "/admin/monitor", icon: Radar },
-      // 自动质检（2026-10-03）：生成结果有没有踩禁忌、配比对不对、年限写没写错
-      { name: "质检看板", href: "/admin/quality", icon: ShieldCheck },
+      { name: "用户管理", href: "/admin/users", icon: UserCog },
+      { name: "会员管理", href: "/admin/subscriptions", icon: Users },
+      { name: "邀请码", href: "/admin/invitations", icon: Ticket },
     ],
   },
   {
-    label: "经营",
+    label: "订单与收款",
     items: [
       { name: "订单审核", href: "/admin/orders", icon: ShoppingCart },
-      // 用户管理原来只能从概览页的卡片进，侧边栏里没有。
-      // 用户忘了密码找来时，重置按钮就在这一页
-      { name: "用户管理", href: "/admin/users", icon: UserCog },
-      { name: "会员管理", href: "/admin/subscriptions", icon: Users },
+      { name: "收款二维码", href: "/admin/qrcodes", icon: QrCode },
+    ],
+  },
+  {
+    label: "内容质量",
+    items: [
+      // 自动质检（2026-10-03）：生成结果有没有踩禁忌、配比对不对、年限写没写错
+      { name: "质检看板", href: "/admin/quality", icon: ShieldCheck },
+      // 数据分析页里有结果反馈（有用 / 没用）的汇总
       { name: "数据分析", href: "/admin/analytics", icon: BarChart },
     ],
   },
   {
-    label: "配置",
+    label: "系统",
     items: [
-      { name: "邀请码", href: "/admin/invitations", icon: Ticket },
-      { name: "收款二维码", href: "/admin/qrcodes", icon: QrCode },
-      { name: "权限管理", href: "/admin/permissions", icon: ShieldCheck },
-      // 紧跟权限管理：两者一起回答"谁能动这个站、动过什么"
+      // 大屏：回答"此刻有没有人需要我动手"
+      { name: "实时监控", href: "/admin/monitor", icon: Radar },
       { name: "操作日志", href: "/admin/logs", icon: ScrollText },
+      { name: "权限管理", href: "/admin/permissions", icon: ShieldCheck },
       { name: "系统设置", href: "/admin/settings", icon: Settings },
       { name: "联网搜索密钥", href: "/admin/search-key", icon: Settings },
     ],

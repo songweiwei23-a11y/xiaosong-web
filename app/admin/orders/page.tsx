@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Eye, Search } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Clock, AlertCircle, Eye, Search } from "lucide-react";
-import Image from "next/image";
+import { INPUT_CLS } from "@/components/form/controls";
 import { exportOrdersToCSV } from "@/lib/export-utils";
+import {
+  AdminPage, Badge, Button, DataTable, Dialog, FilterBar, Pager, fieldLabel, readError, type Column,
+} from "@/components/admin/kit";
 
 interface Order {
   id: string;
@@ -19,324 +18,341 @@ interface Order {
   amount: number;
   payment_method: string;
   status: string;
-  proof_image_url?: string;
-  review_note?: string;
+  proof_image_url?: string | null;
+  review_note?: string | null;
   created_at: string;
-  proof_uploaded_at?: string;
-  reviewed_at?: string;
-  reviewer_id?: string;
+  proof_uploaded_at?: string | null;
+  reviewed_at?: string | null;
 }
 
-export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showProofDialog, setShowProofDialog] = useState(false);
-  const [reviewing, setReviewing] = useState(false);
+type Counts = Record<string, number>;
 
+const TABS: { value: string; label: string }[] = [
+  { value: "reviewing", label: "待审核" },
+  { value: "approved", label: "已通过" },
+  { value: "rejected", label: "已拒绝" },
+  { value: "pending", label: "待付款" },
+  { value: "all", label: "全部" },
+];
+
+const STATUS_BADGE: Record<string, { label: string; tone: "warn" | "ok" | "danger" | "neutral" }> = {
+  pending: { label: "待付款", tone: "neutral" },
+  reviewing: { label: "待审核", tone: "warn" },
+  approved: { label: "已通过", tone: "ok" },
+  rejected: { label: "已拒绝", tone: "danger" },
+};
+
+const PAGE_SIZE = 30;
+const fmt = (s: string | null | undefined) => (s ? new Date(s).toLocaleString("zh-CN") : "—");
+
+export default function AdminOrdersPage() {
+  const [tab, setTab] = useState("reviewing");
+  const [q, setQ] = useState("");
+  const [draftQ, setDraftQ] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<Counts>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [review, setReview] = useState<{ order: Order; action: "approve" | "reject" } | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [proof, setProof] = useState<Order | null>(null);
+
+  // 从概览页点进来时带着状态参数：/admin/orders?status=reviewing
   useEffect(() => {
-    loadOrders();
+    const s = new URLSearchParams(window.location.search).get("status");
+    if (s && TABS.some((t) => t.value === s)) setTab(s);
   }, []);
 
-  const loadOrders = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      /*
-       * 走服务端接口，不在浏览器里直接查表。
-       *
-       * 原先这里除了查表还调了 supabase.auth.admin.getUserById() 取邮箱——
-       * 那是 service_role 才有的方法，页面拿的是 anon key，实测返回
-       * `User not allowed`，于是每条订单的邮箱都显示「未知」，
-       * 管理员看着一屏「未知」不知道是谁付的钱。
-       *
-       * 凭证图也改由服务端发短时效签名链接，不再是永久可访问的公开地址。
-       */
-      const res = await fetch("/api/admin/orders");
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "加载订单失败");
-      }
-      setOrders(await res.json());
-    } catch (error: any) {
-      console.error("加载订单失败:", error);
-      notify(error?.message || "加载订单失败", "error");
+      const qs = new URLSearchParams({ status: tab, offset: String((page - 1) * PAGE_SIZE), limit: String(PAGE_SIZE) });
+      if (q) qs.set("q", q);
+      if (from) qs.set("from", from);
+      if (to) qs.set("to", to);
+      const res = await fetch(`/api/admin/orders?${qs}`);
+      if (!res.ok) throw new Error(await readError(res, "加载订单失败"));
+      const data = await res.json();
+      setOrders(data.items ?? []);
+      setTotal(data.total ?? 0);
+      setCounts(data.counts ?? {});
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
+  }, [tab, q, from, to, page]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setQ(draftQ.trim());
   };
 
-  const handleReview = async (orderId: string, approved: boolean, note?: string) => {
-    setReviewing(true);
+  const changeTab = (v: string) => {
+    setTab(v);
+    setPage(1);
+  };
+
+  const doReview = async () => {
+    if (!review) return;
+    if (review.action === "reject" && !note.trim()) {
+      notify("驳回请写明原因，用户会在「我的账户」里看到", "warning");
+      return;
+    }
+    setBusy(true);
     try {
-      const response = await fetch("/api/admin/orders/review", {
+      const res = await fetch("/api/admin/orders/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          orderId,
-          approved,
-          note,
+          orderId: review.order.id,
+          approved: review.action === "approve",
+          note: note.trim() || undefined,
         }),
       });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        notify(approved ? "订单已通过审核" : "订单已拒绝", "success");
-        loadOrders();
-        setShowProofDialog(false);
-      } else {
-        notify(result.error || "审核失败", "error");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        notify(data.error || "审核失败", "error");
+        return;
       }
-    } catch (error) {
-      console.error("审核失败:", error);
-      notify("审核失败", "error");
+      notify(data.message || (review.action === "approve" ? "订单已通过，会员已开通" : "订单已驳回"), "success");
+      setReview(null);
+      setNote("");
+      void load();
+    } catch {
+      notify("网络不稳，审核没有提交，请重试", "error");
     } finally {
-      setReviewing(false);
+      setBusy(false);
     }
   };
 
-  // 筛选订单
-  const filteredOrders = orders.filter((order) => {
-    if (statusFilter !== "all" && order.status !== statusFilter) {
-      return false;
-    }
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      return (
-        order.plan_name?.toLowerCase().includes(term) ||
-        order.user_email?.toLowerCase().includes(term) ||
-        order.amount?.toString().includes(term) ||
-        order.id?.toLowerCase().includes(term)
-      );
-    }
-
-    return true;
-  });
-
-  // 统计
-  const stats = {
-    total: orders.length,
-    pending: orders.filter((o) => o.status === "reviewing").length,
-    approved: orders.filter((o) => o.status === "approved").length,
-    rejected: orders.filter((o) => o.status === "rejected").length,
-  };
-
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, { label: string; variant: any; icon: any }> = {
-      pending: { label: "待支付", variant: "default", icon: Clock },
-      reviewing: { label: "待审核", variant: "default", icon: AlertCircle },
-      approved: { label: "已通过", variant: "success", icon: CheckCircle },
-      rejected: { label: "已拒绝", variant: "destructive", icon: XCircle },
-    };
-
-    const { label, variant, icon: Icon } = config[status] || config.pending;
-    return (
-      <Badge variant={variant} className="flex items-center gap-1">
-        <Icon className="w-3 h-3" />
-        {label}
-      </Badge>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent/40 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">加载订单中...</p>
+  const columns: Column<Order>[] = [
+    {
+      key: "order",
+      header: "订单",
+      render: (o) => (
+        <div>
+          <div className="font-medium text-foreground">{o.plan_name}</div>
+          <div className="text-[12px] text-muted-foreground">¥{o.amount} · {o.billing_cycle === "yearly" ? "年付" : "月付"}</div>
+          <div className="text-[11px] text-muted-foreground/70">单号 {o.id.slice(0, 8)}</div>
         </div>
-      </div>
-    );
-  }
+      ),
+    },
+    {
+      key: "user",
+      header: "用户",
+      render: (o) => <span className="break-all text-[12.5px]">{o.user_email ?? "—"}</span>,
+    },
+    {
+      key: "method",
+      header: "支付方式",
+      render: (o) => <span className="text-[12.5px]">{o.payment_method === "alipay" ? "支付宝" : "微信"}</span>,
+    },
+    {
+      key: "time",
+      header: "提交 / 审核",
+      render: (o) => (
+        <div className="text-[12px] text-muted-foreground">
+          <div>提交 {fmt(o.created_at)}</div>
+          {o.reviewed_at && <div>审核 {fmt(o.reviewed_at)}</div>}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "状态",
+      render: (o) => {
+        const s = STATUS_BADGE[o.status] ?? { label: o.status, tone: "neutral" as const };
+        return (
+          <div>
+            <Badge tone={s.tone}>{s.label}</Badge>
+            {o.review_note && <div className="mt-1 max-w-[14rem] text-[11.5px] text-muted-foreground">备注：{o.review_note}</div>}
+          </div>
+        );
+      },
+    },
+    {
+      key: "actions",
+      header: "操作",
+      className: "text-right",
+      render: (o) => (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {o.proof_image_url && (
+            <Button size="sm" variant="default" onClick={() => setProof(o)}>
+              <Eye className="h-3.5 w-3.5" />凭证
+            </Button>
+          )}
+          {o.status === "reviewing" && (
+            <>
+              <Button size="sm" variant="primary" onClick={() => { setReview({ order: o, action: "approve" }); setNote(""); }}>通过</Button>
+              <Button size="sm" variant="danger" onClick={() => { setReview({ order: o, action: "reject" }); setNote(""); }}>驳回</Button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="container mx-auto px-4 py-6 sm:px-8 sm:py-10">
-      <h1 className="text-2xl font-bold mb-6 sm:text-3xl sm:mb-8">订单审核</h1>
-
-      {/* 搜索和筛选 */}
-      <div className="mb-6 flex gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="搜索订单（用户邮箱、套餐、金额、订单号）"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="all">全部状态</option>
-          <option value="reviewing">待审核</option>
-          <option value="approved">已通过</option>
-          <option value="rejected">已拒绝</option>
-        </select>
+    <AdminPage
+      title="订单审核"
+      subtitle="用户按收款码转账后上传凭证，你核对到账后在这里通过，会员自动开通"
+      actions={
         <Button
-          variant="outline"
-          onClick={() => exportOrdersToCSV(filteredOrders, `orders-${new Date().toISOString().split('T')[0]}.csv`)}
-          disabled={filteredOrders.length === 0}
+          variant="default"
+          onClick={() =>
+            exportOrdersToCSV(
+              orders.map((o) => ({
+                ...o,
+                proof_image_url: o.proof_image_url ?? undefined,
+                review_note: o.review_note ?? undefined,
+                reviewed_at: o.reviewed_at ?? undefined,
+              })),
+              `orders-${new Date().toISOString().split("T")[0]}.csv`
+            )
+          }
+          disabled={orders.length === 0}
         >
-          导出订单 ({filteredOrders.length})
+          导出本页（{orders.length}）
         </Button>
+      }
+    >
+      <div className="mb-4 flex flex-wrap gap-2">
+        {TABS.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => changeTab(t.value)}
+            className={`glass-interactive rounded-xl border px-3.5 py-2 text-[13px] ${
+              tab === t.value ? "glass-selected text-foreground" : "glass-panel text-muted-foreground"
+            }`}
+          >
+            {t.label}
+            {counts[t.value] !== undefined && <span className="ml-1.5 tabular-nums text-[12px] opacity-70">{counts[t.value]}</span>}
+          </button>
+        ))}
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-2 gap-3 mb-6 sm:gap-4 sm:mb-8 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm text-muted-foreground mb-1">总订单</div>
-            <div className="text-3xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-amber-500/10 border-yellow-500/25">
-          <CardContent className="pt-6">
-            <div className="text-sm text-yellow-500 mb-1">待审核</div>
-            <div className="text-3xl font-bold text-yellow-500">{stats.pending}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-emerald-500/10 border-green-500/25">
-          <CardContent className="pt-6">
-            <div className="text-sm text-green-500 mb-1">已通过</div>
-            <div className="text-3xl font-bold text-green-500">{stats.approved}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-destructive/10 border-destructive/25">
-          <CardContent className="pt-6">
-            <div className="text-sm text-destructive mb-1">已拒绝</div>
-            <div className="text-3xl font-bold text-destructive">{stats.rejected}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 订单列表 */}
-      <div className="space-y-4">
-        {filteredOrders.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              {searchTerm || statusFilter !== "all" ? "没有找到匹配的订单" : "暂无订单"}
-            </CardContent>
-          </Card>
-        ) : (
-          filteredOrders.map((order) => (
-            <Card key={order.id}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{order.plan_name}</h3>
-                      {getStatusBadge(order.status)}
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                      <div>用户: {order.user_email}</div>
-                      <div>金额: ¥{order.amount}</div>
-                      <div>周期: {order.billing_cycle === "monthly" ? "月付" : "年付"}</div>
-                      <div>支付方式: {order.payment_method === "alipay" ? "支付宝" : "微信"}</div>
-                      <div>提交时间: {new Date(order.created_at).toLocaleString()}</div>
-                      {order.reviewed_at && (
-                        <div>审核时间: {new Date(order.reviewed_at).toLocaleString()}</div>
-                      )}
-                    </div>
-                    {order.review_note && (
-                      <div className="mt-2 p-2 bg-muted rounded text-sm">
-                        备注: {order.review_note}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {order.proof_image_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedOrder(order);
-                          setShowProofDialog(true);
-                        }}
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        查看凭证
-                      </Button>
-                    )}
-                    {order.status === "reviewing" && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => handleReview(order.id, true)}
-                          disabled={reviewing}
-                          className="bg-emerald-500 hover:bg-green-700"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          通过
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => {
-                            const note = prompt("拒绝原因（可选）:");
-                            handleReview(order.id, false, note || undefined);
-                          }}
-                          disabled={reviewing}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          拒绝
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+      <FilterBar>
+        <form onSubmit={submitSearch} className="flex min-w-[16rem] flex-1 items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={draftQ}
+              onChange={(e) => setDraftQ(e.target.value)}
+              placeholder="订单号、用户邮箱或用户编号"
+              aria-label="搜索订单"
+              className={`${INPUT_CLS} pl-9`}
+            />
+          </div>
+          <Button type="submit" variant="primary">搜索</Button>
+        </form>
+        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          从
+          <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className={`${INPUT_CLS} w-auto py-2`} />
+        </label>
+        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          到
+          <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} className={`${INPUT_CLS} w-auto py-2`} />
+        </label>
+        {(q || from || to) && (
+          <Button variant="ghost" onClick={() => { setDraftQ(""); setQ(""); setFrom(""); setTo(""); setPage(1); }}>清空筛选</Button>
         )}
+      </FilterBar>
+
+      <div className="glass-panel rounded-2xl border border-border/60 p-2 sm:p-4">
+        <DataTable
+          columns={columns}
+          rows={orders}
+          rowKey={(o) => o.id}
+          loading={loading}
+          error={error || undefined}
+          onRetry={() => void load()}
+          empty={q || from || to ? "没有符合条件的订单" : "这个状态下还没有订单"}
+        />
+        <Pager page={page} pageCount={pageCount} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
 
-      {/* 支付凭证对话框 */}
-      <Dialog open={showProofDialog} onOpenChange={setShowProofDialog}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>支付凭证</DialogTitle>
-          </DialogHeader>
-          {selectedOrder?.proof_image_url && (
-            <div className="space-y-4">
-              <div className="relative w-full h-96">
-                <Image
-                  src={selectedOrder.proof_image_url}
-                  alt="支付凭证"
-                  fill
-                  className="object-contain"
-                />
+      {/* 凭证：普通图片标签显示，签名链接 30 分钟后失效 */}
+      <Dialog open={!!proof} onClose={() => setProof(null)} title="支付凭证" width="max-w-3xl">
+        {proof && (
+          <div className="space-y-4">
+            <p className="text-muted-foreground">{proof.user_email} · {proof.plan_name} · ¥{proof.amount}</p>
+            {proof.proof_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- 签名链接不走图片优化
+              <img src={proof.proof_image_url} alt="支付凭证" className="max-h-[60vh] w-full rounded-xl border border-border bg-white object-contain" />
+            ) : (
+              <p className="text-amber-400">凭证链接已经失效，请让用户重新上传</p>
+            )}
+            {proof.status === "reviewing" && (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="danger" onClick={() => { setProof(null); setReview({ order: proof, action: "reject" }); setNote(""); }}>驳回</Button>
+                <Button variant="primary" onClick={() => { setProof(null); setReview({ order: proof, action: "approve" }); setNote(""); }}>通过审核</Button>
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  onClick={() => handleReview(selectedOrder.id, true)}
-                  disabled={reviewing}
-                  className="bg-emerald-500 hover:bg-green-700"
-                >
-                  <CheckCircle className="w-4 h-4 mr-1" />
-                  通过审核
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    const note = prompt("拒绝原因（可选）:");
-                    handleReview(selectedOrder.id, false, note || undefined);
-                  }}
-                  disabled={reviewing}
-                >
-                  <XCircle className="w-4 h-4 mr-1" />
-                  拒绝
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
+            )}
+          </div>
+        )}
       </Dialog>
-    </div>
+
+      {/* 审核确认：驳回必须写原因 */}
+      <Dialog
+        open={!!review}
+        onClose={() => setReview(null)}
+        title={review?.action === "approve" ? "通过审核" : "驳回订单"}
+        busy={busy}
+        footer={
+          <>
+            <Button variant="default" onClick={() => setReview(null)} disabled={busy}>取消</Button>
+            <Button
+              variant={review?.action === "approve" ? "primary" : "danger"}
+              onClick={() => void doReview()}
+              busy={busy}
+            >
+              {review?.action === "approve" ? "确认通过，开通会员" : "确认驳回"}
+            </Button>
+          </>
+        }
+      >
+        {review && (
+          <>
+            <p className="text-muted-foreground">
+              {review.order.user_email} · {review.order.plan_name} · ¥{review.order.amount}
+            </p>
+            {review.action === "approve" ? (
+              <p className="text-[12.5px] text-muted-foreground">通过后会员立即开通。确认到账再通过，开通后无法自动撤回。</p>
+            ) : (
+              <p className="text-[12.5px] text-muted-foreground">驳回后用户会在「我的账户」里看到下面这句原因，请写清楚（比如「金额不对」「凭证看不清」）。</p>
+            )}
+            <label className="block">
+              <span className={fieldLabel}>
+                {review.action === "approve" ? "备注（可不填）" : "驳回原因（必填）"}
+              </span>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={3}
+                maxLength={200}
+                className={INPUT_CLS}
+                placeholder={review.action === "approve" ? "例如：已核对到账" : "例如：转账金额与订单不符"}
+              />
+            </label>
+          </>
+        )}
+      </Dialog>
+    </AdminPage>
   );
 }

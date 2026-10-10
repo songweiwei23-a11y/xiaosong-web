@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { isUsableQrcodeUrl } from "@/lib/payment-qrcode";
 import {
   ArrowLeft, Upload, Loader2, CheckCircle2, Clock, XCircle, QrCode, Info,
 } from "lucide-react";
@@ -69,7 +70,7 @@ function PaymentContent() {
       .then(({ data }) => {
         const map: Record<string, string> = {};
         for (const q of data ?? []) {
-          if (q.is_active && q.qrcode_url) map[q.payment_method] = q.qrcode_url;
+          if (q.is_active && isUsableQrcodeUrl(q.qrcode_url)) map[q.payment_method] = q.qrcode_url;
         }
         setQrcodes(map);
       });

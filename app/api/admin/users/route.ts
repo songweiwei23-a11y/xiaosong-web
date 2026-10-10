@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
-import { logAdminAction, AdminActions } from '@/lib/admin-logger';
+import { logAdminAction, AdminActions, ACTION_LABELS } from '@/lib/admin-logger';
 import { generateTempPassword } from '@/lib/password';
-import { COUNTED_FEATURES } from '@/lib/config/plans';
+import { COUNTED_FEATURES, sumCountedUsage } from '@/lib/config/plans';
 import { accountStatus } from '@/lib/account-status';
 import { previewUserData, purgeUser } from '@/lib/admin-delete-user';
+import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +15,12 @@ const supabase = createClient(
 
 export const dynamic = 'force-dynamic';
 
-// GET - 获取用户列表
+/*
+ * GET 两种用法：
+ *   ?page=&pageSize=&search=  用户列表（搜索在数据库里做，total 是搜索后的总数）
+ *   ?detail=<用户编号>        单个用户的详情：档案、会员、额度、订单、最近生成、相关操作记录
+ * 日志里不打印搜索词：搜索框里可能是别人的邮箱。
+ */
 export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
@@ -23,74 +29,34 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '20');
-    const search = searchParams.get('search') || '';
-
-    console.log(`[用户管理] 查询参数: page=${page}, pageSize=${pageSize}, search=${search}`);
-
-    // 从 auth.users 获取所有用户
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
-      page: page,
-      perPage: pageSize
-    });
-
-    if (authError) {
-      console.error('[用户管理] 获取auth用户失败:', authError);
-      throw authError;
+    const detailId = searchParams.get('detail');
+    if (detailId) {
+      if (!UUID_RE.test(detailId)) return NextResponse.json({ error: '用户编号格式不对' }, { status: 400 });
+      return loadUserDetail(detailId);
     }
 
-    const authUsers = authData?.users || [];
-    console.log(`[用户管理] 获取到 ${authUsers.length} 个auth用户`);
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('pageSize') || '20', 10) || 20));
+    const query = cleanQuery(searchParams.get('search'));
 
-    // 获取所有用户ID
-    const userIds = authUsers.map(u => u.id);
+    const { users: rows, total } = await searchUsers(supabase, query, (page - 1) * pageSize, pageSize);
+    const ids = rows.map((r) => r.id);
 
-    // 批量获取 profiles
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .in('user_id', userIds);
+    const profiles = ids.length ? ((await supabase.from('user_profiles').select('*').in('user_id', ids)).data ?? []) : [];
+    const subscriptions = ids.length ? ((await supabase.from('subscriptions').select('*').in('user_id', ids)).data ?? []) : [];
+    const quotas = ids.length ? ((await supabase.from('user_quotas').select('*').in('user_id', ids)).data ?? []) : [];
 
-    // 批量获取 subscriptions
-    const { data: subscriptions } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .in('user_id', userIds);
-
-    // 批量获取 quotas
-    const { data: quotas } = await supabase
-      .from('user_quotas')
-      .select('*')
-      .in('user_id', userIds);
-
-    console.log(`[用户管理] profiles: ${profiles?.length || 0}, subscriptions: ${subscriptions?.length || 0}, quotas: ${quotas?.length || 0}`);
-
-    // 合并数据
-    const users = authUsers.map(authUser => {
-      const profile = profiles?.find(p => p.user_id === authUser.id);
-      const subscription = subscriptions?.find(s => s.user_id === authUser.id);
-      const quota = quotas?.find(q => q.user_id === authUser.id);
-
-      // 计算总使用量
-      const totalUsed = quota ? (
-        (quota.script_used || 0) +
-        (quota.topic_used || 0) +
-        (quota.positioning_used || 0) +
-        (quota.free_chat_used || 0) +
-        (quota.storyboard_used || 0) +
-        (quota.review_used || 0) +
-        (quota.title_used || 0) +
-        (quota.deal_reason_used || 0)
-      ) : 0;
-
+    const users = rows.map((r) => {
+      const profile = profiles.find((p) => p.user_id === r.id);
+      const subscription = subscriptions.find((s) => s.user_id === r.id);
+      const quota = quotas.find((q) => q.user_id === r.id);
       return {
-        user_id: authUser.id,
-        email: authUser.email || '未设置',
+        user_id: r.id,
+        email: r.email || '未设置',
         full_name: profile?.profile_name || '未设置',
         avatar_url: profile?.avatar_url || null,
         membership_level: subscription?.plan || 'free',
-        subscription_status: accountStatus(authUser.banned_until, subscription?.status),
+        subscription_status: accountStatus(r.banned_until, subscription?.status),
         subscription_end: subscription?.end_date || null,
         quota_details: {
           script: { used: quota?.script_used || 0 },
@@ -102,28 +68,100 @@ export async function GET(request: Request) {
           title: { used: quota?.title_used || 0 },
           dealReason: { used: quota?.deal_reason_used || 0 },
         },
-        total_used: totalUsed,
+        total_used: sumCountedUsage(quota),
         period_end: quota?.current_period_end || null,
-        created_at: authUser.created_at,
-        last_sign_in_at: authUser.last_sign_in_at,
+        created_at: r.created_at,
+        last_sign_in_at: r.last_sign_in_at,
         has_profile: !!profile,
         has_subscription: !!subscription,
-        has_quota: !!quota
+        has_quota: !!quota,
       };
     });
 
-    console.log(`[用户管理] 返回 ${users.length} 个用户，总数: ${authData.total || users.length}`);
+    return NextResponse.json({ users, total, page, pageSize, search: query });
+  } catch (error: any) {
+    console.error('[用户管理] 查询失败:', error?.message);
+    return NextResponse.json({ error: '读取用户列表失败' }, { status: 500 });
+  }
+}
+
+async function loadUserDetail(userId: string) {
+  try {
+    const { data: au, error: authError } = await supabase.auth.admin.getUserById(userId);
+    if (authError || !au?.user) {
+      return NextResponse.json({ error: '没找到这个用户，可能已经删过了' }, { status: 404 });
+    }
+    const u = au.user;
+
+    const [profileR, subR, quotaR, ordersR, genR, logsByTargetR, logsByDetailR] = await Promise.all([
+      supabase.from('user_profiles').select('profile_name, account_platform, updated_at').eq('user_id', userId).maybeSingle(),
+      supabase.from('subscriptions').select('plan, status, start_date, end_date').eq('user_id', userId).maybeSingle(),
+      supabase.from('user_quotas').select('*').eq('user_id', userId).maybeSingle(),
+      supabase
+        .from('payment_orders')
+        .select('id, plan_name, amount, status, billing_cycle, created_at, reviewed_at, review_note')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('script_history')
+        .select('task_type, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(8),
+      supabase
+        .from('admin_logs')
+        .select('id, admin_id, action, target_type, target_id, details, created_at')
+        .eq('target_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('admin_logs')
+        .select('id, admin_id, action, target_type, target_id, details, created_at')
+        .contains('details', { targetUserId: userId })
+        .order('created_at', { ascending: false })
+        .limit(10),
+    ]);
+
+    const seen = new Set<string>();
+    const logRows = [...(logsByTargetR.data ?? []), ...(logsByDetailR.data ?? [])]
+      .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+      .slice(0, 10);
+
+    const adminEmails = await emailsByIds(supabase, logRows.map((r) => r.admin_id));
 
     return NextResponse.json({
-      users,
-      total: authData.total || users.length,
-      page,
-      pageSize
+      user: {
+        id: u.id,
+        email: u.email ?? null,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at ?? null,
+        status: accountStatus(u.banned_until, subR.data?.status),
+      },
+      profile: profileR.data ?? null,
+      subscription: subR.data ?? null,
+      quota: quotaR.data
+        ? { used: sumCountedUsage(quotaR.data), periodEnd: quotaR.data.current_period_end ?? null }
+        : null,
+      orders: ordersR.data ?? [],
+      generations: genR.data ?? [],
+      logs: logRows.map((r) => {
+        const details: Record<string, unknown> = { ...((r.details ?? {}) as Record<string, unknown>) };
+        delete details.targetUserId;
+        return {
+          id: r.id,
+          createdAt: r.created_at,
+          action: r.action,
+          label: ACTION_LABELS[r.action] ?? r.action,
+          adminEmail: adminEmails.get(r.admin_id) ?? '（已删除的管理员）',
+          details,
+        };
+      }),
     });
-
   } catch (error: any) {
-    console.error('[用户管理] 错误:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[用户管理] 详情读取失败:', error?.message);
+    return NextResponse.json({ error: '读取用户详情失败' }, { status: 500 });
   }
 }
 
@@ -141,8 +179,6 @@ export async function POST(request: Request) {
     if (!userId || !action) {
       return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
     }
-
-    console.log(`[用户管理] 执行操作: ${action}, 用户: ${userId}`);
 
     switch (action) {
       case 'update_membership':
@@ -176,7 +212,6 @@ export async function POST(request: Request) {
           endDate
         });
 
-        console.log(`[用户管理] 会员更新成功: ${userId} -> ${plan}`);
         return NextResponse.json({ success: true, message: '会员等级更新成功' });
 
       case 'reset_quota': {
@@ -210,7 +245,6 @@ export async function POST(request: Request) {
           targetUserId: userId
         });
 
-        console.log(`[用户管理] 配额重置成功: ${userId}`);
         return NextResponse.json({ success: true, message: '配额重置成功' });
       }
 
@@ -381,14 +415,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-/*
- * 这里原本还有一个 PATCH，注释写着「更新单个用户的配额（兼容旧代码）」。
- * 两个问题：
- *   1. 它改的是 user_quotas.max_quota，而这张表上根本没有这一列
- *      （列是 knowledge_used / script_used … 这些），调用必然报错；
- *   2. 没有任何页面调用它——用户管理页只用 GET 和 POST。
- *
- * 一个必然失败、又没人用的接口，留着只会让下一个人以为「配额上限
- * 可以按用户单独设」。额度上限由套餐决定，见 lib/config/plans.ts。
- */

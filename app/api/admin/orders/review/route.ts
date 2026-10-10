@@ -22,6 +22,10 @@ export async function POST(request: Request) {
     if (!orderId) {
       return NextResponse.json({ error: '缺少订单ID' }, { status: 400 });
     }
+    // 驳回的原因会显示给用户（「我的账户」里的订单栏），必须写清楚
+    if (!approved && !String(note ?? '').trim()) {
+      return NextResponse.json({ error: '驳回订单请写明原因，用户会在「我的账户」里看到这句话' }, { status: 400 });
+    }
 
     // 获取订单信息
     const { data: order, error: fetchError } = await supabase

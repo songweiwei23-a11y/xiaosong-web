@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Crown, Ban, Unlock, RotateCcw, Eye, KeyRound, Copy, Trash2 } from "lucide-react";
-import { notify, confirmDialog } from '@/components/ui/feedback';
-import { SUBSCRIPTION_PLANS, getPlan } from '@/lib/config/plans';
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Copy, Search } from "lucide-react";
+import { notify, confirmDialog } from "@/components/ui/feedback";
+import { SUBSCRIPTION_PLANS, getPlan } from "@/lib/config/plans";
+import { INPUT_CLS, SELECT_CLS } from "@/components/form/controls";
+import {
+  AdminPage, Badge, Button, DataTable, Dialog, FilterBar, Pager, fieldLabel, readError, type Column,
+} from "@/components/admin/kit";
 
 /** 改套餐下拉里的说明：名字 + 价格 + 各板块次数范围，全部从配置读 */
 function planOptionLabel(id: string): string {
   const p = getPlan(id);
-  const price = p.price ? ` ${p.price}元/月` : '';
+  const price = p.price ? ` ${p.price}元/月` : "";
   if (p.totalQuota === -1) return `${p.name}${price}（无限使用）`;
   if (p.totalQuota !== null) return `${p.name}${price}（所有功能合计 ${p.totalQuota} 次/月）`;
   const n = Object.values(p.quotas).filter((v) => v >= 0);
@@ -18,710 +21,468 @@ function planOptionLabel(id: string): string {
   return `${p.name}${price}（各板块 ${lo === hi ? lo : `${lo}-${hi}`} 次）`;
 }
 
-type User = {
+const PLAN_TONE: Record<string, "neutral" | "info" | "accent" | "warn"> = {
+  free: "neutral",
+  basic: "info",
+  pro: "accent",
+  enterprise: "warn",
+};
+
+interface User {
   user_id: string;
   email: string;
   full_name: string;
   membership_level: string;
   subscription_status: string;
   subscription_end: string | null;
-  quota_details: {
-    script: { used: number };
-    topic: { used: number };
-    positioning: { used: number };
-    freeChat: { used: number };
-    storyboard: { used: number };
-    review: { used: number };
-    title: { used: number };
-    dealReason: { used: number };
-  };
   total_used: number;
   period_end: string | null;
   created_at: string;
-  last_sign_in_at: string;
-  has_profile: boolean;
-  has_subscription: boolean;
-  has_quota: boolean;
+  last_sign_in_at: string | null;
+}
+
+interface Detail {
+  user: { id: string; email: string | null; created_at: string; last_sign_in_at: string | null; status: string };
+  profile: { profile_name: string | null; account_platform: string[] | null; updated_at: string | null } | null;
+  subscription: { plan: string; status: string; start_date: string | null; end_date: string | null } | null;
+  quota: { used: number; periodEnd: string | null } | null;
+  orders: { id: string; plan_name: string; amount: number; status: string; created_at: string; reviewed_at: string | null; review_note: string | null }[];
+  generations: { task_type: string; created_at: string }[];
+  logs: { id: string; createdAt: string; label: string; adminEmail: string; details: Record<string, unknown> }[];
+}
+
+const ORDER_LABEL: Record<string, string> = { pending: "待付款", reviewing: "待审核", approved: "已通过", rejected: "已拒绝" };
+const STATUS_LABEL: Record<string, { label: string; tone: "ok" | "danger" | "neutral" }> = {
+  active: { label: "正常", tone: "ok" },
+  inactive: { label: "已封禁", tone: "danger" },
 };
 
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("zh-CN") : "—");
+const fmtDateTime = (s: string | null | undefined) => (s ? new Date(s).toLocaleString("zh-CN") : "—");
+
 export default function UsersPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const [detail, setDetail] = useState<{ id: string; data: Detail | null; error: string } | null>(null);
+  const [editing, setEditing] = useState<User | null>(null);
   const [editPlan, setEditPlan] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
-  // 刚重置出来的临时密码。只在这个弹窗里出现一次，关掉就没了
+  const [saving, setSaving] = useState(false);
   const [tempPw, setTempPw] = useState<{ email: string; password: string } | null>(null);
-  /*
-   * 删除用户（2026-10-04，lib/admin-delete-user）：先看这个人有多少东西，再输入他的邮箱确认才删。
-   * 删了不能恢复：账号、档案、作品、生成记录、对话、素材、订单、上传的文件全部删除
-   */
   const [del, setDel] = useState<{ user: User; preview: { email: string; counts: Record<string, number>; paidOrders: number } | null; error: string; input: string; busy: boolean } | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page]);
-
-  const fetchUsers = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-        search: search,
-      });
-
-      const response = await fetch(`/api/admin/users?${params}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '获取用户列表失败');
-      }
-
-      const data = await response.json();
+      const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize), search });
+      const res = await fetch(`/api/admin/users?${qs}`);
+      if (!res.ok) throw new Error(await readError(res, "获取用户列表失败"));
+      const data = await res.json();
       setUsers(data.users || []);
       setTotal(data.total || 0);
-    } catch (error: any) {
-      console.error('获取用户失败:', error);
-      notify(error.message || '获取用户列表失败');
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, search]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchUsers();
-    setRefreshing(false);
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const handleUpdateMembership = async (userId: string, plan: string, endDate?: string) => {
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          action: 'update_membership',
-          plan,
-          endDate: endDate || null
-        }),
-      });
-
-      if (response.ok) {
-        notify('会员等级更新成功！');
-        setShowEditModal(false);
-        fetchUsers();
-      } else {
-        const errorData = await response.json();
-        notify(errorData.error || '更新失败');
-      }
-    } catch (error) {
-      console.error('更新会员失败:', error);
-      notify('更新失败');
-    }
-  };
-
-  const handleResetQuota = async (userId: string) => {
-    const confirmed = await confirmDialog('确定要重置该用户的配额吗？所有使用次数将清零。', {
-      tone: 'danger',
-      confirmText: '确定重置',
-      title: '重置配额'
+  const act = async (userId: string, action: string, extra: Record<string, unknown> = {}) => {
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, action, ...extra }),
     });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, data, error: data.error as string | undefined };
+  };
 
-    if (!confirmed) return;
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setSearch(draft.trim());
+  };
 
+  const openDetail = async (user: User) => {
+    setDetail({ id: user.user_id, data: null, error: "" });
     try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          action: 'reset_quota'
-        }),
-      });
-
-      if (response.ok) {
-        notify('配额重置成功！');
-        fetchUsers();
-      } else {
-        const errorData = await response.json();
-        notify(errorData.error || '重置失败');
-      }
-    } catch (error) {
-      console.error('重置配额失败:', error);
-      notify('重置失败');
+      const res = await fetch(`/api/admin/users?detail=${encodeURIComponent(user.user_id)}`);
+      const data = await res.json().catch(() => ({}));
+      setDetail((d) => (d && d.id === user.user_id ? { ...d, data: res.ok ? data : null, error: res.ok ? "" : data.error || "读取失败" } : d));
+    } catch {
+      setDetail((d) => (d && d.id === user.user_id ? { ...d, error: "读取失败，请重试" } : d));
     }
   };
 
-  /*
-   * 替用户重置密码。
-   *
-   * 系统没有发信服务，用户忘了密码只能找客服。在这之前后台也没有
-   * 重置入口——注册又是邀请制，忘了密码的人就永远进不来了。
-   *
-   * 临时密码只出现在这一次的弹窗里，关掉就再也看不到（它不进操作日志）。
-   * 发出去之前，先在微信里核对对方的注册邮箱和付款记录。
-   */
-  const handleResetPassword = async (user: User) => {
-    const confirmed = await confirmDialog(
+  const openEdit = (user: User) => {
+    setEditing(user);
+    setEditPlan(user.membership_level);
+    setEditEndDate(user.subscription_end ? new Date(user.subscription_end).toISOString().split("T")[0] : "");
+  };
+
+  const saveMembership = async () => {
+    if (!editing) return;
+    setSaving(true);
+    const { ok, error: err } = await act(editing.user_id, "update_membership", { plan: editPlan, endDate: editEndDate || null });
+    setSaving(false);
+    if (ok) {
+      notify("会员等级已更新", "success");
+      setEditing(null);
+      void load();
+    } else notify(err || "更新失败", "error");
+  };
+
+  const resetQuota = async (user: User) => {
+    const ok = await confirmDialog(`把 ${user.email} 的本期额度清零？他的使用次数会立刻恢复。`, { tone: "danger", confirmText: "确定重置", title: "重置额度" });
+    if (!ok) return;
+    const r = await act(user.user_id, "reset_quota");
+    if (r.ok) { notify("额度已重置", "success"); void load(); }
+    else notify(r.error || "重置失败", "error");
+  };
+
+  const resetPassword = async (user: User) => {
+    const ok = await confirmDialog(
       `给 ${user.email} 重置密码？他当前的密码会立刻失效。发临时密码前，请先在微信里核对对方身份。`,
-      { tone: 'danger', confirmText: '确定重置', title: '重置密码' }
+      { tone: "danger", confirmText: "确定重置", title: "重置密码" }
     );
-    if (!confirmed) return;
-
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.user_id, action: 'reset_password' }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.tempPassword) {
-        notify(data.error || '重置失败');
-        return;
-      }
-      setTempPw({ email: user.email, password: data.tempPassword });
-    } catch (error) {
-      console.error('重置密码失败:', error);
-      notify('重置失败');
-    }
+    if (!ok) return;
+    const r = await act(user.user_id, "reset_password");
+    if (r.ok && r.data.tempPassword) setTempPw({ email: user.email, password: r.data.tempPassword });
+    else notify(r.error || "重置失败", "error");
   };
 
-  const handleBanUser = async (userId: string) => {
-    const confirmed = await confirmDialog('确定要封禁该用户吗？用户将无法使用任何功能。', {
-      tone: 'danger',
-      confirmText: '确定封禁',
-      title: '封禁用户'
-    });
-
-    if (!confirmed) return;
-
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          action: 'ban_user'
-        }),
-      });
-
-      if (response.ok) {
-        notify('用户已封禁');
-        fetchUsers();
-      } else {
-        const errorData = await response.json();
-        notify(errorData.error || '封禁失败');
-      }
-    } catch (error) {
-      console.error('封禁用户失败:', error);
-      notify('封禁失败');
+  const toggleBan = async (user: User) => {
+    const banning = user.subscription_status === "active";
+    if (banning) {
+      const ok = await confirmDialog("封禁后他无法登录、无法使用任何功能。已登录的会话最多一小时内失效。", { tone: "danger", confirmText: "确定封禁", title: "封禁用户" });
+      if (!ok) return;
     }
-  };
-
-  const handleUnbanUser = async (userId: string) => {
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          action: 'unban_user'
-        }),
-      });
-
-      if (response.ok) {
-        notify('用户已解封');
-        fetchUsers();
-      } else {
-        const errorData = await response.json();
-        notify(errorData.error || '解封失败');
-      }
-    } catch (error) {
-      console.error('解封用户失败:', error);
-      notify('解封失败');
-    }
+    const r = await act(user.user_id, banning ? "ban_user" : "unban_user");
+    if (r.ok) { notify(banning ? "用户已封禁" : "用户已解封", "success"); void load(); }
+    else notify(r.error || "操作失败", "error");
   };
 
   const openDelete = async (user: User) => {
     setDel({ user, preview: null, error: "", input: "", busy: false });
-    try {
-      const res = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.user_id, action: "delete_preview" }) });
-      const data = await res.json().catch(() => ({}));
-      setDel((d) => d && d.user.user_id === user.user_id ? { ...d, preview: res.ok ? data : null, error: res.ok ? "" : data.error || "读取失败" } : d);
-    } catch {
-      setDel((d) => d && { ...d, error: "读取失败，请重试" });
-    }
+    const r = await act(user.user_id, "delete_preview");
+    setDel((d) => (d && d.user.user_id === user.user_id ? { ...d, preview: r.ok ? r.data : null, error: r.ok ? "" : r.error || "读取失败" } : d));
   };
 
   const confirmDelete = async () => {
     if (!del?.preview || del.busy) return;
     setDel({ ...del, busy: true, error: "" });
-    try {
-      const res = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: del.user.user_id, action: "delete_user", confirmEmail: del.input }) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setDel((d) => d && { ...d, busy: false, error: data.error || "删除失败，请重试" }); return; }
-      notify(data.message || "已删除");
-      setDel(null);
-      fetchUsers();
-    } catch {
-      setDel((d) => d && { ...d, busy: false, error: "网络不稳，请重试" });
+    const r = await act(del.user.user_id, "delete_user", { confirmEmail: del.input });
+    if (!r.ok) {
+      setDel((d) => (d ? { ...d, busy: false, error: r.error || "删除失败，请重试" } : d));
+      return;
     }
+    notify(r.data.message || "已删除", "success");
+    setDel(null);
+    void load();
   };
 
-  const openEditModal = (user: User) => {
-    setSelectedUser(user);
-    setEditPlan(user.membership_level);
-    setEditEndDate(user.subscription_end ? new Date(user.subscription_end).toISOString().split('T')[0] : '');
-    setShowEditModal(true);
-  };
+  const columns: Column<User>[] = [
+    {
+      key: "user",
+      header: "用户",
+      render: (u) => (
+        <div className="min-w-0">
+          <div className="truncate font-medium text-foreground">{u.full_name !== "未设置" ? u.full_name : u.email}</div>
+          <div className="truncate text-[12px] text-muted-foreground">{u.email}</div>
+          <div className="text-[11px] text-muted-foreground/70">编号 {u.user_id.slice(0, 8)}</div>
+        </div>
+      ),
+    },
+    {
+      key: "plan",
+      header: "会员",
+      render: (u) => (
+        <div>
+          <Badge tone={PLAN_TONE[u.membership_level] ?? "neutral"}>{SUBSCRIPTION_PLANS[u.membership_level as keyof typeof SUBSCRIPTION_PLANS]?.name ?? u.membership_level}</Badge>
+          <div className="mt-1 text-[11.5px] text-muted-foreground">到期 {u.subscription_end ? fmtDate(u.subscription_end) : "永久 / 未设置"}</div>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "状态",
+      render: (u) => {
+        const s = STATUS_LABEL[u.subscription_status] ?? { label: u.subscription_status || "未知", tone: "neutral" as const };
+        return <Badge tone={s.tone}>{s.label}</Badge>;
+      },
+    },
+    {
+      key: "usage",
+      header: "本期用量",
+      className: "tabular-nums",
+      render: (u) => <span>{u.total_used} 次</span>,
+    },
+    {
+      key: "time",
+      header: "注册 / 最近登录",
+      render: (u) => (
+        <div className="text-[12px] text-muted-foreground">
+          <div>注册 {fmtDate(u.created_at)}</div>
+          <div>登录 {u.last_sign_in_at ? fmtDate(u.last_sign_in_at) : "从未"}</div>
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "操作",
+      className: "text-right",
+      render: (u) => (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <Button size="sm" variant="default" onClick={() => void openDetail(u)}>详情</Button>
+          <Button size="sm" variant="default" onClick={() => openEdit(u)}>改会员</Button>
+          <Button size="sm" variant="default" onClick={() => void resetQuota(u)}>清额度</Button>
+          <Button size="sm" variant="default" onClick={() => void resetPassword(u)}>重置密码</Button>
+          <Button size="sm" variant={u.subscription_status === "active" ? "danger" : "default"} onClick={() => void toggleBan(u)}>
+            {u.subscription_status === "active" ? "封禁" : "解封"}
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => void openDelete(u)}>删除</Button>
+        </div>
+      ),
+    },
+  ];
 
-  const openDetailModal = (user: User) => {
-    setSelectedUser(user);
-    setShowDetailModal(true);
-  };
-
-  const getLevelBadge = (level: string) => {
-    const configs: any = {
-      free: { label: '免费版', color: 'bg-muted text-foreground dark:bg-muted dark:text-foreground' },
-      basic: { label: '基础版', color: 'bg-primary/15 text-primary dark:bg-blue-900 dark:text-primary' },
-      pro: { label: '专业版', color: 'bg-accent/15 text-accent dark:bg-purple-900 dark:text-accent' },
-      enterprise: { label: SUBSCRIPTION_PLANS.enterprise.name, color: 'bg-amber-500/15 text-yellow-500 dark:bg-yellow-900 dark:text-yellow-300' },
-    };
-    const config = configs[level] || configs.free;
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.label}
-      </span>
-    );
-  };
-
-  const getStatusBadge = (status: string) => {
-    const configs: any = {
-      active: { label: '正常', color: 'bg-emerald-500/15 text-green-500 dark:bg-green-900 dark:text-green-300' },
-      inactive: { label: '已封禁', color: 'bg-destructive/15 text-destructive dark:bg-red-900 dark:text-destructive' },
-    };
-    // 认不出的状态别默认成「已封禁」——新用户就是这么被误显示成封禁的
-    const config = configs[status] || { label: status || '未知', color: 'bg-muted text-muted-foreground' };
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.label}
-      </span>
-    );
-  };
-
-  const totalPages = Math.ceil(total / pageSize);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="p-8 bg-muted dark:bg-muted min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">用户管理</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              管理所有注册用户、会员等级和配额（共 {total} 个用户）
-            </p>
+    <AdminPage
+      title="用户管理"
+      subtitle={search ? `搜索「${search}」，共 ${total} 人` : `全部注册用户，共 ${total} 人`}
+    >
+      <FilterBar>
+        <form onSubmit={submitSearch} className="flex min-w-[16rem] flex-1 items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="搜索邮箱、用户名或用户编号"
+              aria-label="搜索用户"
+              className={`${INPUT_CLS} pl-9`}
+            />
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? '刷新中...' : '刷新数据'}
-          </button>
-        </div>
-
-        {/* Table */}
-        <div className="glass-panel rounded-xl shadow-lg overflow-hidden border border-border">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[48rem] w-full divide-y divide-slate-200 dark:divide-slate-800">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">用户信息</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">会员等级</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">状态</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">配额使用</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">周期结束</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="glass-panel divide-y divide-slate-200 dark:divide-slate-800">
-                  {users.map((user) => (
-                    <tr key={user.user_id} className="hover:bg-foreground/[0.06] dark:hover:bg-muted transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-foreground">{user.full_name}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getLevelBadge(user.membership_level)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(user.subscription_status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-foreground">
-                          {user.total_used} 次
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-muted-foreground">
-                          {user.period_end ? new Date(user.period_end).toLocaleDateString('zh-CN') : '无限期'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openDetailModal(user)}
-                            className="text-primary hover:text-primary dark:text-primary dark:hover:text-primary"
-                            title="查看详情"
-                          >
-                            <Eye className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => openEditModal(user)}
-                            className="text-accent hover:text-accent dark:text-accent dark:hover:text-accent"
-                            title="修改会员"
-                          >
-                            <Crown className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleResetQuota(user.user_id)}
-                            className="text-green-500 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
-                            title="重置配额"
-                          >
-                            <RotateCcw className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleResetPassword(user)}
-                            className="text-amber-500 hover:text-amber-400"
-                            title="重置密码（用户忘记密码时用）"
-                          >
-                            <KeyRound className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => void openDelete(user)}
-                            className="text-muted-foreground hover:text-destructive"
-                            title="删除用户（清理垃圾账号，删除后不能恢复）"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                          {user.subscription_status === 'active' ? (
-                            <button
-                              onClick={() => handleBanUser(user.user_id)}
-                              className="text-destructive hover:text-destructive dark:text-red-400 dark:hover:text-destructive"
-                              title="封禁用户"
-                            >
-                              <Ban className="h-5 w-5" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleUnbanUser(user.user_id)}
-                              className="text-green-500 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
-                              title="解封用户"
-                            >
-                              <Unlock className="h-5 w-5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <Button type="submit" variant="primary">搜索</Button>
+          {search && (
+            <Button variant="default" onClick={() => { setDraft(""); setSearch(""); setPage(1); }}>清空</Button>
           )}
+        </form>
+      </FilterBar>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="glass-panel px-4 py-3 flex items-center justify-between border-t border-border">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <button
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  disabled={page === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-border dark:border-border text-sm font-medium rounded-md text-foreground/80 glass-panel hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
-                >
-                  上一页
-                </button>
-                <button
-                  onClick={() => setPage(Math.min(totalPages, page + 1))}
-                  disabled={page === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-border dark:border-border text-sm font-medium rounded-md text-foreground/80 glass-panel hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
-                >
-                  下一页
-                </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-foreground/80">
-                    显示 <span className="font-medium">{(page - 1) * pageSize + 1}</span> 到{' '}
-                    <span className="font-medium">{Math.min(page * pageSize, total)}</span> 共{' '}
-                    <span className="font-medium">{total}</span> 个用户
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    <button
-                      onClick={() => setPage(Math.max(1, page - 1))}
-                      disabled={page === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border dark:border-border glass-panel text-sm font-medium text-muted-foreground hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <span className="relative inline-flex items-center px-4 py-2 border border-border dark:border-border glass-panel text-sm font-medium text-foreground/80">
-                      {page} / {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setPage(Math.min(totalPages, page + 1))}
-                      disabled={page === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border dark:border-border glass-panel text-sm font-medium text-muted-foreground hover:bg-foreground/[0.06] dark:hover:bg-muted disabled:opacity-50"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Edit Modal */}
-        {tempPw && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="glass-panel max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-border p-5 shadow-2xl sm:p-6">
-              <h3 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
-                <KeyRound className="h-5 w-5 text-amber-500" />
-                密码已重置
-              </h3>
-              <p className="mb-4 text-sm text-muted-foreground">{tempPw.email}</p>
-
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3">
-                <code className="flex-1 select-all font-mono text-lg tracking-wider text-foreground">
-                  {tempPw.password}
-                </code>
-                <button
-                  onClick={() => {
-                    // 复制的是整段话术，直接粘到微信里就能发
-                    navigator.clipboard
-                      .writeText(
-                        `你的临时密码是：${tempPw.password}\n登录后请点右上角的邮箱进入「我的账户」，改成你自己的密码。`
-                      )
-                      .then(() => notify('已复制，可以直接粘贴到微信'))
-                      .catch(() => notify('复制失败，请手动选中复制'));
-                  }}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-primary hover:bg-primary/10"
-                >
-                  <Copy className="h-4 w-4" />
-                  复制话术
-                </button>
-              </div>
-
-              <p className="mb-4 text-xs leading-relaxed text-amber-500">
-                这个密码只显示这一次，关掉就看不到了（它不会写进操作日志）。
-                发给用户，并提醒他登录后到「我的账户」里改掉。
-              </p>
-
-              <button
-                onClick={() => setTempPw(null)}
-                className="w-full rounded-lg bg-primary py-2.5 font-medium text-white hover:opacity-90"
-              >
-                已发给用户，关闭
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 删除用户：先看有多少东西，输入邮箱确认才删 */}
-        {del && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="glass-panel mx-4 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl p-5 shadow-2xl sm:p-6">
-              <h3 className="mb-1 flex items-center gap-2 text-xl font-bold text-destructive"><Trash2 className="h-5 w-5" />删除用户</h3>
-              <p className="mb-4 text-sm text-muted-foreground">{del.user.email}</p>
-              {!del.preview && !del.error && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />正在读取这个用户的数据…</p>}
-              {del.preview && (
-                <>
-                  <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/[0.06] p-3 text-sm leading-relaxed text-foreground">
-                    <p className="font-medium text-destructive">删除后不能恢复，下面这些会全部删掉：</p>
-                    <p className="mt-1 text-muted-foreground">
-                      账号档案 {del.preview.counts.user_profiles ?? 0} 个 · 作品 {del.preview.counts.works ?? 0} 条 · 生成记录 {del.preview.counts.script_history ?? 0} 条 · 对话 {del.preview.counts.chat_conversations ?? 0} 个 · 素材 {del.preview.counts.material_library ?? 0} 条 · 订单 {del.preview.counts.payment_orders ?? 0} 笔，以及会员、额度、上传的文件和登录账号。
-                    </p>
-                    <p className="mt-1 text-muted-foreground">他要再用，只能拿邀请码重新注册。</p>
-                    {del.preview.paidOrders > 0 && (
-                      <p className="mt-2 font-medium text-amber-600 dark:text-amber-400">⚠️ 这个用户有 {del.preview.paidOrders} 笔已付款的订单，删除后订单记录也会删掉。确定是垃圾账号再删。</p>
-                    )}
-                  </div>
-                  <label className="mb-1 block text-sm text-foreground/80">输入这个用户的邮箱确认：</label>
-                  <input
-                    value={del.input}
-                    onChange={(e) => setDel({ ...del, input: e.target.value })}
-                    placeholder={del.preview.email}
-                    autoComplete="off"
-                    className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-destructive/40"
-                  />
-                </>
-              )}
-              {del.error && <p role="alert" className="mt-3 text-sm text-destructive">{del.error}</p>}
-              <div className="flex gap-3 pt-5">
-                <button
-                  onClick={() => void confirmDelete()}
-                  disabled={!del.preview || del.busy || del.input.trim().toLowerCase() !== del.preview.email.toLowerCase()}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-                >
-                  {del.busy && <Loader2 className="h-4 w-4 animate-spin" />}{del.busy ? "正在删除…" : "永久删除"}
-                </button>
-                <button onClick={() => setDel(null)} disabled={del.busy} className="flex-1 rounded-lg bg-muted px-4 py-2 text-foreground disabled:opacity-50">取消</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showEditModal && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="glass-panel max-h-[90dvh] overflow-y-auto rounded-xl p-5 sm:p-6 max-w-md w-full mx-4 shadow-2xl">
-              <h3 className="text-xl font-bold text-foreground mb-4">修改会员等级</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-2">
-                    用户: {selectedUser.email}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-2">
-                    会员套餐
-                  </label>
-                  <select
-                    value={editPlan}
-                    onChange={(e) => setEditPlan(e.target.value)}
-                    className="w-full px-3 py-2 border border-border dark:border-border rounded-lg glass-panel text-foreground focus:ring-2 focus:ring-primary"
-                  >
-                    {/* 从套餐配置现算：这里原来写死，四项全过时了（写着 30 元 150 次、500 次） */}
-                    {Object.keys(SUBSCRIPTION_PLANS).map((id) => (
-                      <option key={id} value={id}>{planOptionLabel(id)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-2">
-                    到期时间（可选）
-                  </label>
-                  <input
-                    type="date"
-                    value={editEndDate}
-                    onChange={(e) => setEditEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-border dark:border-border rounded-lg glass-panel text-foreground focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <button
-                    onClick={() => handleUpdateMembership(selectedUser.user_id, editPlan, editEndDate)}
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-colors"
-                  >
-                    确定修改
-                  </button>
-                  <button
-                    onClick={() => setShowEditModal(false)}
-                    className="flex-1 px-4 py-2 bg-muted dark:bg-muted text-foreground rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors"
-                  >
-                    取消
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Detail Modal */}
-        {showDetailModal && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="glass-panel max-h-[90dvh] overflow-y-auto rounded-xl p-5 sm:p-6 max-w-2xl w-full mx-4 shadow-2xl">
-              <h3 className="text-xl font-bold text-foreground mb-4">用户详细信息</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">邮箱</p>
-                    <p className="text-sm font-medium text-foreground">{selectedUser.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">姓名</p>
-                    <p className="text-sm font-medium text-foreground">{selectedUser.full_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">会员等级</p>
-                    <p className="text-sm font-medium text-foreground">{getLevelBadge(selectedUser.membership_level)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">账号状态</p>
-                    <p className="text-sm font-medium text-foreground">{getStatusBadge(selectedUser.subscription_status)}</p>
-                  </div>
-                </div>
-
-                <div className="border-t border-border pt-4">
-                  <p className="text-sm font-medium text-foreground mb-3">功能使用情况</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">脚本生成</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.script.used}</p>
-                    </div>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">选题策划</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.topic.used}</p>
-                    </div>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">账号定位</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.positioning.used}</p>
-                    </div>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">自由对话</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.freeChat.used}</p>
-                    </div>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">分镜脚本</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.storyboard.used}</p>
-                    </div>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">审稿优化</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.review.used}</p>
-                    </div>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">标题封面</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.title.used}</p>
-                    </div>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs text-muted-foreground">成交理由</p>
-                      <p className="text-lg font-bold text-foreground">{selectedUser.quota_details.dealReason.used}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    onClick={() => setShowDetailModal(false)}
-                    className="flex-1 px-4 py-2 bg-muted dark:bg-muted text-foreground rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors"
-                  >
-                    关闭
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="glass-panel rounded-2xl border border-border/60 p-2 sm:p-4">
+        <DataTable
+          columns={columns}
+          rows={users}
+          rowKey={(u) => u.user_id}
+          loading={loading}
+          error={error || undefined}
+          onRetry={() => void load()}
+          empty={search ? "没有找到匹配的用户，换个关键词试试" : "还没有注册用户"}
+        />
+        <Pager page={page} pageCount={pageCount} total={total} pageSize={pageSize} onChange={setPage} />
       </div>
-    </div>
+
+      {/* 用户详情 */}
+      <Dialog
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title="用户详情"
+        width="max-w-2xl"
+      >
+        {detail && !detail.data && !detail.error && <p className="text-muted-foreground">正在读取…</p>}
+        {detail?.error && <p className="text-destructive">{detail.error}</p>}
+        {detail?.data && (
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div><div className={fieldLabel}>邮箱</div><div className="break-all">{detail.data.user.email ?? "—"}</div></div>
+              <div><div className={fieldLabel}>名字</div><div>{detail.data.profile?.profile_name || "未设置"}</div></div>
+              <div><div className={fieldLabel}>注册时间</div><div>{fmtDateTime(detail.data.user.created_at)}</div></div>
+              <div><div className={fieldLabel}>最近登录</div><div>{fmtDateTime(detail.data.user.last_sign_in_at)}</div></div>
+              <div>
+                <div className={fieldLabel}>会员</div>
+                <div>{SUBSCRIPTION_PLANS[detail.data.subscription?.plan as keyof typeof SUBSCRIPTION_PLANS]?.name ?? "免费版"} · {detail.data.subscription?.end_date ? `到期 ${fmtDate(detail.data.subscription.end_date)}` : "永久 / 未设置"}</div>
+              </div>
+              <div>
+                <div className={fieldLabel}>账号状态</div>
+                <Badge tone={STATUS_LABEL[detail.data.user.status]?.tone ?? "neutral"}>{STATUS_LABEL[detail.data.user.status]?.label ?? detail.data.user.status}</Badge>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 text-[13px] font-medium">最近订单</div>
+              {detail.data.orders.length === 0 ? (
+                <p className="text-[12.5px] text-muted-foreground">没有订单</p>
+              ) : (
+                <ul className="divide-y divide-border/50 text-[12.5px]">
+                  {detail.data.orders.map((o) => (
+                    <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <span>{o.plan_name} · ¥{o.amount}</span>
+                      <span className="text-muted-foreground">{fmtDate(o.created_at)} · {ORDER_LABEL[o.status] ?? o.status}</span>
+                      {o.review_note && <span className="w-full text-[11.5px] text-muted-foreground">备注：{o.review_note}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-2 text-[13px] font-medium">最近生成</div>
+              {detail.data.generations.length === 0 ? (
+                <p className="text-[12.5px] text-muted-foreground">还没有生成过内容</p>
+              ) : (
+                <ul className="grid gap-1 text-[12.5px] sm:grid-cols-2">
+                  {detail.data.generations.map((g, i) => (
+                    <li key={i} className="flex justify-between gap-2"><span>{g.task_type}</span><span className="text-muted-foreground">{fmtDateTime(g.created_at)}</span></li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-2 text-[13px] font-medium">相关操作记录</div>
+              {detail.data.logs.length === 0 ? (
+                <p className="text-[12.5px] text-muted-foreground">没有相关的管理员操作</p>
+              ) : (
+                <ul className="divide-y divide-border/50 text-[12.5px]">
+                  {detail.data.logs.map((l) => (
+                    <li key={l.id} className="py-2">
+                      <span className="font-medium">{l.label}</span>
+                      <span className="text-muted-foreground"> · {l.adminEmail} · {fmtDateTime(l.createdAt)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </Dialog>
+
+      {/* 改会员 */}
+      <Dialog
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title="修改会员"
+        busy={saving}
+        footer={
+          <>
+            <Button variant="default" onClick={() => setEditing(null)} disabled={saving}>取消</Button>
+            <Button variant="primary" onClick={() => void saveMembership()} busy={saving}>确定修改</Button>
+          </>
+        }
+      >
+        {editing && (
+          <>
+            <p className="text-muted-foreground">用户：{editing.email}</p>
+            <label className="block">
+              <span className={fieldLabel}>会员套餐</span>
+              <select value={editPlan} onChange={(e) => setEditPlan(e.target.value)} className={SELECT_CLS}>
+                {Object.keys(SUBSCRIPTION_PLANS).map((id) => (
+                  <option key={id} value={id}>{planOptionLabel(id)}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className={fieldLabel}>到期时间（不填就是永久）</span>
+              <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className={INPUT_CLS} />
+            </label>
+          </>
+        )}
+      </Dialog>
+
+      {/* 临时密码：只显示这一次 */}
+      <Dialog
+        open={!!tempPw}
+        onClose={() => setTempPw(null)}
+        title="密码已重置"
+        footer={<Button variant="primary" onClick={() => setTempPw(null)}>已发给用户，关闭</Button>}
+      >
+        {tempPw && (
+          <>
+            <p className="text-muted-foreground">{tempPw.email}</p>
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-foreground/[0.04] px-4 py-3">
+              <code className="flex-1 select-all font-mono text-[18px] tracking-wider text-foreground">{tempPw.password}</code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(`你的临时密码是：${tempPw.password}\n登录后请点右上角的邮箱进入「我的账户」，改成你自己的密码。`)
+                    .then(() => notify("已复制，可以直接粘贴到微信"))
+                    .catch(() => notify("复制失败，请手动选中复制"));
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />复制话术
+              </Button>
+            </div>
+            <p className="text-[12px] leading-relaxed text-amber-400">
+              这个密码只显示这一次，关掉就看不到了（它不会写进操作日志）。发给用户，并提醒他登录后到「我的账户」里改掉。
+            </p>
+          </>
+        )}
+      </Dialog>
+
+      {/* 删除：先看有多少东西，输入邮箱确认才删 */}
+      <Dialog
+        open={!!del}
+        onClose={() => setDel(null)}
+        title={<span className="text-rose-400">删除用户</span>}
+        busy={del?.busy}
+        footer={
+          <>
+            <Button variant="default" onClick={() => setDel(null)} disabled={del?.busy}>取消</Button>
+            <Button
+              variant="danger"
+              onClick={() => void confirmDelete()}
+              busy={del?.busy}
+              disabled={!del?.preview || del.input.trim().toLowerCase() !== del.preview.email.toLowerCase()}
+            >
+              永久删除
+            </Button>
+          </>
+        }
+      >
+        {del && (
+          <>
+            <p className="text-muted-foreground">{del.user.email}</p>
+            {!del.preview && !del.error && <p className="text-muted-foreground">正在读取这个用户的数据…</p>}
+            {del.preview && (
+              <>
+                <div className="rounded-xl border border-destructive/30 bg-destructive/[0.06] p-3 leading-relaxed">
+                  <p className="font-medium text-destructive">删除后不能恢复，下面这些会全部删掉：</p>
+                  <p className="mt-1 text-muted-foreground">
+                    账号档案 {del.preview.counts.user_profiles ?? 0} 个 · 作品 {del.preview.counts.works ?? 0} 条 · 生成记录 {del.preview.counts.script_history ?? 0} 条 · 对话 {del.preview.counts.chat_conversations ?? 0} 个 · 素材 {del.preview.counts.material_library ?? 0} 条 · 订单 {del.preview.counts.payment_orders ?? 0} 笔，以及会员、额度、上传的文件和登录账号。
+                  </p>
+                  <p className="mt-1 text-muted-foreground">他要再用，只能拿邀请码重新注册。</p>
+                  {del.preview.paidOrders > 0 && (
+                    <p className="mt-2 font-medium text-amber-400">这个用户有 {del.preview.paidOrders} 笔已付款的订单，删除后订单记录也会删掉。确定是垃圾账号再删。</p>
+                  )}
+                </div>
+                <label className="block">
+                  <span className={fieldLabel}>输入这个用户的邮箱确认</span>
+                  <input value={del.input} onChange={(e) => setDel({ ...del, input: e.target.value })} placeholder={del.preview.email} autoComplete="off" className={INPUT_CLS} />
+                </label>
+              </>
+            )}
+            {del.error && <p role="alert" className="text-destructive">{del.error}</p>}
+          </>
+        )}
+      </Dialog>
+
+    </AdminPage>
   );
 }

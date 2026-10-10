@@ -1,55 +1,92 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Activity, TrendingUp, Settings, Database, FileText, Loader2, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { Loader2, RefreshCw } from "lucide-react";
+import { AdminPage, Badge, Button, ErrorState, Panel, StatCard } from "@/components/admin/kit";
 
-type Stats = {
-  totalUsers: number;
-  activeToday: number;
-  apiCallsToday: number;
-  /*
-   * 键跟着接口走（lib/admin-stats.ts 的 buildPlanDistribution）：free/basic/pro/enterprise。
-   * 这里原来写的是 free/pro/premium/enterprise——套餐里根本没有 premium，
-   * 接口也不返回它，于是"付费会员"= pro + undefined + enterprise = NaN，
-   * 基础会员也一直没被算进去。
-   */
-  subscriptionStats: Record<string, number>;
-};
+/*
+ * 管理概览：管理者进后台先看到的第一屏。
+ * 上半部分是「今天要动手的」，每一项都能点进对应的页面；
+ * 下半部分是今日数字和近 7 天走势；最下面是系统状态（真检查，不写死绿色）。
+ */
 
-type Health = {
+interface Overview {
+  todo: {
+    reviewing: number;
+    reviewingAmount: number;
+    qualityFailures7d: number | null;
+    negativeFeedback7d: number | null;
+    expiringSoon: number | null;
+  };
+  today: { usage: number | null; paid: number; paidAmount: number };
+  trend: { label: string; usage: number | null; paid: number | null }[];
+  health: { db: boolean };
+  tables: { quality: boolean; feedback: boolean };
+  generatedAt: string;
+}
+
+interface Health {
   ok: boolean;
   label: string;
   note: string;
   checks: { name: string; ok: boolean; ms: number; detail?: string }[];
-};
+}
+
+interface Stats {
+  totalUsers: number;
+  activeToday: number;
+  apiCallsToday: number;
+  /** 键跟着接口走：free/basic/pro/enterprise（lib/admin-stats 的 buildPlanDistribution） */
+  subscriptionStats: Record<string, number>;
+}
 
 /** 付费会员数 = 除免费版以外所有档位之和。不按名字列举，加档位不会漏 */
 const paidCount = (s: Record<string, number>) =>
   Object.entries(s).reduce((sum, [k, v]) => (k === "free" ? sum : sum + (Number(v) || 0)), 0);
 
-export default function AdminPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [adminRole, setAdminRole] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats>({
-    totalUsers: 0,
-    activeToday: 0,
-    apiCallsToday: 0,
-    subscriptionStats: { free: 0, basic: 0, pro: 0, enterprise: 0 },
-  });
-  // null = 还在检查。检查完之前不显示任何状态，更不能先显示"正常"
-  const [health, setHealth] = useState<Health | null>(null);
+const ROLE_LABEL: Record<string, string> = {
+  developer: "超级管理员",
+  admin: "管理员",
+  operator: "运营",
+};
 
-  useEffect(() => {
-    checkAdminRole();
-    fetchStats();
-    fetchHealth();
+export default function AdminOverviewPage() {
+  const router = useRouter();
+  const [role, setRole] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [data, setData] = useState<Overview | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [health, setHealth] = useState<Health | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/stats");
+      if (res.ok) setStats(await res.json());
+    } catch {
+      // 会员结构取不到就不显示，不影响待办
+    }
   }, []);
 
-  const fetchHealth = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/overview");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "读取概览失败");
+      setData(json);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const checkHealth = useCallback(async () => {
     setHealth(null);
     try {
       const res = await fetch("/api/admin/health");
@@ -58,289 +95,195 @@ export default function AdminPage() {
     } catch {
       setHealth({ ok: false, label: "检查失败", note: "健康检查接口连不上", checks: [] });
     }
-  };
+  }, []);
 
-  const checkAdminRole = async () => {
-    try {
-      const response = await fetch("/api/admin/check-role");
-      if (response.ok) {
-        const data = await response.json();
-        setAdminRole(data.role);
-        setAdminEmail(data.email);
-      } else {
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/check-role");
+        if (!res.ok) {
+          router.push("/");
+          return;
+        }
+        const who = await res.json();
+        setRole(who.role);
+        setEmail(who.email);
+      } catch {
         router.push("/");
       }
-    } catch (error) {
-      console.error("Failed to check admin role:", error);
-      router.push("/");
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+    void load();
+    void loadStats();
+    void checkHealth();
+  }, [load, loadStats, checkHealth, router]);
 
-  const fetchStats = async () => {
-    setRefreshing(true);
-    try {
-      const response = await fetch("/api/admin/stats");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen  flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-accent" />
-      </div>
-    );
-  }
-
-  const getRoleBadge = (role: string) => {
-    const badges: any = {
-      developer: { label: "超级管理员", icon: "👨‍💻", color: "bg-destructive/100" },
-      admin: { label: "管理员", icon: "👔", color: "bg-accent/100" },
-      operator: { label: "运营", icon: "📊", color: "bg-primary" },
-    };
-    const badge = badges[role] || badges.operator;
-    return (
-      <span className={`inline-flex items-center gap-2 px-4 py-2 ${badge.color} text-white rounded-full text-sm font-semibold shadow-lg`}>
-        <span>{badge.icon}</span>
-        {badge.label}
-      </span>
-    );
-  };
+  const todo = data?.todo;
+  const maxBar = Math.max(1, ...(data?.trend ?? []).map((t) => Math.max(t.usage ?? 0, t.paid ?? 0)));
 
   return (
-    <div className="min-h-screen ">
-      <div className="border-b glass-panel shadow-sm">
-        <div className="container mx-auto px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-5xl">🏆</div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold brand-gradient bg-clip-text text-transparent">
-                  管理后台
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground">全面掌控系统运营</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              {adminRole && getRoleBadge(adminRole)}
-              <span className="text-sm text-muted-foreground dark:text-foreground">{adminEmail}</span>
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="px-4 py-2 text-sm font-medium text-foreground/80 dark:text-foreground bg-muted dark:bg-muted hover:bg-muted dark:hover:bg-muted rounded-lg transition-colors"
-              >
-                返回工作台
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <AdminPage
+      title="管理概览"
+      subtitle={
+        <span className="flex flex-wrap items-center gap-2">
+          {role && <Badge tone="accent">{ROLE_LABEL[role] ?? role}</Badge>}
+          {email && <span>{email}</span>}
+          <span>· 点卡片直接进入要处理的页面</span>
+        </span>
+      }
+      actions={
+        <Button variant="default" onClick={() => void load()} busy={loading}>
+          <RefreshCw className="h-3.5 w-3.5" />
+          刷新
+        </Button>
+      }
+    >
+      {error && <div className="mb-5"><ErrorState message={error} onRetry={() => void load()} /></div>}
 
-      <div className="container mx-auto px-8 py-10">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-foreground dark:text-foreground">📊 数据概览</h2>
-            <button
-              onClick={fetchStats}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              刷新数据
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">总用户</span>
-              </div>
-              <div className="text-4xl font-extrabold text-foreground mb-2">
-                {stats.totalUsers}
-              </div>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground">
-                {/* 原来写"今日活跃"，接口算的是近 7 天有用量变动的人数（见 /api/admin/stats） */}
-                近 7 天活跃: <span className="font-semibold text-primary">{stats.activeToday}</span>
-              </p>
-            </div>
-
-            <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-emerald-500/10 rounded-xl">
-                  <Activity className="h-8 w-8 text-green-500" />
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">生成</span>
-              </div>
-              <div className="text-4xl font-extrabold text-foreground mb-2">
-                {stats.apiCallsToday}
-              </div>
-              {/* 原来写"今日调用次数"，但接口给的是累计生成次数（见 /api/admin/stats 注释） */}
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground">累计生成次数</p>
-            </div>
-
-            <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <TrendingUp className="h-8 w-8 text-accent" />
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">会员</span>
-              </div>
-              <div className="text-4xl font-extrabold text-foreground mb-2">
-                {paidCount(stats.subscriptionStats)}
-              </div>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground">
-                免费: {stats.subscriptionStats.free ?? 0} | 付费: {paidCount(stats.subscriptionStats)}
-              </p>
-            </div>
-
-            <div className="glass-panel rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-amber-500/10 rounded-xl">
-                  <Activity className="h-8 w-8 text-orange-500" />
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase">系统状态</span>
-              </div>
-              {/*
-                这里原来是写死的"运行正常 / 所有服务正常"——Dify 挂了、数据库连不上，
-                它都照样显示绿色。现在是真检查：数据库查一次、Dify 探一次活。
-              */}
-              {health === null ? (
-                <div className="mb-2 flex items-center gap-2 text-lg text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin" /> 检查中…
-                </div>
-              ) : (
-                <>
-                  <div
-                    className={`text-2xl font-bold mb-2 ${
-                      !health.ok ? "text-destructive" : health.label === "运行正常" ? "text-green-500" : "text-amber-500"
-                    }`}
-                  >
-                    {health.label}
-                  </div>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">{health.note}</p>
-                  <button onClick={fetchHealth} className="mt-2 text-xs text-primary hover:underline">
-                    重新检查
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-foreground dark:text-foreground mb-6">🔧 管理功能</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <button
-              onClick={() => router.push("/admin/users")}
-              className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
-            >
-              <div className="flex items-start gap-6">
-                <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground dark:text-foreground mb-2 group-hover:text-accent dark:group-hover:text-accent transition-colors">
-                    用户管理
-                  </h3>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">查看用户、编辑配额、管理会员等级</p>
-                </div>
-              </div>
-            </button>
-
-            {/*
-              下面三个按钮原来点了都只弹"XX功能开发中..."。
-              其实系统设置和实时监控两页早就做好了，只是按钮没接过去；
-              操作日志是真没有，这次补上了。描述也改成如实的：
-              系统设置页是只读的，操作日志不含系统异常日志。
-            */}
-            <button
-              onClick={() => router.push("/admin/settings")}
-              className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
-            >
-              <div className="flex items-start gap-6">
-                <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Settings className="h-8 w-8 text-accent" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground dark:text-foreground mb-2 group-hover:text-accent dark:group-hover:text-accent transition-colors">
-                    系统设置
-                  </h3>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">查看当前套餐与额度，以及各项配置在哪里改</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => router.push("/admin/monitor")}
-              className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
-            >
-              <div className="flex items-start gap-6">
-                <div className="p-4 bg-emerald-500/10 rounded-2xl group-hover:scale-110 transition-transform">
-                  <Database className="h-8 w-8 text-green-500" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground dark:text-foreground mb-2 group-hover:text-accent dark:group-hover:text-accent transition-colors">
-                    实时监控
-                  </h3>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">实时看站内注册、生成和订单动态</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => router.push("/admin/logs")}
-              className="group glass-panel rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-left border border-gray-100 dark:border-border hover:border-accent/20 dark:hover:border-purple-800"
-            >
-              <div className="flex items-start gap-6">
-                <div className="p-4 bg-amber-500/10 rounded-2xl group-hover:scale-110 transition-transform">
-                  <FileText className="h-8 w-8 text-orange-500" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground dark:text-foreground mb-2 group-hover:text-accent dark:group-hover:text-accent transition-colors">
-                    操作日志
-                  </h3>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">谁在什么时候、对谁做了什么操作</p>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {adminRole === "developer" && (
-          <div className="mt-10 brand-gradient rounded-2xl shadow-2xl p-8 text-white">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <span>🔑</span>
-              开发者专属功能
-            </h2>
-            <p className="text-accent mb-6">高级系统管理与维护工具</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl p-4 text-left transition-all">
-                <p className="font-semibold">数据库管理</p>
-                <p className="text-sm text-accent mt-1">SQL 查询、备份恢复</p>
-              </button>
-              <button className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl p-4 text-left transition-all">
-                <p className="font-semibold">API 密钥管理</p>
-                <p className="text-sm text-accent mt-1">生成、撤销密钥</p>
-              </button>
-              <button className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl p-4 text-left transition-all">
-                <p className="font-semibold">系统备份</p>
-                <p className="text-sm text-accent mt-1">一键备份还原</p>
-              </button>
-            </div>
+      <Panel title="今天要处理的" className="mb-5">
+        {loading && !data ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="待审核订单"
+              value={todo?.reviewing ?? "—"}
+              tone={todo && todo.reviewing > 0 ? "warn" : "ok"}
+              hint={todo ? `涉及 ¥${todo.reviewingAmount}` : undefined}
+              href="/admin/orders?status=reviewing"
+            />
+            <StatCard
+              label="7 天内到期的付费会员"
+              value={todo?.expiringSoon ?? "—"}
+              tone={todo && (todo.expiringSoon ?? 0) > 0 ? "warn" : "default"}
+              hint="可以提醒续费，或直接延期"
+              href="/admin/subscriptions?expiringDays=7"
+            />
+            <StatCard
+              label="近 7 天质检不通过"
+              value={todo?.qualityFailures7d ?? "未启用"}
+              tone={todo && (todo.qualityFailures7d ?? 0) > 0 ? "danger" : "default"}
+              hint={data && !data.tables.quality ? "质检表还没建" : "生成结果踩禁忌、配比不对、年限不符"}
+              href="/admin/quality"
+            />
+            <StatCard
+              label="近 7 天「没用」的结果"
+              value={todo?.negativeFeedback7d ?? "未启用"}
+              tone={todo && (todo.negativeFeedback7d ?? 0) > 0 ? "warn" : "default"}
+              hint={data && !data.tables.feedback ? "反馈表还没建" : "用户在结果下点了没用，可看原因"}
+              href="/admin/analytics"
+            />
           </div>
         )}
+      </Panel>
+
+      <Panel title="会员与活跃" className="mb-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <StatCard label="总用户" value={stats?.totalUsers ?? "—"} hint="以认证系统为准" />
+          <StatCard label="近 7 天活跃" value={stats?.activeToday ?? "—"} hint="近 7 天有过用量变动的人数" />
+          <StatCard label="付费会员" value={stats ? paidCount(stats.subscriptionStats) : "—"} tone="ok" hint="除免费版以外的全部档位" />
+          <StatCard label="免费版" value={stats?.subscriptionStats.free ?? "—"} tone="muted" />
+          <StatCard label="累计生成次数" value={stats?.apiCallsToday ?? "—"} hint="从上线至今的生成总数" />
+        </div>
+      </Panel>
+
+      <div className="mb-5 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <Panel title="近 7 天走势" action={<span className="text-[11.5px] text-muted-foreground">北京时间</span>}>
+          {loading && !data ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="flex h-44 items-end gap-2">
+              {(data?.trend ?? []).map((t) => (
+                <div key={t.label} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                  <div className="flex h-36 w-full items-end justify-center gap-1">
+                    <div
+                      className="w-1/2 max-w-[14px] rounded-t bg-primary/70"
+                      style={{ height: `${Math.round(((t.usage ?? 0) / maxBar) * 100)}%` }}
+                      title={`使用 ${t.usage ?? "—"} 次`}
+                    />
+                    <div
+                      className="w-1/2 max-w-[14px] rounded-t bg-emerald-400/80"
+                      style={{ height: `${Math.round(((t.paid ?? 0) / maxBar) * 100)}%` }}
+                      title={`付费 ${t.paid ?? "—"} 单`}
+                    />
+                  </div>
+                  <span className="text-[10.5px] tabular-nums text-muted-foreground">{t.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap gap-4 text-[12px] text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary/70" />使用次数</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400/80" />付费订单</span>
+          </div>
+        </Panel>
+
+        <Panel title="今日">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="使用次数" value={data?.today.usage ?? "—"} hint="今天 0 点起" />
+            <StatCard
+              label="付费订单"
+              value={data?.today.paid ?? "—"}
+              tone="ok"
+              hint={data ? `收款 ¥${data.today.paidAmount}` : undefined}
+            />
+          </div>
+          <div className="mt-4 border-t border-border/50 pt-4">
+            <div className="mb-2 text-[12px] text-muted-foreground">常用入口</div>
+            <div className="grid grid-cols-2 gap-2 text-[13px]">
+              {[
+                ["用户管理", "/admin/users"],
+                ["会员管理", "/admin/subscriptions"],
+                ["订单审核", "/admin/orders"],
+                ["收款二维码", "/admin/qrcodes"],
+                ["操作日志", "/admin/logs"],
+                ["实时监控", "/admin/monitor"],
+                ["系统设置", "/admin/settings"],
+              ].map(([label, href]) => (
+                <Link key={href} href={href} className="glass-panel glass-interactive rounded-xl border border-border/60 px-3 py-2 text-foreground/90">
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Panel>
       </div>
-    </div>
+
+      <Panel
+        title="系统状态"
+        action={
+          <Button variant="default" size="sm" onClick={() => void checkHealth()} busy={health === null}>
+            重新检查
+          </Button>
+        }
+      >
+        {health === null ? (
+          <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> 检查中…
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <p className={`text-[15px] font-semibold ${!health.ok ? "text-rose-400" : health.label === "运行正常" ? "text-emerald-400" : "text-amber-400"}`}>
+              {health.label}
+            </p>
+            <p className="text-[12.5px] text-muted-foreground">{health.note}</p>
+            {health.checks.length > 0 && (
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {health.checks.map((c) => (
+                  <li key={c.name} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2 text-[12.5px]">
+                    <span className="text-foreground/90">{c.name}</span>
+                    <span className={c.ok ? "text-emerald-400" : "text-rose-400"}>
+                      {c.ok ? "正常" : "异常"} · {c.ms}ms
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {data && data.health && !data.health.db && (
+          <p className="mt-3 text-[12.5px] text-rose-400">数据库读取失败，请先检查 Supabase 状态。</p>
+        )}
+      </Panel>
+    </AdminPage>
   );
 }

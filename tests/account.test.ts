@@ -82,10 +82,10 @@ describe('后台重置密码', () => {
 
   it('后台页面有入口，并且临时密码显示在不会自动消失的弹窗里', () => {
     const page = readCode('app/admin/users/page.tsx');
-    expect(page).toContain("action: 'reset_password'");
+    expect(page).toContain('"reset_password"');
     // 不能只 notify——toast 几秒就没了，管理员来不及抄
     expect(page).toContain('setTempPw(');
-    expect(page).toMatch(/tempPw &&/);
+    expect(page).toMatch(/open=\{!!tempPw\}/);
   });
 });
 

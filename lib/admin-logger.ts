@@ -35,6 +35,8 @@ export enum AdminActions {
   GENERATE_INVITATIONS = 'generate_invitations',
   REVOKE_INVITATION = 'revoke_invitation',
   DELETE_USER = 'delete_user',
+  EXTEND_MEMBERSHIP = 'extend_membership',
+  TOGGLE_PAYMENT_QRCODE = 'toggle_payment_qrcode',
 }
 
 /**
@@ -63,6 +65,8 @@ export const ACTION_LABELS: Record<string, string> = {
   [AdminActions.GENERATE_INVITATIONS]: '生成邀请码',
   [AdminActions.REVOKE_INVITATION]: '作废邀请码',
   [AdminActions.DELETE_USER]: '删除用户',
+  [AdminActions.EXTEND_MEMBERSHIP]: '延长会员',
+  [AdminActions.TOGGLE_PAYMENT_QRCODE]: '启用或停用收款码',
 };
 
 /**
@@ -77,6 +81,8 @@ export const SENSITIVE_ACTIONS = new Set<string>([
   AdminActions.REVOKE_ADMIN,
   AdminActions.RESET_USER_PASSWORD,
   AdminActions.DELETE_USER,
+  AdminActions.EXTEND_MEMBERSHIP,
+  AdminActions.TOGGLE_PAYMENT_QRCODE,
 ]);
 
 /**

@@ -49,9 +49,12 @@ export async function GET() {
 
     if (ids.size === 0) return NextResponse.json({ admins: [] });
 
-    const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const admins = (data?.users ?? [])
-      .filter((u) => ids.has(u.id))
+    // 按编号逐个取。管理员人数很少，而 listUsers 只看第一页，用户超过 1000 人时新管理员会查不到
+    const fetched = await Promise.all(
+      [...ids].map(async (id) => (await supabase.auth.admin.getUserById(id)).data?.user ?? null)
+    );
+    const admins = fetched
+      .filter((u): u is NonNullable<typeof u> => u !== null)
       .map((u) => ({
         id: u.id,
         email: u.email,

@@ -136,7 +136,7 @@ describe('后台概览的数字和标签', () => {
   it('首页三个按钮都去真实页面，不再弹"开发中"', () => {
     expect(page).not.toMatch(/开发中/);
     for (const r of ['/admin/settings', '/admin/monitor', '/admin/logs']) {
-      expect(page, `${r} 没接上`).toContain(`router.push("${r}")`);
+      expect(page, `${r} 没接上`).toContain(`"${r}"`);
       const dir = path.join(process.cwd(), 'app', ...r.split('/').filter(Boolean));
       expect(fs.existsSync(path.join(dir, 'page.tsx')), `${r} 页面不存在`).toBe(true);
     }

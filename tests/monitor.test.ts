@@ -5,6 +5,9 @@ import { parseTime, minutesAgo, maskEmail, activeUsers, buildDirectory, inputFie
 import { readCode } from './helpers/source';
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
+/** 监控页拆分后：页面逻辑在 page.tsx，面板与子组件在 components/admin/monitor/parts.tsx */
+const monitorCode = () => readCode('app/admin/monitor/page.tsx') + readCode('components/admin/monitor/parts.tsx');
+const monitorRaw = () => read('app/admin/monitor/page.tsx') + read('components/admin/monitor/parts.tsx');
 
 /**
  * 监控大屏。
@@ -381,7 +384,7 @@ describe('相对时间', () => {
 });
 
 describe('页面本身的几条硬要求', () => {
-  const page = read('app/admin/monitor/page.tsx');
+  const page = monitorRaw();
 
   it('声音必须由用户手势解锁，否则永远静默失败', () => {
     // 浏览器不允许无手势自动播放，而且是不报错的那种失败
@@ -428,7 +431,7 @@ describe('页面本身的几条硬要求', () => {
   });
 
   it('页面默认不打码，打码是管理员自己开的开关', () => {
-    const page = readCode('app/admin/monitor/page.tsx');
+    const page = monitorCode();
     expect(page).toMatch(/const \[privacy, setPrivacy\] = useState\(false\)/);
     expect(page).toContain('投屏打码');
     expect(page).toContain('ActiveUserCard');
@@ -453,7 +456,7 @@ describe('页面本身的几条硬要求', () => {
  */
 describe('后台视觉', () => {
   const layout = read('app/admin/layout.tsx');
-  const page = read('app/admin/monitor/page.tsx');
+  const page = monitorRaw();
 
   it('整个后台固定深色，不跟随用户主题', () => {
     /*

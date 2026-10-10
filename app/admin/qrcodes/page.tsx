@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { notify } from "@/components/ui/feedback";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import Image from "next/image";
-import { RefreshCcw, Check } from "lucide-react";
+import { isUsableQrcodeUrl } from "@/lib/payment-qrcode";
+import { AdminPage, Badge, Button, ErrorState, Panel, readError } from "@/components/admin/kit";
+
+/*
+ * 收款二维码。
+ * 用户付款时看到的就是这里启用的码，所以这一页只允许：上传真实的收款码、启用或停用。
+ * 占位图、非 https 的地址不能启用；付款页也只展示通过校验的码（见 lib/payment-qrcode）。
+ */
 
 interface QRCode {
   id: string;
@@ -18,167 +20,165 @@ interface QRCode {
   updated_at: string;
 }
 
+const METHODS: { value: "alipay" | "wechat"; label: string }[] = [
+  { value: "alipay", label: "支付宝" },
+  { value: "wechat", label: "微信支付" },
+];
+
 export default function AdminQRCodesPage() {
-  
   const [qrcodes, setQrcodes] = useState<QRCode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadQRCodes();
-  }, []);
-
-  const loadQRCodes = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
       // 走服务端：表加了 RLS 之后浏览器读不到，而且这本来就该经过管理员校验
       const res = await fetch("/api/admin/qrcodes");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "加载失败");
-      setQrcodes(data || []);
-    } catch (error: any) {
-      notify(error?.message || "加载失败");
+      if (!res.ok) throw new Error(await readError(res, "加载失败"));
+      setQrcodes((await res.json()) || []);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleUpload = async (method: string, file: File) => {
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const upload = async (method: "alipay" | "wechat", file: File) => {
+    setBusy(method);
     try {
-      setUploading(method);
-
       const fileExt = file.name.split(".").pop();
       const fileName = `qrcode-${method}-${Date.now()}.${fileExt}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("payment-qrcodes")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: true
-        });
-
+        .upload(fileName, file, { cacheControl: "3600", upsert: true });
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from("payment-qrcodes")
-        .getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage.from("payment-qrcodes").getPublicUrl(fileName);
 
       /*
        * 「把地址记进表」这一步必须经过服务端。
-       * 原先是浏览器直接 UPDATE，加了 RLS 之后会被拒；而且本来也不该让
-       * 浏览器有权改收款码——这是一张收钱的图，改掉它等于把钱转到别处。
+       * 服务端会拒掉占位图和非 https 的地址，所以这里的校验只是提前提示。
        */
       const res = await fetch("/api/admin/qrcodes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paymentMethod: method, qrcodeUrl: urlData.publicUrl }),
       });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "保存失败");
-
-      notify("二维码上传成功");
-      loadQRCodes();
-    } catch (error: any) {
-      notify("上传失败: " + error.message);
+      if (!res.ok) throw new Error(await readError(res, "保存失败"));
+      notify("二维码已上传并启用", "success");
+      void load();
+    } catch (e) {
+      notify("上传失败：" + (e as Error).message, "error");
     } finally {
-      setUploading(null);
+      setBusy(null);
+    }
+  };
+
+  const toggle = async (method: "alipay" | "wechat", isActive: boolean) => {
+    setBusy(method);
+    try {
+      const res = await fetch("/api/admin/qrcodes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethod: method, isActive }),
+      });
+      if (!res.ok) throw new Error(await readError(res, "切换失败"));
+      notify(isActive ? "已启用，用户付款时会看到这张码" : "已停用，用户付款时将看不到这张码", "success");
+      void load();
+    } catch (e) {
+      notify((e as Error).message, "error");
+    } finally {
+      setBusy(null);
     }
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">收款二维码管理</h1>
-          <p className="text-muted-foreground mt-1">上传和管理支付宝、微信收款二维码</p>
-        </div>
-        <Button onClick={loadQRCodes} variant="outline" size="sm">
-          <RefreshCcw className="w-4 h-4 mr-2" />
-          刷新
-        </Button>
-      </div>
+    <AdminPage
+      title="收款二维码"
+      subtitle="用户付款时看到的就是这里启用的码。停用后，付款页会提示「还没有收款码」，不会展示旧图"
+      actions={<Button variant="default" onClick={() => void load()} busy={loading}>刷新</Button>}
+    >
+      {error && <div className="mb-5"><ErrorState message={error} onRetry={() => void load()} /></div>}
 
-      {loading ? (
-        <div className="text-center py-12">
-          <RefreshCcw className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">加载中...</p>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-6">
-          {qrcodes.map((qr) => (
-            <Card key={qr.id}>
-              <CardHeader>
-                <CardTitle>
-                  {qr.payment_method === "alipay" ? "支付宝" : "微信支付"}
-                </CardTitle>
-                <CardDescription>
-                  {qr.is_active ? "✅ 已启用" : "⚠️ 未启用"}
-                  {qr.updated_at && ` · 更新于 ${new Date(qr.updated_at).toLocaleString("zh-CN")}`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {qr.qrcode_url && !qr.qrcode_url.includes("placeholder") && (
-                  <div className="relative w-full h-64 bg-muted rounded-md overflow-hidden">
-                    <Image 
-                      src={qr.qrcode_url} 
-                      alt={`${qr.payment_method} 二维码`}
-                      fill
-                      className="object-contain p-4"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <Label htmlFor={`upload-${qr.payment_method}`}>
-                    {qr.qrcode_url && !qr.qrcode_url.includes("placeholder") ? "更换二维码" : "上传二维码"}
-                  </Label>
-                  <Input
-                    id={`upload-${qr.payment_method}`}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleUpload(qr.payment_method, file);
-                      }
-                    }}
-                    disabled={uploading === qr.payment_method}
-                    className="mt-2"
-                  />
-                  {uploading === qr.payment_method && (
-                    <p className="text-sm text-muted-foreground mt-2 flex items-center">
-                      <RefreshCcw className="w-4 h-4 animate-spin mr-2" />
-                      上传中...
-                    </p>
+      <div className="grid gap-5 md:grid-cols-2">
+        {METHODS.map((m) => {
+          const row = qrcodes.find((q) => q.payment_method === m.value);
+          const usable = isUsableQrcodeUrl(row?.qrcode_url);
+          const placeholder = !!row?.qrcode_url && !usable;
+          const working = busy === m.value;
+          return (
+            <Panel
+              key={m.value}
+              title={m.label}
+              action={
+                loading ? null : !row || !row.qrcode_url ? (
+                  <Badge tone="warn">未上传</Badge>
+                ) : placeholder ? (
+                  <Badge tone="danger">地址不可用</Badge>
+                ) : row.is_active ? (
+                  <Badge tone="ok">已启用</Badge>
+                ) : (
+                  <Badge tone="neutral">已停用</Badge>
+                )
+              }
+            >
+              <div className="space-y-4">
+                <div className="flex h-64 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-white">
+                  {loading ? (
+                    <span className="text-[13px] text-muted-foreground">加载中…</span>
+                  ) : usable && row ? (
+                    // 签名/公开链接不走 Next 图片优化，直接用普通图片标签
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={row.qrcode_url} alt={`${m.label}收款码`} className="h-full w-full object-contain p-4" />
+                  ) : (
+                    <span className="px-6 text-center text-[13px] text-muted-foreground">
+                      {placeholder ? "这张图的地址不能用（占位图，或不是 https 地址）。请重新上传真实的收款码" : "还没有上传收款码"}
+                    </span>
                   )}
                 </div>
 
-                {qr.is_active && qr.qrcode_url && !qr.qrcode_url.includes("placeholder") && (
-                  <div className="flex items-center text-sm text-green-500">
-                    <Check className="w-4 h-4 mr-2" />
-                    该收款码已生效，用户可见
-                  </div>
+                {row?.updated_at && (
+                  <p className="text-[12px] text-muted-foreground">最后更新：{new Date(row.updated_at).toLocaleString("zh-CN")}</p>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
 
-      <Card className="mt-6 border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-primary">💡 使用说明</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>1. 从支付宝和微信分别导出您的收款二维码图片</p>
-          <p>2. 点击上方&quot;上传二维码&quot;按钮，选择对应的图片</p>
-          <p>3. 上传成功后，用户在支付页面就能看到您的收款码</p>
-          <p>4. 用户扫码支付后会上传支付凭证，您可以在&quot;订单审核&quot;页面进行审核</p>
-          <p className="text-orange-500 font-semibold">
-            ⚠️ 请确保二维码清晰可见，否则用户无法成功支付
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex cursor-pointer items-center rounded-xl border border-border px-3.5 py-2 text-[13px] text-foreground hover:bg-foreground/[0.05]">
+                    {working ? "上传中…" : usable ? "更换收款码" : "上传收款码"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      disabled={working}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (f) void upload(m.value, f);
+                      }}
+                    />
+                  </label>
+                  {usable && row && (
+                    <Button
+                      variant={row.is_active ? "default" : "primary"}
+                      onClick={() => void toggle(m.value, !row.is_active)}
+                      busy={working}
+                    >
+                      {row.is_active ? "停用" : "启用"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Panel>
+          );
+        })}
+      </div>
+    </AdminPage>
   );
 }

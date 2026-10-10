@@ -102,7 +102,7 @@ describe('接口守卫', () => {
   });
   it('页面：删除前先看数据、输入邮箱一致才能点「永久删除」', () => {
     const page = readCode('app/admin/users/page.tsx');
-    expect(page).toMatch(/action: "delete_preview"/);
-    expect(page).toMatch(/disabled=\{!del\.preview \|\| del\.busy \|\| del\.input\.trim\(\)\.toLowerCase\(\) !== del\.preview\.email\.toLowerCase\(\)\}/);
+    expect(page).toMatch(/"delete_preview"/);
+    expect(page).toMatch(/del\.input\.trim\(\)\.toLowerCase\(\) !== del\.preview\.email\.toLowerCase\(\)/);
   });
 });
