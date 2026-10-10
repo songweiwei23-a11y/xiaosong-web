@@ -145,6 +145,19 @@ if ($missing.Count -gt 0) {
 }
 Write-Host "打包 $($existing.Count) 项..." -ForegroundColor Gray
 
+# 部署清单：记下这次同步的文件（同步目录内）。服务器下次部署时按它找出"这次没有了"的文件删掉，
+# 否则仓库里删掉的页面、接口会在线上一直留着（曾因此留下 /api/admin/check）。
+$pruneDirs = @("app", "components", "hooks", "lib", "types", "supabase", "public", "tests")
+$projectRoot = (Get-Item -LiteralPath $projectPath).FullName
+$manifestLines = New-Object System.Collections.Generic.List[string]
+foreach ($dir in @($existing | Where-Object { $pruneDirs -contains $_ })) {
+    foreach ($f in Get-ChildItem -LiteralPath $dir -Recurse -File) {
+        $manifestLines.Add($f.FullName.Substring($projectRoot.Length + 1) -replace '\\', '/')
+    }
+}
+$manifestLocal = Join-Path $env:TEMP "deploy-manifest-$timestamp.txt"
+[System.IO.File]::WriteAllLines($manifestLocal, [string[]]$manifestLines, (New-Object System.Text.UTF8Encoding($false)))
+
 # 使用 tar 而非 Compress-Archive。
 # PowerShell 5.1 的 Compress-Archive 会用反斜杠写 zip 条目路径(app\api\route.ts)，
 # 这违反 ZIP 规范，Linux 端 unzip 会把整串当成单个文件名，目录结构直接塌掉。
@@ -165,12 +178,28 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+scp -i "$sshKey" $manifestLocal "${serverUser}@${serverIP}:/tmp/deploy-manifest-new"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "部署清单上传失败，已中止部署" -ForegroundColor Red
+    Remove-Item $tempPkg, $manifestLocal -Force -ErrorAction SilentlyContinue
+    pause
+    exit 1
+}
+scp -i "$sshKey" "$projectPath\scripts\deploy-prune.sh" "${serverUser}@${serverIP}:/tmp/deploy-prune.sh"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "清理脚本上传失败，已中止部署" -ForegroundColor Red
+    Remove-Item $tempPkg, $manifestLocal -Force -ErrorAction SilentlyContinue
+    pause
+    exit 1
+}
+Remove-Item $manifestLocal -Force -ErrorAction SilentlyContinue
+
 Write-Host "服务器端部署..." -ForegroundColor Yellow
 # 解压与依赖安装。这一步很快，放在前台执行。
 # 注意：绝不要在这里 rm -rf .next。服务器只有 2G 内存，删掉缓存会触发全量
 # 构建，内存峰值直接把机器压死——SSH 和网站一起失联，只能去控制台强制重启。
 # 保留缓存做增量构建，内存占用低得多。
-$prepCmd = "set -e; cd $serverPath; tar -xzf /tmp/$pkgName; npm install --silent; rm -f /tmp/$pkgName; echo PREP_OK"
+$prepCmd = "set -e; cd $serverPath; tar -xzf /tmp/$pkgName; bash /tmp/deploy-prune.sh $serverPath; npm install --silent; rm -f /tmp/$pkgName; echo PREP_OK"
 $prep = ssh -i "$sshKey" ${serverUser}@${serverIP} $prepCmd
 if ($LASTEXITCODE -ne 0 -or ($prep | Out-String) -notmatch "PREP_OK") {
     Write-Host "解压或依赖安装失败，线上服务未变更" -ForegroundColor Red
