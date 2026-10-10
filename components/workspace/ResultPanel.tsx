@@ -25,6 +25,7 @@ import type { CreationContext } from '@/lib/creation-flow';
 import { CREATION_SOURCES } from '@/lib/creation-flow';
 import { splitRemixPlans } from '@/lib/remix-plans';
 import { TabooScan } from './TabooScan';
+import { ResultFeedback } from './ResultFeedback';
 import { FactCheckNotice } from './FactCheckNotice';
 import { stripSelfCert } from '@/lib/self-cert';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
@@ -321,6 +322,7 @@ export function ResultPanel({
       {/* 我的创作偏好：这次按哪些偏好写的（lib/preferences），写稿类板块才有 */}
       {body && !isGenerating && <PreferenceHint board={CONTEXT_BOARD[segment] ?? 'script'} />}
       {body && !isGenerating && <TabooScan body={view} onContinue={onContinue} />}
+      {body && !isGenerating && segment && <ResultFeedback key={`${body.length}:${body.slice(0, 80)}`} board={segment} />}
       {/*
        * 继续创作 / 收藏：放在正文底部（2026-10-02 产品方要求）。原来在正文上面，
        * 用户读完往下找下一步找不到；而且顶部那时还没读内容，不知道该勾哪几条。

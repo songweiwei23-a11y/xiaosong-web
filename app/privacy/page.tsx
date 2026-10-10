@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { LegalPage, SUPPORT_WECHAT } from "@/components/legal/LegalPage";
+import { LegalPage } from "@/components/legal/LegalPage";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 
 export const metadata: Metadata = { title: "隐私政策 - 开物" };
 
@@ -18,7 +19,7 @@ export const metadata: Metadata = { title: "隐私政策 - 开物" };
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="隐私政策" updated="2026 年 10 月 7 日">
+    <LegalPage title="隐私政策" updated="2026 年 10 月 10 日">
       <section>
         <p>
           开物（以下简称&quot;我们&quot;）重视你的个人信息。这份政策说明我们收集哪些信息、拿来做什么、
@@ -41,7 +42,7 @@ export default function PrivacyPage() {
             截图和音频会发给 AI 服务做分析，拆解报告和你填的标题、数据会保存到历史。
             发送至第三方的素材可能按服务商规则留存，不能承诺处理后立即删除。
           </li>
-          <li><strong>创作内容</strong>：你在各板块输入的内容、生成的结果、与 AI 的对话记录。</li>
+          <li><strong>创作内容</strong>：你在各板块输入的内容、生成的结果、与 AI 的对话记录，以及你对某条结果点的「有用 / 没用」和可选的原因。</li>
           <li><strong>付款信息</strong>：订单记录，以及你上传的转账截图。我们不处理银行卡扣款或支付账户登录。</li>
           <li><strong>使用记录</strong>：各功能的使用次数，用于计算额度。</li>
         </ul>
@@ -102,8 +103,8 @@ export default function PrivacyPage() {
           <li>生成记录：在各板块的历史记录里逐条删除；</li>
           <li>密码：在「我的账户」里修改；</li>
           <li>
-            注销账号、删除全部数据：目前需要联系客服微信 {SUPPORT_WECHAT} 处理，
-            我们核实身份后会删除你的账号及相关数据。
+            注销账号、删除全部数据：在「我的账户」底部自助注销，输入登录邮箱确认后立即删除，不可恢复；
+            已开通的会员按虚拟商品规则不退款。遇到问题可以加客服微信 {SUPPORT_WECHAT}。
           </li>
         </ul>
       </section>

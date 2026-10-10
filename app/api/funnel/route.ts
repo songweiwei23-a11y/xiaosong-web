@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { VISITOR_RE, isFunnelKind } from '@/lib/funnel';
+import { clientIp } from '@/lib/client-ip';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,8 +31,7 @@ function limited(ip: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || request.headers.get('x-real-ip') || 'unknown';
-  if (limited(ip)) return new NextResponse(null, { status: 429 });
+  if (limited(clientIp(request))) return new NextResponse(null, { status: 429 });
 
   let body: { kind?: unknown; vid?: unknown };
   try {

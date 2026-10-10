@@ -145,7 +145,8 @@ describe('全仓库缺陷模式扫描', () => {
       const name = rel(file).replace('app/api/', '/api/').replace('/route.ts', '');
       // 公开入口：站点统计、注册（注册本身靠邀请码把关）、
       // 转化漏斗的匿名事件（记的就是还没登录的访客；白名单 + 格式 + 限速，见 tests/funnel.test.ts）
-      if (/\/api\/(public|auth\/register|funnel$)/.test(name)) continue;
+      // 健康检查（/api/health）只回 ok 与时间，给监控用
+      if (/\/api\/(public|auth\/register|funnel$|health$)/.test(name)) continue;
       if (!/requireAdmin|requireUserWithQuota|requireUser\b|getUser\(\)/.test(code)) {
         bad.push(name);
       }

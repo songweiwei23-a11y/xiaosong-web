@@ -172,7 +172,7 @@ export function TryHero() {
             <Link href={REGISTER_URL} className="brand-gradient flex items-center justify-between gap-3 rounded-2xl px-5 py-4 text-white transition-transform hover:scale-[1.01]">
               <span className="text-[14px]">想要完整口播稿、分镜和标题？</span>
               <span className="flex shrink-0 items-center gap-1 font-semibold">
-                免费注册体验 <ArrowRight className="h-4 w-4" />
+                领取邀请码体验 <ArrowRight className="h-4 w-4" />
               </span>
             </Link>
           </div>

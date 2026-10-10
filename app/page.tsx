@@ -5,6 +5,7 @@ import {
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/config/plans";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
 import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
 import { LandingNavCTA } from "@/components/landing/LandingNavCTA";
@@ -17,11 +18,11 @@ import { BRAND_NAME, BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import { 
   Zap, CheckCircle, TrendingUp, ArrowRight, 
   FileText, Lightbulb, Film, Target, Star,
-  Crown, Check, BarChart3, Award, BookOpen,
-  Brain, Layers, Clock, Shield, Quote, ChevronRight,
-  MessageCircle, Activity, ChevronDown, X,
+  Crown, Check, BarChart3, BookOpen,
+  Layers, ChevronRight,
+  MessageCircle, ChevronDown,
   Clapperboard, Shuffle, FileSearch, GraduationCap, Compass, Bookmark, ListChecks, MessagesSquare,
-  Telescope, ClipboardList, FileDown, PenLine, Globe, Paperclip, ShieldCheck, LineChart, Download,
+  Telescope, ClipboardList, PenLine, Globe, Paperclip, ShieldCheck, LineChart, Download,
   Users, Camera, UserCheck, Rocket, Fingerprint, Sparkles, SearchX, FolderOpen,
 } from "lucide-react";
 import { PLAN_CATEGORIES } from "@/lib/plan-builder";
@@ -326,7 +327,7 @@ export default function HomePage() {
     { icon: FileText, pain: "写不出脚本，写了也不像样", fix: `${FACTS.structures} 种脚本结构任选，结合你的账号档案写成你的口吻；开篇 ${FACTS.cards} 计专攻前 3 秒`, where: "脚本生成 · 开篇设计" },
     { icon: Camera, pain: "脚本写好了，不知道怎么拍", fix: "分镜出镜头表和拍摄清单；拍摄交付包一键导出口播稿、手机提词大字稿、镜头清单", where: "分镜脚本 · 拍摄交付包" },
     { icon: Clapperboard, pain: "看到别人爆了，学不会", fix: "传一条视频自动切镜头、识别口播，拆出开篇、结构、拍法；还能把别的行业的爆款换成你的行业来拍", where: "拆解爆款 · 跨行业二创" },
-    { icon: SearchX, pain: "AI 写的东西假大空、乱编", fix: "账号档案 + 人设事实卡 + 禁忌清单；每次生成自动体检，资料里没有的标【待确认】，不替你编", where: "全部板块" },
+    { icon: SearchX, pain: "AI 写的东西假大空、乱编", fix: "账号档案 + 人设事实卡 + 禁忌清单；每次生成自动体检，找不到依据的价格、地名、荣誉会标出，尽量不替你编", where: "全部板块" },
     { icon: LineChart, pain: "拍完发完，不知道效果好不好", fix: "粘贴平台后台表格就能导入数据，播放、完播、涨粉、咨询、成交一目了然，选题按真实数据调整", where: "数据复盘" },
     { icon: FolderOpen, pain: "东西做多了乱，找不到", fix: `素材库 ${LIBRARY_CATEGORIES.length} 个分类一键收藏；创作进度记着每条做到哪一步、拍没拍、发没发`, where: "素材库 · 创作进度" },
     { icon: ClipboardList, pain: "要写方案、做调研、看资料", fix: "出方案先大纲后全文；深度研究读几十个网页出带出处的报告；文档表格直接读，Word / PDF 直接下载", where: "高阶自由对话" },
@@ -336,18 +337,18 @@ export default function HomePage() {
 
   /*
    * 对比表（产品方：这是一大杀器）。三列如实写：自己写 / 请编导、通用 AI 聊天工具、开物。
-   * 「编导月薪数千到上万」是行业常识，产品方确认可以写。
+   * 「请编导成本高」是泛化说法，不写具体薪资：没有出处的数字不放进对比表。
    */
   const compareRows: { item: string; old: string; ai: string; us: string }[] = [
     { item: "编导方法", old: "靠个人经验，自己收集整理", ai: "没有体系，全看提示词写得好不好", us: `${FACTS.methods} 条带公式的方法，按目的自动套用` },
     { item: "懂你的账号", old: "每次都要重新讲一遍", ai: "聊完就忘，换个对话从头说", us: "账号档案 + 人设事实卡，所有板块共用" },
-    { item: "乱编风险", old: "低，但慢", ai: "常编数据、编经历、编来源", us: "自动体检，资料里没有的标【待确认】" },
+    { item: "乱编风险", old: "低，但慢", ai: "没有资料时，容易写出无依据的数字和经历", us: "自动体检，找不到依据的价格、地名、荣誉会标出" },
     { item: "全流程", old: "多个工具来回倒腾", ai: "一问一答，前后不连贯", us: `${FACTS.boards} 个板块互通，结果勾选就带走` },
     { item: "拍摄落地", old: "自己整理拍摄清单", ai: "给你一段文字", us: "分镜 + 拍摄交付包 + 手机提词大字稿" },
     { item: "拆解爆款", old: "一帧帧看、手动记", ai: "大多看不了视频", us: "自动切镜头、识别口播、拆出拍法" },
     { item: "发布复盘", old: "表格自己算", ai: "没有", us: "数据导入、同类对比，按真实数据调方向" },
     { item: "研究与方案", old: "花半天查资料、写方案", ai: "能写，但常常没出处", us: "深度研究每句标出处，方案先大纲后全文" },
-    { item: "费用", old: "请编导月薪数千到上万", ai: "订阅费 + 自己磨提示词的时间", us: `¥${SUBSCRIPTION_PLANS.basic.price}～${SUBSCRIPTION_PLANS.enterprise.price}/月，免费可体验` },
+    { item: "费用", old: "请编导成本高、排期长", ai: "订阅费 + 自己磨提示词的时间", us: `¥${SUBSCRIPTION_PLANS.basic.price}～${SUBSCRIPTION_PLANS.enterprise.price}/月，免费可体验` },
   ];
 
   /*
@@ -430,11 +431,11 @@ export default function HomePage() {
     },
     {
       q: "和其他AI工具有什么区别？",
-      a: `核心区别在于：①约 ${FACTS.wordsWan} 万字符的专业编导资料（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库）和 ${FACTS.methods} 条公式与句式——四大脚本各对一个生意目的，起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种、爆款元素 ${FACTS.elements} 类；②记得住你的账号：账号档案、人设事实卡、成交理由、风格预设所有板块共用，不用每次重新讲；③不乱编：每次生成自动体检，资料里没有的标【待确认】；④${FACTS.boards} 个创作板块互通，从方向、脚本、分镜到拍摄交付包、发布后的数据复盘，一条内容一路做完；⑤高阶自由对话能出方案、做带出处的深度研究报告、读文档表格，直接下载 Word / PDF。`
+      a: `核心区别在于：①约 ${FACTS.wordsWan} 万字符的专业编导资料（${FACTS.docs} 篇，${FACTS.libraries} 个专题分库）和 ${FACTS.methods} 条公式与句式——四大脚本各对一个生意目的，起号 ${FACTS.tactics} 计、开篇 ${FACTS.cards} 计、脚本结构 ${FACTS.structures} 种、爆款元素 ${FACTS.elements} 类；②记得住你的账号：账号档案、人设事实卡、成交理由、风格预设所有板块共用，不用每次重新讲；③尽量不乱编：每次生成自动体检，找不到依据的价格、地名、荣誉会标出；④${FACTS.boards} 个创作板块互通，从方向、脚本、分镜到拍摄交付包、发布后的数据复盘，一条内容一路做完；⑤高阶自由对话能出方案、做带出处的深度研究报告、读文档表格，直接下载 Word / PDF。`
     },
     {
       q: "AI 会不会乱编？",
-      a: "这是我们花力气最多的地方。你的从业年限、籍贯、主卖什么写在人设事实卡里，所有板块以它为准；禁忌和不想用的信息写进档案，生成时避开。每次生成都会自动体检：有没有踩禁忌、有没有用你排除的信息、年限和事实卡对不对、有没有资料里找不到的价格、地名、荣誉。资料里没有的信息标【待确认】，不替你编；在画布里改写时，也不许加原文没有的人名、时间、数字。后台每晚还会用固定案例自动回归一遍，质量下滑能第一时间发现。"
+      a: "这是我们花力气最多的地方。你的从业年限、籍贯、主卖什么写在人设事实卡里，所有板块以它为准；禁忌和不想用的信息写进档案，生成时避开。每次生成都会自动体检：有没有踩禁忌、有没有用你排除的信息、年限和事实卡对不对、有没有资料里找不到的价格、地名、荣誉。找不到依据的信息会标【待确认】，尽量不替你编；在画布里改写时，也不许加原文没有的人名、时间、数字。后台每晚还会用固定案例自动回归一遍，质量下滑能第一时间发现。"
     },
     {
       q: "深度研究报告是什么？",
@@ -477,7 +478,7 @@ export default function HomePage() {
     },
     {
       q: "如何联系客服？",
-      a: "直接加微信：13240286600（手机同号）。目前是我本人在对接，看到就回。"
+      a: `直接加微信：${SUPPORT_WECHAT}（手机同号）。目前是我本人在对接，看到就回。`
     }
   ];
 
@@ -716,7 +717,7 @@ export default function HomePage() {
               },
               {
                 icon: ShieldCheck, color: "text-amber-500 bg-amber-500/15", no: "04", title: "不乱编，质量有人把关",
-                lead: <>每次生成<b className="text-amber-500">自动体检</b>，资料里没有的标【待确认】，不替你编</>,
+                lead: <>每次生成<b className="text-amber-500">自动体检</b>，找不到依据的价格、地名、荣誉会标出，尽量不替你编</>,
                 points: [
                   "查禁忌、查你排除的信息、查内容配比、查年限和事实卡对不对",
                   "资料里找不到的价格、地名、荣誉会被标出来",
@@ -1010,7 +1011,7 @@ export default function HomePage() {
                 points: [
                   "先出大纲：章节和要点你可以改、删、加、调顺序，确认后再写全文",
                   "可以上传你的资料，方案里的事实以资料为准",
-                  "缺的信息先问你，或在方案里标【待确认】，不替你编",
+                  "缺的信息先问你，或在方案里标【待确认】，尽量不替你编",
                   "缺章能补写，写完直接下载 Word / PDF",
                 ],
               },
@@ -1145,7 +1146,7 @@ export default function HomePage() {
               <span className="brand-gradient bg-clip-text text-transparent">请编导、用通用 AI，还是用开物？</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              请编导月薪数千到上万，通用 AI 不懂编导、聊完就忘还爱乱编；开物把编导方法、你的账号和整条创作流程装在一起，每月 ¥{SUBSCRIPTION_PLANS.basic.price} 起
+              请编导成本高、排期长，通用 AI 不懂编导、聊完就忘、还容易乱编；开物把编导方法、你的账号和整条创作流程装在一起，每月 ¥{SUBSCRIPTION_PLANS.basic.price} 起
             </p>
           </div>
           {/* 手机上：一项一张卡，开物那一格放最上面、高亮；表格横着滑会把开物那一列藏到屏幕外 */}
@@ -1333,7 +1334,7 @@ export default function HomePage() {
             */}
             <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/15 dark:bg-blue-900/30 text-primary rounded-lg font-medium">
               <MessageCircle className="w-5 h-5" />
-              客服微信：<span className="select-all">13240286600</span>（手机同号）
+              客服微信：<span className="select-all">{SUPPORT_WECHAT}</span>（手机同号）
             </div>
           </div>
         </div>
@@ -1359,7 +1360,7 @@ export default function HomePage() {
               href={REGISTER_URL} 
               className="group px-10 py-5 bg-white text-primary rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-2xl flex items-center gap-2"
             >
-              立即免费开始
+              领取邀请码，免费体验
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <a 
@@ -1370,7 +1371,7 @@ export default function HomePage() {
             </a>
           </div>
           <p className="mt-8 text-sm opacity-75">
-            无需信用卡 · 免费开始使用 · 随时升级
+            无需信用卡 · 凭邀请码注册 · 随时升级
           </p>
         </div>
       </section>
@@ -1411,7 +1412,7 @@ export default function HomePage() {
               <h4 className="font-semibold text-white mb-4">支持</h4>
               <ul className="space-y-0.5 text-sm">
                 <li><a href="#faq" className="inline-block py-1.5 hover:text-white transition-colors">常见问题</a></li>
-                <li>客服微信：<span className="select-all text-white">13240286600</span></li>
+                <li>客服微信：<span className="select-all text-white">{SUPPORT_WECHAT}</span></li>
               </ul>
             </div>
 

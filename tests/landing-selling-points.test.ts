@@ -32,7 +32,7 @@ describe('首页卖点', () => {
   it('对比表三列如实写，含请编导的费用', () => {
     expect(home).toMatch(/自己写 \/ 请编导/);
     expect(home).toMatch(/通用 AI 聊天工具/);
-    expect(home).toMatch(/请编导月薪数千到上万/);
+    expect(home).toMatch(/请编导成本高、排期长/);
   });
 
   it('深度研究的次数、网页数、方案场景数都从配置算，不手写', () => {

@@ -10,6 +10,7 @@ import {
 import { notify } from "@/components/ui/feedback";
 import { supabase } from "@/lib/supabase/client";
 import { getPlan, SUBSCRIPTION_PLANS, quotaSummary, PAID_PERIOD_NOTE } from "@/lib/config/plans";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 
 /*
  * 付款页。
@@ -201,7 +202,7 @@ function PaymentContent() {
                 会员属于虚拟商品，<span className="font-medium text-foreground">开通后不支持无理由退款</span>，目前也暂不支持开发票。
                 付款即表示同意
                 <Link href="/terms" target="_blank" className="mx-0.5 text-primary hover:underline">服务条款</Link>。
-                有疑问请先加客服微信 13240286600 问清楚再付款。
+                有疑问请先加客服微信 {SUPPORT_WECHAT} 问清楚再付款。
               </p>
 
               <button

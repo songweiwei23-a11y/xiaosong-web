@@ -27,7 +27,7 @@ export const USER_DATA_TABLES = [
   'launch_plans', 'course_progress', 'interview_imports',
   'chat_conversations', 'dify_conversations',
   'script_history', 'works',
-  'deal_reasons', 'account_positioning', 'user_profiles', 'scripts',
+  'deal_reasons', 'account_positioning', 'user_profiles', 'scripts', 'result_feedback',
   'user_quotas', 'subscriptions', 'payment_orders',
   'user_settings',
 ] as const;

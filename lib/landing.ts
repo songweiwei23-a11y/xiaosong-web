@@ -2,8 +2,9 @@
  * 首页首屏「一句话开始」用的数据和规则。
  *
  * 首屏是给完全不懂的小白的：他说一句自己是做什么的（或点一个行业），
- * 当场看到开物给这一行写的选题和开头第一句，再点"免费注册体验"。
+ * 当场看到开物给这一行写的选题和开头第一句，再点"领取邀请码体验"。
  */
+import { SUPPORT_WECHAT } from '@/lib/config/contact';
 
 /**
  * 首页所有"去注册"的按钮都走这个地址：直接打开注册页。
@@ -15,7 +16,7 @@
 export const REGISTER_URL = '/login?mode=register';
 
 /** 注册页提示：邀请码找谁要 */
-export const INVITE_CONTACT = '注册需要邀请码。请加管理员微信 13240286600（手机同号）领取。';
+export const INVITE_CONTACT = `注册需要邀请码。加客服微信 ${SUPPORT_WECHAT}（手机同号）领取。`;
 
 export interface IndustrySample {
   id: string;

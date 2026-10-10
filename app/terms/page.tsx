@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { LegalPage, SUPPORT_WECHAT } from "@/components/legal/LegalPage";
+import { LegalPage } from "@/components/legal/LegalPage";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 import { PAID_PERIOD_NOTE } from "@/lib/config/plans";
 
 export const metadata: Metadata = { title: "服务条款 - 开物" };

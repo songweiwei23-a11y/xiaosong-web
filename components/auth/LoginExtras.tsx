@@ -21,7 +21,7 @@ export function rememberLoginName(email: string) {
 
 /** 按小时问候。深夜那句是心疼，不是催 */
 export function greetingFor(hour: number, isLogin: boolean): { title: string; sub: string } {
-  if (!isLogin) return { title: "欢迎来到开物 👋", sub: "注册就有免费体验额度，先写一条试试" };
+  if (!isLogin) return { title: "欢迎来到开物 👋", sub: "凭邀请码注册，即送免费体验额度，先写一条试试" };
   if (hour >= 5 && hour < 11) return { title: "早上好 ☀️", sub: "趁脑子清醒，先定今天拍什么" };
   if (hour >= 11 && hour < 14) return { title: "中午好 🍜", sub: "吃饭的空档，来一条选题" };
   if (hour >= 14 && hour < 18) return { title: "下午好 ☕", sub: "泡杯茶，把脚本打磨一下" };
@@ -66,7 +66,7 @@ export function freeTrialLine(): string {
   const q = SUBSCRIPTION_PLANS.free.quotas as Record<string, number>;
   const rest = Object.entries(q).filter(([k]) => k !== "freeChat" && k !== "knowledge").map(([, v]) => v).filter((v) => v > 0);
   const lo = Math.min(...rest), hi = Math.max(...rest);
-  return `注册就有免费体验：自由对话 ${q.freeChat} 次、知识库 ${q.knowledge} 次，各创作板块 ${lo === hi ? lo : `${lo}～${hi}`} 次`;
+  return `凭邀请码注册即送免费体验：自由对话 ${q.freeChat} 次、知识库 ${q.knowledge} 次，各创作板块 ${lo === hi ? lo : `${lo}～${hi}`} 次`;
 }
 
 type Tip = { kind: string; name: string; desc: string; formula: string };

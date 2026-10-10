@@ -205,7 +205,7 @@ export default function PricingPage() {
             href="/dashboard"
             className="inline-flex items-center gap-2 brand-gradient text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition-all"
           >
-            立即免费开始
+            领取邀请码体验
           </Link>
         </div>
       </div>

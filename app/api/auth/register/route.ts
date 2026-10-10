@@ -1,29 +1,31 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { SUBSCRIPTION_PLANS } from '@/lib/config/plans';
+import { clientIp } from '@/lib/client-ip';
+import { normalizeInvitationCode } from '@/lib/invitation-code';
+import { createRateLimiter } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * 凭邀请码注册。
+/*
+ * 凭邀请码注册，只走这个接口（服务端用 service_role 建号）。
  *
- * 【为什么注册必须挪到服务端】原先是浏览器里调 supabase.auth.signUp()，
- * 用的是公开的 anon key。任何人都可以跳过我们的页面，直接 POST 到
- * Supabase 的 /auth/v1/signup 建号——前端加多少个邀请码输入框都拦不住。
- * 实测确认过那个接口当时是通的。
- *
- * 这里改用 service_role 的 admin.createUser()，它不受「是否允许公开注册」
- * 这个开关影响。所以正确的做法是两件事一起：
- *   1. 在 Supabase 控制台关掉 Allow new users to sign up；
- *   2. 注册只走这个接口。
- * 只做第 2 件，旧的口子还开着，等于没做。
+ * 顺序：限流 → 核对码（不占用）→ 写注册授权 → 建号 → 原子兑换码。
+ * 码在建号之前就核对，所以无效的码永远不会创建账号；错误信息不区分「码不存在」
+ * 与「码已用过」，也不区分「邮箱已注册」与其它失败，避免被拿来探测。
  */
 
-/** 邮箱格式只做最基本的判断，真正的把关交给 Supabase */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const attemptLimited = createRateLimiter(15 * 60_000, 20);
+const INVALID_CODE = '邀请码无效、已用过或已过期，请核对后重试，或联系客服领取';
+const REGISTER_FAILED = '注册失败：这个邮箱可能已经注册过了，请直接登录；如仍无法注册，请联系客服';
 
 export async function POST(request: Request) {
-  let body: any;
+  if (attemptLimited(clientIp(request))) {
+    return NextResponse.json({ error: '尝试太频繁了，请 15 分钟后再试' }, { status: 429 });
+  }
+
+  let body: { email?: unknown; password?: unknown; code?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
 
   const email = String(body.email || '').trim().toLowerCase();
   const password = String(body.password || '');
-  const code = String(body.code || '').trim().toUpperCase();
+  const rawCode = String(body.code || '');
 
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: '请填写正确的邮箱地址' }, { status: 400 });
@@ -40,23 +42,32 @@ export async function POST(request: Request) {
   if (password.length < 6) {
     return NextResponse.json({ error: '密码至少 6 位' }, { status: 400 });
   }
-  if (!code) {
+  if (!rawCode.trim()) {
     return NextResponse.json({ error: '请填写邀请码' }, { status: 400 });
+  }
+  const code = normalizeInvitationCode(rawCode);
+  if (!code) {
+    return NextResponse.json({ error: INVALID_CODE }, { status: 400 });
   }
 
   const supabase = getServiceSupabase();
 
-  /*
-   * 先发一张「注册授权」。
-   *
-   * auth.users 上装了插入前触发器（见 20260922_invite_only_enforce.sql），
-   * 没有这张券就拒绝建号。这道门是数据库层的，不依赖 Supabase 控制台里
-   * 「Allow new users to sign up」那个开关——实测那个开关关掉之后，
-   * 直接调 /auth/v1/signup 仍然能建出账号来，靠不住。
-   *
-   * 券 15 分钟有效，建号成功时被触发器消费掉；建号失败要手动清掉，
-   * 否则它会在那儿当 15 分钟的后门。
-   */
+  const { data: invite, error: inviteError } = await supabase
+    .from('invitation_codes')
+    .select('status, used_by, expires_at')
+    .ilike('code', code)
+    .maybeSingle();
+
+  if (inviteError) {
+    console.error('[auth/register] 读取邀请码失败:', inviteError.message);
+    return NextResponse.json({ error: '注册服务暂时不可用，请稍后再试' }, { status: 503 });
+  }
+  const expired = !!invite?.expires_at && new Date(invite.expires_at) <= new Date();
+  if (!invite || invite.status !== 'active' || invite.used_by || expired) {
+    return NextResponse.json({ error: INVALID_CODE }, { status: 400 });
+  }
+
+  // 注册授权：auth.users 上的插入前触发器靠它放行建号，15 分钟内有效
   const { error: authError } = await supabase
     .from('registration_authorizations')
     .upsert({ email, invitation_code: code, created_at: new Date().toISOString() }, { onConflict: 'email' });
@@ -77,16 +88,6 @@ export async function POST(request: Request) {
   const releaseAuthorization = () =>
     supabase.from('registration_authorizations').delete().eq('email', email).then(() => {});
 
-  /*
-   * 顺序很讲究：先建号，再兑换码。
-   *
-   * 反过来的话——先占码再建号——一旦建号失败（邮箱已注册、密码太弱），
-   * 这个码就白白烧掉了，用户拿着一个作废的码来找你。
-   *
-   * 现在这个顺序的代价是：兑换失败时会留下一个已创建的账号，
-   * 所以下面失败分支里要把它删掉。删除用的是刚拿到的 id，
-   * 不会误伤别人。
-   */
   const { data: created, error: createError } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -95,27 +96,18 @@ export async function POST(request: Request) {
   });
 
   if (createError || !created?.user) {
-    // 券没被消费掉，立刻收回——留着它就是 15 分钟的后门
     await releaseAuthorization();
-
     const msg = createError?.message || '';
-    if (/already been registered|already exists|duplicate/i.test(msg)) {
-      return NextResponse.json({ error: '这个邮箱已经注册过了，直接登录即可' }, { status: 409 });
+    if (/password/i.test(msg)) {
+      return NextResponse.json({ error: '密码不符合要求，请换一个更复杂的密码' }, { status: 400 });
     }
     console.error('[auth/register] 建号失败:', msg);
-    return NextResponse.json({ error: '注册失败：' + (msg || '请稍后重试') }, { status: 500 });
+    return NextResponse.json({ error: REGISTER_FAILED }, { status: 400 });
   }
 
   const userId = created.user.id;
 
-  /*
-   * 兑换邀请码。
-   *
-   * 走数据库函数而不是「先查再改」：两个人同时提交同一个码时，
-   * 先查再改会让两边都读到「可用」，于是一个码放进来两个人。
-   * 函数里是一条 UPDATE ... WHERE status='active' AND used_by IS NULL，
-   * 行锁保证只有一个能成功。
-   */
+  // 兑换是「检查 + 占用」的原子操作：两人同时提交同一个码，只有一个能成功
   const { data: claim, error: claimError } = await supabase.rpc('claim_invitation_code', {
     p_code: code,
     p_user_id: userId,
@@ -124,7 +116,6 @@ export async function POST(request: Request) {
   const result = Array.isArray(claim) ? claim[0] : claim;
 
   if (claimError || !result?.ok) {
-    // 码没兑上，把刚建的账号删掉——否则这个人虽然没通过邀请，账号却已经存在
     await supabase.auth.admin.deleteUser(userId).catch(() => {});
     if (claimError) {
       console.error('[auth/register] 兑换邀请码失败:', claimError.message);
@@ -138,22 +129,13 @@ export async function POST(request: Request) {
         { status: missing ? 503 : 500 }
       );
     }
-    return NextResponse.json({ error: result?.reason || '邀请码不可用' }, { status: 400 });
+    return NextResponse.json({ error: INVALID_CODE }, { status: 400 });
   }
 
-  /*
-   * 建立配额记录，并标记这个账号是凭邀请码进来的。
-   * registered_with_invitation 这一列表里本来就有，一直没人写过。
-   *
-   * 必须用 upsert 而不是 insert：数据库里有触发器，建号时就已经
-   * 自动插了一行 user_quotas（默认 registered_with_invitation = false）。
-   * 用 insert 会撞唯一键失败，而失败只是记条日志——于是配额行有了、
-   * 标记却一直是 false。自检里就是这么暴露出来的：
-   * 「配额记录已建 ✓」但「registered_with_invitation ✗」。
-   */
   const now = new Date();
   const periodEnd = new Date(now.getTime() + 30 * 86400_000);
 
+  // upsert 而不是 insert：建号时触发器已经插过一行 user_quotas
   const { error: quotaError } = await supabase.from('user_quotas').upsert(
     {
       user_id: userId,
@@ -169,10 +151,6 @@ export async function POST(request: Request) {
     console.error('[auth/register] 写配额记录失败:', quotaError.message);
   }
 
-  /*
-   * 邀请码可以带套餐。发「体验专业版 30 天」这类码时，
-   * 兑换后直接开通，不用管理员再手动改一遍。
-   */
   const planType: string = result.plan_type || 'free';
   if (planType !== 'free' && planType in SUBSCRIPTION_PLANS) {
     const { error: subError } = await supabase.from('subscriptions').upsert(

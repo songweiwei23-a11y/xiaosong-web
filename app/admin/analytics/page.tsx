@@ -9,6 +9,7 @@ import {
 import { Loading } from "@/components/ui/loading";
 import { SUBSCRIPTION_PLANS } from "@/lib/config/plans";
 import { toneSoft, toneBar, PLAN_TONE, FEATURE_TONE } from "@/lib/ui-tokens";
+import { FeedbackSummary } from "@/components/admin/FeedbackSummary";
 
 /*
  * 数据分析。
@@ -149,6 +150,8 @@ export default function AdminAnalyticsPage() {
             </div>
           ))}
         </section>
+
+        <FeedbackSummary />
 
         <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           <section className="glass-panel rounded-2xl p-5">

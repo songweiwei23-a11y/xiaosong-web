@@ -52,7 +52,7 @@ export function LandingNavCTA() {
         href={REGISTER_URL} 
         className="brand-gradient text-white px-4 sm:px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all font-medium"
       >
-        免费试用
+        领取邀请码
       </Link>
     </>
   );

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Crown, Sparkles, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SUPPORT_WECHAT } from "@/components/legal/LegalPage";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 import { FEATURE_NAMES, getPlan, quotaSummary } from "@/lib/config/plans";
 import {
   GENERATED_EVENT, QUOTA_EXHAUSTED_EVENT, recommendPlan, shouldNudge, valueRecap,

@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import { DataExportCard } from "@/components/account/DataExportCard";
 import Link from "next/link";
 import { Crown, KeyRound, Receipt, Loader2, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
-import { notify } from "@/components/ui/feedback";
+import { useRouter } from "next/navigation";
+import { confirmDialog, notify } from "@/components/ui/feedback";
 import { INPUT_CLS, PRIMARY_BTN } from "@/components/form/controls";
 import { throwApiError } from "@/lib/api-error";
 import { postSafely } from "@/lib/safe-post";
+import { supabase } from "@/lib/supabase/client";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 
 /*
  * 我的账户：会员状态、我的订单、修改密码。
@@ -86,6 +89,7 @@ export default function AccountPage() {
       <PasswordCard email={account?.email ?? null} />
       {/* 全量导出与恢复预检（2026-10-04） */}
       <DataExportCard />
+      <DeleteAccountCard email={account?.email ?? null} />
     </div>
   );
 }
@@ -118,7 +122,7 @@ function MembershipCard({ account }: { account: Account | null }) {
       {account.banned && (
         <div className="mb-3 flex items-start gap-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          账户已被停用，如有疑问请联系客服微信 13240286600
+          账户已被停用，如有疑问请联系客服微信 {SUPPORT_WECHAT}
         </div>
       )}
 
@@ -194,7 +198,7 @@ function OrdersCard({ orders }: { orders: Order[] | null }) {
                   <p className="mt-1.5 text-xs text-destructive">
                     {o.review_note ? `原因：${o.review_note}。` : "没有通过审核。"}
                     <Link href={payUrl} className="ml-1 text-primary hover:underline">重新付款 →</Link>
-                    <span className="ml-1 text-muted-foreground">有疑问加微信 13240286600</span>
+                    <span className="ml-1 text-muted-foreground">有疑问加微信 {SUPPORT_WECHAT}</span>
                   </p>
                 )}
               </li>
@@ -202,6 +206,67 @@ function OrdersCard({ orders }: { orders: Order[] | null }) {
           })}
         </ul>
       )}
+    </Card>
+  );
+}
+
+function DeleteAccountCard({ email }: { email: string | null }) {
+  const router = useRouter();
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ready = !!email && typed.trim().toLowerCase() === email.toLowerCase();
+
+  const remove = async () => {
+    if (!ready || busy) return;
+    const ok = await confirmDialog(
+      "注销后，档案、作品、生成历史、对话、素材库、订单记录和上传的文件都会删除，无法恢复。\n已开通的会员不退款。",
+      { tone: "danger", confirmText: "确定注销", title: "注销账号" }
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await postSafely("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmEmail: typed }),
+      });
+      if (!res.ok) await throwApiError(res, "注销失败");
+      await supabase.auth.signOut();
+      notify("账号已注销，相关数据已删除");
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      notify((err as Error)?.message || "注销失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card icon={AlertTriangle} title="注销账号">
+      <p className="mb-3 text-sm text-muted-foreground">
+        注销会删除你在开物的全部内容：账号档案、作品、生成历史、对话、素材库、订单记录，以及上传的附件和付款截图。
+        删除后无法恢复，已开通的会员不退款。
+      </p>
+      <div className="max-w-sm space-y-3">
+        <input
+          type="email"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder={email ? `输入 ${email} 确认` : "读取邮箱中…"}
+          disabled={!email || busy}
+          autoComplete="off"
+          className={INPUT_CLS}
+        />
+        <button
+          type="button"
+          onClick={remove}
+          disabled={!ready || busy}
+          className="rounded-xl border border-destructive/40 px-5 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy ? "正在注销…" : "注销账号并删除全部数据"}
+        </button>
+      </div>
     </Card>
   );
 }

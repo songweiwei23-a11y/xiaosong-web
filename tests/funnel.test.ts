@@ -35,7 +35,7 @@ describe('公开的记录接口', () => {
 
   it('接口：白名单 + 格式 + 每 IP 限速；IP 不入库；出错也不让访客页面报错', () => {
     const api = readCode('app/api/funnel/route.ts');
-    expect(api).toMatch(/if \(limited\(ip\)\)/);
+    expect(api).toMatch(/if \(limited\(clientIp\(request\)\)\)/);
     expect(api).toMatch(/isFunnelKind\(body\.kind\)/);
     expect(api).toMatch(/VISITOR_RE\.test\(body\.vid\)/);
     expect(api).toMatch(/insert\(\{ kind: body\.kind, visitor_id: body\.vid \}\)/);

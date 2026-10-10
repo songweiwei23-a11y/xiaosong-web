@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
 import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures, planSellingPoints, PAID_PERIOD_NOTE } from "@/lib/config/plans";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 import { WebSearchQuota } from '@/components/chat/WebSearchQuota';
 
 /*
@@ -289,7 +290,7 @@ export default function MembershipPage() {
           <div>
             <h3 className="font-semibold text-foreground mb-2">购买会员遇到问题如何联系？</h3>
             <p className="text-muted-foreground text-sm">
-              请添加微信：13240286600（手机同号）
+              请添加微信：{SUPPORT_WECHAT}（手机同号）
             </p>
           </div>
         </div>

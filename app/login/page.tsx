@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { LogIn, Mail, Lock, ArrowLeft, Home, Ticket, Eye, EyeOff, Gift } from "lucide-react";
 import { LoginGreeting, DailyTip, rememberLoginName, freeTrialLine } from "@/components/auth/LoginExtras";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { AuthTransition } from "@/components/auth/AuthTransition";
 // 数字走 FACTS 统一口径。原来这里 import 整套方法库只为数一个 length——
@@ -315,7 +316,7 @@ export default function LoginPage() {
               </div>
               {isLogin && showForgot && (
                 <div className="mb-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                  加客服微信 <span className="font-semibold text-foreground">13240286600</span>（手机同号），
+                  加客服微信 <span className="font-semibold text-foreground">{SUPPORT_WECHAT}</span>（手机同号），
                   报上注册邮箱，我们会重置并发你一个临时密码。登录后请到「我的账户」里改成你自己的。
                 </div>
               )}

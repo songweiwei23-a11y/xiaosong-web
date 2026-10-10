@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS } from '@/lib/config/plans';
+import { generateInvitationCode } from '@/lib/invitation-code';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,17 +13,6 @@ export const dynamic = 'force-dynamic';
  * 除 service_role 外一律拒绝。一旦让前端能读这张表，任何人拉一遍就拿到
  * 全部可用码，这个门就白设了。
  */
-
-/** 码的样子：XS + 6 位。去掉了 0/O/1/I/L，口头转述和手抄时最容易认错的就是这几个 */
-const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-
-function generateCode(): string {
-  let s = '';
-  for (let i = 0; i < 6; i++) {
-    s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  }
-  return 'XS' + s;
-}
 
 /** 过期与否是查询时算的，不跑定时任务——一个只在注册时用到的状态，不值得为它开个 cron */
 function withComputedStatus<T extends { status: string; expires_at: string | null }>(row: T) {
@@ -110,7 +100,7 @@ export async function POST(request: Request) {
   const supabase = getServiceSupabase();
 
   /*
-   * 撞码几乎不可能（31^6 ≈ 8.9 亿），但 code 上有唯一索引，
+   * 撞码几乎不可能（31^8 ≈ 8.5 千亿，加密随机数生成），但 code 上有唯一索引，
    * 真撞上会整批插入失败。所以按批重试：只把没插进去的补上，
    * 而不是整批推倒重来。
    */
@@ -120,7 +110,7 @@ export async function POST(request: Request) {
     attempts += 1;
     const need = count - created.length;
     const rows = Array.from({ length: need }, () => ({
-      code: generateCode(),
+      code: generateInvitationCode(),
       created_by: admin.userId,
       created_by_admin: true,
       status: 'active',

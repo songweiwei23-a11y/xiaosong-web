@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 
 /**
  * 隐私政策、服务条款共用的版式。
@@ -8,7 +9,6 @@ import { ArrowLeft } from "lucide-react";
  * 这个产品在收邮箱、账号档案和付款截图，这两份东西不能没有。
  */
 export const LEGAL_UPDATED = "2026 年 9 月 24 日";
-export const SUPPORT_WECHAT = "13240286600";
 
 /** updated：这一份自己的更新日期。两份不一定同时改，改了哪份就只动哪份的日期 */
 export function LegalPage({

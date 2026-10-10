@@ -115,7 +115,7 @@ describe('用户修改密码', () => {
     const login = readCode('app/login/page.tsx');
     expect(login).toContain('忘记密码');
     // 找回靠客服，所以必须留联系方式
-    expect(login).toContain('13240286600');
+    expect(login).toContain('SUPPORT_WECHAT');
   });
 
   it('登录页的忘记密码没有去调发邮件的接口——系统发不了信', () => {
