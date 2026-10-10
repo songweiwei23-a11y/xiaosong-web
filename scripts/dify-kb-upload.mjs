@@ -492,7 +492,7 @@ async function cmdAudit() {
   console.log(`\n账号下共 ${all.length} 个知识库，逐个读取文档清单...\n`);
   for (const d of all) {
     let docs = [];
-    try { docs = await fetchDocs(d.id); } catch (e) { docs = []; }
+    try { docs = await fetchDocs(d.id); } catch { docs = []; }
     const row = { id: d.id, name: d.name, count: docs.length, docs: docs.map((x) => x.name) };
     (targetNames.has(d.name) ? keep : others).push(row);
     await sleep(200);

@@ -33,13 +33,6 @@ import { Sparkles, Loader2, Tag } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { postSafely } from '@/lib/safe-post';
 
-// 标题风格选项
-const TITLE_STYLES = [
-  { id: "pain", label: "痛点型", desc: "直击用户痛点", example: "还在为...发愁？" },
-  { id: "counter", label: "反常识", desc: "打破固有认知", example: "你以为...其实..." },
-  { id: "result", label: "结果型", desc: "展示惊人效果", example: "30天后的变化" },
-];
-
 // ===== 专业版配置 =====
 const TITLE_TYPES = [
   { value: "auto", label: "AI推荐", desc: "按原稿选择", example: "沿原意选择最合适的标题", icon: "✨" },
@@ -92,11 +85,11 @@ export default function TitlePage() {
 
   const [topic, setTopic] = useState("");
   const [scriptContent, setScriptContent] = useState("");
-  const [videoTopic, setVideoTopic] = useState("");
+  const [, setVideoTopic] = useState("");
   const [platform, setPlatform] = useState("抖音");
-  const [titleStyles, setTitleStyles] = useState<string[]>(["pain", "counter", "result"]);
+  const [, setTitleStyles] = useState<string[]>(["pain", "counter", "result"]);
   const [targetAudience, setTargetAudience] = useState("");
-  const [additionalInfo, setAdditionalInfo] = useState("");
+  const [, setAdditionalInfo] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
@@ -106,14 +99,12 @@ export default function TitlePage() {
   const [titleFormula, setTitleFormula] = useState("auto");
   const [keywordStrategy, setKeywordStrategy] = useState("auto");
   const [abTestCount, setAbTestCount] = useState(5);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isRecommending, setIsRecommending] = useState(false);
 
   // 历史记录相关
   const { history: titleHistory, loadHistory: loadTitleHistory, lastResult, resultScope } = useGenerationPage({ taskType: '标题封面', historyApiPath: '/api/titles' });
   useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setOriginContent(''); setOpeningCards([]); setSelectedHistory(null); setShowDialog(false); });
   const [selectedHistory, setSelectedHistory] = useState<any>(null);
-  const [showDialog, setShowDialog] = useState(false);
+  const [, setShowDialog] = useState(false);
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
   const [workId, setWorkId] = useState<string | null>(null);
   const [originContent, setOriginContent] = useState('');
@@ -189,19 +180,6 @@ export default function TitlePage() {
     setResult(title.result);
     // 连它属于哪个作品一起接上
     if (title.work_id !== undefined) setWorkId(title.work_id ?? null);
-  };
-
-  const openHistoryDialog = (title: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setResult(title.result);
-    setSelectedHistory(title);
-    setShowDialog(true);
-  };
-
-  const toggleStyle = (id: string) => {
-    setTitleStyles(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
   };
 
   const handleGenerate = async () => {

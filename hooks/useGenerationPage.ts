@@ -105,7 +105,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
           await loadHistory();
           notify("✓ 删除成功");
         }
-      } catch (error) {
+      } catch {
         notify("✗ 删除失败");
       }
     },
@@ -126,7 +126,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
     try {
       await navigator.clipboard.writeText(text);
       notify("✓ 已复制到剪贴板");
-    } catch (error) {
+    } catch {
       notify("✗ 复制失败");
     }
   }, []);

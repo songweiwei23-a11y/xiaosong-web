@@ -22,7 +22,7 @@ interface UserProfile {
 }
 
 export default function ProfilesPage() {
-  const router = useRouter()
+  useRouter();
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   // 哪个是当前在用的。原来这一页只能编辑、删除，没法切换——首页"切换档案"跳过来就卡住了

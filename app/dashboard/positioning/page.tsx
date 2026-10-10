@@ -399,15 +399,6 @@ export default function PositioningPage() {
     setResult(positioning.full_content)
   }
 
-  // ✅ 新增：打开历史定位的持续对话
-  const openHistoryDialog = (positioning: Positioning, e: React.MouseEvent) => {
-    e.stopPropagation() // 防止触发 viewPositioning
-    setResult(positioning.full_content)
-    setSelectedPositioning(positioning)
-    setDialogConversationId(undefined) // 历史记录没有 conversationId
-    setShowDialog(true)
-  }
-
   if (loadingProfile) {
     return (
       <div className="flex h-full items-center justify-center">

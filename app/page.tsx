@@ -39,7 +39,7 @@ export default function HomePage() {
    * 现在只认接口给的真实数；接口给 null 就那一项不显示——
    * 宁可少一块，也不编一个。
    */
-  const [stats, setStats] = useState<{
+  const [, setStats] = useState<{
     users: number | null;
     scripts: number | null;
     methods: number | null;

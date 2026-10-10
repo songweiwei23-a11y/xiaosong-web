@@ -331,7 +331,7 @@ export default function ScriptPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [positionings, setPositionings] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState("");
-  const [selectedPositioningId, setSelectedPositioningId] = useState("");
+  const [selectedPositioningId] = useState("");
 
   // 额度快用完 / 用完的提醒改由全站统一的付费引导负责（lib/upgrade + 工作台框架里的 UpgradePrompt）。
   // 这一页原来单独有一套：进页面就查、"任何一个功能用完"都说成"脚本额度用完了"。

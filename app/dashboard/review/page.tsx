@@ -208,19 +208,6 @@ export default function ReviewPage() {
     }
   };
 
-  const loadExample = () => {
-    setDraftContent(`开头：你知道吗？很多人做短视频都失败了。
-
-中间：因为他们不懂脚本结构，随便拍，没有规划。我做了3年短视频，总结了一套方法。
-
-结尾：想学的话，关注我，下期教你。`);
-  };
-
-  const clearDraft = () => {
-    setDraftContent("");
-    setIncomingSetup(null); setOriginContent(''); setSourceReference('');
-  };
-
   const handleGenerate = async () => {
     if (isGenerating) return;
     if (AMBIGUOUS_REVIEW_DURATION.test(personalRequirements) || AMBIGUOUS_REVIEW_DURATION.test(duration)) {

@@ -56,7 +56,7 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
       if (selectedRecord?.id === id) {
         setSelectedRecord(null);
       }
-    } catch (error) {
+    } catch {
       notify('删除失败');
     }
   };

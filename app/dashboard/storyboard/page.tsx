@@ -44,8 +44,6 @@ import {
   VISUAL_STYLE_VALUES,
   contentTypeExample,
 } from '@/lib/content-types';
-
-const PLATFORMS = ["抖音", "小红书", "视频号", "B站", "快手"];
 // 第一项「按脚本长度」是默认：没另选就按脚本台词本来的长度排，一句不删（2026-10-06：原来默认 60 秒会砍台词）
 const DURATIONS = [FOLLOW_SCRIPT, "15秒", "30秒", "60秒", "90秒", "3-5分钟"];
 
@@ -216,7 +214,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         } else {
           notify("AI推荐解析失败");
         }
-      } catch (e) {
+      } catch {
         notify("AI推荐解析失败");
       }
     } catch (error: any) {

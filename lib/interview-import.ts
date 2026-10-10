@@ -59,7 +59,7 @@ export interface Extraction {
 }
 
 const SPEC = new Map(PROFILE_FIELDS.map((f) => [f.key, f]));
-const ARRAY_KINDS = new Set(['multi']);
+new Set(['multi']);
 
 /** 手机号、座机、身份证、银行卡——不进档案 */
 const SENSITIVE = [

@@ -127,7 +127,7 @@ export default function TopicPage() {
   const [topicCount, setTopicCount] = useState(10);
   // 快速 3 条（2026-10-09 产品方要的档位）：用户自己选了快，才压篇幅；默认档位照旧不设上限
   const [quickTopics, setQuickTopics] = useState(false);
-  const [withHook, setWithHook] = useState(true);
+  const [withHook] = useState(true);
   const [difficulty, setDifficulty] = useState("中等创意");
   /**
    * 这一批选题用哪一计拍。空 = 不指定，模型自由发挥。
@@ -186,12 +186,6 @@ export default function TopicPage() {
   useRestoreLastResult(lastResult, setResult, resultScope);
 
   // 折叠状态
-  const [isBasicOpen, setIsBasicOpen] = useState(true);
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-
-  // 选项数据
-  const accountStages = ["刚起号，定位未确定", "有定位，需要内容方向", "稳定运营，需要新选题", "遇到瓶颈，需要突破"];
-  const fansLevels = ["0-1000", "1000-1万", "1-5万", "5-10万", "10万+"];
   const platforms = ["抖音", "快手", "视频号", "小红书", "B站"];
   const tracks = [
 "美食烹饪", "职场技能", "育儿教育", "美妆护肤", "健身减肥",
@@ -422,91 +416,6 @@ export default function TopicPage() {
     }
     
     return relevantContent.trim();
-  };
-  // 档案选择处理
-  const handleProfileSelect = (profileId: string) => {
-    setSelectedProfileId(profileId);
-    const profile = profiles.find((p) => p.id === profileId);
-    // 在这儿换档案，侧边栏和其他板块也要跟着换，否则又变成两套
-    if (profileId) setActiveProfileId(profileId, profile);
-    if (profile && mode === "quick") {
-      // 自动填充
-      if (profile.account_track && profile.account_track.length > 0) {
-        setSelectedTracks(cur => cur.length ? cur : profile.account_track || []);
-      }
-      if (profile.content_style && profile.content_style.length > 0) {
-        setSelectedStyles(cur => cur.length ? cur : profile.content_style || []);
-      }
-      if (profile.account_platform && profile.account_platform.length > 0) {
-        setSelectedPlatforms(cur => cur.length ? cur : profile.account_platform || []);
-      }
-      if (profile.account_stage) {
-        setAccountStage(profile.account_stage);
-      }
-      if (profile.fans_level) {
-        setFansLevel(profile.fans_level);
-      }
-    }
-  };
-
-  // 定位选择处理
-  const handlePositioningSelect = (positioningId: string) => {
-    setSelectedPositioningId(positioningId);
-    const positioning = positionings.find((p) => p.id === positioningId);
-    if (positioning && mode === "quick") {
-      // 优先使用 strategy_summary（选题专用摘要），没有则从 full_content 提取。
-      //
-      // 这里原先一律截到 300 字再补上「...」。账号定位平均生成 2000 字以上，
-      // 300 字大概只够一句赛道分析的开头——用户以为定位在指导选题，
-      // 实际传过去的只是个头。摘要本身已经滤掉了执行层细节（配比、拍摄方向、
-      // 15天计划），剩下的赛道、人群、优势、差异化正是选题要用的，不该再砍。
-      //
-      // 仍留一个上限，但放到足以容纳整份摘要的量级，只防异常长文把提示词撑爆。
-      const MAX_POSITIONING_CHARS = 2000;
-      const clip = (text: string) =>
-        text.length > MAX_POSITIONING_CHARS
-          ? text.slice(0, MAX_POSITIONING_CHARS) + "…（后续内容已省略）"
-          : text;
-
-      if (positioning.strategy_summary) {
-        setPositioningExtra(clip(positioning.strategy_summary));
-      } else if (positioning.full_content) {
-        // 兼容旧数据：没有摘要时现场从完整定位里提取
-        setPositioningExtra(clip(extractStrategySummary(positioning.full_content)));
-      }
-    }
-  };
-
-  // AI推荐风格
-  const recommendStyles = () => {
-    let recommended: string[] = [];
-    if (accountStage === '刚起号，定位未确定') {
-      recommended = ["活泼亲和", "接地气"];
-    } else if (accountStage === '有定位，需要内容方向') {
-      recommended = ["专业严谨", "活泼亲和"];
-    } else if (accountStage === '稳定运营，需要新选题') {
-      recommended = ["温暖治愈", "幽默搞笑"];
-    } else if (accountStage === '遇到瓶颈，需要突破') {
-      recommended = ["犀利直接", "反差萌"];
-    }
-    setSelectedStyles(recommended);
-    notify(`✨ 已推荐：${recommended.join('、')}`);
-  };
-
-  // AI推荐难度
-  const recommendDifficulty = () => {
-    let recommended = "中等创意";
-    if (accountStage === "刚起号，定位未确定") {
-      recommended = "简单易懂";
-    } else if (accountStage === "有定位，需要内容方向") {
-      recommended = "中等创意";
-    } else if (accountStage === "稳定运营，需要新选题") {
-      recommended = "中等创意";
-    } else if (accountStage === "遇到瓶颈，需要突破") {
-      recommended = "高难创新";
-    }
-    setDifficulty(recommended);
-    notify(`✨ 已推荐难度：${recommended}`);
   };
 
   // 组件加载时获取数据

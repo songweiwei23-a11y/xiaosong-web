@@ -76,7 +76,7 @@ export default function HistoryPage() {
     try {
       await navigator.clipboard.writeText(text);
       notify("已复制到剪贴板！");
-    } catch (error) {
+    } catch {
       notify("复制失败");
     }
   }, []);
@@ -104,7 +104,7 @@ export default function HistoryPage() {
 
       notify("删除成功！");
       await loadHistory(userId);
-    } catch (error) {
+    } catch {
       notify("删除失败");
     }
   }, [userId, loadHistory]);
