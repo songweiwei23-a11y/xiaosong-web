@@ -478,7 +478,7 @@ export default function HomePage() {
     },
     {
       q: "如何联系客服？",
-      a: `直接加微信：${SUPPORT_WECHAT}（手机同号）。目前是我本人在对接，看到就回。`
+      a: `直接加微信：${SUPPORT_WECHAT}。目前是我本人在对接，看到就回。`
     }
   ];
 
@@ -1334,7 +1334,7 @@ export default function HomePage() {
             */}
             <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/15 dark:bg-blue-900/30 text-primary rounded-lg font-medium">
               <MessageCircle className="w-5 h-5" />
-              客服微信：<span className="select-all">{SUPPORT_WECHAT}</span>（手机同号）
+              客服微信：<span className="select-all">{SUPPORT_WECHAT}</span>
             </div>
           </div>
         </div>

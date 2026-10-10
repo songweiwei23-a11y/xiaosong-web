@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
-import { Upload, RefreshCcw, Check } from "lucide-react";
+import { RefreshCcw, Check } from "lucide-react";
 
 interface QRCode {
   id: string;

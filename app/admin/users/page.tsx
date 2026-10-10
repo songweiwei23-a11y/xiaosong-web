@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Edit2, ChevronLeft, ChevronRight, Loader2, RefreshCw, AlertCircle, Crown, Ban, Unlock, RotateCcw, Eye, KeyRound, Copy, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Crown, Ban, Unlock, RotateCcw, Eye, KeyRound, Copy, Trash2 } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { SUBSCRIPTION_PLANS, getPlan } from '@/lib/config/plans';
 

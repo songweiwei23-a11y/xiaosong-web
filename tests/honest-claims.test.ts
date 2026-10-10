@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readSource as read, readCode, stripComments } from './helpers/source';
+import { readSource as read, stripComments } from './helpers/source';
 
 
 
@@ -156,7 +156,7 @@ describe('对外承诺兑现得了', () => {
   it('留的是真能联系上的方式', () => {
     // 手机/微信同号，是他本人在对接
     expect(stripComments(read('app/page.tsx'))).toContain('SUPPORT_WECHAT');
-    expect(read('lib/config/contact.ts')).toContain("'13240286600'");
+    expect(read('lib/config/contact.ts')).toContain("'songwei886688'");
   });
 });
 

@@ -2,16 +2,15 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { cleanTitle, resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds, scriptReasonIds, normalizeCreationReasons } from '@/lib/creation-settings';
+import { cleanTitle, resolveCreationSettings, mergeCreationSettings, settingsForResult, creationSettingsBlock, durationSeconds, scriptReasonIds, normalizeCreationReasons } from '@/lib/creation-settings';
 
 import ContinuousDialog from "@/components/ContinuousDialog";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { extractScriptContext } from "@/lib/positioning-utils";
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
-import { buildContextBlock, type CreatorProfile } from "@/lib/creator-context";
-import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
+import { buildContextBlock } from "@/lib/creator-context";
+import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { getScriptDetails, getHookDetails } from "@/lib/script-details";
 import { buildAdaptiveScriptPrompt } from "@/lib/script-design";
 import { enhancePromptWithMCNStandards } from "@/lib/enhance-prompt";
@@ -33,12 +32,9 @@ import { readDifyStream } from '@/lib/sse-stream';
 import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } from "@/lib/quality-checker";
 import { PRIORITY_ORDER } from "@/lib/output-rules";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
-import {
-  Sparkles, Loader2, ChevronDown, ChevronUp, Settings, Target, Lightbulb, Film, FileText,
-  BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package, CheckCircle, Tag, Copy,
-} from "lucide-react";
+import { Sparkles, Loader2, Settings, Target, Lightbulb, Film, FileText, BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package, CheckCircle, Tag, Copy } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 
 // 静态配置与折叠组件已抽离
@@ -81,7 +77,6 @@ import { createWork, recordStage } from "@/lib/works";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import { useWorkResume } from "@/hooks/useWorkResume";
 import { latestOf, workIdFromUrl } from "@/lib/resume";
-import { supabase } from "@/lib/supabase/client";
 import { Field, OptionCard } from "@/components/form/Field";
 import { postSafely } from '@/lib/safe-post';
 

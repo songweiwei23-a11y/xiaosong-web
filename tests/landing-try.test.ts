@@ -114,7 +114,7 @@ describe('注册必须用邀请码（2026-10-04 产品方：首页不再自动�
     expect(login).toMatch(/setInviteCode\(code\)/);
     expect(login).toContain('邀请码已经帮你填好了');
     expect(login).toMatch(/: INVITE_CONTACT\}/);
-    expect(INVITE_CONTACT).toContain('加客服微信 13240286600');
+    expect(INVITE_CONTACT).toContain('加客服微信 songwei886688');
     expect(login).not.toContain('体验码已经帮你填好了');
   });
 });

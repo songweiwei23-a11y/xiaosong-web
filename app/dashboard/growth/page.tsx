@@ -2,7 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
+import { resolveCreationSettings, mergeCreationSettings, creationSettingsBlock } from '@/lib/creation-settings';
 
 
 import { useEffect, useState, useRef } from 'react'
@@ -44,7 +44,7 @@ import { creationReference, continuationRules } from '@/lib/creation-continuatio
 import { buildCreationHandoff } from '@/lib/creation-flow'
 import { createWork, recordStage } from '@/lib/works'
 import { useWorkResume } from '@/hooks/useWorkResume'
-import { latestOf, workScriptBody, workIdFromUrl, workStageUrl } from '@/lib/resume'
+import { latestOf, workScriptBody, workIdFromUrl } from '@/lib/resume';
 import { useRouter } from 'next/navigation'
 
 /**

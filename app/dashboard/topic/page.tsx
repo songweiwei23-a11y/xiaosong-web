@@ -26,7 +26,7 @@ import { TopicLibrary } from "@/components/workspace/TopicLibrary";
 import { splitTopicSections, removeTopicSection, batchBelongsToProfile } from "@/lib/topic-library";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
-import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, GENERATE_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, GENERATE_BTN, chipCls } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
@@ -35,21 +35,20 @@ import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
-import { buildContextBlock, describeExecutionConstraints, describeRestrictions, type CreatorProfile } from '@/lib/creator-context';
+import { buildContextBlock, describeExecutionConstraints, describeRestrictions } from '@/lib/creator-context';
 import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 
 
 
 import { useState, useEffect } from "react";
-import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
-import { Lightbulb, Loader2, TrendingUp, Users, Target, Sparkles, Grid3x3, Zap, Heart, DollarSign, Eye, Flame, Copy, Download, History, MessageCircle, Trash2, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Lightbulb, Loader2, Users, Target, Sparkles, Zap, Heart, DollarSign, Eye, Flame, FileText } from "lucide-react";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
 
 // 静态配置与类型已抽离
 import { ALL_DEAL_REASONS } from './constants';
-import type { TopicHistory, Profile, Positioning } from './types';
+import type { Profile, Positioning } from './types';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { postSafely } from '@/lib/safe-post';

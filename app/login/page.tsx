@@ -316,7 +316,7 @@ export default function LoginPage() {
               </div>
               {isLogin && showForgot && (
                 <div className="mb-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                  加客服微信 <span className="font-semibold text-foreground">{SUPPORT_WECHAT}</span>（手机同号），
+                  加客服微信 <span className="font-semibold text-foreground">{SUPPORT_WECHAT}</span>，
                   报上注册邮箱，我们会重置并发你一个临时密码。登录后请到「我的账户」里改成你自己的。
                 </div>
               )}

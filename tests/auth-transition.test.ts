@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import { readSource as read, readCode, stripComments } from './helpers/source';
+import { readSource as read, readCode } from './helpers/source';
 
 
 

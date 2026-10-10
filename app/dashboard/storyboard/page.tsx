@@ -2,7 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, creationSettingsBlock } from '@/lib/creation-settings';
 
 
 import { takeHandoff } from "@/lib/handoff";
@@ -19,7 +19,7 @@ import { buildContextBlock } from "@/lib/creator-context";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
-import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, GENERATE_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { SELECT_CLS, TEXTAREA_CLS, GENERATE_BTN, SECONDARY_BTN } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
@@ -28,7 +28,7 @@ import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect, useMemo } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { useRouter } from "next/navigation";
-import { Film, Copy, Download, Loader2, Sparkles, Wand2, Tag } from "lucide-react";
+import { Film, Loader2, Sparkles, Wand2, Tag } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';

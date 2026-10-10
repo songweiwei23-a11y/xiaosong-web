@@ -2,7 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, creationSettingsBlock } from '@/lib/creation-settings';
 
 
 import { useEffect, useRef, useState } from "react";

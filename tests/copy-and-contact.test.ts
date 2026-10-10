@@ -13,8 +13,13 @@ const SOURCES = [...listFiles('app'), ...listFiles('components'), ...listFiles('
 describe('客服联系方式：全站只定义一处', () => {
   it('扫描：源码里只有 lib/config/contact.ts 写了客服号码', () => {
     expect(SOURCES.length).toBeGreaterThan(150); // 自证不是空转
-    const hits = SOURCES.filter((f) => readCode(f).includes('13240286600')).map((f) => f.split(path.sep).join('/'));
+    const hits = SOURCES.filter((f) => readCode(f).includes('songwei886688')).map((f) => f.split(path.sep).join('/'));
     expect(hits).toEqual(['lib/config/contact.ts']);
+  });
+
+  it('扫描：微信号不是手机号了，文案里不再写「手机同号」', () => {
+    const bad = SOURCES.filter((f) => readSource(f).includes('手机同号'));
+    expect(bad).toEqual([]);
   });
 });
 

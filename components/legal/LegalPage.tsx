@@ -34,7 +34,7 @@ export function LegalPage({
           {children}
         </div>
         <p className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-          对本文有任何疑问，请加客服微信 {SUPPORT_WECHAT}（手机同号）。
+          对本文有任何疑问，请加客服微信 {SUPPORT_WECHAT}。
         </p>
       </article>
     </div>

@@ -3,9 +3,7 @@ import { readSource as read, readCode } from './helpers/source';
 import {
   setupSteps, nextSetupStep, setupDone, setupProgress, landingPath,
 } from '@/lib/setup-progress';
-import {
-  QUICK_SECTION_KEYS, buildQuickOutputSpec, SECTIONS, parsePositioning,
-} from '@/lib/positioning-sections';
+import { QUICK_SECTION_KEYS, buildQuickOutputSpec, SECTIONS } from '@/lib/positioning-sections';
 import { OUTPUT_FULL, buildPositioningPrompt } from '@/lib/positioning-standards';
 
 /**

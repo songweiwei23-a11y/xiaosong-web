@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Crown, Edit, Save, X, Calendar, Zap, RefreshCw, Search } from "lucide-react";
+import { Crown, Edit, Save, X, Zap, RefreshCw, Search } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { Loading } from '@/components/ui/loading';
 import { SUBSCRIPTION_PLANS, quotaSummary } from '@/lib/config/plans';

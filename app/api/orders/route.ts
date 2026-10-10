@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
-import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
+import { getServerSupabase } from '@/lib/admin-auth';
 import { getPlan, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 
 export const dynamic = 'force-dynamic';

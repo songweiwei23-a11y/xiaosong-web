@@ -7,7 +7,7 @@
 // 这些调用都发生在用户正在聊天的过程中，网络抖动时最不该做的事
 // 就是打断对话——界面照常显示，下一次保存会把完整内容再写一遍。
 
-import { normalizeTimestamp, type ChatMessage, type ChatRole } from './chat-message-utils'
+import { normalizeTimestamp, type ChatMessage } from './chat-message-utils';
 import { sanitizeAttachments } from './chat-attachments'
 import { sanitizeMessages } from './chat-message-utils'
 import { postSafely } from '@/lib/safe-post'

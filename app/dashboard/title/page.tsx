@@ -2,13 +2,13 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { resolveCreationSettings, mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, creationSettingsBlock, durationSeconds } from '@/lib/creation-settings';
+import { resolveCreationSettings, mergeCreationSettings, settingsForResult, creationSettingsBlock } from '@/lib/creation-settings';
 
 
 import { takeHandoff } from "@/lib/handoff";
 import { creationReference, originForResult } from '@/lib/creation-continuation';
 import { useWorkResume } from "@/hooks/useWorkResume";
-import { latestOf, workScriptBody, workIdFromUrl } from "@/lib/resume";
+import { latestOf, workScriptBody } from "@/lib/resume";
 import { recordStage } from "@/lib/works";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
@@ -20,7 +20,7 @@ import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
-import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, PRIMARY_BTN, GENERATE_BTN, SECONDARY_BTN, chipCls } from "@/components/form/controls";
+import { INPUT_CLS, TEXTAREA_CLS, GENERATE_BTN, SECONDARY_BTN } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
@@ -29,8 +29,7 @@ import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
-import { Sparkles, Loader2, Target, Users, Zap, TrendingUp, History, MessageCircle, Trash2, Tag } from "lucide-react";
-import ContinuousDialog from '@/components/ContinuousDialog';
+import { Sparkles, Loader2, Tag } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { postSafely } from '@/lib/safe-post';
 

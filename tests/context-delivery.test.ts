@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import ts from 'typescript';
 import path from 'node:path';
-import { BOARD_MANIFESTS, manifestOf, type Board } from '@/lib/context-manifest';
+import { BOARD_MANIFESTS } from '@/lib/context-manifest';
 import { buildContextBlock, type CreatorContext, type CreatorProfile } from '@/lib/creator-context';
 import { BRIEF_FIELDS } from '@/lib/creative-brief';
 

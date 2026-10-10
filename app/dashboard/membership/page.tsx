@@ -290,7 +290,7 @@ export default function MembershipPage() {
           <div>
             <h3 className="font-semibold text-foreground mb-2">购买会员遇到问题如何联系？</h3>
             <p className="text-muted-foreground text-sm">
-              请添加微信：{SUPPORT_WECHAT}（手机同号）
+              请添加微信：{SUPPORT_WECHAT}
             </p>
           </div>
         </div>

@@ -16,7 +16,7 @@ import { SUPPORT_WECHAT } from '@/lib/config/contact';
 export const REGISTER_URL = '/login?mode=register';
 
 /** 注册页提示：邀请码找谁要 */
-export const INVITE_CONTACT = `注册需要邀请码。加客服微信 ${SUPPORT_WECHAT}（手机同号）领取。`;
+export const INVITE_CONTACT = `注册需要邀请码。加客服微信 ${SUPPORT_WECHAT} 领取。`;
 
 export interface IndustrySample {
   id: string;
