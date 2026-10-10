@@ -152,11 +152,12 @@ $projectRoot = (Get-Item -LiteralPath $projectPath).FullName
 $manifestLines = New-Object System.Collections.Generic.List[string]
 foreach ($dir in @($existing | Where-Object { $pruneDirs -contains $_ })) {
     foreach ($f in Get-ChildItem -LiteralPath $dir -Recurse -File) {
-        $manifestLines.Add($f.FullName.Substring($projectRoot.Length + 1) -replace '\\', '/')
+        $manifestLines.Add(($f.FullName.Substring($projectRoot.Length + 1) -replace '\\', '/'))
     }
 }
 $manifestLocal = Join-Path $env:TEMP "deploy-manifest-$timestamp.txt"
-[System.IO.File]::WriteAllLines($manifestLocal, [string[]]$manifestLines, (New-Object System.Text.UTF8Encoding($false)))
+# 必须是 LF：WriteAllLines 在 Windows 上会写 CRLF，服务器比对时行尾对不上，删除就静默失效
+[System.IO.File]::WriteAllText($manifestLocal, (($manifestLines -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
 # 使用 tar 而非 Compress-Archive。
 # PowerShell 5.1 的 Compress-Archive 会用反斜杠写 zip 条目路径(app\api\route.ts)，
@@ -185,14 +186,18 @@ if ($LASTEXITCODE -ne 0) {
     pause
     exit 1
 }
-scp -i "$sshKey" "$projectPath\scripts\deploy-prune.sh" "${serverUser}@${serverIP}:/tmp/deploy-prune.sh"
+# 清理脚本在服务器上用 bash 跑，必须是 LF 换行；Windows 上检出的文件可能带 CRLF，这里统一转一下再传
+$pruneLocal = Join-Path $env:TEMP "deploy-prune-$timestamp.sh"
+$pruneText = [System.IO.File]::ReadAllText("$projectPath\scripts\deploy-prune.sh") -replace "`r`n", "`n"
+[System.IO.File]::WriteAllText($pruneLocal, $pruneText, (New-Object System.Text.UTF8Encoding($false)))
+scp -i "$sshKey" $pruneLocal "${serverUser}@${serverIP}:/tmp/deploy-prune.sh"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "清理脚本上传失败，已中止部署" -ForegroundColor Red
-    Remove-Item $tempPkg, $manifestLocal -Force -ErrorAction SilentlyContinue
+    Remove-Item $tempPkg, $manifestLocal, $pruneLocal -Force -ErrorAction SilentlyContinue
     pause
     exit 1
 }
-Remove-Item $manifestLocal -Force -ErrorAction SilentlyContinue
+Remove-Item $manifestLocal, $pruneLocal -Force -ErrorAction SilentlyContinue
 
 Write-Host "服务器端部署..." -ForegroundColor Yellow
 # 解压与依赖安装。这一步很快，放在前台执行。

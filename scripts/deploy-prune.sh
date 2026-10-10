@@ -12,8 +12,9 @@ OLD="$ROOT/.deploy-manifest"
 cd "$ROOT"
 
 if [ -f "$OLD" ]; then
-  sort -u "$OLD" > /tmp/deploy-old.sorted
-  sort -u "$NEW" > /tmp/deploy-new.sorted
+  # 去掉 CR：清单若是 Windows 换行写的，行尾的 \r 会让文件名对不上，删除就静默失效
+  tr -d '\r' < "$OLD" | sort -u > /tmp/deploy-old.sorted
+  tr -d '\r' < "$NEW" | sort -u > /tmp/deploy-new.sorted
   comm -23 /tmp/deploy-old.sorted /tmp/deploy-new.sorted | while IFS= read -r f; do
     case "$f" in
       app/*|components/*|hooks/*|lib/*|types/*|supabase/*|public/*|tests/*)
