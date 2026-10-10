@@ -25,6 +25,8 @@ export function ProfileQuickSwitch({ loading, hasProfile }: { loading: boolean; 
   const [open, setOpen] = useState(false);
   const [profiles, setProfiles] = useState<ProfileRow[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -34,14 +36,31 @@ export function ProfileQuickSwitch({ loading, hasProfile }: { loading: boolean; 
     return onActiveProfileChange(() => setActiveId(getActiveProfileId()));
   }, []);
 
-  // 每次打开都重新取一遍，刚改过的档案、刚算好的完整度都是新的
+  // 每次打开都重新取一遍，刚改过的档案、刚算好的完整度都是新的。
+  // 服务端卡住时不能一直转骨架：10 秒没回就断开，告诉用户并给重试
   useEffect(() => {
     if (!open) return;
-    fetch("/api/profiles")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list) => setProfiles(Array.isArray(list) ? list : []))
-      .catch(() => setProfiles([]));
-  }, [open]);
+    const ctrl = new AbortController();
+    let closed = false;
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    fetch("/api/profiles", { signal: ctrl.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`读取失败 ${r.status}`);
+        const list = await r.json();
+        if (closed) return;
+        setProfiles(Array.isArray(list) ? list : []);
+        setLoadError(false);
+      })
+      .catch(() => {
+        if (!closed) setLoadError(true);
+      })
+      .finally(() => clearTimeout(timer));
+    return () => {
+      closed = true;
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [open, reloadKey]);
 
   // 点外面、按 Esc 收起
   useEffect(() => {
@@ -105,7 +124,21 @@ export function ProfileQuickSwitch({ loading, hasProfile }: { loading: boolean; 
       >
         <div>
           <p className="px-2 pb-1.5 pt-1 text-[11px] text-muted-foreground max-sm:hidden">选择工作档案</p>
-          {profiles === null ? (
+          {loadError && profiles === null ? (
+            <div className="space-y-2 px-2 py-3 text-center text-[12.5px] text-muted-foreground">
+              <p>档案列表没读出来，可能是网络慢</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoadError(false);
+                  setReloadKey((k) => k + 1);
+                }}
+                className="rounded-lg border border-border px-3 py-1 text-foreground hover:bg-foreground/[0.05]"
+              >
+                重试
+              </button>
+            </div>
+          ) : profiles === null ? (
             <div className="space-y-1.5 p-1">
               <div className="h-10 animate-pulse rounded-lg bg-muted/60" />
               <div className="h-10 animate-pulse rounded-lg bg-muted/40" />

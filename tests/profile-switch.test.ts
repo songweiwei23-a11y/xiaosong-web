@@ -1,37 +1,57 @@
-/**
- * 切换档案：点了要真的切，而且切了所有地方都跟着变。
- *
- * 线上 bug：首页右上角「切换档案」只是跳到档案管理页，那一页只能编辑、删除，切不了；
- * 在侧边栏切了，首页只在打开时读过一次档案、不听广播，还停在上一个号上。
- * 这两处都不报错，只是"点了没反应"，所以用扫描守住。
- */
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readCode } from './helpers/source';
 
-describe('切换档案', () => {
-  it('首页右上角是真的切换器：列出档案，点了走统一入口切换', () => {
-    const page = readCode('app/dashboard/page.tsx');
-    expect(page).toMatch(/<ProfileQuickSwitch /);
-    expect(page).not.toMatch(/href="\/dashboard\/profiles"[^>]*>\s*<User/);
-    const sw = readCode('components/dashboard/ProfileQuickSwitch.tsx');
-    expect(sw).toMatch(/setActiveProfileId\(p\.id, p\)/);
-    expect(sw).toMatch(/fetch\("\/api\/profiles"\)/);
+const authState = { error: null as null | { name?: string; status?: number } };
+
+vi.mock('@/lib/admin-auth', () => ({
+  getServerSupabase: async () => ({
+    auth: {
+      getUser: async () => (authState.error
+        ? { data: { user: null }, error: authState.error }
+        : { data: { user: { id: 'user-1' } }, error: null }),
+    },
+    from: () => ({
+      select: () => ({ eq: () => ({ order: async () => ({ data: [{ id: 'p1', profile_name: '档案' }], error: null }) }) }),
+    }),
+  }),
+}));
+
+const { GET } = await import('@/app/api/profiles/route');
+
+describe('档案列表接口：超时不能当成「没登录」', () => {
+  it('认证服务超时或断线：返回 503，页面会提示重试', async () => {
+    authState.error = { name: 'AuthRetryableFetchError', status: 0 };
+    const res = await GET();
+    expect(res.status).toBe(503);
   });
 
-  it('首页听"档案切换了"的广播，切了就重新定当前档案', () => {
-    const page = readCode('app/dashboard/page.tsx');
-    expect(page).toMatch(/onActiveProfileChange\(\(\) => \{[\s\S]{0,200}applyProfiles/);
+  it('真的没登录或会话过期：返回 401', async () => {
+    authState.error = { name: 'AuthSessionMissingError', status: 400 };
+    expect((await GET()).status).toBe(401);
+    authState.error = { name: 'AuthApiError', status: 401 };
+    expect((await GET()).status).toBe(401);
   });
 
-  it('档案管理页能"设为当前"，并标出当前在用的', () => {
-    const src = readCode('app/dashboard/profiles/page.tsx');
-    expect(src).toMatch(/setActiveProfileId\(profile\.id, profile\)/);
-    expect(src).toContain('设为当前');
-    expect(src).toContain('当前在用');
-    expect(src).toMatch(/onActiveProfileChange\(/);
+  it('已登录：返回档案数组', async () => {
+    authState.error = null;
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([{ id: 'p1', profile_name: '档案' }]);
   });
 
-  it('侧边栏也听广播：别处切了它跟着变', () => {
-    expect(readCode('app/dashboard/components/ProfileSwitcher.tsx')).toMatch(/onActiveProfileChange\(handleProfileUpdate\)/);
+  it('接口不再自己新建 Supabase 客户端（那样就没有超时保护）', () => {
+    const src = readCode('app/api/profiles/route.ts');
+    expect(src).not.toMatch(/createServerClient\(/);
+    expect(src).toMatch(/getServerSupabase\(\)/);
+  });
+});
+
+describe('切换档案弹层：卡住时要有提示和重试', () => {
+  it('请求 10 秒超时，失败显示「重试」，不无限转骨架', () => {
+    const src = readCode('components/dashboard/ProfileQuickSwitch.tsx');
+    expect(src).toMatch(/new AbortController\(\)/);
+    expect(src).toMatch(/10_000/);
+    expect(src).toMatch(/setLoadError\(true\)/);
+    expect(src).toMatch(/重试/);
   });
 });

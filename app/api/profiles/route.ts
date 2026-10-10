@@ -1,6 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { getServerSupabase } from '@/lib/admin-auth'
 import { readJsonBody } from '@/lib/read-body'
 
 export const dynamic = 'force-dynamic'
@@ -31,35 +30,26 @@ async function withoutMissingColumns<T>(
 const withDropped = (profile: unknown, dropped: string[]) =>
   dropped.length && profile && typeof profile === 'object' ? { ...(profile as object), _droppedColumns: dropped } : profile
 
-async function getSupabaseClient() {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options)
-          })
-        },
-      },
-    }
+
+/**
+ * 确认不了登录态时分两种：真没登录（401）和认证服务超时、断线（503）。
+ * 页面把 401 当成「没有档案」，超时要是也回 401，档案就「消失」了。
+ */
+function authFailure(authError: { status?: number; name?: string } | null) {
+  const expired = !authError || authError.status === 401 || authError.status === 403 || authError.name === 'AuthSessionMissingError'
+  return NextResponse.json(
+    { error: expired ? '未授权' : '登录状态暂时确认不了，请稍后重试' },
+    { status: expired ? 401 : 503 }
   )
 }
 
 export async function GET() {
   try {
-    const supabase = await getSupabaseClient()
-    
+    const supabase = await getServerSupabase()
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 })
-    }
+
+    if (authError || !user) return authFailure(authError)
 
     const { data: profiles, error } = await supabase
       .from('user_profiles')
@@ -81,13 +71,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await getSupabaseClient()
+    const supabase = await getServerSupabase()
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 })
-    }
+    if (authError || !user) return authFailure(authError)
 
     const body = await readJsonBody(request)
     
@@ -109,13 +97,11 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = await getSupabaseClient()
+    const supabase = await getServerSupabase()
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 })
-    }
+    if (authError || !user) return authFailure(authError)
 
     const body = await readJsonBody(request)
     const { id, ...updateData } = body
@@ -142,13 +128,11 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await getSupabaseClient()
+    const supabase = await getServerSupabase()
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 })
-    }
+    if (authError || !user) return authFailure(authError)
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
