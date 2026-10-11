@@ -83,6 +83,8 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
    * 整份内容、或者折叠着的普通条目存成一条——一份定位报告不该被拆成十几块。
    */
   const pickMode = selectable && pickOpen;
+  // 拆解的二创结构不显示在正文里，但要随正文整份带到其他板块（1:1 复刻靠它）
+  const withStructure = (text: string) => context?.structure ? `${text}\n\n${context.structure}` : text;
   const partialEdit = source === 'title' ? source : source === 'growth' && context?.topic ? source
     : context?.settings?.workingScript && parts.items.length && parts.items.every(it => it.kind === 'title')
       ? parts.items.every(it => /开头|开篇|钩子/.test(it.label)) ? 'growth' : 'title' : undefined;
@@ -92,7 +94,7 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
     const board = favoriteBoard || source;
     const drafts = pickMode
       ? parts.items.filter((it) => picked.has(it.id)).map((it) => draftFromItem(it, board, label))
-      : [draftFromBody(body, board, label, context?.title)];
+      : [draftFromBody(withStructure(body), board, label, context?.title)];
     if (!drafts.length) { notify(`先勾选要收藏的${noun}`, 'error'); return; }
     setFav('saving');
     try {
@@ -120,7 +122,7 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
       const topics = parts.items.map((it) => it.topic).filter((t): t is string => Boolean(t));
       if (topics.length) ctx = { ...context, topicOptions: context?.topicOptions?.length ? context.topicOptions : topics };
     }
-    const payload = buildCreationHandoff(source, target, sendBody, { ...ctx, workId: ctx?.workId || workIdFromUrl() || undefined });
+    const payload = buildCreationHandoff(source, target, withStructure(sendBody), { ...ctx, workId: ctx?.workId || workIdFromUrl() || undefined });
     setContinuing(true);
     // 保存完整创作需求再跳（lib/creation-session）；重试沿用同一个请求编号
     try { await openCreation(payload, (url) => router.push(url), branch || ctx?.branch === true); }

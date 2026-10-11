@@ -189,8 +189,10 @@ describe('接到全站', () => {
     const breakdown = readCode('app/dashboard/breakdown/page.tsx');
     expect(breakdown).toMatch(/label: "拿去二创到我的店"/);
     // 2026-10-04：和「继续创作」同一套，持久保存后跳（刷新、换设备能接着），整份报告仍放在 remixSource
-    expect(breakdown).toMatch(/buildCreationHandoff\('breakdown', 'remix', body,/);
-    expect(breakdown).toMatch(/remixSource: \{ title: loadedFileName \|\| file\?\.name, text: body \}/);
+    // 报告正文 + 全部变现方向的二创结构一起带过去（二创要的是可复刻的结构）
+    expect(breakdown).toMatch(/renderAllCanonical\(splitBreakdownResult\(result\)\.templates\)/);
+    expect(breakdown).toMatch(/buildCreationHandoff\('breakdown', 'remix', text,/);
+    expect(breakdown).toMatch(/remixSource: \{ title: loadedFileName \|\| file\?\.name, text \}/);
     expect(breakdown).toMatch(/openCreationSafely\(/);
     const remix = readCode('app/dashboard/remix/page.tsx');
     expect(remix).toMatch(/const h = takeHandoff\(\);\s*if \(h\) setIncomingSetup\(h\);\s*if \(h\?\.remixSource\?\.text\)/);

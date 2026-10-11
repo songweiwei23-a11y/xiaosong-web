@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
 import { openCreationSafely } from "@/lib/creation-session";
-import { buildCreationHandoff, type CreationTarget } from "@/lib/creation-flow";
-import { splitBreakdownResult, renderCanonical } from "@/lib/breakdown-templates";
+import { buildCreationHandoff, CREATION_SOURCES, type CreationTarget } from "@/lib/creation-flow";
+import { splitBreakdownResult, renderCanonical, renderAllCanonical, directionSettings, type BreakdownTemplate } from "@/lib/breakdown-templates";
+import { getActiveProfileId } from "@/lib/active-profile";
+import { draftFromBody, saveToLibrary } from "@/lib/library";
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { resolveCreationSettings, mergeCreationSettings, settingsForResult } from '@/lib/creation-settings';
@@ -408,8 +410,8 @@ export default function BreakdownPage() {
             <label className="flex cursor-pointer items-start gap-2.5 px-1 text-[12.5px] text-foreground">
               <input type="checkbox" checked={withProfile} onChange={(e) => setWithProfile(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
               <span>
-                结合「{String(profile.profile_name || "当前档案")}」，最后给 3 个可套用的模板创作方向
-                <span className="block text-[11.5px] text-muted-foreground">每个方向都能收藏，并提供给脚本、选题使用；侧边栏切换档案，这里跟着变</span>
+                结合「{String(profile.profile_name || "当前档案")}」，给 5 个能变现的方向（每个都带着可复刻的二创结构）
+                <span className="block text-[11.5px] text-muted-foreground">选中一个方向，它的目的和结构整份带去其他板块裂变；侧边栏切换档案，这里跟着变</span>
               </span>
             </label>
           )}
@@ -450,12 +452,12 @@ export default function BreakdownPage() {
         result={splitBreakdownResult(result).report}
         isGenerating={running && stage === "ai"}
         title="拆解报告"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), structured: splitBreakdownResult(result).hasStructure }}
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), structured: splitBreakdownResult(result).hasStructure, structure: renderAllCanonical(splitBreakdownResult(result).templates) }}
         showStats={false}
         emptyIcon={Clapperboard}
         emptyTitle={textMode ? running ? "正在分析已带入的文字…" : "拆解已有文案，继续完善创作" : running ? "正在准备画面和口播…" : "传一条爆款视频，逐镜头拆给你看"}
         emptyHint={textMode ? "分析开篇、结构与表达，保留原意并给出可继续创作的文案" : "拆开篇怎么留人、结构怎么搭、每个镜头拍了什么，最后告诉你能学走什么"}
-        emptyTips={textMode ? ["跳转带入的文案与设置已保留", "文字分析只依据已有内容，画面与声音需上传视频", "拆完可以继续二创、审稿、选题或脚本创作"] : ["挑和你同行业、或者你想学的那一类", "点赞是粉丝的几倍才算真爆——填上数据拆得更准", "拆完可以结合你的档案，直接给 3 个能拍的选题"]}
+        emptyTips={textMode ? ["跳转带入的文案与设置已保留", "文字分析只依据已有内容，画面与声音需上传视频", "拆完可以继续二创、审稿、选题或脚本创作"] : ["挑和你同行业、或者你想学的那一类", "点赞是粉丝的几倍才算真爆——填上数据拆得更准", "拆完会给 5 个变现方向，每个都带着二创结构，选中就能带去其他板块裂变"]}
         generatingHint={textMode ? "AI 正在分析文案与结构…" : "AI 正在逐镜头拆解…"}
         bodyClassName={SHOT_CARD_CLS}
         nextActions={[
@@ -466,10 +468,12 @@ export default function BreakdownPage() {
             onClick: (body) => {
               // 目的、行业设置跟着「我的店」走，不从报告里读：报告里的「视频目的」「内容方向」是别人的原片（2026-10-11）
               // 持久保存后再跳（刷新、换设备能接着）
+              // 报告正文 + 全部方向的二创结构：二创要的是可复刻的结构，不只是报告文字
+              const text = [body, renderAllCanonical(splitBreakdownResult(result).templates)].filter(Boolean).join("\n\n");
               openCreationSafely({
-                ...buildCreationHandoff('breakdown', 'remix', body, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }),
+                ...buildCreationHandoff('breakdown', 'remix', text, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }),
                 from: BREAKDOWN_TASK_TYPE,
-                remixSource: { title: loadedFileName || file?.name, text: body },
+                remixSource: { title: loadedFileName || file?.name, text },
               }, (u) => router.push(u), (m) => notify(m, 'error'));
             },
           },
@@ -490,22 +494,48 @@ export default function BreakdownPage() {
             </section>
           );
         }
+        // 选中一个方向：它的变现目的和二创结构整份带去目标板块；行业留到那边再指定
+        const carry = (t: BreakdownTemplate, target: CreationTarget) => {
+          const canonical = renderCanonical(t);
+          const settings = mergeCreationSettings(currentSettings, directionSettings(t));
+          openCreationSafely({
+            ...buildCreationHandoff("breakdown", target, canonical, { settings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), topic: t.goal || t.name }),
+            from: BREAKDOWN_TASK_TYPE,
+            // 二创页面读的是 remixSource：这个方向的结构整份带过去，那边默认 1:1 复刻
+            ...(target === "remix" ? { remixSource: { title: t.goal || t.name, text: canonical } } : {}),
+          }, (u) => router.push(u), (m) => notify(m, "error"));
+        };
+        // 收藏这个方向（连同它的二创结构）到素材库
+        const favoriteDirection = async (t: BreakdownTemplate) => {
+          const title = t.goal || t.name;
+          try {
+            const r = await saveToLibrary([{
+              ...draftFromBody(renderCanonical(t), "breakdown", CREATION_SOURCES.breakdown, title),
+              creationContext: { from: CREATION_SOURCES.breakdown, title, topic: title, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), settings: mergeCreationSettings(currentSettings, directionSettings(t)) },
+            }], getActiveProfileId());
+            notify(r.saved ? `已收藏「${title}」到素材库` : `「${title}」之前就收藏过了`);
+          } catch (e) {
+            notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message, "error");
+          }
+        };
         return (
           <section className="mt-4 space-y-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-[15px] font-semibold text-foreground">二创结构（{split.templates.length} 个模版）</h3>
-              <p className="text-[11.5px] text-muted-foreground">结构可以 1:1 复制到其他板块；带去的板块沿用你现在设的目的和方向</p>
+              <h3 className="text-[15px] font-semibold text-foreground">5 个变现方向（每个都带着可 1:1 复刻的二创结构）</h3>
+              <p className="text-[11.5px] text-muted-foreground">选中一个方向，它的目的和结构整份带去其他板块，在那边按你的行业裂变</p>
             </div>
             {split.templates.map((t) => {
               const canonical = renderCanonical(t);
               return (
                 <article key={t.no} className="glass-panel rounded-2xl p-4">
                   <header className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">模版{t.no}</span>
-                    <h4 className="text-[14px] font-semibold text-foreground">{t.name}</h4>
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">方向{t.no}</span>
+                    <h4 className="text-[15px] font-semibold text-foreground">{t.goal || t.name}</h4>
                     {t.purpose && <span className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground">{t.purpose}</span>}
+                    {t.goal && t.name && <span className="text-[12px] text-muted-foreground">{t.name}</span>}
                   </header>
                   {t.direction && <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/80">{t.direction}</p>}
+                  {t.profile_fit && <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/80"><span className="text-muted-foreground">为什么适合这个账号：</span>{t.profile_fit}</p>}
 
                   {t.segments.length > 0 && (
                     <ol className="mt-3 space-y-2">
@@ -558,8 +588,15 @@ export default function BreakdownPage() {
                     >
                       复制二创结构
                     </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-muted"
+                      onClick={() => favoriteDirection(t)}
+                    >
+                      收藏这个方向
+                    </button>
                     {([
-                      { target: "remix", label: "去跨行业二创（复刻 / 裂变）" },
+                      { target: "remix", label: "去跨行业二创（裂变）" },
                       { target: "topic", label: "去选题" },
                       { target: "script", label: "去脚本" },
                       { target: "direction", label: "去创作方向" },
@@ -570,12 +607,7 @@ export default function BreakdownPage() {
                         key={target}
                         type="button"
                         className="rounded-lg bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary hover:bg-primary/15"
-                        onClick={() => openCreationSafely({
-                          ...buildCreationHandoff("breakdown", target, canonical, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), topic: t.name }),
-                          from: BREAKDOWN_TASK_TYPE,
-                          // 二创页面读的是 remixSource：二创结构整份带过去，那边默认 1:1 复刻
-                          ...(target === "remix" ? { remixSource: { title: t.name, text: canonical } } : {}),
-                        }, (u) => router.push(u), (m) => notify(m, "error"))}
+                        onClick={() => carry(t, target)}
                       >
                         {label}
                       </button>

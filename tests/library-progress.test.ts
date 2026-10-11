@@ -56,7 +56,7 @@ describe('收藏入口', () => {
     expect(links).toMatch(/收藏到素材库/);
     expect(links).toMatch(/const pickMode = selectable && pickOpen/);
     expect(links).toMatch(/pickMode\s*\? parts\.items\.filter\(\(it\) => picked\.has\(it\.id\)\)\.map\(\(it\) => draftFromItem\(it, board, label\)\)/);
-    expect(links).toMatch(/: \[draftFromBody\(body, board, label, context\?\.title\)\]/);
+    expect(links).toMatch(/: \[draftFromBody\(withStructure\(body\), board, label, context\?\.title\)\]/);
     // 素材库「全部产出」里收藏：按内容原本的板块归类（脚本库里收藏的进「脚本」）
     expect(links).toMatch(/const board = favoriteBoard \|\| source;/);
   });
