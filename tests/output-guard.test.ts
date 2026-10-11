@@ -82,6 +82,44 @@ describe('断言式用语与平台敏感词（企业商用检测 P3、P4）', ()
   });
 });
 
+describe('复测修正（2026-10-11 第四轮）', () => {
+  it('内部标题「【本轮目的说明】」及其下面的内容去掉，二级正文保留', () => {
+    const out = stripInternalLeaks('## 【本轮目的说明】\n这一段是目的。\n## 第1步：脚本策略卡\n策略内容。', '脚本生成');
+    expect(out).not.toContain('本轮目的说明');
+    expect(out).not.toContain('这一段是目的');
+    expect(out).toContain('策略内容。');
+  });
+
+  it('模型自己打的勾「✅ 没有绝对化承诺」是自检结论，去掉', () => {
+    const out = stripInternalLeaks('- ✅ 没有绝对化承诺(没说"力求安排")\n正文一句。', '拆解爆款');
+    expect(out).not.toContain('没有绝对化承诺');
+    expect(out).toContain('正文一句。');
+  });
+
+  it('警告语境的引文不改写（「全濮阳福利最高（绝对化用语，违规且假）」是反例）', () => {
+    const line = '「全濮阳福利最高」（绝对化用语，违规且假）';
+    expect(applyAdCompliance(line)).toBe(line);
+  });
+
+  it('「数据最好的内容类型」改成较好；「全濮阳最好」去掉「全濮阳最」', () => {
+    expect(applyAdCompliance('档案里「数据最好的内容类型」是讲故事')).toBe('档案里「数据较好的内容类型」是讲故事');
+    expect(applyAdCompliance('全濮阳最好的火锅')).toBe('好的火锅');
+  });
+
+  it('「和你的目标人群100%匹配」改成绝大多数匹配', () => {
+    expect(applyAdCompliance('和你的目标人群100%匹配')).toBe('和你的目标人群绝大多数匹配');
+  });
+
+  it('「最好拍」「最好在傍晚拍」是拍摄建议，不动', () => {
+    expect(applyAdCompliance('最好拍：方案1需要卡开篇')).toBe('最好拍：方案1需要卡开篇');
+    expect(applyAdCompliance('傍晚最好在门口拍')).toBe('傍晚最好在门口拍');
+  });
+
+  it('内容配比百分比（流量45% / 人设25% / 变现30%）不是数据，不报出处问题', () => {
+    expect(unsupportedFacts('流量45% / 人设25% / 变现30%', '').some((i) => i.startsWith('百分比'))).toBe(false);
+  });
+});
+
 describe('复测误报修正（2026-10-11 第三轮）', () => {
   it('「顾客反馈」「客户评价」作为名词（审稿在说档案里没有）不算顾客原话', () => {
     expect(unsupportedFacts('档案里没有顾客反馈，也没有客户评价，只能先写流程。', '').some((i) => i.startsWith('顾客见证'))).toBe(false);
