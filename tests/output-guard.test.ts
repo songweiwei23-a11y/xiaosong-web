@@ -120,6 +120,27 @@ describe('复测修正（2026-10-11 第四轮）', () => {
   });
 });
 
+describe('复测修正（2026-10-11 第五轮）', () => {
+  it('描述性的最高级「数据最好的是…」「最好的情况」改成较好', () => {
+    expect(applyAdCompliance('你的数据最好的是讲故事')).toBe('你的数据较好的是讲故事');
+    expect(applyAdCompliance('最好的情况：师傅保留口音')).toBe('较好的情况：师傅保留口音');
+  });
+
+  it('警告语境的「我们最好」（容易被同行举报）不改写', () => {
+    const line = '「我们最好」——容易被同行举报，不能说';
+    expect(applyAdCompliance(line)).toBe(line);
+  });
+
+  it('操作建议「最好找本地的」「最好拍」不动', () => {
+    expect(applyAdCompliance('最好找本地的，能见面聊')).toBe('最好找本地的，能见面聊');
+    expect(applyAdCompliance('最好拍：方案1需要卡开篇')).toBe('最好拍：方案1需要卡开篇');
+  });
+
+  it('「就是从你村出来的」里的「你村」不是地名', () => {
+    expect(unsupportedFacts('老板就是从你村出来的，靠这门手艺吃饭。', '').some((i) => i.startsWith('地名'))).toBe(false);
+  });
+});
+
 describe('复测误报修正（2026-10-11 第三轮）', () => {
   it('「顾客反馈」「客户评价」作为名词（审稿在说档案里没有）不算顾客原话', () => {
     expect(unsupportedFacts('档案里没有顾客反馈，也没有客户评价，只能先写流程。', '').some((i) => i.startsWith('顾客见证'))).toBe(false);
