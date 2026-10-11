@@ -90,6 +90,11 @@ export const VIEWER_FACING_BOARDS = new Set(['脚本生成', '分镜脚本', '�
  * 逐行替换。否定语境的行（「不能说最划算」）整行跳过，只对绝对化用语和平台词成立；
  * 内部编号不是断言，哪怕同一行写着「错误示范」也要去掉（2026-10-11 复测：选题里的「36计」因此没去掉）。
  */
+/** 这一行是否在否定或警告语境里（给别的模块复用：这类行是在提醒，不是交付事实） */
+export function isNegatedLine(line: string): boolean {
+  return NEGATED.test(line);
+}
+
 function applyRules(text: string, rules: Array<[RegExp, string]>, honourNegation = true): string {
   return text
     .split('\n')

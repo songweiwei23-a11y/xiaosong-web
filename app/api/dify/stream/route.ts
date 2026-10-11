@@ -33,7 +33,8 @@ import { timeAnchor, seasonMisstatements } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
 import { sanitizeOutput, stripInternalLeaks } from '@/lib/output-guard';
 import { CHUNK_TRIGGER_CHARS, fixInChunks, mergeUsage } from '@/lib/fact-fix-chunks';
-import { scriptRepairReason, buildScriptRepairPrompt, acceptScriptRepair, scriptRepairLimited, spokenStep } from '@/lib/script-repair';
+import { scriptRepairReason, buildScriptRepairPrompt, acceptScriptRepair, scriptRepairLimited, spokenStep, explicitBudget, trimSpokenStep } from '@/lib/script-repair';
+import { holdUnsupported } from '@/lib/evidence-guard';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
 const NO_FACT_GUARD_TASKS = new Set(['AI推荐', '前采建档']);
@@ -538,6 +539,13 @@ export async function POST(req: NextRequest) {
               fullResponse = text;
             }
           }
+          // 修复后口播仍超上限：本地按句裁到预算以内（只删句子，不改字，不新增事实）
+          const budgetNow = explicitBudget(creationSettings.duration);
+          const spokenNow = body.taskType === '脚本生成' && fullResponse.trim() ? spokenStep(fullResponse) : null;
+          if (budgetNow && spokenNow !== null && spokenNow > budgetNow * 1.1) {
+            fullResponse = trimSpokenStep(fullResponse, budgetNow);
+            console.log('[script-trim] 口播', spokenNow, '字，裁到', budgetNow, '字以内，现为', spokenStep(fullResponse));
+          }
           // 已知素材 = 档案全文、这个号的定位和简报、用户自己给的原话（不含提示词本身：提示词里的示例数字不算出处，2026-10-12）
           const userSaid = [creationSettings.userIntent, creationSettings.notes, body.inputs?.personalRequirement, body.inputs?.originContent, body.historyInput?.originContent, sourceForReview, JSON.stringify(creationSettings)]
             .filter((x) => typeof x === 'string' && x.trim()).join('\n');
@@ -572,6 +580,14 @@ export async function POST(req: NextRequest) {
                 usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'fact_fix_steps');
                 fullResponse = text;
               }
+            }
+          }
+          // 仍然没有出处的句子直接换成【待确认】占位（确定性，不再让模型改写；标准 E3 允许这种写法）
+          if (outcome.kind === 'done' && FACT_AUTO_FIX_TASKS.has(body.taskType) && fullResponse.trim()) {
+            const held = holdUnsupported(fullResponse, factIssues);
+            if (held.held) {
+              console.log('[evidence] 占位', body.taskType, '句数', held.held);
+              fullResponse = held.text;
             }
           }
           if (outcome.kind === 'done' && hasObviousCutoff(fullResponse)) {

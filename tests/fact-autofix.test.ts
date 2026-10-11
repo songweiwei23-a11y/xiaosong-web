@@ -105,7 +105,9 @@ describe('生成后自动修正没有出处的说法', () => {
     const stream = await (await request('脚本生成', '写一条脚本。店里一元一串。')).text();
 
     expect(calls).toHaveLength(1);
-    expect(shownAfterStream(stream)).toContain('30 块钱');
+    // 额度用完不再修正，但没有出处的价格句子直接换成【待确认】占位（2026-10-12 确定性兜底）
+    expect(shownAfterStream(stream)).not.toContain('30 块钱');
+    expect(shownAfterStream(stream)).toContain('【待确认');
     expect(shownAfterStream(stream)).not.toContain('发布前自检');
   });
 });

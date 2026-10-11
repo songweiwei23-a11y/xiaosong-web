@@ -53,6 +53,48 @@ export function acceptScriptRepair(text: string, duration?: string | null): bool
   return !budget || spoken <= budget * 1.15;
 }
 
+/**
+ * 本地兜底（2026-10-12）：修复后第 2 步口播仍超上限，就按句裁到预算以内。
+ * 保留第一句（钩子）和最后一句（收尾），中间按原顺序保留能放得下的句子。只动第 2 步，其他步骤原样。
+ * 不改写一个字，只删句子，所以不会新增任何事实。
+ */
+export function trimSpokenStep(text: string, budget: number): string {
+  const lines = text.split('\n');
+  const start = lines.findIndex((l) => /^\s*#+\s*第\s*2\s*步.*纯文字文案/.test(l));
+  if (start < 0) return text;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^\s*#+\s*第\s*\d\s*步/.test(lines[i])) { end = i; break; }
+  }
+  const cjk = (s: string) => (s.match(/[一-鿿]/g) ?? []).length;
+  const sentences: string[] = [];
+  for (const line of lines.slice(start + 1, end)) {
+    if (!line.trim()) continue;
+    for (const s of line.split(/(?<=[。！？])/)) if (s.trim()) sentences.push(s.trim());
+  }
+  const total = sentences.reduce((n, s) => n + cjk(s), 0);
+  if (total <= budget || sentences.length < 2) return text;
+
+  const first = sentences[0];
+  const last = sentences[sentences.length - 1];
+  let kept: string[];
+  if (cjk(first) + cjk(last) <= budget) {
+    let used = cjk(first) + cjk(last);
+    const middle: string[] = [];
+    for (const s of sentences.slice(1, -1)) {
+      if (used + cjk(s) > budget) continue;
+      middle.push(s);
+      used += cjk(s);
+    }
+    kept = [first, ...middle, last];
+  } else if (cjk(first) <= budget) {
+    kept = [first];
+  } else {
+    return text;
+  }
+  return [...lines.slice(0, start + 1), '', kept.join('\n'), '', ...lines.slice(end)].join('\n');
+}
+
 export function buildScriptRepairPrompt(p: { text: string; reason: 'structure' | 'length'; spoken?: number | null; duration?: string | null }): string {
   const budget = explicitBudget(p.duration);
   const need = p.reason === 'structure'
