@@ -14,6 +14,7 @@ import { findExcludedMentions } from './interview-exclusions';
 import { readTabooSettings } from './taboos';
 import { readPersonaFacts } from './persona-facts';
 import { checkMix, type ResolvedMix } from './content-mix';
+import { seasonMisstatements } from './time-anchor';
 
 export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'generation' | 'facts';
 
@@ -90,7 +91,14 @@ const BENCHMARK_RE = /(?:完播率?|5\s*秒完播|关注转化|转化率|互动�
 /** 百分比：「90%」「百分之九十」「九成的业主」（2026-10-05：原来只认带「据统计」的，裸百分比漏了） */
 const PERCENT_RE = /(\d+(?:\.\d+)?)\s*[%％]|十(?:个|家|人)(?:里)?有[七八九](?:个|家|人)?|百分之[一二两三四五六七八九十百]+|([一二三四五六七八九])成(?=的|以上|左右|多|人|顾客|客|用户|业主|家长|学员|粉丝)/g;
 /** 顾客见证：「很多客人说」「有位顾客告诉我」「粉丝都说」——没给过故事却写成真事 */
-const TESTIMONIAL_RE = /(?:很多|好多|不少|许多|有位|有个|有一位|有一个|一位|一个|上周|昨天|前几天|之前|老)(?:老)?(?:客人|顾客|客户|粉丝|业主|家长|学员|宝妈|会员|食客|买家)(?:都|就|还|专门|特意|跑来|过来)?(?:说|讲|告诉|跟我说|反馈|夸|评价|留言|感叹|吐槽)|(?:客人|顾客|客户|粉丝|业主|家长|学员|食客|买家)(?:都说|纷纷|一致|普遍|常说|总说|反馈说)|(?:来过|吃过|买过|用过|试过|看过|听过)的(?:人|客人|顾客|朋友)(?:都|也|还)?(?:说|夸|评价|反馈|讲)|老客(?:人)?(?:都|也)?(?:说|评价|反馈|夸|讲)|客人[^，。！？\n]{0,6}(?:说|夸|评价)/g;
+const TESTIMONIAL_RE = /(?:很多|好多|不少|许多|有位|有个|有一位|有一个|一位|一个|一桌|几位|好几位|两位|一群|一拨|上周|昨天|前几天|之前|老)(?:老)?(?:客人|顾客|客户|粉丝|业主|家长|学员|宝妈|会员|食客|买家)(?:都|就|还|专门|特意|跑来|过来)?(?:说|讲|告诉|跟我说|反馈|夸|评价|留言|感叹|吐槽)|(?:客人|顾客|客户|粉丝|业主|家长|学员|食客|买家)(?:都说|纷纷|一致|普遍|常说|总说|反馈说)|(?:来过|吃过|买过|用过|试过|看过|听过)的(?:人|客人|顾客|朋友)(?:都|也|还)?(?:说|夸|评价|反馈|讲)|老客(?:人)?(?:都|也)?(?:说|评价|反馈|夸|讲)|(?:客人|顾客|客户|食客|粉丝|老客)[^，。！？\n]{0,6}(?:说|夸|评价|反馈)/g;
+/**
+ * 编出来的作息（2026-10-11 企业商用检测：「今天早上六点去市场」「早上六点从批发市场拉回来的鲜毛肚」「我早上五点熬的牛油底料」）：
+ * 「今天 / 每天 / 早上」+ 钟点 + 具体的动作。只认动作类的词（去、拉、熬、备、切…），「下午三点开拍」这种拍摄安排不算
+ */
+const ROUTINE_RE = /(?:今天|昨天|今早|今晨|昨晚|今晚|前天|每天|天天|早上|清晨|凌晨)(?:早上|凌晨|清晨|上午|下午|晚上)?([0-9一二三四五六七八九十]{1,3}点(?:半|多|钟)?)[^，。！？\n]{0,10}?(?:去|拉|熬|进|备|切|穿|烤|卸|守|收|买|拿|做|煮|炖|腌|泡|吃)/g;
+/** 「如果 / 比如」开头的是假设或示例，不是在讲自己的作息 */
+const HYPOTHETICAL_BEFORE = /如果|假如|假设|比如|例如|若是|要是|万一|可以|示例|举例/;
 /** 经营承诺：送、包、保证、折扣——没说过就不能替老板答应 */
 const PROMISE_RE = /(?:免费(?:送|赠|领|试|上门|设计|测量|安装|体验|品尝|续|加)|赠送(?!计)|买[一二两三\d]+送[一二两三\d]+|送[一二两三四五六七八九十\d]+(?:份|个|杯|串|瓶|次|张|件)|包邮|包退|包换|包教包会|包安装|包售后|无效退款|不满意(?:全额)?退|终身(?:保修|维修|免费|质保)|保修[一二两三四五六七八九十\d]+年|打[一二三四五六七八九\d](?:\.\d)?折|满\d+减\d+|优惠券|首单立减|限时特价)/g;
 /**
@@ -270,7 +278,16 @@ export function unsupportedFacts(raw: string, knownText: string, opts: FactCheck
     const after = output.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 12).replace(/[：:“”"「」\s]/g, '');
     // 「用老顾客反馈证明手艺」是建议去收集，不是编了一段反馈
     if (marked(m.index ?? 0) || counterExample(m.index ?? 0) || inKnown(m[0]) || inKnown(after.slice(0, 6)) || /^(?:证明|来证明|做|当|截图|视频)/.test(after)) continue;
+    // 「如果客人同意出镜说话」是拍摄前的安排，不是客人真说过的话
+    if (HYPOTHETICAL_BEFORE.test(output.slice(Math.max(0, (m.index ?? 0) - 8), m.index ?? 0))) continue;
     out.push(`顾客见证「${near(m.index ?? 0, m[0].length + 6)}」资料里没有这段经历`);
+  }
+  for (const m of output.matchAll(ROUTINE_RE)) {
+    const at = m.index ?? 0;
+    const clock = m[1] ?? '';
+    // 档案或素材里写过同一个钟点，或这一句是假设、示例、标了待确认的，不算编
+    if (marked(at) || counterExample(at) || /X|Ｘ|【换成你的|【待/.test(m[0]) || inKnown(clock) || HYPOTHETICAL_BEFORE.test(output.slice(Math.max(0, at - 8), at))) continue;
+    out.push(`作息「${near(at, m[0].length)}」档案和素材里没有，别写成真事（写成【换成你的真实作息】）`);
   }
   if (!opts.light) {
     for (const m of output.matchAll(PROMISE_RE)) {
@@ -443,6 +460,8 @@ export function runQualityChecks(p: {
   if (p.taskType && (FACT_CHECK_TASKS.has(p.taskType) || LIGHT_FACT_CHECK_TASKS.has(p.taskType))) {
     const known = `${profile ? JSON.stringify(profile) : ''}\n${p.source ?? ''}`;
     for (const f of unsupportedFacts(output, known, { light: LIGHT_FACT_CHECK_TASKS.has(p.taskType) })) issues.push({ kind: 'facts', detail: f });
+    // 时令错配（今天是什么季节，见 lib/time-anchor）：自由对话不查
+    if (FACT_CHECK_TASKS.has(p.taskType)) for (const f of seasonMisstatements(output, Date.now(), known)) issues.push({ kind: 'facts', detail: f });
   }
   return { passed: issues.length === 0, issues };
 }

@@ -71,11 +71,29 @@ describe('生成后自动修正没有出处的说法', () => {
     expect(shown).toContain('一元一串，老板亲手烤');
   });
 
-  it('审稿优化不做自动修正（它有自己的校对步骤），也不改它的正文', async () => {
-    mockDify('审稿报告正文，没有自检。', '');
-    const req = new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '审稿优化', query: '请审稿', draftContent: '她在揉面。' }) });
+  it('审稿稿里编出的客人原话被修正；原稿里写过的话不算编的，原稿用语不动', async () => {
+    const draft = '她在揉面，面团很软。';
+    // 第 1 次生成稿、第 2 次审稿校对（也带着这句编出来的话）、第 3 次事实修正
+    const reviewed = `## 优化后的完整脚本\n${draft}\n昨天一桌客人说，这里的汤不一样。`;
+    const fixed = `## 优化后的完整脚本\n${draft}`;
+    const calls = mockDify(reviewed, reviewed, fixed);
+    const req = new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '审稿优化', query: '请审稿', draftContent: draft }) });
     const stream = await (await POST(req as any)).text();
-    expect(stream).toContain('审稿报告正文');
+    expect(calls).toHaveLength(3);
+    expect(String(calls[2].query)).toContain('只改这几处');
+    const shown = shownAfterStream(stream);
+    expect(shown).toContain(draft);
+    expect(shown).not.toContain('一桌客人说');
+  });
+
+  it('审稿稿里原稿已经写过的说法，不触发修正', async () => {
+    const draft = '昨天一桌客人说，这里的汤不一样。她在揉面。';
+    const reviewed = `## 优化后的完整脚本\n${draft}`;
+    const calls = mockDify(reviewed, reviewed);
+    const req = new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '审稿优化', query: '请审稿', draftContent: draft }) });
+    const stream = await (await POST(req as any)).text();
+    expect(calls).toHaveLength(2);
+    expect(shownAfterStream(stream)).toContain('一桌客人说');
   });
 
   it('每人每天的自动修正额度用完后，不再多调一次模型', async () => {

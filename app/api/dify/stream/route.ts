@@ -29,13 +29,19 @@ import { PROFILE_UUID } from '@/lib/profile-history';
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { difyWebStatus } from '@/lib/dify-web-status';
 import { mergeCreationSettings, creationSettingsBlock, hasExplicitCreationContext } from '@/lib/creation-settings';
-import { timeAnchor } from '@/lib/time-anchor';
+import { timeAnchor, seasonMisstatements } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
+import { sanitizeOutput, stripInternalLeaks } from '@/lib/output-guard';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
 const NO_FACT_GUARD_TASKS = new Set(['AI推荐', '前采建档']);
-import { reconcileTitleCounts, hasObviousCutoff, softenPlatformBannedWords } from '@/lib/result-reconciliation';
-import { unsupportedFacts, stripSelfCheck } from '@/lib/quality-checks';
+/**
+ * 不属于某个账号档案的任务：知识库检索、自由对话、前采建档（它本身就是在建档）、AI 推荐（只回一段配置）。
+ * 其余创作任务，只要这个用户已经有档案，就必须带上档案 id（见下面的 profileId 检查）。
+ */
+const PROFILE_OPTIONAL_TASKS = new Set(['知识库查询', '自由对话', '前采建档', 'AI推荐']);
+import { reconcileTitleCounts, hasObviousCutoff } from '@/lib/result-reconciliation';
+import { unsupportedFacts } from '@/lib/quality-checks';
 import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
 import { cleanRewriteOutput } from '@/lib/canvas';
 import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
@@ -82,6 +88,16 @@ export async function POST(req: NextRequest) {
     const guard = await requireUserWithQuota(getFeatureFromTaskType(body.taskType));
     if (!guard.ok) return guard.response!;
     if (body.historyOwnerId && body.historyOwnerId !== guard.userId) return Response.json({ error: '账号已经切换，请回原账号生成' }, { status: 403 });
+    /*
+     * 有档案的用户，创作请求必须说清归属哪个档案（2026-10-11 企业商用检测 P5：103 条生成记录没有档案 id，
+     * 落到共享的 default 范围，可能串档）。没有任何档案的用户不受影响（没建档也能生成，见 2026-10-05 的说明）。
+     */
+    if (!(body.profileId || body.profile_id) && !PROFILE_OPTIONAL_TASKS.has(body.taskType)) {
+      const { data: anyProfile } = await getServiceSupabase().from('user_profiles').select('id').eq('user_id', guard.userId!).limit(1);
+      if (Array.isArray(anyProfile) && anyProfile.length) {
+        return Response.json({ error: '请先选择一个账号档案，再生成内容，内容需要归属到具体档案' }, { status: 400 });
+      }
+    }
     // 新版拆解/二创由服务端落库，关页不会阻止保存。旧版客户端仍走原保存流程。
     const creativeTask = DURABLE_CREATIVE_TASKS.has(body.taskType);
     const durableHistory = creativeTask && typeof body.historyId === 'string' && PROFILE_UUID.test(body.historyId);
@@ -479,23 +495,28 @@ export async function POST(req: NextRequest) {
             }
           }
           /*
-           * 生成后整理（审稿优化不做：它的原稿要被引用、比对，不能按「原稿以外没有出处」来判）：
-           * 1. 去掉模型写的自检清单（「自检通过」「数字来源核查」这类内部说明不交付）；换掉平台禁用词。
-           * 2. 查出没有出处的价格、顾客见证、经营做法，按 lib/fact-fix 的同一套提示词修正一次。
+           * 生成后整理（lib/output-guard）：
+           * 1. 去掉内部提示词痕迹（「校对编辑」「本轮校对指令」「节奏自检」）和模型写的自检清单；换掉平台敏感词与绝对化用语。
+           *    审稿优化只去提示词痕迹：它的原稿要被引用、比对，不能改动原稿用语。
+           * 2. 查出没有出处的价格、顾客见证、经营做法、客户故事、作息，以及时令错配，按 lib/fact-fix 的同一套提示词修正一次。
            *    页面上「这几处请核对」只提醒、不改；这里直接改掉编出来的说法。和「按资料修正」共用每人每天 20 次的额度。
+           *    审稿优化的已知素材 = 查询 + 原稿：原稿里写过的说法不算编的。
            */
-          if (outcome.kind === 'done' && body.taskType !== '审稿优化' && fullResponse.trim()) {
-            const tidied = softenPlatformBannedWords(stripSelfCheck(fullResponse));
+          const tidy = (t: string) => (body.taskType === '审稿优化' ? stripInternalLeaks(t, body.taskType) : sanitizeOutput(t, body.taskType));
+          if (outcome.kind === 'done' && fullResponse.trim()) {
+            const tidied = tidy(fullResponse);
             if (tidied.trim()) fullResponse = tidied;
           }
+          const factKnown = sourceForReview ? `${query}\n${sourceForReview}` : query;
+          // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）
+          const factIssues = (t: string) => [...unsupportedFacts(t, factKnown), ...seasonMisstatements(t, Date.now(), factKnown)]
+            .filter((i) => pendingInterview(boundedIntent) || !/^采访(?:经历|结果)/.test(i));
           if (outcome.kind === 'done' && FACT_AUTO_FIX_TASKS.has(body.taskType) && fullResponse.trim()) {
-            // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）
-            const factIssues = (t: string) => unsupportedFacts(t, query).filter((i) => pendingInterview(boundedIntent) || !/^采访(?:经历|结果)/.test(i));
             const found = factIssues(fullResponse);
             if (found.length && !autoFactFixLimited(userId)) {
               const fixed = await askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
                 .catch(() => ({ ok: false as const, message: '按资料修正未完成' }));
-              const text = fixed.ok ? cleanRewriteOutput(fixed.text) : '';
+              const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
               // 只采用真的少了问题、又没有借机重写全文的版本
               if (fixed.ok && text && !fixTooBig(fullResponse, text, found) && factIssues(text).length < found.length) {
                 usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'fact_fix_steps');

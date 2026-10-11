@@ -69,9 +69,8 @@ describe('审稿优化：提示词不许以「缺少档案材料」为由停下'
 });
 
 describe('生成后自动查出处的板块', () => {
-  it('包含脚本、标题、选题、二创，不包含审稿优化', () => {
-    for (const t of ['脚本生成', '标题封面', '选题策划', '跨行业二创', '创作方向']) expect(FACT_AUTO_FIX_TASKS.has(t)).toBe(true);
-    expect(FACT_AUTO_FIX_TASKS.has('审稿优化')).toBe(false);
+  it('包含脚本、标题、选题、二创，也包含审稿优化（2026-10-11：审稿稿里编出了客人原话、作息）', () => {
+    for (const t of ['脚本生成', '标题封面', '选题策划', '跨行业二创', '创作方向', '审稿优化']) expect(FACT_AUTO_FIX_TASKS.has(t)).toBe(true);
   });
 });
 

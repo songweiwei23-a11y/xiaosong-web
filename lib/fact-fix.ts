@@ -19,10 +19,10 @@ export const FACT_FIX_CONTEXT_MAX_CHARS = 20_000;
 export const autoFactFixLimited = createRateLimiter(24 * 3600_000, 20);
 
 /**
- * 生成后会自动查「出处」的板块。审稿优化不在其中：它自己有校对步骤，原稿里的说法要被引用、比对，
- * 不能按「原稿以外没有出处」来判。
+ * 生成后会自动查「出处」的板块。审稿优化也在其中（2026-10-11 企业商用检测：审稿稿里编出了客人原话、作息），
+ * 但它的「已知素材」要把原稿算进去：原稿里写过的说法不是编的，只查审稿时新加进去的。
  */
-export const FACT_AUTO_FIX_TASKS = new Set(['脚本生成', '分镜脚本', '标题封面', '开篇钩子', '跨行业二创', '选题策划', '起号方案', '创作方向', '内容规划']);
+export const FACT_AUTO_FIX_TASKS = new Set(['脚本生成', '分镜脚本', '标题封面', '开篇钩子', '跨行业二创', '选题策划', '起号方案', '创作方向', '内容规划', '审稿优化']);
 
 /** 明确主题与受众也是核对依据；AI 执行稿不作为事实证明。 */
 export function factCheckCreationSource(context?: CreationContext): string {
