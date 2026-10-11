@@ -32,6 +32,7 @@ import { mergeCreationSettings, creationSettingsBlock, hasExplicitCreationContex
 import { timeAnchor, seasonMisstatements } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
 import { sanitizeOutput, stripInternalLeaks } from '@/lib/output-guard';
+import { CHUNK_TRIGGER_CHARS, fixInChunks, mergeUsage } from '@/lib/fact-fix-chunks';
 import { scriptRepairReason, buildScriptRepairPrompt, acceptScriptRepair, scriptRepairLimited, spokenStep } from '@/lib/script-repair';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
@@ -108,6 +109,8 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: '不能使用其他账号的档案' }, { status: 403 });
     }
     let query = '';
+    // 事实核对的已知素材（档案全文、定位、简报）；没有档案时为空，回退到查询（见下面的 factKnown）
+    let factMaterial = '';
 
     // 原始用户输入必须在任何改写之前固定下来。
     // 之前只在“已有历史”分支里赋值，导致会话首轮的用户消息永远不入库，
@@ -189,6 +192,16 @@ export async function POST(req: NextRequest) {
       if (typeof pid === 'string' && PROFILE_UUID.test(pid)) {
         const { data } = await getServiceSupabase().from('user_profiles').select('product_category,account_track,competitive_advantage,unique_selling_point,team_structure').eq('id', pid).eq('user_id', guard.userId!).maybeSingle();
         profileRow = data as Record<string, unknown> | null;
+        // 事实核对的已知素材：档案全文 + 这个号的账号定位和创作简报（访谈在档案里）
+        const db = getServiceSupabase();
+        const [{ data: full }, { data: positioning }] = await Promise.all([
+          db.from('user_profiles').select('*').eq('id', pid).eq('user_id', guard.userId!).maybeSingle(),
+          db.from('account_positioning').select('positioning_type,is_active,full_content').eq('profile_id', pid).eq('user_id', guard.userId!),
+        ]);
+        const pos = (positioning as Array<{ positioning_type?: string; is_active?: boolean; full_content?: string }> | null) ?? [];
+        const active = pos.find((x) => x.is_active && x.positioning_type === '账号定位')?.full_content ?? '';
+        const brief = pos.find((x) => x.positioning_type === '创作简报')?.full_content ?? '';
+        factMaterial = [JSON.stringify(full ?? {}), active, brief].join('\n');
       }
       query += profileFactsBlock(profileRow);
       const said = (v: unknown) => (typeof v === 'string' ? v.slice(0, 2000) : '');
@@ -525,13 +538,31 @@ export async function POST(req: NextRequest) {
               fullResponse = text;
             }
           }
-          const factKnown = sourceForReview ? `${query}\n${sourceForReview}` : query;
+          // 已知素材 = 档案全文、这个号的定位和简报、用户自己给的原话（不含提示词本身：提示词里的示例数字不算出处，2026-10-12）
+          const userSaid = [creationSettings.userIntent, creationSettings.notes, body.inputs?.personalRequirement, body.inputs?.originContent, body.historyInput?.originContent, sourceForReview, JSON.stringify(creationSettings)]
+            .filter((x) => typeof x === 'string' && x.trim()).join('\n');
+          const factKnown = factMaterial ? `${factMaterial}\n${userSaid}` : sourceForReview ? `${query}\n${sourceForReview}` : query;
           // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）
           const factIssues = (t: string) => [...unsupportedFacts(t, factKnown), ...seasonMisstatements(t, Date.now(), factKnown)]
             .filter((i) => pendingInterview(boundedIntent) || !/^采访(?:经历|结果)/.test(i));
           if (outcome.kind === 'done' && FACT_AUTO_FIX_TASKS.has(body.taskType) && fullResponse.trim()) {
             const found = factIssues(fullResponse);
-            if (found.length && !autoFactFixLimited(userId)) {
+            // 限额只计一次：长文分段修正（lib/fact-fix-chunks），短稿整篇修正（原来的做法）
+            const may = found.length > 0 && !autoFactFixLimited(userId);
+            if (may && fullResponse.length > CHUNK_TRIGGER_CHARS) {
+              let chunkUsage: Record<string, unknown> = {};
+              const r = await fixInChunks(fullResponse, factIssues, async (prompt) => {
+                const f = await askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+                if (!f || !f.ok) return null;
+                chunkUsage = mergeUsage(chunkUsage, f.completion.usage ?? {});
+                return tidy(cleanRewriteOutput(f.text));
+              }, query);
+              console.log('[fact-fix 分段]', body.taskType, '需修段', r.tried, '采用', r.accepted);
+              if (r.accepted) {
+                usageMetadata = combinedReviewUsage(usageMetadata, chunkUsage, 'fact_fix_steps');
+                fullResponse = tidy(r.text);
+              }
+            } else if (may) {
               const fixed = await askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
                 .catch(() => ({ ok: false as const, message: '按资料修正未完成' }));
               const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';

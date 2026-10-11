@@ -136,6 +136,10 @@ describe('复测修正（2026-10-11 第五轮）', () => {
     expect(applyAdCompliance('最好拍：方案1需要卡开篇')).toBe('最好拍：方案1需要卡开篇');
   });
 
+  it('「开车到村」里的「到村」不是地名（动词+村）', () => {
+    expect(unsupportedFacts('我们开车到村里收货，路上很顺。', '').some((i) => i.startsWith('地名'))).toBe(false);
+  });
+
   it('「就是从你村出来的」里的「你村」不是地名', () => {
     expect(unsupportedFacts('老板就是从你村出来的，靠这门手艺吃饭。', '').some((i) => i.startsWith('地名'))).toBe(false);
   });

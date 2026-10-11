@@ -330,7 +330,8 @@ export function unsupportedFacts(raw: string, knownText: string, opts: FactCheck
       // 正则会多吞前面的字（「多人从莘县」）：只要后缀前面一两个字连着后缀在资料里出现过（「莘县」），就是资料里的地名
       const suffix = m[0].slice(-1);
       // 「从你村出来」「各村」：紧挨着「村/镇/乡」的是代词或量词，不是地名（2026-10-11 第四轮复测误报）
-      if (/[你我他她咱这那每本各其某另哪用]$/.test(name)) continue;
+      // 「开车到村」「去村里」：前面是动词或介词（到、去、回…），「村」是普通的字（2026-10-12 定向验证误报）
+      if (/[你我他她咱这那每本各其某另哪用到去回进出来往向在从]$/.test(name)) continue;
       if (NOT_PLACE.test(name) || (isArea &&(FUNCTION_AREA.test(name) || AREA_NOUN_TAIL.test(name) || name.includes('的'))) || known.includes(name) || known.includes(name.slice(-2))
         || known.includes(name.slice(-1) + suffix) || known.includes(name.slice(-2) + suffix) || counterExample(start)) continue;
       out.push(`地名「${m[0]}」档案和素材里都没有`);
