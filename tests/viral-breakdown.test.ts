@@ -109,16 +109,16 @@ describe('提示词', () => {
     expect(p).not.toContain('### 九、套到这个账号上的完整方案');
     expect(p).not.toMatch(/当前账号档案/);
     // 没选档案也要有模版（方案 2：只拆也照样出）
-    expect(p).toContain('### 八、套用模版（至少 5 个，每个都是一份可以直接拍或直接念的二创稿）');
-    expect(p).toContain('### 模版N｜模版名称');
+    expect(p).toContain('### 八、套用模版（二创结构，至少 5 个）');
+    expect(p).toContain('```json');
   });
 
   it('模版是二创稿：逐段复刻原片结构、开篇、情绪曲线、镜头，并点名用到的拆解知识', () => {
-    expect(p).toContain('二创结构');
-    expect(p).toContain('二创开篇');
-    expect(p).toContain('二创情绪曲线');
-    expect(p).toContain('二创镜头');
-    expect(p).toContain('理论依据');
+    expect(p).toContain('"segments"');
+    expect(p).toContain('"opening"');
+    expect(p).toContain('"emotion"');
+    expect(p).toContain('"shots"');
+    expect(p).toContain('"knowledge"');
     expect(p).toContain('八大爆款元素、四大脚本、开篇 36 计、六大钩子、情绪曲线');
   });
 

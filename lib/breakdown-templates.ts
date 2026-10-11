@@ -1,68 +1,131 @@
 /**
- * 拆解报告里的「套用模版」（2026-10-12 按方案 2 定稿）：
- * 拆解的目的是二创。模版就是「用同一套拆解理论去二创」的完整稿：先照拆解出来的结构逐段复刻，
- * 再把新题材逐段套进去，写到能直接拍、能直接念。
- * - TEMPLATE_SPEC：视频拆解和文字拆解两种提示词共用的模版格式（写进提示词）。
- * - parseBreakdownTemplates：从模型交付的报告里切出每个模版，页面上每个模版带去选题 / 脚本 / 分镜的按钮。
- * 模版固定用「### 模版N｜名称」开头，下面是固定字段，解析靠这个格式，改格式要两边一起改。
+ * 拆解报告里的「套用模版」（2026-10-12）：拆解的目的是二创，拆解结果要能 1:1 地交给其他板块。
+ *
+ * 闭环的三件事：
+ * 1. 模型把每个模版输出成结构化的 JSON（分段、开篇、情绪曲线、镜头、开头台词都是字段），而不是散文。
+ * 2. 页面用卡片渲染这份 JSON（排版固定），报告里不再重复显示原始模版文字。
+ * 3. 每个模版生成一份固定格式的「二创结构」纯文本（renderCanonical），带「1:1 复刻」的要求；
+ *    复制按钮和跳转到选题 / 脚本 / 创作方向 / 审稿优化 / 分镜，交给它们的都是这份文本。
  */
 
-export const TEMPLATE_SPEC = `### 八、套用模版（至少 5 个，每个都是一份可以直接拍或直接念的二创稿）
+export const TEMPLATE_SPEC = `### 八、套用模版（二创结构，至少 5 个）
 
-拆解的目的是二创：每个模版都用上面拆解的同一套理论，把原片的结构逐段复刻到新题材上，详细程度和拆解一样。用这个固定标题开头，下面的字段一个都不能少，顺序也不变：
+拆解的目的是二创。每个模版都是一份可以原样复刻的二创结构：分段的数量、顺序、每段的功能、用的拆解知识、镜头，和上面的拆解一一对应；只换题材、人物、场景和具体说法。
 
-### 模版N｜模版名称（4–10 个字）
-- **目的**：流量型 / 人设型 / 变现型，只写一个，和拆解结论保持一致
-- **二创方向**：一句话，新题材是什么、拍给谁看、为什么能复刻原片的爆点
-- **二创结构**：按原片的分段表逐段写，每段一行，格式：时间段 · 这段的功能（抓人 / 铺垫 / 冲突 / 证据 / 高潮 / 兑现 / 行动指令，照原片这一段的功能写）· 理论依据（用了拆解里的哪条知识，直接写名字，如「开篇 36 计：盲盒」「四大脚本：情绪型」「八大元素：反认知」，并说明它对应原片的哪一段）· 新题材的具体内容（这一段要说的话的要点，写成能直接念的句子，或要拍的事）
-- **二创开篇**：照拆解的「开篇拆解」写：前 2 秒靠什么抓人（用哪个钩子或开篇 36 计）、前 5 秒埋什么期待、钩子在哪一秒兑现；给出新题材的开头第一句
-- **二创情绪曲线**：沿用原片的情绪曲线类型，写出新题材里每个起伏点在第几秒、靠什么做起伏
-- **二创镜头**（视频）：和拆解的逐镜头一样详细，给 3–6 个镜头，每个写景别、运镜、画面、台词、它在整条里的作用（用了哪条理论）；（文字）每一段写清表达方式和要点
-- **适合的板块**：脚本 / 选题 / 分镜，写一个或几个，并说明为什么
+请把所有模版放进一个 \`\`\`json 代码块里，内容是一个数组，每个元素是一个模版。字段名一个都不能改、不能少：
 
-二创要忠于原片的结构和爆点，只换题材、人物、场景和说法；不能只换词。新题材里没有的人、事、数字，一律用【待确认：…】占位，不编事实。没有档案时，行业和店铺写成【待确认：你的行业】。`;
+\`\`\`json
+[
+  {
+    "no": 1,
+    "name": "模版名称（4–10 个字）",
+    "purpose": "流量型 / 人设型 / 变现型，只写一个，和拆解结论一致",
+    "direction": "一句话：新题材是什么，拍给谁看",
+    "segments": [
+      {"time": "0–3 秒", "function": "抓人（抓人 / 铺垫 / 冲突 / 证据 / 高潮 / 兑现 / 行动指令，照原片这一段的功能）", "knowledge": "开篇 36 计：盲盒（写出拆解里用的知识名字）", "do": "这一段怎么拍或怎么写，对应原片的哪一段", "lines": "这一段要说的话的要点，写成能直接念的句子"}
+    ],
+    "opening": {"hook": "用的钩子或开篇 36 计", "first_2s": "前 2 秒怎么抓人", "first_5s": "前 5 秒埋什么期待", "payoff_at": "钩子在第几秒兑现"},
+    "emotion": {"curve": "反转型 / 盲盒型 / 共鸣爆发型 / 情感渗透型", "peaks": "起伏点在第几秒、靠什么做起伏"},
+    "shots": [
+      {"no": 1, "time": "0–3 秒", "size": "景别", "camera": "运镜", "visual": "画面要点", "line": "台词要点", "role": "这一镜在整条里的作用", "knowledge": "用的拆解知识"}
+    ],
+    "first_line": "开头第一句，能直接念",
+    "boards": ["适合的板块：选题 / 脚本 / 创作方向 / 审稿优化 / 分镜，写你认为适合的几个"]
+  }
+]
+\`\`\`
 
+要求：
+- segments 的段数和顺序与上面的分段表一致，每段的 function 和 knowledge 照原片写，不能合并、不能漏掉。
+- shots 与上面的逐镜头一一对应（文字拆解没有镜头，shots 写空数组 []）。
+- 新题材里没有的人、事、数字，一律写成【待确认：…】占位，不编事实。
+- JSON 字符串里不要用英文双引号，需要引号时用「」。只输出这个代码块，不要在代码块外面解释。`;
+
+export interface BreakdownSegment { time: string; function: string; knowledge: string; do: string; lines: string }
+export interface BreakdownShot { no: number; time: string; size: string; camera: string; visual: string; line: string; role: string; knowledge: string }
 export interface BreakdownTemplate {
   no: number;
   name: string;
-  /** 「目的」字段原文（流量型 / 人设型 / 变现型） */
   purpose: string;
-  /** 「二创方向」字段原文（老模版写的「方向」也认） */
   direction: string;
-  /** 整个模版的正文（带去下一步时作为内容） */
-  body: string;
+  segments: BreakdownSegment[];
+  opening: { hook: string; first_2s: string; first_5s: string; payoff_at: string };
+  emotion: { curve: string; peaks: string };
+  shots: BreakdownShot[];
+  first_line: string;
+  boards: string[];
 }
 
-const HEAD = /^#{2,4}\s*模版\s*(\d+)\s*[｜|:：]\s*(.+?)\s*$/;
+const str = (v: unknown) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '');
+const arr = <T>(v: unknown, f: (x: any) => T): T[] => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object').map(f) : []);
 
-function field(body: string, key: string): string {
-  const m = body.match(new RegExp(`\\*{0,2}${key}\\*{0,2}\\s*[：:]\\s*\\*{0,2}\\s*([^\\n]+)`));
-  return m ? m[1].replace(/\*+/g, '').trim() : '';
-}
-
-/** 切出报告里所有「### 模版N｜名称」块；遇到其他标题就结束当前模版 */
-export function parseBreakdownTemplates(markdown: string): BreakdownTemplate[] {
-  const out: BreakdownTemplate[] = [];
-  let cur: { no: number; name: string; lines: string[] } | null = null;
-  const flush = () => {
-    if (!cur) return;
-    const body = cur.lines.join('\n').trim();
-    out.push({ no: cur.no, name: cur.name, purpose: field(body, '目的'), direction: field(body, '二创方向') || field(body, '方向'), body });
-    cur = null;
+function normalize(raw: any, i: number): BreakdownTemplate {
+  const o = raw && typeof raw === 'object' ? raw : {};
+  const op = o.opening && typeof o.opening === 'object' ? o.opening : {};
+  const em = o.emotion && typeof o.emotion === 'object' ? o.emotion : {};
+  return {
+    no: Number(o.no) || i + 1,
+    name: str(o.name) || `模版${i + 1}`,
+    purpose: str(o.purpose).replace(/[*「」]/g, ''),
+    direction: str(o.direction),
+    segments: arr(o.segments, (s) => ({ time: str(s.time), function: str(s.function), knowledge: str(s.knowledge), do: str(s.do), lines: str(s.lines) })),
+    opening: { hook: str(op.hook), first_2s: str(op.first_2s), first_5s: str(op.first_5s), payoff_at: str(op.payoff_at) },
+    emotion: { curve: str(em.curve), peaks: str(em.peaks) },
+    shots: arr(o.shots, (s) => ({ no: Number(s.no) || 0, time: str(s.time), size: str(s.size), camera: str(s.camera), visual: str(s.visual), line: str(s.line), role: str(s.role), knowledge: str(s.knowledge) })),
+    first_line: str(o.first_line),
+    boards: arr(o.boards, (b) => str(b)).filter(Boolean),
   };
-  for (const line of markdown.split('\n')) {
-    const h = line.match(HEAD);
-    if (h) {
-      flush();
-      cur = { no: Number(h[1]), name: h[2].replace(/\*+/g, '').trim(), lines: [line] };
-      continue;
-    }
-    if (cur && /^#{1,4}\s/.test(line)) {
-      flush();
-      continue;
-    }
-    if (cur) cur.lines.push(line);
+}
+
+/** 把报告拆成「正文（给人看）」和「模版（结构化，给其他板块）」。模版段落之后的内容保留在正文末尾（若有）。 */
+export function splitBreakdownResult(result: string): { report: string; templates: BreakdownTemplate[]; hasStructure: boolean } {
+  const head = result.search(/^#{2,4}\s*八、套用模版/m);
+  // 没写「八、套用模版」标题时，就在整份结果里找 JSON 代码块
+  const from = head >= 0 ? head : 0;
+  const m = result.slice(from).match(/```json\s*([\s\S]*?)```/);
+  if (!m) return { report: head >= 0 ? result.slice(0, head).trimEnd() : result, templates: [], hasStructure: false };
+  const jsonAt = from + (m.index ?? 0);
+  const body = (head >= 0 ? result.slice(0, head) : result.slice(0, jsonAt) + result.slice(jsonAt + m[0].length)).trimEnd();
+  try {
+    const parsed = JSON.parse(m[1]);
+    const list = Array.isArray(parsed) ? parsed : [];
+    const templates = list.map(normalize).filter((t) => t.segments.length > 0 || t.name);
+    return { report: body, templates, hasStructure: true };
+  } catch {
+    return { report: body, templates: [], hasStructure: true };
   }
-  flush();
-  return out;
+}
+
+export function parseBreakdownTemplates(result: string): BreakdownTemplate[] {
+  return splitBreakdownResult(result).templates;
+}
+
+/**
+ * 「二创结构」纯文本：固定格式，原样复制、原样交给其他板块。带「1:1 复刻」的要求。
+ */
+export function renderCanonical(t: BreakdownTemplate): string {
+  const lines: string[] = [];
+  lines.push(`【二创结构 · 模版${t.no}：${t.name}】`);
+  lines.push(`目的：${t.purpose || '未写'}`);
+  lines.push(`方向：${t.direction || '未写'}`);
+  lines.push('');
+  lines.push(`分段（${t.segments.length} 段，按顺序 1:1 复刻，段数和每段功能不增不减）：`);
+  t.segments.forEach((s, i) => {
+    lines.push(`${i + 1}. ${s.time}｜${s.function}｜知识：${s.knowledge || '未写'}`);
+    if (s.do) lines.push(`   做法：${s.do}`);
+    if (s.lines) lines.push(`   台词要点：${s.lines}`);
+  });
+  lines.push('');
+  lines.push(`开篇：钩子 ${t.opening.hook || '未写'}；前 2 秒 ${t.opening.first_2s || '未写'}；前 5 秒 ${t.opening.first_5s || '未写'}；兑现在 ${t.opening.payoff_at || '未写'}`);
+  lines.push(`情绪曲线：${t.emotion.curve || '未写'}；起伏点 ${t.emotion.peaks || '未写'}`);
+  if (t.shots.length) {
+    lines.push('');
+    lines.push(`镜头（${t.shots.length} 个，与原片逐镜头对应）：`);
+    t.shots.forEach((s, i) => lines.push(`${i + 1}. ${s.time}｜${s.size}｜${s.camera}｜画面：${s.visual}｜台词：${s.line}｜作用：${s.role}｜知识：${s.knowledge}`));
+  }
+  lines.push('');
+  lines.push(`开头第一句：${t.first_line || '未写'}`);
+  lines.push('');
+  lines.push('要求：二创必须 1:1 复刻以上的分段数量、顺序、每段功能、用的拆解知识和镜头；只替换题材、人物、场景和具体说法。不新增原结构没有的段落。新题材里没有的事实用【待确认】占位，不编造。');
+  return lines.join('\n');
 }

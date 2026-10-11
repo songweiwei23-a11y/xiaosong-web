@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
 import { openCreationSafely } from "@/lib/creation-session";
 import { buildCreationHandoff, type CreationTarget } from "@/lib/creation-flow";
-import { parseBreakdownTemplates } from "@/lib/breakdown-templates";
+import { splitBreakdownResult, renderCanonical } from "@/lib/breakdown-templates";
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { resolveCreationSettings, mergeCreationSettings, settingsForResult } from '@/lib/creation-settings';
@@ -447,7 +447,7 @@ export default function BreakdownPage() {
       )}
 
       <ResultPanel
-        result={result}
+        result={splitBreakdownResult(result).report}
         isGenerating={running && stage === "ai"}
         title="拆解报告"
         flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }}
@@ -480,39 +480,110 @@ export default function BreakdownPage() {
         }}
       />
 
-      {!running && result && parseBreakdownTemplates(result).length > 0 && (
-        <section className="glass-panel mt-4 rounded-2xl p-4">
-          <h3 className="text-[14px] font-semibold text-foreground">套用模版（{parseBreakdownTemplates(result).length} 个）</h3>
-          <p className="mt-1 text-[11.5px] text-muted-foreground">按这条的结构复刻，用的拆解知识和拆解一样；带去的板块沿用你现在设的目的和方向。</p>
-          <div className="mt-3 grid gap-3">
-            {parseBreakdownTemplates(result).map((t) => (
-              <div key={t.no} className="rounded-xl border border-border p-3">
-                <p className="text-[13px] font-medium text-foreground">模版{t.no}｜{t.name}</p>
-                {t.direction && <p className="mt-0.5 text-[12px] text-muted-foreground">{t.direction}</p>}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {([
-                    { target: "topic", label: "去选题" },
-                    { target: "script", label: "去脚本" },
-                    { target: "storyboard", label: "去分镜" },
-                  ] as Array<{ target: CreationTarget; label: string }>).map(({ target, label }) => (
+      {!running && result && (() => {
+        const split = splitBreakdownResult(result);
+        if (!split.hasStructure) return null;
+        if (!split.templates.length) {
+          return (
+            <section className="glass-panel mt-4 rounded-2xl p-4">
+              <p className="text-[13px] text-muted-foreground">二创结构没有解析出来（模型输出的结构不完整），可以重新拆解一次。</p>
+            </section>
+          );
+        }
+        return (
+          <section className="mt-4 space-y-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-[15px] font-semibold text-foreground">二创结构（{split.templates.length} 个模版）</h3>
+              <p className="text-[11.5px] text-muted-foreground">结构可以 1:1 复制到其他板块；带去的板块沿用你现在设的目的和方向</p>
+            </div>
+            {split.templates.map((t) => {
+              const canonical = renderCanonical(t);
+              return (
+                <article key={t.no} className="glass-panel rounded-2xl p-4">
+                  <header className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">模版{t.no}</span>
+                    <h4 className="text-[14px] font-semibold text-foreground">{t.name}</h4>
+                    {t.purpose && <span className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground">{t.purpose}</span>}
+                  </header>
+                  {t.direction && <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/80">{t.direction}</p>}
+
+                  {t.segments.length > 0 && (
+                    <ol className="mt-3 space-y-2">
+                      {t.segments.map((s, i) => (
+                        <li key={i} className="rounded-lg border border-border/70 p-2.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+                            <span className="font-mono text-muted-foreground">{i + 1}</span>
+                            <span className="font-medium text-foreground">{s.time}</span>
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[11px]">{s.function}</span>
+                            {s.knowledge && <span className="text-[11px] text-primary">{s.knowledge}</span>}
+                          </div>
+                          {s.do && <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/85">{s.do}</p>}
+                          {s.lines && <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">台词：{s.lines}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+
+                  <div className="mt-3 grid gap-2 text-[12px] sm:grid-cols-2">
+                    {t.opening.hook && <p><span className="text-muted-foreground">开篇钩子：</span>{t.opening.hook}</p>}
+                    {t.opening.payoff_at && <p><span className="text-muted-foreground">兑现在：</span>{t.opening.payoff_at}</p>}
+                    {t.opening.first_2s && <p><span className="text-muted-foreground">前 2 秒：</span>{t.opening.first_2s}</p>}
+                    {t.opening.first_5s && <p><span className="text-muted-foreground">前 5 秒：</span>{t.opening.first_5s}</p>}
+                    {t.emotion.curve && <p><span className="text-muted-foreground">情绪曲线：</span>{t.emotion.curve}{t.emotion.peaks ? `（${t.emotion.peaks}）` : ""}</p>}
+                    {t.first_line && <p className="sm:col-span-2"><span className="text-muted-foreground">开头第一句：</span>{t.first_line}</p>}
+                  </div>
+
+                  {t.shots.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-[12px] font-medium text-foreground">镜头（{t.shots.length} 个，与原片逐镜头对应）</p>
+                      <ol className="mt-1.5 space-y-1.5">
+                        {t.shots.map((s, i) => (
+                          <li key={i} className="rounded-lg bg-muted/40 px-2.5 py-2 text-[12px] leading-relaxed">
+                            <span className="font-mono text-muted-foreground">{i + 1}</span>{" "}
+                            <span className="font-medium">{s.time}</span> · {s.size} · {s.camera}
+                            <div className="text-foreground/85">画面：{s.visual}</div>
+                            {s.line && <div className="text-muted-foreground">台词：{s.line}</div>}
+                            <div className="text-muted-foreground">作用：{s.role}{s.knowledge ? ` · ${s.knowledge}` : ""}</div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-3">
                     <button
-                      key={target}
                       type="button"
-                      className="rounded-lg bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary hover:bg-primary/15"
-                      onClick={() => openCreationSafely({
-                        ...buildCreationHandoff("breakdown", target, t.body, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), topic: t.name }),
-                        from: BREAKDOWN_TASK_TYPE,
-                      }, (u) => router.push(u), (m) => notify(m, "error"))}
+                      className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-muted"
+                      onClick={() => { navigator.clipboard.writeText(canonical); notify("已复制二创结构"); }}
                     >
-                      {label}
+                      复制二创结构
                     </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+                    {([
+                      { target: "topic", label: "去选题" },
+                      { target: "script", label: "去脚本" },
+                      { target: "direction", label: "去创作方向" },
+                      { target: "review", label: "去审稿优化" },
+                      { target: "storyboard", label: "去分镜" },
+                    ] as Array<{ target: CreationTarget; label: string }>).map(({ target, label }) => (
+                      <button
+                        key={target}
+                        type="button"
+                        className="rounded-lg bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary hover:bg-primary/15"
+                        onClick={() => openCreationSafely({
+                          ...buildCreationHandoff("breakdown", target, canonical, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), topic: t.name }),
+                          from: BREAKDOWN_TASK_TYPE,
+                        }, (u) => router.push(u), (m) => notify(m, "error"))}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        );
+      })()}
 
       {sheetUrls.length > 0 && (
         <section className="glass-panel mt-4 rounded-2xl p-4">
