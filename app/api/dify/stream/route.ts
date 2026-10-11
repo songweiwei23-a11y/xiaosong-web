@@ -272,6 +272,7 @@ export async function POST(req: NextRequest) {
 
     let totalChunks = 0;
     let fullResponse = ''; // 收集完整回复用于保存
+    let shownText = ''; // 页面上已经显示的全文：和 fullResponse 不一致时要用 message_replace 补齐
     let capturedConversationId = '';
     let capturedMessageId = '';
     let completionTerminal: CreationCompletion['terminal'] | undefined;
@@ -279,7 +280,8 @@ export async function POST(req: NextRequest) {
     const userId = guard.userId!;
     const sourceForReview = body.taskType === '审稿优化' ? reviewSource(body) : '';
     const boundedTask = body.taskType === '标题封面' || body.taskType === '跨行业二创';
-    const holdResponse = !!sourceForReview || boundedTask;
+    // 需要事后校对/修复的任务：正文照样边生成边显示，结束后若被改过，用 message_replace 整篇替换
+    const needsCheck = !!sourceForReview || boundedTask;
     const expectedCount = body.taskType === '标题封面' ? creationSettings.titleCount : body.historyInput?.count;
     // 兼容尚未刷新页面的旧客户端：主题是用户直接输入，不能扫描含通用规则的query。
     const boundedIntent = creationSettings.userIntent || creationSettings.topic || '';
@@ -305,6 +307,11 @@ export async function POST(req: NextRequest) {
           }
         };
         const send = (obj: Record<string, unknown>) => write(`data: ${JSON.stringify(obj)}\n\n`);
+        /** 把页面上的全文整篇换成 answer（页面端按 message_replace 整篇替换，见 lib/sse-stream.ts） */
+        const showFullText = (answer: string) => {
+          shownText = answer;
+          send({ event: 'message_replace', answer, conversation_id: capturedConversationId, message_id: capturedMessageId });
+        };
 
         /*
          * 心跳。开头检索知识库有十几秒一个字都不出，长文中途模型也会停顿；
@@ -367,10 +374,11 @@ export async function POST(req: NextRequest) {
                 if (isContent) {
                   totalChunks++;
                   fullResponse += text;
+                  shownText += text;
                   if (totalChunks === 1) {
                     console.log('✅ 开始接收内容，事件类型:', data.event);
                   }
-                  if (!holdResponse) send({
+                  send({
                     answer: text,
                     conversation_id: capturedConversationId || data.conversation_id,
                     message_id: capturedMessageId || undefined,
@@ -425,7 +433,7 @@ export async function POST(req: NextRequest) {
             if (got.status === 'done') {
               fullResponse = got.answer;
               totalChunks = Math.max(totalChunks, 1);
-              if (!holdResponse) send({ event: 'message_replace', answer: got.answer, conversation_id: capturedConversationId, message_id: capturedMessageId });
+              showFullText(got.answer);
               outcome = { kind: 'done' };
               completionTerminal = 'recovered_message';
             } else if (got.status === 'error') {
@@ -473,6 +481,8 @@ export async function POST(req: NextRequest) {
               fullResponse = reconciled;
             }
           }
+          // 需要校对的任务：没通过校对的草稿不能留在页面上，先清掉再报错
+          if (outcome.kind !== 'done' && needsCheck && shownText) showFullText('');
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
             if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
@@ -486,7 +496,8 @@ export async function POST(req: NextRequest) {
             send({ event: 'error', message: '这次没有生成出内容，请重试' });
           } else {
             console.log('Stream done. Total chunks:', totalChunks);
-            if (holdResponse) send({ answer: fullResponse, conversation_id: capturedConversationId, message_id: capturedMessageId });
+            // 校对或修复改动过正文（或断线后取回了全文）时，整篇替换页面上的草稿
+            if (fullResponse !== shownText) showFullText(fullResponse);
             if (historyDb && durableHistory) {
               let saved = false;
               try {

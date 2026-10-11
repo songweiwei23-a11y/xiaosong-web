@@ -26,6 +26,17 @@ const request = () => new Request('https://local/api/dify/stream', { method: 'PO
 const encoder = new TextEncoder();
 const complete = 'data: {"event":"message","answer":"完整二创方案"}\n\ndata: {"event":"message_end"}\n\n';
 afterEach(() => { vi.unstubAllGlobals(); state.allowed = true; state.auditFails = false; state.onPersist = () => {}; state.inserted.length = 0; });
+/** 按页面的规则还原最终显示的正文：answer 追加，message_replace 整篇替换（见 lib/sse-stream.ts） */
+function shownAfterStream(stream: string): string {
+  let shown = '';
+  for (const block of stream.split('\n\n')) {
+    if (!block.startsWith('data:')) continue;
+    const e = JSON.parse(block.slice(5));
+    if (e.event === 'message_replace') shown = e.answer;
+    else if (e.event === undefined && typeof e.answer === 'string') shown += e.answer;
+  }
+  return shown;
+}
 
 describe('生成由服务端存档', () => {
   it('直接填主题且未传userIntent的旧标题客户端也检查未采访状态', async () => {
@@ -35,7 +46,7 @@ describe('生成由服务端存档', () => {
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(`data: {"event":"message","answer":${JSON.stringify(answer)}}\n\ndata: {"event":"message_end"}\n\n`)));
     const req=new Request('https://local/api/dify/stream',{method:'POST',body:JSON.stringify({taskType:'标题封面',query:'标题提示词',creationSettings:{titleCount:1,topic:'尚未采访：国庆前后生意变化'}})}) as NextRequest;
     const stream=await (await POST(req)).text();
-    expect(stream).not.toContain('我挨家问了一遍');expect(stream).toContain('生意有什么变化');
+    expect(shownAfterStream(stream)).not.toContain('我挨家问了一遍');expect(shownAfterStream(stream)).toContain('生意有什么变化');
     expect(askDify).toHaveBeenCalledTimes(1);expect(recordCreationCompletion).toHaveBeenCalledTimes(1);
   });
   it('主题没有声明未采访时，不把通用提示词里的禁令误作用户状态', async () => {
@@ -46,26 +57,26 @@ describe('生成由服务端存档', () => {
     const stream=await (await POST(req)).text();
     expect(stream).toContain('我问了三家店');expect(askDify).not.toHaveBeenCalled();
   });
-  it('标题先通过交付检查再发送，末行无换行也能完成，字数使用实际计数', async () => {
+  it('标题字数修正后整篇替换页面上的草稿，末行无换行也能完成，字数使用实际计数', async () => {
     vi.mocked(askDify).mockClear();
     vi.mocked(recordCreationCompletion).mockClear();
     const answer='### 1. 买衣柜先看开门空间\n- **字数**：99字';
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(`data:{"event":"message","answer":${JSON.stringify(answer)}}\n\ndata:{"event":"message_end"}`)));
     const req=new Request('https://local/api/dify/stream',{method:'POST',body:JSON.stringify({taskType:'标题封面',query:'家具标题',creationSettings:{titleCount:1}})}) as NextRequest;
     const stream=await (await POST(req)).text();
-    expect(stream).toContain('9 字（不含标点和空格）');
-    expect(stream).not.toContain('99字');
+    expect(shownAfterStream(stream)).toContain('9 字（不含标点和空格）');
+    expect(shownAfterStream(stream)).not.toContain('99字');
     expect(askDify).not.toHaveBeenCalled();
     expect(recordCreationCompletion).toHaveBeenCalledTimes(1);
   });
-  it('标题校对仍不合格，不交付初稿、不扣成功次数', async () => {
+  it('标题校对仍不合格，页面上的草稿被清掉、不扣成功次数', async () => {
     vi.mocked(askDify).mockClear();
     vi.mocked(recordCreationCompletion).mockClear();vi.mocked(releaseCreation).mockClear();
     const answer='### 1. 我问了三家店';
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(`data: {"event":"message","answer":${JSON.stringify(answer)}}\n\ndata: {"event":"message_end"}\n\n`)));
     const req=new Request('https://local/api/dify/stream',{method:'POST',body:JSON.stringify({taskType:'标题封面',query:'采访标题',creationSettings:{titleCount:1,userIntent:'尚未采访'}})}) as NextRequest;
     const stream=await (await POST(req)).text();
-    expect(stream).not.toContain('我问了三家店');
+    expect(shownAfterStream(stream)).toBe('');
     expect(stream).toContain('结果未满足本轮数量或事实状态要求');
     expect(askDify).toHaveBeenCalledTimes(1);
     expect(recordCreationCompletion).not.toHaveBeenCalled();
@@ -78,7 +89,7 @@ describe('生成由服务端存档', () => {
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(`data: {"event":"message","answer":${JSON.stringify(answer)}}\n\ndata: {"event":"message_end"}\n\n`)));
     const req=new Request('https://local/api/dify/stream',{method:'POST',body:JSON.stringify({taskType:'跨行业二创',query:'二创一个方案',historyInput:{count:1}})}) as NextRequest;
     const stream=await (await POST(req)).text();
-    expect(stream).toContain('柜门演示');expect(stream).not.toContain('不需要的方案');
+    expect(shownAfterStream(stream)).toContain('柜门演示');expect(shownAfterStream(stream)).not.toContain('不需要的方案');
     expect(askDify).toHaveBeenCalledTimes(1);expect(recordCreationCompletion).toHaveBeenCalledTimes(1);
     expect(recordCreationCompletion).toHaveBeenLastCalledWith(expect.anything(),expect.objectContaining({usage:expect.objectContaining({total_tokens:20,result_check_steps:expect.anything()})}),'跨行业二创');
   });
@@ -93,18 +104,18 @@ describe('生成由服务端存档', () => {
     expect(getDifyConversationId).not.toHaveBeenCalled();
     expect(saveDifyConversationId).toHaveBeenCalledWith('owner', 'verified-review', A, '审稿优化');
     expect(actual.query.split('人员：一人全包')).toHaveLength(2);
-    expect(stream).not.toContain('完整二创方案');
-    expect(stream).toContain('她在揉面');
+    expect(shownAfterStream(stream)).not.toContain('完整二创方案');
+    expect(shownAfterStream(stream)).toContain('她在揉面');
     expect(askDify).toHaveBeenCalledWith(expect.stringContaining('她在揉面，手上全是白。'), 'owner', '审稿 原稿事实校对', expect.any(Object));
     expect(recordCreationCompletion).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ result: '## 纯文字文案\n她在揉面，手上全是白。', conversationId: 'verified-review', usage: expect.objectContaining({ total_tokens: 20 }) }), '审稿优化');
   });
-  it('事实校对失败不交付初稿、不确认次数，并释放本次预占', async () => {
+  it('事实校对失败：页面上的草稿被清掉、不确认次数，并释放本次预占', async () => {
     state.auditFails = true;
     vi.mocked(recordCreationCompletion).mockClear(); vi.mocked(releaseCreation).mockClear();
     vi.stubGlobal('fetch', vi.fn(async () => new Response(complete)));
     const stream = await (await POST(new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '审稿优化', query: '审稿', draftContent: '她在揉面。' }) }) as NextRequest)).text();
     expect(stream).toContain('审稿校对未完成');
-    expect(stream).not.toContain('完整二创方案');
+    expect(shownAfterStream(stream)).toBe('');
     expect(recordCreationCompletion).not.toHaveBeenCalled();
     expect(releaseCreation).toHaveBeenCalledTimes(1);
   });

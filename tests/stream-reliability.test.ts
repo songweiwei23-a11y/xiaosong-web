@@ -328,6 +328,48 @@ describe('追问接口也不再吞报错', () => {
   });
 });
 
+/** 把接口返回的 SSE 拆成事件对象（心跳注释行跳过） */
+async function sseEvents(res: Response): Promise<any[]> {
+  return (await res.text())
+    .split('\n\n')
+    .filter((block) => block.startsWith('data: '))
+    .map((block) => JSON.parse(block.slice(6)));
+}
+
+describe('需要校对的任务也边生成边显示', () => {
+  it('标题封面：每段正文单独下发，结束时没改动就不补发整篇', async () => {
+    mockDify(difyStream([msg('1. 标题一\n'), msg('2. 标题二'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]));
+    const evs = await sseEvents(await call('标题封面'));
+    const pieces = evs.filter((e) => e.event === undefined && typeof e.answer === 'string').map((e) => e.answer);
+    expect(pieces).toEqual(['1. 标题一\n', '2. 标题二']);
+    expect(evs.some((e) => e.event === 'message_replace')).toBe(false);
+    expect(evs.some((e) => e.event === 'message_end')).toBe(true);
+  });
+
+  it('标题封面：结束前被改过（字数统计修正），整篇替换页面上的草稿，且排在结束标记之前', async () => {
+    mockDify(difyStream([msg('1. 标题一\n字数：99'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]));
+    const evs = await sseEvents(await call('标题封面'));
+    const replaces = evs.filter((e) => e.event === 'message_replace');
+    expect(replaces.map((e) => e.answer)).toEqual(['1. 标题一\n- **字数**：3 字（不含标点和空格）']);
+    expect(evs.findIndex((e) => e.event === 'message_replace')).toBeLessThan(evs.findIndex((e) => e.event === 'message_end'));
+  });
+
+  it('审稿优化：校对没通过，先清掉未核对的草稿再报错', async () => {
+    mockDify(
+      difyStream([msg('未核对的审稿草稿'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]),
+      new Response('boom', { status: 500 })
+    );
+    const req = new Request('http://x/api/dify/stream', {
+      method: 'POST',
+      body: JSON.stringify({ taskType: '审稿优化', query: '请审稿', profileId: 'p1', draftContent: '原稿内容' }),
+    });
+    const evs = await sseEvents(await POST(req as any));
+    expect(evs.filter((e) => e.event === 'message_replace').map((e) => e.answer)).toEqual(['']);
+    expect(evs.some((e) => e.event === 'error')).toBe(true);
+    expect(evs.findIndex((e) => e.event === 'message_replace')).toBeLessThan(evs.findIndex((e) => e.event === 'error'));
+  });
+});
+
 describe('认出报错', () => {
   it('线上那条"超出上下文"认得出来', () => {
     expect(isContextOverflowError(OVERFLOW)).toBe(true);
