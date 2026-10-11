@@ -101,12 +101,30 @@ describe('提示词', () => {
     expect(buildBreakdownPrompt(silent)).toMatch(/纯画面 \+ 音乐/);
   });
 
-  it('有档案才给"套到这个账号上"的 3 个选题；没有就提醒去选', () => {
+  it('有档案才写「九、套到这个账号上的完整方案」；没有就提醒去选，但套用模版照样出', () => {
     const withProfile = buildBreakdownPrompt({ ...base, profileSummary: '- 档案名称：阿强牛肉' });
-    expect(withProfile).toMatch(/套到这个账号上\*\*：按下面的档案，给 3 个/);
+    expect(withProfile).toContain('### 九、套到这个账号上的完整方案');
     expect(withProfile).toContain('- 档案名称：阿强牛肉');
-    expect(p).toMatch(/选好档案可以一键套用/);
+    expect(p).toMatch(/选好档案就能生成套到你账号上的完整方案/);
+    expect(p).not.toContain('### 九、套到这个账号上的完整方案');
     expect(p).not.toMatch(/当前账号档案/);
+    // 没选档案也要有模版（方案 2：只拆也照样出）
+    expect(p).toContain('### 八、套用模版（至少 5 个，每个都是一份可以直接拍或直接念的二创稿）');
+    expect(p).toContain('### 模版N｜模版名称');
+  });
+
+  it('模版是二创稿：逐段复刻原片结构、开篇、情绪曲线、镜头，并点名用到的拆解知识', () => {
+    expect(p).toContain('二创结构');
+    expect(p).toContain('二创开篇');
+    expect(p).toContain('二创情绪曲线');
+    expect(p).toContain('二创镜头');
+    expect(p).toContain('理论依据');
+    expect(p).toContain('八大爆款元素、四大脚本、开篇 36 计、六大钩子、情绪曲线');
+  });
+
+  it('「想重点看什么」要进入档案那一节的要求', () => {
+    const withFocus = buildBreakdownPrompt({ ...base, profileSummary: '- 档案名称：阿强牛肉', meta: { ...base.meta, focus: '想要抖音热门' } });
+    expect(withFocus).toContain('用户想重点看的（想要抖音热门）');
   });
 });
 

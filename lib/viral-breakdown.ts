@@ -14,6 +14,7 @@ import { OPENING_CARDS } from './opening-cards';
 import { GROWTH_TACTICS } from './growth-tactics';
 import { CONTENT_ROLE_LIST } from './content-roles';
 import { fmtTime, type Shot, type KeyFrame } from './video-frames';
+import { TEMPLATE_SPEC } from './breakdown-templates';
 
 export const BREAKDOWN_TASK_TYPE = '拆解爆款';
 
@@ -105,7 +106,8 @@ export function metaLines(m: VideoMeta): string[] {
   return out;
 }
 
-function taxonomy(): string {
+/** 拆解的分类清单：视频拆解和文字拆解共用，名字一字不差，拆解和复刻才能用同一套知识 */
+export function taxonomy(): string {
   const byCat = new Map<string, string[]>();
   for (const c of OPENING_CARDS) byCat.set(c.category, [...(byCat.get(c.category) ?? []), c.name]);
   return `## 拆解用的分类（名字要和这里一字不差，好和其他板块对上；**按这里的意思用，不要自己重新定义**）
@@ -226,15 +228,25 @@ ${taxonomy()}
 ### 七、能学走什么
 - **能照搬的**：结构骨架写成可以直接套的公式（例：「反常识结论 → 3 秒证据 → 原理 → 你也能用」）、开篇句式、镜头节奏
 - **不能照搬的**：靠身份、高成本、偶然性的部分，说清为什么学不来
+${TEMPLATE_SPEC}
 ${p.profileSummary?.trim()
-    ? `- **套到这个账号上**：按下面的档案，给 3 个马上能拍的选题，每个写清用上面哪条骨架、开头第一句怎么说、在哪拍
+    ? `### 九、套到这个账号上的完整方案
+
+按下面的档案写（只用档案里有的事实）：
+- **目的**：一个主目的（流量型 / 人设型 / 变现型）和理由
+- **选题**：3 个能拍的选题，每个写清用哪个模版、开头第一句怎么说、在哪拍
+- **结构**：这个账号拍这类内容的分段骨架，每段标明用的拆解知识
+- **内容方向**：接下来几期的方向（系列或比例按档案里的配比，不编数字）${p.meta.focus?.trim() ? `
+- 用户想重点看的（${p.meta.focus.trim()}）要在这一节里重点写清` : ''}
 
 ## 当前账号档案（只在"套到这个账号上"时用）
 ${p.profileSummary.trim()}${p.contextBlock?.trim() ? `\n\n${p.contextBlock.trim()}\n\n（以上方向和禁忌也只用在"套到这个账号上"；前面拆原片时照原片说）` : ''}`
-    : '- 用户还没有选账号档案，"套到自己店上"这一步先不做，最后提醒一句：选好档案可以一键套用'}
+    : '### 九、套到这个账号上\n\n用户还没有选账号档案，这一节先不写，最后提醒一句：选好档案就能生成套到你账号上的完整方案。'}
 
 ## 要求
 - 每个判断都要有依据：指得出是第几秒、哪个镜头、哪句话
+- 拆解时用到了哪条拆解知识（八大爆款元素、四大脚本、开篇 36 计、六大钩子、情绪曲线、人设、作用），就在那一句里点出它的名字，并写出它在原片里的表现
+- 拆解的目的是二创：「八、套用模版」是用同一套理论去二创的完整稿。原片的分段结构、开篇、情绪曲线、镜头逐段复刻，每一段都写清用了哪条拆解知识，并把新题材的具体内容（能直接念的台词要点、能直接拍的镜头）写进去，颗粒度和上面的拆解一样
 - 用大白话，不要"赋能""打造""矩阵"这类词
 - 禁忌：不诋毁原作者和同行，不说"揭秘"，不用绝对化用语`;
 }

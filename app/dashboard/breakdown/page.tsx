@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
 import { openCreationSafely } from "@/lib/creation-session";
-import { buildCreationHandoff } from "@/lib/creation-flow";
+import { buildCreationHandoff, type CreationTarget } from "@/lib/creation-flow";
+import { parseBreakdownTemplates } from "@/lib/breakdown-templates";
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { resolveCreationSettings, mergeCreationSettings, settingsForResult } from '@/lib/creation-settings';
@@ -478,6 +479,40 @@ export default function BreakdownPage() {
           notify("已复制到剪贴板");
         }}
       />
+
+      {!running && result && parseBreakdownTemplates(result).length > 0 && (
+        <section className="glass-panel mt-4 rounded-2xl p-4">
+          <h3 className="text-[14px] font-semibold text-foreground">套用模版（{parseBreakdownTemplates(result).length} 个）</h3>
+          <p className="mt-1 text-[11.5px] text-muted-foreground">按这条的结构复刻，用的拆解知识和拆解一样；带去的板块沿用你现在设的目的和方向。</p>
+          <div className="mt-3 grid gap-3">
+            {parseBreakdownTemplates(result).map((t) => (
+              <div key={t.no} className="rounded-xl border border-border p-3">
+                <p className="text-[13px] font-medium text-foreground">模版{t.no}｜{t.name}</p>
+                {t.direction && <p className="mt-0.5 text-[12px] text-muted-foreground">{t.direction}</p>}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {([
+                    { target: "topic", label: "去选题" },
+                    { target: "script", label: "去脚本" },
+                    { target: "storyboard", label: "去分镜" },
+                  ] as Array<{ target: CreationTarget; label: string }>).map(({ target, label }) => (
+                    <button
+                      key={target}
+                      type="button"
+                      className="rounded-lg bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary hover:bg-primary/15"
+                      onClick={() => openCreationSafely({
+                        ...buildCreationHandoff("breakdown", target, t.body, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), topic: t.name }),
+                        from: BREAKDOWN_TASK_TYPE,
+                      }, (u) => router.push(u), (m) => notify(m, "error"))}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {sheetUrls.length > 0 && (
         <section className="glass-panel mt-4 rounded-2xl p-4">
