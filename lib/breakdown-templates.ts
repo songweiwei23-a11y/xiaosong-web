@@ -41,6 +41,28 @@ export const TEMPLATE_SPEC = `### 八、套用模版（二创结构，至少 5 �
 - 新题材里没有的人、事、数字，一律写成【待确认：…】占位，不编事实。
 - JSON 字符串里不要用英文双引号，需要引号时用「」。只输出这个代码块，不要在代码块外面解释。`;
 
+/**
+ * 第九节「可套用的模板创作方向」（2026-10-12）：按账号档案给 3 个方向。
+ * 每个方向引用第八节的一个模版，写清结构骨架和第一句，能收藏，能交给脚本、选题继续用。
+ * 标题统一是「#### 方向 N｜名称」，创作列表靠这个标题认出每一条。
+ */
+export const DIRECTION_FORMAT = `按下面的账号档案，给 3 个可套用的模板创作方向。每个方向都要能收藏，并能直接交给「脚本」或「选题」继续用，所以每一个都要写全。
+
+每个方向按这个格式写，标题必须是「#### 方向 N｜名称」（N 是 1、2、3，名称 4–10 个字）：
+
+#### 方向 1｜名称
+- **目的**：流量型 / 人设型 / 变现型，只写一个，和拆解结论一致
+- **套用的模版**：模版 N（对应上面「八、套用模版」里的一个），分段数量和顺序照它来
+- **方向**：一句话，拍什么、拍给谁看
+- **结构骨架**：按分段写，「1. 0–3 秒 抓人（开篇 36 计：盲盒）→ 2. …」，段数和模版一致，每段用的拆解知识要点名
+- **第一句怎么说**：能直接念的开头第一句，口吻用档案里的人设
+- **适合给**：脚本 / 选题（写清先给哪一个，为什么）
+
+要求：
+- 只用档案里有的事实；档案里没有的人、事、数字写成【待确认：…】，不编造。
+- 3 个方向用到的模版要不一样，方向之间不能只换词。
+- 这一节之外不要再加别的小节。`;
+
 export interface BreakdownSegment { time: string; function: string; knowledge: string; do: string; lines: string }
 export interface BreakdownShot { no: number; time: string; size: string; camera: string; visual: string; line: string; role: string; knowledge: string }
 export interface BreakdownTemplate {
@@ -85,7 +107,10 @@ export function splitBreakdownResult(result: string): { report: string; template
   const m = result.slice(from).match(/```json\s*([\s\S]*?)```/);
   if (!m) return { report: head >= 0 ? result.slice(0, head).trimEnd() : result, templates: [], hasStructure: false };
   const jsonAt = from + (m.index ?? 0);
-  const body = (head >= 0 ? result.slice(0, head) : result.slice(0, jsonAt) + result.slice(jsonAt + m[0].length)).trimEnd();
+  // 正文 = JSON 之前的内容 + JSON 之后的内容（第九节「可套用的模板创作方向」在这里），只去掉 JSON 代码块本身
+  const before = head >= 0 ? result.slice(0, head) : result.slice(0, jsonAt);
+  const after = result.slice(jsonAt + m[0].length);
+  const body = (before + after).trimEnd();
   try {
     const parsed = JSON.parse(m[1]);
     const list = Array.isArray(parsed) ? parsed : [];

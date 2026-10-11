@@ -101,12 +101,14 @@ describe('提示词', () => {
     expect(buildBreakdownPrompt(silent)).toMatch(/纯画面 \+ 音乐/);
   });
 
-  it('有档案才写「九、套到这个账号上的完整方案」；没有就提醒去选，但套用模版照样出', () => {
+  it('有档案才写第九节「可套用的模板创作方向」；没有就提醒去选，但套用模版照样出', () => {
     const withProfile = buildBreakdownPrompt({ ...base, profileSummary: '- 档案名称：阿强牛肉' });
-    expect(withProfile).toContain('### 九、套到这个账号上的完整方案');
+    expect(withProfile).toContain('### 九、可套用的模板创作方向（按这个账号）');
+    expect(withProfile).toContain('#### 方向 1｜名称');
+    expect(withProfile).toContain('给 3 个可套用的模板创作方向');
     expect(withProfile).toContain('- 档案名称：阿强牛肉');
-    expect(p).toMatch(/选好档案就能生成套到你账号上的完整方案/);
-    expect(p).not.toContain('### 九、套到这个账号上的完整方案');
+    expect(p).toMatch(/选好档案就能生成按你账号来的可套用模板创作方向/);
+    expect(p).not.toContain('### 九、可套用的模板创作方向（按这个账号）');
     expect(p).not.toMatch(/当前账号档案/);
     // 没选档案也要有模版（方案 2：只拆也照样出）
     expect(p).toContain('### 八、套用模版（二创结构，至少 5 个）');

@@ -135,7 +135,7 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
   {
     board: 'breakdown',
     label: '拆解爆款',
-    job: '拆完之后"套到这个账号上"给 3 个选题。要知道账号方向和说给谁听，套出来的选题才不跑偏',
+    job: '拆完之后"按这个账号"给 3 个可套用的模板创作方向（能收藏，交给脚本、选题用）。要知道账号方向和说给谁听，套出来的方向才不跑偏',
     profile: ['restrictions'],
     brief: ['oneline', 'audience', 'direction', 'forbidden'],
     dealReasons: false,

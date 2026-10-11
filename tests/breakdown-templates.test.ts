@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { splitBreakdownResult, parseBreakdownTemplates, renderCanonical, TEMPLATE_SPEC } from '@/lib/breakdown-templates';
+import { splitBreakdownResult, parseBreakdownTemplates, renderCanonical, TEMPLATE_SPEC, DIRECTION_FORMAT } from '@/lib/breakdown-templates';
 import { buildTextBreakdownPrompt } from '@/lib/text-breakdown';
+import { splitCreationItems, itemsNoun } from '@/lib/creation-items';
 
 const tpl = (n: number, name: string, purpose: string) => ({
   no: n,
@@ -27,6 +28,22 @@ const RESULT = `# 拆解报告
 \`\`\`json
 ${REPORT_JSON}
 \`\`\``;
+
+// 第九节「可套用的模板创作方向」写在模版 JSON 之后，必须留在正文里，创作列表才认得出
+const DIRECTIONS_RESULT = `${RESULT}
+
+### 九、可套用的模板创作方向（按这个账号）
+
+#### 方向 1｜开店老板出镜讲实话
+- **目的**：人设型
+- **套用的模版**：模版 1
+- **第一句怎么说**：开店十年，我只说一句实话
+
+#### 方向 2｜后厨一天的真实流程
+- **目的**：流量型
+
+#### 方向 3｜老客复购的账
+- **目的**：变现型`;
 
 describe('拆解结果：正文与结构分开', () => {
   it('正文不含 JSON 和模版，结构全部解析出来', () => {
@@ -68,6 +85,38 @@ describe('拆解结果：正文与结构分开', () => {
 
   it('没有结构的结果：hasStructure 为 false', () => {
     expect(splitBreakdownResult('## 一、账号层\n只有正文').hasStructure).toBe(false);
+  });
+});
+
+describe('第九节：可套用的模板创作方向，能收藏、能交给脚本和选题', () => {
+  it('JSON 之后的第九节留在正文里，只去掉 JSON 代码块', () => {
+    const s = splitBreakdownResult(DIRECTIONS_RESULT);
+    expect(s.templates).toHaveLength(5);
+    expect(s.report).toContain('### 九、可套用的模板创作方向（按这个账号）');
+    expect(s.report).toContain('#### 方向 2｜后厨一天的真实流程');
+    expect(s.report).toContain('内容正文');
+    expect(s.report).not.toContain('```json');
+  });
+
+  it('三个方向在正文里都能被认成「方向」，收藏和带去其他板块时整段带走', () => {
+    const items = splitCreationItems(splitBreakdownResult(DIRECTIONS_RESULT).report).items;
+    expect(items).toHaveLength(3);
+    expect(items.map((i) => i.kind)).toEqual(['direction', 'direction', 'direction']);
+    expect(items[0].label).toContain('开店老板出镜讲实话');
+    expect(items[0].body).toContain('第一句怎么说');
+    expect(itemsNoun(items)).toBe('方向思路');
+  });
+
+  it('方向格式要求标题是「#### 方向 N｜名称」，写清套用的模版和适合给脚本还是选题', () => {
+    expect(DIRECTION_FORMAT).toContain('#### 方向 1｜名称');
+    expect(DIRECTION_FORMAT).toContain('**套用的模版**');
+    expect(DIRECTION_FORMAT).toContain('**适合给**：脚本 / 选题');
+    expect(DIRECTION_FORMAT).toContain('3 个可套用的模板创作方向');
+  });
+
+  it('文字拆解的提示词也带同一个方向格式', () => {
+    const p = buildTextBreakdownPrompt('今天教你挑牛肉', '', {} as any);
+    expect(p).toContain(DIRECTION_FORMAT);
   });
 });
 

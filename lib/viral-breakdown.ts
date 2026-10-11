@@ -14,7 +14,7 @@ import { OPENING_CARDS } from './opening-cards';
 import { GROWTH_TACTICS } from './growth-tactics';
 import { CONTENT_ROLE_LIST } from './content-roles';
 import { fmtTime, type Shot, type KeyFrame } from './video-frames';
-import { TEMPLATE_SPEC } from './breakdown-templates';
+import { DIRECTION_FORMAT, TEMPLATE_SPEC } from './breakdown-templates';
 
 export const BREAKDOWN_TASK_TYPE = '拆解爆款';
 
@@ -230,18 +230,14 @@ ${taxonomy()}
 - **不能照搬的**：靠身份、高成本、偶然性的部分，说清为什么学不来
 ${TEMPLATE_SPEC}
 ${p.profileSummary?.trim()
-    ? `### 九、套到这个账号上的完整方案
+    ? `### 九、可套用的模板创作方向（按这个账号）
 
-按下面的档案写（只用档案里有的事实）：
-- **目的**：一个主目的（流量型 / 人设型 / 变现型）和理由
-- **选题**：3 个能拍的选题，每个写清用哪个模版、开头第一句怎么说、在哪拍
-- **结构**：这个账号拍这类内容的分段骨架，每段标明用的拆解知识
-- **内容方向**：接下来几期的方向（系列或比例按档案里的配比，不编数字）${p.meta.focus?.trim() ? `
-- 用户想重点看的（${p.meta.focus.trim()}）要在这一节里重点写清` : ''}
+${DIRECTION_FORMAT}${p.meta.focus?.trim() ? `
+- 用户想重点看的（${p.meta.focus.trim()}）要在方向里重点写清` : ''}
 
-## 当前账号档案（只在"套到这个账号上"时用）
-${p.profileSummary.trim()}${p.contextBlock?.trim() ? `\n\n${p.contextBlock.trim()}\n\n（以上方向和禁忌也只用在"套到这个账号上"；前面拆原片时照原片说）` : ''}`
-    : '### 九、套到这个账号上\n\n用户还没有选账号档案，这一节先不写，最后提醒一句：选好档案就能生成套到你账号上的完整方案。'}
+## 当前账号档案（只在第九节"按这个账号"时用）
+${p.profileSummary.trim()}${p.contextBlock?.trim() ? `\n\n${p.contextBlock.trim()}\n\n（以上方向和禁忌也只用在第九节；前面拆原片时照原片说）` : ''}`
+    : '### 九、可套用的模板创作方向\n\n用户还没有选账号档案，这一节先不写，最后提醒一句：选好档案就能生成按你账号来的可套用模板创作方向。'}
 
 ## 要求
 - 每个判断都要有依据：指得出是第几秒、哪个镜头、哪句话

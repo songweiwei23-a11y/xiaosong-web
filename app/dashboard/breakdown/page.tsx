@@ -408,8 +408,8 @@ export default function BreakdownPage() {
             <label className="flex cursor-pointer items-start gap-2.5 px-1 text-[12.5px] text-foreground">
               <input type="checkbox" checked={withProfile} onChange={(e) => setWithProfile(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
               <span>
-                结合「{String(profile.profile_name || "当前档案")}」，最后给 3 个能直接拍的选题
-                <span className="block text-[11.5px] text-muted-foreground">侧边栏切换档案，这里跟着变</span>
+                结合「{String(profile.profile_name || "当前档案")}」，最后给 3 个可套用的模板创作方向
+                <span className="block text-[11.5px] text-muted-foreground">每个方向都能收藏，并提供给脚本、选题使用；侧边栏切换档案，这里跟着变</span>
               </span>
             </label>
           )}
