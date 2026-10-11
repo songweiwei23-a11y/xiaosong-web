@@ -53,8 +53,10 @@ const AD_RULES: Array<[RegExp, string]> = [
   // 与 judge 的豁免一致：「保证画面稳定」「保证金」是拍摄或业务词，不是承诺
   [/保证(?!画面|稳定|推进|焦点|拍摄|音|金|期限)/g, '力求'],
   [/绝对(?!化)/g, ''],
-  // 扫码点单、留电话预约是正常的经营动作，只改「加微信 / 加V」这种站外引流
+  // 扫码点单是正常的经营动作；「扫码关注 / 扫码加 / 扫码领」才是站外引流（标准 E2）
   [/加微信|加V|加v/g, '关注账号'],
+  [/扫码(?=关注|加|领|进群)/g, ''],
+  [/留电话/g, '来店咨询'],
 ];
 
 /** 平台敏感词：所有非审稿的板块都换，拆解分析也一样（「揭秘」「内幕」不能出现在任何交付物的标题或口播里） */
@@ -76,10 +78,14 @@ const NUMBER_RULES: Array<[RegExp, string]> = [
 /** 直接给观众看、要发布的板块：除了绝对化用语和平台词，还要去掉内部编号 */
 export const VIEWER_FACING_BOARDS = new Set(['脚本生成', '分镜脚本', '标题封面', '开篇钩子', '跨行业二创', '选题策划', '创作方向', '内容规划']);
 
-function applyRules(text: string, rules: Array<[RegExp, string]>): string {
+/**
+ * 逐行替换。否定语境的行（「不能说最划算」）整行跳过，只对绝对化用语和平台词成立；
+ * 内部编号不是断言，哪怕同一行写着「错误示范」也要去掉（2026-10-11 复测：选题里的「36计」因此没去掉）。
+ */
+function applyRules(text: string, rules: Array<[RegExp, string]>, honourNegation = true): string {
   return text
     .split('\n')
-    .map((line) => (NEGATED.test(line) ? line : rules.reduce((l, [re, to]) => l.replace(re, to), line)))
+    .map((line) => (honourNegation && NEGATED.test(line) ? line : rules.reduce((l, [re, to]) => l.replace(re, to), line)))
     .join('\n');
 }
 
@@ -90,5 +96,5 @@ export function applyAdCompliance(text: string): string {
 /** 交付文本统一走这里（审稿优化另走 stripInternalLeaks：它的原稿要被引用，用语不能动） */
 export function sanitizeOutput(text: string, board: string): string {
   const ruled = applyAdCompliance(stripInternalLeaks(text, board));
-  return VIEWER_FACING_BOARDS.has(board) ? applyRules(ruled, NUMBER_RULES) : ruled;
+  return VIEWER_FACING_BOARDS.has(board) ? applyRules(ruled, NUMBER_RULES, false) : ruled;
 }

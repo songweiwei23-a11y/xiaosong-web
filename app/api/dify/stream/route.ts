@@ -32,6 +32,7 @@ import { mergeCreationSettings, creationSettingsBlock, hasExplicitCreationContex
 import { timeAnchor, seasonMisstatements } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
 import { sanitizeOutput, stripInternalLeaks } from '@/lib/output-guard';
+import { scriptRepairReason, buildScriptRepairPrompt, acceptScriptRepair, scriptRepairLimited, spokenStep } from '@/lib/script-repair';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
 const NO_FACT_GUARD_TASKS = new Set(['AI推荐', '前采建档']);
@@ -506,6 +507,20 @@ export async function POST(req: NextRequest) {
           if (outcome.kind === 'done' && fullResponse.trim()) {
             const tidied = tidy(fullResponse);
             if (tidied.trim()) fullResponse = tidied;
+          }
+          /*
+           * 脚本的口播修复（lib/script-repair）：没交出「纯文字文案」一步，或编导设了时长而口播超过上限的 1.1 倍，就让模型按原稿修一次。
+           * 修复稿要过同样的检查才采用，否则保留原稿。额度单独计。
+           */
+          const repairReason = body.taskType === '脚本生成' && outcome.kind === 'done' && fullResponse.trim() ? scriptRepairReason(fullResponse, creationSettings.duration) : null;
+          if (repairReason && !scriptRepairLimited(userId)) {
+            const repaired = await askDify(buildScriptRepairPrompt({ text: fullResponse, reason: repairReason, spoken: spokenStep(fullResponse), duration: creationSettings.duration }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+              .catch(() => ({ ok: false as const, message: '脚本修复未完成' }));
+            const text = repaired.ok ? tidy(cleanRewriteOutput(repaired.text)) : '';
+            if (repaired.ok && text && acceptScriptRepair(text, creationSettings.duration)) {
+              usageMetadata = combinedReviewUsage(usageMetadata, repaired.completion.usage ?? {}, 'script_repair_steps');
+              fullResponse = text;
+            }
           }
           const factKnown = sourceForReview ? `${query}\n${sourceForReview}` : query;
           // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）

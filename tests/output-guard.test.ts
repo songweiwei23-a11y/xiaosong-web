@@ -82,6 +82,24 @@ describe('断言式用语与平台敏感词（企业商用检测 P3、P4）', ()
   });
 });
 
+describe('复测误报修正（2026-10-11 第三轮）', () => {
+  it('「顾客反馈」「客户评价」作为名词（审稿在说档案里没有）不算顾客原话', () => {
+    expect(unsupportedFacts('档案里没有顾客反馈，也没有客户评价，只能先写流程。', '').some((i) => i.startsWith('顾客见证'))).toBe(false);
+  });
+
+  it('「顾客反馈：」带冒号引出的才算顾客原话', () => {
+    expect(unsupportedFacts('顾客反馈：「这个汤太好喝了」', '').some((i) => i.startsWith('顾客见证'))).toBe(true);
+  });
+
+  it('占位模板「顾客见证「换成你接待的真实客户…」」不算编的', () => {
+    expect(unsupportedFacts('顾客见证「换成你接待的真实客户：他当时说了什么」', '').some((i) => i.startsWith('顾客见证'))).toBe(false);
+  });
+
+  it('「现在 10 月还没到冬季」是说还没到，不是时令错配', () => {
+    expect(seasonMisstatements('现在 10 月还没到冬季，先拍秋天的。', AUTUMN)).toEqual([]);
+  });
+});
+
 describe('按板块决定改写范围', () => {
   it('面向观众的脚本：断言用语和揭秘都改', () => {
     expect(sanitizeOutput('这一锅最划算，内幕揭秘', '脚本生成')).toBe('这一锅划算，拆解');
@@ -94,6 +112,21 @@ describe('按板块决定改写范围', () => {
   it('审稿优化：只去内部痕迹，原稿用语原样保留（不走 sanitizeOutput 的改写）', () => {
     const draft = '这一锅最划算，内幕揭秘。';
     expect(stripInternalLeaks(draft, '审稿优化')).toBe(draft);
+  });
+});
+
+describe('复测修正（2026-10-11 第三轮）', () => {
+  it('观众板块的编号即使在「错误示范」那一行也去掉（否定语境只管断言用语）', () => {
+    const out = sanitizeOutput('计名：36计·第15计 正确做法VS错误做法', '选题策划');
+    expect(out).not.toContain('36计');
+    expect(out).not.toContain('第15计');
+  });
+
+  it('扫码关注、扫码领优惠是站外引流，去掉「扫码」；扫码点单不动；留电话改成来店咨询', () => {
+    expect(applyAdCompliance('扫码关注领优惠')).toBe('关注领优惠');
+    expect(applyAdCompliance('扫码领优惠')).toBe('领优惠');
+    expect(applyAdCompliance('扫码点单更快')).toBe('扫码点单更快');
+    expect(applyAdCompliance('留电话预约')).toBe('来店咨询预约');
   });
 });
 
