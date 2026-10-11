@@ -7,7 +7,8 @@ const base: NextStepFacts = { hasProfile: true, hasPlaceholder: false, hasScript
 describe('下一步建议：拆解的目的是二创', () => {
   it('拆出了二创结构、有档案、是视频：先写脚本，再选题，再分镜，按优先级排', () => {
     const plan = nextSteps('breakdown', { ...base, hasStructure: true, isVideo: true });
-    expect(plan.steps.map((s) => s.target)).toEqual(['script', 'topic', 'storyboard']);
+    // 拆解的目的是二创：第一步去跨行业二创，再写脚本、选题；视频的分镜排在三条之后
+    expect(plan.steps.map((s) => s.target)).toEqual(['remix', 'script', 'topic']);
     expect(plan.steps.map((s) => s.priority)).toEqual([1, 2, 3]);
     expect(plan.steps[0].reason).toContain('二创结构');
     expect(plan.hint).toBeUndefined();

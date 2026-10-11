@@ -559,6 +559,7 @@ export default function BreakdownPage() {
                       复制二创结构
                     </button>
                     {([
+                      { target: "remix", label: "去跨行业二创（复刻 / 裂变）" },
                       { target: "topic", label: "去选题" },
                       { target: "script", label: "去脚本" },
                       { target: "direction", label: "去创作方向" },
@@ -572,6 +573,8 @@ export default function BreakdownPage() {
                         onClick={() => openCreationSafely({
                           ...buildCreationHandoff("breakdown", target, canonical, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), topic: t.name }),
                           from: BREAKDOWN_TASK_TYPE,
+                          // 二创页面读的是 remixSource：二创结构整份带过去，那边默认 1:1 复刻
+                          ...(target === "remix" ? { remixSource: { title: t.name, text: canonical } } : {}),
                         }, (u) => router.push(u), (m) => notify(m, "error"))}
                       >
                         {label}

@@ -15,6 +15,7 @@
  */
 
 import { AI_LENGTH_RULE, durationRule } from './ai-recommend';
+import { buildFissionBlock, type FissionMode, type FissionSelections } from './fission';
 
 export const REMIX_TASK_TYPE = '跨行业二创';
 
@@ -41,7 +42,8 @@ export const BORROW_LAYERS = [
 export type BorrowLayer = (typeof BORROW_LAYERS)[number]['id'];
 export const DEFAULT_LAYERS: BorrowLayer[] = ['opening', 'structure', 'presentation'];
 
-export const COUNT_OPTIONS = [1, 2, 3, 5] as const;
+/** 变体数：1 / 3 / 5 / 10 / 15（2026-10-12 裂变：最多 15） */
+export const COUNT_OPTIONS = [1, 2, 3, 5, 10, 15] as const;
 export type RemixCount = (typeof COUNT_OPTIONS)[number];
 
 export const DIFFERENTIATE = [
@@ -115,6 +117,8 @@ export interface RemixOptions {
   targetIndustry?: string;
   /** 补充要求 */
   notes?: string;
+  /** 裂变：1:1 复刻 / 裂变，以及每类拆解知识勾中的项（没勾的类别不限） */
+  fission?: { mode: FissionMode; selections: FissionSelections };
 }
 
 /** 拆解报告传过来之前先瘦身：逐个镜头的卡片最占字数、对二创用处最小，只留节奏一览和其余各节 */
@@ -195,11 +199,14 @@ export function buildRemixPrompt(source: RemixSource, o: RemixOptions): string {
     `#### 开头（前 3 秒）`,
     `第一句话逐字写出来，再写这 3 秒画面里有什么`,
   ];
+  // 变体多（>5）时压缩：不写全文和分镜，每个方案一屏能看完
+  const compact = !quick && o.count > 5;
   if (quick) {
     sections.push('', `#### 口播要点`, `按结构分段列要点，每段一两句，不写全文`);
   } else {
-    if (outputs.has('script')) sections.push('', `#### 口播全文`, `按结构分段，每段前面用【】标出这段的作用（如【开篇钩子】【铺垫】【证据】【兑现】【行动指令】），总长度符合要求的时长`);
-    if (outputs.has('shots'))
+    if (compact) sections.push('', `#### 分段`, `每段一行：时间 · 功能 · 用的拆解知识 · 一句台词要点（一屏能看完）`);
+    if (outputs.has('script') && !compact) sections.push('', `#### 口播全文`, `按结构分段，每段前面用【】标出这段的作用（如【开篇钩子】【铺垫】【证据】【兑现】【行动指令】），总长度符合要求的时长`);
+    if (outputs.has('shots') && !compact)
       sections.push(
         '',
         `#### 分镜`,
@@ -231,7 +238,7 @@ export function buildRemixPrompt(source: RemixSource, o: RemixOptions): string {
 - 呈现形式有五个可变维度：拍摄角度、出镜人物、出场方式、道具、剪辑方式
 
 ## 原片${source.title ? `：${source.title}` : ''}${source.industry ? `（${source.industry}）` : ''}
-${source.kind === 'breakdown' ? '（下面是这条视频的拆解报告，逐个镜头的卡片已省略，节奏一览还在）' : '（下面是用户贴的原片文案或描述）'}
+${source.kind === 'breakdown' ? '（下面是这条视频的拆解报告，逐个镜头的卡片已省略，节奏一览还在）' : '（下面是用户贴的原片文案或描述）'}${source.text.includes('【二创结构') ? '\n（下面是拆解出的二创结构：严格按它的分段、顺序、每段功能和知识名复刻）' : ''}
 ${sourceText}
 
 ${target}
@@ -246,7 +253,7 @@ ${notBorrowed.length ? `- **没选的层**（${notBorrowed.join('、')}）：用
 - **时长**：${o.duration === '跟原片' ? `参考原片的长度，但不卡死：${AI_LENGTH_RULE}` : `${o.duration}。${durationRule(o.duration)}`}
 ${o.notes?.trim() ? `- **补充要求**：${o.notes.trim()}` : ''}
 
-## 输出格式（Markdown；${o.count} 个方案，每个都按下面这个样子，方案之间用 --- 隔开）
+${o.fission ? buildFissionBlock({ count: o.count, mode: o.fission.mode, selections: o.fission.selections }) + '\n\n' : ''}## 输出格式（Markdown；${o.count} 个方案，每个都按下面这个样子，方案之间用 --- 隔开）
 先用两三句话说：原片火的核心机制是什么、为什么能跨行业借。然后：
 
 ${sections.join('\n')}

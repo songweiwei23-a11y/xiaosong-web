@@ -30,6 +30,7 @@ import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
 import { readDifyStream } from "@/lib/sse-stream";
 import { takeHandoff } from "@/lib/handoff";
+import { FISSION_CATEGORIES, FISSION_MODES, type FissionMode, type FissionSelections } from "@/lib/fission";
 import { originForResult } from '@/lib/creation-continuation';
 import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summary";
 import { buildContextBlock } from "@/lib/creator-context";
@@ -136,6 +137,9 @@ export default function RemixPage() {
   const [count, setCount] = useState<RemixCount>(3);
   const [differentiate, setDifferentiate] = useState<Differentiate>("auto");
   const [depth, setDepth] = useState<Depth>("full");
+  // 裂变（2026-10-12）：1:1 复刻或裂变；每类拆解知识勾中的项（没勾的类别不限）
+  const [fissionMode, setFissionMode] = useState<FissionMode>("copy");
+  const [selections, setSelections] = useState<FissionSelections>({});
   const [role, setRole] = useState<RemixRole>("same");
   const [duration, setDuration] = useState<RemixDuration>("跟原片");
   const [outputs, setOutputs] = useState<RemixOutput[]>(DEFAULT_OUTPUTS);
@@ -175,6 +179,8 @@ export default function RemixPage() {
     if (h) setIncomingSetup(h);
     if (h?.remixSource?.text) {
       incomingHandoff.current = true;
+      // 拆解出的二创结构：默认 1:1 复刻、先出 1 个，要裂变再自己调数量
+      if (h.remixSource.text.includes("【二创结构")) { setFissionMode("copy"); setCount(1); }
       if (h.from === BREAKDOWN_TASK_TYPE) {
         setHanded(h.remixSource);
         setMode("breakdown");
@@ -247,7 +253,7 @@ export default function RemixPage() {
     setResult("");
     const historyInput = {
       source: src.title ?? src.kind, sourceData: src, layers, count, differentiate, depth, role,
-      duration, outputs, targetIndustry, notes, creationSettings: currentSettings,
+      duration, outputs, targetIndustry, notes, creationSettings: currentSettings, fission: { mode: fissionMode, selections },
       originContent: incomingSetup?.originContent || src.text,
       profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null,
     };
@@ -267,6 +273,7 @@ export default function RemixPage() {
         contextBlock: buildContextBlock(context, 'remix') + creationSettingsBlock(currentSettings),
         targetIndustry: profile ? undefined : targetIndustry,
         notes,
+        fission: { mode: fissionMode, selections },
       });
       const res = await fetchGeneration("/api/dify/stream", {
         method: "POST",
@@ -376,6 +383,52 @@ export default function RemixPage() {
             <Field label="写多深" stacked>
               <ChoiceGrid items={DEPTHS} isOn={(id) => depth === id} onToggle={setDepth} cols={1} />
             </Field>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="裂变：1:1 复刻，或按拆解知识裂变" defaultOpen={fissionMode !== "copy"}>
+            <Field label="怎么做" stacked>
+              <ChoiceGrid items={FISSION_MODES} isOn={(id) => fissionMode === id} onToggle={setFissionMode} cols={1} />
+            </Field>
+            <p className="mb-2 text-[11.5px] leading-relaxed text-muted-foreground">
+              不勾就是这一类不限；勾了的类别只从勾中的里取。开篇、结构、爆款元素、起号 36 计、情绪、人设、作用、呈现、景别、运镜、置景都能勾。
+            </p>
+            <div className="space-y-2">
+              {FISSION_CATEGORIES.map((cat) => {
+                const on = selections[cat.id] ?? [];
+                return (
+                  <details key={cat.id} className="rounded-lg border border-border/70 p-2.5">
+                    <summary className="cursor-pointer text-[12.5px] font-medium text-foreground">
+                      {cat.label}
+                      <span className="ml-2 text-[11px] text-muted-foreground">{on.length ? `已选 ${on.length}/${cat.items.length}` : `不限（${cat.items.length} 项）`}</span>
+                    </summary>
+                    <div className="mt-2 space-y-2">
+                      {Array.from(new Set(cat.items.map((i) => i.group ?? ""))).map((g) => (
+                        <div key={g || "all"}>
+                          {g && <p className="mb-1 text-[11px] text-muted-foreground">{g}</p>}
+                          <div className="flex flex-wrap gap-1.5">
+                            {cat.items.filter((i) => (i.group ?? "") === g).map((i) => (
+                              <button
+                                key={i.id}
+                                type="button"
+                                title={i.hint}
+                                aria-pressed={on.includes(i.id)}
+                                onClick={() => setSelections((s) => {
+                                  const cur = s[cat.id] ?? [];
+                                  return { ...s, [cat.id]: cur.includes(i.id) ? cur.filter((x) => x !== i.id) : [...cur, i.id] };
+                                })}
+                                className={chipCls(on.includes(i.id))}
+                              >
+                                {i.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
           </CollapsibleSection>
 
           <CollapsibleSection title="目的、时长、要哪些产出" defaultOpen={false}>

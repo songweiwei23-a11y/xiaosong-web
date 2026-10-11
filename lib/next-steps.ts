@@ -40,6 +40,8 @@ interface Rule { t: CreationTarget; why: string; when?: (f: NextStepFacts) => bo
 
 const RULES: Record<string, Rule[]> = {
   breakdown: [
+    // 拆解的目的是二创：拆出结构后第一步去跨行业二创，1:1 复刻或裂变成多个版本
+    { t: 'remix', why: '用二创结构 1:1 复刻，或按你勾的拆解知识裂变成多个版本，结构不变、题材换成你的', when: (f) => f.hasStructure },
     { t: 'script', why: '用二创结构 1 的分段和台词写成能照着念的口播，结构不变、题材换成你的', when: (f) => f.hasStructure },
     { t: 'topic', why: '用这套结构找几个同类题材，先选定拍什么', when: (f) => f.hasStructure },
     { t: 'storyboard', why: '这条是视频，二创之后按镜头拍，先把镜头定下来', when: (f) => f.hasStructure && f.isVideo },
