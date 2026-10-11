@@ -463,9 +463,10 @@ export default function BreakdownPage() {
             label: "拿去二创到我的店",
             icon: Shuffle,
             onClick: (body) => {
-              // 和「继续创作」同一套：目的、行业设置跟着走，持久保存后再跳（刷新、换设备能接着）
+              // 目的、行业设置跟着「我的店」走，不从报告里读：报告里的「视频目的」「内容方向」是别人的原片（2026-10-11）
+              // 持久保存后再跳（刷新、换设备能接着）
               openCreationSafely({
-                ...buildCreationHandoff('breakdown', 'remix', body, { settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }),
+                ...buildCreationHandoff('breakdown', 'remix', body, { settings: currentSettings, originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }),
                 from: BREAKDOWN_TASK_TYPE,
                 remixSource: { title: loadedFileName || file?.name, text: body },
               }, (u) => router.push(u), (m) => notify(m, 'error'));

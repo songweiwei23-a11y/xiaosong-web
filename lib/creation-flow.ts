@@ -1,7 +1,7 @@
 import { extractOpening, parseTopicOptions, type HandoffPayload } from './handoff';
 import { splitRemixPlans } from './remix-plans';
 import { creationReference, continuationRules } from './creation-continuation';
-import { cleanTitle, mergeCreationSettings, settingsFromText, creationSettingsBlock, type CreationSettings } from './creation-settings';
+import { cleanTitle, mergeCreationSettings, settingsFromText, creationSettingsBlock, isBatch, type CreationSettings } from './creation-settings';
 
 export const CREATION_DESTINATIONS = [
   { id: 'breakdown', label: '拆解分析' },
@@ -115,7 +115,12 @@ export function buildCreationHandoff(source: string, target: CreationTarget, bod
   const topicOptions = context.topicOptions?.length ? context.topicOptions : source === 'topic' ? parseTopicOptions(body) : [];
   // 单独选择某个方案时，该方案明确标注的类型、结构、目的优先于整批设置。
   // 用户/生成时保存的选择比 AI 成稿标签可靠；无明确选择的字段才由所选条目补齐。
-  const settings = mergeCreationSettings(settingsFromText(body), context.settings);
+  /*
+   * 正文里的标签不一定是用户的设置：整批读到的是第 1 条的「视频目的」「内容方向」；
+   * 拆解报告里的标签描述的是别人的原片（2026-10-11：拆解的「视频目的」被当成二创的目的）。
+   * 这两种情况只用调用方明确给的设置。
+   */
+  const settings = mergeCreationSettings(isBatch(body) || source === 'breakdown' ? {} : settingsFromText(body), context.settings);
   if (['review', 'script', 'remix'].includes(source)) settings.workingScript = creationScript(source, body);
   /*
    * 去做选题：只有这几个板块带的才是「一条脚本」（选题页据此从脚本取材）。别的板块（创作方向、自由对话的方案……）

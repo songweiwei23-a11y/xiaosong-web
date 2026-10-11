@@ -42,6 +42,7 @@ import { takeHandoff, parseTopicOptions, extractOpening } from '@/lib/handoff'
 import { openCreationSafely } from '@/lib/creation-session'
 import { creationReference, continuationRules } from '@/lib/creation-continuation'
 import { buildCreationHandoff } from '@/lib/creation-flow'
+import { pickBatchItem } from '@/lib/creation-selection'
 import { createWork, recordStage } from '@/lib/works'
 import { useWorkResume } from '@/hooks/useWorkResume'
 import { latestOf, workScriptBody, workIdFromUrl } from '@/lib/resume';
@@ -404,6 +405,24 @@ export default function GrowthPage() {
       { picked: pickedTactics, notes: planNotes, contentMix: resolveMix(context.profile, mixOverride, planNotes).mix }
     )
 
+  /*
+   * 挑了一批选题里的某一条：主题、主线、内容方向、目的、参考正文一起换成这一条的。
+   * 原来只换标题（setTopic），目的和方向还是第 1 条的，开头就写成了别的选题。
+   */
+  const pickHandoffTopic = (t: string) => {
+    setTopic(t)
+    const picked = pickBatchItem(originContent || referenceContent, t, {
+      originContent,
+      settings: mergeCreationSettings(restoredSettings, autoSetup.settings),
+    })
+    if (!picked) return
+    setRestoredSettings(picked.settings ?? {})
+    setOriginContent(picked.originContent || '')
+    setReferenceContent(picked.body)
+    setCurrentOpening('')
+    setPickedCards([])
+  }
+
   const genOpening = () => {
     if (!topic.trim()) {
       notify('先说说这条内容讲什么')
@@ -416,6 +435,8 @@ export default function GrowthPage() {
         topic,
         currentOpening,
         picked: pickedCards.length ? pickedCards : undefined,
+        // 选题页带来的目的、内容方向、用户想法：开头要照它写（见 buildOpeningPrompt）
+        intent: { purpose: currentSettings.purpose, purposeText: currentSettings.purposeText, direction: currentSettings.direction, userIntent: currentSettings.userIntent },
       }) + (referenceContent.trim() ? `\n【已有创作参考】\n${referenceContent}${continuationRules('growth')}` : ''),
       setOpeningResult,
       { topic, currentOpening, picked: pickedCards, referenceContent, originContent },
@@ -682,7 +703,7 @@ export default function GrowthPage() {
                   {(handoffTopics.length > 0 ? handoffTopics : recentTopics).map((t) => (
                     <button
                       key={t}
-                      onClick={() => setTopic(t)}
+                      onClick={() => pickHandoffTopic(t)}
                       title={t}
                       className={`glass-interactive max-w-full truncate rounded-lg border px-2.5 py-1.5 text-[12px] ${
                         topic === t ? 'glass-selected text-primary' : 'glass-panel text-foreground'

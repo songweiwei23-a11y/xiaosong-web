@@ -124,7 +124,7 @@ export function purposeOf(roleLine: string): CreationSettings['purpose'] {
 }
 
 /** 一整批（两条以上的「## 选题N」「### 方向N」「### 方案N」）：不能从它身上读标签，读到的是第 1 条的 */
-function isBatch(text: string): boolean {
+export function isBatch(text: string): boolean {
   return (text.match(/^\s*#{2,4}\s*(?:选题|方向|方案)\s*[0-9一二三四五六七八九十]+/gm) ?? []).length >= 2;
 }
 
@@ -194,7 +194,8 @@ export function settingsForResult(result: string, history: Array<{ result: strin
   const saved = settingsFromInput(record.input_data);
   // 旧审稿的“AI 推荐时长”不是具体要求，不能盖住最终稿已经明确的时长。
   if (saved.duration && !/\d+(?:\.\d+)?(?:\s*[-~至]\s*\d+)?\s*(?:秒|分钟)/.test(saved.duration)) delete saved.duration;
-  return mergeCreationSettings(settingsFromText(result), saved);
+  // 整批结果不读它的标签：「视频目的」「内容方向」会取到第 1 条的，换一条选题就对不上（同 resolveCreationSettings）
+  return mergeCreationSettings(isBatch(result) ? {} : settingsFromText(result), saved);
 }
 
 /**
@@ -286,7 +287,8 @@ export function creationSettingsBlock(settings: CreationSettings): string {
   const b = mergeCreationSettings(settings);
   if (b.lockedTexts?.length) b.notes = [b.notes, '以下用户锁定片段必须逐字保留，不得改写或删除：', ...b.lockedTexts.map(t => `【锁定片段】${t}`)].filter(Boolean).join('\n');
   const lines = [['主题', b.topic], ['内容方向', b.direction], ['目标人群', b.audience], ['行业', b.industry], ['发布平台', b.platform], ['视频时长', b.duration], ['脚本类型', b.scriptType && SCRIPT_TYPE_LABELS[b.scriptType]], ['脚本结构', SCRIPT_STRUCTURES.find(s => s.id === b.structure)?.label], ['视频目的', b.purpose], ['内容风格', b.style], ['拍法', b.tactic], ['确定的开头', b.openingLine], ['开篇卡', b.openingCards?.join('、')], ['成交理由', b.dealReasons?.join('、')], ['拍摄场地', b.scene], ['设备', b.device], ['预算', b.budget], ['人员', b.personnel], ['补充要求', b.notes]].filter(([, v]) => v);
-  if (b.purposeText && !b.purpose) lines.push(['完整目的', b.purposeText]);
+  // 视频目的只是三选一的类别；具体要达到什么（「推新品、口碑、涨粉」）在完整目的里，有类别也要带上
+  if (b.purposeText && b.purposeText !== b.purpose) lines.push(['完整目的', b.purposeText]);
   if (b.userIntent) lines.push(['原始用户想法', b.userIntent]);
   if (b.focusContent) lines.push(['用户当前选定的具体主线', b.focusContent + '\n后续方向、选题、脚本及优化全部从这条具体主线展开，不退回更宽泛的大方向，不混入未勾选方案。原始想法保留目的、人群和限制；新选题可变化，但核心议题与角度必须承接。用户之后明确修改时才改主线。']);
   return lines.length ? `\n\n【本条创作的连续设置】\n${lines.map(([k, v]) => `- ${k}：${v}`).join('\n')}\n这些是本条内容的创作设置，优先于通用行业模板，后续环节保持一致。方向、人群、目的、结构和时长不得擅自更换；保留已选开头。不得把过程展示改成无关创业故事，也不得把人设稿改成促销广告。用户本轮明确修改优先；原始用户想法中的目的、立场、人群和限制继续生效，原先“生成标题/审稿”等操作指令不重复执行，改为完成当前板块的任务。原意约束适用于整份成稿、结尾和后续建议：不卖课/不推销/不引导私信等禁止项不能改成“本条暂时不做、后续转化”；没有来源的第一人称经历、客户对话、顾客反馈不得冒充事实，需要例子用明确假设表达。自动推荐、默认配比、知识库示例和 AI 稿中反推的标签都不能替换用户目的；未标明目的时不要仅因有私信或到店结尾就改判变现型。缺失的信息不能编造成经营事实；次数、销量、价格和经历没有原稿依据时用待核实占位，建议和优化稿也不能擅自填数字。` : '';

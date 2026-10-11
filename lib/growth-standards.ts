@@ -499,6 +499,11 @@ export interface OpeningParams {
   picked?: string[];
   /** 要几条。圈定了卡时这个数被忽略——每张卡各一条 */
   count?: number;
+  /**
+   * 选题页带过来的意图：目的、内容方向、用户原始想法。
+   * 开头要照它写，不能只靠一大段设置块里的几行字（2026-10-11：目的和方向被冲淡，开头写成了旁观者的口吻）
+   */
+  intent?: { purpose?: string; purposeText?: string; direction?: string; userIntent?: string };
 }
 
 /** 一条开头。从生成结果里逐条解析出来，供用户挑一条去写脚本 */
@@ -602,6 +607,28 @@ export function buildOpeningPrompt(p: OpeningParams): string {
   }
 
   parts.push('## 🎬 这条内容', '', `**主题**：${p.topic.trim()}`, '');
+  // 选题页带过来的意图，逐条点名：钩子要照它写，不能换成别的目的或方向
+  const intent = p.intent ?? {};
+  const intentLines = [
+    intent.purpose && `- **视频目的**：${intent.purpose}${intent.purposeText && intent.purposeText !== intent.purpose ? `（完整：${intent.purposeText}）` : ''}`,
+    intent.direction && `- **内容方向**：${intent.direction}`,
+    intent.userIntent && `- **用户原始想法**：${intent.userIntent}`,
+  ].filter((x): x is string => Boolean(x));
+  if (intentLines.length) {
+    parts.push('### 🎯 本条必须守住的意图（来自选题页，钩子照它写）', '', ...intentLines, '', '开头要为这个目的服务，并落在这个内容方向上；不能换成别的目的、别的方向，也不要用「本地人都知道」这类通用套话代替。', '');
+  }
+  /*
+   * 说话人。开头原话是出镜人对着镜头说的：不写成旁白，不拿第三人称讲出镜人或这家店。
+   * 2026-10-11 线上：选题原文写着「这家地摊老板干了两件事」，开头照抄成旁观者口吻（「这家老板早就想到了」）。
+   */
+  parts.push(
+    '### 🎙 说话人（人称）',
+    '',
+    '开头原话是**出镜人自己对着镜头说的**，不是旁白。出镜人是谁，看上面「人设与口吻」里「我是谁」写的那个人。开头用「我」「我们」讲他做的、看到的、手上的事，用「你」对观众说话。',
+    '',
+    '不要用第三人称讲出镜人或这家店（不写「这家老板」「这个师傅」「老板干了两件事」「他们店」这种旁观叙述）。选题原文是第三人称写的，要改写成出镜人自己的口吻，事实与内容方向不变。',
+    ''
+  );
   // 钩子要为目的服务：流量型开头赌大众，变现型开头赌精准人群
   parts.push(roleInferRule('hook'), '');
   if (p.currentOpening?.trim()) {
@@ -666,6 +693,7 @@ ${
 ## ✍️ 写作要求
 
 - **开头写成能直接念的口语**，不是文案腔
+- **说话人是出镜人本人**：第一人称对镜头说（「我」「我们」「你」），不写成旁白或新闻播报
 - 必须和这个号的口吻一致（看上面的人设与口吻那一段）
 - 不要用账号禁忌里写明不能说的话
 - **多样性服务于适配性**：允许同一机制的不同成熟表达，不强凑六种卡；用户手选的每张卡要回应，不适用时说明理由并给同主线替代，不能编素材去适配
