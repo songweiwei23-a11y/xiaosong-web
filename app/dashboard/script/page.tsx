@@ -69,7 +69,7 @@ import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
-import { AI_LENGTH_RULE, EXAMPLE_LENGTH_NOTE } from "@/lib/ai-recommend";
+import { AI_LENGTH_RULE, EXAMPLE_LENGTH_NOTE, durationRule } from "@/lib/ai-recommend";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
@@ -663,7 +663,7 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
 ### 第3步：正文脚本
 - ${isAiDuration
   ? `时长不限，以效果最好为准：${AI_LENGTH_RULE}。不需要标注时长，据此完整输出可直接拍摄的脚本`
-  : `按${finalDuration}完整输出可直接拍摄的脚本`}
+  : `按${finalDuration}完整输出可直接拍摄的脚本。${durationRule(finalDuration)}`}
 - 必须包含秒数、镜头/画面、口播台词、字幕/音效/动作建议
 - 开头3秒直接进入冲突、痛点、反常识或利益点，禁止废话开场
 

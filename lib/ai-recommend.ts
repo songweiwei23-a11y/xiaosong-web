@@ -6,7 +6,31 @@
  * 现在：编导选了什么就按什么来；没选 / 选了 AI 推荐，就不设上限，先保证内容精彩。
  * 成片偏长没关系，编导可以自己去审稿优化里缩。
  */
-export const AI_LENGTH_RULE = '先保证内容讲透、讲精彩——该有的情节、细节、对话、情绪转折一个不少，不为了短而压缩或删减；讲完就收，不注水凑长。最后偏长没关系，编导会自己去审稿优化里缩';
+export const AI_LENGTH_RULE = '内容精彩优先，时长权重低于内容：先保证内容讲透、讲精彩——该有的情节、细节、对话、情绪转折一个不少，不为了短而压缩或删减；时长只是次要参考，不凑长、不注水；讲完就收。最后偏长没关系，编导会自己去审稿优化里缩';
 
 /** 范例只学结构，不学长度 */
 export const EXAMPLE_LENGTH_NOTE = '范例有多长不代表这条要多长，时长按本条的设置和内容需要来';
+
+/** 口播按每秒约 5 个字估算（与审稿、质检的口径一致） */
+export const SPEECH_CHARS_PER_SECOND = 5;
+
+/** 「15-30秒」取上限 30；「3分钟」取 180；取不到数字返回 null */
+export function durationCeilingSeconds(duration: string): number | null {
+  const m = duration.match(/(\d+(?:\.\d+)?)(?:\s*[-~至]\s*(\d+(?:\.\d+)?))?\s*(秒|分钟)/);
+  if (!m) return null;
+  const n = Number(m[2] ?? m[1]);
+  return m[3] === '分钟' ? n * 60 : n;
+}
+
+/**
+ * 时长口径（2026-10-11 产品方：效果最佳优先；编导设了时长就按它写，没设就内容优先、时长权重更低）。
+ * - 编导明确设了时长：严格按它写，给出口播字数上限；超了就删次要的铺垫和细节，不因为「讲精彩」就超时。
+ * - 没设（空、「AI推荐」「AI自行推断」）：内容精彩优先，时长只是次要参考。
+ */
+export function durationRule(duration: string | null | undefined): string {
+  const d = (duration ?? '').trim();
+  if (!d || /AI/.test(d)) return AI_LENGTH_RULE;
+  const sec = durationCeilingSeconds(d);
+  const budget = sec ? Math.round(sec * SPEECH_CHARS_PER_SECOND) : null;
+  return `严格按 ${d} 写${budget ? `：口播约每秒 ${SPEECH_CHARS_PER_SECOND} 个字，${d}的口播不超过约 ${budget} 字` : ''}。超出就删次要的铺垫、重复和细节，保住最精彩的那部分；不因为要讲精彩就超时，也不为写满而注水`;
+}

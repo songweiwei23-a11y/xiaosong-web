@@ -14,7 +14,7 @@
  * 要哪些产出，全交给用户选（2026-09-30）。
  */
 
-import { AI_LENGTH_RULE } from './ai-recommend';
+import { AI_LENGTH_RULE, durationRule } from './ai-recommend';
 
 export const REMIX_TASK_TYPE = '跨行业二创';
 
@@ -243,7 +243,7 @@ ${notBorrowed.length ? `- **没选的层**（${notBorrowed.join('、')}）：用
 - **出 ${o.count} 个方案**${o.count > 1 ? `，方案之间：${label(DIFFERENTIATE, o.differentiate)}（${DIFFERENTIATE.find((d) => d.id === o.differentiate)?.hint}）` : ''}
 - **深度**：${label(DEPTHS, o.depth)}（${DEPTHS.find((d) => d.id === o.depth)?.hint}）
 - **目的**：${o.role === 'same' ? '跟原片一样（先判断原片是流量型/人设型/变现型）' : o.role}——结尾的行动指令按这个目的只选一个
-- **时长**：${o.duration === '跟原片' ? `参考原片的长度，但不卡死：${AI_LENGTH_RULE}` : o.duration}
+- **时长**：${o.duration === '跟原片' ? `参考原片的长度，但不卡死：${AI_LENGTH_RULE}` : `${o.duration}。${durationRule(o.duration)}`}
 ${o.notes?.trim() ? `- **补充要求**：${o.notes.trim()}` : ''}
 
 ## 输出格式（Markdown；${o.count} 个方案，每个都按下面这个样子，方案之间用 --- 隔开）
