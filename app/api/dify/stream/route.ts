@@ -29,6 +29,7 @@ import { PROFILE_UUID } from '@/lib/profile-history';
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { difyWebStatus } from '@/lib/dify-web-status';
 import { mergeCreationSettings, creationSettingsBlock, hasExplicitCreationContext } from '@/lib/creation-settings';
+import { timeAnchor } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
@@ -155,6 +156,8 @@ export async function POST(req: NextRequest) {
 
     const settingsBlock = creationSettingsBlock(creationSettings);
     if (Object.keys(creationSettings).length && !query.includes(settingsBlock.trim())) query += settingsBlock + '\n本轮以当前带入的原稿、当前版本和这些设置为准；历史中的其他选题、方案、人群和时长不得替换本轮选择。旧 AI 稿不是已核实经营事实。';
+    // 今天的日期与季节（lib/time-anchor）。模型自己不知道今天几号；自带日期的板块（内容规划）不重复加
+    if (!/今天是\s*\d{4}\s*年/.test(query)) query += '\n\n' + timeAnchor();
 
     /*
      * 事实护栏（lib/fact-guard，2026-10-09 全板块实测）：档案关键事实原话 + 拼在最末尾的「别把设想写成真事」。
