@@ -28,7 +28,9 @@ export const CREATION_DESTINATIONS = [
 ] as const;
 export type CreationTarget = typeof CREATION_DESTINATIONS[number]['id'];
 /** topicOptions：用户在结果里勾中的几条题目（lib/creation-items），到脚本页成为候选 */
-export interface CreationContext { from?: string; title?: string; topic?: string; workId?: string; originContent?: string; settings?: CreationSettings; topicOptions?: string[]; branch?: boolean; partial?: 'title' | 'growth'; }
+export interface CreationContext { from?: string; title?: string; topic?: string; workId?: string; originContent?: string; settings?: CreationSettings; topicOptions?: string[]; branch?: boolean; partial?: 'title' | 'growth';
+  /** 结果里已经拆出了二创结构（拆解报告的模版）：下一步建议据此优先给脚本、选题 */
+  structured?: boolean; }
 export const CREATION_SOURCES: Record<string, string> = {
   breakdown: '拆解爆款', remix: '跨行业二创', review: '审稿优化', storyboard: '分镜脚本',
   topic: '选题策划', script: '脚本生成', title: '标题封面', growth: '起号与开篇',

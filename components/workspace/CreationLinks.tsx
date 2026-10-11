@@ -11,6 +11,7 @@ import { draftFromBody, draftFromItem, saveToLibrary } from '@/lib/library';
 import { buildCreationHandoff, creationScript, CREATION_DESTINATIONS, CREATION_SOURCES, RECOMMENDED_NEXT, type CreationContext, type CreationTarget } from '@/lib/creation-flow';
 import { defaultPickIds, itemsNoun, selectionBody, splitCreationItems } from '@/lib/creation-items';
 import { selectedCreationContext } from '@/lib/creation-selection';
+import { factsFromBody, nextSteps } from '@/lib/next-steps';
 
 const NEXT_BY_NOUN: Record<string, CreationTarget[]> = {
   选题: ['script', 'growth', 'title'],
@@ -60,6 +61,10 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
   useEffect(() => { setPicked(new Set(defaultPickIds(parts))); setPickOpen(!parts.items.length || itemsNoun(parts.items) !== '内容'); }, [parts]);
   // 换了内容、改了勾选，收藏状态重新来
   useEffect(() => setFav('idle'), [parts, picked, pickOpen]);
+  // 下一步建议（按优先级）：看结果本身和有没有档案；档案在客户端读，避免服务端和客户端不一致
+  const [hasProfile, setHasProfile] = useState(false);
+  useEffect(() => setHasProfile(Boolean(getActiveProfileId())), []);
+  const plan = useMemo(() => nextSteps(source, factsFromBody(body, source, hasProfile, { hasStructure: Boolean(context?.structured) || undefined })), [body, source, hasProfile, context?.structured]);
   if (!CREATION_SOURCES[source] || !body.trim()) return null;
 
   const allPicked = picked.size === parts.items.length;
@@ -69,7 +74,9 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
    * 自由对话、知识库、账号运营几个板块什么都可能出：按勾选列表认出的是什么来推荐下一步
    * （账号定位里勾了几条方向思路 → 推荐出选题、写脚本）。专门的创作板块推荐是固定的
    */
-  const recommended = recommendedProp || (GENERAL_SOURCES.has(source) && pickOpen && NEXT_BY_NOUN[noun]) || RECOMMENDED_NEXT[source] || ['topic', 'script'];
+  const planTargets = plan.steps.map((s) => s.target);
+  const recommended = recommendedProp || (GENERAL_SOURCES.has(source) && pickOpen && NEXT_BY_NOUN[noun]) || (planTargets.length ? planTargets : RECOMMENDED_NEXT[source]) || ['topic', 'script'];
+  const labelOf = (id: string) => CREATION_DESTINATIONS.find((d) => d.id === id)?.label ?? id;
 
   /*
    * 收藏到素材库（2026-10-02）。勾选列表展开着就一条一条存（一批 5 个选题 → 素材库里 5 条选题，能单独取用）；
@@ -152,6 +159,16 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
     </div>}
     {(context?.workId || workIdFromUrl()) && <label className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground"><input type="checkbox" checked={branch} onChange={e => setBranch(e.target.checked)} />另存为新作品，保留当前作品</label>}
     {continuing && <p role="status" className="mb-2 text-[12px] text-primary">正在保存完整创作需求…</p>}
+    {plan.steps.length > 0 && <div className="mb-3 space-y-1.5" aria-label="建议的下一步（按优先级）">
+      <p className="text-[11.5px] font-medium text-muted-foreground">建议的下一步（按优先级）</p>
+      <ol className="space-y-1.5">
+        {plan.steps.map((s) => <li key={s.target} className="flex items-start gap-2 text-[12px] leading-relaxed">
+          <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10.5px] font-semibold ${s.priority === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{s.priority === 1 ? '最适合' : `第 ${s.priority} 选`}</span>
+          <span className="min-w-0"><span className="font-medium text-foreground">去{labelOf(s.target)}</span><span className="text-muted-foreground">　{s.reason}</span></span>
+        </li>)}
+      </ol>
+      {plan.hint && <p className="text-[11.5px] text-amber-600 dark:text-amber-400">{plan.hint}</p>}
+    </div>}
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{(allDestinations ? [...primary, ...more] : primary).map(button)}
       {!allDestinations && more.length > 0 && <button type="button" aria-expanded={expanded} aria-controls={moreId} onClick={() => setExpanded(!expanded)} className={`${buttonClass} text-primary`}><span>{expanded ? '收起板块' : '更多板块'}</span><ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} /></button>}
     </div>

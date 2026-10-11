@@ -450,7 +450,7 @@ export default function BreakdownPage() {
         result={splitBreakdownResult(result).report}
         isGenerating={running && stage === "ai"}
         title="拆解报告"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript) }}
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), structured: splitBreakdownResult(result).hasStructure }}
         showStats={false}
         emptyIcon={Clapperboard}
         emptyTitle={textMode ? running ? "正在分析已带入的文字…" : "拆解已有文案，继续完善创作" : running ? "正在准备画面和口播…" : "传一条爆款视频，逐镜头拆给你看"}
