@@ -33,6 +33,14 @@ describe('交付前整理：去掉模型写的自检清单', () => {
     expect(out).not.toContain('绝对化用语');
   });
 
+  it('「这条为什么这样写」「数据说明」这类给老板看的说明块也去掉', () => {
+    const out = stripSelfCheck('一句话钩子\n\n## 💡 这条为什么这样写\n因为观众怕被坑。\n\n## ⚠️ 本脚本的数据与事实说明\n- 来自档案的事实：9年川菜\n\n## 拍摄建议\n师傅站在炭火前');
+    expect(out).toContain('一句话钩子');
+    expect(out).toContain('拍摄建议');
+    expect(out).not.toContain('为什么这样写');
+    expect(out).not.toContain('数据与事实说明');
+  });
+
   it('正文里普通的「核对」字眼不误删', () => {
     expect(stripSelfCheck('老板每天核对一次库存。')).toBe('老板每天核对一次库存。');
   });
