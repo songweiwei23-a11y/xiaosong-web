@@ -34,8 +34,11 @@ import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
 const NO_FACT_GUARD_TASKS = new Set(['AI推荐', '前采建档']);
-import { reconcileTitleCounts, hasObviousCutoff } from '@/lib/result-reconciliation';
-import { boundedResultIssues, boundedRepairPrompt } from '@/lib/bounded-result-check';
+import { reconcileTitleCounts, hasObviousCutoff, softenPlatformBannedWords } from '@/lib/result-reconciliation';
+import { unsupportedFacts, stripSelfCheck } from '@/lib/quality-checks';
+import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
+import { cleanRewriteOutput } from '@/lib/canvas';
+import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -472,6 +475,31 @@ export async function POST(req: NextRequest) {
                 capturedConversationId = corrected.completion.conversationId || capturedConversationId;
                 capturedMessageId = corrected.completion.messageId || capturedMessageId;
                 completionTerminal = corrected.completion.terminal;
+              }
+            }
+          }
+          /*
+           * 生成后整理（审稿优化不做：它的原稿要被引用、比对，不能按「原稿以外没有出处」来判）：
+           * 1. 去掉模型写的自检清单（「自检通过」「数字来源核查」这类内部说明不交付）；换掉平台禁用词。
+           * 2. 查出没有出处的价格、顾客见证、经营做法，按 lib/fact-fix 的同一套提示词修正一次。
+           *    页面上「这几处请核对」只提醒、不改；这里直接改掉编出来的说法。和「按资料修正」共用每人每天 20 次的额度。
+           */
+          if (outcome.kind === 'done' && body.taskType !== '审稿优化' && fullResponse.trim()) {
+            const tidied = softenPlatformBannedWords(stripSelfCheck(fullResponse));
+            if (tidied.trim()) fullResponse = tidied;
+          }
+          if (outcome.kind === 'done' && FACT_AUTO_FIX_TASKS.has(body.taskType) && fullResponse.trim()) {
+            // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）
+            const factIssues = (t: string) => unsupportedFacts(t, query).filter((i) => pendingInterview(boundedIntent) || !/^采访(?:经历|结果)/.test(i));
+            const found = factIssues(fullResponse);
+            if (found.length && !autoFactFixLimited(userId)) {
+              const fixed = await askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+                .catch(() => ({ ok: false as const, message: '按资料修正未完成' }));
+              const text = fixed.ok ? cleanRewriteOutput(fixed.text) : '';
+              // 只采用真的少了问题、又没有借机重写全文的版本
+              if (fixed.ok && text && !fixTooBig(fullResponse, text, found) && factIssues(text).length < found.length) {
+                usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'fact_fix_steps');
+                fullResponse = text;
               }
             }
           }

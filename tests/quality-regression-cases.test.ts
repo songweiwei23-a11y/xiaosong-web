@@ -156,7 +156,9 @@ describe('按资料修正', () => {
     expect(readCode('components/workspace/FactCheckNotice.tsx')).toMatch(/if \(!issues\.length\) return auto\?\.state === 'done'/);
     expect(readCode('components/workspace/FactCheckNotice.tsx')).toMatch(/NOTICE_MAX = 5/);
     const route = readCode('app/api/fact-fix/route.ts');
-    expect(route).toMatch(/autoDay = createRateLimiter\(24 \* 3600_000, 20\)/);
+    // 自动通道的额度移到 lib/fact-fix，和生成后的自动修正共用同一个每日 20 次
+    expect(route).toMatch(/autoFactFixLimited\(userId\)/);
+    expect(readCode('lib/fact-fix.ts')).toMatch(/autoFactFixLimited = createRateLimiter\(24 \* 3600_000, 20\)/);
     expect(route).toMatch(/manualMonth = createRateLimiter\(30 \* 24 \* 3600_000, 10\)/);
     expect(route).not.toMatch(/reserveCreation|incrementUsage/);
   });

@@ -3,7 +3,7 @@ import { readJsonBody } from '@/lib/read-body';
 import { askDify, sseTask } from '@/lib/dify-task';
 import { cleanRewriteOutput } from '@/lib/canvas';
 import { createRateLimiter } from '@/lib/rate-limit';
-import { FACT_FIX_MAX_CHARS, FACT_FIX_CONTEXT_MAX_CHARS, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
+import { FACT_FIX_MAX_CHARS, FACT_FIX_CONTEXT_MAX_CHARS, buildFactFixPrompt, fixTooBig, autoFactFixLimited } from '@/lib/fact-fix';
 import { unsupportedFacts } from '@/lib/quality-checks';
 import { createHash } from 'node:crypto';
 
@@ -14,7 +14,6 @@ import { createHash } from 'node:crypto';
  * 用户手动点的每天 5 次、每 30 天 10 次（成本测算里单独预留了这 10 次）。
  */
 export const dynamic = 'force-dynamic';
-const autoDay = createRateLimiter(24 * 3600_000, 20);
 const manualDay = createRateLimiter(24 * 3600_000, 5);
 const manualMonth = createRateLimiter(30 * 24 * 3600_000, 10);
 /** 已经自动修正过的稿子（用户 + 正文指纹），一天后清掉 */
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
     autoFixed.set(key, Date.now());
     for (const [k, at] of autoFixed) if (Date.now() - at > 24 * 3600_000) autoFixed.delete(k);
   }
-  if (auto ? autoDay(userId) : manualDay(userId) || manualMonth(userId)) return Response.json({ error: auto ? '今天自动修正的次数用完了，下面这几处请你核对' : '手动修正每月最多 10 次（今天最多 5 次），已经用完了；可以在画布里手动改' }, { status: 429 });
+  if (auto ? autoFactFixLimited(userId) : manualDay(userId) || manualMonth(userId)) return Response.json({ error: auto ? '今天自动修正的次数用完了，下面这几处请你核对' : '手动修正每月最多 10 次（今天最多 5 次），已经用完了；可以在画布里手动改' }, { status: 429 });
   console.log(`[fact-fix] ${auto ? '自动' : '手动'} user=${userId.slice(0, 8)} issues=${issues.length}`);
 
   return sseTask(async () => {

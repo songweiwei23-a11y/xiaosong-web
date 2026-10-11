@@ -7,9 +7,22 @@
 import { sentences } from './preferences';
 import { creationSettingsBlock } from './creation-settings';
 import type { CreationContext } from './creation-flow';
+import { createRateLimiter } from './rate-limit';
 
 export const FACT_FIX_MAX_CHARS = 20_000;
 export const FACT_FIX_CONTEXT_MAX_CHARS = 20_000;
+
+/**
+ * 生成完成后由服务端自动修正（app/api/dify/stream）。和页面上「按资料修正」的自动通道共用同一个额度：
+ * 每人每天 20 次。每次修正要多调一次模型，成本已算进会员测算，所以封顶。返回 true 表示已经用完。
+ */
+export const autoFactFixLimited = createRateLimiter(24 * 3600_000, 20);
+
+/**
+ * 生成后会自动查「出处」的板块。审稿优化不在其中：它自己有校对步骤，原稿里的说法要被引用、比对，
+ * 不能按「原稿以外没有出处」来判。
+ */
+export const FACT_AUTO_FIX_TASKS = new Set(['脚本生成', '分镜脚本', '标题封面', '开篇钩子', '跨行业二创', '选题策划', '起号方案', '创作方向', '内容规划']);
 
 /** 明确主题与受众也是核对依据；AI 执行稿不作为事实证明。 */
 export function factCheckCreationSource(context?: CreationContext): string {

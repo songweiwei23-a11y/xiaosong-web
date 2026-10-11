@@ -166,6 +166,9 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('先按当前素材做最小必要改写。素材充分时直接交付；关键缺口说明需要补什么。时长写法若有歧义（如“1-30秒”），明确说明两种理解及影响，优先确认；不得自行当成30秒而删掉主要场景。用户明确30秒时集中一个切口，明确90秒时保留可支撑主题的多场景递进。');
   parts.push('');
 
+  parts.push('交付不得以「缺少档案材料」为由停下：账号背景里已有的年限、经历、卖点据此核对；背景和原稿里都找不到依据的年限、销量、顾客反馈，直接删掉或改成【待确认：…】，然后照常给出评分、问题清单、逐句改写对照和完整优化稿。');
+  parts.push('');
+
   parts.push('## 📌 稿件背景');
   if (p.platform) parts.push(`- 目标平台：${p.platform}`);
   if (!p.duration || p.duration === AI_DURATION) {

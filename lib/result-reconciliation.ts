@@ -42,6 +42,16 @@ export function reconcileTitleCounts(markdown: string): string {
   }).join('\n');
 }
 
+/**
+ * 平台禁用词（方向提示词里写的「不说揭秘」）：模型还是会写进标题、口播、选题。直接换成中性说法。
+ * 含否定语的行不动——那一行是在提醒「别这么写」，不是在用它。
+ */
+const PLATFORM_BANNED: Array<[RegExp, string]> = [[/揭秘/g, '拆解']];
+const NEGATED_LINE = /不说|不用|不能|禁止|别用|别说|避免|不要|不许|没有出现|未出现|删掉|去掉|不写|不得/;
+export function softenPlatformBannedWords(text: string): string {
+  return text.split('\n').map((line) => (NEGATED_LINE.test(line) ? line : PLATFORM_BANNED.reduce((l, [re, to]) => l.replace(re, to), line))).join('\n');
+}
+
 /** 极窄的截断特征：末尾落在未写完的结构标签，而非以字数猜测质量。 */
 export function hasObviousCutoff(text: string): boolean {
   return /【(?:画面|口播|台词|镜头|字幕|动作|第\d+步)?[^】\n]{0,10}$/.test(text.trimEnd())
