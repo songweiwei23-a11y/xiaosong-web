@@ -1,14 +1,16 @@
 /**
- * 交付前的净化（企业商用，2026-10-11 全面检测）：
- * 1. 去掉内部提示词痕迹与自检块（P1：「作为审稿校对编辑…」「根据本轮校对指令…」「【本轮内容落实规则】」「节奏自检」）
- * 2. 修正断言式用语（P3：「最划算」「必吃」「100%」「保证见效」）与平台敏感词（P4：「揭秘」「加微信」）
- * 否定语境的行（「不能说最划算」「禁止保证见效」）是在提醒别这么写，原样保留。
+ * 交付前的净化（企业商用，2026-10-11 全面检测 + 复测修正）：
+ * 1. 去掉内部提示词痕迹与自检块（「校对编辑」「本轮内容落实规则」「节奏自检」「为什么这样写」「未编造」）。
+ *    一级标题（# 【本轮…】）只删到下一个标题为止：复测时它把整篇删空，兜底又放回了原文，泄漏原样交付。
+ * 2. 绝对化用语与平台敏感词（标准 E1、E2）：最强、最低、保证、100%、加微信、揭秘、内幕。否定语境的行（「不能说最划算」）原样保留。
+ * 3. 观众板块去掉「第N计 / 36计」这类内部编号（标准 E7，创作者板块允许）。
+ * 审稿优化只做第 1 条：它的原稿要被引用、比对，用语不能动。
  */
 import { stripSelfCheck } from './quality-checks';
 
 /** 整行是内部痕迹：出现就整行去掉 */
-const LEAK_LINE = /校对编辑|本轮校对|待校对结果|校对指令|审稿结果里没有材料依据|本轮内容落实规则|本条创作的连续设置|高阶自由对话|交稿前核对|交稿前最后一查|价值点应用自检|创作自检|节奏自检|发布前自检|交稿前自检|自检通过|自检结果|核对清单|数字来源核查|禁忌核查|三有自检|系统指令/;
-/** 标题命中的整段去掉（到下一个同级或更高级标题为止） */
+const LEAK_LINE = /校对编辑|本轮校对|待校对结果|校对指令|审稿结果里没有材料依据|本轮内容落实规则|本条创作的连续设置|高阶自由对话|交稿前核对|交稿前最后一查|价值点应用自检|创作自检|节奏自检|发布前自检|交稿前自检|自检通过|自检结果|核对清单|数字来源核查|禁忌核查|三有自检|系统指令|未编造|没有编造|无编造|无虚构/;
+/** 标题命中的整段去掉（一级标题：到下一个任意标题为止；其余：到同级或更高级标题为止） */
 const LEAK_HEADING = /本轮内容落实规则|本条创作的连续设置|本轮校对|校对指令|价值点应用自检|交稿前最后一查|高阶自由对话|自检|核对清单|数字来源核查|禁忌核查|三有自检/;
 
 export function stripInternalLeaks(text: string, board: string): string {
@@ -19,7 +21,8 @@ export function stripInternalLeaks(text: string, board: string): string {
   for (const line of base.split('\n')) {
     const h = line.match(/^\s*(#{1,6})\s+(.*)$/);
     if (h) {
-      if (skipLevel && h[1].length <= skipLevel) skipLevel = 0;
+      // 一级标题下面的内容不是它的子项（模型常把内部规则放在一级标题下，正文从二级标题开始）
+      if (skipLevel && (skipLevel === 1 || h[1].length <= skipLevel)) skipLevel = 0;
       if (!skipLevel && LEAK_HEADING.test(h[2])) { skipLevel = h[1].length; continue; }
     }
     if (skipLevel) continue;
@@ -30,33 +33,62 @@ export function stripInternalLeaks(text: string, board: string): string {
 }
 
 const NEGATED = /不能|不要|不许|禁止|别说|别写|避免|不承诺|不说|不得|不用|不做|不写|❌|✗|×|反例|错误|误区|不可用/;
-/** 面向观众的文案：断言式用语、站外引流都要改 */
+
+/** 绝对化用语（标准 E1）：所有交付板块都改。「最好」不动：「最好在傍晚拍」是拍摄建议，judge 也不计 */
 const AD_RULES: Array<[RegExp, string]> = [
   [/全城最|全网最/g, ''],
-  // 「最」去掉后保留原意：最划算→划算，最值→值。「最好」不动（「最好在傍晚拍」是拍摄建议）
-  [/最(?=正宗|好吃|划算|新鲜|便宜|实惠|省钱|省|值|暖和|低价|划得来)/g, ''],
+  [/最强/g, '很强'],
+  [/最高/g, '较高'],
+  // 「最」去掉后保留原意：最划算→划算，最值→值，最低价→低价
+  [/最(?=正宗|好吃|划算|新鲜|便宜|实惠|省钱|省|值|暖和|低价|低|划得来|专业|靠谱|优惠)/g, ''],
   [/必吃/g, '值得吃'],
+  [/必去/g, '值得去'],
+  [/第一家/g, '一家'],
+  [/顶级/g, '优质'],
+  [/零添加/g, '注重原料'],
+  [/纯天然/g, '天然'],
+  [/稳赚/g, '有望赚'],
+  [/极致(?=的|好吃|美味|口感|体验|划算|性价比|服务|品质)/g, ''],
   [/100%(?=好吃|正宗|有效|见效|满意|不坑|稳赚|有效果|成功)/g, '绝大多数'],
-  [/保证(?=见效|效果|好吃|正宗|不坑|不踩坑|不吃亏|稳赚|赚钱|涨粉|成交|一定)/g, '力求'],
-  [/绝对(?=好吃|正宗|有效|见效|不坑|划算|稳赚)/g, ''],
+  // 与 judge 的豁免一致：「保证画面稳定」「保证金」是拍摄或业务词，不是承诺
+  [/保证(?!画面|稳定|推进|焦点|拍摄|音|金|期限)/g, '力求'],
+  [/绝对(?!化)/g, ''],
   // 扫码点单、留电话预约是正常的经营动作，只改「加微信 / 加V」这种站外引流
   [/加微信|加V|加v/g, '关注账号'],
 ];
-/** 平台敏感词：所有非审稿的板块都换，拆解分析也一样（「揭秘」不能出现在任何交付物的标题里） */
-const PLATFORM_RULES: Array<[RegExp, string]> = [[/揭秘/g, '拆解']];
 
-/** 直接给观众看、要发布的板块。拆解、知识库、定位、建议类只换平台敏感词：它们引用原话做分析，不能改引文 */
+/** 平台敏感词：所有非审稿的板块都换，拆解分析也一样（「揭秘」「内幕」不能出现在任何交付物的标题或口播里） */
+const PLATFORM_RULES: Array<[RegExp, string]> = [
+  [/内幕(?=揭秘|拆解)/g, ''],
+  [/揭秘/g, '拆解'],
+  [/内幕/g, ''],
+];
+
+/** 观众板块的内部编号（标准 E7）：起号36计、第23计。创作者板块允许 */
+const NUMBER_RULES: Array<[RegExp, string]> = [
+  [/起号\s*36\s*计/g, ''],
+  [/第\s*\d+\s*计[·・ ]*/g, ''],
+  [/36\s*计[·・ ]*/g, ''],
+  [/[·・]\s*(?=[】\]）)])/g, ''],
+  [/[·・]{2,}/g, '·'],
+];
+
+/** 直接给观众看、要发布的板块：除了绝对化用语和平台词，还要去掉内部编号 */
 export const VIEWER_FACING_BOARDS = new Set(['脚本生成', '分镜脚本', '标题封面', '开篇钩子', '跨行业二创', '选题策划', '创作方向', '内容规划']);
 
-export function applyAdCompliance(text: string, viewerFacing = true): string {
-  const rules = viewerFacing ? [...AD_RULES, ...PLATFORM_RULES] : PLATFORM_RULES;
+function applyRules(text: string, rules: Array<[RegExp, string]>): string {
   return text
     .split('\n')
     .map((line) => (NEGATED.test(line) ? line : rules.reduce((l, [re, to]) => l.replace(re, to), line)))
     .join('\n');
 }
 
+export function applyAdCompliance(text: string): string {
+  return applyRules(text, [...AD_RULES, ...PLATFORM_RULES]);
+}
+
 /** 交付文本统一走这里（审稿优化另走 stripInternalLeaks：它的原稿要被引用，用语不能动） */
 export function sanitizeOutput(text: string, board: string): string {
-  return applyAdCompliance(stripInternalLeaks(text, board), VIEWER_FACING_BOARDS.has(board));
+  const ruled = applyAdCompliance(stripInternalLeaks(text, board));
+  return VIEWER_FACING_BOARDS.has(board) ? applyRules(ruled, NUMBER_RULES) : ruled;
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sanitizeOutput, stripInternalLeaks, applyAdCompliance } from '@/lib/output-guard';
+import { stripSelfCheck } from '@/lib/quality-checks';
 import { seasonMisstatements } from '@/lib/time-anchor';
 import { unsupportedFacts } from '@/lib/quality-checks';
 
@@ -76,23 +77,70 @@ describe('断言式用语与平台敏感词（企业商用检测 P3、P4）', ()
 
   it('站外引流改成关注账号；揭秘改成拆解；正常的扫码点单不动', () => {
     expect(applyAdCompliance('每桌客人都加微信')).toBe('每桌客人都关注账号');
-    expect(applyAdCompliance('内幕揭秘：一锅汤的成本')).toBe('内幕拆解：一锅汤的成本');
+    expect(applyAdCompliance('内幕揭秘：一锅汤的成本')).toBe('拆解：一锅汤的成本');
     expect(applyAdCompliance('扫码点单更快')).toBe('扫码点单更快');
   });
 });
 
 describe('按板块决定改写范围', () => {
   it('面向观众的脚本：断言用语和揭秘都改', () => {
-    expect(sanitizeOutput('这一锅最划算，内幕揭秘', '脚本生成')).toBe('这一锅划算，内幕拆解');
+    expect(sanitizeOutput('这一锅最划算，内幕揭秘', '脚本生成')).toBe('这一锅划算，拆解');
   });
 
-  it('拆解分析：引用对方原话不改，只换揭秘', () => {
-    expect(sanitizeOutput('对方视频标题「全城最好吃的火锅」，封面写着揭秘', '拆解爆款')).toBe('对方视频标题「全城最好吃的火锅」，封面写着拆解');
+  it('拆解分析：绝对化用语和平台词都改（E1、E2 对所有板块生效），只有审稿的原稿用语不动', () => {
+    expect(sanitizeOutput('对方视频标题「全城最好吃的火锅」，封面写着揭秘', '拆解爆款')).toBe('对方视频标题「好吃的火锅」，封面写着拆解');
   });
 
   it('审稿优化：只去内部痕迹，原稿用语原样保留（不走 sanitizeOutput 的改写）', () => {
     const draft = '这一锅最划算，内幕揭秘。';
     expect(stripInternalLeaks(draft, '审稿优化')).toBe(draft);
+  });
+});
+
+describe('复测修正（2026-10-11 第二轮）', () => {
+  it('一级标题下面的内部规则段被删，二级标题开始的正文保留（原来整篇被删空，兜底又放回原文）', () => {
+    const raw = '# 【本轮内容落实规则】\n- 时长按 30 秒\n- 人群按 A\n## 第1步：脚本策略卡\n策略内容。\n## 第2步：纯文字文案\n这一串烤得焦香。';
+    const out = sanitizeOutput(raw, '脚本生成');
+    expect(out).not.toContain('本轮内容落实规则');
+    expect(out).not.toContain('时长按 30 秒');
+    expect(out).toContain('## 第1步');
+    expect(out).toContain('策略内容。');
+    expect(out).toContain('## 第2步');
+    expect(out).toContain('这一串烤得焦香。');
+  });
+
+  it('自检通用剥离也一样：一级「自检」标题不把后面的正文一起删掉', () => {
+    const out = stripSelfCheck('# 发布前自检\n- 数字 ✅\n## 正文\n一句话。');
+    expect(out).not.toContain('数字 ✅');
+    expect(out).toContain('一句话。');
+  });
+
+  it('「为什么这样写」标签和它缩进的说明，在创作者板块也去掉', () => {
+    const out = sanitizeOutput('- **为什么这样写**：\n  - 因为要吸引人\n正文一句。', '账号定位');
+    expect(out).not.toContain('为什么这样写');
+    expect(out).not.toContain('因为要吸引人');
+    expect(out).toContain('正文一句。');
+  });
+
+  it('模型自称「未编造」的整行去掉（审稿也一样）', () => {
+    expect(stripInternalLeaks('模型自称未编造销量。\n正文一句。', '审稿优化')).toBe('正文一句。');
+  });
+
+  it('观众板块去掉「起号36计、第23计」这类内部编号，保留选题本身', () => {
+    const out = sanitizeOutput('## ✅ 选题1【流量型·起号36计·第23计 内幕拆解】\n拍摄角度：口播。', '选题策划');
+    expect(out).not.toContain('36计');
+    expect(out).not.toContain('第23计');
+    expect(out).not.toContain('内幕');
+    expect(out).toContain('拍摄角度：口播。');
+  });
+
+  it('创作者板块允许内部编号（标准 E7 只管面向观众）', () => {
+    expect(sanitizeOutput('流量型·起号36计', '账号定位')).toContain('36计');
+  });
+
+  it('创作者板块的绝对化用语也改（标准 E1 对所有板块生效）', () => {
+    expect(sanitizeOutput('门店最强引流概念', '账号定位')).toBe('门店很强引流概念');
+    expect(sanitizeOutput('最低价不是唯一卖点', '行业建议')).toBe('低价不是唯一卖点');
   });
 });
 

@@ -139,11 +139,12 @@ export function stripSelfCheck(output: string): string {
     const h = line.match(/^\s*(#{1,4})\s+(.*)$/);
     if (h) {
       inSelfLabel = false;
-      if (skipLevel && h[1].length <= skipLevel) skipLevel = 0;
+      // 一级标题下面的内容不是它的子项（同 lib/output-guard：一级自检标题曾把整篇删空）
+      if (skipLevel && (skipLevel === 1 || h[1].length <= skipLevel)) skipLevel = 0;
       if (!skipLevel && /自检|自查|核对|核查|校验|检查清单|事实确认|三有|为什么这样写|数据说明|事实说明|数据与事实/.test(h[2])) { skipLevel = h[1].length; continue; }
     }
     if (skipLevel) continue;
-    if (/^\s*[-*•]?\s*\**\s*(?:自检|自查|事实核对|数字来源核查|禁忌核查|三有自检|生成说明|避重原则)\**\s*[：:]/.test(line)) { inSelfLabel = true; continue; }
+    if (/^\s*[-*•]?\s*\**\s*(?:自检|自查|事实核对|数字来源核查|禁忌核查|三有自检|生成说明|避重原则|为什么这样写|为什么能满足三有自检|数据说明)\**\s*[：:]/.test(line)) { inSelfLabel = true; continue; }
     // 标签下面缩进的子条目（「  - 有用处：…」）是同一块的内容，一起去掉；顶格的内容或空行结束这一块
     if (inSelfLabel) { if (/^\s+\S/.test(line)) continue; inSelfLabel = false; }
     keep.push(line);
