@@ -42,19 +42,22 @@ export function scriptRepairReason(text: string, duration?: string | null): 'str
   return null;
 }
 
-/** 修复稿要过同样的检查：有第 2 步、口播不超过上限的 1.1 倍（不设上限的时长只看结构） */
+/**
+ * 修复稿要过同样的检查：有第 2 步、口播不超过上限的 1.15 倍（约 172 字，与质检的 170 字口径一致；
+ * 触发线是 1.1 倍，修复稿只要不比原来的上限差太多就采用）。不设上限的时长只看结构。
+ */
 export function acceptScriptRepair(text: string, duration?: string | null): boolean {
   const spoken = spokenStep(text);
   if (spoken === null || spoken < 40) return false;
   const budget = explicitBudget(duration);
-  return !budget || spoken <= budget * 1.1;
+  return !budget || spoken <= budget * 1.15;
 }
 
 export function buildScriptRepairPrompt(p: { text: string; reason: 'structure' | 'length'; spoken?: number | null; duration?: string | null }): string {
   const budget = explicitBudget(p.duration);
   const need = p.reason === 'structure'
     ? '原稿没有「第2步：纯文字文案」这一步，口播没有交出来。请按四步结构重写完整脚本：第1步脚本策略卡、第2步纯文字文案（可以直接念的口播）、第3步完整分镜脚本、第4步执行与优化建议。'
-    : `原稿第 2 步的口播有 ${p.spoken} 字，编导设的是 ${p.duration}，口播要压到约 ${budget} 字以内。请压缩第 2 步：保留开头的钩子、讲法和最有力的那几句，删掉重复、铺垫和次要细节；其他步骤不动。输出完整脚本（四步都要）。`;
+    : `原稿第 2 步的口播有 ${p.spoken} 字，编导设的是 ${p.duration}。第 2 步必须重写到 ${budget} 字以内（硬性上限，写完数过字再交），大约 ${Math.round((budget ?? 150) / 20)} 句，每句 20 字以内：只留开头的钩子、一个具体的画面或经过、一句行动指令。原稿里的铺垫、重复、解释全部删掉，不要只删几句。其他步骤不动。输出完整脚本（四步都要）。`;
   return `【脚本修复】${need}
 
 修改时必须守住：

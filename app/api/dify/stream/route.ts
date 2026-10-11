@@ -514,10 +514,13 @@ export async function POST(req: NextRequest) {
            */
           const repairReason = body.taskType === '脚本生成' && outcome.kind === 'done' && fullResponse.trim() ? scriptRepairReason(fullResponse, creationSettings.duration) : null;
           if (repairReason && !scriptRepairLimited(userId)) {
+            console.log('[script-repair] 触发:', repairReason, '口播字数:', spokenStep(fullResponse), '时长:', creationSettings.duration || '（未设）');
             const repaired = await askDify(buildScriptRepairPrompt({ text: fullResponse, reason: repairReason, spoken: spokenStep(fullResponse), duration: creationSettings.duration }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
               .catch(() => ({ ok: false as const, message: '脚本修复未完成' }));
             const text = repaired.ok ? tidy(cleanRewriteOutput(repaired.text)) : '';
-            if (repaired.ok && text && acceptScriptRepair(text, creationSettings.duration)) {
+            const accepted = !!text && acceptScriptRepair(text, creationSettings.duration);
+            console.log('[script-repair] 结果:', repaired.ok ? '返回' : `失败（${repaired.message}）`, '口播字数:', text ? spokenStep(text) : null, '采用:', accepted);
+            if (accepted && repaired.ok) {
               usageMetadata = combinedReviewUsage(usageMetadata, repaired.completion.usage ?? {}, 'script_repair_steps');
               fullResponse = text;
             }
@@ -532,6 +535,7 @@ export async function POST(req: NextRequest) {
               const fixed = await askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
                 .catch(() => ({ ok: false as const, message: '按资料修正未完成' }));
               const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
+              console.log('[fact-fix]', body.taskType, '问题', found.length, '返回', fixed.ok, '修正后问题', text ? factIssues(text).length : '-', '过度改写', text ? fixTooBig(fullResponse, text, found) : '-');
               // 只采用真的少了问题、又没有借机重写全文的版本
               if (fixed.ok && text && !fixTooBig(fullResponse, text, found) && factIssues(text).length < found.length) {
                 usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'fact_fix_steps');
