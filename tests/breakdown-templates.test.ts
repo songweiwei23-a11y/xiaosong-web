@@ -87,6 +87,31 @@ describe('拆解结果：正文与结构分开', () => {
     expect(s.report).not.toContain('```json');
   });
 
+  it('输出被截断在结构块中间：救回已经写完的方向，标记 incomplete，截断的那个不进结果、也不进正文', () => {
+    const cut = `## 一、账号层\n正文\n## 八、变现方向\n\`\`\`json\n[${JSON.stringify(tpl(1, '吸引更多客户', '变现型'))},${JSON.stringify(tpl(2, '卖服务', '变现型'))},{"no": 3, "goal": "招代理", "segments": [{"time": "0–3 秒", "function": "抓人", "kn`;
+    const s = splitBreakdownResult(cut);
+    expect(s.hasStructure).toBe(true);
+    expect(s.incomplete).toBe(true);
+    expect(s.templates.map((t) => t.goal)).toEqual(['吸引更多客户', '卖服务']);
+    expect(s.report).toContain('正文');
+    expect(s.report).not.toContain('招代理');
+  });
+
+  it('结构块完整闭合：incomplete 为 false', () => {
+    expect(splitBreakdownResult(RESULT).incomplete).toBe(false);
+  });
+
+  it('变现方向排在报告最前面时，后面的分析照样进正文，结构块不进正文', () => {
+    const front = `### 变现方向（二创结构，5 个）\n\n\`\`\`json\n${REPORT_JSON}\n\`\`\`\n\n### 一句话：这条为什么能火\n能火是因为……\n\n### 一、账号层\n账号层内容`;
+    const s = splitBreakdownResult(front);
+    expect(s.templates).toHaveLength(5);
+    expect(s.incomplete).toBe(false);
+    expect(s.report).toContain('### 一句话：这条为什么能火');
+    expect(s.report).toContain('账号层内容');
+    expect(s.report).not.toContain('```json');
+    expect(s.report).not.toContain('变现方向（二创结构');
+  });
+
   it('没有结构的结果：hasStructure 为 false', () => {
     expect(splitBreakdownResult('## 一、账号层\n只有正文').hasStructure).toBe(false);
   });

@@ -10,7 +10,7 @@
  *    directionSettings 把目的和方向写进创作设置；复制、收藏和跳转交给其他板块的，都是这份文本和设置。
  */
 
-export const TEMPLATE_SPEC = `### 八、变现方向（二创结构，5 个）
+export const TEMPLATE_SPEC = `### 变现方向（二创结构，5 个）
 
 拆解的目的是二创裂变。这里给 5 个方向，每个方向对应一个不同的变现目的，并带着一份可以原样复刻的二创结构：分段的数量、顺序、每段的功能、用的拆解知识、镜头，和上面的拆解一一对应。方向只定「目的」和「拍什么」，不写具体行业；行业由用户到了目标板块再指定，所以结构里只替换题材、人物、场景和具体说法。
 
@@ -42,8 +42,9 @@ export const TEMPLATE_SPEC = `### 八、变现方向（二创结构，5 个）
 要求：
 - 有账号档案时：5 个方向的目的都要是这个账号能变现的（如吸引客户、卖服务、卖产品、招代理、引到私域成交），purpose 都写「变现型」；profile_fit 只用档案里的经营事实，不编数字。没有档案时：5 个方向各写一个不同的目的，流量、人设、变现都要有，profile_fit 写空字符串。
 - 5 个方向的 goal 各不相同，方向之间不能只换词。
-- segments 的段数和顺序与上面的分段表一致，每段的 function 和 knowledge 照原片写，不能合并、不能漏掉。
-- shots 与上面的逐镜头一一对应（文字拆解没有镜头，shots 写空数组 []）。
+- segments 的段数和顺序与拆解里的分段结构一致，每段的 function 和 knowledge 照原片写，不能合并、不能漏掉。
+- shots 与拆解里的逐镜头一一对应（文字拆解没有镜头，shots 写空数组 []）。
+- 这一节放在报告最前面，先于其他章节输出；5 个方向要完整写完，宁可每段写短，也不能只写一半。
 - 新题材里没有的人、事、数字，一律写成【待确认：…】占位，不编事实。不写具体行业（餐饮店、服装店这类）。
 - JSON 字符串里不要用英文双引号，需要引号时用「」。`;
 
@@ -91,26 +92,71 @@ function normalize(raw: any, i: number): BreakdownTemplate {
   };
 }
 
-/** 把报告拆成「正文（给人看）」和「变现方向（结构化，给其他板块）」。方向段落之后的内容保留在正文末尾（若有）。 */
-export function splitBreakdownResult(result: string): { report: string; templates: BreakdownTemplate[]; hasStructure: boolean } {
-  const head = result.search(/^#{2,4}\s*八[、.．]/m);
-  // 没写「八、」标题时，就在整份结果里找 JSON 代码块
-  const from = head >= 0 ? head : 0;
-  const m = result.slice(from).match(/```json\s*([\s\S]*?)```/);
-  if (!m) return { report: head >= 0 ? result.slice(0, head).trimEnd() : result, templates: [], hasStructure: false };
-  const jsonAt = from + (m.index ?? 0);
-  // 正文 = JSON 之前的内容 + JSON 之后的内容，只去掉 JSON 代码块本身
-  const before = head >= 0 ? result.slice(0, head) : result.slice(0, jsonAt);
-  const after = result.slice(jsonAt + m[0].length);
-  const body = (before + after).trimEnd();
-  try {
-    const parsed = JSON.parse(m[1]);
-    const list = Array.isArray(parsed) ? parsed : [];
-    const templates = list.map(normalize).filter((t) => t.segments.length > 0 || t.goal || t.name);
-    return { report: body, templates, hasStructure: true };
-  } catch {
-    return { report: body, templates: [], hasStructure: true };
+/**
+ * 从一段（可能被截断的）JSON 数组文本里，救回已经写完整的顶层对象。
+ * 模型输出被截断时，结尾的方向没写完；前面写完的仍然可以用。
+ */
+function completeObjects(text: string): unknown[] {
+  const out: unknown[] = [];
+  let depth = 0;
+  let start = -1;
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{') { if (depth === 0) start = i; depth++; }
+    else if (c === '}' && depth > 0) {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        try { out.push(JSON.parse(text.slice(start, i + 1))); } catch { /* 这一个坏了，跳过 */ }
+        start = -1;
+      }
+    }
   }
+  return out;
+}
+
+/**
+ * 把报告拆成「正文（给人看）」和「变现方向（结构化，给其他板块）」。
+ * 变现方向排在报告最前面（2026-10-12）：输出被截断时，结尾的分析丢了，结构还在。
+ * incomplete = 结构块没有闭合，或者 JSON 解析失败：页面要明说「只写出了 N 个」，不能悄悄隐藏。
+ */
+export function splitBreakdownResult(result: string): { report: string; templates: BreakdownTemplate[]; hasStructure: boolean; incomplete: boolean } {
+  const head = result.search(/^#{2,4}\s*(?:八[、.．]\s*)?变现方向/m);
+  // 没写标题时，就在整份结果里找 JSON 代码块
+  const from = head >= 0 ? head : 0;
+  const rest = result.slice(from);
+  const open = rest.match(/```json[ \t]*\r?\n?/);
+  if (!open || open.index === undefined) {
+    return { report: head >= 0 ? result.slice(0, head).trimEnd() : result, templates: [], hasStructure: false, incomplete: false };
+  }
+  const bodyStart = open.index + open[0].length;
+  const closeAt = rest.indexOf('```', bodyStart);
+  const closed = closeAt >= 0;
+  const jsonText = closed ? rest.slice(bodyStart, closeAt) : rest.slice(bodyStart);
+  const jsonAt = from + open.index;
+  // 正文 = 结构块之前的内容 + 闭合之后的内容（只去掉代码块本身）；没闭合时结构块之后都是被截断的，不进正文
+  const before = head >= 0 ? result.slice(0, head) : result.slice(0, jsonAt);
+  const after = closed ? result.slice(from + closeAt + 3) : '';
+  const body = (before + after).trimEnd();
+  let list: unknown[];
+  let parsedOk = true;
+  try {
+    const parsed = JSON.parse(jsonText);
+    list = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    parsedOk = false;
+    list = completeObjects(jsonText);
+  }
+  const templates = list.map(normalize).filter((t) => t.segments.length > 0 || t.goal || t.name);
+  return { report: body, templates, hasStructure: true, incomplete: !closed || !parsedOk };
 }
 
 export function parseBreakdownTemplates(result: string): BreakdownTemplate[] {

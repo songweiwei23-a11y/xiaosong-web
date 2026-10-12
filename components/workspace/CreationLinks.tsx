@@ -64,7 +64,8 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
   // 下一步建议（按优先级）：看结果本身和有没有档案；档案在客户端读，避免服务端和客户端不一致
   const [hasProfile, setHasProfile] = useState(false);
   useEffect(() => setHasProfile(Boolean(getActiveProfileId())), []);
-  const plan = useMemo(() => nextSteps(source, factsFromBody(body, source, hasProfile, { hasStructure: Boolean(context?.structured) || undefined })), [body, source, hasProfile, context?.structured]);
+  // 只在确实有结构时才传 hasStructure：传 undefined 会把正文里认出来的结构信号盖掉
+  const plan = useMemo(() => nextSteps(source, factsFromBody(body, source, hasProfile, context?.structured ? { hasStructure: true } : {})), [body, source, hasProfile, context?.structured]);
   if (!CREATION_SOURCES[source] || !body.trim()) return null;
 
   const allPicked = picked.size === parts.items.length;

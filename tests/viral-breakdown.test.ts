@@ -111,8 +111,10 @@ describe('提示词', () => {
     expect(p).not.toMatch(/当前账号档案/);
     expect(p).not.toContain('### 九');
     // 没选档案也要有 5 个方向（只拆也照样出）
-    expect(p).toContain('### 八、变现方向（二创结构，5 个）');
+    expect(p).toContain('### 变现方向（二创结构，5 个）');
     expect(p).toContain('```json');
+    // 变现方向排在输出最前面：结构块被截断时，后面的分析丢了，结构还在
+    expect(p.indexOf('### 变现方向（二创结构，5 个）')).toBeLessThan(p.indexOf('### 一句话：这条为什么能火'));
   });
 
   it('模版是二创稿：逐段复刻原片结构、开篇、情绪曲线、镜头，并点名用到的拆解知识', () => {

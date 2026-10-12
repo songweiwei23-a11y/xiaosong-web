@@ -490,7 +490,7 @@ export default function BreakdownPage() {
         if (!split.templates.length) {
           return (
             <section className="glass-panel mt-4 rounded-2xl p-4">
-              <p className="text-[13px] text-muted-foreground">二创结构没有解析出来（模型输出的结构不完整），可以重新拆解一次。</p>
+              <p className="text-[13px] text-muted-foreground">{split.incomplete ? "变现方向没有写完整（模型输出在这一节被截断），可以重新拆解一次。" : "变现方向没有解析出来（模型输出的结构不完整），可以重新拆解一次。"}</p>
             </section>
           );
         }
@@ -524,6 +524,11 @@ export default function BreakdownPage() {
               <h3 className="text-[15px] font-semibold text-foreground">5 个变现方向（每个都带着可 1:1 复刻的二创结构）</h3>
               <p className="text-[11.5px] text-muted-foreground">选中一个方向，它的目的和结构整份带去其他板块，在那边按你的行业裂变</p>
             </div>
+            {split.incomplete && (
+              <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[12.5px] text-foreground">
+                这次只写出了 {split.templates.length} 个方向，后面的被截断了（模型输出没写完）。已写出的方向可以先用；想要完整的 5 个，重新拆解一次。
+              </p>
+            )}
             {split.templates.map((t) => {
               const canonical = renderCanonical(t);
               return (
