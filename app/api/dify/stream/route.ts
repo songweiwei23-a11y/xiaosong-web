@@ -32,6 +32,7 @@ import { mergeCreationSettings, creationSettingsBlock, hasExplicitCreationContex
 import { timeAnchor, seasonMisstatements } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
 import { sanitizeOutput, stripInternalLeaks } from '@/lib/output-guard';
+import { keepStructureBlock } from '@/lib/breakdown-templates';
 import { CHUNK_TRIGGER_CHARS, fixInChunks, mergeUsage } from '@/lib/fact-fix-chunks';
 import { scriptRepairReason, buildScriptRepairPrompt, acceptScriptRepair, scriptRepairLimited, spokenStep, explicitBudget, trimSpokenStep } from '@/lib/script-repair';
 import { holdUnsupported } from '@/lib/evidence-guard';
@@ -478,6 +479,8 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          // 模型原始输出：后面的整理可能把结构块改坏，拆解要拿它来还原（见 keepStructureBlock）
+          const rawResponse = fullResponse;
           if (outcome.kind === 'done' && sourceForReview && fullResponse.trim()) {
             const requirements = typeof body.personalRequirements === 'string' ? body.personalRequirements : '';
             const verified = await askDify(reviewVerificationPrompt(sourceForReview, requirements, fullResponse), userId, '审稿 原稿事实校对', { signal: AbortSignal.timeout(180_000) })
@@ -589,6 +592,10 @@ export async function POST(req: NextRequest) {
               console.log('[evidence] 占位', body.taskType, '句数', held.held);
               fullResponse = held.text;
             }
+          }
+          // 拆解的变现方向是 JSON：按行的整理改坏了就换回模型原文里的结构块（2026-10-15）
+          if (outcome.kind === 'done' && body.taskType === '拆解爆款' && fullResponse.trim()) {
+            fullResponse = keepStructureBlock(rawResponse, fullResponse);
           }
           if (outcome.kind === 'done' && hasObviousCutoff(fullResponse)) {
             outcome = { kind: 'error', message: '回答在结构标签处中断，请重试' };

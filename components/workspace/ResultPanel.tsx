@@ -76,6 +76,7 @@ export function ResultPanel({
   footer,
   bodyClassName,
   flowContext,
+  hideCreationLinks,
   individualPlans = false,
   qualityMix,
   canvasTaskType,
@@ -110,6 +111,8 @@ export function ResultPanel({
   /** 给正文额外的排版（接在 prose 后面）。拆解爆款用它把每个镜头的四级标题排成卡片头 */
   bodyClassName?: string;
   flowContext?: CreationContext;
+  /** 页面自己把「继续创作」放到别处（拆解爆款放在最底部，在变现方向和画面之后） */
+  hideCreationLinks?: boolean;
   individualPlans?: boolean;
   /** 按配比出的（选题、方向）：生成完体检时核对条数 */
   qualityMix?: { resolved: ResolvedMix; count: number } | null;
@@ -328,7 +331,7 @@ export function ResultPanel({
        * 用户读完往下找下一步找不到；而且顶部那时还没读内容，不知道该勾哪几条。
        * 顶部按钮排里留了一个「继续创作 ↓」跳到这里，结果很长时也找得到。
        */}
-      {body && !isGenerating && !individualPlans && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={view} context={flowContext} /></div>}
+      {body && !isGenerating && !individualPlans && !hideCreationLinks && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={view} context={flowContext} /></div>}
       {body && !isGenerating && planParts && <RemixContinuation body={view} plans={planParts.plans} context={flowContext} />}
 
       {/* 画布：右侧抽屉（手机全屏）。关掉时有未保存修改会先确认，草稿留在本机 */}

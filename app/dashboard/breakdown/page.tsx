@@ -21,6 +21,7 @@ import { INPUT_CLS, TEXTAREA_CLS, GENERATE_BTN } from "@/components/form/control
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { CreationLinks } from "@/components/workspace/CreationLinks";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import type { HistoryItem } from '@/components/workspace/HistoryPanel';
 import { notify } from "@/components/ui/feedback";
@@ -322,6 +323,14 @@ export default function BreakdownPage() {
   };
 
   const stageIndex = stage ? textMode ? 0 : STAGES.findIndex((s) => s.id === stage) : -1;
+  // 正文和它的几项去处：报告正文、整份二创结构、拆解时的素材（「继续创作」和结果面板共用）
+  const resultParts = splitBreakdownResult(result);
+  const flowCtx = {
+    settings: settingsForResult(result, history, currentSettings),
+    originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript),
+    structured: resultParts.hasStructure,
+    structure: renderAllCanonical(resultParts.templates),
+  };
 
   return (
     <WorkspaceLayout
@@ -452,7 +461,8 @@ export default function BreakdownPage() {
         result={splitBreakdownResult(result).report}
         isGenerating={running && stage === "ai"}
         title="拆解报告"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || pastedScript), structured: splitBreakdownResult(result).hasStructure, structure: renderAllCanonical(splitBreakdownResult(result).templates) }}
+        flowContext={flowCtx}
+        hideCreationLinks
         showStats={false}
         emptyIcon={Clapperboard}
         emptyTitle={textMode ? running ? "正在分析已带入的文字…" : "拆解已有文案，继续完善创作" : running ? "正在准备画面和口播…" : "传一条爆款视频，逐镜头拆给你看"}
@@ -490,7 +500,7 @@ export default function BreakdownPage() {
         if (!split.templates.length) {
           return (
             <section className="glass-panel mt-4 rounded-2xl p-4">
-              <p className="text-[13px] text-muted-foreground">{split.incomplete ? "变现方向没有写完整（模型输出在这一节被截断），可以重新拆解一次。" : "变现方向没有解析出来（模型输出的结构不完整），可以重新拆解一次。"}</p>
+              <p className="text-[13px] text-muted-foreground">变现方向没有读出来（结构块没写完整或格式有误），可以重新拆解一次。</p>
             </section>
           );
         }
@@ -526,7 +536,7 @@ export default function BreakdownPage() {
             </div>
             {split.incomplete && (
               <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[12.5px] text-foreground">
-                这次只写出了 {split.templates.length} 个方向，后面的被截断了（模型输出没写完）。已写出的方向可以先用；想要完整的 5 个，重新拆解一次。
+                这次只读出了 {split.templates.length} 个方向（结构块没写完整或格式有误）。已读出的方向可以先用；想要完整的 5 个，重新拆解一次。
               </p>
             )}
             {split.templates.map((t) => {
@@ -641,6 +651,12 @@ export default function BreakdownPage() {
             </div>
           )}
         </section>
+      )}
+
+      {!running && result && (
+        <div id="creation-links" className="scroll-mt-4">
+          <CreationLinks body={resultParts.report} context={flowCtx} />
+        </div>
       )}
 
     </WorkspaceLayout>

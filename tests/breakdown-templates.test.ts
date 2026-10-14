@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitBreakdownResult, parseBreakdownTemplates, renderCanonical, renderAllCanonical, directionSettings, TEMPLATE_SPEC } from '@/lib/breakdown-templates';
+import { splitBreakdownResult, parseBreakdownTemplates, renderCanonical, renderAllCanonical, directionSettings, keepStructureBlock, TEMPLATE_SPEC } from '@/lib/breakdown-templates';
 import { buildTextBreakdownPrompt } from '@/lib/text-breakdown';
 
 const tpl = (n: number, goal: string, purpose: string) => ({
@@ -171,6 +171,37 @@ describe('二创结构纯文本：1:1 复刻，原样交给其他板块', () => 
       purposeText: undefined,
       focusContent: undefined,
     });
+  });
+});
+
+describe('整理后的结构块被改坏：换回模型原文', () => {
+  const ORIGINAL = `### 变现方向（二创结构，5 个）\n\n\`\`\`json\n${REPORT_JSON}\n\`\`\`\n\n### 一句话：这条为什么能火\n能火是因为……`;
+
+  it('按行替换把 JSON 的一行换成了占位：换回原文的结构块，正文的其他修改保留', () => {
+    const broken = ORIGINAL.replace('"goal": "吸引更多客户"', '【待确认：这句需要用你的真实情况填写】').replace('能火是因为……', '能火是因为修正后的话');
+    expect(splitBreakdownResult(broken).incomplete).toBe(true);
+    const fixed = keepStructureBlock(ORIGINAL, broken);
+    expect(splitBreakdownResult(fixed).incomplete).toBe(false);
+    expect(parseBreakdownTemplates(fixed)).toHaveLength(5);
+    expect(fixed).toContain('能火是因为修正后的话');
+  });
+
+  it('结构块本来就没改坏：用整理后的版本', () => {
+    const edited = ORIGINAL.replace('能火是因为……', '能火是因为修正后的话');
+    expect(keepStructureBlock(ORIGINAL, edited)).toBe(edited);
+  });
+
+  it('原文的结构块本来就坏：不去动', () => {
+    const badOriginal = ORIGINAL.replace('"no": 1,', '"no": 1 "x",');
+    const edited = badOriginal.replace('能火是因为……', '能火是因为修正后的话');
+    expect(keepStructureBlock(badOriginal, edited)).toBe(edited);
+  });
+
+  it('结构块整块被删了：放回「变现方向」标题后面', () => {
+    const removed = `### 变现方向（二创结构，5 个）\n\n### 一句话：这条为什么能火\n能火是因为……`;
+    const fixed = keepStructureBlock(ORIGINAL, removed);
+    expect(parseBreakdownTemplates(fixed)).toHaveLength(5);
+    expect(fixed).toContain('### 一句话：这条为什么能火');
   });
 });
 

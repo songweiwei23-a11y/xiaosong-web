@@ -92,6 +92,38 @@ function normalize(raw: any, i: number): BreakdownTemplate {
   };
 }
 
+function findStructureBlock(text: string): { start: number; end: number; inner: string } | null {
+  const open = text.match(/```json[ \t]*\r?\n?/);
+  if (!open || open.index === undefined) return null;
+  const bodyStart = open.index + open[0].length;
+  const close = text.indexOf('```', bodyStart);
+  if (close < 0) return null;
+  return { start: open.index, end: close + 3, inner: text.slice(bodyStart, close) };
+}
+
+function parsesAsJson(inner: string): boolean {
+  try { JSON.parse(inner); return true; } catch { return false; }
+}
+
+/**
+ * 生成后的整理（按句替换没有出处的说法、事实修正）是按行改的：JSON 的一行被换成占位就解析不了，
+ * 2026-10-15 线上就是这样丢掉了 2 个方向。原文的结构块是好的、改后的坏了，就换回原文的结构块；
+ * 其余正文照整理后的用。
+ */
+export function keepStructureBlock(original: string, edited: string): string {
+  const before = findStructureBlock(original);
+  if (!before || !parsesAsJson(before.inner)) return edited;
+  const after = findStructureBlock(edited);
+  if (after && parsesAsJson(after.inner)) return edited;
+  const restored = original.slice(before.start, before.end);
+  if (after) return edited.slice(0, after.start) + restored + edited.slice(after.end);
+  // 整块被删了：放回「变现方向」标题后面
+  const heading = edited.search(/^#{2,4}\s*(?:八[、.．]\s*)?变现方向[^\n]*\n/m);
+  if (heading < 0) return edited;
+  const at = edited.indexOf('\n', heading) + 1;
+  return edited.slice(0, at) + restored + '\n\n' + edited.slice(at);
+}
+
 /**
  * 从一段（可能被截断的）JSON 数组文本里，救回已经写完整的顶层对象。
  * 模型输出被截断时，结尾的方向没写完；前面写完的仍然可以用。
