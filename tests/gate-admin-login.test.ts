@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { adminEmergencyLogin, maskEmail, parseAdminLogin, type AdminLoginDeps } from '@/lib/gate-admin-login';
 
-const GOOD = { email: 'boss@example.com', password: 'correct-horse', code: '123456' };
+const GOOD = { email: 'boss@example.com', password: 'correct-horse' };
 
 /** 默认全部通过：每个用例只改它要测的那一步 */
 function deps(over: Partial<AdminLoginDeps> = {}): AdminLoginDeps {
@@ -9,18 +9,16 @@ function deps(over: Partial<AdminLoginDeps> = {}): AdminLoginDeps {
     enabled: async () => true,
     signIn: async () => ({ userId: 'user-1' }),
     isAdmin: async () => true,
-    verifyTotp: async () => true,
     issuePass: async () => 'device-pass-abc',
     ...over,
   };
 }
 
 describe('应急登录：输入格式', () => {
-  it('邮箱、密码、6 位验证码都合格才接受，邮箱统一小写', () => {
-    expect(parseAdminLogin({ email: ' Boss@Example.COM ', password: 'correct-horse', code: '123 456' })).toEqual({
+  it('邮箱、密码合格才接受，邮箱统一小写去空格', () => {
+    expect(parseAdminLogin({ email: ' Boss@Example.COM ', password: 'correct-horse' })).toEqual({
       email: 'boss@example.com',
       password: 'correct-horse',
-      code: '123456',
     });
   });
 
@@ -28,8 +26,6 @@ describe('应急登录：输入格式', () => {
     expect(parseAdminLogin(null)).toBeNull();
     expect(parseAdminLogin({ ...GOOD, email: 'not-an-email' })).toBeNull();
     expect(parseAdminLogin({ ...GOOD, password: '12345' })).toBeNull();
-    expect(parseAdminLogin({ ...GOOD, code: '12345' })).toBeNull();
-    expect(parseAdminLogin({ ...GOOD, code: 'abcdef' })).toBeNull();
     expect(parseAdminLogin({ ...GOOD, password: 'x'.repeat(201) })).toBeNull();
   });
 });
@@ -55,10 +51,6 @@ describe('应急登录：每一步都要过', () => {
     const out = await adminEmergencyLogin(GOOD, deps({ isAdmin: async () => false, issuePass: async () => { issued = true; return 'x'; } }));
     expect(out).toEqual({ ok: false });
     expect(issued).toBe(false);
-  });
-
-  it('管理员，但没绑定验证器或验证码不对：失败', async () => {
-    expect(await adminEmergencyLogin(GOOD, deps({ verifyTotp: async () => false }))).toEqual({ ok: false });
   });
 });
 

@@ -24,7 +24,6 @@ export default function GatePage() {
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
   const [emergencyBusy, setEmergencyBusy] = useState(false);
   const [emergencyError, setEmergencyError] = useState("");
 
@@ -66,7 +65,7 @@ export default function GatePage() {
       const res = await fetch("/api/gate/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, code: code.trim() }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -143,25 +142,16 @@ export default function GatePage() {
                 autoComplete="current-password"
                 className="h-9 w-full rounded-xl border border-border bg-background px-3 text-[13px] text-foreground outline-none focus:border-primary"
               />
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="验证器上的 6 位码"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={8}
-                className="h-9 w-full rounded-xl border border-border bg-background px-3 font-mono text-[13px] text-foreground outline-none focus:border-primary"
-              />
               {emergencyError && <p role="alert" className="text-[12.5px] text-destructive">{emergencyError}</p>}
               <button
                 type="submit"
-                disabled={emergencyBusy || !email.trim() || !password || !code.trim()}
+                disabled={emergencyBusy || !email.trim() || !password}
                 className="h-9 w-full rounded-xl border border-border text-[13px] font-medium text-foreground disabled:opacity-50"
               >
                 {emergencyBusy ? "核对中…" : "应急登录"}
               </button>
               <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-                只对绑定了验证器的管理员开放。登录成功只为这台设备开通，不会把账号登录到别处。
+                只对管理员账号开放，成功后只为这台设备开通。请只在自己的设备上使用。
               </p>
             </form>
           )}

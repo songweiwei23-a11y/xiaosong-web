@@ -174,8 +174,8 @@ export default function GatePage() {
           <div className="flex flex-wrap items-center gap-3 text-[13px]">
             {state?.adminLogin ? <Badge tone="warn">应急登录已开启</Badge> : <Badge tone="neutral">应急登录已关闭</Badge>}
             <span className="text-muted-foreground">
-              门票丢了的管理员，可以在提示页用邮箱、密码和验证器码进入。只对绑定了验证器的管理员开放，每次成功都写入操作日志。
-              平时建议关闭。
+              门票丢了的管理员，可以在提示页只用邮箱和密码进入（不需要验证器）。只对管理员账号开放，每次成功都写入操作日志。
+              注意：开启期间，任何人只要知道某个管理员的邮箱和密码，就能进入首页。平时建议关闭。
             </span>
             <div className="ml-auto">
               {state?.adminLogin ? (

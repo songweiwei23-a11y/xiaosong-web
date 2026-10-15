@@ -1,19 +1,18 @@
 /**
- * 首页应急登录（2026-10-17）：门票丢了的管理员，在提示页用「邮箱 + 密码 + 验证器码」换一台设备的通行。
+ * 首页应急登录（2026-10-17，2026-10-18 去掉验证器）：门票丢了的管理员，在提示页用「邮箱 + 密码」换一台设备的通行。
  *
  * 规则：
  * - 默认关闭，后台「首页门票」里开关；关闭时一律失败。
- * - 只有绑定了验证器（TOTP）的管理员账号能用。没绑定的不接受密码登录。
- * - 密码、验证码对了，还要是管理员身份，三者都满足才发通行。
+ * - 账号密码对了，还要是管理员身份，两者都满足才发通行。
  * - 失败只说「不能用应急登录」，不说是哪一步错，免得被拿来探测账号。
+ * - 注意：这一步只决定能不能进首页。进后台仍然按后台原有的规则走（绑定了验证器的，后台还会要验证码）。
  *
- * 这里只是流程，每一步的真实动作（登录、查管理员、校验验证码、发通行）由调用方注入。
+ * 这里只是流程，每一步的真实动作（登录、查管理员、发通行）由调用方注入。
  */
 
 export interface AdminLoginInput {
   email: string;
   password: string;
-  code: string;
 }
 
 /** 检查提交的内容格式。不合格返回 null（不告诉具体哪里不对） */
@@ -22,11 +21,9 @@ export function parseAdminLogin(body: unknown): AdminLoginInput | null {
   const b = body as Record<string, unknown>;
   const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
   const password = typeof b.password === 'string' ? b.password : '';
-  const code = typeof b.code === 'string' ? b.code.replace(/\s/g, '') : '';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
   if (password.length < 6 || password.length > 200) return null;
-  if (!/^\d{6}$/.test(code)) return null;
-  return { email, password, code };
+  return { email, password };
 }
 
 export interface AdminLoginDeps {
@@ -36,8 +33,6 @@ export interface AdminLoginDeps {
   signIn: (email: string, password: string) => Promise<{ userId: string } | null>;
   /** 这个账号是管理员吗 */
   isAdmin: (userId: string) => Promise<boolean>;
-  /** 验证器码对吗。没绑定验证器也返回 false */
-  verifyTotp: (userId: string, code: string) => Promise<boolean>;
   /** 给这个管理员发一台设备的通行，返回 Cookie 原文 */
   issuePass: (userId: string) => Promise<string>;
 }
@@ -49,7 +44,6 @@ export async function adminEmergencyLogin(input: AdminLoginInput, deps: AdminLog
   const session = await deps.signIn(input.email, input.password);
   if (!session) return { ok: false };
   if (!(await deps.isAdmin(session.userId))) return { ok: false };
-  if (!(await deps.verifyTotp(session.userId, input.code))) return { ok: false };
   return { ok: true, userId: session.userId, devicePass: await deps.issuePass(session.userId) };
 }
 
