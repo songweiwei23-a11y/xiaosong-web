@@ -222,6 +222,15 @@ export async function createAdminTicket(adminId: string): Promise<CreatedTicket>
     .select('id')
     .single();
   if (error || !data) throw new Error(error?.message || '生成管理员门票失败');
+  // 第一次有管理员门票时，首页拦截自动开起来，之后默认一直开着。
+  // ignoreDuplicates：已经有设置（比如管理员手动关过）就不动它，免得重新生成门票时把它又打开
+  const { error: gateError } = await db()
+    .from('site_gate_settings')
+    .upsert(
+      { id: 1, enabled: true, updated_at: new Date().toISOString(), updated_by: adminId },
+      { onConflict: 'id', ignoreDuplicates: true },
+    );
+  if (gateError) throw new Error(`开启首页拦截失败：${gateError.message}`);
   resetGateCaches();
   const devicePass = await issueDevicePass(data.id);
   return { id: data.id, secret, devicePass };

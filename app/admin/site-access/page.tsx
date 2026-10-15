@@ -142,18 +142,22 @@ export default function GatePage() {
 
         <Panel>
           <div className="flex flex-wrap items-center gap-3 text-[13px]">
-            {state?.enabled ? <Badge tone="ok">拦截已开启</Badge> : <Badge tone="warn">拦截未开启</Badge>}
+            {state?.enabled ? <Badge tone="ok">默认开启</Badge> : <Badge tone="warn">未开启</Badge>}
             <span className="text-muted-foreground">
-              {state?.enabled ? "没有门票的人看不到首页。" : "所有人都能看首页。开启前，请先生成你自己的管理员门票。"}
+              {state?.enabled
+                ? "没有门票的人看不到首页。管理员在任何设备上凭自己的管理员门票直接进入。"
+                : state?.hasMyAdminTicket
+                  ? "已被手动关闭（应急）。重新开启后，没有门票的人又会被拦下。"
+                  : "还没有开启。生成你的管理员门票后，首页拦截会自动开启。"}
             </span>
             <div className="ml-auto">
               {state?.enabled ? (
-                <Button onClick={() => void setEnabled(false)} busy={busy === "enabled"}>关闭拦截</Button>
-              ) : (
-                <Button variant="primary" onClick={() => void setEnabled(true)} disabled={!state?.hasMyAdminTicket} busy={busy === "enabled"}>
+                <Button onClick={() => void setEnabled(false)} busy={busy === "enabled"}>关闭拦截（应急用）</Button>
+              ) : state?.hasMyAdminTicket ? (
+                <Button variant="primary" onClick={() => void setEnabled(true)} busy={busy === "enabled"}>
                   开启拦截
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         </Panel>
