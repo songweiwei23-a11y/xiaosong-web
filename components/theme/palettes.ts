@@ -14,8 +14,11 @@ export type PaletteId = "default" | "graphite" | "midnight" | "ember" | "teal";
 
 export const PALETTE_STORAGE_KEY = "xiaosong-palette";
 
-/** 未做选择时的默认配色，需与 app/layout.tsx 的首屏脚本保持一致 */
-export const DEFAULT_PALETTE: PaletteId = "graphite";
+/**
+ * 未做选择时的默认配色，需与 app/layout.tsx 的首屏脚本保持一致。
+ * 2026-10-16 改为墨蓝（深蓝夜色）。已经自己选过配色的用户，保留他们选的那个。
+ */
+export const DEFAULT_PALETTE: PaletteId = "midnight";
 
 export interface PaletteMeta {
   id: PaletteId;

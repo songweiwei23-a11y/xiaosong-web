@@ -26,13 +26,13 @@ const themeInitScript = `
     }
     // 配色方案同样要在首屏前定好，否则会先闪一下默认色再切换。
     // 默认值需与 components/theme/palettes.ts 的 DEFAULT_PALETTE 一致。
-    var palette = localStorage.getItem('xiaosong-palette') || 'graphite';
+    var palette = localStorage.getItem('xiaosong-palette') || 'midnight';
     if (palette !== 'default') {
       document.documentElement.setAttribute('data-palette', palette);
     }
   } catch (e) {
     document.documentElement.classList.add('dark');
-    document.documentElement.setAttribute('data-palette', 'graphite');
+    document.documentElement.setAttribute('data-palette', 'midnight');
   }
 })();
 `;
