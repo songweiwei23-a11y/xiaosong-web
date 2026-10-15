@@ -60,8 +60,8 @@ const navGroups: {
       { name: "权限管理", href: "/admin/permissions", icon: KeyRound },
       { name: "账号安全", href: "/admin/security", icon: ShieldCheck },
       { name: "系统设置", href: "/admin/settings", icon: Settings },
-      // 首页拦截（2026-10-15）：第一道门的访问码，没有它的人连首页都进不去
-      { name: "首页拦截", href: "/admin/site-access", icon: Lock },
+      // 首页门票（2026-10-16）：第一道门，没有门票的人连首页都进不去
+      { name: "首页门票", href: "/admin/site-access", icon: Lock },
       { name: "联网搜索密钥", href: "/admin/search-key", icon: Globe },
     ],
   },

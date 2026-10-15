@@ -1,80 +1,130 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Copy, RefreshCw, ShieldCheck } from "lucide-react";
+import { Copy, ShieldCheck } from "lucide-react";
 import { INPUT_CLS } from "@/components/form/controls";
 import { AdminPage, AdminPanelHint, Badge, Button, Panel } from "@/components/admin/kit";
-import { generateSiteAccessCode, SITE_ACCESS_CODE_MAX, SITE_ACCESS_CODE_MIN } from "@/lib/site-access-code";
+import { INVITE_CLAIM_DAYS, INVITE_MAX_DEVICES } from "@/lib/gate-ticket-format";
 
 /*
- * 首页拦截（第一道）：没有访问码或邀请链接的人，连首页都看不到。
- * 访问码在这里维护；改了以后，所有人（包括其它设备）要用新码重新进入，当前这台电脑自动保留通过。
+ * 首页门票（第一道）。没有门票的人连首页都看不到。
+ * - 管理员：先生成自己的长期门票，用它在任何设备上直接进门；再开启拦截。
+ * - 发邀请：给某个人发一张门票（邀请链接），有进门期限和设备数上限，随时可以撤销。
+ * 门票原文只在生成的那一刻显示一次，之后列表里只有备注和状态。
  */
 
-interface Status {
-  enabled: boolean;
-  code: string;
-  source: "database" | "environment" | "unavailable" | "none";
+interface TicketRow {
+  id: string;
+  kind: "invite" | "admin";
+  label: string;
+  created_at: string;
+  claim_until: string | null;
+  max_devices: number;
+  devices_used: number;
+  revoked_at: string | null;
+  status: "active" | "revoked" | "expired" | "full";
 }
 
-const SOURCE_HINT: Record<Status["source"], string> = {
-  database: "当前用的是这里保存的访问码。",
-  environment: "当前用的是服务器环境变量 SITE_ACCESS_CODE 里的访问码。在这里保存一次后，以这里为准。",
-  unavailable: "读取访问码失败，目前谁也进不去。请检查数据库连接后刷新。",
-  none: "还没有设置访问码，首页暂时不拦截。设置一个访问码并保存，拦截才会开始生效。",
+interface GateState {
+  enabled: boolean;
+  gateUnavailable: boolean;
+  hasMyAdminTicket: boolean;
+  tickets: TicketRow[];
+}
+
+interface Issued {
+  title: string;
+  link: string;
+}
+
+const STATUS_TEXT: Record<TicketRow["status"], string> = {
+  active: "可用",
+  revoked: "已撤销",
+  expired: "已过进门期限",
+  full: "设备已用完",
 };
 
-export default function SiteAccessPage() {
-  const [status, setStatus] = useState<Status | null>(null);
-  const [code, setCode] = useState("");
-  const [enabled, setEnabled] = useState(true);
+const TIME = (iso: string | null) => (iso ? new Date(iso).toLocaleString("zh-CN") : "—");
+
+export default function GatePage() {
   const origin = useSyncExternalStore(
     () => () => {},
     () => window.location.origin,
     () => "",
   );
+  const [state, setState] = useState<GateState | null>(null);
+  const [issued, setIssued] = useState<Issued | null>(null);
+  const [label, setLabel] = useState("");
+  const [claimDays, setClaimDays] = useState<number>(INVITE_CLAIM_DAYS.default);
+  const [maxDevices, setMaxDevices] = useState<number>(INVITE_MAX_DEVICES.default);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState("");
+
+  const load = async () => {
+    const r = await fetch("/api/admin/gate");
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "读取失败");
+    setState(d);
+  };
 
   useEffect(() => {
-    fetch("/api/admin/site-access")
+    fetch("/api/admin/gate")
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "读取失败");
-        setStatus(d);
-        setCode(d.code || "");
-        setEnabled(d.enabled ?? true);
+        setState(d);
       })
       .catch((e) => setError((e as Error).message));
   }, []);
 
-  const trimmed = code.trim();
-  const valid = trimmed.length >= SITE_ACCESS_CODE_MIN && trimmed.length <= SITE_ACCESS_CODE_MAX && /^[A-Za-z0-9_-]+$/.test(trimmed);
-  const inviteLink = origin && trimmed ? `${origin}/?gate=${encodeURIComponent(trimmed)}` : "";
-  const dirty = !!status && (trimmed !== status.code || enabled !== status.enabled);
-
-  const save = async () => {
-    setBusy(true);
+  /** 统一的操作入口：成功后刷新列表；返回接口给的数据（比如新门票原文） */
+  const act = async (key: string, body: Record<string, unknown>, done: string) => {
+    setBusy(key);
     setError("");
     setNotice("");
     try {
-      const r = await fetch("/api/admin/site-access", {
+      const r = await fetch("/api/admin/gate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: trimmed, enabled }),
+        body: JSON.stringify(body),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "保存失败");
-      setStatus({ enabled: d.enabled, code: d.code, source: d.source });
-      setCode(d.code);
-      setEnabled(d.enabled);
-      setNotice("已保存。所有人需要用新码重新进入；你当前这台电脑已自动保留通过。");
+      if (!r.ok) throw new Error(d.error || "操作失败");
+      await load();
+      setNotice(done);
+      return d as { secret?: string };
     } catch (e) {
       setError((e as Error).message);
+      return null;
     } finally {
-      setBusy(false);
+      setBusy("");
     }
+  };
+
+  const createAdmin = async () => {
+    const d = await act("admin", { action: "create-admin" }, "已生成你的管理员门票。旧的管理员门票已作废；当前这台电脑已自动保留通过。");
+    if (d?.secret) setIssued({ title: "你的管理员门票（在别的设备上打开这条链接即可进门）", link: `${origin}/?invite=${d.secret}` });
+  };
+
+  const createInvite = async () => {
+    const d = await act(
+      "invite",
+      { action: "create-invite", label: label.trim(), claimDays, maxDevices },
+      "门票已生成，把下面的链接发给对方。",
+    );
+    if (d?.secret) {
+      setIssued({ title: `给「${label.trim()}」的邀请链接`, link: `${origin}/?invite=${d.secret}` });
+      setLabel("");
+    }
+  };
+
+  const setEnabled = (enabled: boolean) =>
+    act("enabled", { action: "set-enabled", enabled }, enabled ? "首页拦截已开启。" : "首页拦截已关闭，所有人都能看首页。");
+
+  const revoke = (id: string, title: string) => {
+    if (!window.confirm(`撤销「${title}」？它发出去的所有设备都会立即（约 30 秒内）失效。`)) return;
+    void act(`revoke-${id}`, { action: "revoke", id }, "门票已撤销。");
   };
 
   const copy = (text: string, done: string) => {
@@ -82,70 +132,155 @@ export default function SiteAccessPage() {
   };
 
   return (
-    <AdminPage title="首页拦截" subtitle="没有访问码或邀请链接的人，连首页都看不到。通过之后才能登录、注册">
-      <div className="mx-auto max-w-2xl space-y-5">
-        <Panel>
-          <div className="mb-4 flex flex-wrap items-center gap-2 text-[13px]">
-            {status?.enabled && status.code ? <Badge tone="ok">拦截已开启</Badge> : <Badge tone="warn">拦截未开启</Badge>}
-            {status && <span className="text-muted-foreground">{SOURCE_HINT[status.source]}</span>}
+    <AdminPage title="首页门票" subtitle="没有门票的人，连首页都看不到。管理员发门票，普通用户凭门票进门后才能注册、登录">
+      <div className="mx-auto max-w-3xl space-y-5">
+        {state?.gateUnavailable && (
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[12.5px] text-rose-400">
+            读取不到首页拦截的设置，目前按「关门」处理。请检查数据库连接后刷新。
           </div>
+        )}
 
-          <div className="space-y-4">
-            <label className="block">
-              <span className="mb-1.5 block text-[12px] text-muted-foreground">访问码</span>
-              <div className="flex gap-2">
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder={`${SITE_ACCESS_CODE_MIN}–${SITE_ACCESS_CODE_MAX} 位，字母、数字、- 和 _`}
-                  autoComplete="off"
-                  spellCheck={false}
-                  className={`${INPUT_CLS} font-mono`}
-                />
-                <Button onClick={() => setCode(generateSiteAccessCode())}>
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  随机生成
+        <Panel>
+          <div className="flex flex-wrap items-center gap-3 text-[13px]">
+            {state?.enabled ? <Badge tone="ok">拦截已开启</Badge> : <Badge tone="warn">拦截未开启</Badge>}
+            <span className="text-muted-foreground">
+              {state?.enabled ? "没有门票的人看不到首页。" : "所有人都能看首页。开启前，请先生成你自己的管理员门票。"}
+            </span>
+            <div className="ml-auto">
+              {state?.enabled ? (
+                <Button onClick={() => void setEnabled(false)} busy={busy === "enabled"}>关闭拦截</Button>
+              ) : (
+                <Button variant="primary" onClick={() => void setEnabled(true)} disabled={!state?.hasMyAdminTicket} busy={busy === "enabled"}>
+                  开启拦截
                 </Button>
-              </div>
-              {trimmed && !valid && (
-                <span className="mt-1.5 block text-[12px] text-rose-400">
-                  需要 {SITE_ACCESS_CODE_MIN}–{SITE_ACCESS_CODE_MAX} 位，只能用字母、数字、短横线和下划线
-                </span>
               )}
-            </label>
+            </div>
+          </div>
+        </Panel>
 
-            <label className="flex items-center gap-2 text-[13px]">
-              <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4 accent-primary" />
-              开启首页拦截（关掉以后，所有页面对所有人开放）
-            </label>
-
-            {inviteLink && (
-              <div className="rounded-xl border border-border bg-muted/40 px-3 py-2.5">
-                <span className="mb-1 block text-[12px] text-muted-foreground">邀请链接（发给人，打开即通过第一道）</span>
-                <div className="flex items-center gap-2">
-                  <code className="min-w-0 flex-1 truncate font-mono text-[12px]">{inviteLink}</code>
-                  <Button onClick={() => copy(inviteLink, "邀请链接已复制")}>
-                    <Copy className="h-3.5 w-3.5" />
-                    复制
-                  </Button>
-                </div>
-              </div>
-            )}
-
+        <Panel>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 text-[13px]">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span className="font-medium">我的管理员门票</span>
+              {state?.hasMyAdminTicket ? <Badge tone="ok">已有</Badge> : <Badge tone="warn">还没有</Badge>}
+            </div>
             <AdminPanelHint>
-              <span className="inline-flex items-start gap-1.5">
-                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                改了访问码，旧的邀请链接和旧的 Cookie 同时失效。访问码只有密钥管理权限的管理员能看到。
-              </span>
+              管理员在任何设备上都能凭它进门，不用先登录。重新生成会让旧门票立即作废，所有用旧门票的设备都要换新的。
             </AdminPanelHint>
-
-            {notice && <p role="status" className="text-[12.5px] text-emerald-400">{notice}</p>}
-            {error && <p role="alert" className="text-[12.5px] text-rose-400">{error}</p>}
-
-            <Button variant="primary" onClick={() => void save()} disabled={!valid || !dirty} busy={busy}>
-              保存
+            <Button onClick={() => void createAdmin()} busy={busy === "admin"}>
+              {state?.hasMyAdminTicket ? "重新生成（旧门票作废）" : "生成我的管理员门票"}
             </Button>
           </div>
+        </Panel>
+
+        <Panel>
+          <div className="space-y-4">
+            <span className="text-[13px] font-medium">发邀请门票</span>
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] text-muted-foreground">给谁（备注，必填）</span>
+              <input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                maxLength={60}
+                placeholder="例如：王老板 / 第二期内测"
+                className={INPUT_CLS}
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-[12px] text-muted-foreground">进门期限（天）</span>
+                <input
+                  type="number"
+                  min={INVITE_CLAIM_DAYS.min}
+                  max={INVITE_CLAIM_DAYS.max}
+                  value={claimDays}
+                  onChange={(e) => setClaimDays(Number(e.target.value))}
+                  className={INPUT_CLS}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[12px] text-muted-foreground">可用设备数</span>
+                <input
+                  type="number"
+                  min={INVITE_MAX_DEVICES.min}
+                  max={INVITE_MAX_DEVICES.max}
+                  value={maxDevices}
+                  onChange={(e) => setMaxDevices(Number(e.target.value))}
+                  className={INPUT_CLS}
+                />
+              </label>
+            </div>
+            <AdminPanelHint>
+              进门期限：门票发出后多久内能用来进门。进门后这台设备 30 天内不用再进。
+            </AdminPanelHint>
+            <Button variant="primary" onClick={() => void createInvite()} disabled={!label.trim()} busy={busy === "invite"}>
+              生成邀请链接
+            </Button>
+          </div>
+        </Panel>
+
+        {issued && (
+          <Panel>
+            <div className="space-y-2">
+              <span className="text-[13px] font-medium">{issued.title}</span>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12px]">{issued.link}</code>
+                <Button onClick={() => copy(issued.link, "链接已复制")}>
+                  <Copy className="h-3.5 w-3.5" />
+                  复制
+                </Button>
+              </div>
+              <AdminPanelHint>这条链接只显示这一次，关掉后就找不回来了。忘了就撤销这张门票，重新生成一张。</AdminPanelHint>
+            </div>
+          </Panel>
+        )}
+
+        {notice && <p role="status" className="text-[12.5px] text-emerald-400">{notice}</p>}
+        {error && <p role="alert" className="text-[12.5px] text-rose-400">{error}</p>}
+
+        <Panel>
+          <div className="mb-3 text-[13px] font-medium">门票列表（最近 200 张）</div>
+          {!state ? (
+            <p className="text-[12.5px] text-muted-foreground">读取中…</p>
+          ) : state.tickets.length === 0 ? (
+            <p className="text-[12.5px] text-muted-foreground">还没有门票。</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-[12.5px]">
+                <thead className="text-[11.5px] text-muted-foreground">
+                  <tr>
+                    <th className="py-2 pr-3 font-normal">备注</th>
+                    <th className="py-2 pr-3 font-normal">类型</th>
+                    <th className="py-2 pr-3 font-normal">状态</th>
+                    <th className="py-2 pr-3 font-normal">设备</th>
+                    <th className="py-2 pr-3 font-normal">进门截止</th>
+                    <th className="py-2 pr-3 font-normal">发出</th>
+                    <th className="py-2 font-normal" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.tickets.map((t) => (
+                    <tr key={t.id} className="border-t border-border/60">
+                      <td className="py-2 pr-3">{t.label || "—"}</td>
+                      <td className="py-2 pr-3">{t.kind === "admin" ? "管理员门票" : "邀请"}</td>
+                      <td className="py-2 pr-3">{STATUS_TEXT[t.status]}</td>
+                      <td className="py-2 pr-3">{t.devices_used} / {t.max_devices}</td>
+                      <td className="py-2 pr-3">{t.kind === "admin" ? "—" : TIME(t.claim_until)}</td>
+                      <td className="py-2 pr-3">{TIME(t.created_at)}</td>
+                      <td className="py-2 text-right">
+                        {t.status === "active" && (
+                          <Button size="sm" onClick={() => revoke(t.id, t.label || "这张门票")} busy={busy === `revoke-${t.id}`}>
+                            撤销
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Panel>
       </div>
     </AdminPage>
