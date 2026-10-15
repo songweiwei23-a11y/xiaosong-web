@@ -148,7 +148,8 @@ describe('全仓库缺陷模式扫描', () => {
       // 健康检查（/api/health）只回 ok 与时间，给监控用
       // 首页门票入口（/api/gate/claim）：门票原文才能进门，错了只回原因类别，有限流，成功只发一个设备通行（见 lib/gate-tickets）
       // 首页应急登录（/api/gate/admin-login）：邮箱 + 密码 + 验证器码，默认关，只认绑了验证器的管理员，两层限流（见 lib/gate-admin-login）
-      if (/\/api\/(public|auth\/register|funnel$|health$|gate\/claim$|gate\/admin-login$)/.test(name)) continue;
+      // 退出时作废这台设备的首页通行（/api/gate/logout）：不读写账号数据，跨站的 POST 带不上 Cookie
+      if (/\/api\/(public|auth\/register|funnel$|health$|gate\/claim$|gate\/admin-login$|gate\/logout$)/.test(name)) continue;
       if (!/requireAdmin|requireUserWithQuota|requireUser\b|getUser\(\)/.test(code)) {
         bad.push(name);
       }

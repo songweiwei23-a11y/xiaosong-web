@@ -345,6 +345,16 @@ export async function setAdminLoginEnabled(enabled: boolean, adminId: string): P
 }
 
 /**
+ * 作废这台设备的首页通行（退出登录时用）。通行的原文只在浏览器 Cookie 里，这里按摘要删掉库里那一行，
+ * 所以就算 Cookie 被复制到别处，也用不了了。之后这台设备再打开首页，必须重新凭邀请链接或门票进门。
+ */
+export async function revokeDevicePass(cookieSecret: string): Promise<void> {
+  const { error } = await db().from('gate_device_passes').delete().eq('cookie_hash', await hashSecret(cookieSecret));
+  if (error) throw new Error(error.message);
+  resetGateCaches();
+}
+
+/**
  * 给管理员签发一台设备的通行（应急登录成功后用）：有有效的管理员门票就用它，没有就新发一张。
  */
 export async function issueAdminDevicePass(adminId: string): Promise<string> {

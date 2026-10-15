@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { postSafely } from "@/lib/safe-post";
 import { supabase } from "@/lib/supabase/client";
 import { LogOut, User as UserIcon } from "lucide-react";
 
@@ -28,7 +29,9 @@ export function UserProfile() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/login");
+    // 退出后这台设备的首页通行也作废：再打开首页要重新凭邀请链接或门票进门
+    await postSafely("/api/gate/logout", { method: "POST" }).catch(() => {});
+    router.push("/");
     router.refresh();
   };
 

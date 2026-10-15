@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { DataExportCard } from "@/components/account/DataExportCard";
 import Link from "next/link";
-import { Crown, KeyRound, Receipt, Loader2, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Crown, KeyRound, Receipt, Loader2, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { INPUT_CLS, PRIMARY_BTN } from "@/components/form/controls";
 import { throwApiError } from "@/lib/api-error";
@@ -232,8 +232,10 @@ function DeleteAccountCard({ email }: { email: string | null }) {
       });
       if (!res.ok) await throwApiError(res, "注销失败");
       await supabase.auth.signOut();
+      // 注销后这台设备的首页通行也作废，要重新凭邀请链接进门
+      await postSafely("/api/gate/logout", { method: "POST" }).catch(() => {});
       notify("账号已注销，相关数据已删除");
-      router.push("/login");
+      router.push("/");
       router.refresh();
     } catch (err) {
       notify((err as Error)?.message || "注销失败");
