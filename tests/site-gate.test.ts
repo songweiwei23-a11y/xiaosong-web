@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { NextRequest } from 'next/server';
-import { isGateExempt, isHttpsRequest, siteGateResponse, SITE_GATE_COOKIE, type GateDeps } from '@/lib/site-gate';
+import { isGateExempt, isHttpsRequest, siteGateCookieOptions, siteGateResponse, SITE_GATE_COOKIE, type GateDeps } from '@/lib/site-gate';
 import { extractTicket, safeNextPath, claimMessage, ticketStatus } from '@/lib/gate-ticket-format';
 import { hashSecret, newSecret } from '@/lib/gate-tickets';
 
@@ -69,6 +69,37 @@ describe('首页拦截：哪些路径拦、哪些放行', () => {
     expect(isHttpsRequest({ url: 'https://example.com/', headers: new Headers() })).toBe(true);
     expect(isHttpsRequest({ url: 'http://122.51.234.155/', headers: new Headers({ 'x-forwarded-proto': 'https' }) })).toBe(true);
     expect(isHttpsRequest({ url: 'http://122.51.234.155/', headers: new Headers() })).toBe(false);
+  });
+});
+
+describe('登录状态优先：已登录的账号放行，没登录的才看门票', () => {
+  it('已登录：不带通行也放行', async () => {
+    const res = await siteGateResponse(req('/'), deps({ devicePass: async () => false }), async () => true);
+    expect(res).toBeNull();
+  });
+
+  it('没登录、也没有通行：拦下', async () => {
+    const res = await siteGateResponse(req('/'), deps(), async () => false);
+    expect(rewrittenToGate(res)).toBe(true);
+  });
+
+  it('没登录但有通行（同一次访问里刚进门）：放行', async () => {
+    const res = await siteGateResponse(req('/', `${SITE_GATE_COOKIE}=device-abc`), deps({ devicePass: async (c) => c === 'device-abc' }), async () => false);
+    expect(res).toBeNull();
+  });
+
+  it('拦截没开：不去查登录状态', async () => {
+    let asked = false;
+    const res = await siteGateResponse(req('/'), deps({ enabled: async () => false }), async () => { asked = true; return false; });
+    expect(res).toBeNull();
+    expect(asked).toBe(false);
+  });
+
+  it('通行 Cookie 是会话 Cookie：不设过期时间，关掉浏览器就没了', () => {
+    const opts = siteGateCookieOptions(false);
+    expect(opts).not.toHaveProperty('maxAge');
+    expect(opts).not.toHaveProperty('expires');
+    expect(opts).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/' });
   });
 });
 

@@ -1,7 +1,7 @@
 ﻿import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { supabaseFetch } from '@/lib/supabase/fetch'
-import { siteGateResponse } from '@/lib/site-gate'
+import { isGateExempt, siteGateResponse } from '@/lib/site-gate'
 
 const SESSION_HEADERS = {
   'Cache-Control': 'private, no-cache, no-store, must-revalidate, max-age=0',
@@ -28,14 +28,14 @@ function isTemporaryQueryFailure(result: { error?: unknown; status?: number }): 
     /fetch|network|timeout|timed out|socket|connection/i.test(error.message ?? '')
 }
 
-// 需要登录的路径：只有这些跑下面的会话逻辑，其余页面（首页、登录、注册…）只过首页拦截
+// 需要登录的路径：只有这些跑下面的会话逻辑。其余页面（首页、登录、注册…）只过首页拦截
 const SESSION_PATHS = ['/dashboard', '/admin', '/payment', '/history']
 
 export async function middleware(req: NextRequest) {
-  // 第一道：首页拦截（访问码 / 邀请链接，见 lib/site-gate）
-  const gated = await siteGateResponse(req)
-  if (gated) return gated
-  if (!SESSION_PATHS.some((p) => req.nextUrl.pathname.startsWith(p))) return NextResponse.next()
+  const path = req.nextUrl.pathname
+  const protectedPath = SESSION_PATHS.some((p) => path.startsWith(p))
+  // 提示页本身、静态文件等，不做任何判断
+  if (!protectedPath && isGateExempt(path)) return NextResponse.next()
 
   const cookieUpdates: { name: string; value: string; options: CookieOptions }[] = []
   const sessionHeaders: Record<string, string> = { ...SESSION_HEADERS }
@@ -46,7 +46,7 @@ export async function middleware(req: NextRequest) {
     Object.entries(sessionHeaders).forEach(([name, value]) => response.headers.set(name, value))
     return response
   }
-  const redirect = (path: string) => withSession(NextResponse.redirect(new URL(path, req.url)))
+  const redirect = (target: string) => withSession(NextResponse.redirect(new URL(target, req.url)))
   const unavailable = () => withSession(new NextResponse('登录服务暂时连接不稳定，请稍后刷新重试。', {
     status: 503,
     headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Retry-After': '5' },
@@ -74,7 +74,20 @@ export async function middleware(req: NextRequest) {
       }
     )
 
-    if (req.nextUrl.pathname.startsWith('/admin')) {
+    // 登录状态每个请求只查一次（验证 JWT，并顺带刷新会话 Cookie）：首页拦截和会话页共用这一次结果
+    let claims: ReturnType<typeof supabase.auth.getClaims> | null = null
+    const getClaims = () => (claims ??= supabase.auth.getClaims())
+    const loggedIn = async () => {
+      const { data, error } = await getClaims()
+      return !error && !!data?.claims.sub
+    }
+
+    // 第一道：首页拦截。已经登录的账号直接放行；没登录的，要有门票发的通行
+    const gated = await siteGateResponse(req, undefined, loggedIn)
+    if (gated) return withSession(gated)
+    if (!protectedPath) return withSession(NextResponse.next())
+
+    if (path.startsWith('/admin')) {
       // 管理员每次向认证服务校验当前用户，保留账号停用与撤销检查。
       const { data: { user }, error } = await supabase.auth.getUser()
       if (error) return isInvalidSession(error) ? redirect('/login') : unavailable()
@@ -94,7 +107,7 @@ export async function middleware(req: NextRequest) {
       // 验证 JWT 签名与有效期，不能信任 getSession() 解出的 Cookie。
       // 非对称密钥可用缓存的 JWKS 本地验证；对称密钥由 SDK 回退到 getUser()。
       // 各数据接口仍独立 getUser() 验证账号状态和原有禁用/额度规则。
-      const { data, error } = await supabase.auth.getClaims()
+      const { data, error } = await getClaims()
       if (error) return isInvalidSession(error) ? redirect('/login') : unavailable()
       if (!data?.claims.sub) return redirect('/login')
     }
@@ -102,6 +115,8 @@ export async function middleware(req: NextRequest) {
     // 此时 request Cookie 已一次批量更新，页面与浏览器收到同一份完整会话。
     return withSession(NextResponse.next({ request: { headers: req.headers } }))
   } catch (error) {
+    // 会话页出错照旧处理；首页这里出错就关门（宁可挡住，不敞开）
+    if (!protectedPath) return NextResponse.rewrite(new URL('/gate', req.url))
     return isInvalidSession(error) ? redirect('/login') : unavailable()
   }
 }

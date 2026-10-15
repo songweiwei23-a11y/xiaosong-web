@@ -16,7 +16,11 @@ import { createClient } from '@supabase/supabase-js';
 import { supabaseFetch } from '@/lib/supabase/fetch';
 import { ticketStatus, type TicketKind, type TicketStatus } from '@/lib/gate-ticket-format';
 
-export const DEVICE_PASS_DAYS = 30;
+/**
+ * 设备通行在服务器上保留的天数。浏览器里它是会话 Cookie（关掉浏览器就没了），这里只是兜底：
+ * 一天以后不管怎样都失效。登录了的账号不靠它（见 lib/site-gate）。
+ */
+export const DEVICE_PASS_DAYS = 1;
 export const ADMIN_MAX_DEVICES = 10;
 
 const TTL_SETTINGS_MS = 30_000;
