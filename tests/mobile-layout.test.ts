@@ -172,7 +172,8 @@ describe('登录注册页与独立页面：手机上一定有路可走', () => {
       .readdirSync(path.join(process.cwd(), 'app'), { withFileTypes: true })
       .filter((e) => e.isDirectory() && fs.existsSync(path.join(process.cwd(), 'app', e.name, 'page.tsx')))
       .map((e) => e.name)
-      .filter((n) => !['dashboard', 'admin'].includes(n));
+      // gate：首页访问码页，是进门前唯一的页面，门外没有可去的地方（见 lib/site-gate）
+      .filter((n) => !['dashboard', 'admin', 'gate'].includes(n));
     expect(pages.length).toBeGreaterThan(6); // 自证不是空转
     const noExit: string[] = [];
     for (const n of pages) {

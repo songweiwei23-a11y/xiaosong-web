@@ -38,6 +38,7 @@ export enum AdminActions {
   EXTEND_MEMBERSHIP = 'extend_membership',
   TOGGLE_PAYMENT_QRCODE = 'toggle_payment_qrcode',
   UPDATE_SEARCH_KEY = 'update_search_key',
+  UPDATE_SITE_ACCESS = 'update_site_access',
   EXPORT_DATA = 'export_data',
   VIEW_USER_CONTENT = 'view_user_content',
 }
@@ -71,6 +72,7 @@ export const ACTION_LABELS: Record<string, string> = {
   [AdminActions.EXTEND_MEMBERSHIP]: '延长会员',
   [AdminActions.TOGGLE_PAYMENT_QRCODE]: '启用或停用收款码',
   [AdminActions.UPDATE_SEARCH_KEY]: '更换联网搜索密钥',
+  [AdminActions.UPDATE_SITE_ACCESS]: '更换首页访问码',
   [AdminActions.EXPORT_DATA]: '导出数据',
   [AdminActions.VIEW_USER_CONTENT]: '查看用户内容',
 };
@@ -90,6 +92,7 @@ export const SENSITIVE_ACTIONS = new Set<string>([
   AdminActions.EXTEND_MEMBERSHIP,
   AdminActions.TOGGLE_PAYMENT_QRCODE,
   AdminActions.UPDATE_SEARCH_KEY,
+  AdminActions.UPDATE_SITE_ACCESS,
   AdminActions.EXPORT_DATA,
   AdminActions.VIEW_USER_CONTENT,
 ]);

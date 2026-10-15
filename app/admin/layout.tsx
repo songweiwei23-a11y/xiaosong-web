@@ -7,7 +7,7 @@ import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
-  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe,
+  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe, Lock,
 } from "lucide-react";
 
 /*
@@ -60,6 +60,8 @@ const navGroups: {
       { name: "权限管理", href: "/admin/permissions", icon: KeyRound },
       { name: "账号安全", href: "/admin/security", icon: ShieldCheck },
       { name: "系统设置", href: "/admin/settings", icon: Settings },
+      // 首页拦截（2026-10-15）：第一道门的访问码，没有它的人连首页都进不去
+      { name: "首页拦截", href: "/admin/site-access", icon: Lock },
       { name: "联网搜索密钥", href: "/admin/search-key", icon: Globe },
     ],
   },

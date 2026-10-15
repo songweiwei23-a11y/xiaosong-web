@@ -146,7 +146,8 @@ describe('全仓库缺陷模式扫描', () => {
       // 公开入口：站点统计、注册（注册本身靠邀请码把关）、
       // 转化漏斗的匿名事件（记的就是还没登录的访客；白名单 + 格式 + 限速，见 tests/funnel.test.ts）
       // 健康检查（/api/health）只回 ok 与时间，给监控用
-      if (/\/api\/(public|auth\/register|funnel$|health$)/.test(name)) continue;
+      // 首页访问码入口（/api/gate/unlock）：访问码错了只回 401、有限流，对了只发一个 Cookie（见 lib/site-gate）
+      if (/\/api\/(public|auth\/register|funnel$|health$|gate\/unlock$)/.test(name)) continue;
       if (!/requireAdmin|requireUserWithQuota|requireUser\b|getUser\(\)/.test(code)) {
         bad.push(name);
       }

@@ -21,6 +21,11 @@ const mock = vi.hoisted(() => {
 })
 
 vi.mock('@supabase/ssr', () => ({ createServerClient: mock.createServerClient }))
+// 这些用例测的是会话逻辑，首页拦截（访问码）单独在 tests/site-gate.test.ts 测：这里关掉它
+vi.mock('@/lib/site-gate-store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/site-gate-store')>()),
+  loadGateSetting: async () => null,
+}))
 
 import { middleware } from '@/middleware'
 import { supabaseFetch } from '@/lib/supabase/fetch'

@@ -1,6 +1,7 @@
 ﻿import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { supabaseFetch } from '@/lib/supabase/fetch'
+import { siteGateResponse } from '@/lib/site-gate'
 
 const SESSION_HEADERS = {
   'Cache-Control': 'private, no-cache, no-store, must-revalidate, max-age=0',
@@ -27,7 +28,15 @@ function isTemporaryQueryFailure(result: { error?: unknown; status?: number }): 
     /fetch|network|timeout|timed out|socket|connection/i.test(error.message ?? '')
 }
 
+// 需要登录的路径：只有这些跑下面的会话逻辑，其余页面（首页、登录、注册…）只过首页拦截
+const SESSION_PATHS = ['/dashboard', '/admin', '/payment', '/history']
+
 export async function middleware(req: NextRequest) {
+  // 第一道：首页拦截（访问码 / 邀请链接，见 lib/site-gate）
+  const gated = await siteGateResponse(req)
+  if (gated) return gated
+  if (!SESSION_PATHS.some((p) => req.nextUrl.pathname.startsWith(p))) return NextResponse.next()
+
   const cookieUpdates: { name: string; value: string; options: CookieOptions }[] = []
   const sessionHeaders: Record<string, string> = { ...SESSION_HEADERS }
 
@@ -98,5 +107,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/payment/:path*', '/history/:path*'],
+  // 全站页面都要过首页拦截；/api/ 和 Next 静态资源不拦（支付回调、定时任务没有 Cookie，各自鉴权）
+  matcher: ['/((?!api/|_next/static|_next/image).*)'],
 }
