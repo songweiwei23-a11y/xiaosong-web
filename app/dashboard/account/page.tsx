@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { DataExportCard } from "@/components/account/DataExportCard";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Crown, KeyRound, Receipt, Loader2, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { INPUT_CLS, PRIMARY_BTN } from "@/components/form/controls";
@@ -211,7 +210,6 @@ function OrdersCard({ orders }: { orders: Order[] | null }) {
 }
 
 function DeleteAccountCard({ email }: { email: string | null }) {
-  const router = useRouter();
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const ready = !!email && typed.trim().toLowerCase() === email.toLowerCase();
@@ -235,8 +233,8 @@ function DeleteAccountCard({ email }: { email: string | null }) {
       // 注销后这台设备的首页通行也作废，要重新凭邀请链接进门
       await postSafely("/api/gate/logout", { method: "POST" }).catch(() => {});
       notify("账号已注销，相关数据已删除");
-      router.push("/");
-      router.refresh();
+      // 整页跳转：不沿用页面里登录后的缓存，首页由服务器重新判断
+      window.location.replace("/");
     } catch (err) {
       notify((err as Error)?.message || "注销失败");
     } finally {

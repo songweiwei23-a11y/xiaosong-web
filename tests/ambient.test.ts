@@ -178,7 +178,13 @@ describe('播放器和界面', () => {
     const bad: string[] = [];
     for (const f of files) {
       const src = readCode(f);
-      for (const m of src.matchAll(/window\.location\.(?:href\s*=|assign\(|replace\()\s*['"`]\/(?!api\/)/g)) bad.push(`${f}: ${m[0]}`);
+      // 退出登录、注销账号：整页回到首页，是唯一允许的整页跳转（要丢掉页面里登录后的缓存，首页由服务器重新判断）
+      const logoutHardNav = ['components/auth/UserProfile.tsx', 'app/dashboard/account/page.tsx'];
+      const normalized = f.replace(/\\/g, '/');
+      for (const m of src.matchAll(/window\.location\.(?:href\s*=|assign\(|replace\()\s*['"`]\/(?!api\/)/g)) {
+        if (logoutHardNav.some((ok) => normalized.endsWith(ok)) && /replace\(/.test(m[0])) continue;
+        bad.push(`${f}: ${m[0]}`);
+      }
       for (const m of src.matchAll(/<a\b[^>]*\bhref=["'`{]+\/(?!api\/)/g)) bad.push(`${f}: ${m[0]}`);
     }
     expect(bad).toEqual([]);

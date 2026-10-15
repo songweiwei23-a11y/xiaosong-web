@@ -35,6 +35,18 @@ describe('退出登录：作废这台设备的首页通行', () => {
     }
   });
 
+  it('顶栏退出和注销账号：先退出账号，再作废通行，最后整页回到首页（不显示登录后的缓存）', () => {
+    for (const file of ['components/auth/UserProfile.tsx', 'app/dashboard/account/page.tsx']) {
+      const src = read(file);
+      const signOut = src.indexOf('supabase.auth.signOut(');
+      const revoke = src.indexOf('/api/gate/logout');
+      const home = src.indexOf('window.location.replace("/")');
+      expect(signOut, file).toBeGreaterThan(-1);
+      expect(revoke, file).toBeGreaterThan(signOut);
+      expect(home, file).toBeGreaterThan(revoke);
+    }
+  });
+
   it('退出接口清掉 Cookie，并作废库里这台设备的通行', () => {
     const route = read('app/api/gate/logout/route.ts');
     expect(route).toContain('revokeDevicePass');
