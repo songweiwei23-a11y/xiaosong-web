@@ -41,6 +41,7 @@ export enum AdminActions {
   CREATE_GATE_TICKET = 'create_gate_ticket',
   REVOKE_GATE_TICKET = 'revoke_gate_ticket',
   UPDATE_GATE_SETTING = 'update_gate_setting',
+  GATE_ADMIN_LOGIN = 'gate_admin_login',
   EXPORT_DATA = 'export_data',
   VIEW_USER_CONTENT = 'view_user_content',
 }
@@ -77,6 +78,7 @@ export const ACTION_LABELS: Record<string, string> = {
   [AdminActions.CREATE_GATE_TICKET]: '生成首页门票',
   [AdminActions.REVOKE_GATE_TICKET]: '撤销首页门票',
   [AdminActions.UPDATE_GATE_SETTING]: '开启或关闭首页拦截',
+  [AdminActions.GATE_ADMIN_LOGIN]: '首页应急登录（管理员）',
   [AdminActions.EXPORT_DATA]: '导出数据',
   [AdminActions.VIEW_USER_CONTENT]: '查看用户内容',
 };
@@ -99,6 +101,7 @@ export const SENSITIVE_ACTIONS = new Set<string>([
   AdminActions.CREATE_GATE_TICKET,
   AdminActions.REVOKE_GATE_TICKET,
   AdminActions.UPDATE_GATE_SETTING,
+  AdminActions.GATE_ADMIN_LOGIN,
   AdminActions.EXPORT_DATA,
   AdminActions.VIEW_USER_CONTENT,
 ]);

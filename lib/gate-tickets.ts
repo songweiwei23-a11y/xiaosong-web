@@ -315,3 +315,53 @@ export async function setGateEnabled(enabled: boolean, adminId: string): Promise
   resetGateCaches();
   return devicePass;
 }
+
+/** 应急登录（提示页上的管理员邮箱 + 密码 + 验证器码）开没开。缺字段或读不到都按关闭处理 */
+let adminLoginCache: Cached<boolean> | null = null;
+export async function gateAdminLoginEnabled(now: number = Date.now()): Promise<boolean> {
+  if (adminLoginCache && now - adminLoginCache.at < TTL_SETTINGS_MS) return adminLoginCache.value;
+  try {
+    const { data, error } = await db().from('site_gate_settings').select('admin_login').eq('id', 1).maybeSingle();
+    if (error) throw Object.assign(new Error(error.message), { code: error.code });
+    const enabled = data?.admin_login === true;
+    adminLoginCache = { at: now, value: enabled };
+    return enabled;
+  } catch {
+    return adminLoginCache ? adminLoginCache.value : false;
+  }
+}
+
+export async function setAdminLoginEnabled(enabled: boolean, adminId: string): Promise<void> {
+  const { error } = await db()
+    .from('site_gate_settings')
+    .upsert(
+      { id: 1, admin_login: enabled, updated_at: new Date().toISOString(), updated_by: adminId },
+      { onConflict: 'id' },
+    );
+  if (error) {
+    throw new Error(isMissingSchema(error) ? '还没有执行应急登录的迁移：supabase/migrations/20261017_gate_admin_login.sql' : error.message);
+  }
+  adminLoginCache = null;
+}
+
+/**
+ * 给管理员签发一台设备的通行（应急登录成功后用）：有有效的管理员门票就用它，没有就新发一张。
+ */
+export async function issueAdminDevicePass(adminId: string): Promise<string> {
+  const { data, error } = await db()
+    .from('gate_tickets')
+    .select('id')
+    .eq('kind', 'admin')
+    .eq('created_by', adminId)
+    .is('revoked_at', null)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (data) {
+    const pass = await issueDevicePass(data.id);
+    resetGateCaches();
+    return pass;
+  }
+  const created = await createAdminTicket(adminId);
+  if (!created.devicePass) throw new Error('发放设备通行失败');
+  return created.devicePass;
+}

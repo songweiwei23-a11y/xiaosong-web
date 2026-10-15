@@ -29,6 +29,7 @@ interface GateState {
   enabled: boolean;
   gateUnavailable: boolean;
   hasMyAdminTicket: boolean;
+  adminLogin: boolean;
   tickets: TicketRow[];
 }
 
@@ -119,6 +120,13 @@ export default function GatePage() {
     }
   };
 
+  const setAdminLogin = (enabled: boolean) =>
+    act(
+      "admin-login",
+      { action: "set-admin-login", enabled },
+      enabled ? "应急登录已开启：门票丢了的管理员可以在提示页用邮箱、密码和验证器码进入。" : "应急登录已关闭。",
+    );
+
   const setEnabled = (enabled: boolean) =>
     act("enabled", { action: "set-enabled", enabled }, enabled ? "首页拦截已开启。" : "首页拦截已关闭，所有人都能看首页。");
 
@@ -158,6 +166,23 @@ export default function GatePage() {
                   开启拦截
                 </Button>
               ) : null}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel>
+          <div className="flex flex-wrap items-center gap-3 text-[13px]">
+            {state?.adminLogin ? <Badge tone="warn">应急登录已开启</Badge> : <Badge tone="neutral">应急登录已关闭</Badge>}
+            <span className="text-muted-foreground">
+              门票丢了的管理员，可以在提示页用邮箱、密码和验证器码进入。只对绑定了验证器的管理员开放，每次成功都写入操作日志。
+              平时建议关闭。
+            </span>
+            <div className="ml-auto">
+              {state?.adminLogin ? (
+                <Button onClick={() => void setAdminLogin(false)} busy={busy === "admin-login"}>关闭应急登录</Button>
+              ) : (
+                <Button onClick={() => void setAdminLogin(true)} busy={busy === "admin-login"}>开启应急登录</Button>
+              )}
             </div>
           </div>
         </Panel>

@@ -6,10 +6,12 @@ import {
   ADMIN_MAX_DEVICES,
   createAdminTicket,
   createInviteTicket,
+  gateAdminLoginEnabled,
   gateEnabled,
   hasActiveAdminTicket,
   listTickets,
   revokeTicket,
+  setAdminLoginEnabled,
   setGateEnabled,
 } from '@/lib/gate-tickets';
 import { INVITE_CLAIM_DAYS, INVITE_MAX_DEVICES } from '@/lib/gate-ticket-format';
@@ -34,16 +36,18 @@ export async function GET() {
   const admin = await requireAdminPermission('manage_invitations');
   if (!admin) return NextResponse.json({ error: '无权查看首页门票' }, { status: 403, headers });
   try {
-    const [enabled, tickets, mine] = await Promise.all([
+    const [enabled, tickets, mine, adminLogin] = await Promise.all([
       gateEnabled(),
       listTickets(),
       hasActiveAdminTicket(admin.userId),
+      gateAdminLoginEnabled(),
     ]);
     return NextResponse.json({
       enabled: enabled === true,
       // 读不到开关又没有缓存：页面要明说，不能显示成「未开启」
       gateUnavailable: enabled === null,
       hasMyAdminTicket: mine,
+      adminLogin,
       tickets,
     }, { headers });
   } catch {
@@ -96,6 +100,20 @@ export async function POST(request: Request) {
     } catch (e) {
       return NextResponse.json({ error: (e as Error).message }, { status: 503, headers });
     }
+  }
+
+  if (action === 'set-admin-login') {
+    const admin = await requireAdminPermission('manage_secrets');
+    if (!admin) return NextResponse.json({ error: '只有管理员和开发者能改这一项' }, { status: 403, headers });
+    const enabled = body.enabled;
+    if (typeof enabled !== 'boolean') return NextResponse.json({ error: '请选择开启还是关闭' }, { status: 400, headers });
+    try {
+      await setAdminLoginEnabled(enabled, admin.userId);
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 400, headers });
+    }
+    await logAdminAction({ admin_id: admin.userId, action: AdminActions.UPDATE_GATE_SETTING, target_type: 'system', target_id: 'site_gate_admin_login', details: { adminLogin: enabled } });
+    return NextResponse.json({ ok: true, adminLogin: enabled }, { headers });
   }
 
   if (action === 'create-admin' || action === 'set-enabled') {
