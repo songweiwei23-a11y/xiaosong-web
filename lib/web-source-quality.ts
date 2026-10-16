@@ -18,6 +18,9 @@ export function freeChatWebQuery(question: string, now = Date.now()) {
     : douyinGuide && !/site:/i.test(w.query) ? `site:life.douyin.com 抖音生活服务 创作指南 ${w.query}` : w.query };
 }
 
+/** 天气网页的标题、网址特征。问的不是天气时一律不收（2026-10-16：问热点新闻，来源全是天气预报） */
+const WEATHER_SOURCE = /天气|气温|tianqi|weather|降雨|空气质量|穿衣指数/i;
+
 export function pickFreeChatSources(hits: SearchHit[], question: string, recencyDays = 0, now = Date.now(), maxSources = 6): SearchHit[] {
   const seen = new Set<string>();
   const seenContent = new Set<string>();
@@ -25,6 +28,7 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
   hits.forEach((hit, index) => {
     let u: URL; try { u = new URL(hit.url); } catch { return; }
     if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return;
+    if (!/天气|气温|降雨|台风|空气质量|穿衣/.test(question) && WEATHER_SOURCE.test(`${hit.title} ${u.hostname} ${u.pathname}`)) return;
     // 平台经营操作及获客机制只收对应平台文档；广告课程经验不能证明推流/权限/处罚。
     if (needsDouyinGuide(question) && !DOUYIN_OFFICIAL.includes(u.hostname.toLowerCase())) return;
     // 登录入口及餐饮达人手册不能证明家居商家的推荐机制。

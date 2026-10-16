@@ -4,16 +4,18 @@
  * 6 条里 5 条是 10 月 1 日的濮阳本地报道。
  */
 import { describe, it, expect } from 'vitest';
-import { buildWebQuery } from '@/lib/web-query';
+import { buildWebQuery, isNewsQuestion } from '@/lib/web-query';
 import { webQueryInputs } from '@/lib/web-search-quota';
+import { pickFreeChatSources } from '@/lib/web-source-quality';
 import { readCode } from './helpers/source';
 
 const NOW = Date.parse('2026-10-02T03:45:00Z'); // 北京时间 10 月 2 日 11:45
 
 describe('联网搜索词', () => {
   it('线上那两个真实问题：去掉任务部分，最近一周换成具体月份', () => {
-    expect(buildWebQuery('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ query: '濮阳 2026年9月 10月 热点新闻', today: '2026年10月2日', recencyDays: 10 });
-    expect(buildWebQuery('联网搜索最近一周国内的新闻', NOW).query).toBe('2026年9月 10月 国内的新闻');
+    // 新闻类问题：时间用「本周」这样的词，不写年月数字（年月数字会把天气日历页排到前面，2026-10-16 实测）
+    expect(buildWebQuery('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ query: '濮阳 本周 新闻 头条', today: '2026年10月2日', recencyDays: 10 });
+    expect(buildWebQuery('联网搜索最近一周国内的新闻', NOW).query).toBe('本周 国内的新闻');
   });
 
   it('句首的指令词去掉，句中的产品名「联网搜索」保留；「给出链接」这类要求不进搜索词', () => {
@@ -51,7 +53,46 @@ describe('联网搜索词', () => {
   });
 
   it('交给 Dify 的三个输入项', () => {
-    expect(webQueryInputs('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ web_search_query: '濮阳 2026年9月 10月 热点新闻', web_search_today: '2026年10月2日', web_search_recency: '10' });
+    expect(webQueryInputs('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ web_search_query: '濮阳 本周 新闻 头条', web_search_today: '2026年10月2日', web_search_recency: '10' });
+  });
+
+  it('南乐热点新闻：搜索词不带年月数字，时效保留给后面的过滤', () => {
+    const now = Date.parse('2026-10-16T04:00:00Z');
+    const result = buildWebQuery('帮我查一下南乐最近的热点新闻', now);
+    // 实测（2026-10-16）：「南乐 热点新闻 本周」有 5/10 条天气，「南乐 本周 新闻 头条」只有 1/10
+    expect(result.query).toBe('南乐 本周 新闻 头条');
+    expect(result.query).not.toMatch(/\d{4}年|\d{1,2}月/);
+    expect(result.recencyDays).toBe(40);
+  });
+
+  it('天气问题照旧带日期：天气本来就要看日子', () => {
+    const now = Date.parse('2026-10-16T04:00:00Z');
+    expect(buildWebQuery('南乐最近的天气怎么样', now).query).toMatch(/2026年\d{1,2}月/);
+  });
+
+  it('只有新闻、热点类问题才算新闻问题', () => {
+    expect(isNewsQuestion('南乐最近的热点新闻')).toBe(true);
+    expect(isNewsQuestion('濮阳头条资讯')).toBe(true);
+    expect(isNewsQuestion('南乐最近的天气')).toBe(false);
+    expect(isNewsQuestion('濮阳哪家火锅店最火')).toBe(false);
+  });
+});
+
+describe('来源筛选：问的不是天气，就不收天气网页', () => {
+  const hit = (title: string, url: string, content = '这是一段足够长的正文，用来代表搜索返回的网页内容。'.repeat(4)) => ({ title, url, content, published: '' });
+
+  it('问热点新闻：天气网页不进来，新闻进来', () => {
+    const picked = pickFreeChatSources([
+      hit('南乐天气预报实时', 'https://ynweather.com/nanle/'),
+      hit('南乐最近15天天气', 'https://www.ip.cn/tianqi/henan/puyang/nanle/15day.html'),
+      hit('抢抓十五五“六张网”政策机遇，南乐找准县域基建新赛道', 'https://m.toutiao.com/article/1'),
+    ], '帮我查一下南乐最近的热点新闻', 40);
+    expect(picked.map((h) => h.title)).toEqual(['抢抓十五五“六张网”政策机遇，南乐找准县域基建新赛道']);
+  });
+
+  it('问天气，天气网页照常收', () => {
+    const picked = pickFreeChatSources([hit('南乐天气预报实时', 'https://ynweather.com/nanle/')], '南乐最近的天气怎么样', 10);
+    expect(picked).toHaveLength(1);
   });
 });
 

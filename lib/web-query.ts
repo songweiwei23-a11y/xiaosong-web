@@ -62,6 +62,32 @@ const TIME_RULES: [RegExp, (now: number) => [string, number]][] = [
 ];
 
 /**
+ * 问的是新闻、热点类内容（不是天气）。这类问题的时间不写年月数字（见 buildWebQuery）。
+ * 天气问题照旧：天气本来就要日期。
+ */
+export function isNewsQuestion(question: string): boolean {
+  return /新闻|热点|头条|资讯|报道|动态|消息/.test(question) && !/天气|气温|降雨|空气质量|穿衣/.test(question);
+}
+
+/**
+ * 新闻类问题里，时效说成一个词：不带数字。
+ * 实测（2026-10-16，南乐）：「近期」「本周」会招来天气页，「本周」比「近期」少；所以统一用「本周」，超过一周才说「今年」。
+ */
+function newsTimeWord(days: number): string {
+  if (days <= 2) return '今天';
+  if (days <= 40) return '本周';
+  return '今年';
+}
+
+/**
+ * 新闻类问题里，把「热点」换成「新闻 头条」。实测：「热点新闻」会把南乐的搜索引向天气页（5/10），
+ * 「新闻 头条」只剩 1/10 是天气。
+ */
+function newsWording(q: string): string {
+  return q.replace(/热点新闻/g, '新闻 头条').replace(/热点/g, '新闻');
+}
+
+/**
  * 句首的指令词：说给 AI 听的，不是要搜的东西。
  * 只剥句首——句中的「联网搜索」可能是产品名（「阿里云 OpenSearch 联网搜索 Lite」）
  */
@@ -91,16 +117,20 @@ export function buildWebQuery(question: string, now: number = Date.now()): WebQu
   q = q.replace(INNER_COMMAND_RE, ' ');
   for (let i = 0; i < 2; i++) q = q.replace(LEAD_COMMAND_RE, '');
 
+  // 新闻、热点类问题：时间用「今天 / 本周 / 近期」这样的词，不写年月数字。
+  // 年月数字会把「南乐 2026年10月」这种天气日历页排到前面（2026-10-16 实测：10 条里 4–5 条是天气）。
+  const news = isNewsQuestion(question);
   for (const [re, fn] of TIME_RULES) {
     if (re.test(q)) {
       re.lastIndex = 0;
       const [text, days] = fn(now);
-      q = q.replace(re, ` ${text} `);
+      q = q.replace(re, ` ${news ? newsTimeWord(days) : text} `);
       recencyDays = recencyDays ? Math.min(recencyDays, days) : days;
     }
     re.lastIndex = 0;
   }
 
+  if (news) q = newsWording(q);
   q = q
     .replace(/(?:的|了|吗|呢|吧|啊)(?=\s|$)/g, ' ')
     // 日期替换后留下的「 的热点新闻」
