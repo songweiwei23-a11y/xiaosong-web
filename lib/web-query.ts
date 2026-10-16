@@ -50,9 +50,13 @@ function monthsSpan(now: number, days: number): string {
 }
 
 /** 相对时间 → 具体日期。顺序有讲究：长的说法放前面，免得「最近」先把「最近一周」吃掉 */
+/**
+ * 「今天 / 昨天」不写成具体日期：2026-10-17 实测，「北京 2026年10月17日 天气」「知乎热榜 今天」都是 0 条，
+ * 当天的网页还没进索引；换成「2026年10月」就有结果。时效窗口（recencyDays）照旧，整理结果时仍然只留最近的。
+ */
 const TIME_RULES: [RegExp, (now: number) => [string, number]][] = [
-  [/今天|今日/g, (n) => [fmtDay(n), 2]],
-  [/昨天|昨日/g, (n) => [fmtDay(n - 86400_000), 3]],
+  [/今天|今日/g, (n) => [monthsSpan(n, 0), 2]],
+  [/昨天|昨日/g, (n) => [monthsSpan(n, 1), 3]],
   [/(?:最近|近)(?:一|1)?(?:周|星期|7\s*天|七天)|这周|本周|这个星期|这几天|最近几天|近几天/g, (n) => [monthsSpan(n, 7), 10]],
   [/(?:最近|近)(?:半个?月|15\s*天)/g, (n) => [monthsSpan(n, 15), 20]],
   [/(?:最近|近)(?:一个?月|30\s*天)|这个月|本月/g, (n) => [monthsSpan(n, 30), 40]],
@@ -74,8 +78,9 @@ export function isNewsQuestion(question: string): boolean {
  * 实测（2026-10-16，南乐）：「近期」「本周」会招来天气页，「本周」比「近期」少；所以统一用「本周」，超过一周才说「今年」。
  */
 function newsTimeWord(days: number): string {
-  if (days <= 2) return '今天';
-  if (days <= 40) return '本周';
+  // 2026-10-17 实测：「本周」「今天」都会把天气日历页拉进来（同一个写法，一次 0 条天气页，一次 9 条），
+  // 「南乐 新闻 头条」两次都是 0 条天气页。所以 40 天以内的新闻不写时间词，时效交给过滤（recencyDays）。
+  if (days <= 40) return '';
   return '今年';
 }
 
@@ -84,7 +89,11 @@ function newsTimeWord(days: number): string {
  * 「新闻 头条」只剩 1/10 是天气。
  */
 function newsWording(q: string): string {
-  return q.replace(/热点新闻/g, '新闻 头条').replace(/热点/g, '新闻');
+  // 「有什么新闻 / 有什么大事」是口语，搜索引擎拿它去搜会把天气页和旧活动排前面（2026-10-17 实测：「南乐有什么新闻」0 条新闻）
+  return q
+    .replace(/(?:有什么|有哪些|有啥)(?:新闻|大事|消息|热点|动态)|发生了什么(?:大事|事)?/g, ' 新闻 头条 ')
+    .replace(/热点新闻/g, ' 新闻 头条 ')
+    .replace(/热点/g, '新闻');
 }
 
 /**

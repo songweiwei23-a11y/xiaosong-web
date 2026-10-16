@@ -14,11 +14,29 @@ export type WebSearchMode = 'auto' | 'on' | 'off';
  * 时间词（今天、今年、本周、最新）单独出现不算：「今天我该拍什么」这种创作问题也常带时间词，
  * 原来会白扣一次免费联网额度（2026-10-16 产品方反馈）。要查最新的，用户自己选「本轮联网」。
  */
+/** 时间词：今天、最近、现在这些。单独出现不算要查（「今年做账号怎么安排」是咨询，不是查资料） */
+const LIVE_TIME = /今天|今日|昨天|今晚|明天|今年|最近|最新|近期|目前|现在|当前|实时|刚刚|近几天|这几天|本周|本月|眼下/;
+/** 明显要查实时事实的对象：天气、股价、票价、政策规则、热搜热榜、考试放假、发布会…… */
+const LIVE_TOPIC = /天气|气温|股价|股票|汇率|油价|金价|票价|房价|热搜|热榜|头条|发布会|放假|高考|中考|开奖|赛程|比赛结果|政策|新规|规则|通知|公告|价格|多少钱|涨价|降价|时间表|几号|哪天|什么时候|截止|官网|更新了/;
+/** 这一句是在要创作（拍什么、写什么），不是在查资料：时间词再多也不扣额度 */
+const CREATIVE_ONLY = /该拍|拍什么|选题|脚本|标题|文案|怎么写|帮我写|创作|方向|拆解|分镜|审稿/;
+/** 时间词加上提问的样子（「是多少」「吗」「哪些」）：要查的事实，不是咨询 */
+const FACT_QUESTION = /什么时候|多少|几号|哪天|哪些|是否|有没有|是什么|吗[？?]?$/;
+
+/**
+ * 按需联网：要不要自动搜（免费额度只有 3 次，所以不能太松）。2026-10-17 实测：原来只认「搜索、查一下、新闻」，
+ * 「特斯拉最近股价」「最新 iPhone 发布会」「郑州地铁现在票价」都不会自动搜，结果等于没联网。
+ * 现在：明确要查、新闻类、或「实时事实对象」（股价、票价、天气、规则……）自动搜；
+ * 只有时间词、又是创作问题的，不搜。
+ */
 export function wantsWebSearch(question: string, mode: unknown = 'auto'): boolean {
   if (mode === 'off') return false;
   if (mode === 'on') return true;
   if (/(?:不要|不用|无需|不需要|禁止)(?:使用|进行)?(?:联网|上网|搜索)/.test(question)) return false;
-  return /联网|上网|搜索|查一下|查查|查资料|核实|政策变化/.test(question) || isNewsQuestion(question);
+  if (/联网|上网|搜索|查一下|查查|查资料|核实|政策变化/.test(question) || isNewsQuestion(question)) return true;
+  if (CREATIVE_ONLY.test(question)) return false;
+  if (LIVE_TOPIC.test(question)) return true;
+  return LIVE_TIME.test(question) && FACT_QUESTION.test(question);
 }
 export async function readWebSearchQuota(userId: string): Promise<WebQuotaState> {
   const { data, error } = await getServiceSupabase().rpc('kaiwu_web_search', { p_user_id: userId, p_limits: WEB_SEARCH_LIMITS, p_request_id: null });

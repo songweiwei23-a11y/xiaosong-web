@@ -2,10 +2,12 @@
 import type { SearchHit } from './ali-search';
 import { fetchPage } from './page-fetch';
 import { extractMainText } from './html-text';
-import { buildWebQuery } from './web-query';
+import { buildWebQuery, isNewsQuestion } from './web-query';
 
 const HUB = /^\/?(?:index\.(?:s?html?|php|aspx?))?\/?$|\/(?:channel|column|list|lanmu|news|index)\/?$/i;
 const DOUYIN_OFFICIAL = ['life.douyin.com', 'school.douyin.com', 'developer.open-douyin.com', 'open.douyin.com'];
+/** 官方文档站：内容是现行说明，不按发布时间的新旧丢弃 */
+const OFFICIAL_DOC_HOSTS = [...DOUYIN_OFFICIAL, 'docs.dify.ai', 'help.aliyun.com'];
 const needsDouyinGuide = (question: string) => /抖音/.test(question) && /本地生活|获客|商家/.test(question);
 
 export function freeChatWebQuery(question: string, now = Date.now()) {
@@ -25,6 +27,7 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
   const seen = new Set<string>();
   const seenContent = new Set<string>();
   const ranked: { hit: SearchHit; score: number; host: string; index: number; hub: boolean }[] = [];
+  const staleFallback: typeof ranked = [];
   hits.forEach((hit, index) => {
     let u: URL; try { u = new URL(hit.url); } catch { return; }
     if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return;
@@ -35,8 +38,9 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     if (/\/(?:p\/)?login(?:\/|$)/i.test(u.pathname)) return;
     const nonFoodMerchant = /衣柜|定制家居|家装|建材|装修|家具/.test(question);
     if (nonFoodMerchant && /美食|餐饮|探店达人/.test(hit.title) && !/家居|家装|建材/.test(hit.title)) return;
+    // 只挡生态大会的宣传页；平台首页（p/home）是介绍平台规则的正经页面，不挡（2026-10-17 实测：它被挡后这类问题 0 条）
     if (needsDouyinGuide(question) && !/大会|生态伙伴|平台介绍/.test(question)
-      && (/大会|生态伙伴大会/.test(hit.title) || /^\/(?:together|p\/home)\/?$/.test(u.pathname))) return;
+      && (/大会|生态伙伴大会/.test(hit.title) || /^\/together\/?$/.test(u.pathname))) return;
     if (/口碑推荐|(?:精选|十大|排名).{0,12}(?:公司|服务商)|(?:公司|服务商).{0,8}(?:排行榜|推荐|哪家好)/.test(hit.title)) return;
     // 导流采集软件的推广演示不是内容创作依据，不让“截流工具”污染商家方案。
     if (/批量采集|采集.*(?:线索|评论)|一键私信|精准线索管理/.test(hit.content)
@@ -49,7 +53,11 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     const host = u.hostname.toLowerCase(), hub = HUB.test(u.pathname);
     const timestamp = Date.parse(hit.published), age = (now - timestamp) / 86400000;
     if (Number.isFinite(timestamp) && age < -2) return;
-    if (recencyDays && Number.isFinite(timestamp) && age > recencyDays * 1.5 + 3) return;
+    // 官方文档、规则页的发布时间常常是最早上线那天，不代表内容过期；这类来源不按时效丢（2026-10-17 实测：抖音来客规则页因此被丢光）
+    const officialDoc = OFFICIAL_DOC_HOSTS.includes(host) || /(^|\.)gov\.cn$/.test(host);
+    const tooOld = recencyDays && !officialDoc && Number.isFinite(timestamp) && age > recencyDays * 1.5 + 3;
+    // 过旧的先存起来：新鲜来源不够时，短时效的问题（天气、今日热榜）回退用最近的几条，日期照实交给模型标明
+    if (tooOld) { staleFallback.push({ hit: { ...hit, url: u.href }, score: 0, host, index, hub }); return; }
     let score = Math.min(hit.content.length / 1500, 4) - (hub ? 6 : 0);
     if (/dify/i.test(question) && host === 'docs.dify.ai') score += 6;
     if (/dify/i.test(question) && host === 'docs.dify.ai' && /\/nodes\//.test(u.pathname)) score += 4;
@@ -65,10 +73,17 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
   const substantive = ranked.filter(x => !x.hub && x.hit.content.trim().length >= 150);
   const candidates = substantive.length ? substantive : ranked;
   const perSite = new Map<string, number>();
-  return candidates.sort((a, b) => b.score - a.score || a.index - b.index).filter(x => {
+  const picked = candidates.sort((a, b) => b.score - a.score || a.index - b.index).filter(x => {
     const n = perSite.get(x.host) || 0;
     if (n >= 3) return false; perSite.set(x.host, n + 1); return true;
   }).slice(0, maxSources).map(x => x.hit);
+  // 新鲜来源不足两条，且问的是短时效的事（天气、今日热榜），就回退到最近的几条旧页面。
+  // 发布日期照实交给模型（上下文里有 published_time），由它写明「这是某日期的资料」，而不是一条都不给。
+  if (picked.length < 2 && recencyDays && recencyDays <= 10 && !isNewsQuestion(question)) {
+    const fallback = staleFallback.filter(x => !x.hub).sort((a, b) => a.index - b.index).slice(0, 3 - picked.length).map(x => x.hit);
+    return [...picked, ...fallback];
+  }
+  return picked;
 }
 
 /** 从官方公开文档目录发现实际章节URL，再读取；目录本身不当成结论证据。 */

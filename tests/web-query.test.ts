@@ -14,8 +14,9 @@ const NOW = Date.parse('2026-10-02T03:45:00Z'); // 北京时间 10 月 2 日 11:
 describe('联网搜索词', () => {
   it('线上那两个真实问题：去掉任务部分，最近一周换成具体月份', () => {
     // 新闻类问题：时间用「本周」这样的词，不写年月数字（年月数字会把天气日历页排到前面，2026-10-16 实测）
-    expect(buildWebQuery('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ query: '濮阳 本周 新闻 头条', today: '2026年10月2日', recencyDays: 10 });
-    expect(buildWebQuery('联网搜索最近一周国内的新闻', NOW).query).toBe('本周 国内的新闻');
+    // 2026-10-17 实测：新闻类的「本周」会把天气日历页拉进来，改成不写时间词，时效交给过滤
+    expect(buildWebQuery('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ query: '濮阳 新闻 头条', today: '2026年10月2日', recencyDays: 10 });
+    expect(buildWebQuery('联网搜索最近一周国内的新闻', NOW).query).toBe('国内的新闻');
   });
 
   it('句首的指令词去掉，句中的产品名「联网搜索」保留；「给出链接」这类要求不进搜索词', () => {
@@ -24,7 +25,8 @@ describe('联网搜索词', () => {
   });
 
   it('相对时间：今天换成日期、时效窗口按说法给', () => {
-    expect(buildWebQuery('查一下今天濮阳天气', NOW)).toMatchObject({ query: '2026年10月2日 濮阳天气', recencyDays: 2 });
+    // 2026-10-17 实测：具体日期（2026年10月2日）搜不到，换成月份才有结果；时效窗口仍是 2 天
+    expect(buildWebQuery('查一下今天濮阳天气', NOW)).toMatchObject({ query: '2026年10月 濮阳天气', recencyDays: 2 });
     expect(buildWebQuery('最新的抖音本地生活政策是什么？然后帮我写一条口播', NOW)).toMatchObject({ query: '2026年9月 10月 抖音本地生活政策是什么', recencyDays: 40 });
     expect(buildWebQuery('今年抖音规则', NOW).recencyDays).toBe(370);
   });
@@ -53,14 +55,14 @@ describe('联网搜索词', () => {
   });
 
   it('交给 Dify 的三个输入项', () => {
-    expect(webQueryInputs('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ web_search_query: '濮阳 本周 新闻 头条', web_search_today: '2026年10月2日', web_search_recency: '10' });
+    expect(webQueryInputs('根据濮阳最近一周的热点新闻 帮我创作几个爆款选题', NOW)).toEqual({ web_search_query: '濮阳 新闻 头条', web_search_today: '2026年10月2日', web_search_recency: '10' });
   });
 
   it('南乐热点新闻：搜索词不带年月数字，时效保留给后面的过滤', () => {
     const now = Date.parse('2026-10-16T04:00:00Z');
     const result = buildWebQuery('帮我查一下南乐最近的热点新闻', now);
-    // 实测（2026-10-16）：「南乐 热点新闻 本周」有 5/10 条天气，「南乐 本周 新闻 头条」只有 1/10
-    expect(result.query).toBe('南乐 本周 新闻 头条');
+    // 实测：「南乐 热点新闻 本周」有 5/10 条天气；2026-10-17 复测「本周」写法天气页 0–9 条不等，「南乐 新闻 头条」两次都是 0
+    expect(result.query).toBe('南乐 新闻 头条');
     expect(result.query).not.toMatch(/\d{4}年|\d{1,2}月/);
     expect(result.recencyDays).toBe(40);
   });

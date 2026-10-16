@@ -23,6 +23,9 @@ describe('联网授权与真实工具计次', () => {
   it.each(['帮我改写下面这段文案','把脚本拆成分镜','无需联网，优化标题'])('资料创作不执行付费搜索 %s', q => expect(wantsWebSearch(q)).toBe(false));
   it.each(['今天我该拍什么','今年做账号的节奏怎么安排','本周的选题方向'])('只带时间词的创作问题不扣免费联网额度 %s', q => expect(wantsWebSearch(q)).toBe(false));
   it.each(['南乐最近的热点新闻','帮我查一下抖音本地生活的规则'])('要查或问新闻，按需联网照常搜 %s', q => expect(wantsWebSearch(q)).toBe(true));
+  // 2026-10-17 实测：这些明显要查实时信息的，原来都不自动搜（等于没联网）
+  it.each(['特斯拉最近股价','最新的 iPhone 发布会是什么时候','郑州地铁现在票价是多少','2026年国庆节放假安排','知乎热榜今天有什么','最近抖音本地生活有什么新规则'])('实时事实对象：按需联网自动搜 %s', q => expect(wantsWebSearch(q)).toBe(true));
+  it.each(['今天我该拍什么','最近拍什么内容好','最新的选题方向怎么定'])('创作问题即使带时间词也不自动搜 %s', q => expect(wantsWebSearch(q)).toBe(false));
   it('用户关闭联网优先于关键词，主动联网才申请额度', async () => {
     expect(wantsWebSearch('联网查新闻', 'off')).toBe(false);
     const off = await prepareWebSearch('u','联网查新闻','off');
