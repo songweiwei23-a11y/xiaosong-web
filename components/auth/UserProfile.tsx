@@ -59,6 +59,7 @@ export function UserProfile() {
       <button
         onClick={handleLogout}
         aria-label="退出登录"
+        title="退出后，这台电脑再打开首页要重新凭邀请链接或门票进门"
         className="flex items-center gap-1 rounded-lg p-2 text-sm text-destructive transition-colors hover:bg-destructive/10 sm:px-3 sm:py-1.5"
       >
         <LogOut className="h-4 w-4" />

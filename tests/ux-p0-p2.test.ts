@@ -90,6 +90,10 @@ describe('接线：各处确实用上了这次的改动', () => {
     expect(readCode('components/ui/VersionRefreshNotice.tsx')).toMatch(/Failed to find Server Action/);
   });
 
+  it('退出登录按钮说明了退出后这台电脑要重新凭邀请进门', () => {
+    expect(readCode('components/auth/UserProfile.tsx')).toMatch(/title="退出后，这台电脑再打开首页要重新凭邀请链接或门票进门"/);
+  });
+
   it('长结果：单篇正文超过上限时先显示摘要，复制下载仍用全文', () => {
     const panel = readCode('components/workspace/ResultPanel.tsx');
     expect(panel).toMatch(/collapseBody \? previewCut\(view, PREVIEW_BODY_CHARS\) : view/);
