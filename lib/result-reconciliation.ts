@@ -17,6 +17,10 @@ export function reconcileReviewScores(markdown: string): string {
     if (/^(?:[-+]\s*)?总评补充说明\s*[：:]/.test(plain) && /六维评分|六项评分/.test(plain)) {
       return line.replace(/按实际表现调整为\s*\d+(?:\.\d+)?\s*分/g, `最终合计为${score}分`);
     }
+    // 「修正：上表实际合计 23 分……调整至 3.5 分」：和表格合计对不上的“调整”也改成合计（2026-10-16 摸底：审稿 02 题）
+    if (/^(?:[-+]\s*)?修正\s*[：:]/.test(plain) && /合计/.test(plain)) {
+      return line.replace(/调整(?:至|为)\s*\d+(?:\.\d+)?\s*分/g, `最终合计为${score}分`);
+    }
     return line;
   }).join('\n');
 }

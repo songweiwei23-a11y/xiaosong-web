@@ -107,6 +107,9 @@ function exclusionGrams(excluded: string[], stopText: string): string[][] {
     const m = e.match(/^([^：]{1,16})：/);
     const body = m && (m[1].endsWith('里的') || LABELS.has(m[1])) ? e.slice(m[0].length) : e;
     const needles = new Set<string>();
+    // 要点的题目（冒号前的短标题，如「公益营销」）整段先认，排在切出来的片段前面
+    const title = m && !(m[1].endsWith('里的') || LABELS.has(m[1])) ? m[1] : '';
+    if (title && title.length <= 6 && (title.match(/\p{Script=Han}/gu) ?? []).length >= 2 && !GENERIC_WORDS.has(title)) needles.add(title);
     /*
      * 2026-10-09 全板块实测：原来每段都切三字片段，「不用担心钱的问题」切出「的问题」、「不着急再看看」切出「不着急」，
      * 「设备条件：手机、相机」直接拿「手机」当关键词——质检满屏误报，更糟的是 stripExcluded 拿同一套关键词
@@ -124,6 +127,32 @@ function exclusionGrams(excluded: string[], stopText: string): string[][] {
   });
 }
 
+/**
+ * 整段短词（六个字以内、两个汉字以上、不是通用词）：编导手动写的关键词本身，命中就是实打实的提到。
+ * 长段切出来的三四字片段只是线索，单独命中时质检只提醒、不判不通过（2026-10-16 摸底：「内容方」「距离远」这类误报）。
+ */
+function exclusionCores(excluded: string[], stopText: string): Set<string> {
+  const stop = grams(stopText);
+  const out = new Set<string>();
+  for (const e of excluded) {
+    const m = e.match(/^([^：]{1,16})：/);
+    const isColumnLabel = !!m && (m[1].endsWith('里的') || LABELS.has(m[1]));
+    // 「公益营销：给贫困户送米面油」里冒号前的「公益营销」就是这条要点的题目，整段认
+    if (m && !isColumnLabel) {
+      const title = m[1];
+      const han = (title.match(/\p{Script=Han}/gu) ?? []).length;
+      if (title.length <= 6 && han >= 2 && !GENERIC_WORDS.has(title) && !stop.has(title)) out.add(title);
+    }
+    const body = isColumnLabel ? e.slice(m![0].length) : e;
+    for (const piece of segmentsOf(body)) {
+      const core = piece.replace(/^(?:不要|不提|不做|不拍|不说|别提|别拍|别)/, '').replace(/(?:相关的事|相关的|相关|的事|内容|这类)$/, '').trim();
+      const han = (core.match(/\p{Script=Han}/gu) ?? []).length;
+      if (core.length <= 6 && han >= 2 && !GENERIC_WORDS.has(core) && !stop.has(core)) out.add(core);
+    }
+  }
+  return out;
+}
+
 /** 这一句和排除内容撞上了没有（撞上的是哪几个字） */
 function hitsExclusion(segment: string, ex: string[][]): string | undefined {
   for (const list of ex) {
@@ -137,10 +166,11 @@ function hitsExclusion(segment: string, ex: string[][]): string | undefined {
  * 生成结果里还提到了排除清单里的东西（质检用，见 lib/quality-checks）。
  * 行里本身在说"不做 / 不要 / 别"的跳过——"这次不做公益"不算漏出来
  */
-export function findExcludedMentions(text: string, excluded: string[], profileName = ''): { needle: string; line: string }[] {
+export function findExcludedMentions(text: string, excluded: string[], profileName = ''): { needle: string; line: string; strong: boolean }[] {
   if (!excluded.length || !text) return [];
   const ex = exclusionGrams(excluded, profileName);
-  const out: { needle: string; line: string }[] = [];
+  const cores = exclusionCores(excluded, profileName);
+  const out: { needle: string; line: string; strong: boolean }[] = [];
   const seen = new Set<string>();
   for (const raw of text.split('\n')) {
     const line = raw.trim();
@@ -148,7 +178,7 @@ export function findExcludedMentions(text: string, excluded: string[], profileNa
     const hit = hitsExclusion(line, ex);
     if (hit && !seen.has(hit)) {
       seen.add(hit);
-      out.push({ needle: hit, line: line.length > 60 ? `${line.slice(0, 60)}…` : line });
+      out.push({ needle: hit, line: line.length > 60 ? `${line.slice(0, 60)}…` : line, strong: cores.has(hit) });
     }
   }
   return out;

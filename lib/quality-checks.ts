@@ -100,7 +100,11 @@ const ROUTINE_RE = /(?:今天|昨天|今早|今晨|昨晚|今晚|前天|每天|�
 /** 「如果 / 比如」开头的是假设或示例，不是在讲自己的作息 */
 const HYPOTHETICAL_BEFORE = /如果|假如|假设|比如|例如|若是|要是|万一|可以|示例|举例/;
 /** 经营承诺：送、包、保证、折扣——没说过就不能替老板答应 */
-const PROMISE_RE = /(?:免费(?:送|赠|领|试|上门|设计|测量|安装|体验|品尝|续|加)|赠送(?!计)|买[一二两三\d]+送[一二两三\d]+|送[一二两三四五六七八九十\d]+(?:份|个|杯|串|瓶|次|张|件)|包邮|包退|包换|包教包会|包安装|包售后|无效退款|不满意(?:全额)?退|终身(?:保修|维修|免费|质保)|保修[一二两三四五六七八九十\d]+年|打[一二三四五六七八九\d](?:\.\d)?折|满\d+减\d+|优惠券|首单立减|限时特价)/g;
+const PROMISE_RE = /(?:免费(?:送|赠|领|试|上门|设计|测量|安装|体验|品尝|续|加)|赠送(?!计)|买[一二两三\d]+送[一二两三\d]+|送[一二两三四五六七八九十\d]+(?:份|个|杯|串|瓶|次|张|件)|包邮|包退|包换|包教包会|包安装|包售后|无效退款|不满意(?:全额)?退|终身(?:保修|维修|免费|质保)|保修[一二两三四五六七八九十\d]+年|打[一二三四五六七八九\d](?:\.\d)?折|满\d+减\d+|优惠券|首单立减|限时特价|不好吃(?:就)?不(?:要钱|收钱|付钱)|不满意(?:就)?(?:不(?:要钱|收钱)|退钱|全额退)|吃不好(?:就)?不(?:要钱|收钱))/g;
+/** 吃完了跟我说、变成了老客、老客隔三差五来：这是顾客反馈和复购结果，资料里没有就是编的（2026-10-16 摸底：「吃完了跟我说，这个价格…」「现在不少人变成了老客」） */
+const EATEN_FEEDBACK_RE = /吃(?:完|过)(?:了|之后|以后)?(?:都|还|就)?(?:跟我|对我)?(?:说|夸|讲|评价|反馈)|(?:变成了?|成了)(?:老客|回头客)|(?:老客|回头客)[^，。！？\n]{0,6}(?:还带朋友|带朋友|经常来|常来|推荐朋友)|隔三差五就(?:来|过来|到店)/g;
+/** 过去在别处做过的经历：「我之前在别的店做过」「之前在工厂干过」（2026-10-16 摸底：「之前在别的店做过」是编的） */
+const PREVIOUS_JOB_RE = /(?:^|[，。！？\n])\s*(?:我)?(?:之前|以前|早年|从前)在[^，。！？\n]{0,8}?(?:店|公司|厂|市场|工地|门店|档口|摊)[^，。！？\n]{0,6}?(?:做|干|待|工作|上班)过/g;
 /**
  * 「X区」不是地名的（2026-10-05 第二阶段对比实测误报：一道题标出「常见误区」「被褥区」「分区」「样柜展示区」6 个假地名）：
  * 名字里带「的」，或者最后一个字和「区」连起来是个普通词（误区、分区、专区、园区、景区、地区……）
@@ -142,10 +146,11 @@ export function stripSelfCheck(output: string): string {
       inSelfLabel = false;
       // 一级标题下面的内容不是它的子项（同 lib/output-guard：一级自检标题曾把整篇删空）
       if (skipLevel && (skipLevel === 1 || h[1].length <= skipLevel)) skipLevel = 0;
-      if (!skipLevel && /自检|自查|核对|核查|校验|检查清单|事实确认|三有|为什么这样写|数据说明|事实说明|数据与事实/.test(h[2])) { skipLevel = h[1].length; continue; }
+      if (!skipLevel && /自检|自查|核对|核查|校验|检查清单|事实确认|三有|为什么这样写|数据说明|事实说明|数据与事实|事实卡遵守|对照事实卡/.test(h[2])) { skipLevel = h[1].length; continue; }
     }
     if (skipLevel) continue;
-    if (/^\s*[-*•]?\s*\**\s*(?:自检|自查|事实核对|数字来源核查|禁忌核查|三有自检|生成说明|避重原则|为什么这样写|为什么能满足三有自检|数据说明)\**\s*[：:]/.test(line)) { inSelfLabel = true; continue; }
+    // 「事实卡严格遵守：「在苏州3年」「开店2年」」是模型对照事实卡的复述，不是交付内容（2026-10-16 摸底复测）
+    if (/^\s*[-*•]?\s*\**\s*(?:自检|自查|事实核对|数字来源核查|禁忌核查|三有自检|生成说明|避重原则|为什么这样写|为什么能满足三有自检|数据说明|事实卡(?:严格)?遵守|对照事实卡|事实对照)\**\s*[：:]/.test(line)) { inSelfLabel = true; continue; }
     // 标签下面缩进的子条目（「  - 有用处：…」）是同一块的内容，一起去掉；顶格的内容或空行结束这一块
     if (inSelfLabel) { if (/^\s+\S/.test(line)) continue; inSelfLabel = false; }
     keep.push(line);
@@ -268,14 +273,14 @@ export function unsupportedFacts(raw: string, knownText: string, opts: FactCheck
    * 还写出孩子、父母病情、存款——原来只查价格、百分比、年限、地名，这类一个都查不出。
    * 只认「我 / 我家」开头、说作息钟点或家人 / 钱的具体事；档案和素材里有、或者标了 X / 待确认的不算
    */
-  for (const re of [LIFE_SCHEDULE_RE, LIFE_FAMILY_RE, LIFE_MONEY_RE]) {
+  for (const re of [LIFE_SCHEDULE_RE, LIFE_FAMILY_RE, LIFE_MONEY_RE, PREVIOUS_JOB_RE]) {
     for (const m of output.matchAll(re)) {
       const at = m.index ?? 0;
       if (marked(at) || counterExample(at) || /X|Ｘ|【换成你的|【待/.test(m[0]) || inKnown(m[1] ?? '') || inKnown(m[0].slice(1, 7))) continue;
       out.push(`个人经历「${near(at, m[0].length)}」档案和素材里没有，别写成真事`);
     }
   }
-  for (const m of output.matchAll(TESTIMONIAL_RE)) {
+  for (const m of [...output.matchAll(TESTIMONIAL_RE), ...output.matchAll(EATEN_FEEDBACK_RE)]) {
     // 素材里本来就有这段顾客的话（比如审稿的原稿），照用不算编
     const after = output.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 12).replace(/[：:“”"「」\s]/g, '');
     // 「用老顾客反馈证明手艺」是建议去收集，不是编了一段反馈
@@ -298,8 +303,10 @@ export function unsupportedFacts(raw: string, knownText: string, opts: FactCheck
       const at = m.index ?? 0;
       // 同一行里前面写着「不承诺 / 不建议 / 不要」：是在提醒别这么做
       const sameLineBefore = output.slice(Math.max(0, output.lastIndexOf('\n', at - 1) + 1, at - 24), at);
+      // 「不好吃不要钱」这类口语承诺只看紧挨着的几个字，不然「能不能便宜点」里的「不能」会把它压掉（2026-10-16 摸底）
+      const negated = /^(?:不好吃|不满意|吃不好)/.test(m[0]) ? NEGATION_BEFORE.test(output.slice(Math.max(0, at - 6), at)) : PROMISE_NEGATED.test(sameLineBefore);
       // 「网上包邮」「别家送安装」：说的是别人家的做法，不是替老板承诺
-      if (marked(at) || inKnown(m[0]) || WARNING_BEFORE.test(output.slice(Math.max(0, at - 12), at)) || PROMISE_NEGATED.test(sameLineBefore) || /网上|网店|电商|别家|同行|隔壁|有的店/.test(output.slice(Math.max(0, at - 6), at))) continue;
+      if (marked(at) || inKnown(m[0]) || WARNING_BEFORE.test(output.slice(Math.max(0, at - 12), at)) || negated || /网上|网店|电商|别家|同行|隔壁|有的店/.test(output.slice(Math.max(0, at - 6), at))) continue;
       out.push(`经营承诺「${near(at, m[0].length)}」老板没说过要这样做`);
     }
     for (const m of output.matchAll(HONOR_RE)) {
@@ -351,6 +358,16 @@ export interface QualityIssue {
   kind: QualityKind;
   /** 一句话说清是什么问题（给后台看） */
   detail: string;
+  /**
+   * 是否判不通过。不写 = 判不通过（默认）。false = 只提醒，比如模型自称「自检通过」（页面会删掉这句，内容本身不一定有错）、
+   * 只命中一个切碎的排除片段（多半是误报）。
+   */
+  blocking?: boolean;
+}
+
+/** 有问题且判不通过的才算不通过；只提醒的不影响 passed */
+export function isBlockingIssue(issue: QualityIssue): boolean {
+  return issue.blocking !== false;
 }
 
 export interface QualityResult {
@@ -454,7 +471,8 @@ export function runQualityChecks(p: {
   }
   const excluded = readTabooSettings(profile?.taboo_settings).excluded;
   for (const h of findExcludedMentions(output, excluded, String(profile?.profile_name ?? '')).slice(0, 5)) {
-    issues.push({ kind: 'excluded', detail: `提到了「${h.needle}」：${h.line}` });
+    // 只命中一个切碎的片段（比如「内容方」）多半是误报：只提醒，不判不通过
+    issues.push({ kind: 'excluded', detail: `提到了「${h.needle}」：${h.line}${h.strong ? '' : '（只命中一个短片段，仅供参考）'}`, blocking: h.strong });
   }
   if (p.mix) {
     const c = checkMix(output, p.mix.resolved, p.mix.count);
@@ -466,11 +484,12 @@ export function runQualityChecks(p: {
   // 关键事实（2026-10-05 起没建档案也查：没档案时只拿这次的素材比对）；自由对话只查冒充事实的几类
   if (p.taskType && (FACT_CHECK_TASKS.has(p.taskType) || LIGHT_FACT_CHECK_TASKS.has(p.taskType))) {
     const known = `${profile ? JSON.stringify(profile) : ''}\n${p.source ?? ''}`;
-    for (const f of unsupportedFacts(output, known, { light: LIGHT_FACT_CHECK_TASKS.has(p.taskType) })) issues.push({ kind: 'facts', detail: f });
+    // 「模型自称自检通过」只提醒：页面会删掉这句，判断内容要看实际的编造，不看它自己怎么说
+    for (const f of unsupportedFacts(output, known, { light: LIGHT_FACT_CHECK_TASKS.has(p.taskType) })) issues.push({ kind: 'facts', detail: f, blocking: f.startsWith('模型自称') ? false : undefined });
     // 时令错配（今天是什么季节，见 lib/time-anchor）：自由对话不查
     if (FACT_CHECK_TASKS.has(p.taskType)) for (const f of seasonMisstatements(output, Date.now(), known)) issues.push({ kind: 'facts', detail: f });
   }
-  return { passed: issues.length === 0, issues };
+  return { passed: !issues.some(isBlockingIssue), issues };
 }
 
 const KINDS = Object.keys(QUALITY_LABELS) as QualityKind[];
@@ -484,9 +503,9 @@ export function sanitizeQualityReport(v: unknown): { task_type: string; profile_
   const issues = (Array.isArray(o.issues) ? o.issues : [])
     .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && KINDS.includes((x as Record<string, unknown>).kind as QualityKind))
     .slice(0, 20)
-    .map((x) => ({ kind: x.kind as QualityKind, detail: String(x.detail ?? '').slice(0, 200) }));
+    .map((x) => ({ kind: x.kind as QualityKind, detail: String(x.detail ?? '').slice(0, 200), ...(x.blocking === false ? { blocking: false } : {}) }));
   const profileId = typeof o.profileId === 'string' && /^[0-9a-f-]{36}$/i.test(o.profileId) ? o.profileId : null;
-  return { task_type: task, profile_id: profileId, passed: issues.length === 0, issues, sample: typeof o.sample === 'string' ? o.sample.slice(0, 300) : '' };
+  return { task_type: task, profile_id: profileId, passed: !issues.some(isBlockingIssue), issues, sample: typeof o.sample === 'string' ? o.sample.slice(0, 300) : '' };
 }
 
 export interface QualityRow { task_type: string; source: string; passed: boolean; issues: QualityIssue[]; sample?: string | null; created_at: string }

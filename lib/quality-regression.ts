@@ -12,7 +12,15 @@ import { buildContextBlock, type CreatorProfile } from './creator-context';
 import { resolveMix, mixPromptBlock } from './content-mix';
 import { buildReviewPrompt } from './review-standards';
 import { buildRewritePrompt, cleanRewriteOutput } from './canvas';
-import { runQualityChecks, reviewedQualityOutput, type QualityResult } from './quality-checks';
+import { runQualityChecks, reviewedQualityOutput, isBlockingIssue, type QualityResult } from './quality-checks';
+
+/**
+ * 小节标题：「## 开篇」「## 开篇（0-5秒）」「## 开篇：0-5秒」都算。
+ * 2026-10-16 摸底：原来标题名后面只认「：:、空白」，「## 开篇（0-5秒）」被判成缺失。
+ */
+export function sectionHeading(section: string): RegExp {
+  return new RegExp(`^\\s*#{1,4}\\s+${section}(?:[：:、\\s（(【\\[\\-—·]|$)`);
+}
 
 export const REGRESSION_PROFILE: CreatorProfile = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -181,12 +189,12 @@ export async function runRegression(ask: (q: string) => Promise<string> = askDif
       }
       for (const section of c.requiredSections ?? []) {
         const lines = checked.split('\n');
-        const start = lines.findIndex(line => new RegExp(`^\\s*#{1,4}\\s+${section}(?:[：:、\\s]|$)`).test(line));
+        const start = lines.findIndex(line => sectionHeading(section).test(line));
         const next = start < 0 ? -1 : lines.findIndex((line, i) => i > start && /^\s*#{1,4}\s+/.test(line));
         const body = start < 0 ? '' : lines.slice(start + 1, next < 0 ? lines.length : next).join('\n');
         if (!/[\p{L}\p{N}]/u.test(body)) result.issues.push({ kind: 'generation', detail: `必要交付部分「${section}」缺失或为空` });
       }
-      result.passed = result.issues.length === 0;
+      result.passed = !result.issues.some(isBlockingIssue);
       out.push({ task: c.task, result, sample: checked.slice(0, 300) });
     } catch (e) {
       const error = (e as Error).message;
