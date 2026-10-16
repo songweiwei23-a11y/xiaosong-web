@@ -21,7 +21,9 @@ import {
 const navGroups: {
   id: string;
   label: string | null;
-  items: { name: string; href: string; icon: typeof Home }[];
+  /** 组标题下面的一行提示（展开时才显示） */
+  hint?: string;
+  items: { name: string; href: string; icon: typeof Home; hint?: string }[];
 }[] = [
   {
     id: "overview",
@@ -60,19 +62,20 @@ const navGroups: {
   {
     id: "operate",
     label: "账号运营",
+    hint: "建议顺序：前采建档 → 账号定位 → 创作简报 → 起号",
     items: [
       // 定位的原料：编导的前采记录 → 档案。排在账号定位前面，先有准的档案再做定位
-      { name: "前采建档", href: "/dashboard/interview", icon: FileSearch },
+      { name: "前采建档", href: "/dashboard/interview", icon: FileSearch, hint: "把前采记录整理成账号档案，是定位的原料" },
       // 先定地基（六维），再按需深挖变现和内容两维
-      { name: "账号定位", href: "/dashboard/positioning", icon: Target },
-      { name: "商业定位", href: "/dashboard/business-positioning", icon: Wallet },
-      { name: "内容定位", href: "/dashboard/content-positioning", icon: LayoutList },
+      { name: "账号定位", href: "/dashboard/positioning", icon: Target, hint: "从六个方面定下账号的地基" },
+      { name: "商业定位", href: "/dashboard/business-positioning", icon: Wallet, hint: "账号靠什么赚钱（需要时再做）" },
+      { name: "内容定位", href: "/dashboard/content-positioning", icon: LayoutList, hint: "账号长期拍什么内容（需要时再做）" },
       // 简报是把定位转译成各板块直接能用的指令，所以紧跟在定位后面
-      { name: "创作简报", href: "/dashboard/creative-brief", icon: ClipboardList },
+      { name: "创作简报", href: "/dashboard/creative-brief", icon: ClipboardList, hint: "把定位翻成各板块能直接用的写作指令" },
       // 药方：按目的和阶段给打法，存好后所有创作板块照它执行
-      { name: "行业建议", href: "/dashboard/industry-advice", icon: Stethoscope },
+      { name: "行业建议", href: "/dashboard/industry-advice", icon: Stethoscope, hint: "按你的行业和目标，给一套打法" },
       // 定位定完，起号决定"拍什么套路、前三秒怎么说"
-      { name: "起号", href: "/dashboard/growth", icon: Rocket },
+      { name: "起号", href: "/dashboard/growth", icon: Rocket, hint: "新号前几条怎么拍、前三秒怎么说" },
       { name: "成交理由", href: "/dashboard/deal-reason", icon: Award },
       { name: "个人档案", href: "/dashboard/profiles", icon: User },
     ],
@@ -81,7 +84,8 @@ const navGroups: {
     id: "assist",
     label: "助手与资料",
     items: [
-      { name: "高阶自由", href: "/dashboard/free-chat", icon: MessagesSquare },
+      // 原名「高阶自由」看不出是干什么的，改成直说的名字
+      { name: "自由对话", href: "/dashboard/free-chat", icon: MessagesSquare, hint: "什么都能问：联网查资料、读图片和文档、出方案、深度研究" },
       { name: "知识库", href: "/dashboard/knowledge", icon: BookOpen },
     ],
   },
@@ -218,6 +222,10 @@ export function Sidebar() {
                   </button>
                 )}
 
+                {!isCollapsed && group.hint && (
+                  <p className="px-3 pt-0.5 text-[11px] leading-relaxed text-muted-foreground/70">{group.hint}</p>
+                )}
+
                 {!isCollapsed && (
                   <div className="mt-0.5 space-y-0.5">
                     {group.items.map((item) => {
@@ -226,6 +234,7 @@ export function Sidebar() {
                         <Link
                           key={item.href}
                           href={item.href}
+                          title={item.hint}
                           className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
                             isActive
                               ? "bg-primary/12 font-medium text-foreground"

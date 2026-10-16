@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { claimMessage, extractTicket } from "@/lib/gate-ticket-format";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 
 /**
  * 首页拦截的提示页（第一道）。没有门票的人，所有页面都显示这里。
@@ -88,7 +89,11 @@ export default function GatePage() {
         <h1 className="text-[18px] font-semibold text-foreground">开物</h1>
         <p className="mt-1 text-[12.5px] text-muted-foreground">AI 短视频创作智能体</p>
         <p className="mt-4 text-[13px] leading-relaxed text-foreground/80">
-          这是邀请制的产品。请打开管理员发给你的邀请链接；如果你拿到的是一串门票码，粘贴在下面。
+          这是邀请制的产品。请打开给你发邀请的人发来的邀请链接；如果你拿到的是一串门票码，粘贴在下面。
+        </p>
+        {/* 没有邀请的人最常卡在这里，直接写明去哪拿 */}
+        <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
+          还没有邀请？加客服微信 <span className="select-all font-medium text-foreground">{SUPPORT_WECHAT}</span> 索要。
         </p>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <textarea

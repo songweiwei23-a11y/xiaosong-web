@@ -1360,7 +1360,7 @@ export default function HomePage() {
               href={REGISTER_URL} 
               className="group px-10 py-5 bg-white text-primary rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-2xl flex items-center gap-2"
             >
-              领取邀请码，免费体验
+              索要邀请码，免费体验
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <a 
@@ -1372,6 +1372,10 @@ export default function HomePage() {
           </div>
           <p className="mt-8 text-sm opacity-75">
             无需信用卡 · 凭邀请码注册 · 随时升级
+          </p>
+          {/* 按钮要的是邀请码，没码的人得知道去哪要 */}
+          <p className="mt-2 text-sm opacity-75">
+            没有邀请码？加客服微信 <span className="select-all font-semibold">{SUPPORT_WECHAT}</span> 索要
           </p>
         </div>
       </section>

@@ -323,8 +323,16 @@ export function taboosPromptBlock(profile: object | null | undefined): string {
 export interface TabooHit {
   word: string;
   taboo: Taboo;
-  /** 命中所在的那一行（截短） */
+  /** 命中词所在的原句（以命中词为中心截短），让人知道是哪一句 */
   line: string;
+}
+
+/** 以命中词为中心截一段，两侧各留一些字；命中词一定在里面 */
+function aroundMatch(line: string, index: number, length: number, side = 24): string {
+  if (line.length <= side * 2 + length) return line;
+  const start = Math.max(0, index - side);
+  const end = Math.min(line.length, index + length + side);
+  return `${start > 0 ? '…' : ''}${line.slice(start, end)}${end < line.length ? '…' : ''}`;
 }
 
 /**
@@ -349,7 +357,7 @@ export function scanTaboos(text: string, profile: object | null | undefined): Ta
       const key = `${t.id}:${m[0]}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      hits.push({ word: m[0], taboo: t, line: line.length > 60 ? `${line.slice(0, 60)}…` : line });
+      hits.push({ word: m[0], taboo: t, line: aroundMatch(line, m.index ?? 0, m[0].length) });
     }
   }
   return hits;
@@ -357,6 +365,6 @@ export function scanTaboos(text: string, profile: object | null | undefined): Ta
 
 /** "让 AI 改掉"时预填进继续对话的话 */
 export function fixRequest(hits: TabooHit[]): string {
-  const rows = hits.map((h) => `- 「${h.word}」：${h.taboo.why}${h.taboo.instead ? `，换成${h.taboo.instead}` : ''}`);
+  const rows = hits.map((h) => `- 「${h.word}」（原句：「${h.line}」）：${h.taboo.why}${h.taboo.instead ? `，换成${h.taboo.instead}` : ''}`);
   return `上面的内容里有可能违规的说法，帮我改掉，其他不要动，改完给完整版：\n${rows.join('\n')}`;
 }

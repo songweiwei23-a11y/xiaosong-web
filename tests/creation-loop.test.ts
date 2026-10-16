@@ -69,7 +69,8 @@ describe('创作闭环', () => {
       expect(links, `${file} 的继续创作在正文前面`).toBeGreaterThan(md);
     };
     // 正文显示的是 view：在画布里改过就是最新一版，否则就是生成稿（2026-10-04）
-    after('components/workspace/ResultPanel.tsx', /<Markdown>\{view\}<\/Markdown>/);
+    // 长正文会先显示摘要（collapseBody），正文那一行的位置不变
+    after('components/workspace/ResultPanel.tsx', /<Markdown>\{collapseBody \? previewCut\(view, PREVIEW_BODY_CHARS\) : view\}<\/Markdown>/);
     after('app/dashboard/growth/page.tsx', /<Markdown>\{result\}<\/Markdown>/);
     after('components/positioning/DeepDivePage.tsx', /<Markdown>\{result\}<\/Markdown>/);
     // 顶部留一个跳到底部的按钮，结果很长时也找得到

@@ -7,6 +7,7 @@ import {
   COUNTED_FEATURES, PAID_PERIOD_NOTE, WEB_SEARCH_LIMITS, DEEP_RESEARCH_LIMITS,
 } from "@/lib/config/plans";
 import { toneSoft } from "@/lib/ui-tokens";
+import { SUPPORT_WECHAT } from "@/lib/config/contact";
 
 export default function PricingPage() {
   /*
@@ -205,8 +206,11 @@ export default function PricingPage() {
             href="/dashboard"
             className="inline-flex items-center gap-2 brand-gradient text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition-all"
           >
-            领取邀请码体验
+            索要邀请码体验
           </Link>
+          <p className="mt-3 text-sm text-muted-foreground">
+            没有邀请码？加客服微信 <span className="select-all font-medium text-foreground">{SUPPORT_WECHAT}</span> 索要
+          </p>
         </div>
       </div>
     </div>

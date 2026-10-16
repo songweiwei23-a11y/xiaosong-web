@@ -25,6 +25,7 @@ import { CreationLinks } from "@/components/workspace/CreationLinks";
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import type { HistoryItem } from '@/components/workspace/HistoryPanel';
 import { notify } from "@/components/ui/feedback";
+import { askDoneNotice, notifyDone } from "@/lib/browser-notify";
 import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { useCreativeHistory } from '@/hooks/useCreativeHistory';
@@ -144,6 +145,24 @@ export default function BreakdownPage() {
 
   // 离开页面时把截图的临时地址释放掉
   useEffect(() => () => sheetUrls.forEach((u) => URL.revokeObjectURL(u)), [sheetUrls]);
+
+  /*
+   * 页面是否还在。切去别的页面后，生成仍在后台跑完（AI 那段在服务端落库），
+   * 这里只用来决定完成时要不要弹系统通知。
+   */
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  /*
+   * 画面和声音还在浏览器里处理（拆画面、识别口播、传截图）时，关掉或刷新页面会直接中断，要拦一下。
+   * 进入 AI 拆解那段后，关页面不影响结果，就不拦了。
+   */
+  const browserBusy = running && !textMode && (stage === "frames" || stage === "audio" || stage === "upload");
+  useEffect(() => {
+    if (!browserBusy) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [browserBusy]);
 
   const pickFile = (f: File | undefined) => {
     if (!f) return;
@@ -267,6 +286,7 @@ export default function BreakdownPage() {
     });
     if (full.trim()) {
       await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
+      notifyDone("拆解完成", `${p.file.name} 已拆好，结果存进了历史`, !alive.current);
     }
   };
 
@@ -282,7 +302,10 @@ export default function BreakdownPage() {
     }) });
     if (!res.ok) await throwApiError(res, '拆解失败');
     const full = await readDifyStream(res, { onChunk: (_p, all) => { if (isCurrent()) setResult(all); } });
-    if (full.trim()) await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
+    if (full.trim()) {
+      await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
+      notifyDone("文案拆解完成", "结果存进了历史", !alive.current);
+    }
   };
 
   /** retry=true：用上次拆好的画面和口播，只重来传图和 AI 拆解 */
@@ -290,6 +313,7 @@ export default function BreakdownPage() {
     if (running || autoSetup.preparing || (!textMode && !file) || (textMode && !pastedScript.trim())) return;
     if (ctxLoading) { notify('正在读取当前档案，请稍后再拆解', 'error'); return; }
     setRunning(true);
+    askDoneNotice(); // 要在点击的同步段里问，浏览器才会弹授权
     const isCurrent = beginProfileRequest();
     const left = await checkQuota("breakdown");
     if (!isCurrent()) { setRunning(false); return; }
@@ -439,7 +463,14 @@ export default function BreakdownPage() {
                   {i === stageIndex && progress && <span className="text-muted-foreground">· {progress}</span>}
                 </li>
               ))}
-              <li className="pt-1 text-[11.5px] text-muted-foreground">{textMode ? '正在分析已带入的文字，请稍候' : '一条 3 分钟的视频大约 5 分钟；请停在这个页面'}</li>
+              {/* 只有前三步在浏览器里跑，关页面会中断；进了 AI 拆解，离开页面也会继续，完成后存进历史 */}
+              <li className="pt-1 text-[11.5px] text-muted-foreground">
+                {textMode
+                  ? '正在分析已带入的文字，请稍候'
+                  : stage === 'ai'
+                    ? 'AI 拆解在服务器上进行，现在离开页面也会继续，完成后存进历史（同意过通知的话会提醒你）'
+                    : '一条 3 分钟的视频大约 5 分钟。画面和声音在这个浏览器里处理，这一步请先别关或刷新页面'}
+              </li>
             </ol>
           )}
         </>

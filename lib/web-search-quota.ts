@@ -2,18 +2,23 @@ import { randomUUID } from 'node:crypto';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { WEB_SEARCH_LIMITS } from '@/lib/config/plans';
 import { isWebSearchNode } from '@/lib/dify-web-status';
-import { buildWebQuery } from '@/lib/web-query';
+import { buildWebQuery, isNewsQuestion } from '@/lib/web-query';
 
 export interface WebQuotaState {
   plan: string; limit: number; used: number; pending: number; remaining: number;
   periodEnd?: string | null; allowed: boolean; reason?: string; requestId?: string | null;
 }
 export type WebSearchMode = 'auto' | 'on' | 'off';
+/**
+ * 「按需联网」只在明确要查、或问新闻类问题时自动搜。
+ * 时间词（今天、今年、本周、最新）单独出现不算：「今天我该拍什么」这种创作问题也常带时间词，
+ * 原来会白扣一次免费联网额度（2026-10-16 产品方反馈）。要查最新的，用户自己选「本轮联网」。
+ */
 export function wantsWebSearch(question: string, mode: unknown = 'auto'): boolean {
   if (mode === 'off') return false;
   if (mode === 'on') return true;
   if (/(?:不要|不用|无需|不需要|禁止)(?:使用|进行)?(?:联网|上网|搜索)/.test(question)) return false;
-  return /联网|上网|搜索|查一下|核实|最新|实时|热点|新闻|平台规则|政策变化|行情|今日|今天|本周|本月|今年/.test(question);
+  return /联网|上网|搜索|查一下|查查|查资料|核实|政策变化/.test(question) || isNewsQuestion(question);
 }
 export async function readWebSearchQuota(userId: string): Promise<WebQuotaState> {
   const { data, error } = await getServiceSupabase().rpc('kaiwu_web_search', { p_user_id: userId, p_limits: WEB_SEARCH_LIMITS, p_request_id: null });

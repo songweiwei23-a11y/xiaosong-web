@@ -1145,8 +1145,9 @@ export default function FreeChatPage() {
                   <Telescope className="h-4 w-4" />
                   <span className="hidden sm:inline">深度研究</span>
                 </button>
-                <select aria-label="联网模式" value={webSearchMode} onChange={e => setWebSearchMode(e.target.value as 'auto' | 'on' | 'off')} disabled={isStreaming} className="rounded-lg border border-border bg-background px-2 py-1 text-xs">
-                  <option value="auto">按需联网</option><option value="on">本轮联网</option><option value="off">关闭联网</option>
+                {/* 按需联网只在明确要查资料、或问新闻时才自动搜（扣 1 次免费额度）；时间词单独出现不触发 */}
+                <select aria-label="联网模式" title="按需联网：只在要查资料、或问新闻时自动搜，每次扣 1 次额度。要查最新信息就选「本轮联网」" value={webSearchMode} onChange={e => setWebSearchMode(e.target.value as 'auto' | 'on' | 'off')} disabled={isStreaming} className="rounded-lg border border-border bg-background px-2 py-1 text-xs">
+                  <option value="auto">按需联网</option><option value="on">本轮联网（扣 1 次）</option><option value="off">关闭联网</option>
                 </select>
                 <WebSearchQuota />
                 <div className="ml-auto">

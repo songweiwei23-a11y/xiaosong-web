@@ -42,6 +42,8 @@ export function TabooScan({ body, onContinue }: { body: string; onContinue?: () 
               {h.taboo.why}
               {h.taboo.instead ? `，可以换成：${h.taboo.instead}` : ''}
             </span>
+            {/* 原句：告诉用户是哪一句，不用在正文里自己找 */}
+            <span className="mt-0.5 block text-[12px] text-muted-foreground/80">原句：「{h.line}」</span>
           </li>
         ))}
       </ul>

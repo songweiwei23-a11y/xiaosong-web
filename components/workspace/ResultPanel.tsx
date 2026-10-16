@@ -28,6 +28,7 @@ import { TabooScan } from './TabooScan';
 import { ResultFeedback } from './ResultFeedback';
 import { FactCheckNotice } from './FactCheckNotice';
 import { stripSelfCert } from '@/lib/self-cert';
+import { previewCut } from '@/lib/text-preview';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { PreferenceHint } from '@/components/preferences/PreferenceHint';
 import { reportQuality } from '@/lib/quality-report';
@@ -49,6 +50,10 @@ const CONTEXT_BOARD: Record<string, ContextModule> = {
   topic: 'topic', script: 'script', storyboard: 'storyboard', review: 'review', title: 'title',
   growth: 'growth', remix: 'remix', breakdown: 'breakdown', direction: 'direction', 'deal-reason': 'dealReason',
 };
+
+/** 正文超过这个字数，先只显示摘要段（约 PREVIEW_BODY_CHARS 字），由用户决定要不要展开 */
+const LONG_BODY_CHARS = 6000;
+const PREVIEW_BODY_CHARS = 2000;
 
 /** 生成完之后可以直接去的下一步 */
 export interface NextAction {
@@ -211,6 +216,14 @@ export function ResultPanel({
   const generatingBefore = useRef(false);
   /** 刚生成完的那份原稿：只对它自动按资料修正（翻历史、刷新恢复的不自动跑） */
   const [freshBody, setFreshBody] = useState<string | null>(null);
+  /*
+   * 很长的正文（拆解报告动辄几万字）先只给前面一段，看完摘要再展开；
+   * 复制、下载、继续创作拿的仍是全文，这里只管显示。
+   */
+  // 记住「展开的是哪一版正文」：重新生成了正文就自动收起，在画布里改稿不收起
+  const [expandedBody, setExpandedBody] = useState<string | null>(null);
+  const showFullBody = expandedBody === body;
+  const collapseBody = !isGenerating && !showFullBody && view.length > LONG_BODY_CHARS;
   useEffect(() => {
     if (generatingBefore.current && !isGenerating && body) {
       const seg = pathname?.split('/')[2] || '';
@@ -288,8 +301,19 @@ export function ResultPanel({
                        prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px]
                        prose-strong:text-foreground prose-hr:border-border/60 ${bodyClassName ?? ""}`}
           >
-            <Markdown>{view}</Markdown>
+            <Markdown>{collapseBody ? previewCut(view, PREVIEW_BODY_CHARS) : view}</Markdown>
           </div>
+
+          {collapseBody && (
+            <button type="button" onClick={() => setExpandedBody(body)} className="mt-3 text-[12.5px] font-medium text-primary underline-offset-4 hover:underline">
+              展开全文（共 {view.length} 字，现在只显示前面一段）
+            </button>
+          )}
+          {!isGenerating && showFullBody && view.length > LONG_BODY_CHARS && (
+            <button type="button" onClick={() => setExpandedBody(null)} className="mt-3 text-[12.5px] text-muted-foreground underline-offset-4 hover:underline">
+              收起，只看摘要
+            </button>
+          )}
 
           {isGenerating && (
             <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />

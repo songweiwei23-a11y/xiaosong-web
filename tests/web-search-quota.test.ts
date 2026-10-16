@@ -21,6 +21,8 @@ beforeEach(() => {
 describe('联网授权与真实工具计次', () => {
   it.each(['请联网核实平台规则','今天最新新闻是什么','搜索近期餐饮行业行情'])('按需识别 %s', q => expect(wantsWebSearch(q)).toBe(true));
   it.each(['帮我改写下面这段文案','把脚本拆成分镜','无需联网，优化标题'])('资料创作不执行付费搜索 %s', q => expect(wantsWebSearch(q)).toBe(false));
+  it.each(['今天我该拍什么','今年做账号的节奏怎么安排','本周的选题方向'])('只带时间词的创作问题不扣免费联网额度 %s', q => expect(wantsWebSearch(q)).toBe(false));
+  it.each(['南乐最近的热点新闻','帮我查一下抖音本地生活的规则'])('要查或问新闻，按需联网照常搜 %s', q => expect(wantsWebSearch(q)).toBe(true));
   it('用户关闭联网优先于关键词，主动联网才申请额度', async () => {
     expect(wantsWebSearch('联网查新闻', 'off')).toBe(false);
     const off = await prepareWebSearch('u','联网查新闻','off');

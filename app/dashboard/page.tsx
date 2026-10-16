@@ -148,7 +148,7 @@ const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }
   { name: "商业定位", icon: Wallet, href: "/dashboard/business-positioning", tip: "靠什么赚钱" },
   { name: "内容定位", icon: LayoutList, href: "/dashboard/content-positioning", tip: "长期发什么" },
   { name: "成交理由", icon: Award, href: "/dashboard/deal-reason" },
-  { name: "高阶自由", icon: MessagesSquare, href: "/dashboard/free-chat" },
+  { name: "自由对话", icon: MessagesSquare, href: "/dashboard/free-chat", tip: "什么都能问，能联网查资料" },
   { name: "知识库", icon: BookOpen, href: "/dashboard/knowledge" },
   // 各板块收藏的好内容（2026-10-02）
   { name: "素材库", icon: Bookmark, href: "/dashboard/library", tip: "收藏的好内容，随时接着用" },

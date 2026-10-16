@@ -105,7 +105,7 @@ describe('注册必须用邀请码（2026-10-04 产品方：首页不再自动�
     const home = readCode('app/page.tsx');
     expect((home.match(/href=\{REGISTER_URL\}/g) ?? []).length).toBeGreaterThanOrEqual(3);
     expect(readCode('components/landing/hero/TryHero.tsx')).toMatch(/href=\{REGISTER_URL\}/);
-    expect(readCode('components/landing/LandingNavCTA.tsx')).toMatch(/href=\{REGISTER_URL\}[\s\S]{0,200}领取邀请码/);
+    expect(readCode('components/landing/LandingNavCTA.tsx')).toMatch(/href=\{REGISTER_URL\}[\s\S]{0,200}索要邀请码/);
   });
 
   it('注册页：没带码时写清楚找管理员要；管理员发的带码链接仍自动填好', () => {

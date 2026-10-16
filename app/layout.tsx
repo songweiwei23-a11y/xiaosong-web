@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AmbientBackground } from '@/components/theme/AmbientBackground';
 import { FeedbackHost } from '@/components/ui/feedback';
 import { ClipboardFallback } from '@/components/ui/ClipboardFallback';
+import { VersionRefreshNotice } from '@/components/ui/VersionRefreshNotice';
 
 export const metadata: Metadata = {
   title: '开物 - 懂编导的 AI 短视频搭档',
@@ -59,6 +60,8 @@ export default function RootLayout({
           <FeedbackHost />
           {/* http 访问没有剪贴板接口，不补的话全站复制按钮都失效 */}
           <ClipboardFallback />
+          {/* 部署后旧标签页的版本错配，给一条明确的刷新提示 */}
+          <VersionRefreshNotice />
         </ThemeProvider>
       </body>
     </html>
