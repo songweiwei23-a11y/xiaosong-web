@@ -231,4 +231,26 @@ describe('细节', () => {
     }
     expect(checked).toBeGreaterThan(5);
   });
+
+  it('扫描：3 列及以上的网格，手机上先两列（直接写 grid-cols-3 会在 375px 屏上把选项挤成窄条）', () => {
+    const files = [...listFiles('app'), ...listFiles('components')];
+    expect(files.length).toBeGreaterThan(100); // 自证不是空转
+    // 有意保留的：三格数字卡（手机上三格也放得下）、六色块（手机上就是三列，大屏才六列）
+    const allowed = [
+      'app/login/page.tsx: <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-4">',
+      'components/ambient/AmbientMixer.tsx: <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-1.5">',
+    ];
+    const bad: string[] = [];
+    for (const f of files) {
+      readCode(f).split('\n').forEach((line, i) => {
+        // 没有断点前缀（sm: md: lg: xl:）的 grid-cols-3 及以上；方括号的固定模板（如 grid-cols-[64px_1fr]）不是列数，不管
+        if (!/(?<![\w:-])grid-cols-([3-9])(?![\w\]-])/.test(line)) return;
+        const rel = f.replace(/\\/g, '/');
+        const key = `${rel}: ${line.trim()}`;
+        if (allowed.includes(key)) return;
+        bad.push(`${rel}:${i + 1}: ${line.trim()}`);
+      });
+    }
+    expect(bad).toEqual([]);
+  });
 });

@@ -363,7 +363,7 @@ export default function TitlePage() {
               <button type="button" onClick={() => setTitleType('auto')} aria-pressed={titleType === 'auto'} className={`${SECONDARY_BTN} mb-2 w-full`}>
                 {titleType === 'auto' ? '已按原稿自动选择标题类型' : '按原稿自动选择标题类型'}
               </button>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {TITLE_TYPES.filter(type => type.value !== 'auto').slice(0, 6).map((type) => (
                   <button
                     key={type.value}
@@ -388,7 +388,7 @@ export default function TitlePage() {
             </Field>
 
             <Field label="生成数量" optional stacked>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {AB_TEST_COUNTS.map((option) => (
                   <button
                     key={option.value}

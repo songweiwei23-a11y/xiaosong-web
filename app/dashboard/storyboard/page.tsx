@@ -386,7 +386,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
                 {CONTENT_TYPE_GROUPS.map((group) => (
                   <div key={group}>
                     <div className="mb-1.5 text-[11px] font-medium text-muted-foreground/80">{group}</div>
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                       {CONTENT_TYPES.filter((t) => t.group === group).map((type) => (
                         <button
                           key={type.value}
@@ -414,7 +414,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
             </Field>
 
             <Field label="视觉风格" optional stacked>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {VISUAL_STYLES.map((style) => (
                   <button
                     key={style.value}

@@ -97,7 +97,7 @@ function MultiSelect({
       <label className="block text-[13px] font-medium text-foreground">{label}</label>
       <div
         className={`grid gap-1.5 ${
-          columns === 4 ? 'grid-cols-4' : columns === 2 ? 'grid-cols-2' : 'grid-cols-3'
+          columns === 4 ? 'grid-cols-2 sm:grid-cols-4' : columns === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'
         }`}
       >
         {options.map((o) => {
@@ -330,7 +330,7 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
         <>
           <div>
             <label className="mb-2 block text-[13px] font-medium text-foreground">主要性别</label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
               {C.target_gender.map((g) => (
                 <button
                   key={g}

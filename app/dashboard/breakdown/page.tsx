@@ -411,7 +411,7 @@ export default function BreakdownPage() {
 
           <CollapsibleSection title={textMode ? '待拆解文案 / 方案' : '补充信息（选填，填了拆得更准）'} defaultOpen={textMode}>
             <Field label="这条的数据" optional stacked hint="有粉丝数才能判断是不是真爆">
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {NUM_FIELDS.map((f) => (
                   <input
                     key={f.key}

@@ -37,7 +37,7 @@ import {
 /** 一组可点的选项：标签 + 一句说明 */
 function ChoiceGrid({ items, isOn, onToggle, cols = 2 }: { items: Choice[]; isOn: (id: string) => boolean; onToggle: (id: string) => void; cols?: 2 | 3 }) {
   return (
-    <div className={`grid gap-1.5 ${cols === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+    <div className={`grid gap-1.5 ${cols === 3 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
       {items.map((c) => {
         const on = isOn(c.id);
         return (

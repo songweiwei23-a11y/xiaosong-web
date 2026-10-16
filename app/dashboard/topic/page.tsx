@@ -1067,7 +1067,7 @@ export default function TopicPage() {
               stacked
               hint={tactic ? `已指定第 ${GROWTH_TACTICS.find((t) => t.name === tactic)?.no} 计，整批都按它拍` : sourceReference && !routeExplicit ? '按原方向自动选最合适的拍法；点击下面选项可手动指定' : ROUTE_HINTS[route]}
             >
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {ROUTE_LIST.map((r) => {
                   const picked = !tactic && route === r;
                   return (
@@ -1134,7 +1134,7 @@ export default function TopicPage() {
                   : "建议选 2–3 个，AI 会在选题里明确标注"
               }
             >
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {explosiveElements.map((elem) => {
                   const picked = selectedElements.includes(elem.id);
                   return (
@@ -1172,7 +1172,7 @@ export default function TopicPage() {
                   : ROLE_SPECS[topicRole].job
               }
             >
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {(['按配比', ...CONTENT_ROLE_LIST] as const).map((r) => {
                   const picked = topicRole === r;
                   return (
@@ -1213,7 +1213,7 @@ export default function TopicPage() {
                     : "不选的话，变现型选题从档案卖点里找成交理由"
               }
             >
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {ALL_DEAL_REASONS.map((r) => {
                   const picked = selectedDealReasons.includes(r.id);
                   return (
@@ -1236,7 +1236,7 @@ export default function TopicPage() {
 
           <CollapsibleSection title="进阶设置" defaultOpen={false}>
             <Field label="关键词" optional stacked hint="想让选题围绕的具体词">
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 <input value={keyword1} onChange={(e) => setKeyword1(e.target.value)} placeholder="关键词 1" className={INPUT_CLS} />
                 <input value={keyword2} onChange={(e) => setKeyword2(e.target.value)} placeholder="关键词 2" className={INPUT_CLS} />
                 <input value={keyword3} onChange={(e) => setKeyword3(e.target.value)} placeholder="关键词 3" className={INPUT_CLS} />

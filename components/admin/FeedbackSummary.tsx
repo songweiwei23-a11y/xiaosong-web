@@ -62,7 +62,7 @@ export function FeedbackSummary() {
 
       {data && data.total > 0 && (
         <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-border/60 p-3">
               <div className="text-[12px] text-muted-foreground">反馈条数</div>
               <div className="mt-1 text-[20px] font-semibold tabular-nums text-foreground">{data.total}</div>

@@ -445,7 +445,7 @@ export default function LoginPage() {
           「内置编导方法 73」只是个数字，「73 条可直接照拍的方法」才是优势。
           数字统一从 lib/showcase.ts 的 FACTS 取，全站一个口径。
         */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
+        <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-4">
           {[
             // 和落地页数据带保持同一组数：方法数、知识库字数、板块数。
             // 原来中间一格是 pipeline.length（5），三个数里最小的一个摆中间，
@@ -454,7 +454,7 @@ export default function LoginPage() {
             { n: `${FACTS.wordsWan}万`, label: "字符编导资料" },
             { n: String(FACTS.boards), label: "个创作板块" },
           ].map((x) => (
-            <div key={x.label} className="glass-panel text-center p-4 rounded-xl">
+            <div key={x.label} className="glass-panel text-center p-3 sm:p-4 rounded-xl">
               <div className="text-3xl font-bold brand-text">{x.n}</div>
               <div className="text-xs text-muted-foreground mt-1 leading-snug">{x.label}</div>
             </div>

@@ -412,7 +412,7 @@ export default function DealReasonPage() {
                 <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${showOthers ? "rotate-180" : ""}`} />
               </button>
               {showOthers && (
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {otherReasons.map((r) => (
                     <ReasonChip
                       key={r.label}

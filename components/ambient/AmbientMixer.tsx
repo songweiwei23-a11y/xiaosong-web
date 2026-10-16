@@ -72,7 +72,7 @@ export function AmbientMixer() {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-6 gap-1.5">
+      <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-1.5">
         {AMBIENT_SOUNDS.map((snd) => {
           const Icon = ICONS[snd.id];
           const on = s.mix[snd.id] !== undefined;

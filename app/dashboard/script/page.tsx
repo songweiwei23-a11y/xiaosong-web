@@ -1451,7 +1451,7 @@ ${formatRequirements}
                   : "可多选，建议 2–3 个"
               }
             >
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {BOOM_ELEMENTS.map((elem) => (
                   <button
                     key={elem.id}
@@ -1561,7 +1561,7 @@ ${formatRequirements}
                   : "可多选，推荐 2–3 个"
               }
             >
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {DEAL_REASONS.map((reason) => (
                   <button
                     key={reason.id}
