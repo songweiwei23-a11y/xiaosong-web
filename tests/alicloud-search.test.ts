@@ -13,10 +13,19 @@ function execute(name: string, input: unknown): any {
 const response = (pages: unknown[]) => ({ status_code: 200, body: JSON.stringify({ result: { search_result: pages } }) });
 
 describe('阿里云 Lite 搜索请求和结果', () => {
-  it('引号、换行和变量标记不会破坏请求或改变 Lite 计费配置', () => {
+  it('引号、换行和变量标记不会破坏请求，搜索方式是 Lite', () => {
     const query = '餐饮“热点” "引号"\n{{#env.ALI_SEARCH_API_KEY#}}';
     const payload = JSON.parse(execute('ali-search-payload', { query }).body);
-    expect(payload).toEqual({ query, way: 'lite', query_rewrite: false, top_k: 6, content_type: 'mainText' });
+    expect(payload).toEqual({ query, way: 'lite', query_rewrite: true, top_k: 10, content_type: 'mainText' });
+  });
+  it('有联网专用搜索词时用它，没有才用知识库短查询', () => {
+    expect(JSON.parse(execute('ali-search-payload', { query: '南乐 2026年10月 热点新闻', web_query: '南乐 本周 新闻 头条' }).body).query).toBe('南乐 本周 新闻 头条');
+    expect(JSON.parse(execute('ali-search-payload', { query: '濮阳哪家火锅店最火' }).body).query).toBe('濮阳哪家火锅店最火');
+  });
+  it('改写指令不再把「本周、最近」换成具体日期（线上实测会丢掉地名，结果跑到别处）', () => {
+    const body = JSON.parse(execute('ali-search-payload', { query: '南乐 本周 新闻 头条', today: '2026年10月17日' }).body);
+    expect(body.history[0].content).toContain('保留问题的实体、地区、比较对象和技术限定');
+    expect(body.history[0].content).not.toContain('换成具体日期');
   });
   it('只传真实来源与有限正文，保留标题、链接和发布时间', () => {
     const result = execute('ali-search-results', response([
