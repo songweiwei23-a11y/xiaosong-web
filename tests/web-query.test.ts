@@ -65,6 +65,11 @@ describe('联网搜索词', () => {
     expect(result.recencyDays).toBe(40);
   });
 
+  it('「大事、发生了什么、通知公告」也算新闻问题，不带年月数字（2026-10-17 实测：原来 10 条里 5 条天气）', () => {
+    const now = Date.parse('2026-10-16T04:00:00Z');
+    expect(buildWebQuery('最近南乐发生了什么大事', now).query).not.toMatch(/\d{4}年|\d{1,2}月/);
+    expect(buildWebQuery('南乐县最新的通知公告', now).query).not.toMatch(/\d{4}年|\d{1,2}月/);
+  });
   it('天气问题照旧带日期：天气本来就要看日子', () => {
     const now = Date.parse('2026-10-16T04:00:00Z');
     expect(buildWebQuery('南乐最近的天气怎么样', now).query).toMatch(/2026年\d{1,2}月/);

@@ -85,7 +85,7 @@ describe('自由对话搜索源头', () => {
     expect(out.map(x => x.url)).toEqual(['https://docs.dify.ai/en/cloud/use-dify/nodes/llm.md']);
     expect(read).toHaveBeenCalledTimes(3);
   });
-  it('一轮只调一次付费增强搜索；补读使用安全读取器，失败保留片段', async () => {
+  it('非地方新闻一轮只调一次增强搜索；补读使用安全读取器，失败保留片段', async () => {
     const onStarted = vi.fn(async () => {});
     const search = vi.fn<typeof aliSearch>(async () => ({ ok: true as const, hits: [hit('https://example.com/article')] }));
     const read = vi.fn<typeof fetchPage>(async () => ({ ok: false as const, reason: 'http' as const, status: 403 }));
@@ -116,5 +116,25 @@ describe('自由对话搜索源头', () => {
     const onStarted = vi.fn(async () => {}), search = vi.fn();
     expect(await searchFreeChatWeb('问题', { onStarted, search })).toBeNull();
     expect(onStarted).not.toHaveBeenCalled(); expect(search).not.toHaveBeenCalled();
+  });
+  it('地方新闻：加上地方官网站点搜索并合并，天气页不进来源（2026-10-17 实测南乐）', async () => {
+    const search = vi.fn<typeof aliSearch>(async (query) => ({ ok: true as const, hits: query.startsWith('site:www.nanle.gov.cn')
+      ? [hit('https://www.nanle.gov.cn/news/1', '南乐县召开会议。'.repeat(30), '2026-10-16')]
+      : [
+        { ...hit('https://ynweather.com/nanle/', '南乐天气预报。'.repeat(30)), title: '南乐天气预报实时' },
+        hit('https://m.toutiao.com/article/2', '南乐本地报道。'.repeat(30), '2026-10-16'),
+      ] }));
+    const result = await searchFreeChatWeb('帮我查一下南乐最近的热点新闻', { config, search, read: vi.fn(async () => ({ ok: false as const, reason: 'http' as const, status: 403 })), onStarted: vi.fn(async () => {}), now: Date.parse('2026-10-17T04:00:00Z') });
+    const queries = search.mock.calls.map(c => c[0]);
+    expect(queries.some(q => q.startsWith('site:www.nanle.gov.cn'))).toBe(true);
+    expect(queries.some(q => q.startsWith('site:www.puyang.gov.cn'))).toBe(true);
+    const urls = result!.status.sources.map(s => s.url);
+    expect(urls).toContain('https://www.nanle.gov.cn/news/1');
+    expect(urls.some(u => u.includes('ynweather'))).toBe(false);
+  });
+  it('没有验证过站点的地区，新闻问题也只搜一次', async () => {
+    const search = vi.fn<typeof aliSearch>(async () => ({ ok: true as const, hits: [hit('https://example.com/a')] }));
+    await searchFreeChatWeb('郑州最近的热点新闻', { config, search, read: vi.fn(), onStarted: vi.fn(async () => {}) });
+    expect(search).toHaveBeenCalledTimes(1);
   });
 });

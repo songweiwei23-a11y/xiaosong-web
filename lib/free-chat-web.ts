@@ -1,5 +1,9 @@
-/** 自由对话联网：一次增强搜索、来源筛选、有限正文补读，仍使用现有会员联网预占。 */
-import { aliSearch, type SearchResult } from './ali-search';
+/**
+ * 自由对话联网：一次增强搜索、来源筛选、有限正文补读，仍使用现有会员联网预占（一轮只记一次额度）。
+ * 地方新闻（名单里的地名）另加地方官网 site: 搜索，结果合并；这只多花阿里云的调用，不多记用户额度。
+ */
+import { aliSearch, type SearchHit, type SearchResult } from './ali-search';
+import { localNewsSearches } from './local-news-sources';
 import { getSearchConfig, type SearchConfig } from './search-config';
 import { fetchPage } from './page-fetch';
 import { extractMainText } from './html-text';
@@ -41,11 +45,17 @@ export async function searchFreeChatWeb(question: string, deps: Dependencies): P
     result = await (deps.search || aliSearch)(w.query, config, { topK: 10, way: 'pro-fetch', rewrite: !/site:|官方创作指南/i.test(w.query), today: w.today, timeoutMs: 20_000 });
   } catch { return failed('搜索请求未成功'); }
   if (!result.ok) return failed(`搜索服务未成功返回资料（${result.reason}）`);
+  // 地方新闻：另外搜一次地方官网（site:），和普通结果合并。只有新闻问题且地名已验证过站点才做；站点搜索失败就忽略。
+  const local = localNewsSearches(question);
+  const siteHits: SearchHit[] = local ? (await Promise.all(local.sites.map(site =>
+    (deps.search || aliSearch)(`site:${site} ${local.place} 新闻`, config, { topK: 6, way: 'pro-fetch', rewrite: true, today: w.today, timeoutMs: 20_000 })
+      .then(r => (r.ok ? r.hits : []), () => [])
+  ))).flat() : [];
   const official = await readOfficialDocumentation(question, deps.read || fetchPage);
   const officialRead = new Set(official.map(hit => hit.url));
   // 已发现具体官方章节时，不用部署环境变量/入门教程等宽泛命中稀释参数问题。
   const technicalDocumentation = official.length > 0 && /dify/i.test(question) && /官方|文档|LLM|memory|vision|参数|会话|知识检索/i.test(question);
-  const hits = pickFreeChatSources(technicalDocumentation ? official : [...official, ...result.hits], question, w.recencyDays, deps.now);
+  const hits = pickFreeChatSources(technicalDocumentation ? official : [...official, ...result.hits, ...siteHits], question, w.recencyDays, deps.now);
   if (!hits.length) return failed('没有找到符合问题与时间范围的来源');
   let readCount = 0;
   const sources = await Promise.all(hits.map(async (hit, index) => {

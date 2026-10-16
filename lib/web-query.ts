@@ -66,7 +66,7 @@ const TIME_RULES: [RegExp, (now: number) => [string, number]][] = [
  * 天气问题照旧：天气本来就要日期。
  */
 export function isNewsQuestion(question: string): boolean {
-  return /新闻|热点|头条|资讯|报道|动态|消息/.test(question) && !/天气|气温|降雨|空气质量|穿衣/.test(question);
+  return /新闻|热点|头条|资讯|报道|动态|消息|大事|发生了什么|通知|公告/.test(question) && !/天气|气温|降雨|空气质量|穿衣/.test(question);
 }
 
 /**
