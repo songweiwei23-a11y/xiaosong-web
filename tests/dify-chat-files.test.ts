@@ -26,7 +26,9 @@ describe('自由对话将附件与联网状态传给页面', () => {
     expect(getDifyConversationId).not.toHaveBeenCalled();
     expect(saveDifyConversationId).not.toHaveBeenCalled();
     expect(JSON.parse(state.fetch.mock.calls[0][1].body).conversation_id).toBe('review-own');
-  });
+    // 单独跑约 0.6 秒；全量并行时 CPU 被其他测试抢占，偶尔超过默认的 5–10 秒（2026-10-17 实测三次全量里失败两次）。
+    // 不是在等外部服务（这条路径不访问数据库、不联网），所以只放宽这一条的超时，不掩盖其他测试。
+  }, 30_000);
   it('带选定方案不读取或覆盖档案旧窗口，但仍可延续调用方自己的对话', async () => {
     const { getDifyConversationId, saveDifyConversationId } = await import('@/lib/dify-conversation');
     state.fetch.mockResolvedValue(new Response('data: {"event":"message","answer":"国庆后县城消费观察"}\n\ndata: {"event":"message_end","conversation_id":"new-focus-thread"}\n\n'));

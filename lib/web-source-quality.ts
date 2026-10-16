@@ -36,6 +36,8 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     if (needsDouyinGuide(question) && !DOUYIN_OFFICIAL.includes(u.hostname.toLowerCase())) return;
     // 登录入口及餐饮达人手册不能证明家居商家的推荐机制。
     if (/\/(?:p\/)?login(?:\/|$)/i.test(u.pathname)) return;
+    // 微博用户主页不是热搜内容（2026-10-17 实测：搜「热搜」出来的几乎都是 /user/ 主页，题目却写着「微博热搜」）
+    if (/^s\.weibo\.com$/i.test(u.hostname) && /^\/user\//i.test(u.pathname)) return;
     const nonFoodMerchant = /衣柜|定制家居|家装|建材|装修|家具/.test(question);
     if (nonFoodMerchant && /美食|餐饮|探店达人/.test(hit.title) && !/家居|家装|建材/.test(hit.title)) return;
     // 只挡生态大会的宣传页；平台首页（p/home）是介绍平台规则的正经页面，不挡（2026-10-17 实测：它被挡后这类问题 0 条）

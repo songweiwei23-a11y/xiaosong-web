@@ -9,6 +9,8 @@ import { buildWebQuery } from '@/lib/web-query';
 import { pickFreeChatSources } from '@/lib/web-source-quality';
 import { wantsWebSearch } from '@/lib/web-search-quota';
 import type { SearchHit } from '@/lib/ali-search';
+import { hotListSearches } from '@/lib/hot-list-sources';
+import { searchFreeChatWeb } from '@/lib/free-chat-web';
 
 const NOW = Date.parse('2026-10-17T04:00:00Z'); // 北京时间 10 月 17 日 12 点
 const body = '这是一段足够长的正文，用来代表搜索返回的网页内容，包含具体的规则说明和日期信息。'.repeat(4);
@@ -35,6 +37,42 @@ describe('按需联网：实时事实要自动搜', () => {
   });
   it('咨询类的「今年做账号怎么安排」不算要查资料，不扣额度', () => {
     expect(wantsWebSearch('今年做账号的节奏怎么安排', 'auto')).toBe(false);
+  });
+});
+
+describe('热榜、热搜：按平台官网搜（2026-10-17 实测：全网搜回来的是聚合站）', () => {
+  it('问哪个平台就只搜哪个', () => {
+    expect(hotListSearches('知乎热榜今天有什么')?.map((h) => h.site)).toEqual(['zhihu.com']);
+    expect(hotListSearches('微博热搜今天有什么')?.map((h) => h.site)).toEqual(['s.weibo.com']);
+  });
+  it('没说平台就三家都搜', () => {
+    expect(hotListSearches('今天有什么热搜')?.map((h) => h.site)).toEqual(['zhihu.com', 's.weibo.com', 'toutiao.com']);
+  });
+  it('微博用户主页不当成热搜来源（实测：「热搜」搜出来的几乎都是 /user/ 主页）', () => {
+    const kept = pickFreeChatSources(
+      [{ url: 'https://s.weibo.com/user/123456', title: '微博热搜', content: '这是一段足够长的正文，用来代表微博用户主页的内容。'.repeat(6), published: '2026-08-19' }],
+      '今天有什么微博热搜',
+      2,
+      Date.parse('2026-10-17T04:00:00Z'),
+    );
+    expect(kept).toEqual([]);
+  });
+  it('不是热榜问题不搜', () => {
+    expect(hotListSearches('特斯拉最近股价')).toBeNull();
+  });
+  it('整条链路真的发出 site: 搜索，平台页进入来源', async () => {
+    const config = { endpoint: 'https://example.opensearch.aliyuncs.com/v3/web-search/test', apiKey: 'test-only', source: 'env' as const };
+    const long = '知乎热榜今日话题及热度排行，这是一段足够长的正文用来代表平台页面的内容。'.repeat(6);
+    const search = vi.fn(async (query: string) => ({
+      ok: true as const,
+      hits: query.startsWith('site:zhihu.com') ? [{ url: 'https://www.zhihu.com/hot', title: '知乎热榜', content: long, published: '2026-10-17' }] : [],
+    }));
+    const result = await searchFreeChatWeb('知乎热榜今天有什么', {
+      config, search, read: vi.fn(async () => ({ ok: false as const, reason: 'http' as const, status: 403 })),
+      onStarted: vi.fn(async () => {}), now: Date.parse('2026-10-17T04:00:00Z'),
+    });
+    expect(search.mock.calls.some((c) => String(c[0]).startsWith('site:zhihu.com'))).toBe(true);
+    expect(result?.status.sources.map((s) => s.url)).toContain('https://www.zhihu.com/hot');
   });
 });
 

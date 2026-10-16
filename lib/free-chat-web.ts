@@ -4,6 +4,7 @@
  */
 import { aliSearch, type SearchHit, type SearchResult } from './ali-search';
 import { localNewsSearches } from './local-news-sources';
+import { hotListSearches } from './hot-list-sources';
 import { getSearchConfig, type SearchConfig } from './search-config';
 import { fetchPage } from './page-fetch';
 import { extractMainText } from './html-text';
@@ -51,11 +52,18 @@ export async function searchFreeChatWeb(question: string, deps: Dependencies): P
     (deps.search || aliSearch)(`site:${site} ${local.place} 新闻`, config, { topK: 6, way: 'pro-fetch', rewrite: true, today: w.today, timeoutMs: 20_000 })
       .then(r => (r.ok ? r.hits : []), () => [])
   ))).flat() : [];
+  // 热榜、热搜：按平台官网搜（2026-10-17 实测：全网搜回来的是聚合站，site: 限定后才是平台自己的页面）
+  const hot = hotListSearches(question);
+  const hotHits: SearchHit[] = hot ? (await Promise.all(hot.map(h =>
+    (deps.search || aliSearch)(`site:${h.site} ${h.keyword}`, config, { topK: 6, way: 'pro-fetch', rewrite: false, today: w.today, timeoutMs: 20_000 })
+      .then(r => (r.ok ? r.hits : []), () => [])
+  ))).flat() : [];
   const official = await readOfficialDocumentation(question, deps.read || fetchPage);
   const officialRead = new Set(official.map(hit => hit.url));
   // 已发现具体官方章节时，不用部署环境变量/入门教程等宽泛命中稀释参数问题。
   const technicalDocumentation = official.length > 0 && /dify/i.test(question) && /官方|文档|LLM|memory|vision|参数|会话|知识检索/i.test(question);
-  const hits = pickFreeChatSources(technicalDocumentation ? official : [...official, ...result.hits, ...siteHits], question, w.recencyDays, deps.now);
+  // 热榜问题：平台自己的页面排在全网结果前面（全网结果多是聚合站，排前面会挤掉真正的来源）
+  const hits = pickFreeChatSources(technicalDocumentation ? official : [...official, ...hotHits, ...result.hits, ...siteHits], question, w.recencyDays, deps.now);
   if (!hits.length) return failed('没有找到符合问题与时间范围的来源');
   let readCount = 0;
   const sources = await Promise.all(hits.map(async (hit, index) => {
