@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Check, ChevronDown, Lock, Map as MapIcon, RotateCcw, Trophy } from "lucide-react";
-import { COURSE_MINUTES, COURSE_TOTAL, LESSONS, graduated, type Lesson } from "@/lib/newbie-course";
+import { ArrowRight, Award, BookOpen, Check, ChevronDown, Lock, Map as MapIcon, RotateCcw, Star, Trophy } from "lucide-react";
+import { COURSE_MINUTES, COURSE_TOTAL, LESSONS, TOTAL_STARS, badgesFor, graduated, type Lesson } from "@/lib/newbie-course";
 import { useCourseProgress } from "@/hooks/useCourseProgress";
+import { useCourseStars } from "@/hooks/useCourseStars";
 import { LevelSheet } from "@/components/course/LevelSheet";
+import { StarRow } from "@/components/course/StarRow";
 import { confirmDialog } from "@/components/ui/feedback";
 
 /** 每关在路线上的横向位置（%），走成弯弯曲曲的一条路 */
@@ -15,14 +17,18 @@ const X = [4, 46, 12, 52, 8, 44];
  * 抖音新手课：给压根不了解抖音的小白（内容见 lib/newbie-course.ts）。
  *
  * 主线是闯关地图——有"想通关"的劲头，答题也能确认他真看懂了；
- * 每一关里用刷抖音的方式读要点（LevelSheet）；
+ * 每一关里用刷抖音的方式读要点（LevelSheet），过关后还能玩一个小挑战多拿星；
  * 旁边一个「复习目录」，过了的关随时回来翻，不用重新闯。
+ * 星星和徽章只记在本机，不影响过关。
  */
 export default function CoursePage() {
   const { passed, ready, pass, reset } = useCourseProgress();
+  const { stars, award } = useCourseStars();
   const [tab, setTab] = useState<"map" | "review">("map");
   const [active, setActive] = useState<Lesson | null>(null);
   const done = graduated(passed);
+  const totalStars = LESSONS.reduce((s, l) => s + (stars[String(l.no)] ?? 0), 0);
+  const badges = badgesFor(passed, stars);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-9">
@@ -30,7 +36,7 @@ export default function CoursePage() {
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight text-foreground sm:text-[28px]">抖音新手课</h1>
           <p className="mt-1.5 text-[14px] text-muted-foreground">
-            {COURSE_TOTAL} 关，每关 3～4 分钟，一共约 {COURSE_MINUTES} 分钟。读要点、答一题，答对就过关。
+            {COURSE_TOTAL} 关，每关 3～4 分钟，一共约 {COURSE_MINUTES} 分钟。读要点、答一题，答对就过关；再玩个小挑战，多拿星。
           </p>
         </div>
         <div className="flex rounded-xl border border-border/70 p-1 text-[13px]">
@@ -56,6 +62,29 @@ export default function CoursePage() {
           <div className="brand-gradient h-full rounded-full transition-all" style={{ width: `${(passed / COURSE_TOTAL) * 100}%` }} />
         </div>
         <span className="text-[13px] tabular-nums text-muted-foreground">{passed} / {COURSE_TOTAL} 关</span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2.5 text-[13px]">
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+          星星 <b className="tabular-nums text-foreground">{totalStars}</b> / {TOTAL_STARS}
+          <span className="text-[12px] text-muted-foreground/70">（记在这台电脑上）</span>
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {badges.map((b) => (
+            <span
+              key={b.id}
+              title={b.hint}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[12px] ${
+                b.earned ? "border-amber-400/60 bg-amber-400/15 text-foreground" : "border-border/60 text-muted-foreground/70"
+              }`}
+            >
+              <Award className="h-3 w-3" />
+              {b.label}
+              {!b.earned && <span className="text-[11px] text-muted-foreground/60">· {b.hint}</span>}
+            </span>
+          ))}
+        </div>
       </div>
 
       {done && (
@@ -113,13 +142,18 @@ export default function CoursePage() {
                 <span className={`text-[12.5px] leading-snug sm:text-[13.5px] ${state === "locked" ? "text-muted-foreground/60" : "text-foreground"}`}>
                   <span className="block text-[11px] text-muted-foreground">第 {l.no} 关{state === "open" ? " · 点我开始" : ""}</span>
                   {l.title}
+                  {state !== "locked" && (
+                    <span className="mt-1 block">
+                      <StarRow n={stars[String(l.no)] ?? 0} />
+                    </span>
+                  )}
                 </span>
               </button>
             );
           })}
         </div>
       ) : (
-        <ReviewList passed={passed} />
+        <ReviewList passed={passed} stars={stars} />
       )}
 
       {done && (
@@ -142,6 +176,7 @@ export default function CoursePage() {
           hasNext={active.no < COURSE_TOTAL}
           onClose={() => setActive(null)}
           onPassed={() => pass(active.no)}
+          onStars={(n) => award(active.no, n)}
           onNext={() => setActive(LESSONS[active.no] ?? null)}
         />
       )}
@@ -150,7 +185,7 @@ export default function CoursePage() {
 }
 
 /** 复习目录：过了的关随时翻，没过的锁着（先闯关，别一口气全看完就不想动手了） */
-function ReviewList({ passed }: { passed: number }) {
+function ReviewList({ passed, stars }: { passed: number; stars: Record<string, number> }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="mt-6 space-y-2.5">
@@ -174,6 +209,7 @@ function ReviewList({ passed }: { passed: number }) {
                   第 {l.no} 课 · {l.title}
                 </span>
                 <span className="mt-0.5 block text-[12.5px] text-muted-foreground">{unlocked ? l.hook : `过了第 ${l.no} 关就能在这里复习`}</span>
+                {unlocked && <StarRow n={stars[String(l.no)] ?? 0} className="mt-1" />}
               </span>
               {unlocked && <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />}
             </button>

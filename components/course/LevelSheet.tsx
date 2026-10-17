@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, PartyPopper, X } from "lucide-react";
-import type { Lesson } from "@/lib/newbie-course";
+import { starsFor, type Lesson } from "@/lib/newbie-course";
+import { ChallengePanel } from "@/components/course/ChallengePanel";
+import { StarRow } from "@/components/course/StarRow";
 
 /** 卡片底色：深色竖屏，像刷抖音；几种轮着用，一张一张翻的时候看得出换了一张 */
 const CARD_BG = [
@@ -12,10 +14,11 @@ const CARD_BG = [
   "linear-gradient(160deg,#042f2e,#0e7490)",
 ];
 
-type Phase = "cards" | "quiz";
+type Phase = "cards" | "quiz" | "challenge";
 
 /**
  * 一关：先"刷"几张要点卡（上滑下一张，像刷抖音），再答一道题，答对过关。
+ * 过关之后可以玩一个小挑战多拿一颗星（挑战不影响过关）。
  * 手机上从底部升起、电脑上居中；Esc 关闭，↓ / 空格翻下一张。
  */
 export function LevelSheet({
@@ -23,17 +26,26 @@ export function LevelSheet({
   hasNext,
   onClose,
   onPassed,
+  onStars,
   onNext,
 }: {
   lesson: Lesson;
   hasNext: boolean;
   onClose: () => void;
   onPassed: () => void;
+  /** 这一关拿到的星（页面只升不降地记到本机） */
+  onStars: (n: number) => void;
   onNext: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>("cards");
   const [idx, setIdx] = useState(0);
   const [pick, setPick] = useState<number | null>(null);
+  /** 答错过几次：第一次就答对才是 2 颗星 */
+  const [wrongs, setWrongs] = useState(0);
+  /** 过关时是不是第一次就答对；还没过关时是 null */
+  const [firstTry, setFirstTry] = useState<boolean | null>(null);
+  const [challengeReported, setChallengeReported] = useState(false);
+  const [challengePerfect, setChallengePerfect] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const cards = [{ head: lesson.title, body: lesson.hook, intro: true }, ...lesson.points.map((p) => ({ ...p, intro: false }))];
   const last = cards.length - 1;
@@ -63,6 +75,7 @@ export function LevelSheet({
   }, [phase, idx, last, onClose]);
 
   const right = pick === lesson.quiz.answer;
+  const earned = firstTry === null ? 0 : starsFor(firstTry, challengePerfect);
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 sm:items-center sm:p-4" onClick={onClose}>
@@ -134,7 +147,14 @@ export function LevelSheet({
                   key={o}
                   onClick={() => {
                     setPick(i);
-                    if (i === lesson.quiz.answer) onPassed();
+                    if (i === lesson.quiz.answer) {
+                      const first = wrongs === 0;
+                      setFirstTry(first);
+                      onPassed();
+                      onStars(starsFor(first, false));
+                    } else {
+                      setWrongs((w) => w + 1);
+                    }
                   }}
                   disabled={right}
                   className={`w-full rounded-2xl border px-4 py-3.5 text-left text-[15px] transition-colors ${
@@ -161,8 +181,22 @@ export function LevelSheet({
                   <PartyPopper className="h-5 w-5 text-amber-300" />
                   答对了，第 {lesson.no} 关通过！
                 </div>
+                <div className="mt-2 flex items-center gap-2.5 text-[13px] text-white/85">
+                  <StarRow n={earned} emptyClassName="text-white/30" />
+                  <span>
+                    {firstTry ? "第一次就答对：2 颗" : "错过后答对：1 颗"}
+                    {challengePerfect ? "，挑战全对再 +1 颗" : ""}
+                  </span>
+                </div>
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-white/85">{lesson.quiz.why}</p>
                 <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhase("challenge")}
+                    className="flex items-center justify-center gap-1.5 rounded-2xl border border-amber-300/60 bg-amber-300/10 py-3 text-[14px] font-semibold text-amber-100"
+                  >
+                    {challengeReported ? "再练一次小挑战" : "玩小挑战，再拿 1 颗星"}
+                  </button>
                   <Link href={lesson.action.href} className="flex items-center justify-center gap-1.5 rounded-2xl bg-white py-3 text-[14px] font-semibold text-black">
                     {lesson.action.label} <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -172,6 +206,23 @@ export function LevelSheet({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {phase === "challenge" && (
+          <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-12" style={{ background: CARD_BG[2] }}>
+            <ChallengePanel
+              challenge={lesson.challenge}
+              reported={challengeReported}
+              onReport={(perfect) => {
+                setChallengeReported(true);
+                if (perfect) {
+                  setChallengePerfect(true);
+                  onStars(starsFor(firstTry === true, true));
+                }
+              }}
+              onBack={() => setPhase("quiz")}
+            />
           </div>
         )}
       </div>

@@ -20,8 +20,51 @@ export interface Lesson {
   points: { head: string; body: string }[];
   /** 一个小测验（闯关版用；答对才过关） */
   quiz: { q: string; options: string[]; answer: number; why: string };
+  /** 小挑战：不影响过关。第一次玩就全对，再得 1 颗星 */
+  challenge: Challenge;
   /** 学完去试试 */
   action: { label: string; href: string };
+}
+
+/** 判断题的一条：「这条会留住人吗？」这类，答对/答错都有解释 */
+export interface JudgeCase {
+  text: string;
+  ok: boolean;
+  why: string;
+}
+
+/**
+ * 小挑战两种玩法：
+ *  - judge：一条一条判断对不对（像刷抖音，划过去前先判断）
+ *  - order：把几步按正确顺序点出来
+ */
+export type Challenge =
+  | { kind: 'judge'; title: string; intro: string; cases: JudgeCase[] }
+  | { kind: 'order'; title: string; intro: string; steps: string[]; why: string };
+
+/** 每关最多几颗星 */
+export const MAX_STAR = 3;
+
+/**
+ * 星星：答题第一次就对得 2 颗，错过再对得 1 颗；挑战第一次就全对再加 1 颗。
+ * 星星只存在本机，不影响过关，也不会因为重玩而减少。
+ */
+export function starsFor(quizFirstTry: boolean, challengePerfect: boolean): number {
+  return (quizFirstTry ? 2 : 1) + (challengePerfect ? 1 : 0);
+}
+
+/**
+ * 成就徽章。「第一次过关」看进度，其余看星星。没拿到的也列出来（earned: false），
+ * 让人知道还能拿什么。
+ */
+export function badgesFor(passed: number, stars: Record<string, number>) {
+  const list = LESSONS.map((l) => stars[String(l.no)] ?? 0);
+  return [
+    { id: 'first', label: '第一次过关', hint: '答对第一道题', earned: clampPassed(passed) >= 1 },
+    { id: 'perfect-one', label: '满星过关', hint: `某一关拿满 ${MAX_STAR} 颗星`, earned: list.some((s) => s >= MAX_STAR) },
+    { id: 'perfect-all', label: '全程满星', hint: `${COURSE_TOTAL} 关全部拿满星`, earned: list.length === COURSE_TOTAL && list.every((s) => s >= MAX_STAR) },
+    { id: 'graduate', label: '新手毕业', hint: `${COURSE_TOTAL} 关全部通过`, earned: graduated(passed) },
+  ];
 }
 
 export const LESSONS: Lesson[] = [
@@ -43,6 +86,17 @@ export const LESSONS: Lesson[] = [
       answer: 1,
       why: '抖音会先推给一小批人，反应好再推给更多人。这是创作者普遍总结的规律（平台不公开具体规则）。',
     },
+    challenge: {
+      kind: 'judge',
+      title: '刷到这几条，哪些说法对？',
+      intro: '判断下面四条说法，对的点「对」，错的点「不对」。',
+      cases: [
+        { text: '一条视频一发布，就会被推给全网所有人。', ok: false, why: '不是。抖音先推给一小批人试试，反应好才逐步扩大。' },
+        { text: '这条视频看完的人多，还有人点赞评论，它就有机会推给更大的一批人。', ok: true, why: '反应好才会扩大范围，这就是「先试后扩」。' },
+        { text: '我还没有粉丝，发了也不会有人看到，先别拍了。', ok: false, why: '推荐看的是视频本身，新号也有机会被推给陌生人。' },
+        { text: '开头 3 秒就被划走的人很多，说明开头要先改。', ok: true, why: '前 3 秒留不住人，后面的内容就没有机会被看完。' },
+      ],
+    },
     action: { label: '看看开物怎么写开头', href: '/dashboard/growth?tab=opening' },
   },
   {
@@ -62,6 +116,18 @@ export const LESSONS: Lesson[] = [
       options: ['大家好，欢迎来到我的店', '同样 15 块一碗面，凭什么他家天天排队？', '今天给大家介绍一下我们的产品'],
       answer: 1,
       why: '它抛出一个让人好奇的问题，刷到的人会想知道答案。前两种一听就是广告，很容易被划走。',
+    },
+    challenge: {
+      kind: 'order',
+      title: '一条 30 秒口播，四段按什么顺序？',
+      intro: '下面的句子是四段内容，按顺序点出来：先点第一段，再点第二段……',
+      steps: [
+        '开头 3 秒：抛一句让人想看下去的话',
+        '中间：给一个干货，或讲一个具体的小故事',
+        '结尾：抛一个问题，引大家在评论区说',
+        '最后：预告下一条，或引导关注',
+      ],
+      why: '先抓住人，再给内容，最后引互动。顺序反了，刷到的人还没看到干货就划走了。',
     },
     action: { label: '让开物帮你写一条完整脚本', href: '/dashboard/script' },
   },
@@ -84,6 +150,17 @@ export const LESSONS: Lesson[] = [
       answer: 1,
       why: '定位决定了推荐推给谁。定位不清，拍得再多，推给的也可能是不相干的人。',
     },
+    challenge: {
+      kind: 'judge',
+      title: '哪些是「先想清楚，再开拍」的做法？',
+      intro: '下面四种做法，判断对不对。',
+      cases: [
+        { text: '先写清楚账号是谁、拍给谁看，再去选题。', ok: true, why: '定位清楚，推荐才会推给对的人，这是第一步。' },
+        { text: '先买好相机和灯，再想拍什么。', ok: false, why: '设备不是第一步。手机就够用，先定位、再选题。' },
+        { text: '选题从顾客最常问的问题出发，一次想十个，挑最想拍的。', ok: true, why: '问题来自顾客，拍出来的内容有人关心。' },
+        { text: '一条视频里把想说的全堆进去，信息越多越好。', ok: false, why: '短视频时间短，讲太多反而抓不住重点。' },
+      ],
+    },
     action: { label: '去做账号定位', href: '/dashboard/positioning' },
   },
   {
@@ -104,6 +181,18 @@ export const LESSONS: Lesson[] = [
       options: ['背对着门口的光拍，显得有氛围', '脸朝着光、找安静的角落、竖着拍', '横着拍，画面更宽'],
       answer: 1,
       why: '脸朝光才看得清、安静才听得清、竖屏才占满手机屏幕。',
+    },
+    challenge: {
+      kind: 'order',
+      title: '在店里拍口播，按什么顺序准备？',
+      intro: '把准备的四步按顺序点出来。',
+      steps: [
+        '找一个安静的角落，关掉风扇和空调',
+        '收拾背景，把乱七八糟的东西挪开',
+        '让脸朝着窗户，光从正面来',
+        '竖着拿稳手机，用支架固定，再开拍',
+      ],
+      why: '先定声音，再收拾画面，然后对光，最后固定机位。这样返工最少。',
     },
     action: { label: '先出一份分镜，照着拍', href: '/dashboard/storyboard' },
   },
@@ -126,6 +215,17 @@ export const LESSONS: Lesson[] = [
       answer: 0,
       why: '定位能让视频更多地推给附近的人，看完能直接找到店。',
     },
+    challenge: {
+      kind: 'judge',
+      title: '发布前，这几种做法对不对？',
+      intro: '判断四种做法，对的点「对」，错的点「不对」。',
+      cases: [
+        { text: '标题写清楚这条讲什么，让人一眼知道能得到什么。', ok: true, why: '别人先看标题和封面，才决定要不要点开。' },
+        { text: '门店视频加上店铺定位，附近的人更容易刷到。', ok: true, why: '定位让视频推给附近的人，看完能直接找过来。' },
+        { text: '话题越多越好，一条视频加二十个，推得就越广。', ok: false, why: '话题要少而准，2～3 个相关的就够，帮平台知道该推给谁。' },
+        { text: '标题和封面不重要，内容好就行。', ok: false, why: '内容再好，也要先被点开。标题和封面是被点开的第一关。' },
+      ],
+    },
     action: { label: '去起一个好标题', href: '/dashboard/title' },
   },
   {
@@ -147,12 +247,25 @@ export const LESSONS: Lesson[] = [
       answer: 1,
       why: '删视频和买量都解决不了问题。找到原因、下一条改进，才会越做越好。',
     },
+    challenge: {
+      kind: 'order',
+      title: '一条视频数据不好，正确的处理顺序是？',
+      intro: '把四步按顺序点出来。',
+      steps: [
+        '先别删，把这条留着当样本',
+        '看播放量和完播率，判断大概卡在哪一步',
+        '找出是开头、节奏还是内容的问题',
+        '下一条针对这个问题改，再看数据',
+      ],
+      why: '删了就没有样本可以复盘。先留着，找到原因，下一条改进，数据才有参考价值。',
+    },
     action: { label: '开始 7 天起号计划', href: '/dashboard#launch-plan' },
   },
 ];
 
 export const COURSE_TOTAL = LESSONS.length;
 export const COURSE_MINUTES = LESSONS.reduce((s, l) => s + l.minutes, 0);
+export const TOTAL_STARS = COURSE_TOTAL * MAX_STAR;
 
 /** 过了几关，夹在 0~总关数之间；脏数据当 0 */
 export function clampPassed(v: unknown): number {
