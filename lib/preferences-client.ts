@@ -11,13 +11,16 @@ export interface PreferenceView {
   stats: { edits: number; reduction: number } | null;
   learnedAt: string | null;
   newCount: number;
+  /** 这次是对照组：生成不带偏好（服务端决定，见 lib/learning-signals） */
+  control?: boolean;
 }
 
 const scope = (profileId: string | null) => encodeURIComponent(profileId || 'default');
 
-export async function fetchPreferences(profileId: string | null): Promise<PreferenceView | null> {
+export async function fetchPreferences(profileId: string | null, purpose?: 'generate'): Promise<PreferenceView | null> {
   try {
-    const res = await fetch(`/api/preferences?profileId=${scope(profileId)}`, { cache: 'no-store' });
+    const q = purpose ? `&purpose=${purpose}` : '';
+    const res = await fetch(`/api/preferences?profileId=${scope(profileId)}${q}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return (await res.json()) as PreferenceView;
   } catch {
@@ -25,9 +28,9 @@ export async function fetchPreferences(profileId: string | null): Promise<Prefer
   }
 }
 
-/** 生成时用：学习开着时生效的那几条；读不到就当没有，不挡生成 */
+/** 生成时用：学习开着时生效的那几条；对照组那次返回空；读不到就当没有，不挡生成 */
 export async function fetchActivePreferences(profileId: string | null): Promise<PreferenceItem[]> {
-  const v = await fetchPreferences(profileId);
+  const v = await fetchPreferences(profileId, 'generate');
   return v?.ready && v.enabled ? v.items.filter((i) => i.status === 'active') : [];
 }
 

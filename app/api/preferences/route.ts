@@ -5,6 +5,7 @@ import { sseTask } from '@/lib/dify-task';
 import { DEFAULT_PROFILE_SCOPE } from '@/lib/profile-history';
 import { learnPreferences, missingTable, validProfileKey } from '@/lib/preference-learner';
 import { newSince, readStoredItems, readUserItem, settle, sameMeaning, type PreferenceItem } from '@/lib/preferences';
+import { isControlDay } from '@/lib/learning-signals';
 
 /*
  * 我的创作偏好（2026-10-04，lib/preferences、lib/preference-learner）。
@@ -46,12 +47,17 @@ function view(row: Record<string, unknown> | null) {
 export async function GET(request: Request) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response!;
-  const key = validProfileKey(new URL(request.url).searchParams.get('profileId'));
+  const params = new URL(request.url).searchParams;
+  const key = validProfileKey(params.get('profileId'));
   if (!key) return fail('档案编号不正确');
   if (!(await ownsProfile(guard.userId!, key))) return fail('没有这个档案', 404);
   const { data, error } = await getServiceSupabase().from('creator_preferences').select('*').eq('user_id', guard.userId!).eq('profile_key', key).maybeSingle();
   if (missingTable(error)) return Response.json({ ready: false, enabled: true, items: [], stats: null, learnedAt: null, newCount: 0 }, { headers });
   if (error) return fail('偏好暂时读不到，请稍后再试', 503);
+  // 对照组（二期）：这个人今天在对照组时，生成用的偏好为空；偏好卡本身照常显示
+  if (params.get('purpose') === 'generate' && isControlDay(guard.userId!)) {
+    return Response.json({ ...view(data), items: [], control: true }, { headers });
+  }
   return Response.json(view(data), { headers });
 }
 

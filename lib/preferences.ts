@@ -26,7 +26,12 @@ export const PREFERENCE_CATEGORIES: { id: PreferenceCategory; label: string }[] 
 ];
 const CATEGORY_IDS = new Set(PREFERENCE_CATEGORIES.map((c) => c.id));
 
-export interface PreferenceEvidence { edits: number; saves: number; published: number }
+export interface PreferenceEvidence { edits: number; saves: number; published: number; feedback: number }
+
+/** 证据的来源：改稿、收藏、已拍已发、结果反馈（有用 / 没用 + 理由） */
+export type EvidenceKind = 'edit' | 'save' | 'published' | 'feedback';
+
+export const emptyEvidence = (): PreferenceEvidence => ({ edits: 0, saves: 0, published: 0, feedback: 0 });
 
 export interface PreferenceItem {
   id: string;
@@ -130,7 +135,7 @@ export function editTrend(ratios: number[]): EditTrend | null {
 export interface Evidence {
   /** E1、E2……：模型引用证据时用这个编号，程序据此数次数 */
   id: string;
-  kind: 'edit' | 'save' | 'published';
+  kind: EvidenceKind;
   /** 来自哪个板块 */
   board: string;
   at: string;
@@ -149,7 +154,13 @@ export function editEvidenceText(d: EditDiff): string {
   return lines.join('\n');
 }
 
-const KIND_LABEL: Record<Evidence['kind'], string> = { edit: '改稿', save: '收藏', published: '已拍/已发' };
+const KIND_LABEL: Record<Evidence['kind'], string> = { edit: '改稿', save: '收藏', published: '已拍/已发', feedback: '反馈' };
+
+/** 反馈的证据正文：有用 / 没用（带理由）＋ 结果节选 */
+export function feedbackEvidenceText(rating: number, reason: string | null, excerpt: string): string {
+  const head = rating > 0 ? '他说这条结果「有用」' : `他说这条结果「没用」${reason ? `（理由：${reason}）` : ''}`;
+  return `${head}\n结果节选：${excerpt.replace(/\s+/g, ' ').slice(0, 300)}`;
+}
 
 export function buildLearnPrompt(p: { evidence: Evidence[]; current: PreferenceItem[]; rejected: string[]; profileSummary: string; today: string }): string {
   const ev = p.evidence.map((e) => `[${e.id}] ${KIND_LABEL[e.kind]}·${e.board}·${e.at.slice(0, 10)}\n${e.text}`).join('\n\n');
@@ -160,6 +171,7 @@ export function buildLearnPrompt(p: { evidence: Evidence[]; current: PreferenceI
 - 改稿：AI 写的原稿被他在画布里改了，给出的是删掉/改掉的句子、新写的句子、开头的变化、长度的变化（最有价值）
 - 收藏：他收藏或认可的内容节选
 - 已拍/已发：他真正拍了、发了的最终稿节选
+- 反馈：他对某条结果点了「有用」或「没用」（没用时附了理由）。「没用」说明他不要什么，「有用」说明他要什么；只学写法，不学节选里的事实
 
 ${ev}
 
@@ -242,10 +254,13 @@ export function mergePreferences(p: { current: PreferenceItem[]; learned: Learne
     if (text.length < 4 || !CATEGORY_IDS.has(l.category as PreferenceCategory) || looksLikeFact(text) || isRejected(text)) continue;
     const ids = [...new Set(l.evidence.filter((id) => kinds.has(id)))];
     if (!ids.length) continue;
-    const from: PreferenceEvidence = { edits: 0, saves: 0, published: 0 };
+    const from = emptyEvidence();
     for (const id of ids) {
       const k = kinds.get(id)!;
-      if (k === 'edit') from.edits++; else if (k === 'save') from.saves++; else from.published++;
+      if (k === 'edit') from.edits++;
+      else if (k === 'save') from.saves++;
+      else if (k === 'feedback') from.feedback++;
+      else from.published++;
     }
     const hit = out.find((i) => sameMeaning(i.text, text));
     if (hit) {
@@ -287,7 +302,7 @@ export function readUserItem(raw: unknown, now: number): PreferenceItem | null {
   const category = CATEGORY_IDS.has(o.category as PreferenceCategory) ? (o.category as PreferenceCategory) : 'tone';
   if (text.length < 2) return null;
   const iso = new Date(now).toISOString();
-  return { id: typeof o.id === 'string' && o.id ? o.id.slice(0, 64) : newId(), category, text, count: 0, from: { edits: 0, saves: 0, published: 0 }, status: 'active', origin: 'manual', firstSeen: iso, lastSeen: iso };
+  return { id: typeof o.id === 'string' && o.id ? o.id.slice(0, 64) : newId(), category, text, count: 0, from: emptyEvidence(), status: 'active', origin: 'manual', firstSeen: iso, lastSeen: iso };
 }
 
 /** 存在库里的条目读回来时清洗（防脏数据） */
@@ -304,7 +319,7 @@ export function readStoredItems(raw: unknown): PreferenceItem[] {
       category: o.category as PreferenceCategory,
       text: o.text.slice(0, TEXT_MAX),
       count: n(o.count),
-      from: { edits: n(f.edits), saves: n(f.saves), published: n(f.published) },
+      from: { edits: n(f.edits), saves: n(f.saves), published: n(f.published), feedback: n(f.feedback) },
       status: o.status === 'active' ? 'active' : 'watching',
       origin: o.origin === 'manual' ? 'manual' : 'learned',
       firstSeen: typeof o.firstSeen === 'string' ? o.firstSeen : new Date(0).toISOString(),
@@ -340,6 +355,19 @@ export function preferenceHint(items: PreferenceItem[] | null | undefined, max =
   if (!active.length) return '';
   const shown = active.slice(0, max).map((i) => (i.text.length > 16 ? `${i.text.slice(0, 16)}…` : i.text));
   return `已按你的偏好写：${shown.join(' · ')}${active.length > max ? ` 等 ${active.length} 条` : ''}`;
+}
+
+/** 一条偏好的依据：从几次修改、几条收藏、哪些反馈里看出来的（点开「依据」时显示） */
+export function basisText(item: PreferenceItem): string {
+  if (item.origin === 'manual') return '你自己加的';
+  const f = item.from;
+  const parts = [
+    f.edits && `改稿 ${f.edits} 次`,
+    f.saves && `收藏 ${f.saves} 条`,
+    f.published && `已拍/已发 ${f.published} 条`,
+    f.feedback && `反馈 ${f.feedback} 次`,
+  ].filter(Boolean);
+  return parts.length ? `依据：${parts.join(' · ')}` : '依据：还在积累';
 }
 
 /** 首页提示：上次看卡片之后新生效的有几条 */

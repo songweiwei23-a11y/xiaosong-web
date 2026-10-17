@@ -4,12 +4,16 @@ import { useState } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { postSafely } from "@/lib/safe-post";
-import { FEEDBACK_REASONS, type FeedbackReason } from "@/lib/result-feedback";
+import { FEEDBACK_REASONS, FEEDBACK_EXCERPT_MAX, type FeedbackReason } from "@/lib/result-feedback";
+import { getActiveProfileId } from "@/lib/active-profile";
 
 type Phase = "ask" | "down" | "sent";
 
-/** 每条结果底下的「有用 / 没用」。调用方给它的 key 绑定结果，换了结果就重新开始 */
-export function ResultFeedback({ board }: { board: string }) {
+/**
+ * 每条结果底下的「有用 / 没用」。调用方给它的 key 绑定结果，换了结果就重新开始。
+ * excerpt 是这条结果的正文：带上它，「没用」的写法才能被偏好学习看到（学不到内容，只学写法）。
+ */
+export function ResultFeedback({ board, excerpt }: { board: string; excerpt?: string }) {
   const [phase, setPhase] = useState<Phase>("ask");
   const [busy, setBusy] = useState(false);
 
@@ -20,7 +24,13 @@ export function ResultFeedback({ board }: { board: string }) {
       const res = await postSafely("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ board, rating, reason }),
+        body: JSON.stringify({
+          board,
+          rating,
+          reason,
+          profileId: getActiveProfileId(),
+          excerpt: excerpt ? excerpt.slice(0, FEEDBACK_EXCERPT_MAX) : null,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

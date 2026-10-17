@@ -3,6 +3,7 @@ import { reserveCreation, releaseCreation, recordCreationCompletion, completionU
 import { requireUser, requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard'
 import { readJsonBody, BodyError } from '@/lib/read-body'
 import { buildSearchQuery } from '@/lib/search-query'
+import { recordGenerationSignal } from '@/lib/learning-signals'
 import {
   getDifyConversationId,
   saveDifyConversationId,
@@ -338,6 +339,7 @@ export async function POST(request: NextRequest) {
                 // 此处曾传 'chat'，映射不到列名，扣减被静默跳过，用了不计次。
                 try {
                   await recordCreationCompletion(reservation!, { result: answerText, terminal: completionTerminal!, conversationId: conversationIdFromResponse, messageId: upstreamMessageId, usage: usageMetadata }, '自由对话')
+                  void recordGenerationSignal({ userId: guard.userId!, profileId: profileId ?? null, board: 'freeChat', result: answerText })
                   await incrementUsageServer(guard.userId, 'freeChat', '自由对话', {
                   question: (query || '').slice(0, 2000),
                   answer: answerText.slice(0, 4000),

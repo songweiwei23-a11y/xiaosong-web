@@ -6,6 +6,7 @@ import { requireUser, requireUserWithQuota, incrementUsageServer } from '@/lib/a
 import { readJsonBody, BodyError } from '@/lib/read-body';
 import { buildSearchQuery } from '@/lib/search-query';
 import { getFeatureFromTaskType } from '@/lib/task-type';
+import { recordGenerationSignal } from '@/lib/learning-signals';
 import {
   getDifyConversationId,
   saveDifyConversationId,
@@ -638,7 +639,9 @@ export async function POST(req: NextRequest) {
             generationCompleted = true;
             try {
               await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: usageMetadata }, body.taskType);
-              await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation); }
+              await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation);
+              // 学习信号：这次生成是不是对照组、结果开头的指纹（尽力而为，不影响结果）
+              void recordGenerationSignal({ userId: userId!, profileId: profileId ?? null, board: getFeatureFromTaskType(body.taskType), result: fullResponse }); }
             catch { send({ event: 'quota_warning', message: '内容已生成，额度同步稍有延迟，请保留结果' }); }
             // 结束标记：页面据此区分"写完了"和"半路断了"
             send({ event: 'message_end', conversation_id: capturedConversationId, message_id: capturedMessageId });

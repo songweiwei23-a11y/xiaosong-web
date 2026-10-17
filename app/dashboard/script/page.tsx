@@ -70,6 +70,7 @@ import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
 import { AI_SCRIPT_LENGTH_RULE, AI_SCRIPT_TARGET_TEXT, EXAMPLE_LENGTH_NOTE, scriptLengthRule } from "@/lib/ai-recommend";
+import { memoryEnabled, setMemoryEnabled, type MemoryDefaults, type MemoryField } from "@/lib/settings-memory";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
@@ -347,6 +348,51 @@ export default function ScriptPage() {
       if (id) setSelectedProfileId(id);
     });
   }, []);
+
+  // 设置记忆（二期）：打开时把他常选的时长、目的、结构、平台预填上。
+  // 只填他还没动过的字段；从别处带来的设置（incomingSetup）优先，不预填；换了档案会按新档案重新看一次。
+  const [memory, setMemory] = useState<{ summary: string; applied: MemoryField[] } | null>(null);
+  const memoryFor = useRef<string | null>(null);
+  const prefillFromMemory = (d: MemoryDefaults): MemoryField[] => {
+    const applied: MemoryField[] = [];
+    if (d.duration && durationMode === "ai") {
+      const v = d.duration.value;
+      if ((DURATIONS as readonly string[]).includes(v)) { setDuration(v); setDurationMode("preset"); applied.push("duration"); }
+      else if (durationSeconds(v)) { setCustomDuration(String(durationSeconds(v))); setDurationMode("custom"); applied.push("duration"); }
+    }
+    if (d.purpose && scriptRole === "自动") { setScriptRole(d.purpose.value as "流量型" | "人设型" | "变现型"); applied.push("purpose"); }
+    if (d.structure && scriptStructure === "auto" && SCRIPT_STRUCTURES.some((s) => s.id === d.structure!.value)) { setScriptStructure(d.structure.value); applied.push("structure"); }
+    if (d.platform && platform === "抖音" && d.platform.value !== "抖音" && (PLATFORMS as readonly string[]).includes(d.platform.value)) { setPlatform(d.platform.value); applied.push("platform"); }
+    return applied;
+  };
+  useEffect(() => {
+    if (incomingSetup || !memoryEnabled()) return;
+    const scope = selectedProfileId || "default";
+    if (memoryFor.current === scope) return;
+    let off = false;
+    void fetch(`/api/settings-memory?board=script&profileId=${encodeURIComponent(scope)}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { defaults?: MemoryDefaults; summary?: string } | null) => {
+        if (off || !d?.defaults || !d.summary) return;
+        memoryFor.current = scope;
+        const applied = prefillFromMemory(d.defaults);
+        setMemory(applied.length ? { summary: d.summary, applied } : null);
+      })
+      .catch(() => {});
+    return () => { off = true; };
+    // 只在档案或「从别处带来」变化时看一次；预填用的是打开那一刻的默认值
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProfileId, incomingSetup]);
+  /** 改回默认：只还原这次预填过的字段 */
+  const revertMemory = () => {
+    if (!memory) return;
+    if (memory.applied.includes("duration")) setDurationMode("ai");
+    if (memory.applied.includes("purpose")) setScriptRole("自动");
+    if (memory.applied.includes("structure")) setScriptStructure("auto");
+    if (memory.applied.includes("platform")) setPlatform("抖音");
+    setMemory(null);
+  };
+  const turnOffMemory = () => { setMemoryEnabled(false); revertMemory(); };
 
   const loadProfiles = async () => {
     console.log("🔍 开始加载档案...");
@@ -1071,6 +1117,13 @@ ${formatRequirements}
           <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
           {/* 基础设置 */}
           <CollapsibleSection title="基础设置" icon={Settings} defaultOpen={true}>
+          {memory && (
+            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-primary/20 bg-primary/[0.05] px-3 py-2 text-[11.5px] text-muted-foreground">
+              <span>✨ {memory.summary}</span>
+              <button type="button" onClick={revertMemory} className="text-primary hover:underline">改回默认</button>
+              <button type="button" onClick={turnOffMemory} className="hover:text-foreground hover:underline">关闭「记住我的常用设置」</button>
+            </div>
+          )}
             <Field label="脚本类型" required stacked>
               <div className="grid grid-cols-2 gap-2.5">
                 {Object.entries(SCRIPT_TYPES)

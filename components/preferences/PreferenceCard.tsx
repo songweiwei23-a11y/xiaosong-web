@@ -19,7 +19,7 @@ const fmt = (iso: string | null) => {
 
 function basis(i: PreferenceItem) {
   if (i.origin === "manual" && !i.count) return "你自己加的";
-  const parts = [i.from.edits && `改稿 ${i.from.edits} 次`, i.from.saves && `收藏 ${i.from.saves} 条`, i.from.published && `已拍/已发 ${i.from.published} 条`].filter(Boolean);
+  const parts = [i.from.edits && `改稿 ${i.from.edits} 次`, i.from.saves && `收藏 ${i.from.saves} 条`, i.from.published && `已拍/已发 ${i.from.published} 条`, i.from.feedback && `反馈 ${i.from.feedback} 次`].filter(Boolean);
   return `依据：${parts.join("、") || `${i.count} 个内容`}${i.origin === "manual" ? " · 你改过" : ""}`;
 }
 

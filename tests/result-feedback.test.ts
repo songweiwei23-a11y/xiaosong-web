@@ -39,9 +39,9 @@ beforeEach(() => {
 
 describe('结果反馈：输入校验', () => {
   it('有用：不带原因；没用：原因只认白名单', () => {
-    expect(parseFeedback({ board: 'script', rating: 1, reason: '太空太套话' })).toEqual({ board: 'script', rating: 1, reason: null });
-    expect(parseFeedback({ board: 'script', rating: -1, reason: '太空太套话' })).toEqual({ board: 'script', rating: -1, reason: '太空太套话' });
-    expect(parseFeedback({ board: 'script', rating: -1, reason: '随便写的' })).toEqual({ board: 'script', rating: -1, reason: null });
+    expect(parseFeedback({ board: 'script', rating: 1, reason: '太空太套话' })).toMatchObject({ board: 'script', rating: 1, reason: null });
+    expect(parseFeedback({ board: 'script', rating: -1, reason: '太空太套话' })).toMatchObject({ board: 'script', rating: -1, reason: '太空太套话' });
+    expect(parseFeedback({ board: 'script', rating: -1, reason: '随便写的' })).toMatchObject({ board: 'script', rating: -1, reason: null });
   });
 
   it('评价只认 1 和 -1；板块名只认小写字母和连字符', () => {
@@ -83,7 +83,8 @@ describe('结果反馈接口', () => {
   it('正常写入', async () => {
     const res = await post({ board: 'topic', rating: -1, reason: '不对口' });
     expect(res.status).toBe(200);
-    expect(state.inserted).toEqual([{ user_id: 'user-1', board: 'topic', rating: -1, reason: '不对口' }]);
+    // 没有档案、没有节选时，二期的三列是空的，原来的字段不变
+    expect(state.inserted).toEqual([{ user_id: 'user-1', board: 'topic', rating: -1, reason: '不对口', profile_id: null, excerpt: null, control: null }]);
   });
 
   it('表还没建（迁移没跑）：返回 503 并说明未启用，不假装保存成功', async () => {

@@ -15,12 +15,14 @@ import { historyProfileFilter, DEFAULT_PROFILE_SCOPE, PROFILE_UUID } from '@/lib
 import { buildProfileSummary } from '@/lib/profile-summary';
 import { todayCN } from '@/lib/web-query';
 import {
-  MIN_SIGNALS, buildLearnPrompt, diffEdit, editEvidenceText, editRatio, editTrend, mergePreferences, parseLearned, readStoredItems,
+  MIN_SIGNALS, buildLearnPrompt, diffEdit, editEvidenceText, editRatio, editTrend, feedbackEvidenceText, mergePreferences, parseLearned, readStoredItems,
   type Evidence, type PreferenceItem,
 } from '@/lib/preferences';
 
 type Db = ReturnType<typeof getServiceSupabase>;
 const MAX_EDITS = 30, MAX_SAVES = 12, MAX_PUBLISHED = 8, EXCERPT = 700;
+/** 结果反馈：只看近 60 天；「没用」最多 10 条、「有用」最多 6 条（不足的不凑） */
+const FEEDBACK_DAYS = 60, MAX_DOWN = 10, MAX_UP = 6;
 
 export const missingTable = (e: { message?: string } | null | undefined) => !!e && /schema cache|does not exist/i.test(e.message || '');
 
@@ -101,6 +103,21 @@ export async function collectEvidence(db: Db, userId: string, profileKey: string
     }
   } catch { /* 同上 */ }
 
+  // 结果反馈（二期）：有用 / 没用（带理由）＋ 结果节选。「有编造或事实不对」归事实层，不学写法
+  const feedback: Evidence[] = [];
+  try {
+    const since = new Date(Date.now() - FEEDBACK_DAYS * 86_400_000).toISOString();
+    let q = db.from('result_feedback').select('board, rating, reason, excerpt, created_at').eq('user_id', userId)
+      .gte('created_at', since).not('excerpt', 'is', null).order('created_at', { ascending: false }).limit(60);
+    q = isDefault ? q.is('profile_id', null) : q.eq('profile_id', profileKey);
+    const { data } = await q;
+    const rows = (data ?? []).filter((r) => r.excerpt && r.reason !== '有编造或事实不对');
+    const picked = [...rows.filter((r) => r.rating === -1).slice(0, MAX_DOWN), ...rows.filter((r) => r.rating === 1).slice(0, MAX_UP)];
+    for (const r of picked) {
+      feedback.push({ id: '', kind: 'feedback', board: String(r.board), at: String(r.created_at), text: feedbackEvidenceText(Number(r.rating), r.reason ?? null, String(r.excerpt)) });
+    }
+  } catch { /* 读不到（表没升级 / 没有 excerpt 列）就少一类证据 */ }
+
   edits.sort((a, b) => a.at - b.at);
   const ratios = edits.map((e) => editRatio(e.diff));
   const recentEdits = edits.slice(-MAX_EDITS);
@@ -108,8 +125,14 @@ export async function collectEvidence(db: Db, userId: string, profileKey: string
     ...recentEdits.map((e) => ({ id: '', kind: 'edit' as const, board: e.board, at: new Date(e.at || Date.now()).toISOString(), text: editEvidenceText(e.diff) })),
     ...saves,
     ...published,
+    ...feedback,
   ].filter((e) => e.text.trim()).map((e, i) => ({ ...e, id: `E${i + 1}` }));
-  const signature = createHash('sha1').update(JSON.stringify([recentEdits.map((e) => e.key), saves.map((s) => s.at + s.text.length), published.map((p) => p.at + p.text.length)])).digest('hex');
+  const signature = createHash('sha1').update(JSON.stringify([
+    recentEdits.map((e) => e.key),
+    saves.map((s) => s.at + s.text.length),
+    published.map((p) => p.at + p.text.length),
+    feedback.map((f) => f.at + f.text.length),
+  ])).digest('hex');
   return { evidence, ratios, signature };
 }
 
@@ -198,6 +221,10 @@ export async function runNightlyPreferences(now = Date.now()) {
   await safe(async () => {
     const { data } = await db.from('works').select('user_id, profile_id').in('shoot_status', ['shot', 'published']).gte('updated_at', since).limit(1000);
     for (const r of data ?? []) add(r.user_id, r.profile_id);
+  });
+  await safe(async () => {
+    const { data } = await db.from('result_feedback').select('user_id, profile_id').gte('created_at', since).limit(1000);
+    for (const r of data ?? []) add(r.user_id, r.profile_id ?? null);
   });
   let learned = 0;
   for (const { userId, key } of [...pairs.values()].slice(0, 300)) {

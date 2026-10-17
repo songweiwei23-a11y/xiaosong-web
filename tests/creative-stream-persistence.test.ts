@@ -6,12 +6,13 @@ vi.mock('@/lib/dify-task', () => ({ askDify: vi.fn(async () => state.auditFails 
 vi.mock('@/lib/api-guard', () => ({ requireUserWithQuota: async () => state.allowed ? { ok: true, userId: 'owner' } : { ok: false, response: Response.json({}, { status: 401 }) }, incrementUsageServer: vi.fn(async () => {}) }));
 vi.mock('@/lib/dify-conversation', () => ({ getDifyConversationId: vi.fn(async () => 'unrelated-old-window'), saveDifyConversationId: vi.fn(), clearDifyConversationId: vi.fn(), isInvalidConversationError: () => false }));
 vi.mock('@/lib/admin-auth', () => ({ getServiceSupabase: () => ({
-  from: () => {
+  from: (table: string) => {
     const query: any = {
       select: () => query, eq: () => query, order: () => query, limit: () => query, or: () => query,
       maybeSingle: async () => ({ data: { id: '11111111-1111-4111-8111-111111111111' }, error: null }),
       then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
-      insert: async (row: any) => { state.inserted.push(row); state.onPersist(); return { error: null }; },
+      // 只记历史记录本身的写入；学习信号（user_signals）是另一张表，这里不算
+      insert: async (row: any) => { if (table === 'script_history') { state.inserted.push(row); state.onPersist(); } return { error: null }; },
     }; return query;
   },
 }) }));

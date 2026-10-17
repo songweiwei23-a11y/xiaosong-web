@@ -18,7 +18,7 @@ vi.mock('@/lib/dify-task', () => ({ askDify: (...a: unknown[]) => env.ask(...a),
 
 const NOW = Date.parse('2026-10-04T10:00:00Z');
 const ev = (n: number, kind: Evidence['kind'] = 'edit'): Evidence[] => Array.from({ length: n }, (_, i) => ({ id: `E${i + 1}`, kind, board: '脚本生成', at: '2026-10-01', text: 'x' }));
-const item = (o: Partial<PreferenceItem>): PreferenceItem => ({ id: 'a', category: 'tone', text: '不用「家人们」', count: 3, from: { edits: 3, saves: 0, published: 0 }, status: 'active', origin: 'learned', firstSeen: '2026-09-01T00:00:00Z', lastSeen: '2026-10-01T00:00:00Z', ...o });
+const item = (o: Partial<PreferenceItem>): PreferenceItem => ({ id: 'a', category: 'tone', text: '不用「家人们」', count: 3, from: { edits: 3, saves: 0, published: 0, feedback: 0 }, status: 'active', origin: 'learned', firstSeen: '2026-09-01T00:00:00Z', lastSeen: '2026-10-01T00:00:00Z', ...o });
 
 describe('改稿对比', () => {
   it('看得出删了哪句、新写了哪句、开头怎么换', () => {
@@ -59,7 +59,7 @@ describe('合并规则', () => {
     const opening = out.find((i) => i.category === 'opening')!;
     expect(opening.count).toBe(ACTIVE_MIN);
     expect(opening.status).toBe('active');
-    expect(opening.from).toEqual({ edits: 3, saves: 0, published: 0 });
+    expect(opening.from).toEqual({ edits: 3, saves: 0, published: 0, feedback: 0 });
   });
 
   it('删过的（意思相近也算）、像事实的、类别不对的、太短的不学', () => {
