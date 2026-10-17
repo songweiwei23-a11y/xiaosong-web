@@ -25,9 +25,9 @@ const MAX_BATCH = 30
 
 /** 迁移没跑时，报错里带着表名 / 列名 */
 const tableMissing = (msg?: string) => /material_library/.test(msg ?? '') && /does not exist|schema cache|not find/i.test(msg ?? '')
-const NOT_READY = { error: '素材库还没启用：请先在 Supabase 执行 20261002_library_and_progress.sql' }
+const NOT_READY = { error: '素材库暂时不可用，稍后再试' }
 const assetsMissing = (msg?: string) => /\b(kind|fields)\b/.test(msg ?? '') && /does not exist|schema cache|not find/i.test(msg ?? '')
-const ASSETS_NOT_READY = '真实素材和好稿还没启用：请先在 Supabase 执行 20261003_library_assets.sql'
+const ASSETS_NOT_READY = '真实素材和好稿暂时不可用，稍后再试'
 
 const BASE_COLS = 'id, profile_id, category, source, title, content, note, created_at'
 const ASSET_COLS = `${BASE_COLS}, kind, fields`

@@ -39,7 +39,7 @@ export async function GET() {
   if (error) {
     const missing = /schema cache|does not exist/i.test(error.message);
     return NextResponse.json(
-      { error: missing ? '订单功能尚未启用' : '读取订单失败' },
+      { error: missing ? '订单功能暂时不可用，稍后再试' : '读取订单失败，稍后再试' },
       { status: missing ? 503 : 500 }
     );
   }
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: missing
-          ? '订单功能尚未启用，请联系管理员执行数据库迁移'
+          ? '订单功能暂时不可用，请稍后再试，还不行就刷新页面或联系客服'
           : '下单失败：' + error.message,
       },
       { status: missing ? 503 : 500 }

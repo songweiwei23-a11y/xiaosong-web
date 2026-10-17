@@ -155,7 +155,8 @@ describe('真实素材与好稿', () => {
     const r = (await json(await get(library, '/api/library'))).body;
     expect(r.items).toHaveLength(1);
     expect(r.items[0].kind).toBe('ai');
-    expect(r.notice).toContain('20261003_library_assets.sql');
+    expect(r.notice).toContain('暂时不可用');
+    expect(r.notice).not.toMatch(/\.sql/);
     expect((await json(await get(library, '/api/library?kind=real'))).body.items).toEqual([]);
     expect((await send(library, 'POST', '/api/library', { real: { fields: { question: '问' } } })).status).toBe(503);
   });
@@ -308,7 +309,8 @@ describe('风格预设', () => {
     env.db = createFakeDb({}, { missingTables: ['creator_presets'] });
     const list = await json(await get(presets, '/api/creator-presets'));
     expect(list.status).toBe(503);
-    expect(list.body.error).toContain('20261003_creator_presets.sql');
+    expect(list.body.error).toContain('暂时不可用');
+    expect(list.body.error).not.toMatch(/\.sql/);
     const active = await json(await get(presets, '/api/creator-presets?active=1'));
     expect(active).toEqual({ status: 200, body: { preset: null, notReady: true } });
   });

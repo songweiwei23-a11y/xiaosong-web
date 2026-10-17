@@ -81,7 +81,7 @@ describe('档案页面和接口', () => {
   });
 
   it('数据库还没升级、没存上：接口说出来，页面明说（不让编导以为存上了）', () => {
-    expect(droppedColumnsNotice({ id: 'x', _droppedColumns: ['persona_facts'] })).toContain('「人设事实卡」没存上');
+    expect(droppedColumnsNotice({ id: 'x', _droppedColumns: ['persona_facts'] })).toContain('「人设事实卡」暂时没存上');
     expect(droppedColumnsNotice({ id: 'x' })).toBe('');
     expect(readCode('app/api/profiles/route.ts')).toMatch(/withDropped\(profile, dropped\)/);
     expect(readSource('app/dashboard/profiles/[id]/edit/page.tsx')).toMatch(/notify\(dropped \|\| '已保存'\)/);

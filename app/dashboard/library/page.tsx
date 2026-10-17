@@ -95,7 +95,7 @@ export default function LibraryPage() {
         if (!res.ok && res.status !== 503) await throwApiError(res, "素材库加载失败");
         const data = await res.json().catch(() => ({}));
         if (my !== reqId.current) return;
-        if (res.status === 503) setNotReady(data.error || "素材库还没启用");
+        if (res.status === 503) setNotReady(data.error || "素材库暂时不可用，稍后再试");
         const list: LibraryListItem[] = Array.isArray(data.items) ? data.items : [];
         setItems(list);
         setTotal(typeof data.total === "number" ? data.total : list.length);

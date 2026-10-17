@@ -36,7 +36,7 @@ const CLAIM_MESSAGE: Record<string, string> = {
   expired: '这张门票已经过了进门期限，请向发给你的人重新要一张',
   full: '这张门票可用的设备数已经用完，请向发给你的人重新要一张',
   invalid: '这张门票无效',
-  unavailable: '暂时无法核对门票，请稍后再试',
+  unavailable: '暂时无法核对门票，请稍后再试，还不行就刷新页面',
   limited: '尝试太频繁了，请 15 分钟后再试',
 };
 

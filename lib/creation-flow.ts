@@ -35,8 +35,9 @@ export interface CreationContext { from?: string; title?: string; topic?: string
   structure?: string; }
 export const CREATION_SOURCES: Record<string, string> = {
   breakdown: '拆解爆款', remix: '跨行业二创', review: '审稿优化', storyboard: '分镜脚本',
-  topic: '选题策划', script: '脚本生成', title: '标题封面', growth: '起号与开篇',
-  'free-chat': '高阶自由对话', positioning: '账号定位', 'deal-reason': '成交理由', knowledge: '知识库',
+  // 体检 P2-1：和侧栏的名字保持一致（侧栏叫「起号」「自由对话」）
+  topic: '选题策划', script: '脚本生成', title: '标题封面', growth: '起号',
+  'free-chat': '自由对话', positioning: '账号定位', 'deal-reason': '成交理由', knowledge: '知识库',
   // 2026-10-02 补：这三个生成完原来是断头路
   'content-positioning': '内容定位', 'business-positioning': '商业定位', 'creative-brief': '创作简报',
   'industry-advice': '行业建议',
@@ -51,7 +52,8 @@ export const RECOMMENDED_NEXT: Record<string, CreationTarget[]> = {
   review: ['storyboard', 'topic', 'script'], storyboard: ['review', 'title'],
   topic: ['script', 'growth'], script: ['review', 'storyboard', 'title'],
   title: ['script', 'review'], growth: ['topic', 'script'], 'free-chat': ['review', 'script'],
-  positioning: ['content-positioning', 'topic'], 'content-positioning': ['topic', 'growth'],
+  // 体检 P0-3：定位做完，下一步直接推创作简报（简报是让选题、脚本用上账号信息的那一环，线上只有 10% 的人做到）
+  positioning: ['creative-brief', 'content-positioning', 'topic'], 'content-positioning': ['topic', 'growth'],
   'business-positioning': ['deal-reason', 'topic'], 'creative-brief': ['topic', 'script'],
   'deal-reason': ['topic', 'script'], knowledge: ['topic', 'script'],
   direction: ['topic', 'script', 'growth'],

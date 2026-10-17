@@ -92,7 +92,7 @@ export function putRange(owner: string, id: string, offset: number, total: numbe
     const mine = [...uploads.values()].filter((u) => u.owner === owner).length;
     if (mine >= UPLOAD_PER_OWNER) return '同时上传的文件太多，请等前面的传完';
     const used = [...uploads.values()].reduce((n, u) => n + u.total, 0);
-    if (used + total > UPLOAD_GLOBAL) return '服务器正忙，请稍后再试';
+    if (used + total > UPLOAD_GLOBAL) return '服务器正忙，请稍后再试，还不行就刷新页面';
     p = { owner, total, buf: Buffer.alloc(total), covered: [], got: 0, at: Date.now() };
     uploads.set(key, p);
   }

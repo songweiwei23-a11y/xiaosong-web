@@ -46,7 +46,7 @@ export async function preferenceAction(profileId: string | null, action: string,
     const text = await res.text();
     const last = text.split('\n').filter((l) => l.startsWith('data: ')).at(-1);
     const d = last ? JSON.parse(last.slice(6)) : null;
-    if (!d || d.event === 'error') throw new Error(d?.message || '这次没更新成，请稍后再试');
+    if (!d || d.event === 'error') throw new Error(d?.message || '这次没更新成，请稍后再试，还不行就刷新页面');
     return d as PreferenceView;
   }
   const d = await res.json().catch(() => ({}));

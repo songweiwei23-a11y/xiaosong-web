@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic'
  */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const tableMissing = (msg?: string) => /creator_presets/.test(msg ?? '') && /does not exist|schema cache|not find/i.test(msg ?? '')
-const NOT_READY = '风格预设还没启用：请先在 Supabase 执行 20261003_creator_presets.sql'
+const NOT_READY = '风格预设暂时不可用，稍后再试'
 const COLS = 'id, profile_id, name, style, structure, examples, is_active, created_at, updated_at'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase 客户端
@@ -52,7 +52,7 @@ async function verifiedExamples(db: Db, userId: string, input: PresetInput): Pro
   if (!ids.length) return input.examples
   const { data, error } = await db.from('material_library').select('id, title, content, kind').eq('user_id', userId).in('id', ids)
   if (error) {
-    if (/\bkind\b/.test(error.message)) return { error: '好稿功能还没启用：请先在 Supabase 执行 20261003_library_assets.sql', status: 503 }
+    if (/\bkind\b/.test(error.message)) return { error: '好稿功能暂时不可用，稍后再试', status: 503 }
     return { error: error.message, status: 500 }
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

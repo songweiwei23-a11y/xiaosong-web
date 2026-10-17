@@ -74,8 +74,8 @@ export async function aliSearch(query: string, config: SearchConfig, opts: { top
 
 export const SEARCH_FAILURE_TEXT: Record<SearchFailure, string> = {
   auth: '搜索密钥不对或没有权限：请在后台「联网搜索密钥」重新粘贴验证',
-  quota: '搜索服务调用太频繁或账户额度不足（阿里云那边），请稍后再试或到阿里云控制台查看',
+  quota: '搜索服务调用太频繁或账户额度不足（阿里云那边），请稍后再试，还不行就刷新页面或到阿里云控制台查看',
   bad_response: '搜索服务返回的内容读不懂，可能地址填错了',
-  network: '连不上搜索服务，请稍后再试',
-  unavailable: '搜索服务暂时不可用，请稍后再试',
+  network: '连不上搜索服务，请稍后再试，还不行就刷新页面',
+  unavailable: '搜索服务暂时不可用，请稍后再试，还不行就刷新页面',
 };

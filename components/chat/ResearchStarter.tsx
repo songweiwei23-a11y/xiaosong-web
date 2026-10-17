@@ -44,11 +44,11 @@ export function ResearchStarter({ profileId, profileContext, files, uploading, c
         const r = await fetch("/api/research", { cache: "no-store" });
         const d = await r.json();
         if (off) return;
-        if (!r.ok) return setError(d.error || "深度研究暂时打不开，请稍后再试");
+        if (!r.ok) return setError(d.error || "深度研究暂时打不开，请稍后再试，还不行就刷新页面");
         setQuota(d.quota); setReady(!!d.searchReady); setLocked(d.quota?.limit === 0 ? d.message || "" : "");
         const h = await fetch(`/api/research?list=1&profileId=${encodeURIComponent(profileId || "default")}`, { cache: "no-store" });
         if (h.ok && !off) setRecent(((await h.json()).items || []).slice(0, 4));
-      } catch { if (!off) setError("深度研究暂时打不开，请稍后再试"); }
+      } catch { if (!off) setError("深度研究暂时打不开，请稍后再试，还不行就刷新页面"); }
     })();
     return () => { off = true; };
   }, [profileId]);

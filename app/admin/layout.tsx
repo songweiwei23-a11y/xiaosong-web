@@ -7,7 +7,7 @@ import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
-  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe, Lock,
+  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe, Lock, Database,
 } from "lucide-react";
 
 /*
@@ -57,6 +57,8 @@ const navGroups: {
       // 大屏：回答"此刻有没有人需要我动手"
       { name: "实时监控", href: "/admin/monitor", icon: Radar },
       { name: "操作日志", href: "/admin/logs", icon: ScrollText },
+      // 迁移状态（体检 P0-2）：哪些迁移已经执行、哪些还要在 Supabase 里跑
+      { name: "迁移状态", href: "/admin/migrations", icon: Database },
       { name: "权限管理", href: "/admin/permissions", icon: KeyRound },
       { name: "账号安全", href: "/admin/security", icon: ShieldCheck },
       { name: "系统设置", href: "/admin/settings", icon: Settings },

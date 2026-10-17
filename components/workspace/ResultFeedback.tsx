@@ -34,7 +34,7 @@ export function ResultFeedback({ board, excerpt }: { board: string; excerpt?: st
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "反馈没有保存，请稍后再试");
+        throw new Error(data.error || "反馈没有保存，请稍后再试，还不行就刷新页面");
       }
       setPhase("sent");
     } catch (e) {

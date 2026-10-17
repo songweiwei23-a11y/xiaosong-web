@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     console.error('[feedback] 写入失败:', error.message);
     const missing = /schema cache|does not exist|Could not find the table|column/i.test(error.message);
     return NextResponse.json(
-      { error: missing ? '结果反馈功能尚未启用' : '反馈没有保存，请稍后再试' },
+      { error: missing ? '结果反馈暂时不可用，稍后再试' : '反馈没有保存，请稍后再试，还不行就刷新页面' },
       { status: missing ? 503 : 500 }
     );
   }

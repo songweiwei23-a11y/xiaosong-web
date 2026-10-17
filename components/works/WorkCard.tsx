@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Trash2, ArrowRight, Check, Camera, Clock, Send, AlertCircle, BarChart3, Clapperboard, Loader2 } from "lucide-react";
 import { METRIC_FIELDS, metricsLine, readMetrics, type WorkMetrics } from "@/lib/performance";
 import { workReminder, type ShootStatus, type Work } from "@/lib/works";
+import { WorkPlanRow } from "@/components/works/WorkPlanRow";
 import { fetchWork, nextStage, workStageUrl, type WorkDetail } from "@/lib/resume";
 import { ProductionPack } from "@/components/works/ProductionPack";
 
@@ -84,6 +85,8 @@ export function WorkCard({ work: w, onDelete, onShootChange, onMetricsSave }: {
             {w.is_done && <span className="ml-2 text-emerald-500">内容已做完</span>}
           </p>
           {reminder && <p className={`mt-1 flex items-center gap-1 text-[12px] ${TONE_CLS[reminder.tone]}`}>{reminder.tone === "warn" && <AlertCircle className="h-3.5 w-3.5" />}{reminder.text}</p>}
+          {/* 计划发布日期 + 素材位置（体检 F2、F4） */}
+          <WorkPlanRow work={w} />
         </div>
         {next && status === "none" && (
           <Link

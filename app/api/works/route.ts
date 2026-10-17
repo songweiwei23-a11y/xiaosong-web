@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     const rs = await Promise.all((Object.keys(GROUPS) as WorkGroup[]).map((g) => GROUPS[g](head())))
     const bad = rs.find((r) => r.error)
     if (bad?.error) {
-      if (/shoot_status/.test(bad.error.message)) return NextResponse.json({ error: '拍摄状态还没启用：请先在 Supabase 执行 20261002_library_and_progress.sql' }, { status: 503 })
+      if (/shoot_status/.test(bad.error.message)) return NextResponse.json({ error: '拍摄状态暂时不可用，稍后再试' }, { status: 503 })
       return NextResponse.json({ error: bad.error.message }, { status: 500 })
     }
     const counts = Object.fromEntries((Object.keys(GROUPS) as WorkGroup[]).map((g, i) => [g, rs[i].count ?? 0]))
@@ -209,6 +209,19 @@ export async function PUT(request: Request) {
   if (typeof body.isDone === 'boolean') patch.is_done = body.isDone
   if (body.profileId !== undefined) patch.profile_id = body.profileId || null
   /*
+   * 发布计划（体检 F2）：计划哪天发。传 null 或空串清空；不是有效日期的当没传
+   */
+  if (body.plannedAt !== undefined) {
+    const t = typeof body.plannedAt === 'string' && body.plannedAt ? new Date(body.plannedAt).getTime() : NaN
+    patch.planned_at = Number.isNaN(t) ? null : new Date(t).toISOString()
+  }
+  /*
+   * 素材位置（体检 F4）：视频文件放在哪（网盘 / 草稿链接，或一句说明）。文件本身不进开物
+   */
+  if (body.materialNote !== undefined) {
+    patch.material_note = typeof body.materialNote === 'string' && body.materialNote.trim() ? body.materialNote.trim().slice(0, 300) : null
+  }
+  /*
    * 落地状态（2026-10-02）：拍没拍、发没发。原来作品只记到"标题封面做完"，
    * 之后系统就不知道了——「创作进度」里没法提醒"脚本好了还没拍"。
    */
@@ -253,10 +266,13 @@ export async function PUT(request: Request) {
 
   if (error) {
     if (/shoot_status|shot_at|published_at/.test(error.message)) {
-      return NextResponse.json({ error: '拍摄状态还没启用：请先在 Supabase 执行 20261002_library_and_progress.sql' }, { status: 503 })
+      return NextResponse.json({ error: '拍摄状态暂时不可用，稍后再试' }, { status: 503 })
+    }
+    if (/planned_at|material_note/.test(error.message)) {
+      return NextResponse.json({ error: '发布计划暂时不可用，稍后再试' }, { status: 503 })
     }
     if (/metrics/.test(error.message)) {
-      return NextResponse.json({ error: '数据录入还没启用：请先在 Supabase 执行 20261003_work_metrics.sql' }, { status: 503 })
+      return NextResponse.json({ error: '数据录入暂时不可用，稍后再试' }, { status: 503 })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

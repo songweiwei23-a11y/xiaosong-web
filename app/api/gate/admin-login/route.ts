@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     outcome = await adminEmergencyLogin(input, realDeps(anonClient()));
   } catch (e) {
     console.error('[gate] 应急登录核对失败:', (e as Error).message);
-    return NextResponse.json({ error: '暂时无法核对，请稍后再试' }, { status: 503 });
+    return NextResponse.json({ error: '暂时无法核对，请稍后再试，还不行就刷新页面' }, { status: 503 });
   }
 
   if (!outcome.ok) {

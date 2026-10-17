@@ -17,6 +17,7 @@ import { LibraryCard } from '@/components/dashboard/LibraryCard';
 import { QuickStart } from '@/components/dashboard/QuickStart';
 import { PreferenceNews } from '@/components/preferences/PreferenceHint';
 import { LearningCard } from '@/components/preferences/LearningCard';
+import { PlanThisWeek } from '@/components/dashboard/PlanThisWeek';
 import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
@@ -73,8 +74,8 @@ const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; a
     accent: "bg-amber-500/12 text-amber-500",
   },
   {
-    name: "开篇设计",
-    desc: "每种开法各给一条，挑一条带走",
+    name: "起号",
+    desc: "新号前几条怎么拍，开头怎么说",
     icon: Sparkles,
     href: "/dashboard/growth?tab=opening",
     accent: "bg-rose-500/12 text-rose-500",
@@ -431,6 +432,9 @@ export default function DashboardPage() {
           toShoot={toShoot}
         />
 
+        {/* 本周要发：计划在 7 天内、还没发的作品（体检 F2）；没有就不出现 */}
+        <PlanThisWeek works={works} />
+
         {/* 今日看板：时钟 + 待办 + 白噪音。可以收起（按账号记）；收起时组件照样挂着，白噪音不断 */}
         {todayCollapsed !== null && (
           <div className="mb-5">
@@ -454,11 +458,19 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 先学后做：抖音新手课（懂道理）→ 7 天起号计划（动手）。两张都能折叠 */}
-        <CourseCard className="mb-5" />
-
-        {/* 7 天起号计划：给不知道从哪开始的新手一条照着走的路（表没建时整张卡不出现，间距也跟着没） */}
-        <LaunchPlanCard className="mb-5" />
+        {/* 先学后做：抖音新手课（懂道理）→ 7 天起号计划（动手）。体检 P1-1：收进「学习与计划」，
+            新用户默认展开，已有档案的收起，首页留给干活的板块 */}
+        <details className="group mb-5" open={!loading && !profile}>
+          <summary className="glass-panel flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3 text-[13px] text-muted-foreground hover:text-foreground">
+            <span>学习与计划 · 抖音新手课、7 天起号计划</span>
+            <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-4">
+            <CourseCard className="mb-5" />
+            {/* 7 天起号计划：给不知道从哪开始的新手一条照着走的路（表没建时整张卡不出现，间距也跟着没） */}
+            <LaunchPlanCard className="mb-5" />
+          </div>
+        </details>
 
         <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
           {/* 左：开始创作 */}

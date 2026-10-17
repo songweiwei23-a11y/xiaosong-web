@@ -63,7 +63,7 @@ export function droppedColumnsNotice(saved: unknown): string {
   if (!Array.isArray(cols) || cols.length === 0) return '';
   const names: Record<string, string> = { persona_facts: '人设事实卡', content_mix: '内容配比', taboo_settings: '禁忌设置' };
   const list = cols.map((c) => names[String(c)] ?? String(c)).join('、');
-  return `档案其他内容已保存，但「${list}」没存上：数据库还没升级，请让管理员运行升级 SQL 后再存一次`;
+  return `档案其他内容已保存，但「${list}」暂时没存上，稍后再存一次`;
 }
 
 export function hasPersonaFacts(v: unknown): boolean {

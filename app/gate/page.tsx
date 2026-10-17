@@ -46,12 +46,12 @@ export default function GatePage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "进入失败，请稍后再试");
+        setError(data.error || "进入失败，请稍后再试，还不行就刷新页面");
         return;
       }
       window.location.replace("/");
     } catch {
-      setError("网络不稳定，请稍后再试");
+      setError("网络不稳定，请稍后再试，还不行就刷新页面");
     } finally {
       setBusy(false);
     }
@@ -70,12 +70,12 @@ export default function GatePage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setEmergencyError(data.error || "应急登录失败，请稍后再试");
+        setEmergencyError(data.error || "应急登录失败，请稍后再试，还不行就刷新页面");
         return;
       }
       window.location.replace("/");
     } catch {
-      setEmergencyError("网络不稳定，请稍后再试");
+      setEmergencyError("网络不稳定，请稍后再试，还不行就刷新页面");
     } finally {
       setEmergencyBusy(false);
     }

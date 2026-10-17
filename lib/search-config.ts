@@ -111,5 +111,5 @@ export async function saveSearchConfig(endpoint: string, apiKey: string, adminId
     updated_by: adminId,
   }, { onConflict: 'name' });
   clearSearchConfigCache();
-  if (error) throw new Error(/schema cache|does not exist/i.test(error.message) ? '数据库还没升级：请先执行 supabase/migrations/20261004_deep_research.sql' : '保存失败，请重试');
+  if (error) throw new Error(/schema cache|does not exist/i.test(error.message) ? '搜索设置暂时不可用，稍后再试' : '保存失败，请重试');
 }

@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 function failed(error: { code?: string; message: string }) {
   const missing = error.code === '42P01' || error.code === 'PGRST205' || /user_todos/.test(error.message)
   return NextResponse.json(
-    missing ? { error: '待办功能还没开通', code: 'TABLE_MISSING' } : { error: error.message },
+    missing ? { error: '待办功能暂时不可用，稍后再试', code: 'TABLE_MISSING' } : { error: '待办读取失败，稍后再试' },
     { status: missing ? 503 : 500 }
   )
 }

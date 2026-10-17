@@ -24,7 +24,7 @@ import { isControlDay } from '@/lib/learning-signals';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store' };
 const fail = (error: string, status = 400) => Response.json({ error }, { status, headers });
-const NOT_READY = '「我的创作偏好」还没开通（数据库没升级），请联系管理员';
+const NOT_READY = '「我的创作偏好」暂时不可用，稍后再试';
 
 async function ownsProfile(userId: string, key: string) {
   if (key === DEFAULT_PROFILE_SCOPE) return true;
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   if (!(await ownsProfile(guard.userId!, key))) return fail('没有这个档案', 404);
   const { data, error } = await getServiceSupabase().from('creator_preferences').select('*').eq('user_id', guard.userId!).eq('profile_key', key).maybeSingle();
   if (missingTable(error)) return Response.json({ ready: false, enabled: true, items: [], stats: null, learnedAt: null, newCount: 0 }, { headers });
-  if (error) return fail('偏好暂时读不到，请稍后再试', 503);
+  if (error) return fail('偏好暂时读不到，请稍后再试，还不行就刷新页面', 503);
   // 对照组（二期）：这个人今天在对照组时，生成用的偏好为空；偏好卡本身照常显示
   if (params.get('purpose') === 'generate' && isControlDay(guard.userId!)) {
     return Response.json({ ...view(data), items: [], control: true }, { headers });
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const db = getServiceSupabase();
   const { data: row, error } = await db.from('creator_preferences').select('*').eq('user_id', userId).eq('profile_key', key).maybeSingle();
   if (missingTable(error)) return fail(NOT_READY, 503);
-  if (error) return fail('偏好暂时读不到，请稍后再试', 503);
+  if (error) return fail('偏好暂时读不到，请稍后再试，还不行就刷新页面', 503);
   const now = Date.now();
 
   if (body.action === 'learn') {

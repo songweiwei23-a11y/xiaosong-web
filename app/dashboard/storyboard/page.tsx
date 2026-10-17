@@ -227,7 +227,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
   const handleGenerate = async () => {
     if (isGenerating) return;
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
-    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
     // 检查配额
     setIsGenerating(true);

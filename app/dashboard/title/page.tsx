@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -185,7 +185,7 @@ export default function TitlePage() {
   const handleGenerate = async () => {
     if (isGenerating) return;
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
-    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
     if (!topic.trim()) {
       notify("请输入视频主题");

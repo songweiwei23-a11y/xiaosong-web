@@ -36,7 +36,7 @@ export async function askDify(
   });
   if (!res.ok || !res.body) {
     console.error('[dify-task] Dify 调用失败:', res.status, (await res.text().catch(() => '')).slice(0, 200));
-    return { ok: false, message: 'AI 服务暂时不可用，请稍后再试' };
+    return { ok: false, message: 'AI 服务暂时不可用，请稍后再试，还不行就刷新页面' };
   }
 
   const reader = res.body.getReader();

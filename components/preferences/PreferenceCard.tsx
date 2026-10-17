@@ -74,7 +74,7 @@ export function PreferenceCard({ profileId }: { profileId: string | null }) {
 
   if (failed) return null;
   if (!view) return <div id="preferences" className="mb-6 rounded-2xl border border-border p-4 text-[13px] text-muted-foreground"><Loader2 className="mr-1.5 inline h-4 w-4 animate-spin" />正在读取{PREFERENCE_NAME}…</div>;
-  if (!view.ready) return <div id="preferences" className="mb-6 rounded-2xl border border-border p-4 text-[13px] text-muted-foreground">🧠 {PREFERENCE_NAME}还没开通（数据库还没升级），请联系管理员。</div>;
+  if (!view.ready) return <div id="preferences" className="mb-6 rounded-2xl border border-border p-4 text-[13px] text-muted-foreground">🧠 {PREFERENCE_NAME}暂时不可用，稍后再试。</div>;
 
   const active = view.items.filter((i) => i.status === "active");
   const watching = view.items.filter((i) => i.status === "watching");

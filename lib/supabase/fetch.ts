@@ -18,7 +18,7 @@ export function createSupabaseFetch({
     else sourceSignal?.addEventListener('abort', forwardAbort, { once: true });
 
     const timeout = setTimeout(() => {
-      const error = new Error(isAuth ? 'Authentication request timed out' : 'Supabase request timed out');
+      const error = new Error(isAuth ? '登录请求超时，请稍后再试，还不行就刷新页面' : '请求超时，请稍后再试，还不行就刷新页面');
       error.name = 'TimeoutError';
       controller.abort(error);
     }, isAuth ? authTimeoutMs : requestTimeoutMs);

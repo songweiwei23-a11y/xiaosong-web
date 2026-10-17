@@ -40,7 +40,8 @@ describe('全量导出', () => {
   it('没有 id 列的表照样导出；表没建的写进 skipped，不当成没数据', async () => {
     const b = await exportNow();
     expect(b.tables.user_settings).toEqual([{ user_id: 'user-a', theme: 'dark' }]);
-    expect(b.skipped.creator_presets).toMatch(/还没建/);
+    expect(b.skipped.creator_presets).toMatch(/暂时无法导出/);
+    expect(b.skipped.creator_presets).not.toMatch(/迁移|Supabase|\.sql/);
   });
 
   it('支付凭证地址不随导出外流', async () => {

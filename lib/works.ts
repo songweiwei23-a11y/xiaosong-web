@@ -34,6 +34,10 @@ export interface Work {
   shoot_status?: ShootStatus;
   shot_at?: string | null;
   published_at?: string | null;
+  /** 计划哪天发（体检 F2）。迁移没跑时没有 */
+  planned_at?: string | null;
+  /** 素材放在哪：网盘 / 草稿链接或一句说明（体检 F4）。迁移没跑时没有 */
+  material_note?: string | null;
   /** 发布后的数据（数据回流，lib/performance）。迁移没跑时没有 */
   metrics?: WorkMetrics | null;
   created_at: string;

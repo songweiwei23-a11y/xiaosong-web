@@ -16,7 +16,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const missing = (e: { message?: string } | null) => !!e && /schema cache|does not exist/i.test(e.message ?? '');
 const headers = { 'Cache-Control': 'private, no-store' };
 const failure = (message: string, status = 503) => Response.json({ error: message }, { status, headers });
-const notReady = () => failure('深度研究数据库尚未升级，请联系管理员');
+const notReady = () => failure('深度研究暂时不可用，稍后再试');
 
 export async function GET(request: Request) {
   const guard = await requireUser();
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     const quota = await readResearchQuota(userId);
     if (['plan_not_included', 'membership_expired', 'account_inactive', 'period_unavailable'].includes(quota.reason ?? '')) return failure(quotaMessage(quota), 402);
   } catch { return notReady(); }
-  if (!(await getSearchConfig())) return failure('管理员尚未配置深度研究的联网搜索，请稍后再试');
+  if (!(await getSearchConfig())) return failure('管理员尚未配置深度研究的联网搜索，请稍后再试，还不行就刷新页面');
   let files;
   try { files = verifiedAttachments(body.files, userId); } catch { return failure('附件验证失败，请重新上传', 400); }
   const parts: string[] = [];

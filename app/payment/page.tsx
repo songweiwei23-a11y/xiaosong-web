@@ -317,6 +317,15 @@ function OrderStatus({ order }: { order: Order }) {
       <p className="mt-1 text-[12.5px] text-muted-foreground">
         管理员核对后会为你开通 {order.plan_name}，通常当天处理。
       </p>
+      {/* 体检 P1-4：进度说清楚——等的是什么、多久、超时找谁 */}
+      <ol className="mx-auto mt-4 flex max-w-xs flex-col gap-1.5 text-left text-[12px] text-muted-foreground">
+        <li>✅ 已提交付款截图</li>
+        <li>⏳ 管理员核对到账（通常当天）</li>
+        <li>○ 开通会员，额度回满</li>
+      </ol>
+      <p className="mt-3 text-[11.5px] text-muted-foreground">
+        超过一个工作日仍未开通，加客服微信 {SUPPORT_WECHAT} 并说明订单号，我们马上看。
+      </p>
       <p className="mt-1 text-[11.5px] text-muted-foreground">订单号 {order.id.slice(0, 8)}</p>
       <Link href="/dashboard" className="mt-4 inline-block text-[13px] text-primary">
         先回工作台

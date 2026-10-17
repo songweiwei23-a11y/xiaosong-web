@@ -117,7 +117,7 @@ describe('接线', () => {
   it('作品接口存数据（校验后）；数据列没建时说清要跑哪个 SQL', () => {
     const api = readCode('app/api/works/route.ts');
     expect(api).toMatch(/patch\.metrics = body\.metrics === null \? null : readMetrics\(body\.metrics\)/);
-    expect(api).toContain('20261003_work_metrics.sql');
+    expect(api).toContain('数据录入暂时不可用');
   });
 
   it('复盘接口：取作品当时的创作设置（最新的脚本优先）', () => {

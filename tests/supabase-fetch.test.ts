@@ -81,7 +81,7 @@ describe('Supabase 请求等待边界', () => {
     const fetchImpl = vi.fn((_, init) => abortableRequest(init!.signal as AbortSignal));
     const bounded = createSupabaseFetch({ authTimeoutMs: 10, requestTimeoutMs: 40, fetchImpl });
     const request = bounded('https://project.supabase.co/rest/v1/profiles', { cache: 'no-store' });
-    const assertion = expect(request).rejects.toMatchObject({ name: 'TimeoutError', message: 'Supabase request timed out' });
+    const assertion = expect(request).rejects.toMatchObject({ name: 'TimeoutError', message: '请求超时，请稍后再试，还不行就刷新页面' });
     await vi.advanceTimersByTimeAsync(10);
     expect((fetchImpl.mock.calls[0][1]!.signal as AbortSignal).aborted).toBe(false);
     await vi.advanceTimersByTimeAsync(30);

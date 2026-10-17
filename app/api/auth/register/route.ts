@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
   if (inviteError) {
     console.error('[auth/register] 读取邀请码失败:', inviteError.message);
-    return NextResponse.json({ error: '注册服务暂时不可用，请稍后再试' }, { status: 503 });
+    return NextResponse.json({ error: '注册服务暂时不可用，请稍后再试，还不行就刷新页面' }, { status: 503 });
   }
   const expired = !!invite?.expires_at && new Date(invite.expires_at) <= new Date();
   if (!invite || invite.status !== 'active' || invite.used_by || expired) {
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: missing
-          ? '注册功能尚未启用，请先执行 supabase/migrations/20260922_invite_only_enforce.sql'
+          ? '注册功能暂时不可用，请稍后再试，还不行就刷新页面'
           : '注册失败，请稍后重试',
       },
       { status: missing ? 503 : 500 }
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: missing
-            ? '邀请码功能尚未启用，请先执行 supabase/migrations/20260922_invitations.sql'
+            ? '邀请码功能暂时不可用，请稍后再试，还不行就刷新页面'
             : '邀请码校验失败，请稍后重试',
         },
         { status: missing ? 503 : 500 }

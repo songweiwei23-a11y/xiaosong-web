@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
+import { useSetupProgress } from "@/hooks/useSetupProgress";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
@@ -39,6 +40,8 @@ const navGroups: {
        */
       { name: "素材库", href: "/dashboard/library", icon: Bookmark },
       { name: "创作进度", href: "/dashboard/works", icon: ListChecks },
+      // 月报（体检 F3）：一个月发了什么、效果怎样、下个月计划，可以打印或存 PDF 发给客户
+      { name: "月报", href: "/dashboard/report", icon: FileText },
     ],
   },
   {
@@ -105,6 +108,13 @@ const navGroups: {
   },
 ];
 
+/** 「先打地基」每一步对应侧栏里的哪一项（体检 P1-2：下一步在侧栏上标出来） */
+const NEXT_NAV: Record<"profile" | "positioning" | "brief", string> = {
+  profile: "/dashboard/profiles",
+  positioning: "/dashboard/positioning",
+  brief: "/dashboard/creative-brief",
+};
+
 const COLLAPSE_KEY = "xiaosong-sidebar-collapsed";
 
 interface SidebarCtx { open: boolean; setOpen: (v: boolean) => void; toggle: () => void; }
@@ -128,6 +138,10 @@ export function useSidebar() {
 export function Sidebar() {
   const pathname = usePathname();
   const { open, setOpen } = useSidebar();
+  // 下一步该做的那一项，侧栏上标「下一步」；三步全做完就不标
+  const { steps: setup } = useSetupProgress();
+  const nextStep = setup.find((s) => !s.done);
+  const nextNavHref = nextStep ? NEXT_NAV[nextStep.key as keyof typeof NEXT_NAV] : null;
 
   /** 哪些分组被收起来了。记在本地，下次进来保持上次的样子 */
   const [collapsed, setCollapsed] = useState<string[]>([]);
@@ -253,6 +267,9 @@ export function Sidebar() {
                             }`}
                           />
                           <span className="truncate">{item.name}</span>
+                          {item.href === nextNavHref && (
+                            <span className="ml-auto shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10.5px] font-medium text-primary">下一步</span>
+                          )}
                         </Link>
                       );
                     })}

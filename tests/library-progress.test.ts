@@ -72,7 +72,8 @@ describe('收藏入口', () => {
     const api = readCode('app/api/library/route.ts');
     expect(api.match(/\.eq\('user_id', guard\.userId!\)/g)?.length).toBeGreaterThanOrEqual(3);
     expect(api).toMatch(/onConflict: 'user_id,content_hash', ignoreDuplicates: true/);
-    expect(api).toMatch(/20261002_library_and_progress\.sql/);
+    expect(api).toMatch(/暂时不可用/);
+    expect(api).not.toMatch(/\.sql/);
     const sql = readCode('supabase/migrations/20261002_library_and_progress.sql');
     expect(sql).toMatch(/create unique index if not exists material_library_dedupe on public\.material_library \(user_id, content_hash\)/);
     expect(sql).toMatch(/enable row level security/);

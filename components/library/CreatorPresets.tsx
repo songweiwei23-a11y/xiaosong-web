@@ -35,7 +35,7 @@ export function CreatorPresets() {
     try {
       const res = await fetch("/api/creator-presets");
       const d = await res.json().catch(() => ({}));
-      if (res.status === 503) { setNotReady(d.error || "风格预设还没启用"); setPresets([]); return; }
+      if (res.status === 503) { setNotReady(d.error || "风格预设暂时不可用，稍后再试"); setPresets([]); return; }
       if (!res.ok) throw new Error(d.error);
       setPresets((d.presets ?? []).map(toPreset));
     } catch {

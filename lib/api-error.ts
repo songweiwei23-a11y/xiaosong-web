@@ -78,7 +78,7 @@ export async function readApiError(response: Response, fallback = "生成失败"
     case 403:
       return "账户已被封禁，请联系管理员";
     case 429:
-      return "请求太频繁，请稍后再试";
+      return "请求太频繁，请稍后再试，还不行就刷新页面";
     case 504:
     case 408:
       return "生成超时了，内容可能太长，试试减少要求或稍后重试";

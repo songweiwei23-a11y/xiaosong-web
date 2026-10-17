@@ -223,8 +223,8 @@ export async function learnPreferences(userId: string, profileKey: string, opts:
   const db = getServiceSupabase();
   const now = opts.now ?? Date.now();
   const { data: row, error } = await db.from('creator_preferences').select('*').eq('user_id', userId).eq('profile_key', profileKey).maybeSingle();
-  if (missingTable(error)) return { status: 'failed', message: '「我的创作偏好」还没开通（数据库没升级），请联系管理员' };
-  if (error) return { status: 'failed', message: '偏好读取失败，请稍后再试' };
+  if (missingTable(error)) return { status: 'failed', message: '「我的创作偏好」暂时不可用，稍后再试' };
+  if (error) return { status: 'failed', message: '偏好读取失败，请稍后再试，还不行就刷新页面' };
   if (row && row.enabled === false) return { status: 'disabled', signals: 0 };
 
   const { evidence, ratios, signature } = await collectEvidence(db, userId, profileKey);
@@ -263,7 +263,7 @@ export async function learnPreferences(userId: string, profileKey: string, opts:
   if (!ans.ok) ans = await ask(prompt, userId, '');
   if (!ans.ok) return { status: 'failed', message: ans.message };
   const learned = parseLearned(ans.text);
-  if (!learned) return { status: 'failed', message: '这次没总结出来，请稍后再试' };
+  if (!learned) return { status: 'failed', message: '这次没总结出来，请稍后再试，还不行就刷新页面' };
 
   // 写回前重读：用户在这期间改过、删过、关掉了的，以最新为准
   const { data: fresh } = await db.from('creator_preferences').select('items, rejected, enabled').eq('user_id', userId).eq('profile_key', profileKey).maybeSingle();
@@ -272,7 +272,7 @@ export async function learnPreferences(userId: string, profileKey: string, opts:
   const merged = mergePreferences({ current: fresh ? readStoredItems(fresh.items) : current, learned, evidence, rejected: freshRejected, now });
   const items = withData(merged, freshRejected);
   const { error: saveError } = await saveRow(db, { ...base, items, learned_at: new Date(now).toISOString() });
-  if (saveError) return { status: 'failed', message: '学到的偏好没存上，请稍后再试' };
+  if (saveError) return { status: 'failed', message: '学到的偏好没存上，请稍后再试，还不行就刷新页面' };
   return { status: 'learned', items, signals: evidence.length };
 }
 

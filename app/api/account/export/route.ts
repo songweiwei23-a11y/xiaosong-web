@@ -42,7 +42,7 @@ export async function GET() {
     } catch (e) {
       const msg = (e as Error).message
       // 表没建不是"没有数据"：写清楚，导出照样完成
-      bundle.skipped[table] = missing(msg) ? '这张表还没建（对应迁移没执行）' : `读取失败：${msg.slice(0, 120)}`
+      bundle.skipped[table] = missing(msg) ? '这部分数据暂时无法导出' : `这部分数据读取失败，稍后再试`
     }
   }
   const day = new Date().toISOString().slice(0, 10)

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const guard = await requireUserWithQuota('freeChat');
   if (!guard.ok) return guard.response!;
   if (!process.env.DIFY_API_KEY) return Response.json({ error: '对话服务未配置' }, { status: 503 });
-  if (limited(guard.userId!)) return Response.json({ error: '上传太频繁了，请稍后再试' }, { status: 429 });
+  if (limited(guard.userId!)) return Response.json({ error: '上传太频繁了，请稍后再试，还不行就刷新页面' }, { status: 429 });
   if (Number(request.headers.get('content-length')) > MAX_CHAT_FILE_BYTES + 512 * 1024) {
     return Response.json({ error: '文件不能超过 10 MB' }, { status: 413 });
   }

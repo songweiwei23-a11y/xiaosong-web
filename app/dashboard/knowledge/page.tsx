@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -54,7 +54,7 @@ export default function KnowledgePage() {
   useRestoreLastResult(lastResult, setResult, resultScope);
 
   const handleSearch = async () => {
-    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
     if (!query.trim()) {
       notify("请输入要查询的问题");

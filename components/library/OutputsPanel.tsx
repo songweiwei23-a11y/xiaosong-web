@@ -155,7 +155,7 @@ export function OutputsPanel({ profileId, q, from = "", to = "", onCounts }: { p
   return (
     <>
       {!indexState.ready && (
-        <div className="mb-3 rounded-xl bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-600 dark:text-amber-400">选题索引还没建：选题库每次打开都要整理全部旧选题，会慢一些。请在 Supabase 执行 20261003_library_assets.sql</div>
+        <div className="mb-3 rounded-xl bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-600 dark:text-amber-400">选题索引暂时还没准备好：选题库这次要整理全部旧选题，会慢一些。</div>
       )}
       {indexState.pending > 0 && (
         <div className="mb-3 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-[12.5px] text-primary"><Loader2 className="h-3.5 w-3.5 animate-spin" />还在整理 {indexState.pending} 批旧选题，选题库的数量会陆续补全</div>

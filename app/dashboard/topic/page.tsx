@@ -42,6 +42,7 @@ import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@
 
 import { useState, useEffect } from "react";
 import { readDifyStream } from '@/lib/sse-stream';
+import { CommentQuestions } from '@/components/topic/CommentQuestions';
 import { Lightbulb, Loader2, Users, Target, Sparkles, Zap, Heart, DollarSign, Eye, Flame, FileText } from "lucide-react";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
@@ -480,7 +481,7 @@ export default function TopicPage() {
   // 生成选题函数
   const handleGenerate = async () => {
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
-    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
     if (!accountStage && mode === "custom") {
       notify("请选择账号阶段");
@@ -1282,6 +1283,11 @@ export default function TopicPage() {
                 className={TEXTAREA_CLS}
               />
             </Field>
+
+            {/* 评论区 → 选题（体检 F1）：挑出观众反复问的问题，放进上面的个人要求 */}
+            <div className="mt-3">
+              <CommentQuestions onPick={(text) => setPersonalRequirement((prev) => (prev ? `${prev}\n${text}` : text))} />
+            </div>
           </CollapsibleSection>
 
           <CollapsibleSection title="输出设置" defaultOpen>

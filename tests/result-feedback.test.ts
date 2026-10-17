@@ -91,7 +91,7 @@ describe('结果反馈接口', () => {
     state.insertError = { message: 'Could not find the table public.result_feedback in the schema cache' };
     const res = await post({ board: 'topic', rating: 1 });
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toMatch(/尚未启用/);
+    expect((await res.json()).error).toMatch(/暂时不可用/);
   });
 
   it('其它写入失败：返回 500，告诉用户没保存', async () => {

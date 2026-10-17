@@ -263,7 +263,7 @@ export default function DealReasonPage() {
       invalidateCreatorContext();
       notify(
         profileId && !data.perProfile
-          ? "已保存，但数据库尚未启用按档案保存，请先完成数据库升级"
+          ? "已保存，但按档案保存这一步暂时不可用，稍后再试"
           : data.profileSynced
           ? `已保存 ${data.reasons.length} 个成交理由，并同步进「${String(profile?.profile_name ?? "档案")}」的卖点；选题、脚本、标题、二创会自动带上`
           : `已保存 ${data.reasons.length} 个成交理由，选题、脚本、标题会自动带上`

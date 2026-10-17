@@ -72,14 +72,14 @@ export async function POST(request: Request) {
   if (body.action === 'accept') {
     const next = nextProfileValue(profile[field], spec.kind, value);
     const { error } = await getServiceSupabase().from('user_profiles').update({ [field]: next }).eq('id', profileId).eq('user_id', userId);
-    if (error) return NextResponse.json({ error: '没有写进档案，请稍后再试' }, { status: 500 });
+    if (error) return NextResponse.json({ error: '没有写进档案，请稍后再试，还不行就刷新页面' }, { status: 500 });
     return NextResponse.json({ ok: true, value: next });
   }
   if (body.action === 'dismiss') {
     const { error } = await getServiceSupabase().from('user_signals').insert({
       user_id: userId, profile_id: profileId, kind: 'fact_dismiss', payload: { key: factKey(field, value) },
     });
-    if (error) return NextResponse.json({ error: '没记上，请稍后再试' }, { status: 500 });
+    if (error) return NextResponse.json({ error: '没记上，请稍后再试，还不行就刷新页面' }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: '不认识的操作' }, { status: 400 });

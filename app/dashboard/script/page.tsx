@@ -145,6 +145,8 @@ export default function ScriptPage() {
   // 时长模式：preset=预设选择 / custom=自定义秒数 / ai=AI推荐（由Dify判断）
   // 默认「AI 推荐」：编导没选，就按内容需要给最好的结果，不先框一个 60 秒（2026-10-06 产品方）
   const [durationMode, setDurationMode] = useState<"preset" | "custom" | "ai">("ai");
+  // 快速模式（体检 P1-3）：只留「基础设置」（选题、时长），其余按档案和定位来。默认关，保持原来的行为
+  const [quickMode, setQuickMode] = useState(false);
   const [style, setStyle] = useState("专业");
   const [targetGroup, setTargetGroup] = useState("");
   const [boomElements, setBoomElements] = useState<string[]>([]);
@@ -458,7 +460,7 @@ export default function ScriptPage() {
   const handleGenerate = async () => {
     if (isGenerating) return;
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
-    if (!resultScope) { notify("档案正在加载，请稍后再试"); return; }
+    if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
     // 0. 检查配额
     setIsGenerating(true);
@@ -1317,6 +1319,17 @@ ${formatRequirements}
             </Field>
           </CollapsibleSection>
 
+          {/* 快速模式切换：快速只留选题和时长，其余（目标、创意细节、专业控制……）按档案和定位来 */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 px-4 py-3">
+            <p className="text-[12.5px] text-muted-foreground">
+              {quickMode ? "快速模式：只填选题，其余按你的档案和定位来。" : "想快一点？切到快速模式，只填选题就能生成。"}
+            </p>
+            <button type="button" onClick={() => setQuickMode((v) => !v)} className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-foreground hover:bg-foreground/[0.06]">
+              {quickMode ? "展开全部设置" : "切到快速模式"}
+            </button>
+          </div>
+
+          {!quickMode && (<>
           {/* 目标定位 */}
           <CollapsibleSection title="目标定位" icon={Target} defaultOpen={true}>
             <Field
@@ -1671,6 +1684,7 @@ ${formatRequirements}
               />
             </Field>
           </CollapsibleSection>
+          </>)}
 
           {/* Generate Button - 移动端固定在底部 */}
           <div className="lg:static lg:mt-0 sticky bottom-0 left-0 right-0 glass border-x-0 border-b-0 lg:border-0 lg:bg-transparent lg:backdrop-blur-none p-4 lg:p-0 -mx-4 sm:-mx-6 lg:mx-0 z-10">
