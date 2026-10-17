@@ -69,7 +69,7 @@ import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
-import { AI_LENGTH_RULE, EXAMPLE_LENGTH_NOTE, durationRule } from "@/lib/ai-recommend";
+import { AI_SCRIPT_LENGTH_RULE, AI_SCRIPT_TARGET_TEXT, EXAMPLE_LENGTH_NOTE, scriptLengthRule } from "@/lib/ai-recommend";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
@@ -500,7 +500,7 @@ ${scriptContext}
         structureDetail,
         hookDetail,
         elementsWithNames,
-        duration: isAiDuration ? "AI自行推断的最佳时长" : finalDuration,
+        duration: isAiDuration ? AI_SCRIPT_TARGET_TEXT : finalDuration,
         role: effectiveRole,
       });
       const { structureGuide, hookGuide, formatRequirements } = mcnEnhancement;
@@ -526,7 +526,7 @@ ${scriptContext}
       // AI 推荐时不拿 60 秒去挑范例：范例多长，模型就照着写多长（范例只学节奏和标注，这里给它不按时长挑的那份）
       const durationForCalc = isAiDuration ? "" : finalDuration;
       const timeAllocation = isAiDuration
-        ? "由AI依据主题与平台节奏自行分配各段时长（开场钩子→主体→情绪高潮→结尾CTA）"
+        ? "由AI依据主题与平台节奏分配各段时长（开场钩子→主体→情绪高潮→结尾CTA），各段合计约 90～100 秒"
         : getTimeAllocation(structureName, durationForCalc);
       const stepTasks = getStepTasks(structureName);
 
@@ -662,8 +662,8 @@ ${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
 
 ### 第3步：正文脚本
 - ${isAiDuration
-  ? `时长不限，以效果最好为准：${AI_LENGTH_RULE}。不需要标注时长，据此完整输出可直接拍摄的脚本`
-  : `按${finalDuration}完整输出可直接拍摄的脚本。${durationRule(finalDuration)}`}
+  ? `时长：AI 推荐，${AI_SCRIPT_LENGTH_RULE}。不需要标注时长，据此完整输出可直接拍摄的脚本`
+  : `按${finalDuration}完整输出可直接拍摄的脚本。${scriptLengthRule(finalDuration)}`}
 - 必须包含秒数、镜头/画面、口播台词、字幕/音效/动作建议
 - 开头3秒直接进入冲突、痛点、反常识或利益点，禁止废话开场
 
@@ -1218,7 +1218,7 @@ ${formatRequirements}
                 {/* AI推荐提示 */}
                 {durationMode === "ai" && (
                   <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] leading-snug text-primary">
-                    ✨ 时长不限，AI 按效果最好的长度来写
+                    ✨ AI 推荐：默认写到 1 分 30 秒～1 分 40 秒；想要别的长度，就手动选
                   </div>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AI_LENGTH_RULE, durationCeilingSeconds, durationRule } from '@/lib/ai-recommend';
+import { AI_LENGTH_RULE, AI_SCRIPT_LENGTH_RULE, AI_SCRIPT_TARGET_TEXT, durationCeilingSeconds, durationRule, scriptLengthRule } from '@/lib/ai-recommend';
 import { buildAdaptiveScriptPrompt } from '@/lib/script-design';
 
 /**
@@ -30,6 +30,45 @@ describe('时长规则', () => {
       expect(rule).toContain('内容精彩优先');
       expect(rule).toContain('时长权重低于内容');
     }
+  });
+});
+
+describe('脚本生成的时长：AI 推荐默认 1 分 30 秒～1 分 40 秒，设了就按设定写', () => {
+  it('AI 推荐（或没选）：默认 90～100 秒、口播约 450～500 字，内容优先', () => {
+    for (const d of [undefined, '', 'AI推荐', 'AI自行推断的最佳时长']) {
+      const rule = scriptLengthRule(d);
+      expect(rule).toBe(AI_SCRIPT_LENGTH_RULE);
+      expect(rule).toContain('默认写到1分30秒～1分40秒');
+      expect(rule).toContain('约 90～100 秒');
+      expect(rule).toContain('450～500 字');
+      expect(rule).toContain('内容精彩优先');
+      expect(rule).not.toContain('严格按');
+    }
+    expect(AI_SCRIPT_TARGET_TEXT).toBe('1分30秒～1分40秒');
+  });
+
+  it('编导设了时长：严格按设定，口播在设定的 90%～100% 之间（30 秒 → 135～150 字）', () => {
+    const rule = scriptLengthRule('30秒');
+    expect(rule).toContain('严格按 30秒 写');
+    expect(rule).toContain('不超过约 150 字');
+    expect(rule).toContain('口播约 135～150 字');
+    expect(rule).not.toContain('AI');
+  });
+
+  it('编导设了 90 秒：按 90 秒写，口播约 405～450 字，不是默认区间', () => {
+    const rule = scriptLengthRule('90秒');
+    expect(rule).toContain('口播约 405～450 字');
+    expect(rule).not.toContain(AI_SCRIPT_TARGET_TEXT);
+  });
+
+  it('脚本提示词：AI 推荐写出默认区间；设了 60 秒就写 60 秒，不写默认区间', () => {
+    const base = { topic: '一元火锅怎么点', platform: '抖音', context: '', source: '', requirements: '', settings: {} };
+    const ai = buildAdaptiveScriptPrompt({ ...base, duration: 'AI推荐' });
+    expect(ai).toContain(`AI 推荐，默认${AI_SCRIPT_TARGET_TEXT}`);
+    expect(ai).toContain('约 90～100 秒');
+    const fixed = buildAdaptiveScriptPrompt({ ...base, duration: '60秒' });
+    expect(fixed).toContain('严格按 60秒 写');
+    expect(fixed).not.toContain(AI_SCRIPT_TARGET_TEXT);
   });
 });
 

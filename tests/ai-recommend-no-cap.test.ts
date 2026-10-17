@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveCreationSettings } from '@/lib/creation-settings';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { buildStoryboardPrompt, auditStoryboard, FOLLOW_SCRIPT } from '@/lib/storyboard-standards';
-import { AI_LENGTH_RULE } from '@/lib/ai-recommend';
+import { AI_LENGTH_RULE, AI_SCRIPT_LENGTH_RULE } from '@/lib/ai-recommend';
 import { readCode } from './helpers/source';
 
 const ctx = { profile: { video_duration: ['30-60秒'], account_platform: ['抖音'] } as never, positioning: null, dealReasons: [] };
@@ -35,8 +35,9 @@ describe('各板块页面', () => {
     expect(page).toMatch(/useState<"preset" \| "custom" \| "ai">\("ai"\)/);
     expect(page).toMatch(/if \(!s\.duration\) setDurationMode\('ai'\)/);
     expect(page).not.toMatch(/setDurationMode\("preset"\); setDuration\("60秒"\)/);
-    // AI 推荐时：时长不限、以效果为准；不压缩；不拿 60 秒范例
-    expect(page).toMatch(/时长不限，以效果最好为准：\$\{AI_LENGTH_RULE\}/);
+    // AI 推荐时：默认写到 1 分 30 秒～1 分 40 秒；不压缩；不拿 60 秒范例
+    expect(page).toMatch(/时长：AI 推荐，\$\{AI_SCRIPT_LENGTH_RULE\}/);
+    expect(AI_SCRIPT_LENGTH_RULE).toMatch(/1分30秒～1分40秒/);
     expect(page).toMatch(/const durationForCalc = isAiDuration \? "" : finalDuration/);
   });
 

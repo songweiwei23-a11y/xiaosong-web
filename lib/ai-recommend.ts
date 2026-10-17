@@ -27,6 +27,29 @@ export function durationCeilingSeconds(duration: string): number | null {
  * - 编导明确设了时长：严格按它写，给出口播字数上限；超了就删次要的铺垫和细节，不因为「讲精彩」就超时。
  * - 没设（空、「AI推荐」「AI自行推断」）：内容精彩优先，时长只是次要参考。
  */
+/**
+ * 脚本生成的默认时长（2026-10-17 产品方）：选「AI 推荐」或没选，默认写到 1分30秒～1分40秒。
+ * 只给脚本生成用；审稿、二创还是 AI_LENGTH_RULE 的口径。
+ */
+export const AI_SCRIPT_TARGET_TEXT = '1分30秒～1分40秒';
+export const AI_SCRIPT_LENGTH_RULE = `默认写到${AI_SCRIPT_TARGET_TEXT}（约 90～100 秒），口播约 450～500 字。内容精彩优先：该有的情节、细节、对话、情绪转折写足，内容讲到这个长度；不为了凑时长注水，也不在结尾硬加废话`;
+
+/**
+ * 脚本生成的时长规则：
+ * - 选「AI 推荐」或没选：按 AI_SCRIPT_LENGTH_RULE，默认 1分30秒～1分40秒；
+ * - 编导设了时长：严格按设定写（durationRule 的口径），口播字数在设定时长的 90%～100% 之间，
+ *   不明显短于设定，也不超出。
+ */
+export function scriptLengthRule(duration: string | null | undefined): string {
+  const d = (duration ?? '').trim();
+  if (!d || /AI/.test(d)) return AI_SCRIPT_LENGTH_RULE;
+  const sec = durationCeilingSeconds(d);
+  if (!sec) return durationRule(d);
+  const hi = Math.round(sec * SPEECH_CHARS_PER_SECOND);
+  const lo = Math.round(hi * 0.9);
+  return `${durationRule(d)}。同时不明显短于 ${d}：口播约 ${lo}～${hi} 字，内容讲到这个长度`;
+}
+
 export function durationRule(duration: string | null | undefined): string {
   const d = (duration ?? '').trim();
   if (!d || /AI/.test(d)) return AI_LENGTH_RULE;
