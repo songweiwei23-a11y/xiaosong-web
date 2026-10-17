@@ -92,7 +92,8 @@ describe('审稿优化的纯文字文案', () => {
 
   it('问题清单和优化稿都就近写着「不许编数字和经历」（实测编出「开车50公里」「回头客占8成」）', () => {
     const prompt = buildReviewPrompt(p);
-    const rule = /没有的数字、经历、事件[\s\S]*?都不补造[\s\S]*?未提供的必要信息写在文案外说明待补/;
+    // 2026-10-17 加了「尺寸标准、区间、比例」，规则句的语义不变
+    const rule = /没有的数字[\s\S]*?经历、事件[\s\S]*?都不补造[\s\S]*?未提供的必要信息写在文案外说明待补/;
     const list = prompt.slice(prompt.indexOf('### 3. 问题清单'), prompt.indexOf('优化后的完整脚本'));
     const opt = prompt.slice(prompt.indexOf('优化后的完整脚本'), prompt.indexOf('纯文字文案'));
     expect(list).toMatch(rule);

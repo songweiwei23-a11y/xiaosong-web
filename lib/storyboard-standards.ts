@@ -364,6 +364,10 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
     parts.push('');
   }
 
+  // 2026-10-17 链路验证：脚本里没依据的尺寸标准被分镜原样写进字幕和道具清单。分镜只能用脚本里已有的数字。
+  parts.push('## 数字只能照抄脚本');
+  parts.push('字幕、道具清单、拍摄要点里出现的任何数字（尺寸、厘米、区间、比例、数量），只能来自下面的脚本原文或档案；脚本里没有的，不要新增，写成【待测量】。');
+  parts.push('');
   parts.push('## 📄 待拆解的脚本');
   parts.push('');
   parts.push(script || '未提供脚本内容');

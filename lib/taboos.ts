@@ -347,7 +347,7 @@ export function scanTaboos(text: string, profile: object | null | undefined): Ta
   const seen = new Set<string>();
   for (const raw of text.split('\n')) {
     const line = raw.trim();
-    if (!line || /不要|不能|不得|不说|不用|不做|不拍|不碰|别说|别用|别拍|避免|禁忌|禁止|红线|❌|⛔|🚫|违规|违禁|不可以|不承诺/.test(line)) continue;
+    if (!line || /不要|不能|不得|不说|不用|不做|不拍|不碰|别说|别用|别拍|不写|不提|避免|禁忌|禁止|红线|❌|⛔|🚫|违规|违禁|不可以|不承诺/.test(line)) continue;
     // 成交理由逐条打分（「稀缺唯一（3分）：没有独家款……」）是在评估，不是在吹
     if (/[（(]\d+(?:\.\d+)?分[）)]/.test(line)) continue;
     for (const t of list) {
