@@ -41,6 +41,8 @@ import { ChatSyncQueue, readPendingChats, type ChatSyncStatus } from '@/lib/chat
 import { supabase } from '@/lib/supabase/client';
 import { createHistoryId } from '@/lib/history-id';
 import { notify } from '@/components/ui/feedback';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
+import { appendTranscript } from '@/lib/voice-input';
 import { browserDraftStorage } from '@/lib/canvas-draft';
 import {
   listConversations,
@@ -1112,6 +1114,11 @@ export default function FreeChatPage() {
                 className="block max-h-[200px] w-full resize-none bg-transparent px-3 pb-1 pt-2.5 text-sm focus:outline-none disabled:opacity-60 sm:px-4"
               />
               <div className="flex flex-wrap items-center gap-2 px-2 pb-2 sm:px-3">
+                {/* 语音输入（整改 C）：听到的整句接到输入框后面，不会直接发送 */}
+                <VoiceInputButton
+                  disabled={isStreaming || showLegacy || contextLoading || !loaded}
+                  onText={(t) => setInput((prev) => appendTranscript(prev, t))}
+                />
                 <button
                   type="button"
                   onClick={() => attachRef.current?.open()}

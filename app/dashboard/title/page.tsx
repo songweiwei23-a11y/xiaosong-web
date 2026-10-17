@@ -20,6 +20,7 @@ import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
+import { CoverMaker } from "@/components/cover/CoverMaker";
 import { INPUT_CLS, TEXTAREA_CLS, GENERATE_BTN, SECONDARY_BTN } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
@@ -433,6 +434,11 @@ export default function TitlePage() {
             </Field>
           </CollapsibleSection>
           )}
+
+          {/* 封面图（整改 C）：标题定下来以后，直接在这里排一张大字封面下载，不用再去找设计工具 */}
+          <CollapsibleSection title="封面图（本地生成，不花钱）" defaultOpen={false}>
+            <CoverMaker initialTitle={topic} />
+          </CollapsibleSection>
 
           <button
             onClick={handleGenerate}

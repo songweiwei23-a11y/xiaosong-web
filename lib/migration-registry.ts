@@ -277,6 +277,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [],
   },
   {
+    file: "20261017_benchmark.sql",
+    tables: ["benchmark_accounts","benchmark_videos","hot_topics"],
+    columns: [],
+  },
+  {
     file: "20261017_course_stars.sql",
     tables: ["course_stars"],
     columns: [],

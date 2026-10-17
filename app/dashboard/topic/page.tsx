@@ -46,6 +46,8 @@ import { CommentQuestions } from '@/components/topic/CommentQuestions';
 import { Lightbulb, Loader2, Users, Target, Sparkles, Zap, Heart, DollarSign, Eye, Flame, FileText } from "lucide-react";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
+import { appendTranscript } from '@/lib/voice-input';
 
 // 静态配置与类型已抽离
 import { ALL_DEAL_REASONS } from './constants';
@@ -1282,6 +1284,9 @@ export default function TopicPage() {
                 rows={2}
                 className={TEXTAREA_CLS}
               />
+              <div className="mt-1 flex justify-end">
+                <VoiceInputButton onText={(t) => setPersonalRequirement((prev) => appendTranscript(prev, t))} />
+              </div>
             </Field>
 
             {/* 评论区 → 选题（体检 F1）：挑出观众反复问的问题，放进上面的个人要求 */}

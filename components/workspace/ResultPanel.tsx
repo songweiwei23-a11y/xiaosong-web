@@ -11,6 +11,7 @@ import { getActiveProfileId } from '@/lib/active-profile';
 import { buildContextBlock, type ContextModule } from '@/lib/creator-context';
 import { notify } from "@/components/ui/feedback";
 import { extractPlainCopy } from "@/lib/script-copy";
+import { autoCorrectTaboos, describeCorrections } from "@/lib/taboo-correct";
 import {
   splitQualityReport,
   parseQualitySummary,
@@ -126,6 +127,7 @@ export function ResultPanel({
 }) {
   // 拆分与统计只依赖 result，用 memo 避免流式输出时逐字符重算
   const pathname = usePathname();
+  const { context: qualityCtx } = useCreatorContext();
   const supportsCreationLinks = Boolean(CREATION_SOURCES[pathname?.split('/')[2] || '']);
   const { body, report, stats, quality } = useMemo(() => {
     const split = splitQualityReport(result);
@@ -148,10 +150,17 @@ export function ResultPanel({
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [canvas, setCanvas] = useState<{ base: string; id: string | null; versions: CanvasVersion[] } | null>(null);
   const adopted = canvas && canvas.base === body && canvas.versions.length > 1 ? canvas.versions[canvas.versions.length - 1].content : null;
-  const view = adopted ?? body;
+  /*
+   * 平台修正（整改 C · 违禁词）：命中的绝对化词按确定的说法替换（lib/taboo-correct），
+   * 显示和复制的是修正后的；历史里存的还是模型原稿，打开时再修正一次，结果一样。质检上报仍用原稿，模型指标要看模型本身。
+   */
+  const [showOriginal, setShowOriginal] = useState(false);
+  const correction = useMemo(() => autoCorrectTaboos(body, qualityCtx.profile), [body, qualityCtx.profile]);
+  const shown = showOriginal || !correction.changes.length ? body : correction.text;
+  const view = adopted ?? shown;
   useEffect(() => { if (isGenerating) setCanvasOpen(false); }, [isGenerating]);
   const openCanvas = () => {
-    if (!canvas || canvas.base !== body) setCanvas({ base: body, id: null, versions: [{ content: body, at: Date.now(), note: '生成稿' }] });
+    if (!canvas || canvas.base !== body) setCanvas({ base: body, id: null, versions: [{ content: shown, at: Date.now(), note: '生成稿' }] });
     setCanvasOpen(true);
   };
   const saveCanvas = async (versions: CanvasVersion[]): Promise<boolean> => {
@@ -212,7 +221,6 @@ export function ResultPanel({
    * 自动质检（lib/quality-checks）：这一次生成刚写完就体检一遍、报给后台。
    * 只在"生成中 → 写完"那一下报——刷新后恢复出来的旧结果不算新生成
    */
-  const { context: qualityCtx } = useCreatorContext();
   const generatingBefore = useRef(false);
   /** 刚生成完的那份原稿：只对它自动按资料修正（翻历史、刷新恢复的不自动跑） */
   const [freshBody, setFreshBody] = useState<string | null>(null);
@@ -348,6 +356,16 @@ export function ResultPanel({
       {/* 禁忌兜底：平台红线 + 行业禁忌词（lib/taboos），命中了就标出来 */}
       {/* 我的创作偏好：这次按哪些偏好写的（lib/preferences），写稿类板块才有 */}
       {body && !isGenerating && <PreferenceHint board={CONTEXT_BOARD[segment] ?? 'script'} />}
+      {body && !isGenerating && correction.changes.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-4 py-2.5 text-[12.5px]">
+          <span className="text-foreground">
+            {describeCorrections(correction.changes)}。原稿在历史里还能看到。
+          </span>
+          <button type="button" onClick={() => setShowOriginal((v) => !v)} className="shrink-0 text-[12px] text-primary hover:underline">
+            {showOriginal ? "用修正后的" : "看原文"}
+          </button>
+        </div>
+      )}
       {body && !isGenerating && <TabooScan body={view} onContinue={onContinue} />}
       {body && !isGenerating && segment && <ResultFeedback key={`${body.length}:${body.slice(0, 80)}`} board={segment} excerpt={body} />}
       {/*

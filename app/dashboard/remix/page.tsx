@@ -147,6 +147,21 @@ export default function RemixPage() {
   const [notes, setNotes] = useState("");
 
   const [running, setRunning] = useState(false);
+  // 快速模式（整改 C3）：只留原片、借哪几层、行业；开启时把隐藏的设置重置成初始默认值，请求里用的就是默认值。补充要求不动
+  const [quickMode, setQuickMode] = useState(false);
+  const toggleQuick = () => {
+    if (!quickMode) {
+      setCount(3);
+      setDifferentiate("auto");
+      setDepth("full");
+      setFissionMode("copy");
+      setSelections({});
+      setRole("same");
+      setDuration("跟原片");
+      setOutputs(DEFAULT_OUTPUTS);
+    }
+    setQuickMode((v) => !v);
+  };
   const [result, setResult] = useState("");
   const breakdownScopeRef = useRef<string>();
   const restoredInputScope = useRef<string>();
@@ -317,6 +332,16 @@ export default function RemixPage() {
             <Link href="/history" className="mt-2 inline-block text-[11.5px] text-primary underline">查看这个账号的全部历史</Link>
           </CollapsibleSection>
 
+          {/* 快速模式切换（整改 C3）：快速只留原片、借哪几层和行业，其余按默认来 */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2.5">
+            <p className="text-[12px] text-muted-foreground">
+              {quickMode ? "快速模式：只看原片和借哪几层，方案数、裂变、产出都按默认。" : "想快一点？切到快速模式，只填原片就能出方案。"}
+            </p>
+            <button type="button" onClick={toggleQuick} className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[12px] text-foreground hover:bg-foreground/[0.06]">
+              {quickMode ? "展开全部设置" : "切到快速模式"}
+            </button>
+          </div>
+
           <CollapsibleSection title="原片" defaultOpen>
             <div className="flex gap-1.5">
               <button type="button" onClick={() => setMode("breakdown")} aria-pressed={mode === "breakdown"} className={chipCls(mode === "breakdown")}>
@@ -365,6 +390,7 @@ export default function RemixPage() {
             <ChoiceGrid items={BORROW_LAYERS} isOn={(id) => layers.includes(id)} onToggle={(id) => setLayers((l) => toggle(l, id))} />
           </CollapsibleSection>
 
+          {!quickMode && (
           <CollapsibleSection title="出几个、怎么拉开、写多深" defaultOpen>
             <Field label="出几个方案" stacked>
               <div className="flex gap-1.5">
@@ -384,7 +410,9 @@ export default function RemixPage() {
               <ChoiceGrid items={DEPTHS} isOn={(id) => depth === id} onToggle={setDepth} cols={1} />
             </Field>
           </CollapsibleSection>
+          )}
 
+          {!quickMode && (
           <CollapsibleSection title="裂变：1:1 复刻，或按拆解知识裂变" defaultOpen={fissionMode !== "copy"}>
             <Field label="怎么做" stacked>
               <ChoiceGrid items={FISSION_MODES} isOn={(id) => fissionMode === id} onToggle={setFissionMode} cols={1} />
@@ -430,7 +458,9 @@ export default function RemixPage() {
               })}
             </div>
           </CollapsibleSection>
+          )}
 
+          {!quickMode && (
           <CollapsibleSection title="目的、时长、要哪些产出" defaultOpen={false}>
             <Field label="这条拍来干什么" stacked>
               <ChoiceGrid items={ROLES} isOn={(id) => role === id} onToggle={setRole} />
@@ -448,6 +478,7 @@ export default function RemixPage() {
               <ChoiceGrid items={OUTPUTS} isOn={(id) => outputs.includes(id)} onToggle={(id) => setOutputs((o) => toggle(o, id))} />
             </Field>
           </CollapsibleSection>
+          )}
 
           <CollapsibleSection title="二创到哪家店" defaultOpen>
             {ctxLoading ? (

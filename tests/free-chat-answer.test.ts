@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchFreeChatWeb } from '@/lib/free-chat-web';
 
+// 第一次调用路由时要冷加载整个聊天路由（依赖很多），在这台机器上可能超过默认的 30 秒；这是加载耗时，不是断言失败
+vi.setConfig({ testTimeout: 90_000 });
+
 const state = vi.hoisted(() => ({ fetch: vi.fn(), enabled: false }));
 vi.mock('@/lib/free-chat-web', () => ({ searchFreeChatWeb: vi.fn(async () => null) }));
 vi.mock('@/lib/api-guard', () => ({
