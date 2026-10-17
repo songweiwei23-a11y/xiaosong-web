@@ -127,13 +127,14 @@ export function buildCreationHandoff(source: string, target: CreationTarget, bod
   const settings = mergeCreationSettings(isBatch(body) || source === 'breakdown' ? {} : settingsFromText(body), context.settings);
   if (['review', 'script', 'remix'].includes(source)) settings.workingScript = creationScript(source, body);
   /*
-   * 去做选题：只有这几个板块带的才是「一条脚本」（选题页据此从脚本取材）。别的板块（创作方向、自由对话的方案……）
-   * 设置里可能还挂着之前某一步的旧脚本，带过去会让选题页拿旧脚本当出发点、丢了这次勾的方案（2026-10-05）
+   * 去任何板块：只有这几个板块带的才是「一条脚本」。别的板块（创作方向、自由对话的方案……）设置里可能还挂着之前某一步的旧脚本，
+   * 带过去会拿旧脚本当出发点、丢了这次勾的方案。选题页原来才这样处理（2026-10-05）；2026-10-17 链路验证发现脚本页也会带过去，
+   * 所以所有目标板块都一样处理。
    */
-  if (target === 'topic') {
-    if (source === 'storyboard') settings.workingScript = creationScript(source, body);
-    else if (!['review', 'script', 'remix', 'title'].includes(source) && !(source === 'growth' && context.topic)) delete settings.workingScript;
-  }
+  // 开篇、标题只改局部：续接完整稿时要保留已经审好的正文（growth/title 在列表里），所以只清掉不产出脚本的来源
+  const producesScript = ['review', 'script', 'remix', 'title', 'growth'].includes(source);
+  if (source === 'storyboard') settings.workingScript = creationScript(source, body);
+  else if (!producesScript || (target === 'topic' && source === 'growth' && !context.topic)) delete settings.workingScript;
   // 开篇/标题只改局部，继续处理完整稿时保留已经审好的正文。
   let draft = ['growth', 'title'].includes(source) && settings.workingScript ? settings.workingScript : creationScript(source, body);
   if (source === 'growth' && settings.openingLine && !draft.startsWith(settings.openingLine)) {
