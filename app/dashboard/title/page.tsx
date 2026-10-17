@@ -88,6 +88,8 @@ export default function TitlePage() {
   const [, setVideoTopic] = useState("");
   const [platform, setPlatform] = useState("抖音");
   const [, setTitleStyles] = useState<string[]>(["pain", "counter", "result"]);
+  // 快速模式（整改 A2）：只留视频主题、平台和参考内容；人群、标题类型按档案和默认来，隐藏的旧输入不带过去
+  const [quickMode, setQuickMode] = useState(false);
   const [targetAudience, setTargetAudience] = useState("");
   const [, setAdditionalInfo] = useState("");
   
@@ -122,7 +124,7 @@ export default function TitlePage() {
   });
   // 直接填写也要传递原始要求；不能只有跨板块带入时才检查“尚未采访”。
   const userIntent = autoSetup.settings.userIntent || [topic, scriptContent].filter(Boolean).join('\n');
-  const currentSettings = resolveCreationSettings({ from: '标题封面', sourceContent: scriptContent || topic, settings: mergeCreationSettings(autoSetup.settings, { topic, platform, audience: targetAudience, titleType, titleFormula, keywordStrategy, titleCount: abTestCount, openingCards, userIntent }) }, creatorContext);
+  const currentSettings = resolveCreationSettings({ from: '标题封面', sourceContent: scriptContent || topic, settings: mergeCreationSettings(autoSetup.settings, { topic, platform, audience: quickMode ? "" : targetAudience, titleType: quickMode ? "auto" : titleType, titleFormula, keywordStrategy, titleCount: abTestCount, openingCards, userIntent }) }, creatorContext);
 
   // 接收从脚本页带来的主题
   useEffect(() => {
@@ -207,15 +209,18 @@ export default function TitlePage() {
     setResult("");
     let fullResult = "";
 
+    const quickAudience = quickMode ? "" : targetAudience;
+    const quickTitleType = quickMode ? "auto" : titleType;
+
     const inputData = {
       creationSettings: currentSettings,
       profileId: creatorContext.profile?.id || null,
       topic,
-      titleType,
+      titleType: quickTitleType,
       titleFormula,
       keywordStrategy,
       abTestCount,
-      targetAudience,
+      targetAudience: quickAudience,
       platform,
       openingCards,
       sourceContent: scriptContent,
@@ -230,13 +235,13 @@ export default function TitlePage() {
         // 账号背景随每次生成带上，不用用户在这一页重填一遍
         contextBlock: buildContextBlock(creatorContext, "title") + creationSettingsBlock(currentSettings),
       topic,
-      titleTypeLabel: TITLE_TYPES.find(t => t.value === titleType)?.label || "AI推荐",
+      titleTypeLabel: TITLE_TYPES.find(t => t.value === quickTitleType)?.label || "AI推荐",
       titleFormulaValue: titleFormula,
       titleFormulaLabel: TITLE_FORMULAS.find(f => f.value === titleFormula)?.label || "",
       keywordStrategyLabel: keywordStrategyOption?.label || "",
       keywordStrategyDesc: keywordStrategyOption?.desc || "",
       platform,
-      targetAudience,
+      targetAudience: quickAudience,
       count: abTestCount,
       openingCards,
       sourceContent: scriptContent,
@@ -255,7 +260,7 @@ export default function TitlePage() {
           profileId: creatorContext.profile?.id || null,
           // 结构化字段带上，供知识库检索的短查询使用
           platform,
-          titleType,
+          titleType: quickTitleType,
         }),
       });
 
@@ -293,6 +298,17 @@ export default function TitlePage() {
           {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
           <ContextBadge board="title" className="mb-4" />
           <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
+
+          {/* 快速模式切换（整改 A2）：快速只留视频主题、平台和参考内容，其余按档案和默认来 */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2.5">
+            <p className="text-[12px] text-muted-foreground">
+              {quickMode ? "快速模式：只填主题和平台，其余按你的档案来。" : "想快一点？切到快速模式，只填主题就能生成。"}
+            </p>
+            <button type="button" onClick={() => setQuickMode((v) => !v)} className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[12px] text-foreground hover:bg-foreground/[0.06]">
+              {quickMode ? "展开全部设置" : "切到快速模式"}
+            </button>
+          </div>
+
           <CollapsibleSection title="脚本 / 创作参考" defaultOpen>
             <textarea aria-label="脚本或创作参考" value={scriptContent} onChange={e => setScriptContent(e.target.value)} placeholder="可粘贴脚本；从其他板块跳转时自动带入内容" rows={4} className={TEXTAREA_CLS} />
           </CollapsibleSection>
@@ -327,15 +343,17 @@ export default function TitlePage() {
               </div>
             </Field>
 
-            <Field label="目标人群" optional>
-              <input
-                type="text"
-                value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
-                placeholder="例如：25-35 岁职场女性"
-                className={INPUT_CLS}
-              />
-            </Field>
+            {!quickMode && (
+              <Field label="目标人群" optional>
+                <input
+                  type="text"
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  placeholder="例如：25-35 岁职场女性"
+                  className={INPUT_CLS}
+                />
+              </Field>
+            )}
           </CollapsibleSection>
 
           {/* 从开篇页带过来时才出现。不提示的话用户不知道这次的标题被约束了 */}
@@ -358,6 +376,7 @@ export default function TitlePage() {
             </div>
           )}
 
+          {!quickMode && (
           <CollapsibleSection title="标题风格" defaultOpen>
             <Field label="标题类型" optional stacked>
               <button type="button" onClick={() => setTitleType('auto')} aria-pressed={titleType === 'auto'} className={`${SECONDARY_BTN} mb-2 w-full`}>
@@ -413,6 +432,7 @@ export default function TitlePage() {
               </div>
             </Field>
           </CollapsibleSection>
+          )}
 
           <button
             onClick={handleGenerate}

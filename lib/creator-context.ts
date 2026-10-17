@@ -33,6 +33,7 @@ import { performancePromptBlock, type PerformanceSummary } from './performance';
 import { PRESET_BOARDS, presetPromptBlock, type CreatorPreset } from './creator-presets';
 import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from './preferences';
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
+import { factInventoryBlock } from './fact-inventory';
 import { adviceContextBlock, threeHavesBlock } from './industry-advice';
 
 /** 三有自检只给产出选题、脚本、方向的板块（见 lib/industry-advice 的 threeHavesBlock） */
@@ -373,6 +374,8 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
 
   // 写作底线（2026-10-05 质量整改，lib/output-rules）：优先级、不编造，所有写稿板块都带
   if (OUTPUT_RULE_BOARDS.has(module)) parts.push('', outputRulesBlock());
+  // 本次能用的具体数字（整改 A3）：用的是去掉「建档时排除」的字段后的档案，排除的内容不会进清单
+  if (p && OUTPUT_RULE_BOARDS.has(module)) parts.push('', factInventoryBlock(p as unknown as Record<string, unknown>));
 
   // 成交理由：只有变现相关的模块需要——哪些模块要，看清单里的 dealReasons（原来这里另写了一份名单，两处会对不上）
   if (ctx.dealReasons.length > 0 && manifestOf(module)?.dealReasons) {

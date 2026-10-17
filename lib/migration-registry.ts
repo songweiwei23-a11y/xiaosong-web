@@ -292,6 +292,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [{"table":"creator_preferences","column":"verified_signature"},{"table":"result_feedback","column":"control"},{"table":"result_feedback","column":"excerpt"},{"table":"result_feedback","column":"profile_id"}],
   },
   {
+    file: "20261017_positioning_facts.sql",
+    tables: [],
+    columns: [{"table":"account_positioning","column":"profile_facts"}],
+  },
+  {
     file: "20261017_work_plan.sql",
     tables: [],
     columns: [{"table":"works","column":"material_note"},{"table":"works","column":"planned_at"}],

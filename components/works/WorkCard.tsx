@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Trash2, ArrowRight, Check, Camera, Clock, Send, AlertCircle, BarChart3, Clapperboard, Loader2 } from "lucide-react";
 import { METRIC_FIELDS, metricsLine, readMetrics, type WorkMetrics } from "@/lib/performance";
+import { QuickMetrics } from "@/components/works/QuickMetrics";
 import { workReminder, type ShootStatus, type Work } from "@/lib/works";
 import { WorkPlanRow } from "@/components/works/WorkPlanRow";
 import { fetchWork, nextStage, workStageUrl, type WorkDetail } from "@/lib/resume";
@@ -174,11 +175,19 @@ export function WorkCard({ work: w, onDelete, onShootChange, onMetricsSave }: {
       {/* 发布后的数据（数据回流）：录了以后选题、方向、起号会参考这个号的真实数据 */}
       {onMetricsSave && status === "published" && (
         <div className="mt-3 border-t border-border/60 pt-3">
-          {!editing ? (
+          {!editing && !w.metrics ? (
+            // 整改 B1：还没录过就只要 3 个数，完整表单在「更多项」里
+            <div className="space-y-2">
+              <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                <BarChart3 className="h-3.5 w-3.5" />发完了？填 3 个数就行，选题和方向会参考这个号的真实表现
+              </p>
+              <QuickMetrics onSave={onMetricsSave} onFull={openForm} />
+            </div>
+          ) : !editing && w.metrics ? (
             <div className="flex flex-wrap items-center gap-2 text-[12px]">
               <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-              {w.metrics ? <span className="text-foreground">{metricsLine(w.metrics)}{w.metrics.note ? `（${w.metrics.note}）` : ""}</span> : <span className="text-muted-foreground">还没录数据：录了以后，选题和方向会参考这个号的真实表现</span>}
-              <button type="button" onClick={openForm} className="text-primary underline">{w.metrics ? "改数据" : "录入数据"}</button>
+              <span className="text-foreground">{metricsLine(w.metrics)}{w.metrics.note ? `（${w.metrics.note}）` : ""}</span>
+              <button type="button" onClick={openForm} className="text-primary underline">改数据</button>
             </div>
           ) : (
             <div className="space-y-2">

@@ -13,6 +13,8 @@ export interface PreferenceView {
   newCount: number;
   /** 这次是对照组：生成不带偏好（服务端决定，见 lib/learning-signals） */
   control?: boolean;
+  /** 学习进度（整改 B2）：usable 是已录完播数据、能用于学习的作品数；只在非生成时返回 */
+  progress?: { usable: number; watch: number; active: number };
 }
 
 const scope = (profileId: string | null) => encodeURIComponent(profileId || 'default');

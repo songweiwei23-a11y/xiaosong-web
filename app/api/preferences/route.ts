@@ -3,7 +3,8 @@ import { getServiceSupabase } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/read-body';
 import { sseTask } from '@/lib/dify-task';
 import { DEFAULT_PROFILE_SCOPE } from '@/lib/profile-history';
-import { learnPreferences, missingTable, validProfileKey } from '@/lib/preference-learner';
+import { collectVerifiedSamples, learnPreferences, missingTable, validProfileKey } from '@/lib/preference-learner';
+import { VERIFY_MIN_ACTIVE, VERIFY_MIN_WATCH } from '@/lib/verified-writing';
 import { newSince, readStoredItems, readUserItem, settle, sameMeaning, type PreferenceItem } from '@/lib/preferences';
 import { isControlDay } from '@/lib/learning-signals';
 
@@ -58,7 +59,9 @@ export async function GET(request: Request) {
   if (params.get('purpose') === 'generate' && isControlDay(guard.userId!)) {
     return Response.json({ ...view(data), items: [], control: true }, { headers });
   }
-  return Response.json(view(data), { headers });
+  // 学习进度（整改 B2）：用的是学习流程同一套样本判断，首页和作品页显示的数字和真实生效的一致
+  const usable = await collectVerifiedSamples(getServiceSupabase(), guard.userId!, key);
+  return Response.json({ ...view(data), progress: { usable: usable.length, watch: VERIFY_MIN_WATCH, active: VERIFY_MIN_ACTIVE } }, { headers });
 }
 
 export async function POST(request: Request) {

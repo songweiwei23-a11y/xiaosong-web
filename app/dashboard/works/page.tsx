@@ -6,6 +6,7 @@ import { ListChecks, Loader2 } from "lucide-react";
 import { listWorksPage, workGroupCounts, deleteWork, setShootStatus, saveWorkMetrics, type ProgressGroup, type ShootStatus, type Work } from "@/lib/works";
 import { PerformanceReview } from "@/components/works/PerformanceReview";
 import { invalidateCreatorContext } from "@/hooks/useCreatorContext";
+import { LearningProgressNote } from "@/components/preferences/LearningProgressNote";
 import type { WorkMetrics } from "@/lib/performance";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { WorkCard } from "@/components/works/WorkCard";
@@ -152,6 +153,8 @@ export default function WorksPage() {
           <Link href="/dashboard/library" className="mx-1 text-primary hover:underline">素材库</Link>
         </p>
       </header>
+      {/* 学习进度（整改 B2）：离「开物验证写法」还差几条数据 */}
+      <LearningProgressNote />
 
       {/* 数据复盘（数据回流）：发布后录的数据汇总，同样会写进选题、方向的提示词 */}
       {(counts?.published ?? 0) > 0 && <PerformanceReview revision={perfRev} />}

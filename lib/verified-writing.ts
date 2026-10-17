@@ -90,3 +90,13 @@ export function withDataItems(items: PreferenceItem[], dataItems: PreferenceItem
 
 export const samplesSignature = (samples: WorkSample[]): string =>
   samples.map((s) => `${s.id}:${s.completion}:${s.opening}:${s.length}`).join('|');
+
+/**
+ * 「学习进度」这一句话（整改 B2）。usable 必须来自 collectVerifiedSamples——
+ * 首页、作品页和后台统计用同一个数，不另起口径。
+ */
+export function learningProgressLine(usable: number, active: number = VERIFY_MIN_ACTIVE): string {
+  if (usable <= 0) return '还没有录过数据。发完视频录 3 个数，攒到 ' + active + ' 条，开物才会开始验证你的写法';
+  if (usable < active) return `已录 ${usable} 条数据，再录 ${active - usable} 条，开物才会开始验证你的写法`;
+  return `已录 ${usable} 条数据，写法之间还没有明显差别，继续录会更准`;
+}

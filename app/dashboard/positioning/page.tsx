@@ -30,6 +30,7 @@ import {
 } from '@/lib/positioning-sections';
 import { SectionEditor } from '@/components/positioning/SectionEditor';
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext';
+import { briefFactsChanged } from '@/lib/creative-brief';
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import ContinuousDialog from '@/components/ContinuousDialog';
@@ -64,6 +65,8 @@ interface Positioning {
   created_at: string
   is_active: boolean
   strategy_summary?: string
+  /** 保存时档案事实的指纹（整改 B4）；老定位没有 */
+  profile_facts?: string | null
 }
 
 export default function PositioningPage() {
@@ -410,6 +413,9 @@ export default function PositioningPage() {
     )
   }
 
+  // 定位是按旧档案写的（整改 B4）：保存定位时的事实指纹和现在的档案对不上。只提醒，旧的继续用
+  const staleFacts = !!activeProfile && !!selectedPositioning?.profile_facts && briefFactsChanged(selectedPositioning.profile_facts, activeProfile)
+
   if (!activeProfile) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -438,6 +444,12 @@ export default function PositioningPage() {
       sidebar={
         <>
           <PageHeader title="账号定位" subtitle="基于账号档案，生成一份可执行的定位方案" />
+
+          {staleFacts && (
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.07] px-3.5 py-3 text-[12px] leading-relaxed text-foreground/90">
+              这份定位是按旧档案写的：档案的人设、经历、品类或价格改过了。想按新档案来，重新生成一份即可；旧的还能继续用。
+            </div>
+          )}
 
           {activeProfile ? (
             <div className="glass-panel rounded-2xl p-4">

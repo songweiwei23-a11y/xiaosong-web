@@ -9,6 +9,7 @@ import { readSetting, type MixSetting } from '@/lib/content-mix'
 import { TabooEditor } from '@/components/profile/TabooEditor'
 import { readTabooSettings, type TabooSettings } from '@/lib/taboos'
 import { PERSONA_FIELDS, readPersonaFacts, hasPersonaFacts, type PersonaFacts } from '@/lib/persona-facts'
+import { profileConsistencyIssues } from '@/lib/profile-consistency'
 
 // 字段定义和选项搬到了 lib/profile-fields（前采建档也要按同一套选项填），这里转出去，老的引用照常可用
 export { EMPTY_PROFILE, toFormData }
@@ -189,6 +190,8 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<ProfileFormData>(() => toFormData(initial))
+  // 一致性提示（整改 B3）：只提示、不挡保存，每一步都显示
+  const consistencyIssues = profileConsistencyIssues(formData as unknown as Record<string, unknown>)
   // 内容配比：没设过就是"系统推荐"
   const [mixSetting, setMixSetting] = useState<MixSetting>(() => readSetting(initial?.content_mix) ?? { preset: 'auto' })
   const [mixTouched, setMixTouched] = useState(false)
@@ -492,6 +495,17 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit, o
         </h2>
         {cur.body}
       </div>
+
+      {consistencyIssues.length > 0 && (
+        <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/[0.07] px-4 py-3 text-[12.5px]">
+          <p className="mb-1.5 font-medium text-amber-600 dark:text-amber-400">档案里有 {consistencyIssues.length} 处前后对不上（不影响保存，核对一下）</p>
+          <ul className="space-y-1 text-foreground/90">
+            {consistencyIssues.map((i) => (
+              <li key={i.key + i.message}>· {i.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex items-center justify-between border-t border-border pt-6">
         <button

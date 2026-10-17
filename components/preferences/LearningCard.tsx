@@ -5,28 +5,48 @@ import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { basisText, type PreferenceItem } from "@/lib/preferences";
-import { fetchPreferences } from "@/lib/preferences-client";
+import { fetchPreferences, type PreferenceView } from "@/lib/preferences-client";
+import { learningProgressLine } from "@/lib/verified-writing";
 
 /**
  * 工作台首页：「开物验证过的写法」＋「下一条怎么写」（二期 B/C 阶段）。
  * 只用他自己录下的完播数据验证过的写法；没有验证过的就不出现，不拿编的数字充门面。
+ * 整改 B2：没有生效的写法时，也告诉他学习进度，免得他觉得「学习没在发生」。
  */
 export function LearningCard() {
   const { context, loading } = useCreatorContext();
   const id = context.profile?.id ?? null;
   const [items, setItems] = useState<PreferenceItem[]>([]);
+  const [view, setView] = useState<PreferenceView | null>(null);
 
   useEffect(() => {
     if (loading || !id) return;
     let off = false;
     void fetchPreferences(id).then((v) => {
       if (off) return;
+      setView(v?.ready && v.enabled ? v : null);
       setItems(v?.ready && v.enabled ? v.items.filter((i) => i.origin === "data" && i.status === "active") : []);
     });
     return () => { off = true; };
   }, [id, loading]);
 
-  if (!id || !items.length) return null;
+  if (!id || !view) return null;
+  const progress = view.progress;
+
+  if (!items.length) {
+    // 还没有生效的写法：只在已经开始录数据时给进度（一条都没录的，首页不唠叨）
+    if (!progress || progress.usable === 0) return null;
+    return (
+      <div className="mb-4 rounded-2xl border border-border/60 px-4 py-3">
+        <p className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+          写法验证进行中
+        </p>
+        <p className="mt-1.5 text-[12.5px] text-muted-foreground">{learningProgressLine(progress.usable, progress.active)}</p>
+      </div>
+    );
+  }
+
   const top = [...items].sort((a, b) => b.count - a.count).slice(0, 2);
   return (
     <div className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.05] px-4 py-3">
@@ -46,6 +66,9 @@ export function LearningCard() {
         <span className="text-foreground">下一条选题，就照「{top[0].text}」来写。</span>
         <Link href="/dashboard/topic" className="text-primary hover:underline">去选题 →</Link>
       </div>
+      {progress && progress.usable < progress.active && (
+        <p className="mt-2 text-[11.5px] text-muted-foreground">{learningProgressLine(progress.usable, progress.active)}</p>
+      )}
     </div>
   );
 }

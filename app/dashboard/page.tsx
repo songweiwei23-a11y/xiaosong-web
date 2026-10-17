@@ -18,6 +18,8 @@ import { QuickStart } from '@/components/dashboard/QuickStart';
 import { PreferenceNews } from '@/components/preferences/PreferenceHint';
 import { LearningCard } from '@/components/preferences/LearningCard';
 import { PlanThisWeek } from '@/components/dashboard/PlanThisWeek';
+import { NextStepHero } from '@/components/dashboard/NextStepHero';
+import { PendingMetrics } from '@/components/dashboard/PendingMetrics';
 import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
@@ -233,6 +235,8 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<any>(null);
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [works, setWorks] = useState<Work[]>([]);
+  /** 已发布的作品，只给「待录数据」用（works 只放还没做完的） */
+  const [published, setPublished] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
   /** 这个档案下已有的定位类型，用来算「先打地基」还差几步 */
   const [posTypes, setPosTypes] = useState<string[]>([]);
@@ -307,15 +311,18 @@ export default function DashboardPage() {
    * 打开首页时取一次，侧边栏切换档案时再取一次。
    */
   const loadProfileWork = async () => {
-    const [historyRes, workList, groupCounts, shootList] = await Promise.all([
+    const [historyRes, workList, groupCounts, shootList, publishedList] = await Promise.all([
       fetch(`/api/script-history?taskType=all&limit=6${profileHistoryQuery(getActiveProfileId())}`).catch(() => null),
       listWorks(10),
       workGroupCounts(),
       listWorksPage({ group: "toShoot", limit: 1 }).catch(() => [] as Work[]),
+      // 已发布的作品，给「待录数据」用（整改 B1）
+      listWorksPage({ group: "published", limit: 20 }).catch(() => [] as Work[]),
     ]);
 
     // 只展示还没做完的：做完的作品留在「全部」里，不占首页
     setWorks(workList.filter((w) => !w.is_done).slice(0, 4));
+    setPublished(publishedList);
     // 「今天拍什么」：内容做完、还没拍的。数量用数据库计数；拿不到时退回按最近这些作品数
     const ready = shootList.length ? shootList : workList.filter((w) => progressGroup(w) === "toShoot");
     setToShoot({ count: groupCounts?.toShoot ?? ready.length, first: ready[0]?.title ?? null });
@@ -415,6 +422,9 @@ export default function DashboardPage() {
           <ProfileQuickSwitch loading={loading} hasProfile={!!profile} />
         </header>
 
+        {/* 首屏只留一个主动作：地基没做完时是「下一步」，做完了不出现（整改 A1） */}
+        <NextStepHero loading={loading} next={setupState.next} done={setupState.done} total={setupState.total} />
+
         {/* 我的创作偏好：最近又学到几条新习惯（lib/preferences），没有新的就不出现 */}
         <PreferenceNews />
         <LearningCard />
@@ -435,6 +445,19 @@ export default function DashboardPage() {
         {/* 本周要发：计划在 7 天内、还没发的作品（体检 F2）；没有就不出现 */}
         <PlanThisWeek works={works} />
 
+        {/* 待录数据：发完超过一天还没录 3 个数的作品（整改 B1）；没有就不出现 */}
+        <PendingMetrics
+          works={published}
+          onSaved={(id, metrics) => setPublished((prev) => prev.map((x) => (x.id === id ? { ...x, metrics } : x)))}
+        />
+
+        {/* 更多（整改 A1）：今日看板、学习与计划默认收起，首屏留给主动作。收起时组件照样挂着 */}
+        <details className="group mb-5">
+          <summary className="glass-panel flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3 text-[13px] text-muted-foreground hover:text-foreground">
+            <span>更多 · 今日看板、学习与计划、收藏的素材</span>
+            <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-4">
         {/* 今日看板：时钟 + 待办 + 白噪音。可以收起（按账号记）；收起时组件照样挂着，白噪音不断 */}
         {todayCollapsed !== null && (
           <div className="mb-5">
@@ -460,7 +483,7 @@ export default function DashboardPage() {
 
         {/* 先学后做：抖音新手课（懂道理）→ 7 天起号计划（动手）。体检 P1-1：收进「学习与计划」，
             新用户默认展开，已有档案的收起，首页留给干活的板块 */}
-        <details className="group mb-5" open={!loading && !profile}>
+        <details className="group mb-5">
           <summary className="glass-panel flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3 text-[13px] text-muted-foreground hover:text-foreground">
             <span>学习与计划 · 抖音新手课、7 天起号计划</span>
             <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
@@ -469,6 +492,10 @@ export default function DashboardPage() {
             <CourseCard className="mb-5" />
             {/* 7 天起号计划：给不知道从哪开始的新手一条照着走的路（表没建时整张卡不出现，间距也跟着没） */}
             <LaunchPlanCard className="mb-5" />
+          </div>
+        </details>
+            {/* 收藏的好内容（2026-10-02）：从右栏收进「更多」（整改 A1），首屏只留操作区 */}
+            <LibraryCard />
           </div>
         </details>
 
@@ -509,6 +536,8 @@ export default function DashboardPage() {
                 混进工具堆里用户不会意识到这是要先做的 */}
             <h2 className="mb-1 mt-7 flex items-center justify-between text-[12px] font-medium uppercase tracking-wider text-muted-foreground/70">
               <span>先打地基</span>
+              {/* 三步的完整清单（引导页）：首屏主卡只给一件事，想看全貌从这里进 */}
+              <Link href="/onboarding" className="ml-auto text-[11.5px] normal-case tracking-normal text-primary hover:underline">看三步清单</Link>
               {!loading && (
                 <span className="tabular-nums normal-case tracking-normal">
                   {setupState.done}/{setupState.total}
@@ -518,29 +547,6 @@ export default function DashboardPage() {
             <p className="mb-3 text-[11.5px] text-muted-foreground">
               按顺序做完这三步，选题、脚本、分镜才会真的用上你的账号信息
             </p>
-
-            {/*
-              没打完就把清单入口摆出来。
-              线上漏斗：100% 建了档案，40% 做完定位，只有 10% 做到简报——
-              而简报是让整个产品真正生效的那一步。光列三个链接不够，
-              得让人看见"我还差几步"。
-            */}
-            {!loading && setupState.done < setupState.total && (
-              <Link
-                href="/onboarding"
-                className="mb-2 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.06] px-3.5 py-3"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[12.5px] font-medium text-primary">
-                    还差 {setupState.total - setupState.done} 步
-                  </span>
-                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                    下一步：{setupState.next?.title}
-                  </span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-primary/60" />
-              </Link>
-            )}
 
             <div className="space-y-2">
               {FOUNDATION.map((f, i) => {
@@ -689,9 +695,6 @@ export default function DashboardPage() {
                 </div>
               )}
             </section>
-
-            {/* 收藏的好内容（2026-10-02）：放在「接着上次」下面——一个是做到一半的，一个是攒下来的 */}
-            <LibraryCard />
 
             <section className="glass-panel rounded-2xl p-4 sm:p-5">
               <div className="flex items-baseline justify-between">

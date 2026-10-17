@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { readJsonBody } from '@/lib/read-body'
+import { profileFactsFingerprint } from '@/lib/creative-brief'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,16 +97,28 @@ export async function POST(request: Request) {
         .eq('profile_id', body.profile_id)
     }
     
-    const { data: positioning, error } = await supabase
+    // 保存时记下档案事实的指纹（整改 B4）：之后档案的人设、品类、价格等改了，定位页就提醒「按旧档案写的」
+    let profileFacts: string | null = null
+    if (body.profile_id) {
+      const { data: prof } = await supabase.from('user_profiles').select('*').eq('id', body.profile_id).eq('user_id', user.id).maybeSingle()
+      if (prof) profileFacts = profileFactsFingerprint(prof)
+    }
+
+    const base = { user_id: user.id, ...body }
+    let inserted = await supabase
       .from('account_positioning')
-      .insert([
-        {
-          user_id: user.id,
-          ...body
-        }
-      ])
+      .insert([{ ...base, profile_facts: profileFacts }])
       .select()
       .single()
+    // 迁移还没执行（没有 profile_facts 这一列）：照常保存，只是没有过期提醒，不能因此保存失败
+    if (inserted.error && /profile_facts/.test(inserted.error.message)) {
+      inserted = await supabase
+        .from('account_positioning')
+        .insert([base])
+        .select()
+        .single()
+    }
+    const { data: positioning, error } = inserted
 
     if (error) {
       console.error('❌ 创建定位失败:', error)

@@ -81,6 +81,8 @@ export default function StoryboardPage() {
   const [contentType, setContentType] = useState("auto");
   const [visualStyle, setVisualStyle] = useState("cinematic");
   const [additionalInfo, setAdditionalInfo] = useState("");
+  // 快速模式（整改 A2）：只留脚本内容、平台和时长；内容类型、视觉风格、补充说明按默认来，隐藏的旧输入不带过去
+  const [quickMode, setQuickMode] = useState(false);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecommending, setIsRecommending] = useState(false);
@@ -95,7 +97,7 @@ export default function StoryboardPage() {
     setContentType(CONTENT_TYPE_VALUES.includes(s.contentType!) ? s.contentType! : 'auto');
     setVisualStyle(VISUAL_STYLE_VALUES.includes(s.visualStyle!) ? s.visualStyle! : 'bright');
   });
-  const currentSettings = resolveCreationSettings({ from: '分镜脚本', sourceContent: scriptContent, settings: mergeCreationSettings(autoSetup.settings, { platform, duration, contentType, visualStyle }) }, creatorContext);
+  const currentSettings = resolveCreationSettings({ from: '分镜脚本', sourceContent: scriptContent, settings: mergeCreationSettings(autoSetup.settings, { platform, duration, contentType: quickMode ? "auto" : contentType, visualStyle: quickMode ? "cinematic" : visualStyle }) }, creatorContext);
 
   // 接收从脚本页带来的正文，省掉一次复制粘贴
   useEffect(() => {
@@ -225,6 +227,11 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
   };
 
   const handleGenerate = async () => {
+    // 快速模式下隐藏的三项不带过去（整改 A2）
+    const quickContentType = quickMode ? "auto" : contentType;
+    const quickVisualStyle = quickMode ? "cinematic" : visualStyle;
+    const quickAdditional = quickMode ? "" : additionalInfo;
+
     if (isGenerating) return;
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
@@ -259,10 +266,10 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         scriptContent,
         platform,
         duration,
-        contentType,
-        visualStyle,
-        visualStyleLabel: VISUAL_STYLES.find((s) => s.value === visualStyle)?.label || "电影感",
-        additionalInfo,
+        contentType: quickContentType,
+        visualStyle: quickVisualStyle,
+        visualStyleLabel: VISUAL_STYLES.find((s) => s.value === quickVisualStyle)?.label || "电影感",
+        additionalInfo: quickAdditional,
       });
 
       const response = await fetchGeneration("/api/dify/stream", {
@@ -277,7 +284,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
           // 结构化字段仍然带上：知识库检索的短查询由它们拼出来
           platform,
           duration,
-          contentType,
+          contentType: quickContentType,
         }),
       });
 
@@ -299,7 +306,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
       // 而额度已经在服务端扣掉了，用户刷新后一无所获，还以为系统吞了。
       if (fullResult && fullResult.trim().length > 0) {
         setTimeout(async () => {
-          try {            const inputData = { profileId: creatorContext.profile?.id || null, scriptContent, additionalInfo, originContent: originContent || scriptContent, creationSettings: currentSettings, platform, duration, contentType, visualStyle };
+          try {            const inputData = { profileId: creatorContext.profile?.id || null, scriptContent, additionalInfo: quickAdditional, originContent: originContent || scriptContent, creationSettings: currentSettings, platform, duration, contentType: quickContentType, visualStyle: quickVisualStyle };
             await saveGenerationHistory("分镜脚本", inputData, fullResult, workId);
             // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
             await recordStage(workId, "分镜脚本");          } catch (err) {
@@ -327,6 +334,16 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
           {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
           <ContextBadge board="storyboard" className="mb-4" />
           <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
+
+          {/* 快速模式切换（整改 A2）：快速只留脚本内容、平台和时长，其余按档案和默认来 */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2.5">
+            <p className="text-[12px] text-muted-foreground">
+              {quickMode ? "快速模式：只填脚本，其余按你的档案来。" : "想快一点？切到快速模式，只填脚本就能生成。"}
+            </p>
+            <button type="button" onClick={() => setQuickMode((v) => !v)} className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[12px] text-foreground hover:bg-foreground/[0.06]">
+              {quickMode ? "展开全部设置" : "切到快速模式"}
+            </button>
+          </div>
 
           <CollapsibleSection title="脚本内容" defaultOpen>
             <Field label="脚本内容" required stacked hint="AI 会根据内容自动选择镜头语言">
@@ -375,6 +392,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
               </select>
             </Field>
 
+            {!quickMode && (
             <Field label="内容类型" optional stacked hint="AI 会据此选择合适的景别与运镜">
               {/* 十三个类型平铺开不好找，按「怎么拍」分四组：
                   口播类（对镜讲）、展示类（镜头对着东西）、
@@ -412,7 +430,9 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
                 ))}
               </div>
             </Field>
+            )}
 
+            {!quickMode && (
             <Field label="视觉风格" optional stacked>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {VISUAL_STYLES.map((style) => (
@@ -437,8 +457,10 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
                 ))}
               </div>
             </Field>
+            )}
           </CollapsibleSection>
 
+          {!quickMode && (
           <CollapsibleSection title="补充说明" defaultOpen={false}>
             <Field label="其他要求" optional stacked>
               <textarea
@@ -450,6 +472,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
               />
             </Field>
           </CollapsibleSection>
+          )}
 
           <button
             onClick={handleGenerate}
