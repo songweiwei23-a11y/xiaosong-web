@@ -33,7 +33,7 @@ export function LevelSheet({
   hasNext: boolean;
   onClose: () => void;
   onPassed: () => void;
-  /** 这一关拿到的星（页面只升不降地记到本机） */
+  /** 这一关拿到的星（页面只升不降地记下，存数据库，本机也记一份） */
   onStars: (n: number) => void;
   onNext: () => void;
 }) {

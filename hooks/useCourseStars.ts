@@ -1,57 +1,95 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { COURSE_TOTAL, MAX_STAR } from "@/lib/newbie-course";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { MAX_STAR, cleanStars, mergeStars, type StarMap } from "@/lib/newbie-course";
+import { postSafely } from "@/lib/safe-post";
 
-const STARS_KEY = "kaiwu:course-stars";
+const LOCAL_KEY = "kaiwu:course-stars";
 
-/**
- * 读本机记下的星星：{ "1": 3, "2": 2, ... }。坏数据、越界的关当没有。
- */
-function readStars(): Record<string, number> {
-  const out: Record<string, number> = {};
+function readLocal(): StarMap {
   try {
-    const raw = JSON.parse(localStorage.getItem(STARS_KEY) ?? "{}");
-    if (!raw || typeof raw !== "object") return out;
-    for (const [k, v] of Object.entries(raw)) {
-      const no = Number(k);
-      const n = Math.floor(Number(v));
-      if (Number.isInteger(no) && no >= 1 && no <= COURSE_TOTAL && Number.isFinite(n)) {
-        out[String(no)] = Math.min(MAX_STAR, Math.max(0, n));
-      }
-    }
+    return cleanStars(JSON.parse(localStorage.getItem(LOCAL_KEY) ?? "{}"));
   } catch {
-    // 读不到就当没有星星，不影响学习
+    return {};
   }
-  return out;
+}
+
+function writeLocal(s: StarMap) {
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(s));
+  } catch {
+    // 存不下就只在本次打开期间有效
+  }
 }
 
 /**
- * 新手课的星星只存本机（不进数据库，不改过关规则）。
- * 只升不降：重玩拿到的星少，不会把之前拿到的覆盖掉。
+ * 新手课的星星：存数据库（换设备也看得到），本机也记一份。
+ * 表还没建时只存本机，照样能玩。两边都是只升不降，合并取大。
+ * 打开时：本机比服务器多的（比如功能上线前在本机拿的）补传上去。
  */
 export function useCourseStars() {
-  const [stars, setStars] = useState<Record<string, number>>({});
+  const [stars, setStars] = useState<StarMap>({});
+  const cur = useRef<StarMap>({});
+  /** 服务器能用（表已建、上次请求没报 unavailable）才往服务器写 */
+  const serverOk = useRef(false);
+
+  const show = useCallback((next: StarMap) => {
+    cur.current = next;
+    setStars(next);
+    writeLocal(next);
+  }, []);
+
+  const push = useCallback(
+    async (items: { no: number; stars: number }[]) => {
+      try {
+        const r = await postSafely("/api/course-stars", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (d.unavailable) {
+          serverOk.current = false;
+          return;
+        }
+        if (d.stars) show(mergeStars(cur.current, cleanStars(d.stars)));
+      } catch {
+        // 存不上就先留在本机，下次打开会补传
+      }
+    },
+    [show]
+  );
 
   useEffect(() => {
-    setStars(readStars());
-  }, []);
+    show(readLocal());
+    fetch("/api/course-stars", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(async (d) => {
+        if (d.unavailable) return;
+        serverOk.current = true;
+        const server = cleanStars(d.stars);
+        const merged = mergeStars(cur.current, server);
+        show(merged);
+        const behind = Object.entries(merged)
+          .filter(([k, v]) => v > (server[k] ?? 0))
+          .map(([k, v]) => ({ no: Number(k), stars: v }));
+        if (behind.length) await push(behind);
+      })
+      .catch(() => {
+        // 拉不到服务器就用本机的，不影响学
+      });
+  }, [show, push]);
 
-  const award = useCallback((no: number, n: number) => {
-    setStars((prev) => {
+  const award = useCallback(
+    (no: number, n: number) => {
       const key = String(no);
-      const cur = prev[key] ?? 0;
       const next = Math.min(MAX_STAR, n);
-      if (next <= cur) return prev;
-      const merged = { ...prev, [key]: next };
-      try {
-        localStorage.setItem(STARS_KEY, JSON.stringify(merged));
-      } catch {
-        // 存不下就只在本次打开期间有效
-      }
-      return merged;
-    });
-  }, []);
+      if (next <= (cur.current[key] ?? 0)) return;
+      show({ ...cur.current, [key]: next });
+      if (serverOk.current) void push([{ no, stars: next }]);
+    },
+    [show, push]
+  );
 
   return { stars, award };
 }

@@ -47,7 +47,7 @@ export const MAX_STAR = 3;
 
 /**
  * 星星：答题第一次就对得 2 颗，错过再对得 1 颗；挑战第一次就全对再加 1 颗。
- * 星星只存在本机，不影响过关，也不会因为重玩而减少。
+ * 星星存数据库（course_stars，换设备也看得到），本机也记一份；不影响过关，也不会因为重玩而减少。
  */
 export function starsFor(quizFirstTry: boolean, challengePerfect: boolean): number {
   return (quizFirstTry ? 2 : 1) + (challengePerfect ? 1 : 0);
@@ -286,3 +286,45 @@ export function passLevel(passed: number, no: number): number {
 }
 
 export const graduated = (passed: number) => clampPassed(passed) >= COURSE_TOTAL;
+
+/** 每关的星数：{ "关号": 星数 }，只有拿过星的关才有键 */
+export type StarMap = Record<string, number>;
+
+/** 把任意输入整理成合法的星表：关号 1~COURSE_TOTAL、星数 0~MAX_STAR，其余丢掉 */
+export function cleanStars(v: unknown): StarMap {
+  const out: StarMap = {};
+  if (!v || typeof v !== 'object') return out;
+  for (const [k, raw] of Object.entries(v)) {
+    const no = Number(k);
+    const n = Math.floor(Number(raw));
+    if (Number.isInteger(no) && no >= 1 && no <= COURSE_TOTAL && Number.isFinite(n)) {
+      out[String(no)] = Math.min(MAX_STAR, Math.max(0, n));
+    }
+  }
+  return out;
+}
+
+/** 两边取大：同一关只留星多的那个。星星只升不降，所以合并永远是取大 */
+export function mergeStars(a: StarMap, b: StarMap): StarMap {
+  const out: StarMap = { ...a };
+  for (const [k, v] of Object.entries(b)) out[k] = Math.max(out[k] ?? 0, v);
+  return out;
+}
+
+/**
+ * 接口收到的 items：[{ no, stars }]。不合法返回 null；同一关出现多次取大。
+ * 只接受 1~MAX_STAR 颗的（0 颗不需要存）。
+ */
+export function parseStarItems(v: unknown): { no: number; stars: number }[] | null {
+  if (!Array.isArray(v) || v.length === 0 || v.length > COURSE_TOTAL) return null;
+  const best = new Map<number, number>();
+  for (const item of v) {
+    if (!item || typeof item !== 'object') return null;
+    const no = Number((item as { no?: unknown }).no);
+    const stars = Number((item as { stars?: unknown }).stars);
+    if (!Number.isInteger(no) || no < 1 || no > COURSE_TOTAL) return null;
+    if (!Number.isInteger(stars) || stars < 1 || stars > MAX_STAR) return null;
+    best.set(no, Math.max(best.get(no) ?? 0, stars));
+  }
+  return [...best].map(([no, stars]) => ({ no, stars }));
+}

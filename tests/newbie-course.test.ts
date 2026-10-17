@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { COURSE_TOTAL, LESSONS, MAX_STAR, TOTAL_STARS, badgesFor, clampPassed, graduated, passLevel, starsFor } from '@/lib/newbie-course';
+import { COURSE_TOTAL, LESSONS, MAX_STAR, TOTAL_STARS, badgesFor, cleanStars, clampPassed, graduated, mergeStars, parseStarItems, passLevel, starsFor } from '@/lib/newbie-course';
 import { readCode } from './helpers/source';
 
 describe('课程内容', () => {
@@ -167,11 +167,46 @@ describe('星星和徽章', () => {
     expect(badgesFor(5, all).find((b) => b.id === 'graduate')!.earned).toBe(false);
   });
 
-  it('星星只升不降，只存本机，不发请求（不改数据库、不改过关规则）', () => {
+  it('星星存数据库，本机也记一份：先读本机，再拉服务器两边取大；本机多的补传', () => {
     const hook = readCode('hooks/useCourseStars.ts');
-    expect(hook).toMatch(/if \(next <= cur\) return prev;/);
     expect(hook).toMatch(/kaiwu:course-stars/);
-    expect(hook).not.toMatch(/fetch\(/);
+    expect(hook).toMatch(/fetch\("\/api\/course-stars"/);
+    expect(hook).toMatch(/mergeStars\(cur\.current, server\)/);
+    expect(hook).toMatch(/if \(next <= \(cur\.current\[key\] \?\? 0\)\) return;/); // 只升不降
+    expect(hook).toMatch(/if \(serverOk\.current\) void push/); // 表没建时不乱发请求
+  });
+
+  it('星星接口：要登录；表没建返回 unavailable；写入按人加关取大、只升不降', () => {
+    const api = readCode('app/api/course-stars/route.ts');
+    expect(api).toContain('requireUser()');
+    expect(api).toMatch(/unavailable: true/);
+    expect(api).toMatch(/onConflict: 'user_id,lesson_no'/);
+    expect(api).toMatch(/it\.stars > \(have\[String\(it\.no\)\] \?\? 0\)/);
+  });
+
+  it('星星表：每人每关一行、开 RLS、不建策略（只能走服务端接口）', () => {
+    const sql = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261017_course_stars.sql'), 'utf8');
+    expect(sql).toMatch(/PRIMARY KEY \(user_id, lesson_no\)/);
+    expect(sql).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(sql).not.toMatch(/CREATE POLICY/);
+  });
+
+  it('星星的整理和合并：脏数据丢掉、越界夹住、同一关取大', () => {
+    expect(cleanStars({ '1': 3, '2': 9, '0': 2, '7': 1, x: 1, '3': 'abc', '4': -2, '5': 2.9 })).toEqual({ '1': 3, '2': 3, '4': 0, '5': 2 });
+    expect(cleanStars(null)).toEqual({});
+    expect(cleanStars('x')).toEqual({});
+    expect(mergeStars({ '1': 2, '3': 1 }, { '1': 3, '2': 1, '3': 0 })).toEqual({ '1': 3, '2': 1, '3': 1 });
+  });
+
+  it('接口收到的 items：关号 1~6、星数 1~3，同一关取大；不合法返回 null', () => {
+    expect(parseStarItems([{ no: 2, stars: 1 }, { no: 2, stars: 3 }, { no: 5, stars: 2 }])).toEqual([{ no: 2, stars: 3 }, { no: 5, stars: 2 }]);
+    expect(parseStarItems([{ no: 0, stars: 1 }])).toBeNull();
+    expect(parseStarItems([{ no: 7, stars: 1 }])).toBeNull();
+    expect(parseStarItems([{ no: 1, stars: 0 }])).toBeNull();
+    expect(parseStarItems([{ no: 1, stars: 4 }])).toBeNull();
+    expect(parseStarItems([{ no: 1.5, stars: 2 }])).toBeNull();
+    expect(parseStarItems('x')).toBeNull();
+    expect(parseStarItems([])).toBeNull();
   });
 
   it('过关不靠挑战：答对就 onPassed，挑战只通过 onStars 加星', () => {

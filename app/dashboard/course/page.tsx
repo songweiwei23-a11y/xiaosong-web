@@ -19,7 +19,7 @@ const X = [4, 46, 12, 52, 8, 44];
  * 主线是闯关地图——有"想通关"的劲头，答题也能确认他真看懂了；
  * 每一关里用刷抖音的方式读要点（LevelSheet），过关后还能玩一个小挑战多拿星；
  * 旁边一个「复习目录」，过了的关随时回来翻，不用重新闯。
- * 星星和徽章只记在本机，不影响过关。
+ * 星星存数据库，换设备也看得到；不影响过关。
  */
 export default function CoursePage() {
   const { passed, ready, pass, reset } = useCourseProgress();
@@ -68,7 +68,6 @@ export default function CoursePage() {
         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
           <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
           星星 <b className="tabular-nums text-foreground">{totalStars}</b> / {TOTAL_STARS}
-          <span className="text-[12px] text-muted-foreground/70">（记在这台电脑上）</span>
         </span>
         <div className="flex flex-wrap gap-1.5">
           {badges.map((b) => (
