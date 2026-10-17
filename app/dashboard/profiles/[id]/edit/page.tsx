@@ -10,6 +10,7 @@ import { InterviewEntry, InterviewNotesCard } from '@/components/interview/Inter
 import { postSafely } from '@/lib/safe-post'
 import { droppedColumnsNotice } from '@/lib/persona-facts'
 import { PreferenceCard } from '@/components/preferences/PreferenceCard'
+import { FactSuggestions } from '@/components/profiles/FactSuggestions'
 
 /**
  * 编辑已有档案。
@@ -149,6 +150,9 @@ export default function EditProfilePage() {
               onCleared={() => setProfile({ ...profile, interview_notes: null, interview_highlights: null })}
             />
           )}
+
+          {/* 事实记忆（二期）：生成时反复用到、档案里却没有的拍摄条件，提示一句要不要更新档案 */}
+          <FactSuggestions profileId={id} />
 
           {/* 我的创作偏好（lib/preferences）：从修改、收藏、发布里学到的写法，看得见、改得了 */}
           <PreferenceCard profileId={id} />

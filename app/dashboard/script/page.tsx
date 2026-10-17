@@ -381,7 +381,6 @@ export default function ScriptPage() {
       .catch(() => {});
     return () => { off = true; };
     // 只在档案或「从别处带来」变化时看一次；预填用的是打开那一刻的默认值
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProfileId, incomingSetup]);
   /** 改回默认：只还原这次预填过的字段 */
   const revertMemory = () => {

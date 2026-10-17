@@ -26,12 +26,12 @@ export const PREFERENCE_CATEGORIES: { id: PreferenceCategory; label: string }[] 
 ];
 const CATEGORY_IDS = new Set(PREFERENCE_CATEGORIES.map((c) => c.id));
 
-export interface PreferenceEvidence { edits: number; saves: number; published: number; feedback: number }
+export interface PreferenceEvidence { edits: number; saves: number; published: number; feedback: number; choices: number }
 
-/** 证据的来源：改稿、收藏、已拍已发、结果反馈（有用 / 没用 + 理由） */
-export type EvidenceKind = 'edit' | 'save' | 'published' | 'feedback';
+/** 证据的来源：改稿、收藏、已拍已发、结果反馈（有用 / 没用 + 理由）、选中去写脚本的选题 */
+export type EvidenceKind = 'edit' | 'save' | 'published' | 'feedback' | 'choice';
 
-export const emptyEvidence = (): PreferenceEvidence => ({ edits: 0, saves: 0, published: 0, feedback: 0 });
+export const emptyEvidence = (): PreferenceEvidence => ({ edits: 0, saves: 0, published: 0, feedback: 0, choices: 0 });
 
 export interface PreferenceItem {
   id: string;
@@ -42,8 +42,13 @@ export interface PreferenceItem {
   /** 分别来自改稿、收藏、已拍已发 */
   from: PreferenceEvidence;
   status: 'active' | 'watching';
-  /** learned = 学出来的；manual = 用户自己加的或改过的（学习不会动它） */
-  origin: 'learned' | 'manual';
+  /**
+   * learned = 学出来的；manual = 用户自己加的或改过的（学习不会动它）；
+   * data = 用录下的完播数据验证出来的（每次学习整体重算，见 lib/verified-writing）
+   */
+  origin: 'learned' | 'manual' | 'data';
+  /** 数据条目的依据（写清楚几条作品、完播差了多少），只显示，不进提示词 */
+  basis?: string;
   firstSeen: string;
   lastSeen: string;
   /** 什么时候开始生效：首页「最近又学到 N 条」按它算 */
@@ -154,7 +159,7 @@ export function editEvidenceText(d: EditDiff): string {
   return lines.join('\n');
 }
 
-const KIND_LABEL: Record<Evidence['kind'], string> = { edit: '改稿', save: '收藏', published: '已拍/已发', feedback: '反馈' };
+const KIND_LABEL: Record<Evidence['kind'], string> = { edit: '改稿', save: '收藏', published: '已拍/已发', feedback: '反馈', choice: '选题' };
 
 /** 反馈的证据正文：有用 / 没用（带理由）＋ 结果节选 */
 export function feedbackEvidenceText(rating: number, reason: string | null, excerpt: string): string {
@@ -172,6 +177,7 @@ export function buildLearnPrompt(p: { evidence: Evidence[]; current: PreferenceI
 - 收藏：他收藏或认可的内容节选
 - 已拍/已发：他真正拍了、发了的最终稿节选
 - 反馈：他对某条结果点了「有用」或「没用」（没用时附了理由）。「没用」说明他不要什么，「有用」说明他要什么；只学写法，不学节选里的事实
+- 选题：他从选题里挑出来、拿去写脚本的那几条。说明他真正想拍什么，只学内容取向（content），不学具体事实
 
 ${ev}
 
@@ -260,9 +266,10 @@ export function mergePreferences(p: { current: PreferenceItem[]; learned: Learne
       if (k === 'edit') from.edits++;
       else if (k === 'save') from.saves++;
       else if (k === 'feedback') from.feedback++;
+      else if (k === 'choice') from.choices++;
       else from.published++;
     }
-    const hit = out.find((i) => sameMeaning(i.text, text));
+    const hit = out.find((i) => i.origin !== 'data' && sameMeaning(i.text, text));
     if (hit) {
       if (hit.origin === 'manual') { hit.lastSeen = nowIso; continue; }
       // 窗口里重算的次数；比原来少也不往下降（旧证据只是滑出了窗口）
@@ -281,15 +288,19 @@ export function mergePreferences(p: { current: PreferenceItem[]; learned: Learne
 export function settle(items: PreferenceItem[], now: number): PreferenceItem[] {
   const staleBefore = now - STALE_DAYS * 86_400_000;
   for (const i of items) {
-    if (i.origin === 'manual') continue;
+    // 手写的、数据验证的，状态各有各的规则（数据条目的门槛在 lib/verified-writing 里）
+    if (i.origin === 'manual' || i.origin === 'data') continue;
     i.status = i.count >= ACTIVE_MIN && new Date(i.lastSeen).getTime() >= staleBefore ? 'active' : 'watching';
     if (i.status === 'active') i.activeAt ??= new Date(now).toISOString();
     else delete i.activeAt;
   }
   const rank = (a: PreferenceItem, b: PreferenceItem) => (b.origin === 'manual' ? 1 : 0) - (a.origin === 'manual' ? 1 : 0) || b.count - a.count || b.lastSeen.localeCompare(a.lastSeen);
-  const active = items.filter((i) => i.status === 'active').sort(rank).slice(0, MAX_ACTIVE);
-  const watching = items.filter((i) => i.status === 'watching').sort(rank).slice(0, MAX_WATCHING);
-  return [...active, ...watching];
+  const learned = items.filter((i) => i.origin !== 'data');
+  const data = items.filter((i) => i.origin === 'data');
+  const active = learned.filter((i) => i.status === 'active').sort(rank).slice(0, MAX_ACTIVE);
+  const watching = learned.filter((i) => i.status === 'watching').sort(rank).slice(0, MAX_WATCHING);
+  // 数据条目自己的数量很少（最多 4 条），不占学习条目的上限
+  return [...active, ...watching, ...data];
 }
 
 /* ------------------------------ 页面提交的修改 ------------------------------ */
@@ -319,9 +330,10 @@ export function readStoredItems(raw: unknown): PreferenceItem[] {
       category: o.category as PreferenceCategory,
       text: o.text.slice(0, TEXT_MAX),
       count: n(o.count),
-      from: { edits: n(f.edits), saves: n(f.saves), published: n(f.published), feedback: n(f.feedback) },
+      from: { edits: n(f.edits), saves: n(f.saves), published: n(f.published), feedback: n(f.feedback), choices: n(f.choices) },
       status: o.status === 'active' ? 'active' : 'watching',
-      origin: o.origin === 'manual' ? 'manual' : 'learned',
+      origin: o.origin === 'manual' ? 'manual' : o.origin === 'data' ? 'data' : 'learned',
+      ...(typeof o.basis === 'string' ? { basis: o.basis.slice(0, 300) } : {}),
       firstSeen: typeof o.firstSeen === 'string' ? o.firstSeen : new Date(0).toISOString(),
       lastSeen: typeof o.lastSeen === 'string' ? o.lastSeen : new Date(0).toISOString(),
       ...(typeof o.activeAt === 'string' ? { activeAt: o.activeAt } : {}),
@@ -359,6 +371,7 @@ export function preferenceHint(items: PreferenceItem[] | null | undefined, max =
 
 /** 一条偏好的依据：从几次修改、几条收藏、哪些反馈里看出来的（点开「依据」时显示） */
 export function basisText(item: PreferenceItem): string {
+  if (item.origin === 'data' && item.basis) return item.basis;
   if (item.origin === 'manual') return '你自己加的';
   const f = item.from;
   const parts = [
@@ -366,6 +379,7 @@ export function basisText(item: PreferenceItem): string {
     f.saves && `收藏 ${f.saves} 条`,
     f.published && `已拍/已发 ${f.published} 条`,
     f.feedback && `反馈 ${f.feedback} 次`,
+    f.choices && `选题 ${f.choices} 次`,
   ].filter(Boolean);
   return parts.length ? `依据：${parts.join(' · ')}` : '依据：还在积累';
 }

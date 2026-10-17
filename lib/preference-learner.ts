@@ -15,16 +15,34 @@ import { historyProfileFilter, DEFAULT_PROFILE_SCOPE, PROFILE_UUID } from '@/lib
 import { buildProfileSummary } from '@/lib/profile-summary';
 import { todayCN } from '@/lib/web-query';
 import {
-  MIN_SIGNALS, buildLearnPrompt, diffEdit, editEvidenceText, editRatio, editTrend, feedbackEvidenceText, mergePreferences, parseLearned, readStoredItems,
+  MIN_SIGNALS, buildLearnPrompt, diffEdit, editEvidenceText, editRatio, editTrend, feedbackEvidenceText, mergePreferences, parseLearned, readStoredItems, settle,
   type Evidence, type PreferenceItem,
 } from '@/lib/preferences';
+import { buildVerifiedItems, samplesSignature, withDataItems, type WorkSample } from '@/lib/verified-writing';
+import { featuresOf } from '@/lib/work-features';
+import { creationScript } from '@/lib/creation-flow';
 
 type Db = ReturnType<typeof getServiceSupabase>;
 const MAX_EDITS = 30, MAX_SAVES = 12, MAX_PUBLISHED = 8, EXCERPT = 700;
 /** 结果反馈：只看近 60 天；「没用」最多 10 条、「有用」最多 6 条（不足的不凑） */
 const FEEDBACK_DAYS = 60, MAX_DOWN = 10, MAX_UP = 6;
+/** 选题选择：最多看 8 个不同的选题 */
+const MAX_CHOICES = 8;
 
 export const missingTable = (e: { message?: string } | null | undefined) => !!e && /schema cache|does not exist/i.test(e.message || '');
+
+/**
+ * 写偏好卡。verified_signature 这一列是二期加的：迁移没跑就去掉它重写，学习照常进行（只是「验证过的写法」暂存不了指纹）。
+ */
+async function saveRow(db: Db, payload: Record<string, unknown>) {
+  const r = await db.from('creator_preferences').upsert(payload, { onConflict: 'user_id,profile_key' });
+  if (r.error && /verified_signature/.test(r.error.message || '')) {
+    const rest: Record<string, unknown> = { ...payload };
+    delete rest.verified_signature;
+    return db.from('creator_preferences').upsert(rest, { onConflict: 'user_id,profile_key' });
+  }
+  return r;
+}
 
 export function validProfileKey(raw: unknown): string | null {
   if (raw === null || raw === undefined || raw === '' || raw === DEFAULT_PROFILE_SCOPE) return DEFAULT_PROFILE_SCOPE;
@@ -118,6 +136,26 @@ export async function collectEvidence(db: Db, userId: string, profileKey: string
     }
   } catch { /* 读不到（表没升级 / 没有 excerpt 列）就少一类证据 */ }
 
+  // 选题选择（二期 C）：挑出来、拿去写脚本的选题，说明他真正想拍什么。近 60 天、本档案、最多 8 条（不重复）
+  const choices: Evidence[] = [];
+  try {
+    const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
+    let q = db.from('script_history').select('id, input_data, created_at').eq('user_id', userId).eq('task_type', '脚本生成')
+      .is('input_data->>canvasOf', null).gte('created_at', since).order('created_at', { ascending: false }).limit(40);
+    const f = historyProfileFilter(profileKey);
+    if (f) q = q.or(f);
+    const { data } = await q;
+    const seen = new Set<string>();
+    for (const r of data ?? []) {
+      const input = (r.input_data && typeof r.input_data === 'object' ? r.input_data : {}) as Record<string, unknown>;
+      const topic = typeof input.topic === 'string' ? input.topic.trim() : '';
+      if (!topic || seen.has(topic)) continue;
+      seen.add(topic);
+      choices.push({ id: '', kind: 'choice', board: '脚本生成', at: String(r.created_at), text: `他选了这个选题去写脚本：${topic.slice(0, 120)}` });
+      if (choices.length >= MAX_CHOICES) break;
+    }
+  } catch { /* 同上：读不到就少一类证据 */ }
+
   edits.sort((a, b) => a.at - b.at);
   const ratios = edits.map((e) => editRatio(e.diff));
   const recentEdits = edits.slice(-MAX_EDITS);
@@ -126,14 +164,50 @@ export async function collectEvidence(db: Db, userId: string, profileKey: string
     ...saves,
     ...published,
     ...feedback,
+    ...choices,
   ].filter((e) => e.text.trim()).map((e, i) => ({ ...e, id: `E${i + 1}` }));
   const signature = createHash('sha1').update(JSON.stringify([
     recentEdits.map((e) => e.key),
     saves.map((s) => s.at + s.text.length),
     published.map((p) => p.at + p.text.length),
     feedback.map((f) => f.at + f.text.length),
+    choices.map((c) => c.at + c.text.length),
   ])).digest('hex');
   return { evidence, ratios, signature };
+}
+
+/**
+ * 录了完播的作品，和它们最终稿的写法特征（二期 B 阶段）。
+ * 只取本档案的作品；投流的（paidPromotion）不算——投流的数据反映的不是写法。
+ */
+export async function collectVerifiedSamples(db: Db, userId: string, profileKey: string): Promise<WorkSample[]> {
+  const isDefault = profileKey === DEFAULT_PROFILE_SCOPE;
+  try {
+    let q = db.from('works').select('id, metrics, updated_at').eq('user_id', userId).not('metrics', 'is', null)
+      .order('updated_at', { ascending: false }).limit(60);
+    q = isDefault ? q.is('profile_id', null) : q.eq('profile_id', profileKey);
+    const { data: works } = await q;
+    const scored = (works ?? []).filter((w) => {
+      const m = w.metrics as { completion?: unknown; paidPromotion?: unknown } | null;
+      return typeof m?.completion === 'number' && m.paidPromotion !== true;
+    });
+    if (!scored.length) return [];
+    const { data: hist } = await db.from('script_history').select('work_id, task_type, result, created_at').eq('user_id', userId)
+      .in('work_id', scored.map((w) => w.id)).in('task_type', ['审稿优化', '脚本生成']).order('created_at', { ascending: false }).limit(200);
+    const out: WorkSample[] = [];
+    for (const w of scored) {
+      const rows = (hist ?? []).filter((h) => h.work_id === w.id);
+      const best = rows.find((h) => h.task_type === '审稿优化') ?? rows[0];
+      const text = typeof best?.result === 'string' ? best.result : '';
+      if (!best || !text.trim()) continue;
+      const spoken = creationScript(best.task_type === '审稿优化' ? 'review' : 'script', text);
+      const f = featuresOf(spoken);
+      out.push({ id: String(w.id), completion: Number((w.metrics as { completion: number }).completion), opening: f.opening, length: f.length, at: String(w.updated_at) });
+    }
+    return out;
+  } catch {
+    return [];
+  }
 }
 
 export type LearnResult =
@@ -154,14 +228,23 @@ export async function learnPreferences(userId: string, profileKey: string, opts:
   if (row && row.enabled === false) return { status: 'disabled', signals: 0 };
 
   const { evidence, ratios, signature } = await collectEvidence(db, userId, profileKey);
+  const samples = await collectVerifiedSamples(db, userId, profileKey);
+  const verifiedSignature = createHash('sha1').update(samplesSignature(samples)).digest('hex');
   const stats = editTrend(ratios);
-  const base = { user_id: userId, profile_key: profileKey, signature, stats, updated_at: new Date(now).toISOString() };
+  const base = { user_id: userId, profile_key: profileKey, signature, stats, verified_signature: verifiedSignature, updated_at: new Date(now).toISOString() };
+  // 「开物验证过的写法」按最新的完播数据整体重算：不依赖文字证据有没有变；用户删过的不再放回
+  const dataItems = buildVerifiedItems(samples, now);
+  const withData = (items: PreferenceItem[], rejectedNow: string[]) => settle(withDataItems(items, dataItems, rejectedNow), now);
+  const rejectedOf = (r: { rejected?: unknown } | null | undefined): string[] =>
+    Array.isArray(r?.rejected) ? (r!.rejected as unknown[]).filter((x): x is string => typeof x === 'string') : [];
   if (evidence.length < MIN_SIGNALS) {
-    await db.from('creator_preferences').upsert(base, { onConflict: 'user_id,profile_key' });
+    await saveRow(db, { ...base, items: withData(readStoredItems(row?.items), rejectedOf(row)) });
     return { status: 'not_enough', signals: evidence.length };
   }
   if (!opts.force && row?.signature === signature) {
-    if (JSON.stringify(row?.stats ?? null) !== JSON.stringify(stats)) await db.from('creator_preferences').upsert(base, { onConflict: 'user_id,profile_key' });
+    if (row?.verified_signature !== verifiedSignature || JSON.stringify(row?.stats ?? null) !== JSON.stringify(stats)) {
+      await saveRow(db, { ...base, items: withData(readStoredItems(row?.items), rejectedOf(row)) });
+    }
     return { status: 'unchanged', signals: evidence.length };
   }
 
@@ -186,8 +269,9 @@ export async function learnPreferences(userId: string, profileKey: string, opts:
   const { data: fresh } = await db.from('creator_preferences').select('items, rejected, enabled').eq('user_id', userId).eq('profile_key', profileKey).maybeSingle();
   if (fresh && fresh.enabled === false) return { status: 'disabled', signals: evidence.length };
   const freshRejected = Array.isArray(fresh?.rejected) ? (fresh!.rejected as unknown[]).filter((x): x is string => typeof x === 'string') : rejected;
-  const items = mergePreferences({ current: fresh ? readStoredItems(fresh.items) : current, learned, evidence, rejected: freshRejected, now });
-  const { error: saveError } = await db.from('creator_preferences').upsert({ ...base, items, learned_at: new Date(now).toISOString() }, { onConflict: 'user_id,profile_key' });
+  const merged = mergePreferences({ current: fresh ? readStoredItems(fresh.items) : current, learned, evidence, rejected: freshRejected, now });
+  const items = withData(merged, freshRejected);
+  const { error: saveError } = await saveRow(db, { ...base, items, learned_at: new Date(now).toISOString() });
   if (saveError) return { status: 'failed', message: '学到的偏好没存上，请稍后再试' };
   return { status: 'learned', items, signals: evidence.length };
 }
@@ -225,6 +309,10 @@ export async function runNightlyPreferences(now = Date.now()) {
   await safe(async () => {
     const { data } = await db.from('result_feedback').select('user_id, profile_id').gte('created_at', since).limit(1000);
     for (const r of data ?? []) add(r.user_id, r.profile_id ?? null);
+  });
+  await safe(async () => {
+    const { data } = await db.from('script_history').select('user_id, input_data').eq('task_type', '脚本生成').is('input_data->>canvasOf', null).gte('created_at', since).limit(1000);
+    for (const r of data ?? []) add(r.user_id, (r.input_data as Record<string, unknown> | null)?.profileId ?? null);
   });
   let learned = 0;
   for (const { userId, key } of [...pairs.values()].slice(0, 300)) {

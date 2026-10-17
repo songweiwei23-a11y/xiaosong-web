@@ -16,6 +16,7 @@ import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import { LibraryCard } from '@/components/dashboard/LibraryCard';
 import { QuickStart } from '@/components/dashboard/QuickStart';
 import { PreferenceNews } from '@/components/preferences/PreferenceHint';
+import { LearningCard } from '@/components/preferences/LearningCard';
 import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
@@ -415,6 +416,7 @@ export default function DashboardPage() {
 
         {/* 我的创作偏好：最近又学到几条新习惯（lib/preferences），没有新的就不出现 */}
         <PreferenceNews />
+        <LearningCard />
 
         {/* 首屏三件事：接着上次 / 导入文案审稿 / 今天拍什么（2026-10-03） */}
         <QuickStart

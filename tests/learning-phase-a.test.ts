@@ -55,7 +55,7 @@ describe('反馈：带上档案和节选', () => {
       learned: [{ category: 'tone', text: '不用「家人们」开场', evidence: ['E1', 'E2', 'E3'] }],
       evidence, rejected: [], now: NOW,
     });
-    expect(items[0].from).toEqual({ edits: 0, saves: 0, published: 0, feedback: 3 });
+    expect(items[0].from).toEqual({ edits: 0, saves: 0, published: 0, feedback: 3, choices: 0 });
     expect(basisText(items[0])).toBe('依据：反馈 3 次');
   });
 });
@@ -65,7 +65,7 @@ describe('反馈：带上档案和节选', () => {
 describe('看依据：每条偏好写清楚从哪里来', () => {
   const base: PreferenceItem = { id: 'a', category: 'tone', text: '口语化', count: 3, from: emptyEvidence(), status: 'active', origin: 'learned', firstSeen: '', lastSeen: '' };
   it('学出来的：列出改稿、收藏、已拍已发、反馈各几次', () => {
-    expect(basisText({ ...base, from: { edits: 2, saves: 1, published: 0, feedback: 3 } })).toBe('依据：改稿 2 次 · 收藏 1 条 · 反馈 3 次');
+    expect(basisText({ ...base, from: { edits: 2, saves: 1, published: 0, feedback: 3, choices: 0 } })).toBe('依据：改稿 2 次 · 收藏 1 条 · 反馈 3 次');
   });
   it('自己加的 / 还在积累的，有各自的说法', () => {
     expect(basisText({ ...base, origin: 'manual', count: 0 })).toBe('你自己加的');

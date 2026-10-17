@@ -12,6 +12,9 @@ ALTER TABLE result_feedback ADD COLUMN IF NOT EXISTS control BOOLEAN NULL;
 
 CREATE INDEX IF NOT EXISTS result_feedback_profile_idx ON result_feedback (user_id, profile_id, created_at DESC);
 
+-- 3) 「开物验证过的写法」的指纹：录数据的作品变了，才需要重算（见 lib/verified-writing）
+ALTER TABLE creator_preferences ADD COLUMN IF NOT EXISTS verified_signature TEXT NULL;
+
 CREATE TABLE IF NOT EXISTS user_signals (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
