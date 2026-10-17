@@ -161,7 +161,8 @@ describe('全站数字口径统一', () => {
     // 创作进度（原我的作品）是把各板块的产出串起来的地方，本身不是一个创作板块
     // 新手课堂是学习页（教抖音怎么推荐、怎么拍），不产出内容，也不是创作板块
     // 素材库是存收藏的地方，同上
-    const NON_CREATIVE = new Set(['membership', 'account', 'works', 'course', 'library']);
+    // 使用说明（help）是参考资料页，和账户页一样不产出内容
+    const NON_CREATIVE = new Set(['membership', 'account', 'works', 'course', 'library', 'help']);
     const fs = await import('node:fs');
     const path = await import('node:path');
     const root = path.join(process.cwd(), 'app', 'dashboard');

@@ -8,7 +8,7 @@ import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target,
   BookOpen, User, Home, Award, MessagesSquare, X, ChevronDown,
-  Wallet, LayoutList, ClipboardList, Stethoscope, Rocket, UserCog, Crown, Bookmark, ListChecks, Compass, GraduationCap, FileSearch, Clapperboard, Shuffle, CalendarRange,
+  Wallet, LayoutList, ClipboardList, Stethoscope, Rocket, UserCog, Crown, Bookmark, ListChecks, Compass, GraduationCap, FileSearch, Clapperboard, Shuffle, CalendarRange, CircleHelp,
 } from "lucide-react";
 
 /*
@@ -99,6 +99,8 @@ const navGroups: {
     items: [
       { name: "我的账户", href: "/dashboard/account", icon: UserCog },
       { name: "会员中心", href: "/dashboard/membership", icon: Crown },
+      // 参考资料：每个板块干什么、额度怎么算、常见问题（2026-10-17）
+      { name: "使用说明", href: "/dashboard/help", icon: CircleHelp, hint: "每个板块干什么、额度怎么算、常见问题" },
     ],
   },
 ];

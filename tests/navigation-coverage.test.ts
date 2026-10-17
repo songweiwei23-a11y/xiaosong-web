@@ -28,6 +28,7 @@ function boardRoutes(): string[] {
 const NOT_A_BOARD = new Set([
   '/dashboard/components',
   '/dashboard/profiles', // 档案在首页「先打地基」里，侧边栏也有
+  '/dashboard/help', // 使用说明是参考资料，侧边栏「账户」组里有入口；首页不另放，留给干活的板块
   // 会员中心原来也在这里豁免，理由是"付费页从额度用完的提示进，不占导航位"。
   // 结果付费用户想看自己还剩几天、订单审没审过，根本找不到入口。
   // 现在它和「我的账户」一起放进了侧边栏的「账户」组，不再豁免。
