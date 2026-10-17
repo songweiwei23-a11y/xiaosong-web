@@ -58,3 +58,15 @@ describe('使用说明：额度和价格和套餐配置一致', () => {
     expect(help).toContain(`${DEEP_RESEARCH_LIMITS.enterprise} 份/月`);
   });
 });
+
+describe('使用说明：每个板块的链接都指向真实存在的页面', () => {
+  it('详细说明里的 href 都对应 app/dashboard 下的页面（防空转：至少 20 个）', () => {
+    const hrefs = [...help.matchAll(/href: "(\/dashboard[^"]*)"/g)].map((m) => m[1]);
+    expect(hrefs.length).toBeGreaterThan(20);
+    for (const h of hrefs) {
+      const route = h.split(/[?#]/)[0].replace(/^\/dashboard\/?/, '');
+      const file = path.join(process.cwd(), 'app', 'dashboard', route, 'page.tsx');
+      expect(fs.existsSync(route ? file : path.join(process.cwd(), 'app', 'dashboard', 'page.tsx')), h).toBe(true);
+    }
+  });
+});
