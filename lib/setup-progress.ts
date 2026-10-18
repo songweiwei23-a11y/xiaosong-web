@@ -79,6 +79,22 @@ export function setupProgress(input: SetupInput): { done: number; total: number 
 }
 
 /**
+ * 首页「先打地基」里某一行是否已完成。
+ *
+ * 按行的 key 取状态，不按下标：首页多出一行（行业建议）时，下标会错位，
+ * 第 4 行永远取不到完成状态（2026-10-19 发现的 bug）。
+ * 三步地基的进度仍由 setupSteps 决定；行业建议不在进度里，存过就打勾。
+ */
+export function foundationDone(
+  row: { setupKey?: SetupStepKey; positioningType?: string },
+  input: SetupInput,
+): boolean {
+  if (row.setupKey) return setupSteps(input).find((s) => s.key === row.setupKey)?.done ?? false;
+  if (row.positioningType) return (input.positioningTypes ?? []).includes(row.positioningType);
+  return false;
+}
+
+/**
  * 新用户登录后该落在哪。
  *
  * 一步都没做过 = 全新用户，送去引导页；

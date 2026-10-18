@@ -554,6 +554,8 @@ export default function TopicPage() {
           brief: creatorContext.brief,
           // 数据回流：这个号发出去的真实数据，出选题时参考（lib/performance）
           performance: creatorContext.performance,
+          // 行业建议（药方）：选题也要照它来，不然存过的药方在选题页上等于没有（2026-10-19 发现）
+          advice: creatorContext.advice,
         },
         'topic'
       );

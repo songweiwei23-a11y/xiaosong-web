@@ -8,7 +8,7 @@ import { listWorks, listWorksPage, progressGroup, workGroupCounts, type Work } f
 import { nextStage, workStageUrl } from "@/lib/resume";
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 import { profileHistoryQuery } from '@/lib/profile-history';
-import { setupSteps, nextSetupStep, setupProgress } from '@/lib/setup-progress';
+import { setupSteps, nextSetupStep, setupProgress, foundationDone, type SetupStepKey } from '@/lib/setup-progress';
 import { TodayBoard } from '@/components/dashboard/TodayBoard';
 import { LaunchPlanCard } from '@/components/dashboard/LaunchPlanCard';
 import { CourseCard } from '@/components/dashboard/CourseCard';
@@ -112,13 +112,14 @@ const MAIN_FLOW: { name: string; desc: string; icon: LucideIcon; href: string; a
  * 档案 → 定位 → 简报，简报做完选题、脚本、分镜才真的用得上你的账号信息。
  * 混在工具堆里，用户不会意识到这是要先做的事。
  */
-const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; step: string }[] = [
+const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; step: string; setupKey?: SetupStepKey; positioningType?: string }[] = [
   {
     name: "个人档案",
     desc: "填一次，全站都用它",
     icon: User,
     href: "/dashboard/profiles",
     step: "1",
+    setupKey: "profile",
   },
   {
     name: "账号定位",
@@ -126,6 +127,7 @@ const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; 
     icon: Target,
     href: "/dashboard/positioning",
     step: "2",
+    setupKey: "positioning",
   },
   {
     name: "创作简报",
@@ -133,13 +135,16 @@ const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; 
     icon: ClipboardList,
     href: "/dashboard/creative-brief",
     step: "3",
+    setupKey: "brief",
   },
+  // 行业建议不在三步进度里（见 lib/setup-progress）：存过才打勾，没存不算没做完
   {
     name: "行业建议",
     desc: "按目的和阶段开药方，存好后所有创作板块照它执行",
     icon: Stethoscope,
     href: "/dashboard/industry-advice",
     step: "4",
+    positioningType: "行业建议",
   },
 ];
 
@@ -550,9 +555,9 @@ export default function DashboardPage() {
             </p>
 
             <div className="space-y-2">
-              {FOUNDATION.map((f, i) => {
-                // 三步的顺序和 setup-progress 里一致，按下标取完成状态
-                const isDone = !loading && setupState.steps[i]?.done;
+              {FOUNDATION.map((f) => {
+                // 按行的 key 取完成状态（不按下标：行业建议不在三步进度里，下标会错位）
+                const isDone = !loading && foundationDone(f, setupInput);
                 return (
                   <Link
                     key={f.href}

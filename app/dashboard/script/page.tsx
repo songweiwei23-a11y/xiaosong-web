@@ -520,7 +520,8 @@ export default function ScriptPage() {
         const profile = profiles.find(p => p.id === selectedProfileId);
         if (profile) {
           profileInfo = "\n\n" + buildContextBlock(
-            { profile: profile, positioning: null, dealReasons: [], brief: creatorContext.brief },
+            // 行业建议（药方）要带上，脚本才照它的打法来（2026-10-19 发现：这里之前漏了）
+            { profile: profile, positioning: null, dealReasons: [], brief: creatorContext.brief, advice: creatorContext.advice },
             'script'
           );
         }
