@@ -107,9 +107,12 @@ describe('提示词', () => {
     const quick = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, depth: 'quick' });
     expect(quick).toContain('#### 口播要点');
     expect(quick).not.toContain('#### 口播全文');
+    // 分镜要求是表格（列表挤成一行很难看），两种深度都写明列
+    expect(p).toMatch(/用一张 Markdown 表格，列固定为：\| 镜头 \| 秒数 \| 画面 \| 台词或字幕 \|/);
     const deep = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, depth: 'deep' });
     expect(deep).toContain('#### 备选开头');
     expect(deep).toMatch(/细到能直接照着拍/);
+    expect(deep).toMatch(/\| 镜头 \| 秒数 \| 画面（谁、在哪/);
     const all = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, outputs: ['titles', 'comment'] });
     expect(all).toContain('#### 标题和封面');
     expect(all).toContain('#### 评论区置顶');
