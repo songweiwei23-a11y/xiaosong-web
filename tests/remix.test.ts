@@ -99,9 +99,9 @@ describe('提示词', () => {
     expect(buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, count: 1 })).not.toMatch(/方案之间：/);
   });
 
-  it('产出按勾的来：快速只出要点；深度自动带备选开头、分镜细到台词动作', () => {
+  it('产出按勾的来：快速只出要点；深度只多给备选开头；不出分镜（太占字数，去分镜板块）', () => {
     expect(p).toContain('#### 口播全文');
-    expect(p).toContain('#### 分镜');
+    expect(p).not.toContain('#### 分镜');
     expect(p).toContain('#### 用你手上的资源怎么拍');
     expect(p).not.toContain('#### 标题和封面');
     const quick = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, depth: 'quick' });
@@ -109,7 +109,11 @@ describe('提示词', () => {
     expect(quick).not.toContain('#### 口播全文');
     const deep = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, depth: 'deep' });
     expect(deep).toContain('#### 备选开头');
-    expect(deep).toMatch(/细到能直接照着拍/);
+    expect(deep).not.toContain('#### 分镜');
+    // 即使用户勾了分镜（旧的保存记录里可能还有），也不出
+    const legacy = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, outputs: ['script', 'shots' as never] });
+    expect(legacy).not.toContain('#### 分镜');
+    expect(DEFAULT_OUTPUTS).not.toContain('shots');
     const all = buildRemixPrompt({ kind: 'breakdown', text: REPORT }, { ...base, outputs: ['titles', 'comment'] });
     expect(all).toContain('#### 标题和封面');
     expect(all).toContain('#### 评论区置顶');

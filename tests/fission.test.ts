@@ -3,7 +3,7 @@ import { FISSION_CATEGORIES, FISSION_MAX, FISSION_MODES, buildFissionBlock, sele
 import { buildRemixPrompt, COUNT_OPTIONS, DEFAULT_LAYERS } from '@/lib/remix';
 import { OPENING_CARDS } from '@/lib/opening-cards';
 
-const base = { layers: DEFAULT_LAYERS, count: 15 as const, differentiate: 'auto' as const, depth: 'full' as const, role: 'same' as const, duration: '30 秒' as const, outputs: ['script', 'shots'] as Array<'script' | 'shots'>, targetIndustry: '火锅店' };
+const base = { layers: DEFAULT_LAYERS, count: 15 as const, differentiate: 'auto' as const, depth: 'full' as const, role: 'same' as const, duration: '30 秒' as const, outputs: ['script', 'shootPlan'] as Array<'script' | 'shootPlan'>, targetIndustry: '火锅店' };
 const SOURCE = { kind: 'paste' as const, text: '【二创结构 · 模版1：示例】\n分段（2 段，按顺序 1:1 复刻）：\n1. 0–3 秒｜抓人｜知识：开篇 36 计：盲盒', title: '示例模版' };
 
 describe('拆解知识可选项：每一类都能勾', () => {
