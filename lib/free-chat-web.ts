@@ -1,10 +1,12 @@
 /**
  * 自由对话联网：一次增强搜索、来源筛选、有限正文补读，仍使用现有会员联网预占（一轮只记一次额度）。
  * 地方新闻（名单里的地名）另加地方官网 site: 搜索，结果合并；这只多花阿里云的调用，不多记用户额度。
+ * 问题涉及政策规定、抖音本地生活、Dify、阿里云时，另加对应官方站点的 site: 搜索（见 search-official-sites.ts）。
  */
-import { aliSearch, type SearchHit, type SearchResult } from './ali-search';
+import { aliSearch, SEARCH_FAILURE_TEXT, type SearchHit, type SearchResult } from './ali-search';
 import { localNewsSearches } from './local-news-sources';
 import { hotListSearches } from './hot-list-sources';
+import { officialSiteQueries } from './search-official-sites';
 import { getSearchConfig, type SearchConfig } from './search-config';
 import { fetchPage } from './page-fetch';
 import { extractMainText } from './html-text';
@@ -35,36 +37,39 @@ export async function searchFreeChatWeb(question: string, deps: Dependencies): P
   const config = deps.config || await getSearchConfig();
   if (!config) return null; // 没有服务端密钥时沿用现有Dify搜索，不用空密钥覆盖。
   const w = freeChatWebQuery(question, deps.now);
+  const search = deps.search || aliSearch;
   const failed = (message: string): FreeChatWebResult => ({
     status: { status: 'unavailable', sources: [], message }, query: w.query,
     strategy: 'pro-fetch', readCount: 0,
     context: `【本轮联网原始资料】开物服务端已尝试联网，但${message}。本轮没有可核实的搜索来源；不要声称已证实实时事实，不要编造引用。可以基于已有资料给出明确标为建议的分析。`,
   });
   await deps.onStarted();
-  let result: SearchResult;
-  try {
-    result = await (deps.search || aliSearch)(w.query, config, { topK: 10, way: 'pro-fetch', rewrite: !/site:|官方创作指南/i.test(w.query), today: w.today, timeoutMs: 20_000 });
-  } catch { return failed('搜索请求未成功'); }
-  if (!result.ok) return failed(`搜索服务未成功返回资料（${result.reason}）`);
-  // 地方新闻：另外搜一次地方官网（site:），和普通结果合并。只有新闻问题且地名已验证过站点才做；站点搜索失败就忽略。
+  // 定向搜索（地方官网、热榜官网、问题相关的官方站点）失败就忽略，只影响它自己那一路
+  const directed = (query: string, topK: number, rewrite: boolean): Promise<SearchHit[]> =>
+    search(query, config, { topK, way: 'pro-fetch', rewrite, today: w.today, timeoutMs: 20_000 })
+      .then(r => (r.ok ? r.hits : []), () => []);
   const local = localNewsSearches(question);
-  const siteHits: SearchHit[] = local ? (await Promise.all(local.sites.map(site =>
-    (deps.search || aliSearch)(`site:${site} ${local.place} 新闻`, config, { topK: 6, way: 'pro-fetch', rewrite: true, today: w.today, timeoutMs: 20_000 })
-      .then(r => (r.ok ? r.hits : []), () => [])
-  ))).flat() : [];
-  // 热榜、热搜：按平台官网搜（2026-10-17 实测：全网搜回来的是聚合站，site: 限定后才是平台自己的页面）
   const hot = hotListSearches(question);
-  const hotHits: SearchHit[] = hot ? (await Promise.all(hot.map(h =>
-    (deps.search || aliSearch)(`site:${h.site} ${h.keyword}`, config, { topK: 6, way: 'pro-fetch', rewrite: false, today: w.today, timeoutMs: 20_000 })
-      .then(r => (r.ok ? r.hits : []), () => [])
-  ))).flat() : [];
-  const official = await readOfficialDocumentation(question, deps.read || fetchPage);
+  const generalSearch = (): Promise<SearchResult> => search(w.query, config, { topK: 10, way: 'pro-fetch', rewrite: !/site:|官方创作指南/i.test(w.query), today: w.today, timeoutMs: 20_000 })
+    .catch((): SearchResult => ({ ok: false, reason: 'network' }));
+  // 全部并行发出：通用搜索失败也不直接放弃，官方站点、地方官网、热榜的结果照样用
+  const [general, siteHits, hotHits, officialSiteHits, official] = await Promise.all([
+    generalSearch(),
+    // 地方新闻：另外搜一次地方官网（site:），和普通结果合并。只有新闻问题且地名已验证过站点才做。
+    local ? Promise.all(local.sites.map(site => directed(`site:${site} ${local.place} 新闻`, 6, true))).then(x => x.flat()) : Promise.resolve([] as SearchHit[]),
+    // 热榜、热搜：按平台官网搜（2026-10-17 实测：全网搜回来的是聚合站，site: 限定后才是平台自己的页面）
+    hot ? Promise.all(hot.map(h => directed(`site:${h.site} ${h.keyword}`, 6, false))).then(x => x.flat()) : Promise.resolve([] as SearchHit[]),
+    // 政策、抖音本地生活、Dify、阿里云等问题：去对应官方站点搜（2026-10-18 取样：这些问题的前排几乎全是转载和导流页）
+    Promise.all(officialSiteQueries(question).map(q => directed(q.query, 6, false))).then(x => x.flat()),
+    readOfficialDocumentation(question, deps.read || fetchPage),
+  ]);
+  const generalHits = general.ok ? general.hits : [];
   const officialRead = new Set(official.map(hit => hit.url));
   // 已发现具体官方章节时，不用部署环境变量/入门教程等宽泛命中稀释参数问题。
   const technicalDocumentation = official.length > 0 && /dify/i.test(question) && /官方|文档|LLM|memory|vision|参数|会话|知识检索/i.test(question);
   // 热榜问题：平台自己的页面排在全网结果前面（全网结果多是聚合站，排前面会挤掉真正的来源）
-  const hits = pickFreeChatSources(technicalDocumentation ? official : [...official, ...hotHits, ...result.hits, ...siteHits], question, w.recencyDays, deps.now);
-  if (!hits.length) return failed('没有找到符合问题与时间范围的来源');
+  const hits = pickFreeChatSources(technicalDocumentation ? official : [...official, ...officialSiteHits, ...hotHits, ...generalHits, ...siteHits], question, w.recencyDays, deps.now);
+  if (!hits.length) return failed(general.ok ? '没有找到符合问题与时间范围的来源' : SEARCH_FAILURE_TEXT[general.reason]);
   let readCount = 0;
   const sources = await Promise.all(hits.map(async (hit, index) => {
     let text = hit.content, published = hit.published, url = hit.url;
