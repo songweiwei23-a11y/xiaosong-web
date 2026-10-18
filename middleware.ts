@@ -77,13 +77,14 @@ export async function middleware(req: NextRequest) {
     // 登录状态每个请求只查一次（验证 JWT，并顺带刷新会话 Cookie）：首页拦截和会话页共用这一次结果
     let claims: ReturnType<typeof supabase.auth.getClaims> | null = null
     const getClaims = () => (claims ??= supabase.auth.getClaims())
-    const loggedIn = async () => {
+    // 返回登录账号的 ID（没登录返回 null）：首页拦截要用它判断这个账号的门票有没有被撤销
+    const loggedInUser = async (): Promise<string | null> => {
       const { data, error } = await getClaims()
-      return !error && !!data?.claims.sub
+      return !error && data?.claims.sub ? String(data.claims.sub) : null
     }
 
-    // 第一道：首页拦截。已经登录的账号直接放行；没登录的，要有门票发的通行
-    const gated = await siteGateResponse(req, undefined, loggedIn)
+    // 第一道：首页拦截。已登录且门票没被撤销的账号直接放行；其它要有门票发的通行
+    const gated = await siteGateResponse(req, undefined, loggedInUser)
     if (gated) return withSession(gated)
     if (!protectedPath) return withSession(NextResponse.next())
 

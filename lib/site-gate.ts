@@ -9,7 +9,7 @@
  * 这里只做判断，查库的细节在 lib/gate-tickets。/api/ 和静态资源不拦：支付回调、定时任务没有 Cookie，各自鉴权。
  */
 import { NextResponse, type NextRequest } from 'next/server';
-import { devicePassValid, gateEnabled } from '@/lib/gate-tickets';
+import { accountGateBlocked, admitDevice, devicePassValid, gateEnabled } from '@/lib/gate-tickets';
 
 export const SITE_GATE_COOKIE = 'kaiwu_site_gate';
 /** 邀请链接的参数名：/?invite=门票 */
@@ -40,19 +40,26 @@ export interface GateDeps {
   enabled: () => Promise<boolean | null>;
   /** 这个设备通行（Cookie 原文）还有效吗 */
   devicePass: (cookieSecret: string) => Promise<boolean>;
+  /** 这个已登录账号的门票被撤销了吗（管理员不算） */
+  blocked: (userId: string) => Promise<boolean>;
+  /** 凭有效通行进门的已登录账号：记下这台设备属于谁；他之前被撤销的，凭这张有效通行重新进门 */
+  admit: (cookieSecret: string, userId: string) => Promise<void>;
 }
 
-const defaultDeps: GateDeps = { enabled: gateEnabled, devicePass: devicePassValid };
+const defaultDeps: GateDeps = { enabled: gateEnabled, devicePass: devicePassValid, blocked: accountGateBlocked, admit: admitDevice };
 
 /**
  * 首页拦截的判断。返回 null 表示放行；返回响应表示拦下：
  * - 带着邀请链接来的：去 /api/gate/claim 领设备通行，领完回到原来的页面；
  * - 其它：页面地址不变，内容换成提示页。
+ *
+ * 已登录的账号：没有被撤销门票就放行（老账号的登录状态照常生效）；被撤销了的，
+ * 和没登录一样，只能凭有效的设备通行进门。撤销门票 = 用这张门票进门的人（含已登录的）都回到门外。
  */
 export async function siteGateResponse(
   req: NextRequest,
   deps: GateDeps = defaultDeps,
-  loggedIn?: () => Promise<boolean>,
+  loggedIn?: () => Promise<string | null>,
 ): Promise<NextResponse | null> {
   if (isGateExempt(req.nextUrl.pathname)) return null;
 
@@ -61,11 +68,17 @@ export async function siteGateResponse(
   const closed = () => NextResponse.rewrite(new URL('/gate', req.url));
   if (enabled === null) return closed();
 
-  // 已经登录的账号直接放行。退出登录后登录状态没了，才会走到下面的门票判断
-  if (loggedIn && (await loggedIn())) return null;
-
+  const userId = loggedIn ? await loggedIn() : null;
   const cookie = req.cookies.get(SITE_GATE_COOKIE)?.value || '';
-  if (cookie && (await deps.devicePass(cookie))) return null;
+
+  // 带着有效的设备通行：放行。已登录的顺便记下这台设备属于谁
+  if (cookie && (await deps.devicePass(cookie))) {
+    if (userId) await deps.admit(cookie, userId);
+    return null;
+  }
+
+  // 已登录、没有被撤销门票：放行。退出登录后登录状态没了，才会走到下面的门票判断
+  if (userId && !(await deps.blocked(userId))) return null;
 
   const ticket = req.nextUrl.searchParams.get(SITE_GATE_QUERY);
   if (ticket) {

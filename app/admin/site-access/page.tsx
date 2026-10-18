@@ -131,7 +131,7 @@ export default function GatePage() {
     act("enabled", { action: "set-enabled", enabled }, enabled ? "首页拦截已开启。" : "首页拦截已关闭，所有人都能看首页。");
 
   const revoke = (id: string, title: string) => {
-    if (!window.confirm(`撤销「${title}」？它发出去的所有设备都会立即（约 30 秒内）失效。`)) return;
+    if (!window.confirm(`撤销「${title}」？它发出去的所有设备约 30 秒内失效；用这张门票进门的账号（包括已经登录的）也会被请回门外，只能凭新门票重新进门。`)) return;
     void act(`revoke-${id}`, { action: "revoke", id }, "门票已撤销。");
   };
 

@@ -307,6 +307,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [{"table":"works","column":"material_note"},{"table":"works","column":"planned_at"}],
   },
   {
+    file: "20261018_gate_revoke_accounts.sql",
+    tables: ["gate_user_blocks"],
+    columns: [{"table":"gate_device_passes","column":"user_id"}],
+  },
+  {
     file: "admin_logs.sql",
     tables: ["admin_logs"],
     columns: [],

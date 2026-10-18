@@ -26,6 +26,10 @@ export const ADMIN_MAX_DEVICES = 10;
 const TTL_SETTINGS_MS = 30_000;
 const TTL_PASS_MS = 30_000;
 const TTL_ADMIN_MS = 60_000;
+/** 账号是否被撤销门票：30 秒内生效（和设备通行一样） */
+const TTL_BLOCK_MS = 30_000;
+/** 设备通行和账号的关联：同一台设备、同一个账号，10 分钟只写一次库 */
+const TTL_ADMIT_MS = 10 * 60_000;
 
 /** 随机串（密码学随机数）：门票用 24 字节（32 位），设备通行用 32 字节 */
 export function newSecret(bytes = 24): string {
@@ -62,12 +66,21 @@ interface Cached<T> { at: number; value: T }
 let settingsCache: Cached<boolean> | null = null;
 const passCache = new Map<string, Cached<boolean>>();
 const adminCache = new Map<string, Cached<boolean>>();
+const blockCache = new Map<string, Cached<boolean>>();
+const admitCache = new Map<string, number>();
 
 /** 清掉所有缓存：后台改了开关或门票后调用，本进程立即生效 */
 export function resetGateCaches(): void {
   settingsCache = null;
   passCache.clear();
   adminCache.clear();
+  blockCache.clear();
+  admitCache.clear();
+}
+
+/** supabase-js 的错误是普通对象，这里统一成带 code 的 Error，方便判断「表还没建」 */
+function asError(error: { message: string; code?: string }): Error {
+  return Object.assign(new Error(error.message), { code: error.code });
 }
 
 function remember<T>(map: Map<string, Cached<T>>, key: string, value: T, now: number) {
@@ -240,8 +253,34 @@ export async function createAdminTicket(adminId: string): Promise<CreatedTicket>
   return { id: data.id, secret, devicePass };
 }
 
-/** 撤销一张门票：它发出去的所有设备通行都立即失效（约 30 秒内生效） */
+/**
+ * 把用这张门票进门的账号记下来（撤销时调用）。之后这些账号即使已登录，也只能凭有效的设备通行进门。
+ * 表或列还没建（迁移没跑）：不记，撤销照常（只让设备通行失效，和原来一样）。其它错误要抛出，撤销不做、管理员重试。
+ */
+async function recordBlockedAccounts(ticketId: string): Promise<void> {
+  const { data, error } = await db().from('gate_device_passes').select('user_id').eq('ticket_id', ticketId).not('user_id', 'is', null);
+  if (error) {
+    if (isMissingSchema(asError(error))) return;
+    throw new Error(`撤销没完成（读取进门记录失败）：${error.message}`);
+  }
+  const users = [...new Set((data ?? []).map((r) => r.user_id as string))];
+  if (!users.length) return;
+  const { error: upsertError } = await db()
+    .from('gate_user_blocks')
+    .upsert(users.map((user_id) => ({ user_id, ticket_id: ticketId })), { onConflict: 'user_id' });
+  if (upsertError) {
+    if (isMissingSchema(asError(upsertError))) return;
+    throw new Error(`撤销没完成（记录账号失败）：${upsertError.message}`);
+  }
+  blockCache.clear();
+}
+
+/**
+ * 撤销一张门票：它发出去的设备通行立即失效；用它进门的已登录账号也一起请出去（约 30 秒内生效）。
+ * 先记账号、再撤销门票：记不下来就不撤销，免得门票撤了、账号却还能进。
+ */
 export async function revokeTicket(id: string): Promise<boolean> {
+  await recordBlockedAccounts(id);
   const { data, error } = await db()
     .from('gate_tickets')
     .update({ revoked_at: new Date().toISOString() })
@@ -251,6 +290,61 @@ export async function revokeTicket(id: string): Promise<boolean> {
   if (error) throw new Error(error.message);
   resetGateCaches();
   return (data?.length ?? 0) > 0;
+}
+
+/**
+ * 这个已登录账号是不是被撤销门票了（首页拦截和接口守卫用）。
+ * - 管理员不算：管理员撤了自己的门票，也不能把自己锁在门外；
+ * - 表还没建：不拦，部署后不锁站；
+ * - 读库失败又没有缓存：按拦（和首页拦截「宁可挡住」一致）。
+ */
+export async function accountGateBlocked(userId: string, now: number = Date.now(), failClosed = true): Promise<boolean> {
+  if (await isAdminUser(userId, now)) return false;
+  const cached = blockCache.get(userId);
+  if (cached && now - cached.at < TTL_BLOCK_MS) return cached.value;
+  try {
+    const { data, error } = await db().from('gate_user_blocks').select('user_id').eq('user_id', userId).maybeSingle();
+    if (error) throw asError(error);
+    const blocked = !!data;
+    remember(blockCache, userId, blocked, now);
+    return blocked;
+  } catch (e) {
+    if (isMissingSchema(e)) return false;
+    // 读不到：页面按拦（failClosed）；接口按放行，免得数据库一抖，所有接口都 403
+    return cached ? cached.value : failClosed;
+  }
+}
+
+/**
+ * 凭有效的设备通行进门的已登录账号：记下这台设备属于谁（撤销门票时才找得到这些账号），
+ * 并解除这个账号之前的撤销记录（他已经凭新的有效门票进来了）。写库失败不影响放行，下一次请求再记。
+ */
+export async function admitDevice(cookieSecret: string, userId: string, now: number = Date.now()): Promise<void> {
+  const key = await hashSecret(cookieSecret);
+  const cacheKey = `${key}:${userId}`;
+  const seenAt = admitCache.get(cacheKey);
+  if (seenAt !== undefined && now - seenAt < TTL_ADMIT_MS) return;
+  try {
+    const { error: linkError } = await db().from('gate_device_passes').update({ user_id: userId }).eq('cookie_hash', key);
+    if (linkError && !isMissingSchema(asError(linkError))) throw asError(linkError);
+    const { error: unblockError } = await db().from('gate_user_blocks').delete().eq('user_id', userId);
+    if (unblockError && !isMissingSchema(asError(unblockError))) throw asError(unblockError);
+    if (admitCache.size > 5000) admitCache.clear();
+    admitCache.set(cacheKey, now);
+    blockCache.delete(userId);
+  } catch {
+    // 写不进去不影响放行，下一次请求再记
+  }
+}
+
+/**
+ * 接口守卫用：账号被撤销了、而且这台设备没有有效通行 → 不让调接口。拦截开着才拦（关着的时候不拦）。
+ * 只在明确读到「被撤销」时拦；读库失败按放行（页面那一层仍然挡住，见 accountGateBlocked）。
+ */
+export async function apiGateBlocked(userId: string, cookieSecret: string): Promise<boolean> {
+  if (!(await accountGateBlocked(userId, Date.now(), false))) return false;
+  if ((await gateEnabled()) === false) return false;
+  return !(cookieSecret && (await devicePassValid(cookieSecret)));
 }
 
 export interface TicketRow {

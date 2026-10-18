@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
 import { getPlan, judgeQuota, effectivePlanId, quotaRollover } from '@/lib/config/plans';
 import { quotaUnavailable, settleCreation, refreshCreationPeriod, type CreationReservation } from '@/lib/creation-quota';
+import { apiGateBlocked } from '@/lib/gate-tickets';
+import { SITE_GATE_COOKIE } from '@/lib/site-gate';
 
 export interface GuardResult {
   ok: boolean;
@@ -40,6 +43,22 @@ async function checkCurrentUser(): Promise<GuardResult> {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) return authFailure(error);
     if (!user) return authFailure();
+    // 门票被撤销的账号：这台设备没有有效通行，接口也不让调（页面那边首页拦截已经挡住，这里是打开着的页面的兜底）
+    let cookie = '';
+    try {
+      cookie = (await cookies()).get(SITE_GATE_COOKIE)?.value || '';
+    } catch {
+      // 不在请求上下文里（比如测试）：没有 Cookie，按没有通行判断
+    }
+    if (await apiGateBlocked(user.id, cookie)) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: '这台设备的门票已被撤销，请联系管理员重新发门票', code: 'GATE_REVOKED' },
+          { status: 403, headers: { 'Cache-Control': 'no-store' } },
+        ),
+      };
+    }
     return { ok: true, userId: user.id };
   } catch (error) {
     return authFailure(error);

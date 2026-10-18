@@ -9,6 +9,8 @@ const req = (path: string, cookie?: string) => new NextRequest(`http://localhost
 const deps = (over: Partial<GateDeps> = {}): GateDeps => ({
   enabled: async () => true,
   devicePass: async () => false,
+  blocked: async () => false,
+  admit: async () => {},
   ...over,
 });
 const rewrittenToGate = (res: Response | null) => !!res && (res.headers.get('x-middleware-rewrite') || '').includes('/gate');
@@ -72,27 +74,83 @@ describe('首页拦截：哪些路径拦、哪些放行', () => {
   });
 });
 
-describe('登录状态优先：已登录的账号放行，没登录的才看门票', () => {
-  it('已登录：不带通行也放行', async () => {
-    const res = await siteGateResponse(req('/'), deps({ devicePass: async () => false }), async () => true);
+describe('登录状态：已登录且没被撤销的放行，没登录的才看门票', () => {
+  it('已登录、门票没被撤销：不带通行也放行', async () => {
+    const res = await siteGateResponse(req('/'), deps({ devicePass: async () => false }), async () => 'user-1');
     expect(res).toBeNull();
   });
 
   it('没登录、也没有通行：拦下', async () => {
-    const res = await siteGateResponse(req('/'), deps(), async () => false);
+    const res = await siteGateResponse(req('/'), deps(), async () => null);
     expect(rewrittenToGate(res)).toBe(true);
   });
 
-  it('没登录但有通行（同一次访问里刚进门）：放行', async () => {
-    const res = await siteGateResponse(req('/', `${SITE_GATE_COOKIE}=device-abc`), deps({ devicePass: async (c) => c === 'device-abc' }), async () => false);
+  it('没登录但有通行（同一次访问里刚进门）：放行，且不记账号（没有账号可记）', async () => {
+    let admitted = false;
+    const res = await siteGateResponse(
+      req('/', `${SITE_GATE_COOKIE}=device-abc`),
+      deps({ devicePass: async (c) => c === 'device-abc', admit: async () => { admitted = true; } }),
+      async () => null,
+    );
     expect(res).toBeNull();
+    expect(admitted).toBe(false);
   });
 
-  it('拦截没开：不去查登录状态', async () => {
+  it('拦截没开：不去查登录状态，也不查撤销', async () => {
     let asked = false;
-    const res = await siteGateResponse(req('/'), deps({ enabled: async () => false }), async () => { asked = true; return false; });
+    let checked = false;
+    const res = await siteGateResponse(
+      req('/'),
+      deps({ enabled: async () => false, blocked: async () => { checked = true; return true; } }),
+      async () => { asked = true; return 'user-1'; },
+    );
     expect(res).toBeNull();
     expect(asked).toBe(false);
+    expect(checked).toBe(false);
+  });
+});
+
+describe('撤销门票：已登录的账号也要凭有效通行进门', () => {
+  const cookieReq = (path = '/') => req(path, `${SITE_GATE_COOKIE}=device-abc`);
+  const validPass = async (c: string) => c === 'device-abc';
+
+  it('门票被撤销的已登录账号、没有通行：拦下（和没登录一样）', async () => {
+    const res = await siteGateResponse(req('/dashboard'), deps({ blocked: async () => true }), async () => 'user-1');
+    expect(rewrittenToGate(res)).toBe(true);
+  });
+
+  it('门票被撤销的已登录账号、带的通行已经失效（门票撤了）：拦下', async () => {
+    const res = await siteGateResponse(cookieReq('/dashboard'), deps({ blocked: async () => true, devicePass: async () => false }), async () => 'user-1');
+    expect(rewrittenToGate(res)).toBe(true);
+  });
+
+  it('门票被撤销的已登录账号，拿新门票重新凭有效通行进门：放行，并解除撤销记录（admit）', async () => {
+    const admitted: string[] = [];
+    const res = await siteGateResponse(
+      cookieReq('/dashboard'),
+      deps({ blocked: async () => true, devicePass: validPass, admit: async (c, u) => { admitted.push(`${c}|${u}`); } }),
+      async () => 'user-1',
+    );
+    expect(res).toBeNull();
+    expect(admitted).toEqual(['device-abc|user-1']);
+  });
+
+  it('没被撤销的已登录账号，带着有效通行：放行，并记下这台设备属于谁（撤销时才找得到）', async () => {
+    const admitted: string[] = [];
+    const res = await siteGateResponse(
+      cookieReq('/dashboard'),
+      deps({ devicePass: validPass, admit: async (c, u) => { admitted.push(`${c}|${u}`); } }),
+      async () => 'user-2',
+    );
+    expect(res).toBeNull();
+    expect(admitted).toEqual(['device-abc|user-2']);
+  });
+
+  it('被撤销的账号带着门票链接来：去领新的设备通行', async () => {
+    const res = await siteGateResponse(req(`/dashboard?invite=${TICKET}`), deps({ blocked: async () => true }), async () => 'user-1');
+    const location = new URL(redirectedTo(res)!, 'http://localhost:3000');
+    expect(location.pathname).toBe('/api/gate/claim');
+    expect(location.searchParams.get('t')).toBe(TICKET);
   });
 
   it('通行 Cookie 是会话 Cookie：不设过期时间，关掉浏览器就没了', () => {
