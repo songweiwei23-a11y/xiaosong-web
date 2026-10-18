@@ -32,8 +32,6 @@ export default function BenchmarkPage() {
   const [hot, setHot] = useState<Hot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  /** 正在拆解的对标账号（同一时间只开一个拆解面板） */
-  const [analyzeId, setAnalyzeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -122,24 +120,15 @@ export default function BenchmarkPage() {
 
             <AddVideo onAdd={(v) => run({ action: "addVideo", accountId: a.id, ...v }, "作品数据已记下")} />
 
-            {/* 对标拆解（2026-10-18）：截图、文档、文字、视频都可以，拆成固定框架 */}
+            {/* 对标拆解（2026-10-18）：截图、文档、文字、视频都可以，拆成固定框架。直接放在这个账号下面，不用再点按钮 */}
             <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setAnalyzeId(analyzeId === a.id ? null : a.id)}
-                aria-expanded={analyzeId === a.id}
-                className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-foreground hover:bg-foreground/[0.06]"
-              >
-                {analyzeId === a.id ? "收起拆解" : "拆解这个账号"}
-              </button>
-              {analyzeId === a.id && (
-                <BenchmarkAnalyzer
-                  accountId={a.id}
-                  accountName={a.name}
-                  platform={a.platform}
-                  onSaved={() => { setAnalyzeId(null); void load(); }}
-                />
-              )}
+              <p className="mb-2 text-[13px] font-medium text-foreground">拆解这个账号</p>
+              <BenchmarkAnalyzer
+                accountId={a.id}
+                accountName={a.name}
+                platform={a.platform}
+                onSaved={() => void load()}
+              />
             </div>
 
             {a.analyses.length > 0 && (
