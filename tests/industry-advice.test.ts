@@ -77,7 +77,7 @@ describe('adviceContextBlock', () => {
 });
 
 describe('行业建议 · 药方取材与三有', () => {
-  it('药方提示词带上商业定位和内容定位，并要求标明出处', () => {
+  it('药方提示词带上商业定位和内容定位，只从内容定位已有的系列里选、排、配比', () => {
     const p = buildIndustryAdvicePrompt({
       profileSummary: 'x',
       businessBaseline: '商业定位：到店咨询是主路径',
@@ -86,8 +86,8 @@ describe('行业建议 · 药方取材与三有', () => {
     });
     expect(p).toContain('商业定位：到店咨询是主路径');
     expect(p).toContain('内容定位：烧烤做法系列');
-    expect(p).toContain('标明出自「内容定位」的哪一条');
-    expect(p).toContain('三有');
+    expect(p).toContain('药方是建议，不是命令');
+    expect(p).toContain('优先引用它的原系列名');
   });
 
   it('三有自检只给选题、脚本、方向板块', () => {
@@ -102,12 +102,12 @@ describe('行业建议 · 药方取材与三有', () => {
 describe('行业建议 · 注入创作上下文', () => {
   const advice = '## 诊断\n起号期，先找到能起量的一类内容。';
 
-  it('所有创作板块都带上行业建议', () => {
+  it('除脚本外，创作板块都带上行业建议；脚本不带（2026-10-19 方案 D）', () => {
     const ctx = base({ advice });
     const boards = ALL_BOARDS;
     expect(boards.length).toBeGreaterThan(0);
     for (const b of boards) {
-      expect(buildContextBlock(ctx, b)).toContain('行业建议（药方）');
+      expect(buildContextBlock(ctx, b).includes('行业建议（药方）'), b).toBe(b !== 'script');
     }
   });
 

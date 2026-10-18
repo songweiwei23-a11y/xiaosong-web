@@ -108,10 +108,12 @@ describe('接到全站', () => {
     expect(readCode('supabase/migrations/20261002_direction.sql')).toMatch(/add column if not exists direction_used integer not null default 0/);
   });
 
-  it('带上账号记忆：简报、成交理由、禁忌', () => {
+  it('带上账号记忆：成交理由、禁忌、内容定位（方案 D：方向不读简报，靠账号定位、内容定位、行业建议）', () => {
     const m = manifestOf('direction')!;
     expect(m.dealReasons).toBe(true);
-    expect(m.brief).toContain('direction');
+    expect(m.brief).toEqual([]);
+    expect(m.deep).toEqual(['content']);
+    expect(m.profile).toContain('restrictions');
     expect(readCode('app/dashboard/direction/page.tsx')).toMatch(/buildContextBlock\(context, "direction"\)/);
   });
 

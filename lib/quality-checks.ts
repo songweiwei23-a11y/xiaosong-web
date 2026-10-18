@@ -15,6 +15,7 @@ import { readTabooSettings } from './taboos';
 import { readPersonaFacts } from './persona-facts';
 import { checkMix, type ResolvedMix } from './content-mix';
 import { seasonMisstatements } from './time-anchor';
+import { topicTagIssues } from './output-tags';
 
 export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'generation' | 'facts';
 
@@ -498,6 +499,10 @@ export function runQualityChecks(p: {
   }
   for (const y of yearConflicts(stripSelfCheck(output), profile?.persona_facts)) {
     issues.push({ kind: 'years', detail: `「${y}」和事实卡对不上` });
+  }
+  // 选题的四个标签（lib/output-tags，2026-10-19）：缺了只进看板，不挡交付
+  if (p.taskType === '选题策划') {
+    for (const d of topicTagIssues(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
   }
   // 关键事实（2026-10-05 起没建档案也查：没档案时只拿这次的素材比对）；自由对话只查冒充事实的几类
   if (p.taskType && (FACT_CHECK_TASKS.has(p.taskType) || LIGHT_FACT_CHECK_TASKS.has(p.taskType))) {

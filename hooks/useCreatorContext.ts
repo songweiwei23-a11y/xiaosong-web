@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { CreatorContext, CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { BRIEF_TYPE } from "@/lib/creative-brief";
-import { ADVICE_TYPE } from "@/lib/industry-advice";
+import { ADVICE_TYPE, staleUpstream } from "@/lib/industry-advice";
 import { fetchActivePreset } from "@/lib/creator-presets";
 import { fetchActivePreferences } from "@/lib/preferences-client";
 
@@ -40,9 +40,9 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
   const task = (async (): Promise<CreatorContext> => {
     // 三个来源互不依赖，并行拉。任何一个失败都不该让整块上下文消失——
     // 有档案没定位，照样比什么都没有强
-    const [profileRes, posRes, dealRes0, briefRes, adviceRes] = await Promise.all([
+    const [profileRes, posRes, dealRes0, briefRes, adviceRes, contentRes, businessRes] = await Promise.all([
       fetch("/api/profiles").catch(() => null),
-      // 只要六维地基。商业定位和内容定位是它的深挖，拿来当"账号方向"会跑偏
+      // 只要六维地基。内容定位、商业定位不在这里取：只给声明了 deep 的板块（见下面和 lib/context-manifest）
       fetch("/api/positioning?type=" + encodeURIComponent("账号定位")).catch(() => null),
       // 成交理由按档案分别存（2026-09-30）：知道是哪个档案就一起并行拉
       profileId ? fetch(`/api/deal-reasons?profileId=${encodeURIComponent(profileId)}`).catch(() => null) : Promise.resolve(null),
@@ -50,6 +50,9 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       fetch("/api/positioning?type=" + encodeURIComponent(BRIEF_TYPE)).catch(() => null),
       // 行业建议（药方）：当前阶段的打法，所有创作板块都照它执行（见 lib/industry-advice）
       fetch("/api/positioning?type=" + encodeURIComponent(ADVICE_TYPE)).catch(() => null),
+      // 内容定位（系列清单）、商业定位（成交路径）：选题、方向、脚本按清单取用
+      fetch("/api/positioning?type=" + encodeURIComponent("内容定位")).catch(() => null),
+      fetch("/api/positioning?type=" + encodeURIComponent("商业定位")).catch(() => null),
     ]);
 
     let profile: CreatorProfile | null = null;
@@ -61,6 +64,7 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     }
 
     let positioning: CreatorContext["positioning"] = null;
+    let positioningAt: string | null = null;
     if (posRes?.ok) {
       const list = await posRes.json().catch(() => null);
       if (Array.isArray(list) && list.length > 0) {
@@ -77,9 +81,23 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
             summary: pick.strategy_summary || pick.full_content || "",
             full: pick.full_content || pick.strategy_summary || "",
           };
+          positioningAt = pick.created_at || null;
         }
       }
     }
+
+    // 内容定位、商业定位：同样只取这个档案自己的那份（没有才退回没挂档案的老数据）
+    type PositioningRow = { profile_id?: string | null; full_content?: string | null; strategy_summary?: string | null; created_at?: string | null };
+    const pickOwnPositioning = async (res: Response | null): Promise<PositioningRow | null> => {
+      if (!res?.ok) return null;
+      const list = (await res.json().catch(() => null)) as PositioningRow[] | null;
+      if (!Array.isArray(list) || list.length === 0) return null;
+      return (profile ? list.find((x) => x.profile_id === profile!.id) : null) || list.find((x) => !x.profile_id) || null;
+    };
+    const contentPick = await pickOwnPositioning(contentRes);
+    const businessPick = await pickOwnPositioning(businessRes);
+    const contentPositioning: string | null = contentPick?.full_content || contentPick?.strategy_summary || null;
+    const businessPositioning: string | null = businessPick?.full_content || businessPick?.strategy_summary || null;
 
     // 没记着当前档案、或记着的已经删了（用的是列表第一个）：档案定下来之后再按它取成交理由
     const dealRes = profile && profile.id !== profileId
@@ -107,13 +125,23 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     }
 
     let advice: string | null = null;
+    let adviceAt: string | null = null;
     if (adviceRes?.ok) {
       const list = await adviceRes.json().catch(() => null);
       if (Array.isArray(list) && list.length > 0) {
         const own = profile ? list.find((x: any) => x.profile_id === profile!.id) : null;
         advice = own?.full_content || null;
+        adviceAt = own?.created_at || null;
       }
     }
+    // 药方之后上游又更新过（账号定位、内容定位、商业定位任一）：药方要提示先复诊，不静默沿用
+    const adviceStale = advice
+      ? staleUpstream(adviceAt, [
+          { name: "账号定位", at: positioningAt },
+          { name: "内容定位", at: contentPick?.created_at ?? null },
+          { name: "商业定位", at: businessPick?.created_at ?? null },
+        ])
+      : [];
 
     // 数据回流（lib/performance）：这个号录了数据的作品汇总，选题、方向、起号、自由对话会参考
     let performance: CreatorContext["performance"] = null;
@@ -130,7 +158,10 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     // 我的创作偏好（lib/preferences）：学习开着时生效的那几条；读不到当没有，不挡生成
     const preferences = await fetchActivePreferences(profile?.id ?? profileId);
 
-    const ctx: CreatorContext = { profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, preset, preferences, advice };
+    const ctx: CreatorContext = {
+      profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, preset, preferences,
+      advice, adviceAt, adviceStale, contentPositioning, businessPositioning,
+    };
     if (version === cacheVersion) cache.set(key, ctx);
     return ctx;
   })();

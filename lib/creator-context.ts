@@ -35,6 +35,7 @@ import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from '.
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
 import { factInventoryBlock } from './fact-inventory';
 import { adviceContextBlock, threeHavesBlock } from './industry-advice';
+import { topicTagBlock } from './output-tags';
 
 /** 三有自检只给产出选题、脚本、方向的板块（见 lib/industry-advice 的 threeHavesBlock） */
 const THREE_HAVE_BOARDS = new Set<ContextModule>(['topic', 'script', 'direction']);
@@ -128,6 +129,14 @@ export interface CreatorContext {
   preferences?: PreferenceItem[] | null;
   /** 行业建议（药方）的 markdown 原文，见 lib/industry-advice。所有创作板块都带 */
   advice?: string | null;
+  /** 行业建议的生成时间（最新一份） */
+  adviceAt?: string | null;
+  /** 药方之后又更新过的上游定位（如「内容定位」），有的话药方要提示先复诊 */
+  adviceStale?: string[];
+  /** 内容定位的原文（系列清单）。只给 manifest 里声明 deep=content 的板块，见 lib/context-manifest */
+  contentPositioning?: string | null;
+  /** 商业定位的原文（成交路径）。只给 manifest 里声明 deep=business 的板块 */
+  businessPositioning?: string | null;
 }
 
 /** 规划类板块才带真实数据：选题、方向、起号、自由对话（写脚本、分镜这些单条内容用不上） */
@@ -256,7 +265,7 @@ export function describeRestrictions(p: CreatorProfile): string {
 export function buildContextBlock(ctx: CreatorContext, module: ContextModule): string {
   // 建档时刻意没选的（排除清单）：相关的句子先从档案里拿掉，再拼进提示词（见 lib/interview-exclusions）
   const p = ctx.profile ? scrubProfile(ctx.profile, readTabooSettings(ctx.profile.taboo_settings).excluded) ?? null : null;
-  if (!p && !ctx.positioning && ctx.dealReasons.length === 0 && !ctx.advice) return '';
+  if (!p && !ctx.positioning && ctx.dealReasons.length === 0 && !ctx.advice && !ctx.contentPositioning && !ctx.businessPositioning) return '';
 
   const parts: string[] = [];
   const title = p?.profile_name ? `## 📇 账号背景：${p.profile_name}` : '## 📇 账号背景';
@@ -340,7 +349,7 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
         ? '⚠️ 账号档案在这份简报生成之后改过：简报里的人设事实（年限、经历、籍贯、价格、品类）可能已经过时，**和上面账号背景对不上的一律以账号背景为准**。'
         : '简报里的事实（年限、经历、籍贯、价格、品类）如果和上面账号背景对不上，以账号背景为准。');
     }
-  } else if (ctx.positioning) {
+  } else if (ctx.positioning && manifestOf(module)?.positioning !== false) {
     const body = module === 'topic' ? ctx.positioning.summary : ctx.positioning.full;
     if (body) {
       parts.push('', `## 🎯 已确定的账号定位`, '', text(body, 2000), '',
@@ -349,10 +358,23 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
     }
   }
 
-  // 行业建议（药方）：这个号当前阶段的打法，所有板块都照它执行
-  const advice = adviceContextBlock(ctx.advice);
+  // 深挖的定位（2026-10-19 分工方案）：选题、方向拿内容定位的系列清单，脚本拿商业定位的成交路径。只给清单里声明的板块
+  const deep = manifestOf(module)?.deep ?? [];
+  if (deep.includes('content') && ctx.contentPositioning) {
+    parts.push('', '## 🧭 内容定位（参考系列）', '', text(ctx.contentPositioning, 2500), '',
+      '⚠️ 这是内容定位的参考系列，不是规定动作。用户选定的方向优先：方向不在这里的，照用户的来，标【自定义】，不硬套进系列。');
+  }
+  if (deep.includes('business') && ctx.businessPositioning) {
+    parts.push('', '## 💰 商业定位（成交路径）', '', text(ctx.businessPositioning, 1200), '',
+      '⚠️ 脚本的结尾动作要对上这里的一步，不另起成交方式。');
+  }
+
+  // 行业建议（药方）：这个号当前阶段的打法，所有板块都照它执行；它只在内容定位的框架内选和排
+  const advice = manifestOf(module)?.advice === false ? '' : adviceContextBlock(ctx.advice, undefined, ctx.adviceStale ?? []);
   if (advice) parts.push('', advice);
   if (THREE_HAVE_BOARDS.has(module)) parts.push('', threeHavesBlock());
+  // 选题的四个标签：系列、目的、结尾动作、成交步骤（lib/output-tags）
+  if (module === 'topic') parts.push('', topicTagBlock());
 
   // 数据回流：这个号发出去的真实数据（lib/performance），规划类板块用它调整方向和拍法
   if (PERFORMANCE_BOARDS.has(module)) {

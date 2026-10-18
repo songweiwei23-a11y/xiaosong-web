@@ -512,16 +512,15 @@ export default function ScriptPage() {
       // 已验证的开场钩子，以及「绝对不能说：最好、第一、全网最便宜」。
       // 最后一条是硬禁忌，漏掉它模型就会照常写出违规文案。
       /*
-       * brief 必须带上。之前这里漏了它，实测脚本注入 2299 字却只有
-       * 1/7 的简报字段到位——「人设与口吻」「凭什么信你」「记忆点」
-       * 这些脚本最吃的东西全都没进来，塞的反而是截断的定位原文。
+       * 2026-10-19 按板块分配（方案 D）：脚本只给档案和写作底线，不带简报、行业建议、定位。
+       * 对照测试里这样编造从 11 条降到 2 条，盲评持平。板块清单（lib/context-manifest）是准的，
+       * 这里只传档案即可；传了也会被清单忽略。
        */
       if (selectedProfileId) {
         const profile = profiles.find(p => p.id === selectedProfileId);
         if (profile) {
           profileInfo = "\n\n" + buildContextBlock(
-            // 行业建议（药方）要带上，脚本才照它的打法来（2026-10-19 发现：这里之前漏了）
-            { profile: profile, positioning: null, dealReasons: [], brief: creatorContext.brief, advice: creatorContext.advice },
+            { profile: profile, positioning: null, dealReasons: [] },
             'script'
           );
         }

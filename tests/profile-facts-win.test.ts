@@ -29,14 +29,14 @@ describe('档案里的真实情况进到各板块', () => {
     }
   });
 
-  it('真实情况写在简报之前，并说明冲突时以档案为准', () => {
-    const block = buildContextBlock(ctx(OLD), 'script');
+  it('真实情况写在简报之前，并说明冲突时以档案为准（用审稿，脚本按方案 D 不读简报）', () => {
+    const block = buildContextBlock(ctx(OLD), 'review');
     expect(block.indexOf('真实情况')).toBeLessThan(block.indexOf('在南乐扎根18年'));
     expect(block).toMatch(/和上面账号背景对不上的一律以账号背景为准/);
   });
 
-  it('档案没在简报之后改过：只留一句温和的规则', () => {
-    const block = buildContextBlock(ctx(), 'script');
+  it('档案没在简报之后改过：只留一句温和的规则（用审稿）', () => {
+    const block = buildContextBlock(ctx(), 'review');
     expect(block).not.toContain('简报生成之后改过');
     expect(block).toContain('以账号背景为准');
   });

@@ -85,16 +85,24 @@ describe('字段定义', () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 
-  it('每个板块都至少能读到一段', () => {
+  // 方案 D（2026-10-19）：选题、方向、脚本不读简报，简报只给写稿以外的板块（分镜、审稿、标题……）用
+  const NO_BRIEF = ['topic', 'direction', 'script'];
+
+  it('除方案 D 的三个板块外，每个板块都至少能读到一段简报', () => {
     for (const m of BOARD_MANIFESTS) {
+      if (NO_BRIEF.includes(m.board)) {
+        expect(m.brief, `${m.label} 按方案 D 不该读简报`).toEqual([]);
+        continue;
+      }
       expect(m.brief.length, `${m.label} 一段都读不到`).toBeGreaterThan(0);
     }
   });
 
-  it('一句话定位和禁忌是所有板块都要的', () => {
+  it('除方案 D 的三个板块外，一句话定位和禁忌都要', () => {
     for (const key of ['oneline', 'forbidden']) {
       const boards = boardsUsingBriefField(key);
       for (const m of BOARD_MANIFESTS) {
+        if (NO_BRIEF.includes(m.board)) continue;
         expect(boards, `${key} 漏了 ${m.label}`).toContain(m.board);
       }
     }
@@ -243,11 +251,9 @@ describe('按板块切片——这是简报存在的全部意义', () => {
     expect(b).not.toContain('凭什么信你');
   });
 
-  it('选题拿到方向和人群，拿不到拍摄条件', () => {
-    const b = briefBlockFor(SAMPLE, 'topic');
-    expect(b).toContain('内容方向');
-    expect(b).toContain('说给谁听');
-    expect(b).not.toContain('怎么拍');
+  it('方案 D：选题不读简报（简报会把没依据的时间、流程带进选题）', () => {
+    expect(briefBlockFor(SAMPLE, 'topic')).toBe('');
+    expect(briefBlockFor(SAMPLE, 'script')).toBe('');
   });
 
   it('审稿拿到口吻和人群，作为判据', () => {
@@ -256,16 +262,16 @@ describe('按板块切片——这是简报存在的全部意义', () => {
     expect(b).toContain('说给谁听');
   });
 
-  it('切出来的比原来截断 2000 字更短', () => {
-    for (const m of ['topic', 'script', 'storyboard', 'review', 'title'] as const) {
+  it('切出来的比原来截断 2000 字更短（选题、脚本按方案 D 不读简报，不在此列）', () => {
+    for (const m of ['storyboard', 'review', 'title'] as const) {
       const size = briefBlockFor(SAMPLE, m).length;
       expect(size, `${m} 切出来 ${size} 字，太长了`).toBeLessThan(1200);
       expect(size, `${m} 切出来是空的`).toBeGreaterThan(80);
     }
   });
 
-  it('带上「必须与它一致」的约束', () => {
-    expect(briefBlockFor(SAMPLE, 'script')).toContain('不要另起炉灶');
+  it('带上「必须与它一致」的约束（用审稿，脚本按方案 D 不读简报）', () => {
+    expect(briefBlockFor(SAMPLE, 'review')).toContain('不要另起炉灶');
   });
 
   it('没有简报时返回空串，调用方照常工作', () => {
@@ -304,7 +310,7 @@ describe('接进 buildContextBlock：有简报就不再截断定位', () => {
         positioning: { name: '定位', summary: '定位摘要内容', full: '定位完整内容' },
         dealReasons: [],
       },
-      'script'
+      'review'
     );
     expect(block).toContain('已确定的账号定位');
     expect(block).toContain('生成一份「创作简报」');

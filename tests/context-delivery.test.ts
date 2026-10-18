@@ -94,11 +94,11 @@ describe('清单本身立得住', () => {
     expect(new Set(b).size).toBe(b.length);
   });
 
-  it('所有产出内容的板块都带上硬禁忌', () => {
-    // 漏一条可能直接产出违规文案，这是不能省的
+  it('所有产出内容的板块都带上硬禁忌（通过档案的 restrictions，这是唯一必须的通道）', () => {
+    // 漏一条可能直接产出违规文案，这是不能省的。
+    // 2026-10-19 方案 D：选题、方向、脚本不再读简报，禁忌仍由档案的 restrictions 切片带入，所以只卡这一条。
     for (const m of BOARD_MANIFESTS) {
       expect(m.profile, `${m.label} 没带档案里的禁忌`).toContain('restrictions');
-      expect(m.brief, `${m.label} 没带简报里的禁忌`).toContain('forbidden');
     }
   });
 });
@@ -148,6 +148,18 @@ describe('有简报就不再塞截断的定位原文', () => {
   const LONG = '定位原文'.repeat(1000);
 
   for (const m of BOARD_MANIFESTS) {
+    // 方案 D（2026-10-19）：选题、方向不读简报，改拿定位摘要；脚本只给档案，定位原文一概不带
+    if (m.brief.length === 0) {
+      it(`${m.label}（方案 D，不读简报）有简报也不读，按清单拿定位摘要或不拿`, () => {
+        const block = buildContextBlock(
+          ctx({ positioning: { name: 'n', summary: LONG, full: LONG } }),
+          m.board
+        );
+        if (m.board === 'script') expect(block).not.toContain('定位原文');
+        else expect(block).toContain('已确定的账号定位');
+      });
+      continue;
+    }
     it(`${m.label} 有简报时不出现定位原文`, () => {
       const block = buildContextBlock(
         ctx({ positioning: { name: 'n', summary: LONG, full: LONG } }),
@@ -160,7 +172,7 @@ describe('有简报就不再塞截断的定位原文', () => {
   it('没有简报时才退回定位，并提示可以生成简报', () => {
     const block = buildContextBlock(
       ctx({ brief: null, positioning: { name: 'n', summary: '摘要', full: '全文' } }),
-      'script'
+      'review'
     );
     expect(block).toContain('已确定的账号定位');
     expect(block).toContain('生成一份「创作简报」');
@@ -252,9 +264,15 @@ describe('页面确实把简报传进去了', () => {
     it(`${name}页取了 creatorContext`, () => {
       const src = fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
       expect(src, `${name}页没有调用 useCreatorContext`).toMatch(/useCreatorContext\(\)/);
-      // 手拼 ctx 的页面必须显式带上 brief，否则简报到不了
+      // 方案 D（2026-10-19）：选题、脚本不读简报，手拼 ctx 时也不带 brief（清单里 brief 为空，带了也会被忽略，还容易误导）
+      const NO_BRIEF_PAGES = ['选题', '脚本'];
       if (/buildContextBlock\(\s*\{/.test(src)) {
-        expect(src, `${name}页手拼了 ctx 但没带 brief`).toMatch(/brief:\s*creatorContext\.brief/);
+        if (NO_BRIEF_PAGES.includes(name)) {
+          expect(src, `${name}页（方案 D）不该再带 brief`).not.toMatch(/brief:\s*creatorContext\.brief/);
+        } else {
+          // 手拼 ctx 的页面必须显式带上 brief，否则简报到不了
+          expect(src, `${name}页手拼了 ctx 但没带 brief`).toMatch(/brief:\s*creatorContext\.brief/);
+        }
       }
     });
   }

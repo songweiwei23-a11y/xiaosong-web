@@ -250,7 +250,7 @@ describe('档案完整度', () => {
 });
 
 describe('提示词规模可控', () => {
-  it('单个模块的上下文不超过 4000 字', () => {
+  it('单个模块的上下文不超过 4000 字（选题多出的四个标签说明约 450 字，单独放宽到 4600）', () => {
     // 无关信息会稀释指令，而且每次生成都要为这些 token 付钱
     for (const m of ['topic', 'script', 'storyboard', 'review', 'title'] as const) {
       const size = buildContextBlock(
@@ -260,7 +260,8 @@ describe('提示词规模可控', () => {
         }),
         m
       ).length;
-      expect(size, `${m} 的上下文有 ${size} 字，太长了`).toBeLessThan(4000);
+      const limit = m === 'topic' ? 4600 : 4000;
+      expect(size, `${m} 的上下文有 ${size} 字，太长了`).toBeLessThan(limit);
     }
   });
 });

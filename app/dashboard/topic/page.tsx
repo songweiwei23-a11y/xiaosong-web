@@ -541,21 +541,22 @@ export default function TopicPage() {
        * 成交理由这里不传：选题页的成交理由是用户从固定清单里勾的，
        * 下面已经单独拼进 query，再塞一遍等于重复付费。
        *
-       * brief 必须带上。之前这里漏了它，实测的后果很讽刺：
-       * 选题注入 2251 字（全站最多），有用的却最少——塞的是截断的定位原文，
-       * 而简报里的「一句话定位」「说给谁听」「内容方向」一个都没到。
-       * 接上之后是 399 字，更短但全是有用的。
+       * 2026-10-19 按板块分配（方案 D）：选题不带简报（简报会把没有依据的时间、流程带进选题），
+       * 拿账号定位摘要 + 内容定位 + 行业建议 + 选题标签（板块清单 lib/context-manifest 决定）。
        */
       const topicContext = buildContextBlock(
         {
           profile: selectedProfile ?? null,
           positioning: positioningForCtx,
           dealReasons: [],
-          brief: creatorContext.brief,
           // 数据回流：这个号发出去的真实数据，出选题时参考（lib/performance）
           performance: creatorContext.performance,
           // 行业建议（药方）：选题也要照它来，不然存过的药方在选题页上等于没有（2026-10-19 发现）
           advice: creatorContext.advice,
+          adviceAt: creatorContext.adviceAt,
+          adviceStale: creatorContext.adviceStale,
+          // 内容定位的系列清单：选题只能从这里的系列里选（lib/context-manifest 的 deep=content）
+          contentPositioning: creatorContext.contentPositioning,
         },
         'topic'
       );

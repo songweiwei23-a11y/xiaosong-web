@@ -54,6 +54,23 @@ export interface BoardManifest {
   brief: string[];
   /** 要不要成交理由清单 */
   dealReasons: boolean;
+  /**
+   * 要不要带深挖的定位（2026-10-19 分工方案）：
+   *   content  内容定位的系列清单 —— 选题、方向只能从这里的系列里选
+   *   business 商业定位的成交路径 —— 脚本的结尾动作要对上这里的一步
+   * 行业建议（药方）谁都带，它只在这两份的框架内选和排。
+   */
+  deep?: ('content' | 'business')[];
+  /**
+   * 行业建议（药方）要不要带。默认带。
+   * 2026-10-19 按板块分配（方案 D，对照测试见 .tmp/foundation-eval3）：脚本不带，只给档案和写作底线。
+   */
+  advice?: boolean;
+  /**
+   * 账号定位原文要不要带（简报没有时的兜底）。默认带。
+   * 同上：脚本不带定位，避免和档案、写作底线之外的说法打架。
+   */
+  positioning?: boolean;
 }
 
 export const BOARD_MANIFESTS: BoardManifest[] = [
@@ -62,16 +79,22 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     label: '选题策划',
     job: '找"往哪个方向拍"。要知道赛道、说给谁听、有什么可挖的、什么不能碰',
     profile: ['account', 'audience', 'viral', 'restrictions'],
-    brief: ['oneline', 'audience', 'direction', 'forbidden'],
+    // 2026-10-19（方案 D）：选题不带简报。简报是模型转译出来的，会把没有依据的时间、流程带进选题
+    brief: [],
     dealReasons: true,
+    deep: ['content'],
   },
   {
     board: 'script',
     label: '脚本生成',
     job: '决定"怎么说"。口吻、说服点、记忆点，缺一样都会写成通稿',
     profile: ['account', 'audience', 'tone', 'selling', 'restrictions'],
-    brief: ['oneline', 'persona', 'audience', 'direction', 'trust', 'memory', 'forbidden'],
+    // 2026-10-19（方案 D）：脚本只给档案和写作底线。不带简报、行业建议、定位、商业定位
+    // （对照测试：这样编造从 11 条降到 2 条，盲评持平）
+    brief: [],
     dealReasons: true,
+    advice: false,
+    positioning: false,
   },
   {
     board: 'storyboard',
@@ -157,8 +180,10 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
      */
     job: '带着目的找方向：要知道这个号定好的方向、说给谁听、凭什么信你、能拍什么、靠什么赚钱，方向才能既达到目的又拍得出来',
     profile: ['monetize', 'viral', 'restrictions'],
-    brief: ['oneline', 'persona', 'audience', 'direction', 'trust', 'shooting', 'forbidden'],
+    // 2026-10-19（方案 D）：方向不带简报，和选题一致。方向靠账号定位、内容定位、行业建议
+    brief: [],
     dealReasons: true,
+    deep: ['content'],
   },
   {
     board: 'knowledge',

@@ -21,6 +21,7 @@ import {
   buildIndustryAdvicePrompt,
   type AdvicePurposeKey,
   type AdviceStageKey,
+  staleUpstream,
 } from '@/lib/industry-advice'
 
 /**
@@ -77,6 +78,8 @@ export default function IndustryAdvicePage() {
   const [choice, setChoice] = useState<Choice>(DEFAULT_CHOICE)
   const [result, setResult] = useState('')
   const [saved, setSaved] = useState<Row | null>(null)
+  /** 三份上游定位的生成时间，用来判断药方是不是已经过期 */
+  const [upstreamAt, setUpstreamAt] = useState<Record<string, string | null>>({})
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -99,9 +102,13 @@ export default function IndustryAdvicePage() {
           return Array.isArray(j) && j[0] ? (j[0] as Row) : null
         }
         const [baseRes, bizRes, conRes, mineRes] = await Promise.all([get('账号定位'), get('商业定位'), get('内容定位'), get(ADVICE_TYPE)])
-        setBaseline((await first(baseRes))?.full_content || '')
-        setBusinessBaseline((await first(bizRes))?.full_content || '')
-        setContentBaseline((await first(conRes))?.full_content || '')
+        const baseRow = await first(baseRes)
+        const bizRow = await first(bizRes)
+        const conRow = await first(conRes)
+        setBaseline(baseRow?.full_content || '')
+        setBusinessBaseline(bizRow?.full_content || '')
+        setContentBaseline(conRow?.full_content || '')
+        setUpstreamAt({ 账号定位: baseRow?.created_at ?? null, 商业定位: bizRow?.created_at ?? null, 内容定位: conRow?.created_at ?? null })
         const mine = await first(mineRes)
         setSaved(mine)
         if (mine) {
@@ -262,6 +269,15 @@ export default function IndustryAdvicePage() {
                     <button onClick={() => router.push('/dashboard/positioning')} className="ml-1 underline">
                       去生成
                     </button>
+                  </p>
+                )}
+                {contentBaseline ? null : (
+                  <p className="text-amber-500">还没有内容定位（长期拍什么）。药方里的系列要从它里面选，先做内容定位会更准。</p>
+                )}
+                {saved && staleUpstream(saved.created_at, Object.entries(upstreamAt).map(([name, at]) => ({ name, at }))).length > 0 && (
+                  <p className="text-amber-500">
+                    {staleUpstream(saved.created_at, Object.entries(upstreamAt).map(([name, at]) => ({ name, at }))).join('、')}
+                    在这份药方之后更新过，药方可能已经过期，建议先重新开方再照做。
                   </p>
                 )}
               </div>
