@@ -85,10 +85,10 @@ describe('字段定义', () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 
-  // 方案 D（2026-10-19）：选题、方向、脚本不读简报，简报只给写稿以外的板块（分镜、审稿、标题……）用
-  const NO_BRIEF = ['topic', 'direction', 'script'];
+  // 方案 D（2026-10-19）：选题、方向、脚本不读简报；分镜也不读（2026-10-19 产品方定：分镜改成方案 D，对照见 .tmp/foundation-ab4）。简报只给审稿、标题等用
+  const NO_BRIEF = ['topic', 'direction', 'script', 'storyboard'];
 
-  it('除方案 D 的三个板块外，每个板块都至少能读到一段简报', () => {
+  it('除方案 D 的四个板块外，每个板块都至少能读到一段简报', () => {
     for (const m of BOARD_MANIFESTS) {
       if (NO_BRIEF.includes(m.board)) {
         expect(m.brief, `${m.label} 按方案 D 不该读简报`).toEqual([]);
@@ -98,7 +98,7 @@ describe('字段定义', () => {
     }
   });
 
-  it('除方案 D 的三个板块外，一句话定位和禁忌都要', () => {
+  it('除方案 D 的四个板块外，一句话定位和禁忌都要', () => {
     for (const key of ['oneline', 'forbidden']) {
       const boards = boardsUsingBriefField(key);
       for (const m of BOARD_MANIFESTS) {
@@ -240,18 +240,11 @@ describe('编辑后存回去，内容不变形', () => {
 });
 
 describe('按板块切片——这是简报存在的全部意义', () => {
-  it('分镜只拿到「怎么拍」「记忆点」和通用两段', () => {
-    const b = briefBlockFor(SAMPLE, 'storyboard');
-    expect(b).toContain('怎么拍');
-    expect(b).toContain('记忆点');
-    expect(b).toContain('一句话定位');
-    expect(b).toContain('绝对不能说');
-    // 分镜不需要知道选题来源和卖点
-    expect(b).not.toContain('能长期挖的选题来源');
-    expect(b).not.toContain('凭什么信你');
+  it('方案 D：分镜不读简报，拍摄条件只从档案的 shooting 切片来', () => {
+    expect(briefBlockFor(SAMPLE, 'storyboard')).toBe('');
   });
 
-  it('方案 D：选题不读简报（简报会把没依据的时间、流程带进选题）', () => {
+  it('方案 D：选题、脚本不读简报（简报会把没依据的时间、流程带进选题）', () => {
     expect(briefBlockFor(SAMPLE, 'topic')).toBe('');
     expect(briefBlockFor(SAMPLE, 'script')).toBe('');
   });
@@ -262,8 +255,8 @@ describe('按板块切片——这是简报存在的全部意义', () => {
     expect(b).toContain('说给谁听');
   });
 
-  it('切出来的比原来截断 2000 字更短（选题、脚本按方案 D 不读简报，不在此列）', () => {
-    for (const m of ['storyboard', 'review', 'title'] as const) {
+  it('切出来的比原来截断 2000 字更短（选题、脚本、分镜按方案 D 不读简报，不在此列）', () => {
+    for (const m of ['review', 'title'] as const) {
       const size = briefBlockFor(SAMPLE, m).length;
       expect(size, `${m} 切出来 ${size} 字，太长了`).toBeLessThan(1200);
       expect(size, `${m} 切出来是空的`).toBeGreaterThan(80);
@@ -295,10 +288,10 @@ describe('接进 buildContextBlock：有简报就不再截断定位', () => {
         dealReasons: [],
         brief: SAMPLE,
       },
-      'storyboard'
+      'review'
     );
     expect(block).toContain('创作简报');
-    expect(block).toContain('不追求精致'); // 简报「怎么拍」里的内容
+    expect(block).toContain('人设与口吻'); // 审稿读的简报段
     expect(block).not.toContain('账号定位正文'); // 截断的定位原文不该再进来
   });
 
@@ -322,11 +315,11 @@ describe('接进 buildContextBlock：有简报就不再截断定位', () => {
     const base = { profile: { id: 'p1', profile_name: '测试号' }, dealReasons: [] };
     const withBrief = buildContextBlock(
       { ...base, positioning: { name: 'n', summary: longPositioning, full: longPositioning }, brief: SAMPLE },
-      'storyboard'
+      'review'
     );
     const withoutBrief = buildContextBlock(
       { ...base, positioning: { name: 'n', summary: longPositioning, full: longPositioning } },
-      'storyboard'
+      'review'
     );
     expect(withBrief.length).toBeLessThan(withoutBrief.length);
   });

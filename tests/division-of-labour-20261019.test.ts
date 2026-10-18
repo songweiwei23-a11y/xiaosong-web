@@ -109,11 +109,18 @@ describe('每个板块只拿自己需要的定位（清单 deep 字段）', () =
     expect(out).toContain('三有自检');
   });
 
-  it('分镜不拿任何深挖定位，但药方照样带', () => {
-    const out = buildContextBlock(base({ businessPositioning: BUSINESS, contentPositioning: CONTENT, advice: '## 本阶段判断\n内容' }), 'storyboard');
+  it('分镜（方案 D）只给档案：深挖定位、行业建议、账号定位原文都不带，也不带简报', () => {
+    expect(manifestOf('storyboard')?.brief).toEqual([]);
+    expect(manifestOf('storyboard')?.advice).toBe(false);
+    expect(manifestOf('storyboard')?.positioning).toBe(false);
+    const out = buildContextBlock(base({
+      businessPositioning: BUSINESS, contentPositioning: CONTENT,
+      advice: '## 本阶段判断\n内容', positioning: { name: '账号定位', summary: '摘要', full: '账号定位原文' },
+    }), 'storyboard');
     expect(out).not.toContain('内容定位（参考系列）');
     expect(out).not.toContain('商业定位（成交路径）');
-    expect(out).toContain('行业建议（药方）');
+    expect(out).not.toContain('行业建议（药方）');
+    expect(out).not.toContain('账号定位原文');
   });
 
   it('只有选题带标签说明', () => {

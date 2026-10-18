@@ -102,8 +102,12 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     job: '决定"怎么拍"。只关心真实拍摄条件和画面，不需要知道变现路径',
     // 分镜表里有台词一列，禁忌同样适用——这条是测试逮出来的，原来漏了
     profile: ['account', 'shooting', 'restrictions'],
-    brief: ['oneline', 'shooting', 'memory', 'forbidden'],
+    // 2026-10-19（方案 D，分镜）：不带简报、行业建议、账号定位，只给档案（拍摄条件、禁忌）——和脚本一样。
+    // 对照测试（.tmp/foundation-ab4）：编造 当前 0 条 / D 0 条（当前那 1 条是误判）；盲评 4.0 / 4.0。
+    brief: [],
     dealReasons: false,
+    advice: false,
+    positioning: false,
   },
   {
     board: 'review',

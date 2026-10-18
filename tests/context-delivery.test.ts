@@ -148,14 +148,14 @@ describe('有简报就不再塞截断的定位原文', () => {
   const LONG = '定位原文'.repeat(1000);
 
   for (const m of BOARD_MANIFESTS) {
-    // 方案 D（2026-10-19）：选题、方向不读简报，改拿定位摘要；脚本只给档案，定位原文一概不带
+    // 方案 D（2026-10-19）：选题、方向不读简报，改拿定位摘要；脚本、分镜只给档案，定位原文一概不带
     if (m.brief.length === 0) {
       it(`${m.label}（方案 D，不读简报）有简报也不读，按清单拿定位摘要或不拿`, () => {
         const block = buildContextBlock(
           ctx({ positioning: { name: 'n', summary: LONG, full: LONG } }),
           m.board
         );
-        if (m.board === 'script') expect(block).not.toContain('定位原文');
+        if (m.board === 'script' || m.board === 'storyboard') expect(block).not.toContain('定位原文');
         else expect(block).toContain('已确定的账号定位');
       });
       continue;

@@ -102,12 +102,12 @@ describe('行业建议 · 药方取材与三有', () => {
 describe('行业建议 · 注入创作上下文', () => {
   const advice = '## 诊断\n起号期，先找到能起量的一类内容。';
 
-  it('除脚本外，创作板块都带上行业建议；脚本不带（2026-10-19 方案 D）', () => {
+  it('除脚本、分镜外，创作板块都带上行业建议；脚本、分镜不带（2026-10-19 方案 D）', () => {
     const ctx = base({ advice });
     const boards = ALL_BOARDS;
     expect(boards.length).toBeGreaterThan(0);
     for (const b of boards) {
-      expect(buildContextBlock(ctx, b).includes('行业建议（药方）'), b).toBe(b !== 'script');
+      expect(buildContextBlock(ctx, b).includes('行业建议（药方）'), b).toBe(!['script', 'storyboard'].includes(b));
     }
   });
 
