@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { throwApiError } from "@/lib/api-error";
+import { BenchmarkAnalyzer } from "@/components/benchmark/BenchmarkAnalyzer";
 import { postSafely } from "@/lib/safe-post";
 
 /**
@@ -13,7 +14,8 @@ import { postSafely } from "@/lib/safe-post";
 
 interface Video { id: string; title: string; published_on: string | null; views: number | null; likes: number | null; completion: number | null }
 interface Summary { count: number; avgViews: number | null; medianCompletion: number | null; best: { title: string; views: number } | null }
-interface Account { id: string; name: string; platform: string | null; link: string | null; note: string | null; videos: Video[]; summary: Summary }
+interface Analysis { id: string; materials: string[]; report: string; created_at: string }
+interface Account { id: string; name: string; platform: string | null; link: string | null; note: string | null; videos: Video[]; summary: Summary; analyses: Analysis[] }
 interface Hot { id: string; title: string; source_url: string | null; seen_on: string | null; note: string | null }
 
 const inputCls = "mt-1 w-full rounded-lg border border-border bg-background/50 px-2.5 py-1.5 text-[13px] text-foreground";
@@ -30,6 +32,8 @@ export default function BenchmarkPage() {
   const [hot, setHot] = useState<Hot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  /** 正在拆解的对标账号（同一时间只开一个拆解面板） */
+  const [analyzeId, setAnalyzeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +121,47 @@ export default function BenchmarkPage() {
             </div>
 
             <AddVideo onAdd={(v) => run({ action: "addVideo", accountId: a.id, ...v }, "作品数据已记下")} />
+
+            {/* 对标拆解（2026-10-18）：截图、文档、文字、视频都可以，拆成固定框架 */}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setAnalyzeId(analyzeId === a.id ? null : a.id)}
+                aria-expanded={analyzeId === a.id}
+                className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-foreground hover:bg-foreground/[0.06]"
+              >
+                {analyzeId === a.id ? "收起拆解" : "拆解这个账号"}
+              </button>
+              {analyzeId === a.id && (
+                <BenchmarkAnalyzer
+                  accountId={a.id}
+                  accountName={a.name}
+                  platform={a.platform}
+                  onSaved={() => { setAnalyzeId(null); void load(); }}
+                />
+              )}
+            </div>
+
+            {a.analyses.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-[12.5px] font-medium text-foreground">已保存的拆解（{a.analyses.length}）</p>
+                {a.analyses.map((x) => (
+                  <details key={x.id} className="rounded-lg border border-border/60 px-3 py-2 text-[12.5px]">
+                    <summary className="cursor-pointer text-foreground">
+                      {new Date(x.created_at).toLocaleDateString("zh-CN")} 的拆解 · 读到 {x.materials.length} 项材料
+                    </summary>
+                    <pre className="mt-2 whitespace-pre-wrap break-words font-sans leading-relaxed text-foreground">{x.report}</pre>
+                    <button
+                      type="button"
+                      onClick={() => void run({ action: "deleteAnalysis", id: x.id }, "已删除这份拆解")}
+                      className="mt-2 text-[12px] text-muted-foreground hover:text-destructive"
+                    >
+                      删除这份拆解
+                    </button>
+                  </details>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </section>

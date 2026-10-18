@@ -23,18 +23,23 @@ export async function GET() {
   const supabase = await getServerSupabase();
   const uid = guard.userId!;
 
-  const [accRes, vidRes, hotRes] = await Promise.all([
+  const [accRes, vidRes, hotRes, anaRes] = await Promise.all([
     supabase.from('benchmark_accounts').select('*').eq('user_id', uid).order('created_at', { ascending: true }),
     supabase.from('benchmark_videos').select('*').eq('user_id', uid).order('published_on', { ascending: false, nullsFirst: false }),
     supabase.from('hot_topics').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(50),
+    supabase.from('benchmark_analyses').select('id, account_id, materials, report, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(200),
   ]);
   const firstErr = accRes.error || vidRes.error || hotRes.error;
   if (firstErr) return dbError(firstErr.message);
+  // 拆解记录的表还没建（迁移没跑）：页面照常显示，只是没有拆解记录
+  const analysesMissing = !!anaRes.error && /schema cache|does not exist/i.test(anaRes.error.message);
+  if (anaRes.error && !analysesMissing) return dbError(anaRes.error.message);
 
   const videos = vidRes.data ?? [];
+  const analyses = anaRes.data ?? [];
   const accounts = (accRes.data ?? []).map((a) => {
     const mine = videos.filter((v) => v.account_id === a.id) as (BenchmarkVideoRow & { account_id: string })[];
-    return { ...a, videos: mine, summary: summarizeBenchmark(mine) };
+    return { ...a, videos: mine, summary: summarizeBenchmark(mine), analyses: analyses.filter((x) => x.account_id === a.id) };
   });
   return NextResponse.json({ accounts, hotTopics: hotRes.data ?? [] });
 }
@@ -90,6 +95,29 @@ export async function POST(request: Request) {
     case 'deleteHot': {
       if (!id) return NextResponse.json({ error: '缺少编号' }, { status: 400 });
       const { error } = await supabase.from('hot_topics').delete().eq('id', id).eq('user_id', uid);
+      if (error) return dbError(error.message);
+      return NextResponse.json({ ok: true });
+    }
+    case 'saveAnalysis': {
+      // 保存一次拆解报告：报告和「读到了什么」都存，原始材料不存
+      const accountId = typeof body.accountId === 'string' ? body.accountId : '';
+      const report = String(body.report ?? '').trim();
+      if (!accountId) return NextResponse.json({ error: '先选对标账号' }, { status: 400 });
+      if (!report) return NextResponse.json({ error: '拆解报告是空的，没有保存' }, { status: 400 });
+      const { data: acc } = await supabase.from('benchmark_accounts').select('id').eq('id', accountId).eq('user_id', uid).maybeSingle();
+      if (!acc) return NextResponse.json({ error: '这个对标账号不存在' }, { status: 404 });
+      const materials = Array.isArray(body.materials) ? body.materials.filter((m): m is string => typeof m === 'string').slice(0, 30).map((m) => m.slice(0, 200)) : [];
+      const { data, error } = await supabase
+        .from('benchmark_analyses')
+        .insert({ user_id: uid, account_id: accountId, materials, report: report.slice(0, 60_000) })
+        .select()
+        .single();
+      if (error) return dbError(error.message);
+      return NextResponse.json(data);
+    }
+    case 'deleteAnalysis': {
+      if (!id) return NextResponse.json({ error: '缺少编号' }, { status: 400 });
+      const { error } = await supabase.from('benchmark_analyses').delete().eq('id', id).eq('user_id', uid);
       if (error) return dbError(error.message);
       return NextResponse.json({ ok: true });
     }

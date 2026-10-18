@@ -60,6 +60,7 @@ const OTHER_ROUTES: Record<string, string> = {
   创作简报: '/dashboard/creative-brief',
   行业建议: '/dashboard/industry-advice',
   拆解爆款: '/dashboard/breakdown',
+  对标拆解: '/dashboard/benchmark',
   跨行业二创: '/dashboard/remix',
   创作方向: '/dashboard/direction',
   内容规划: '/dashboard/content-plan',

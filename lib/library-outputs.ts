@@ -22,7 +22,7 @@ export const OUTPUT_LIBRARIES: OutputLibrary[] = [
   { id: 'direction', label: '方向库', taskTypes: ['创作方向', '内容规划'], board: 'direction' },
   { id: 'plan', label: '起号方案库', taskTypes: ['起号方案'], board: 'growth' },
   { id: 'remix', label: '二创库', taskTypes: ['跨行业二创'], board: 'remix' },
-  { id: 'breakdown', label: '拆解库', taskTypes: ['拆解爆款'], board: 'breakdown' },
+  { id: 'breakdown', label: '拆解库', taskTypes: ['拆解爆款', '对标拆解'], board: 'breakdown' },
   { id: 'positioning', label: '定位库', taskTypes: ['账号定位', '商业定位', '内容定位', '创作简报', '行业建议'], board: 'positioning' },
   { id: 'deal', label: '成交理由库', taskTypes: ['成交理由'], board: 'deal-reason' },
   { id: 'other', label: '知识问答', taskTypes: ['知识库查询'], board: 'knowledge' },
