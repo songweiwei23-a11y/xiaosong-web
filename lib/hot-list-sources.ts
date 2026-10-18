@@ -15,10 +15,13 @@ export interface HotListSearch {
   keyword: string;
 }
 
-const PLATFORMS: { words: RegExp; label: string; site: string; keyword: string }[] = [
+const PLATFORMS: { words: RegExp; label: string; site: string; keyword: string; onlyWhenNamed?: boolean }[] = [
   { words: /知乎/, label: '知乎', site: 'zhihu.com', keyword: '热榜' },
   { words: /微博/, label: '微博', site: 's.weibo.com', keyword: '热搜' },
   { words: /头条/, label: '今日头条', site: 'toutiao.com', keyword: '热榜' },
+  // 抖音只在明确提到时才搜（不进默认的三家）。2026-10-18 实测：site:www.douyin.com 热点榜 回来的是抖音自己的 /hot/ 话题页；
+  // 之前「抖音热榜」因为没有这一项，落到了默认的三家，结果全是知乎、头条。
+  { words: /抖音/, label: '抖音', site: 'www.douyin.com', keyword: '热点榜', onlyWhenNamed: true },
 ];
 
 /** 问的是热榜、热搜、热门话题吗 */
@@ -28,6 +31,6 @@ const HOT_LIST = /热榜|热搜|热门话题|热门榜|榜单|爆了|上热搜/;
 export function hotListSearches(question: string): HotListSearch[] | null {
   if (!HOT_LIST.test(question)) return null;
   const named = PLATFORMS.filter((p) => p.words.test(question));
-  const chosen = named.length ? named : PLATFORMS;
+  const chosen = named.length ? named : PLATFORMS.filter((p) => !p.onlyWhenNamed);
   return chosen.map(({ label, site, keyword }) => ({ label, site, keyword }));
 }

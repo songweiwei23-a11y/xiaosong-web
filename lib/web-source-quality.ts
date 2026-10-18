@@ -3,8 +3,9 @@ import type { SearchHit } from './ali-search';
 import { fetchPage } from './page-fetch';
 import { extractMainText } from './html-text';
 import { buildWebQuery, isNewsQuestion } from './web-query';
-import { capPerHost, dedupeByTitle, isRiskHit, isWeatherHit, normalizeTitle, titleSaysStale } from './search-quality';
+import { capPerHost, dedupeByTitle, isMarketHit, isOffPlaceHit, isRiskHit, isWeatherHit, newsPlace, normalizeTitle, titleSaysStale } from './search-quality';
 import { isOfficialHost } from './search-official-sites';
+import { isNationalNewsHost } from './national-news-sources';
 
 const HUB = /^\/?(?:index\.(?:s?html?|php|aspx?))?\/?$|\/(?:channel|column|list|lanmu|news|index)\/?$/i;
 const DOUYIN_OFFICIAL = ['life.douyin.com', 'school.douyin.com', 'developer.open-douyin.com', 'open.douyin.com'];
@@ -23,6 +24,7 @@ export function freeChatWebQuery(question: string, now = Date.now()) {
 }
 
 export function pickFreeChatSources(hits: SearchHit[], question: string, recencyDays = 0, now = Date.now(), maxSources = 6): SearchHit[] {
+  const place = newsPlace(question);
   const seen = new Set<string>();
   const seenContent = new Set<string>();
   const ranked: { hit: SearchHit; score: number; host: string; index: number; hub: boolean }[] = [];
@@ -33,6 +35,10 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     // 天气网页（2026-10-16：问热点新闻，来源全是天气预报）、气象预警（大雾、暴雨等）、买卖账号、开户、代运营这类导流页，问的不是它们就不收
     if (isWeatherHit(hit, question)) return;
     if (isRiskHit(hit, question)) return;
+    // 新闻类问题不收股票、基金行情页（问的是财经时不挡）
+    if (isMarketHit(hit, question)) return;
+    // 问的是某个地方的新闻：正文里找不到这个地名的，不是那个地方的新闻
+    if (isOffPlaceHit(hit, place)) return;
     // 平台经营操作及获客机制只收对应平台文档；广告课程经验不能证明推流/权限/处罚。
     if (needsDouyinGuide(question) && !DOUYIN_OFFICIAL.includes(u.hostname.toLowerCase())) return;
     // 登录入口及餐饮达人手册不能证明家居商家的推荐机制。
@@ -56,8 +62,9 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     const host = u.hostname.toLowerCase(), hub = HUB.test(u.pathname);
     const timestamp = Date.parse(hit.published), age = (now - timestamp) / 86400000;
     if (Number.isFinite(timestamp) && age < -2) return;
-    // 官方文档、规则页的发布时间常常是最早上线那天，不代表内容过期；这类来源不按时效丢（2026-10-17 实测：抖音来客规则页因此被丢光）
-    const officialDoc = OFFICIAL_DOC_HOSTS.includes(host) || /(^|\.)gov\.cn$/.test(host);
+    // 官方文档、规则页的发布时间常常是最早上线那天，不代表内容过期；这类来源不按时效丢（2026-10-17 实测：抖音来客规则页因此被丢光）。
+    // 政府网站的新闻稿不算规则页：问的是新闻时仍按时效算（2026-10-18 实测：「南乐县 今天 新闻」回来的是 9 月 19 日的政府稿）
+    const officialDoc = OFFICIAL_DOC_HOSTS.includes(host) || (/(^|\.)gov\.cn$/.test(host) && !isNewsQuestion(question));
     // 过旧的先存起来：新鲜来源不够时，短时效的问题（天气、今日热榜）回退用最近的几条，日期照实交给模型标明。
     // 标题里写的日期过旧（聚合站把旧文章翻新）也算过旧
     const tooOld = recencyDays && !officialDoc && ((Number.isFinite(timestamp) && age > recencyDays * 1.5 + 3) || titleSaysStale(hit.title, recencyDays, now));
@@ -65,6 +72,8 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     let score = Math.min(hit.content.length / 1500, 4) - (hub ? 6 : 0);
     // 官方站点是主要依据，排在聚合站和转载前面
     if (isOfficialHost(host)) score += 3;
+    // 全国新闻站的要闻稿排在聚合站和财经页前面
+    if (isNewsQuestion(question) && isNationalNewsHost(host)) score += 3;
     if (/dify/i.test(question) && host === 'docs.dify.ai') score += 6;
     if (/dify/i.test(question) && host === 'docs.dify.ai' && /\/nodes\//.test(u.pathname)) score += 4;
     if (/阿里云|aliyun/i.test(question) && host === 'help.aliyun.com') score += 6;

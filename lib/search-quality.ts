@@ -4,6 +4,7 @@
  * 天气预警页冒充新闻；聚合站翻新的旧文章标着新日期。这里只处理这些确定性的问题，不替代语义判断。
  */
 import type { SearchHit } from './ali-search';
+import { isNewsQuestion } from './web-query';
 
 /** 标题归一化：去掉标点、空格、大小写，用于判断「同一篇文章被转载」 */
 export function normalizeTitle(title: string): string {
@@ -28,6 +29,35 @@ export function isWeatherHit(hit: Pick<SearchHit, 'title' | 'url'>, question: st
   let host = '', path = '';
   try { const u = new URL(hit.url); host = u.hostname; path = u.pathname; } catch { /* 地址不对的交给别处过滤 */ }
   return WEATHER_HIT.test(hit.title) || WEATHER_HIT.test(`${host}${path}`);
+}
+
+/**
+ * 股票、基金、行情页。问的是新闻、热点时不收（2026-10-18 实测：「今天国内重要新闻」前排是 ETF 报价和股吧复盘）。
+ * 只在新闻类问题里判断；问的是股票、基金、财经时不挡。
+ */
+const MARKET_HIT = /行情|股价|报价|ETF|基金|股吧|涨停|跌停|净值|A股|美股|港股|股市|个股|证券|炒股|股票|复盘|期货|投资价值/i;
+const MARKET_QUESTION = /股|基金|财经|行情|投资|证券|金融|理财|汇率|期货|ETF/i;
+
+export function isMarketHit(hit: Pick<SearchHit, 'title'>, question: string): boolean {
+  if (!isNewsQuestion(question) || MARKET_QUESTION.test(question)) return false;
+  return MARKET_HIT.test(hit.title);
+}
+
+/**
+ * 新闻问题里点名的地名（如「郑州最近的热点新闻」里的「郑州」）。只认紧贴时间词的两到四个汉字。
+ * 问的是平台热榜、或者提到了具体平台时不认：那种问题的地名不是要找的东西。
+ */
+const PLATFORM_WORDS = /抖音|知乎|微博|头条|小红书|快手|B站|哔哩|公众号|视频号|热榜|热搜|热门话题|榜单/;
+export function newsPlace(question: string): string | null {
+  if (!isNewsQuestion(question) || PLATFORM_WORDS.test(question)) return null;
+  const m = question.match(/^([一-龥]{2,4}?)(?:市|县|区)?(?:最近|今天|今日|本周|这周|近期|昨天|昨日|的)/);
+  return m ? m[1] : null;
+}
+
+/** 地名新闻：标题和正文开头都找不到问题里的地名，就是通用搜索带来的无关内容（2026-10-18 实测：「郑州最近的热点新闻」回来的是耐克、得润电子） */
+export function isOffPlaceHit(hit: Pick<SearchHit, 'title' | 'content'>, place: string | null): boolean {
+  if (!place) return false;
+  return !`${hit.title} ${hit.content.slice(0, 1500)}`.includes(place);
 }
 
 /** 标题里写的具体日期（如「2026-08-21」「2026年8月21日」）。没有写就返回 null */
