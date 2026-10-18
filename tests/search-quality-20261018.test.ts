@@ -18,8 +18,8 @@ describe('抖音热榜只搜抖音自己的站点', () => {
     expect(hotListSearches('抖音热榜今天')?.map(h => h.site)).toEqual(['www.douyin.com']);
     expect(hotListSearches('抖音热搜有什么')?.map(h => h.site)).toEqual(['www.douyin.com']);
   });
-  it('没有提到平台的热搜问题，仍然是知乎、微博、头条三家（不含抖音）', () => {
-    expect(hotListSearches('今天有什么热搜')?.map(h => h.site)).toEqual(['zhihu.com', 's.weibo.com', 'toutiao.com']);
+  it('没有提到平台的热搜问题，四家都搜（含抖音）', () => {
+    expect(hotListSearches('今天有什么热搜')?.map(h => h.site)).toEqual(['zhihu.com', 's.weibo.com', 'toutiao.com', 'www.douyin.com']);
   });
 });
 
@@ -84,11 +84,11 @@ describe('定向搜索封顶', () => {
     expect(queries.some(q => q.startsWith('site:sohu.com'))).toBe(true);
     expect(result?.status.sources.map(s => s.url)).toContain('https://www.thepaper.cn/newsDetail_forward_9');
   });
-  it('同时命中地方、热榜等多类规则时，定向搜索最多 3 次，加上通用搜索一共不超过 4 次', async () => {
+  it('同时命中地方、热榜等多类规则时，定向搜索最多 4 次，加上通用搜索一共不超过 5 次', async () => {
     const search = vi.fn<typeof aliSearch>(async () => ({ ok: true as const, hits: [hit('https://example.com/a')] }));
     await searchFreeChatWeb('南乐今天热搜新闻', { config, search, read, onStarted, now });
-    expect(search.mock.calls.length).toBeLessThanOrEqual(4);
-    expect(search.mock.calls.filter(c => c[0].startsWith('site:')).length).toBe(3);
+    expect(search.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(search.mock.calls.filter(c => c[0].startsWith('site:')).length).toBe(4);
   });
   it('抖音热榜问题只发一次定向搜索，搜的是抖音站点', async () => {
     const search = vi.fn<typeof aliSearch>(async () => ({ ok: true as const, hits: [hit('https://www.douyin.com/hot/1', '抖音热榜', body, '2026-10-18T08:00:00+08:00')] }));

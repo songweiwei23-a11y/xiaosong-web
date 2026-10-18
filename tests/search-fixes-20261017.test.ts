@@ -45,8 +45,8 @@ describe('热榜、热搜：按平台官网搜（2026-10-17 实测：全网搜�
     expect(hotListSearches('知乎热榜今天有什么')?.map((h) => h.site)).toEqual(['zhihu.com']);
     expect(hotListSearches('微博热搜今天有什么')?.map((h) => h.site)).toEqual(['s.weibo.com']);
   });
-  it('没说平台就三家都搜', () => {
-    expect(hotListSearches('今天有什么热搜')?.map((h) => h.site)).toEqual(['zhihu.com', 's.weibo.com', 'toutiao.com']);
+  it('没说平台就四家都搜（2026-10-18 起含抖音）', () => {
+    expect(hotListSearches('今天有什么热搜')?.map((h) => h.site)).toEqual(['zhihu.com', 's.weibo.com', 'toutiao.com', 'www.douyin.com']);
   });
   it('微博用户主页不当成热搜来源（实测：「热搜」搜出来的几乎都是 /user/ 主页）', () => {
     const kept = pickFreeChatSources(

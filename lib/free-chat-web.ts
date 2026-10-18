@@ -24,8 +24,8 @@ export interface FreeChatWebResult {
 }
 
 const MAX_TOTAL_CHARS = 32_000;
-/** 定向站点搜索的上限（不含通用搜索）。见 searchFreeChatWeb 里的排队说明 */
-const MAX_TARGETED_SEARCHES = 3;
+/** 定向站点搜索的上限（不含通用搜索）：默认热榜要搜四家，所以上限是四。见 searchFreeChatWeb 里的排队说明 */
+const MAX_TARGETED_SEARCHES = 4;
 const needsDouyinGuide = (question: string) => /抖音/.test(question) && /本地生活|获客|商家/.test(question);
 
 type Dependencies = {
@@ -55,7 +55,7 @@ export async function searchFreeChatWeb(question: string, deps: Dependencies): P
   const hot = hotListSearches(question);
   const national = nationalNewsSearches(question);
   // 定向搜索按优先级排队，封顶 MAX_TARGETED_SEARCHES 次：地方官网 > 热榜官网 > 官方站点 > 全国新闻站。
-  // 阿里云按次计费，封顶后一个问题最多 1 次通用 + 3 次定向，不会因为同时命中几类规则而叠到七八次。
+  // 阿里云按次计费，封顶后一个问题最多 1 次通用 + 4 次定向，不会因为同时命中几类规则而叠到七八次。
   const targeted: { query: string; rewrite: boolean }[] = [
     ...(local ? local.sites.map(site => ({ query: `site:${site} ${local.place} 新闻`, rewrite: true })) : []),
     ...(hot ?? []).map(h => ({ query: `site:${h.site} ${h.keyword}`, rewrite: false })),
