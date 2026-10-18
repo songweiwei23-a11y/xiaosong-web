@@ -57,7 +57,7 @@ export type Differentiate = (typeof DIFFERENTIATE)[number]['id'];
 export const DEPTHS = [
   { id: 'quick', label: '快速', hint: '方向 + 开头 + 口播要点，先挑一个再细化' },
   { id: 'full', label: '完整', hint: '按你勾的产出写全' },
-  { id: 'deep', label: '深度', hint: '在完整的基础上，再给 3 个备选开头' },
+  { id: 'deep', label: '深度', hint: '分镜细到每一镜的台词、动作、时长，再给 3 个备选开头' },
 ] as const satisfies readonly Choice[];
 export type Depth = (typeof DEPTHS)[number]['id'];
 
@@ -74,14 +74,14 @@ export type RemixDuration = (typeof DURATIONS)[number] | `${number}秒` | `${num
 
 export const OUTPUTS = [
   { id: 'script', label: '口播全文', hint: '按结构段落标好，照着念' },
+  { id: 'shots', label: '分镜', hint: '每一镜拍什么、说什么' },
   { id: 'shootPlan', label: '拍摄清单', hint: '用你手上的人、设备、场地怎么拍' },
   { id: 'titles', label: '标题和封面', hint: '3 个标题 + 封面字' },
   { id: 'comment', label: '评论区置顶', hint: '一条引导互动的置顶评论' },
   { id: 'altOpenings', label: '备选开头', hint: '再给 3 个不同的开头' },
 ] as const satisfies readonly Choice[];
 export type RemixOutput = (typeof OUTPUTS)[number]['id'];
-// 不出分镜：分镜太占字数，要拍成镜头表时去分镜板块（2026-10-19，产品方定）
-export const DEFAULT_OUTPUTS: RemixOutput[] = ['script', 'shootPlan'];
+export const DEFAULT_OUTPUTS: RemixOutput[] = ['script', 'shots', 'shootPlan'];
 
 export interface RemixSource {
   kind: 'breakdown' | 'paste';
@@ -199,13 +199,21 @@ export function buildRemixPrompt(source: RemixSource, o: RemixOptions): string {
     `#### 开头（前 3 秒）`,
     `第一句话逐字写出来，再写这 3 秒画面里有什么`,
   ];
-  // 变体多（>5）时压缩：不写全文，每个方案一屏能看完
+  // 变体多（>5）时压缩：不写全文和分镜，每个方案一屏能看完
   const compact = !quick && o.count > 5;
   if (quick) {
     sections.push('', `#### 口播要点`, `按结构分段列要点，每段一两句，不写全文`);
   } else {
     if (compact) sections.push('', `#### 分段`, `每段一行：时间 · 功能 · 用的拆解知识 · 一句台词要点（一屏能看完）`);
     if (outputs.has('script') && !compact) sections.push('', `#### 口播全文`, `按结构分段，每段前面用【】标出这段的作用（如【开篇钩子】【铺垫】【证据】【兑现】【行动指令】），总长度符合要求的时长`);
+    if (outputs.has('shots') && !compact)
+      sections.push(
+        '',
+        `#### 分镜`,
+        deep
+          ? `每一镜一行列表：**镜头 N｜起止秒数**：画面（谁、在哪、做什么动作）｜景别和运镜｜台词或字幕原文｜这一镜的作用。镜头要细到能直接照着拍`
+          : `每一镜一行列表：**镜头 N｜起止秒数**：画面｜台词或字幕。6～10 镜`
+      );
     if (outputs.has('shootPlan')) sections.push('', `#### 用你手上的资源怎么拍`, `几个人、谁出镜、用什么设备、在哪拍、要准备什么道具、大概拍多久；档案里没有的资源不要安排`);
     if (outputs.has('titles')) sections.push('', `#### 标题和封面`, `3 个标题 + 封面上的字（封面字 10 个字以内）`);
     if (outputs.has('comment')) sections.push('', `#### 评论区置顶`, `一条引导互动的置顶评论`);
