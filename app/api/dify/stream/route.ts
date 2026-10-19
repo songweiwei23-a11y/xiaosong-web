@@ -484,7 +484,9 @@ export async function POST(req: NextRequest) {
           const rawResponse = fullResponse;
           if (outcome.kind === 'done' && sourceForReview && fullResponse.trim()) {
             const requirements = typeof body.personalRequirements === 'string' ? body.personalRequirements : '';
-            const verified = await askDify(reviewVerificationPrompt(sourceForReview, requirements, fullResponse), userId, '审稿 原稿事实校对', { signal: AbortSignal.timeout(180_000) })
+            // 本轮材料（档案、相关方案参考）是事实依据；原稿不是（2026-10-19）
+            const material = typeof body.reviewMaterial === 'string' ? body.reviewMaterial : '';
+            const verified = await askDify(reviewVerificationPrompt(sourceForReview, requirements, fullResponse, material), userId, '审稿 原稿事实校对', { signal: AbortSignal.timeout(180_000) })
               .catch(() => ({ ok: false as const, message: '审稿校对未完成' }));
             if (!verified.ok) {
               outcome = { kind: 'error', message: '审稿校对未完成，请重试' };

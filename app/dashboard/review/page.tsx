@@ -260,9 +260,11 @@ export default function ReviewPage() {
       // 提示词在前端拼：这样才能先用 quality-checker 把稿子量一遍，
       // 把「秒数标注只有 1 处」「金句 27 字超长」这类客观事实喂给模型。
       // 后端检测到已有 query 就不再自行拼装。
+      // 本轮材料：账号背景、创作设置、相关方案参考。审稿拿它做事实依据（原稿本身不算依据）
+      const reviewMaterial = buildContextBlock(creatorContext, "review") + creationSettingsBlock(currentSettings) + (sourceReference ? `\n【相关方案参考】\n${sourceReference}\n以上仅为背景资料。只审下方待审脚本，不把迁移说明、拍摄清单算作口播。` : '');
       const query = buildReviewPrompt({
         // 账号背景随每次生成带上，不用用户在这一页重填一遍
-        contextBlock: buildContextBlock(creatorContext, "review") + creationSettingsBlock(currentSettings) + (sourceReference ? `\n【相关方案参考】\n${sourceReference}\n以上仅为背景资料。只审下方待审脚本，不把迁移说明、拍摄清单算作口播。` : ''),
+        contextBlock: reviewMaterial,
         draftContent,
         platform,
         duration: effectiveDuration,
@@ -284,6 +286,8 @@ export default function ReviewPage() {
           query: query + personalRequirementsReminder(personalRequirements),
           draftContent,
           personalRequirements,
+          // 校对步骤的事实依据：账号档案、创作设置、相关方案参考（不含原稿）
+          reviewMaterial,
           reviewFocus: personalRequirements,
           // 记忆按档案隔离，与脚本、选题两页保持一致
           profileId: creatorContext.profile?.id || null,

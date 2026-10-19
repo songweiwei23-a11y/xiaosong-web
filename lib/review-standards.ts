@@ -21,6 +21,7 @@ import { reviewDraftStats } from './script-result-utils';
 import { creativeCraftRules } from './creative-craft';
 import { AI_LENGTH_RULE } from './ai-recommend';
 import { reviewScopeBlock } from './review-scope';
+import { factEvidenceBlock } from './review-facts';
 
 export interface ReviewPromptParams {
   draftContent: string;
@@ -120,7 +121,7 @@ function forbiddenSection(draft: string): string {
  * 「有人开车50公里来吃」「回头客占8成」「牛油放了8斤熬4小时」——全是原稿和档案里没有的。
  * 评分标准鼓励"用具体数字增强说服力"，通用的承接规则放在最末尾管不住，所以就近写进这两节。
  */
-const NO_INVENTED_FACTS = '⚠️ 这是编辑现有稿件：改写只重组原稿和用户本轮明确提供的信息。没有的数字、尺寸标准、区间、比例、经历、事件、物品品种、动作次数、气味、神态、天气和作者感受都不补造，原稿里没有依据的数值标准要删掉或改成【待测量】；画面感从已有动作、声音、物件与空间中提炼。不能为了具体而替原稿加一个现场事实，包括问题清单、怎么改和逐句对照里的示范句。未提供的必要信息写在文案外说明待补，原稿里已有的数字与原话照用，不擅自改变人物行为。';
+const NO_INVENTED_FACTS = '⚠️ 这是编辑现有稿件：改写只重组原稿和用户本轮明确提供的信息。没有的数字、尺寸标准、区间、比例、经历、事件、物品品种、动作次数、气味、神态、天气和作者感受都不补造，原稿里没有依据的数值标准要删掉或改成【待测量】，没有依据的具体时间、金额、经历改成【待确认：…】（只换这一处）；画面感从已有动作、声音、物件与空间中提炼。不能为了具体而替原稿加一个现场事实，包括问题清单、怎么改和逐句对照里的示范句。未提供的必要信息写在文案外说明待补，原稿里已有的数字与原话照用，不擅自改变人物行为。';
 
 export function buildReviewPrompt(p: ReviewPromptParams): string {
   const draft = p.draftContent || '';
@@ -203,6 +204,9 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   if (draft) {
     parts.push(machineFindings(draft));
     parts.push('');
+    // 原稿里的具体时间、金额、年限要在档案和材料里找依据；原稿本身不算依据（2026-10-19，见 lib/review-facts）
+    parts.push(factEvidenceBlock(draft, [p.contextBlock, p.personalRequirements].filter(Boolean).join('\n')));
+    parts.push('');
   }
 
   parts.push('## 📏 评分标准（满分 100，换算成 10 分制）');
@@ -261,7 +265,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('- **用户目的与核心问题**：明确当前要解决什么、给谁看、哪些不做；混合目的照原要求保留');
   parts.push('- **一句话结论**：这稿子能不能直接拍，不能的话卡在哪');
   parts.push('- **本轮改动范围**：一句话写清按哪条要求只改哪几类、范围外保留什么；没有额外要求就写「只修有依据的问题句」');
-  parts.push('- **值得保留**：引用两三处原稿有效细节，说明它们如何服务当前题眼；不能只列缺点后整篇推翻');
+  parts.push('- **值得保留**：引用两三处原稿有效细节，说明它们如何服务当前题眼；不能只列缺点后整篇推翻。只能引用有依据的细节：事实预检里标为无依据的时间、金额、经历，不许列在这里；整句的核心依赖无依据的说法（如「每天早上去批发市场拿货」），整句都不算值得保留，不能只删时间留下动作');
   parts.push('');
   parts.push('### 2. 逐维度打分');
   parts.push('用表格输出：| 维度 | 得分/权重 | 问题 | 怎么改 |');

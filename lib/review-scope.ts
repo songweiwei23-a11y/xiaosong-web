@@ -63,7 +63,7 @@ export const ALWAYS_PROTECTED = [
   '结构和段落顺序',
   '人物原话和访谈回答',
   '结尾的收束句',
-  '原稿已有的数字和事实',
+  '有依据的数字和事实（档案、材料或编导的要求里有；没有依据的见事实依据预检，不在保护之列）',
 ];
 
 export interface ReviewScopePlan {
