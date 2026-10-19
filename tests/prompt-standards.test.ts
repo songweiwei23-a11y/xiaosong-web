@@ -56,9 +56,9 @@ describe('审稿提示词', () => {
     expect(prompt).toContain('综上所述');
   });
 
-  it('带上了达标范例', () => {
-    expect(prompt).toContain('达标范例');
-    expect(prompt).toContain('【开场钩子】');
+  it('不再附 9.5 分的达标范例（范例会把稿子往它靠，审稿是小改，2026-10-19）', () => {
+    expect(prompt).not.toContain('达标范例');
+    expect(prompt).toContain('先辨认稿件形式');
   });
 
   it('打开对比模式时才要求逐句对照', () => {

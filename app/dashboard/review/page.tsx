@@ -15,6 +15,7 @@ import { recordStage } from "@/lib/works";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import { buildReviewPrompt, personalRequirementsReminder, reviewDimensionLabels, AMBIGUOUS_REVIEW_DURATION, AI_DURATION } from "@/lib/review-standards";
+import { reviewDrift } from "@/lib/review-drift";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { buildContextBlock } from "@/lib/creator-context";
@@ -325,6 +326,9 @@ export default function ReviewPage() {
 
   // 结果下方「继续创作」和两个快捷按钮共用：目的、结构、作品、源资料一起往下带
   const reviewFlow = { settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || sourceReference || draftContent) };
+  // 优化稿里超出改动范围、又找不到说明的句子：标出来让编导逐句确认（不自动再改）
+  // 生成中的结果还没写完，要等完成后再查，否则会把没写完的优化稿当成越界
+  const drift = result && !isGenerating && draftContent.trim() ? reviewDrift(draftContent, result) : null;
   return (
     <WorkspaceLayout
       sidebar={
@@ -549,6 +553,16 @@ export default function ReviewPage() {
         </>
       }
     >
+      {drift && drift.unexplained.length > 0 && (
+        <div role="alert" className="mb-3 rounded-xl border border-amber-300/70 bg-amber-50/70 px-4 py-3 text-[13px] leading-relaxed text-amber-900">
+          <p className="font-semibold">有 {drift.unexplained.length} 句改动在问题清单里找不到说明，请逐句确认，不要直接照用：</p>
+          <ul className="mt-1.5 list-disc space-y-1 pl-5">
+            {drift.unexplained.slice(0, 6).map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <ResultPanel
         result={result}
         isGenerating={isGenerating}

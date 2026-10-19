@@ -14,15 +14,13 @@
  * 废话开场在不在）数清楚，把事实喂给模型，让它专心做判断而不是数数。
  */
 
-import {
-  FORBIDDEN_PHRASES,
-  getRelevantExample,
-} from './quality-checker';
+import { FORBIDDEN_PHRASES } from './quality-checker';
 import { roleInferRule } from './content-roles';
 import { continuationRules } from './creation-continuation';
 import { reviewDraftStats } from './script-result-utils';
 import { creativeCraftRules } from './creative-craft';
-import { AI_LENGTH_RULE, EXAMPLE_LENGTH_NOTE } from './ai-recommend';
+import { AI_LENGTH_RULE } from './ai-recommend';
+import { reviewScopeBlock } from './review-scope';
 
 export interface ReviewPromptParams {
   draftContent: string;
@@ -148,6 +146,10 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
     parts.push('');
   }
 
+  // 改动范围：编导点名了什么，就只改什么；范围外原样保留（2026-10-19，见 lib/review-scope）
+  parts.push(reviewScopeBlock(p.personalRequirements));
+  parts.push('');
+
   // 账号背景放在稿子之前：先知道这是谁的号、说给谁听，再看内容。
   // 顺序反过来的话，模型会先形成一个通用判断，再被背景信息拉扯
   if (p.contextBlock) {
@@ -163,7 +165,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('先读懂本条的题眼、人物关系、叙述视角和观众想知道的问题，再指出原稿已有的有效细节与值得保留的声音。每个问题必须引用对应原句，区分素材缺失、表达可优化与拍摄标注缺失；文字稿已有动作、声音、物件和人物原话，即使没有镜头编号，也有画面。');
   parts.push('观察记录、探访、日常过程：让观众跟着作者发现具体的人和事，用已有现场细节推进。开场压缩背景，尽早交代地点、时间和好奇点；不同场景各留下一个不同的发现，转场由前后信息关系带动，收尾回扣开场。保留有意味的停顿和克制反应，不把所有情绪都改成煽情判断或营销金句。');
   parts.push('口语化不是统一换成网络俚语；把拗口、重复、解释过满的句子改成作者能自然说出的短句。画面感优先从原稿的动作、声音、物件与空间提炼，拍摄建议与文案事实分开；新增可拍建议不能伪装成已经发生的事实。用户提供的原话按原稿素材保留，不把未核实标签塞进口播，也不擅自改变人物行为、回答或作者情绪。');
-  parts.push('先按当前素材做最小必要改写。素材充分时直接交付；关键缺口说明需要补什么。时长写法若有歧义（如“1-30秒”），明确说明两种理解及影响，优先确认；不得自行当成30秒而删掉主要场景。用户明确30秒时集中一个切口，明确90秒时保留可支撑主题的多场景递进。');
+  parts.push('先按上面的「本轮改动范围」定下要改的句子，只在范围内做最小改写，其余原样保留。素材充分时直接交付；关键缺口说明需要补什么。时长写法若有歧义（如“1-30秒”），明确说明两种理解及影响，优先确认；不得自行当成30秒而删掉主要场景。用户明确30秒时集中一个切口，明确90秒时保留可支撑主题的多场景递进。');
   parts.push('');
 
   parts.push('交付不得以「缺少档案材料」为由停下：账号背景里已有的年限、经历、卖点据此核对；背景和原稿里都找不到依据的年限、销量、顾客反馈，直接删掉或改成【待确认：…】，然后照常给出评分、问题清单、逐句改写对照和完整优化稿。');
@@ -216,6 +218,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('**等级线**：9.0 以上为 MCN 级，8.5 以上优秀，8.0 以上良好，');
   parts.push('7.0-8.0表示还有明确改进点；低于7.0先解释问题，改动范围服从用户要求，不自动推翻原稿。');
   parts.push('这是当前稿件的编辑判断，不是程序验证结果；分数不能证明事实真实或传播效果。金句、CTA、波点不适用时不扣分，也不为了评分强行补入。');
+  parts.push('分数只用来说明稿子能不能拍，不是改写目标：不为了多得几分而改动「本轮改动范围」之外的内容。');
   parts.push('');
 
   parts.push(forbiddenSection(draft));
@@ -246,14 +249,9 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
     parts.push('');
   }
 
-  // 达标范例。模型知道「什么算好」，判断才有参照物；
-  // 这和脚本生成注入范例是同一个理由。
-  parts.push('## 📎 达标范例（9.5 分，仅作参照，不要照抄其中的行业和台词）');
-  parts.push('');
-  // AI 推荐时不拿 60 秒去挑范例（范例多长模型就照着写多长）
-  if (/教知识|测评/.test(p.scriptType)) parts.push(getRelevantExample(p.scriptType, p.duration && p.duration !== AI_DURATION ? p.duration : '', ''));
-  else parts.push('先辨认稿件形式。采访保留主问、具体追问、不同回答与证据，未知回答保持待实拍；观察保留现场信息；讨论保留论点与依据。不要拿教学或广告范例改写其他形式。');
-  parts.push(EXAMPLE_LENGTH_NOTE);
+  // 不再附 9.5 分的达标范例（2026-10-19）：范例是一条完整的好稿，模型会把整篇往它靠，
+  // 把编导只想口语化的稿子重写成另一条稿。判断标准留在上面的评分表里，改动范围以编导的要求为准。
+  parts.push('先辨认稿件形式，保留它自己的形式：采访保留主问、具体追问、不同回答与证据，未知回答保持待实拍；观察保留现场信息；讨论保留论点与依据。不要拿教学或广告的写法改写其他形式。');
   parts.push('');
 
   parts.push('## 📤 输出格式（严格按顺序）');
@@ -262,6 +260,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('- **综合得分**：X.X 分（等级）');
   parts.push('- **用户目的与核心问题**：明确当前要解决什么、给谁看、哪些不做；混合目的照原要求保留');
   parts.push('- **一句话结论**：这稿子能不能直接拍，不能的话卡在哪');
+  parts.push('- **本轮改动范围**：一句话写清按哪条要求只改哪几类、范围外保留什么；没有额外要求就写「只修有依据的问题句」');
   parts.push('- **值得保留**：引用两三处原稿有效细节，说明它们如何服务当前题眼；不能只列缺点后整篇推翻');
   parts.push('');
   parts.push('### 2. 逐维度打分');
@@ -273,6 +272,7 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
     parts.push('每条标注严重程度：🔴 必须改（不改就别拍）／🟡 建议改／🟢 锦上添花');
   }
   parts.push('每条格式：【问题】原文哪一句 →【为什么不行】→【改成】可直接使用的新句子');
+  parts.push('只列在「本轮改动范围」之内、有依据的问题；范围外的问题不列，改动范围外的钩子、意境、结构即使你觉得可以更好，也不动。');
   parts.push(NO_INVENTED_FACTS);
   parts.push('');
 
@@ -287,8 +287,9 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   } else {
     parts.push('### 4. 优化后的完整脚本');
   }
-  parts.push('按当前内容形式给出可用完整版本；原稿是纯文字或用户只改局部时不强行扩成五要素镜头稿，已有镜头稿保留适用的秒数、镜头、台词与画面，');
-  parts.push('重点解决核心问题、信息深度、依据和执行性，不为达到目标分数补金句、情绪高潮或营销结尾。采访尚未实拍时补具体追问与取证动作，不编受访者回答。');
+  // 这一节是「小改后的稿」，不是重写：结构、段落顺序、镜头和台词都和原稿一致，只替换问题清单里有依据的句子
+  parts.push('这一节是小改后的稿：结构、段落顺序、镜头和台词与原稿保持一致，只替换问题清单里有依据、且在「本轮改动范围」之内的句子。原稿是纯文字就保持纯文字，不扩成镜头稿；已有镜头稿保留原有的秒数、镜头、台词与画面。');
+  parts.push('每一处改动都要能在问题清单或逐句对照里找到对应的说明；没有说明的改动不要做。不为达到目标分数补金句、情绪高潮或营销结尾。采访尚未实拍时补具体追问与取证动作，不编受访者回答。');
   if (personal) parts.push('⚠️ 最前面「用户的个人要求」必须在这一版里逐条落实——它比评分标准优先。');
   parts.push(NO_INVENTED_FACTS);
   parts.push('');

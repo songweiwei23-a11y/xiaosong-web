@@ -47,7 +47,8 @@ describe('时长', () => {
     expect(prompt).toMatch(/不要为了变短删掉/);
     // 没选时长也一样不限，不拿 60 秒的范例去带节奏
     expect(buildReviewPrompt({ ...base, duration: '' })).toMatch(/目标时长：不限，以效果最好为准/);
-    expect(prompt).toContain('范例有多长不代表这条要多长');
+    // 9.5 分范例和它的长度提示已经去掉（2026-10-19，范例会把稿子往它靠）
+    expect(prompt).not.toContain('范例有多长不代表这条要多长');
     expect(prompt).not.toContain('建议时长：XX秒');
     expect(prompt).not.toContain('目标时长：AI推荐');
   });
