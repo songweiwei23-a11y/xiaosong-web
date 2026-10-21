@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
+import { notifyProgressChanged } from '@/lib/progress-events'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { useCreationBridge } from '@/hooks/useCreationBridge'
@@ -225,6 +226,7 @@ export default function CreativeBriefPage() {
     if (res.ok) {
       const row = await res.json()
       setBrief(row)
+      notifyProgressChanged()
       setValues(parseBrief(content))
       setDirty(false)
       // 各板块缓存的上下文要作废，否则接着生成用的还是旧简报

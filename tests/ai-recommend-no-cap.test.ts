@@ -8,7 +8,7 @@ import { resolveCreationSettings } from '@/lib/creation-settings';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { buildStoryboardPrompt, auditStoryboard, FOLLOW_SCRIPT } from '@/lib/storyboard-standards';
 import { AI_LENGTH_RULE, AI_SCRIPT_LENGTH_RULE } from '@/lib/ai-recommend';
-import { readCode } from './helpers/source';
+import { readCode, readScriptBoardCode } from './helpers/source';
 
 const ctx = { profile: { video_duration: ['30-60秒'], account_platform: ['抖音'] } as never, positioning: null, dealReasons: [] };
 
@@ -31,7 +31,7 @@ describe('跳到下一个板块：时长不替编导定', () => {
 
 describe('各板块页面', () => {
   it('脚本页：默认 AI 推荐；带过来没时长就切到 AI 推荐；智能推荐不再按平台写死时长', () => {
-    const page = readCode('app/dashboard/script/page.tsx');
+    const page = readScriptBoardCode();
     expect(page).toMatch(/useState<"preset" \| "custom" \| "ai">\("ai"\)/);
     expect(page).toMatch(/if \(!s\.duration\) setDurationMode\('ai'\)/);
     expect(page).not.toMatch(/setDurationMode\("preset"\); setDuration\("60秒"\)/);

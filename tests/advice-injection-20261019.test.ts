@@ -1,3 +1,4 @@
+import { readTopicBoardRaw } from './helpers/source';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,7 +8,7 @@ const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 
 describe('行业建议要进到每一个创作板块（2026-10-19 修复）', () => {
   it('选题页手动拼的上下文带上行业建议；脚本页不带（方案 D：脚本只给档案和写作底线）', () => {
-    expect(read('app/dashboard/topic/page.tsx')).toContain('advice: creatorContext.advice');
+    expect(readTopicBoardRaw()).toContain('advice: creatorContext.advice');
     expect(read('app/dashboard/script/page.tsx')).not.toContain('advice: creatorContext.advice');
   });
 });

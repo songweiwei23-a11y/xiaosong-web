@@ -1,3 +1,4 @@
+import { readTopicBoardCode } from './helpers/source';
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -154,7 +155,7 @@ describe('选中的元素会把句式带进提示词', () => {
 });
 
 describe('选题页用的是同一份数据，没有第二份手写清单', () => {
-  const code = readCode('app/dashboard/topic/page.tsx');
+  const code = readTopicBoardCode();
 
   it('从 lib/viral-elements 取，不自己写死八个元素', () => {
     expect(code).toContain('@/lib/viral-elements');

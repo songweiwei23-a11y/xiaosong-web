@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
+import { notifyProgressChanged } from '@/lib/progress-events'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { buildPositioningPrompt, type PositioningFocus } from '@/lib/positioning-standards'
@@ -236,6 +237,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
       if (res.ok) {
         const row = await res.json().catch(() => null)
         setSavedAt(row?.created_at || new Date().toISOString())
+        notifyProgressChanged()
       }
     } catch (e) {
       console.error('保存失败:', e)

@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeDb } from './helpers/fake-supabase';
-import { readCode } from './helpers/source';
+import { readCode, readScriptBoardCode } from './helpers/source';
 import { parseFeedback, FEEDBACK_EXCERPT_MAX } from '@/lib/result-feedback';
 import { basisText, emptyEvidence, feedbackEvidenceText, mergePreferences, type Evidence, type PreferenceItem } from '@/lib/preferences';
 import { MEMORY_MIN, MEMORY_WINDOW, memorySummary, pickDefaults } from '@/lib/settings-memory';
@@ -296,11 +296,12 @@ describe('接线：生成、反馈、脚本页都用上了二期的东西', () =
   });
 
   it('脚本页：打开时预填常用设置，只填没动过的字段，有「改回默认」和「关闭」', () => {
-    const page = readCode('app/dashboard/script/page.tsx');
+    // 预填规则已经搬到 lib/boards/script-query（助理替编导填表用的是同一条），页面和模块合起来看
+    const page = readScriptBoardCode();
     expect(page).toMatch(/\/api\/settings-memory\?board=script/);
     expect(page).toMatch(/if \(incomingSetup \|\| !memoryEnabled\(\)\) return;/);
-    expect(page).toMatch(/d\.duration && durationMode === "ai"/);
-    expect(page).toMatch(/d\.purpose && scriptRole === "自动"/);
+    expect(page).toMatch(/defaults\.duration && state\.durationMode === 'ai'/);
+    expect(page).toMatch(/defaults\.purpose && state\.scriptRole === '自动'/);
     expect(page).toMatch(/改回默认/);
     expect(page).toMatch(/关闭「记住我的常用设置」/);
   });

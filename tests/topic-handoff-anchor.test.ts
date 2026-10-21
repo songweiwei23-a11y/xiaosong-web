@@ -1,3 +1,4 @@
+import { readTopicBoardCode } from './helpers/source';
 /**
  * 带着内容去生成选题，选题要从这份内容出发（2026-10-05 线上）。
  *
@@ -106,7 +107,7 @@ describe('认出原方向要守住的：方向、目的、思路、拍法', () =
 });
 
 describe('选题页接线', () => {
-  const page = readCode('app/dashboard/topic/page.tsx');
+  const page = readTopicBoardCode();
 
   it('带入内容用 topicReference', () => {
     expect(page).toMatch(/setSourceReference\(topicReference\(handed\)\)/);

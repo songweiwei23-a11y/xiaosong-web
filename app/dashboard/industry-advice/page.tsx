@@ -6,6 +6,7 @@ import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
+import { notifyProgressChanged } from '@/lib/progress-events'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { postSafely } from '@/lib/safe-post'
 import { buildProfileSummary } from '@/lib/profile-summary'
@@ -213,6 +214,7 @@ export default function IndustryAdvicePage() {
       const row = (await res.json().catch(() => null)) as Row | null
       setSaved(row)
       invalidateCreatorContext()
+      notifyProgressChanged()
     } else {
       const err = (await res.json().catch(() => null)) as { error?: string } | null
       notify(`行业建议没有保存成功：${err?.error || '保存失败'}`, 'error')

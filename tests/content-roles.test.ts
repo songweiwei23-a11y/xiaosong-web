@@ -1,3 +1,4 @@
+import { readTopicBoardCode } from './helpers/source';
 /**
  * 三种视频（流量型 / 人设型 / 变现型）——定义只有 lib/content-roles 一份，每个板块都要接上。
  *
@@ -21,7 +22,7 @@ import { buildStoryboardPrompt } from '@/lib/storyboard-standards';
 import { buildReviewPrompt } from '@/lib/review-standards';
 import { enhancePromptWithMCNStandards } from '@/lib/enhance-prompt';
 import { BRIEF_FIELDS } from '@/lib/creative-brief';
-import { readCode } from './helpers/source';
+import { readCode, readScriptBoardCode } from './helpers/source';
 
 const INFER_HEAD = '先判断这条视频的目的';
 
@@ -156,7 +157,7 @@ describe('每个板块都接上了', () => {
 
 describe('页面和兜底里不能再有旧说法', () => {
   it('选题页：按目的出、每条标目的，不再"从19种结构里推荐"', () => {
-    const src = readCode('app/dashboard/topic/page.tsx');
+    const src = readTopicBoardCode();
     expect(src).toMatch(/from "@\/lib\/content-roles"/);
     expect(src).toContain('这批选题的目的');
     expect(src).toContain('0️⃣ 视频目的');
@@ -165,7 +166,7 @@ describe('页面和兜底里不能再有旧说法', () => {
   });
 
   it('脚本页：有目的选项，结尾不再一次要三个动作', () => {
-    const src = readCode('app/dashboard/script/page.tsx');
+    const src = readScriptBoardCode();
     expect(src).toContain('这条视频的目的');
     expect(src).toMatch(/roleBrief\(effectiveRole\)/);
     expect(src).not.toMatch(/引导互动（点赞\/评论\/关注）/);

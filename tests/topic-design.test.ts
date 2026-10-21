@@ -1,3 +1,4 @@
+import { readTopicBoardRaw } from './helpers/source';
 import { describe, it, expect } from 'vitest';
 import { topicDesignStandards, topicRoutePrompt, topicSourceRules, topicDesignFinalCheck, topicPreferredTactic } from '@/lib/topic-design';
 import { routeAssignment } from '@/lib/creative-routes';
@@ -80,7 +81,7 @@ describe('选题从方向落地：保留核心行动而不是强求猎奇', () =
     expect(handoff.settings?.purpose).toBe('流量型');
   });
   it('页面接入新质量要求，去掉骨架十字与强制三秒三句，手动选择被记录', () => {
-    const page = fs.readFileSync('app/dashboard/topic/page.tsx', 'utf8');
+    const page = readTopicBoardRaw();
     expect(page).toContain('topicDesignStandards({ source: sourceReference');
     expect(page).toContain('setRouteExplicit(true)');
     expect(page).toContain('取材与内容推进');

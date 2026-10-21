@@ -13,6 +13,7 @@ import { buildCreationHandoff } from '@/lib/creation-flow';
 import { openCreationSafely } from '@/lib/creation-session';
 import { useCreationBridge } from '@/hooks/useCreationBridge';
 import { incomingNote } from "@/lib/creation-flow";
+import { notifyProgressChanged } from "@/lib/progress-events";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 import { Target, Loader2, User, Plus, Trash2, FileText } from "lucide-react";
@@ -349,6 +350,7 @@ export default function PositioningPage() {
 
       if (res.ok) {
         const newPositioning = await res.json()
+        notifyProgressChanged()
         /*
          * 把刚生成的这份设为当前选中。
          *
@@ -370,6 +372,7 @@ export default function PositioningPage() {
     try {
       const res = await postSafely(`/api/positioning?id=${id}`, { method: 'DELETE' })
       if (res.ok) {
+        notifyProgressChanged()
         loadPositionings()
         if (selectedPositioning?.id === id) {
           setSelectedPositioning(null)
@@ -732,6 +735,7 @@ export default function PositioningPage() {
               }),
             })
             if (!res.ok) return false
+            notifyProgressChanged()
             const prior = bridge.flowContext(result)
             const historyInput = { profileId: activeProfile?.id || null, creationSettings: prior.settings || bridge.creationSettings, originContent: prior.originContent || bridge.originContent || additionalNotes }
             await saveGenerationHistory('账号定位', historyInput, next)

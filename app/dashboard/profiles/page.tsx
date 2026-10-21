@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { getActiveProfileId, onActiveProfileChange, setActiveProfileId } from '@/lib/active-profile';
 import { postSafely } from '@/lib/safe-post';
+import { notifyProgressChanged } from '@/lib/progress-events';
 
 interface UserProfile {
   id: string
@@ -66,6 +67,7 @@ export default function ProfilesPage() {
 
       if (res.ok) {
         setProfiles(profiles.filter(p => p.id !== id))
+        notifyProgressChanged()
       } else {
         notify('删除失败')
       }

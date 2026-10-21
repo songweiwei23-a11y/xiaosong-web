@@ -317,6 +317,21 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [{"table":"gate_device_passes","column":"user_id"}],
   },
   {
+    file: "20261020_count_packs.sql",
+    tables: ["count_pack_ledger","count_pack_lots","count_pack_reservations"],
+    columns: [],
+  },
+  {
+    file: "20261021_account_materials.sql",
+    tables: ["account_materials","account_work_insights"],
+    columns: [],
+  },
+  {
+    file: "20261022_assistant_memory.sql",
+    tables: ["assistant_memories","assistant_messages","assistant_threads"],
+    columns: [],
+  },
+  {
     file: "admin_logs.sql",
     tables: ["admin_logs"],
     columns: [],

@@ -1,3 +1,4 @@
+import { readTopicBoardCode } from './helpers/source';
 /**
  * 内容配比（2026-10-02 产品方："让用户自己选配比，或者根据账号阶段系统推荐，不然结果跟预期差距很大"）。
  * 配比错了不会报错，只会"选题全是变现型"——所以算法、接线、核对三处都守住
@@ -191,7 +192,8 @@ describe('页面接线', () => {
       ['app/dashboard/creative-brief/page.tsx', /mixBlock: mixPromptBlock\(resolveMix\(/],
     ];
     for (const [file, re] of pages) {
-      const src = readCode(file);
+      // 选题的配比拼装在共用模块里，要读页面和模块合起来的源码
+      const src = file === 'app/dashboard/topic/page.tsx' ? readTopicBoardCode() : readCode(file);
       expect(src, file).toContain('<ContentMixBar');
       expect(src, file).toMatch(re);
     }
@@ -202,7 +204,7 @@ describe('页面接线', () => {
       expect(readCode(f), f).toMatch(/footer=\{mixUsed \? <MixCheckLine/);
     }
     // 选题页原来那句"按上面账号定位里定好的配比分配"不在了
-    expect(readCode('app/dashboard/topic/page.tsx')).not.toContain('按上面账号定位里定好的配比分配');
+    expect(readTopicBoardCode()).not.toContain('按上面账号定位里定好的配比分配');
   });
 
   it('迁移文件加了两列', () => {

@@ -64,8 +64,9 @@ describe('首页额度查询的等待和权限', () => {
     subscription.resolve({ data: null });
     const body = await (await response).json();
 
-    expect(startedBeforeSubscriptionCompleted).toEqual(['subscriptions', 'user_quotas', 'usage_events']);
-    expect(filters).toEqual([['user_id', 'owner'], ['user_id', 'owner'], ['user_id', 'owner']]);
+    // 次数包余额（count_pack_lots）也是本人的查询，和其它几条一起并发发出
+    expect(startedBeforeSubscriptionCompleted).toEqual(['subscriptions', 'user_quotas', 'usage_events', 'count_pack_lots']);
+    expect(filters).toEqual([['user_id', 'owner'], ['user_id', 'owner'], ['user_id', 'owner'], ['user_id', 'owner']]);
     expect(body).toMatchObject({ plan: 'free', monthUsed: 9, totalUsed: 0, exhausted: false });
   });
 
@@ -81,7 +82,7 @@ describe('首页额度查询的等待和权限', () => {
     const response = await GET();
     expect((await response.json()).monthUsed).toBe(4);
     expect(state.from.mock.calls.map(([table]) => table)).toEqual([
-      'subscriptions', 'user_quotas', 'usage_events', 'script_history',
+      'subscriptions', 'user_quotas', 'usage_events', 'count_pack_lots', 'script_history',
     ]);
     expect(filters.every(([key, value]) => key === 'user_id' && value === 'owner')).toBe(true);
   });

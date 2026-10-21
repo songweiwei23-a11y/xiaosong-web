@@ -6,6 +6,7 @@ import { setActiveProfileId } from '@/lib/active-profile'
 import { ProfileForm, type ProfileFormData } from '@/components/profile/ProfileForm'
 import { InterviewEntry } from '@/components/interview/InterviewEntry'
 import { postSafely } from '@/lib/safe-post'
+import { notifyProgressChanged } from '@/lib/progress-events'
 import { droppedColumnsNotice } from '@/lib/persona-facts'
 
 /**
@@ -31,6 +32,7 @@ export default function NewProfilePage() {
       const created = await res.json()
       // 新建完直接设为当前档案并广播，省得用户回头还要再去侧边栏选一次
       setActiveProfileId(created.id, created)
+      notifyProgressChanged()
       // 数据库还没升级时有的栏存不上：明说，不能让编导以为存上了
       notify(droppedColumnsNotice(created) || '档案创建成功，接下来可以生成账号定位了')
       router.push('/dashboard/positioning')

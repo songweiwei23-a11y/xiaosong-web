@@ -1,3 +1,4 @@
+import { readTopicBoardCode } from './helpers/source';
 /**
  * 禁忌库（2026-10-02 产品方："禁忌放在档案比较合适，最好限制产出内容的时候方向不会偏，
  * 比方说这个行业哪些方向不能拍，避免使用中出现"）。
@@ -157,7 +158,7 @@ describe('页面接线', () => {
   });
 
   it('选题、起号的「和禁忌冲突的计」也算上行业禁忌', () => {
-    expect(readCode('app/dashboard/topic/page.tsx')).toMatch(/taboosPromptBlock\(selectedProfile\)/);
+    expect(readTopicBoardCode()).toMatch(/taboosPromptBlock\(selectedProfile\)/);
     expect(readCode('app/dashboard/growth/page.tsx')).toMatch(/taboosPromptBlock\(context\.profile\)/);
   });
 });

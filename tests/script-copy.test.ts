@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { extractPlainCopy } from '@/lib/script-copy';
 import { buildReviewPrompt } from '@/lib/review-standards';
 import { creationScript } from '@/lib/creation-flow';
-import { readSource, readCode } from './helpers/source';
+import { readSource, readCode, readScriptBoardRaw } from './helpers/source';
 
 const SAMPLE = `### 第1步：脚本策略卡
 - 视频目的：变现型
@@ -49,7 +49,7 @@ describe('取出纯文字文案', () => {
 });
 
 describe('脚本页的输出顺序', () => {
-  const src = readSource('app/dashboard/script/page.tsx');
+  const src = readScriptBoardRaw();
 
   it('1 策略卡 → 2 纯文字文案 → 3 正文脚本 → 4 优化建议，原来的要求一条没少', () => {
     const at = (s: string) => src.indexOf(s);

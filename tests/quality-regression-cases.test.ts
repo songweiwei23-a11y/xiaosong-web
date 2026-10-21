@@ -11,7 +11,7 @@ import { buildContextBlock, type CreatorContext } from '@/lib/creator-context';
 import { formatQualityReport, evaluateScriptQualityStrict } from '@/lib/quality-checker';
 import { displayQualityReport, parseQualitySummary, splitQualityReport } from '@/lib/script-result-utils';
 import { buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
-import { readCode } from './helpers/source';
+import { readCode, readScriptBoardCode } from './helpers/source';
 
 const facts = (out: string, known: string, light = false) => unsupportedFacts(out, known, { light }).join('|');
 
@@ -80,7 +80,7 @@ describe('已复现的误报不再报', () => {
 
 describe('用户的明确要求优先于模板（不按字数）', () => {
   it('脚本页：短要求不再写「MCN标准 > 用户补充要求」', () => {
-    const page = readCode('app/dashboard/script/page.tsx');
+    const page = readScriptBoardCode();
     expect(page).not.toMatch(/MCN标准 > 用户补充要求/);
     expect(page).not.toMatch(/用户补充要求作为额外参考/);
     expect(page).toMatch(/\*\*优先级\*\*：\$\{PRIORITY_ORDER\}/);

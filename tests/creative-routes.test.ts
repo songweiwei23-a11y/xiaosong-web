@@ -1,3 +1,4 @@
+import { readTopicBoardCode } from './helpers/source';
 /**
  * 两套打法（四大脚本 / 起号 36 计）每个板块都要接上。
  *
@@ -139,7 +140,7 @@ describe('每个板块都接上了', () => {
 
 describe('页面', () => {
   it('选题页：默认两种都出，每条写「🅰 打法」，计带到脚本页', () => {
-    const src = readCode('app/dashboard/topic/page.tsx');
+    const src = readTopicBoardCode();
     expect(src).toMatch(/useState<CreativeRoute>\('两种都出'\)/);
     expect(src).toContain('🅰 打法');
     expect(src).toMatch(/topicRoutePrompt\(\{ route, count: topicCount, sourced, explicit: routeExplicit \}\)/);

@@ -218,6 +218,9 @@ describe('页面确实把简报传进去了', () => {
       .readdirSync(dir, { recursive: true, encoding: 'utf8' })
       .filter((f) => f.endsWith('page.tsx') || f.endsWith('.tsx'))
       .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))
+      // 审稿的上下文拼装已经搬到共用模块（lib/boards/review-query），页面和助理共用
+      .concat(fs.readFileSync(path.join(process.cwd(), 'lib/boards/review-query.ts'), 'utf8'))
+      .concat(fs.readFileSync(path.join(process.cwd(), 'lib/boards/topic-query.ts'), 'utf8'))
       .join('\n');
     expect(pages.length, '一个页面都没读到，扫描空转').toBeGreaterThan(10_000);
     const used = new Set<string>();

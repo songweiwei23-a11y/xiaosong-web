@@ -64,9 +64,12 @@ describe('审稿页面', () => {
   const src = readCode('app/dashboard/review/page.tsx');
 
   it('有个人要求输入框，传给提示词、末尾提醒和历史记录', () => {
+    // 提示词和末尾提醒的拼装已经搬到共用模块（页面和助理共用），页面只负责把个人要求传进去
+    const shared = readCode('lib/boards/review-query.ts');
     expect(src).toMatch(/aria-label="个人要求"/);
-    expect(src).toMatch(/buildReviewPrompt\(\{[\s\S]*personalRequirements,[\s\S]*\}\)/);
-    expect(src).toMatch(/personalRequirementsReminder\(personalRequirements\)/);
+    expect(src).toMatch(/buildReviewBoardQuery\(\{[\s\S]*personalRequirements,[\s\S]*\}\)/);
+    expect(shared).toMatch(/buildReviewPrompt\(\{[\s\S]*personalRequirements: input\.personalRequirements,[\s\S]*\}\)/);
+    expect(shared).toMatch(/personalRequirementsReminder\(input\.personalRequirements\)/);
     expect(src).toMatch(/inputData = \{[^}]*personalRequirements/);
   });
 
@@ -79,7 +82,11 @@ describe('审稿页面', () => {
   });
 
   it('AI 推荐时连续设置里不写死时长（否则会被换成 60 秒并要求不得更换）', () => {
-    expect(src).toMatch(/effectiveDuration === AI_DURATION \? settingsWithoutDuration/);
+    // 创作设置的算法已经搬到共用模块（页面和助理共用），这里检查模块里的写法
+    const shared = readCode('lib/boards/review-query.ts');
+    expect(src).toMatch(/reviewCreationSettings\(\{/);
+    expect(shared).toMatch(/if \(effectiveDuration !== AI_DURATION\) return \{ \.\.\.resolved, duration: effectiveDuration \};/);
+    expect(shared).toMatch(/delete withoutDuration\.duration;/);
   });
 });
 

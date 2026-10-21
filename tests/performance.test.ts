@@ -1,3 +1,4 @@
+import { readTopicBoardCode } from './helpers/source';
 /**
  * 数据回流（2026-10-03）：发出去的视频录了数据 → 复盘 → 反哺选题、方向、起号、自由对话
  */
@@ -135,7 +136,7 @@ describe('接线', () => {
 
   it('账号上下文去取数据汇总；选题页自己拼上下文时也带上', () => {
     expect(readCode('hooks/useCreatorContext.ts')).toMatch(/\/api\/works\/performance\?profileId=/);
-    expect(readCode('app/dashboard/topic/page.tsx')).toMatch(/performance: creatorContext\.performance/);
+    expect(readTopicBoardCode()).toMatch(/performance: creatorContext\.performance/);
   });
 
   it('迁移文件', () => {

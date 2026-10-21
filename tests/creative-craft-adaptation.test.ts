@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
-import ts from 'typescript';
 import { buildAdaptiveScriptPrompt, regenerationPrompt } from '@/lib/script-design';
+import { buildScriptBoardQuery, type ScriptBoardInput } from '@/lib/boards/script-query';
 import { buildReviewPrompt } from '@/lib/review-standards';
 import { buildStoryboardPrompt, FOLLOW_SCRIPT } from '@/lib/storyboard-standards';
 import { buildTitlePrompt } from '@/lib/title-standards';
@@ -10,26 +10,24 @@ import { buildOpeningPrompt } from '@/lib/growth-standards';
 import { evaluateScriptQualityStrict } from '@/lib/quality-checker';
 import { roleInferRule } from '@/lib/content-roles';
 import { creativeCraftRules } from '@/lib/creative-craft';
-import { creationSettingsBlock } from '@/lib/creation-settings';
+import { creationSettingsBlock, type CreationSettings } from '@/lib/creation-settings';
 import { resolveCreationSettings } from '@/lib/creation-settings';
 
 const goal = '国庆前后门店生意对比，问每家老板的真实感受。不卖课、不引导私信，尚未采访，没有已知答案。';
 const settings = { userIntent: goal, focusContent: goal, purpose: '流量型' as const, audience: '实体店老板', openingLine: '国庆前后，这条街上的生意到底有什么变化？' };
 export function actualAutomaticScriptQuery(requirements = goal) {
-  const page = fs.readFileSync('app/dashboard/script/page.tsx', 'utf8');
-  const start = page.indexOf('const query = (autoScriptType || !isAd) ?');
-  const end = page.indexOf('const response = await fetchGeneration', start);
-  if (start < 0 || end < 0) throw new Error('Actual page prompt branch not found');
-  const code = ts.transpileModule(`function build(){${page.slice(start, end)}return query;}`, {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
-  }).outputText;
-  const scope = { autoScriptType: true, buildAdaptiveScriptPrompt, topic: '门店节前节后对比', platform: '抖音',
-    isAiDuration: true, finalDuration: '', profileInfo: '手机单人，账号是编导；经营背景不代替本条目的', positioningInfo: '',
-    originContent: goal, autoSetup: { settings }, additionalInfo: requirements, currentSettings: settings,
-    scriptStructure: 'auto', openingLine: settings.openingLine, hookType: 'auto', tactic: 'AI推荐', AUTO_TACTIC: 'AI推荐',
-    boomElements: [], directorThoughts: [],
+  // 脚本页的自动分支就是 buildScriptBoardQuery（页面也是调用它），直接调用，不再从页面源码里截取
+  const input: ScriptBoardInput = {
+    topic: '门店节前节后对比', platform: '抖音', scriptType: 'teach', autoScriptType: true,
+    effectiveRole: '流量型', isAd: false,
+    industry: '', customIndustry: '', targetGroup: '', customTargetGroup: '', style: '', customStyle: '',
+    durationMode: 'ai', duration: '', customDuration: '', profile: null, positioningContent: null,
+    scriptStructure: 'auto', hookType: 'auto', boomElements: [], directorThoughts: [], tactic: 'AI推荐',
+    openingLine: settings.openingLine, openingCard: '', productInfo: '', priceInfo: '', scene: '', device: '',
+    budget: '', personnel: '', accountPositioning: '', additionalInfo: requirements, dealReasons: [],
+    originContent: goal, focusContent: goal, currentSettings: settings as unknown as CreationSettings,
   };
-  return new Function(...Object.keys(scope), code + '\nreturn build();')(...Object.values(scope)) as string;
+  return buildScriptBoardQuery(input);
 }
 
 describe('创作模板服从原意：实际页面输入和共享生成器', () => {

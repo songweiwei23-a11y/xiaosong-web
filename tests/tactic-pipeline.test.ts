@@ -1,3 +1,4 @@
+import { readTopicBoardRaw, readScriptBoardRaw } from './helpers/source';
 import { describe, it, expect } from 'vitest';
 import { buildTitlePrompt } from '@/lib/title-standards';
 import { OPENING_CARDS } from '@/lib/opening-cards';
@@ -140,7 +141,7 @@ describe('打法说明带上结构公式和边界', () => {
 
 describe('选题和脚本真的用上了打法', () => {
   it('选题页把打法拼进提示词，并要求每条都能用这一计拍', () => {
-    const src = read('app/dashboard/topic/page.tsx');
+    const src = readTopicBoardRaw();
     expect(src).toContain('tacticBrief');
     expect(src).toContain('【本批选题的拍法】');
     // 光提一句不算，要落到结构公式上
@@ -150,7 +151,7 @@ describe('选题和脚本真的用上了打法', () => {
   });
 
   it('脚本页把打法拼进提示词，并说清和脚本结构的分工', () => {
-    const src = read('app/dashboard/script/page.tsx');
+    const src = readScriptBoardRaw();
     expect(src).toContain('tacticBrief');
     expect(src).toContain('tacticSection');
     // 两套结构不说清分工，模型会拿一个覆盖另一个
@@ -159,13 +160,13 @@ describe('选题和脚本真的用上了打法', () => {
   });
 
   it('脚本页把打法写进历史记录——复盘统计全靠它', () => {
-    const src = read('app/dashboard/script/page.tsx');
+    const src = readScriptBoardRaw();
     const inputDataBlock = src.slice(src.indexOf('const inputData'), src.indexOf('const inputData') + 700);
     expect(inputDataBlock).toContain('tactic');
   });
 
   it('两个分支（广告/内容）都注入了拍法，不是只改了一个', () => {
-    const src = read('app/dashboard/script/page.tsx');
+    const src = readScriptBoardRaw();
     const hits = src.match(/\$\{tacticSection\}/g) ?? [];
     expect(hits.length, '广告脚本和内容脚本是两套提示词，都要注入').toBe(2);
   });
@@ -373,7 +374,7 @@ describe('开篇结果能逐条拆出来', () => {
 });
 
 describe('选定的开头会锁死脚本第一句', () => {
-  const src = read('app/dashboard/script/page.tsx');
+  const src = readScriptBoardRaw();
 
   it('脚本页收得到并拼进提示词', () => {
     expect(src).toContain('openingLine');
@@ -392,7 +393,7 @@ describe('选定的开头会锁死脚本第一句', () => {
 
 describe('选题整批带到开篇页', () => {
   it('选题页「设计开篇」带的是整批，不是只有第一条', () => {
-    const src = read('app/dashboard/topic/page.tsx');
+    const src = readTopicBoardRaw();
     const block = src.slice(src.indexOf('label: "设计开篇"'), src.indexOf('label: "设计开篇"') + 600);
     expect(block).toContain('topicOptions: options');
   });
