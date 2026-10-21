@@ -101,12 +101,14 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const { input_data, result } = body
+    // 助理替编导跑审稿时也存到这里（和审稿页面的历史是同一张表、同一个类型）；其它一律按脚本存
+    const taskType = body.task_type === '审稿优化' ? '审稿优化' : '脚本生成'
 
     const { data, error } = await supabase
       .from('script_history')
       .insert({
         user_id: user.id,
-        task_type: '脚本生成',
+        task_type: taskType,
         input_data,
         result
       })

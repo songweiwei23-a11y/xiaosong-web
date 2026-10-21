@@ -1,5 +1,8 @@
 /** 自由对话每轮附带，旧会话也生效；不改变其他板块的追问和局部改写。 */
-export function freeChatAnswerRules(webEnabled: boolean): string {
+/**
+ * options.evidenceOnly：只要「联网资料的使用要求」这一段（助理用，助理的回答风格不要长篇展开）。
+ */
+export function freeChatAnswerRules(webEnabled: boolean, options: { evidenceOnly?: boolean } = {}): string {
   const detail = `【本轮回答标准：详细展开】
 这是高阶自由对话，默认交付信息密度高、解释充分、可执行的完整回答。分析、研究、方案、比较类复杂问题，通常展开约2500—4500个中文字符；篇幅由有效信息决定，不为凑字数重复、编造或堆背景。用户明确要求简短、限定字数、只改某段或只给结果时，优先遵守；问候、简单事实和单一步骤无需套长报告。
 先用一小段直接回答核心问题，再按问题本身组织有层次的小标题。不要只列提纲，不要把关键解释留到“需要的话我再展开”，也不要把综合分析强行写成短视频脚本。
@@ -21,5 +24,6 @@ export function freeChatAnswerRules(webEnabled: boolean): string {
     : `【本轮资料边界】
 本轮没有获得联网授权，基于用户资料、会话上下文和已有知识回答；不得声称本轮已联网核实，不编造搜索来源。可以详细解释稳定的方法和明确标识的建议；实时价格、新闻、政策变化等仍须说明未核实。`;
 
+  if (options.evidenceOnly) return `\n\n${evidence}`;
   return `\n\n${detail}\n\n${evidence}`;
 }

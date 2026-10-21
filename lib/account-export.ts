@@ -29,6 +29,11 @@ export const EXPORT_TABLES = [
   { table: 'user_settings', label: '偏好设置' },
   { table: 'subscriptions', label: '会员订阅' },
   { table: 'payment_orders', label: '支付订单' },
+  { table: 'account_materials', label: '账号作品资料（导入的文件）' },
+  { table: 'account_work_insights', label: '账号作品概况' },
+  { table: 'assistant_threads', label: '助理的历史对话' },
+  { table: 'assistant_messages', label: '助理的对话内容' },
+  { table: 'assistant_memories', label: '助理的记忆' },
 ] as const;
 
 export const EXPORT_FORMAT = 'kaiwu-account-export';

@@ -2,35 +2,15 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { cleanTitle, resolveCreationSettings, mergeCreationSettings, settingsForResult, creationSettingsBlock, durationSeconds, scriptReasonIds, normalizeCreationReasons } from '@/lib/creation-settings';
+import { cleanTitle, settingsForResult, durationSeconds, scriptReasonIds } from '@/lib/creation-settings';
 
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { useRouter } from "next/navigation";
-import { extractScriptContext } from "@/lib/positioning-utils";
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
-import { buildContextBlock } from "@/lib/creator-context";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
-import { getScriptDetails, getHookDetails } from "@/lib/script-details";
-import { buildAdaptiveScriptPrompt } from "@/lib/script-design";
-import { enhancePromptWithMCNStandards } from "@/lib/enhance-prompt";
-import { recommendFormula, generateFormulaGuide } from "@/lib/formula-enforcer";
-import { getStructureNarrative } from "@/lib/script-structure-details";
-import { 
-  getAudienceProfile, 
-  getDifferentiation, 
-  getAvoidStyles, 
-  getShouldSayExamples, 
-  getShouldNotSayExamples,
-  getContentFocus,
-  getSmartHookRecommendation,
-  getTimeAllocation,
-  getStepTasks
-} from "@/lib/script-helpers";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
-import { evaluateScriptQualityStrict, formatQualityReport, getRelevantExample } from "@/lib/quality-checker";
-import { PRIORITY_ORDER } from "@/lib/output-rules";
 
 import { useState, useEffect, useRef } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
@@ -67,11 +47,9 @@ import { buildCreationHandoff } from "@/lib/creation-flow";
 import { originForResult, continuationRules } from '@/lib/creation-continuation';
 import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
-import { tacticBrief, tacticsBlockedBy } from "@/lib/growth-standards";
-import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex, tacticInText } from "@/lib/creative-routes";
-import { AI_SCRIPT_LENGTH_RULE, AI_SCRIPT_TARGET_TEXT, EXAMPLE_LENGTH_NOTE, scriptLengthRule } from "@/lib/ai-recommend";
+import { AUTO_TACTIC, tacticInText } from "@/lib/creative-routes";
 import { memoryEnabled, setMemoryEnabled, type MemoryDefaults, type MemoryField } from "@/lib/settings-memory";
-import { CONTENT_ROLE_LIST, ROLE_SPECS, roleBrief, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
+import { CONTENT_ROLE_LIST, ROLE_SPECS, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import { createWork, recordStage } from "@/lib/works";
@@ -80,6 +58,7 @@ import { useWorkResume } from "@/hooks/useWorkResume";
 import { latestOf, workIdFromUrl } from "@/lib/resume";
 import { Field, OptionCard } from "@/components/form/Field";
 import { postSafely } from '@/lib/safe-post';
+import { buildScriptBoardQuery, scriptCreationSettings, scriptMemoryPatch, scriptResultWithQuality } from '@/lib/boards/script-query';
 
 /*
  * 表单控件的共用样式。抽成常量而不是每处写一遍长串类名：
@@ -322,13 +301,13 @@ export default function ScriptPage() {
     setDealReasons(scriptReasonIds(s.dealReasons || []));
   });
   const autoScriptType = Boolean(!autoSetup.settings.scriptType && !scriptTypePicked);
-  const currentSettings = resolveCreationSettings({ from: '脚本生成', sourceContent: originContent || topic, settings: mergeCreationSettings(autoSetup.settings, {
-    topic, platform, duration: durationMode === 'custom' && customDuration ? customDuration + '秒' : durationMode === 'ai' ? 'AI推荐' : duration,
-    scriptType: autoScriptType ? undefined : scriptType, purpose: scriptRole === '自动' ? autoSetup.settings.purpose : effectiveRole, structure: scriptStructure, hookType, style: customStyle || style, audience: customTargetGroup || targetGroup,
-    industry: customIndustry || industry, elements: boomElements.map(id => id === 'crowd' ? 'people' : id),
-    dealReasons: normalizeCreationReasons([...autoSetup.settings.dealReasons || [], ...dealReasons]), notes: incomingSetup ? autoSetup.settings.notes : additionalInfo,
-    tactic: tactic === AUTO_TACTIC ? undefined : tactic, openingLine, openingCards: openingCard ? [openingCard] : [], scene, device, budget, personnel,
-  }) }, creatorContext);
+  // 和助理共用同一个算法（lib/boards/script-query），同样的输入得到同样的创作设置
+  const currentSettings = scriptCreationSettings({
+    topic, platform, durationMode, duration, customDuration, scriptType, autoScriptType, scriptRole, effectiveRole,
+    style, customStyle, targetGroup, customTargetGroup, industry, customIndustry, boomElements, dealReasons, additionalInfo,
+    scriptStructure, hookType, tactic, openingLine, openingCard, scene, device, budget, personnel, originContent,
+    autoSettings: autoSetup.settings, fromHandoff: incomingSetup !== null, creatorContext,
+  });
 
   // 档案和定位关联
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -355,17 +334,16 @@ export default function ScriptPage() {
   // 只填他还没动过的字段；从别处带来的设置（incomingSetup）优先，不预填；换了档案会按新档案重新看一次。
   const [memory, setMemory] = useState<{ summary: string; applied: MemoryField[] } | null>(null);
   const memoryFor = useRef<string | null>(null);
+  // 预填规则在 lib/boards/script-query（助理替编导填表用的是同一条）
   const prefillFromMemory = (d: MemoryDefaults): MemoryField[] => {
-    const applied: MemoryField[] = [];
-    if (d.duration && durationMode === "ai") {
-      const v = d.duration.value;
-      if ((DURATIONS as readonly string[]).includes(v)) { setDuration(v); setDurationMode("preset"); applied.push("duration"); }
-      else if (durationSeconds(v)) { setCustomDuration(String(durationSeconds(v))); setDurationMode("custom"); applied.push("duration"); }
-    }
-    if (d.purpose && scriptRole === "自动") { setScriptRole(d.purpose.value as "流量型" | "人设型" | "变现型"); applied.push("purpose"); }
-    if (d.structure && scriptStructure === "auto" && SCRIPT_STRUCTURES.some((s) => s.id === d.structure!.value)) { setScriptStructure(d.structure.value); applied.push("structure"); }
-    if (d.platform && platform === "抖音" && d.platform.value !== "抖音" && (PLATFORMS as readonly string[]).includes(d.platform.value)) { setPlatform(d.platform.value); applied.push("platform"); }
-    return applied;
+    const patch = scriptMemoryPatch(d, { durationMode, scriptRole, scriptStructure, platform });
+    if (patch.durationMode) setDurationMode(patch.durationMode);
+    if (patch.duration) setDuration(patch.duration);
+    if (patch.customDuration) setCustomDuration(patch.customDuration);
+    if (patch.scriptRole) setScriptRole(patch.scriptRole);
+    if (patch.scriptStructure) setScriptStructure(patch.scriptStructure);
+    if (patch.platform) setPlatform(patch.platform);
+    return patch.applied;
   };
   useEffect(() => {
     if (incomingSetup || !memoryEnabled()) return;
@@ -485,450 +463,47 @@ export default function ScriptPage() {
     let fullResult = ""; // 保存历史记录用
 
     try {
-      // 构建结构化的query给Dify
-      const dealReasonsText = dealReasons.length > 0 
-        ? dealReasons.map(id => DEAL_REASONS.find(r => r.id === id)?.label).join("、") 
-        : "未选择";
-      
-      const isAd = activeTab === "ad";
-      const selectedIndustry = customIndustry || industry || "未分类";
-      const selectedTargetGroup = customTargetGroup || targetGroup || "通用受众";
-      const selectedStyle = customStyle || style || "专业";
-        
-        // 时长：三种模式 — AI推荐 / 自定义秒数 / 预设选择
-        const isAiDuration = durationMode === "ai";
-        const finalDuration = isAiDuration
-          ? "由AI根据主题和平台智能判断"
-          : durationMode === "custom" && customDuration
-            ? `${customDuration}秒`
-            : duration;
-        
-      // 提取档案和定位信息
-      let profileInfo = "";
-      let positioningInfo = "";
-
-      // 这里原本只传 6 个字段：名称、平台、赛道、阶段、粉丝量级、风格。
-      // 写脚本真正要的东西一个都没在里面——说话语气、核心卖点、用户痛点、
-      // 已验证的开场钩子，以及「绝对不能说：最好、第一、全网最便宜」。
-      // 最后一条是硬禁忌，漏掉它模型就会照常写出违规文案。
-      /*
-       * 2026-10-19 按板块分配（方案 D）：脚本只给档案和写作底线，不带简报、行业建议、定位。
-       * 对照测试里这样编造从 11 条降到 2 条，盲评持平。板块清单（lib/context-manifest）是准的，
-       * 这里只传档案即可；传了也会被清单忽略。
-       */
-      if (selectedProfileId) {
-        const profile = profiles.find(p => p.id === selectedProfileId);
-        if (profile) {
-          profileInfo = "\n\n" + buildContextBlock(
-            { profile: profile, positioning: null, dealReasons: [] },
-            'script'
-          );
-        }
-      }
-
-      if (selectedPositioningId) {
-        const positioning = positionings.find(p => p.id === selectedPositioningId);
-        if (positioning) {
-          const scriptContext = extractScriptContext(positioning.full_content || "");
-          positioningInfo = `
-
-【账号定位-脚本创作参考】
-${scriptContext}
-`;
-        }
-      }
-
-
-      // ========== MCN级提示词增强 ==========
-      const structureDetail = getScriptDetails(scriptStructure);
-      const hookDetail = getHookDetails(hookType);
-      const elementsWithNames = boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label).filter(Boolean).join('、');
-      const mcnEnhancement = enhancePromptWithMCNStandards({
-        structureDetail,
-        hookDetail,
-        elementsWithNames,
-        duration: isAiDuration ? AI_SCRIPT_TARGET_TEXT : finalDuration,
-        role: effectiveRole,
+      // 脚本的提示词拼装在 lib/boards/script-query.ts（开物助理也用它），这里只收集页面状态
+      const selectedProfile = selectedProfileId ? profiles.find((p) => p.id === selectedProfileId) ?? null : null;
+      const selectedPositioning = selectedPositioningId ? positionings.find((p) => p.id === selectedPositioningId) : undefined;
+      const query = buildScriptBoardQuery({
+        topic,
+        platform,
+        scriptType,
+        autoScriptType,
+        effectiveRole,
+        isAd: activeTab === "ad",
+        industry,
+        customIndustry,
+        targetGroup,
+        customTargetGroup,
+        style,
+        customStyle,
+        durationMode,
+        duration,
+        customDuration,
+        profile: selectedProfile,
+        positioningContent: selectedPositioning ? selectedPositioning.full_content || "" : null,
+        scriptStructure,
+        hookType,
+        boomElements,
+        directorThoughts,
+        tactic,
+        openingLine,
+        openingCard,
+        productInfo,
+        priceInfo,
+        scene,
+        device,
+        budget,
+        personnel,
+        accountPositioning,
+        additionalInfo,
+        dealReasons,
+        originContent,
+        focusContent: autoSetup.settings.focusContent || "",
+        currentSettings,
       });
-      const { structureGuide, hookGuide, formatRequirements } = mcnEnhancement;
-      // ========== MCN级提示词增强结束 ==========
-
-      const selectedProfile = selectedProfileId ? profiles.find(p => p.id === selectedProfileId) : null;
-      const helperProfile = selectedProfile || {
-        profile_name: topic || "当前创作者",
-        account_track: [selectedIndustry],
-        content_style: [selectedStyle],
-        fans_level: "",
-      };
-      const structureName = SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "AI推荐";
-      const smartHook = getSmartHookRecommendation(topic, selectedTargetGroup, boomElements);
-      const audienceProfile = getAudienceProfile(helperProfile);
-      const differentiation = getDifferentiation(helperProfile);
-      const avoidStyles = getAvoidStyles([selectedStyle]);
-      const shouldSayExamples = getShouldSayExamples(helperProfile);
-      const shouldNotSayExamples = getShouldNotSayExamples(helperProfile);
-      const contentFocus = getContentFocus(helperProfile.fans_level || "");
-      const smartHookRecommendation = `${smartHook.hookType}：${smartHook.reason}`;
-      // AI模式下用平台常见默认值兜底时间分配计算，避免 parseInt 得到 NaN
-      // AI 推荐时不拿 60 秒去挑范例：范例多长，模型就照着写多长（范例只学节奏和标注，这里给它不按时长挑的那份）
-      const durationForCalc = isAiDuration ? "" : finalDuration;
-      const timeAllocation = isAiDuration
-        ? "由AI依据主题与平台节奏分配各段时长（开场钩子→主体→情绪高潮→结尾CTA），各段合计约 90～100 秒"
-        : getTimeAllocation(structureName, durationForCalc);
-      const stepTasks = getStepTasks(structureName);
-
-      // ========== 公式分段蓝图 + MCN 范例 ==========
-      // enhancePromptWithMCNStandards 给出的是原则（要点、禁忌），粒度到不了
-      // 「0-8秒该放什么、必须包含哪些元素」。formula-enforcer 提供四套公式的
-      // 分段蓝图与参考话术，补的正是这一层。
-      //
-      // 另外 enhance-prompt 里两处写着「请参考上下文知识库中的 MCN 级脚本示例」，
-      // 但生成前从未真正注入过范例。getRelevantExample 提供的就是 9.5 分范例。
-      const formulaType = recommendFormula(scriptType, structureName);
-      // coreLogic / emotionCurve 是 script-details 没有的两个字段：
-      // 前者点明该结构适用于什么用户处境，后者给出情绪推进路径——
-      // 波点该落在哪里由它决定，而不是让模型凭感觉撒 emoji。
-      const narrative = getStructureNarrative(scriptStructure);
-      const formulaSection = `
-${narrative ? `## 🧠 本结构的设计意图
-
-- **核心逻辑**：${narrative.coreLogic}
-- **情绪曲线**：${narrative.emotionCurve}
-
-情绪曲线里的每个箭头都是一次情绪转折，波点必须落在转折处。
-台词、画面、语速都要服务于这条推进路径，不要在平缓段强行标波点。
-` : ''}
-${generateFormulaGuide(formulaType)}
-
-## 📎 MCN级参考范例（9.5分标准）
-
-下面是达标脚本的完整范例。**只学它的分段节奏、波点标注位置和台词口语化程度，
-不要照搬其中的行业、案例或具体台词**——照搬会让脚本失去与本次主题的相关性。${EXAMPLE_LENGTH_NOTE}。
-
-${getRelevantExample(scriptType, durationForCalc, scriptStructure)}
-`;
-      // ========== 公式蓝图结束 ==========
-
-      // ========== 拍法（起号 36+1 计）==========
-      // 从起号页选题页一路带过来的那一计。
-      // 它和上面的"脚本结构"不是一回事，容易混，所以这里把分工写明：
-      //   脚本结构 = 时间怎么分（0-3秒钩子、3-15秒铺垫…）
-      //   拍法公式 = 事件怎么走（常规A → 反向B → 真实反应）
-      // 两者叠加，不是二选一。不说清楚的话模型会拿其中一个覆盖另一个。
-      const tacticText = tactic && tactic !== AUTO_TACTIC ? tacticBrief(tactic) : '';
-      const profileForBlock = selectedProfileId ? profiles.find((p) => p.id === selectedProfileId) : null;
-      const blockedTactics = tacticsBlockedBy(
-        [profileForBlock?.content_restrictions, profileForBlock?.avoid_content].filter(Boolean).join('\n')
-      );
-      const tacticSection = tactic === AUTO_TACTIC
-        ? `
-## 🎬 拍法：给这条叠一计起号打法（小黄 36 计）
-
-${ROUTES_GUIDE}
-
-${tacticIndex({ exclude: blockedTactics })}
-
-**硬要求**：
-1. 从上面清单挑**一计**，优先标了【${effectiveRole}】的；挑他拍得出来的
-2. 在脚本策略卡第一条写：**用的计：36计·第N计 计名**，再用一句话说这一计的公式套到这条上是什么事件
-3. 片子的事件走向落在那一计的公式上，话怎么讲仍按上面的脚本结构——两者叠加，不要只在开头提一句
-4. 实在没有合适的（比如讲自己真实经历的人设型，硬套会显得假），策略卡第一条写"用的计：不叠计"并说明为什么，按四大脚本写
-`
-        : tacticText
-        ? `
-## 🎬 本条用的拍法：${tactic}
-
-${tacticText}
-
-**怎么和上面的脚本结构配合**：
-- 脚本结构决定**时间怎么分**（哪一秒放什么）
-- 这一计的结构公式决定**事件怎么走**（片子里发生了什么）
-- 两者同时成立，不要用其中一个替掉另一个
-
-**硬要求**：
-1. 片子的事件走向必须落在这一计的结构公式上，不能只在开头提一句就没了
-2. 上面的「边界」是红线，宁可换个拍法也不要碰线
-3. 在脚本策略卡里写明：这一计的每一段分别落在第几秒
-`
-        : '';
-      // ========== 拍法结束 ==========
-
-      // ========== 这条视频的目的 ==========
-      // 目的决定结构和结尾指令（SOP 05）。放在脚本结构说明之后，
-      // 用户选的结构和目的不配时，以目的为准挑结构里的写法
-      const roleSection = `
-## 🎯 这条视频的目的：${effectiveRole}
-
-${roleBrief(effectiveRole)}
-
-**硬要求**：
-1. 按用户明确目的执行；混合目的按原要求保留，不为分类擅自删掉其中一个，也不新增营销目标
-2. 上面选的脚本结构是"时间怎么分"，上面这几种是"这类视频该怎么讲"——按这里挑一个骨架填进去
-3. 仅在用户目的需要互动或转化时设计一个行动指令；否则自然收束，不强加关注、私信或到店
-`;
-      // ========== 目的结束 ==========
-
-      // ========== 已选定的开头 ==========
-      // 用户在开篇页把 N 种开法横着比了一轮才挑的这一句，
-      // 不锁死的话模型会"参考"一下然后另写一个，那一轮比较就白做了。
-      const openingSection = openingLine.trim()
-        ? `
-## 🎯 开头已经定了，必须用这一句
-
-> ${openingLine.trim()}
-
-${openingCard ? `这句用的是「${openingCard}」这张开篇卡。\n` : ''}
-**硬要求**：
-1. 脚本的第一句话就是上面这句，**一字不改**（口播顺不过来时可以调语气词，但意思和钩子不能变）
-2. 不要再另写一个开头，也不要在它前面加铺垫
-3. 开头许的东西，正文必须兑现——这是完播率的关键，开头一套正文另一套比不抓人更糟
-4. 后面的分段节奏照常按脚本结构走
-
-这一句本身就是前 3 秒的钩子，已经在开篇板块里横向比过一轮才选出来的，
-不需要再为它设计一个钩子。
-`
-        : '';
-
-      // 开头锁死时就别再发"开场钩子要求"了：那一段是教模型怎么造钩子的，
-      // 和"用这一句、一字不改"直接打架，两条同时给，模型多半会另写一个。
-      const effectiveHookGuide = openingLine.trim() ? '' : hookGuide;
-      // ========== 开头结束 ==========
-
-      const fourStepWorkflow = `
-## 🧭 生成流程（必须按顺序输出）
-
-### 第1步：脚本策略卡
-- 用3-5条说明本条脚本的核心策略：用户目的、目标用户、核心问题、主切口、信息递进、适合本条的自然收束或行动
-- 不写空泛定位，必须和主题、行业、账号信息直接相关
-
-### 第2步：纯文字文案
-- 把这条视频要**念出来的话**按顺序整理成一段纯文案，方便直接复制去提词器、配音或发给出镜的人
-- 只要口播内容：**不写**秒数、镜头、画面、字幕、音效、动作，不要【】标注、emoji、加粗、序号、列表符号
-- 按说话的自然停顿分段，一句一行；有自然收束原句就保留，不强写金句
-- 先定好这段文案，第3步再把它拆进镜头：**第3步的口播台词必须和这段逐字一致**，不要两边各写一版${openingLine.trim() ? "\n- 开头已经定了，这段文案的第一句就是那句开头，一字不改" : ""}
-
-### 第3步：正文脚本
-- ${isAiDuration
-  ? `时长：AI 推荐，${AI_SCRIPT_LENGTH_RULE}。不需要标注时长，据此完整输出可直接拍摄的脚本`
-  : `按${finalDuration}完整输出可直接拍摄的脚本。${scriptLengthRule(finalDuration)}`}
-- 必须包含秒数、镜头/画面、口播台词、字幕/音效/动作建议
-- 开头3秒直接进入冲突、痛点、反常识或利益点，禁止废话开场
-
-**格式硬性要求（不满足会被判定为缺失，务必遵守）：**
-1. 开场必须单独成行标注钩子，格式示例：【开场钩子】0-8秒：（用半角冒号，秒数区间按实际填）
-2. 结尾按内容自然收束；有适合摘出的原句才标注金句，不强制字数，不编感悟
-3. 每个镜头标注时间区间（如 8-15秒）和【镜头X】编号
-4. 按真实信息和情绪变化提示节奏，不凑情绪波点数量；采访、记录不预设受访者的情绪或回答
-
-### 第4步：优化建议（只写建议，不要打分）
-- 用3-5条指出正文脚本还能加强的地方（钩子、节奏、画面、转化）
-- ⚠️ 禁止输出任何自评分数、“X分/10分”“综合评分”“MCN级”等字样，最终分数由系统质检统一给出
-`;
-
-      const executionContext = `
-## 🧩 自动补齐的执行上下文
-- **受众画像**：${audienceProfile}
-- **差异化抓手**：${differentiation}
-- **内容重心**：${contentFocus}
-- **智能钩子建议**：${smartHookRecommendation}
-- **时间分配**：${timeAllocation}
-- **分步任务**：${stepTasks}
-- **应避免风格**：${avoidStyles}
-- **建议表达示例**：${shouldSayExamples}
-- **避免表达示例**：${shouldNotSayExamples}
-`;
-
-      // ========== 智能判断：补充要求的详细程度 ==========
-      const additionalInfoLength = (additionalInfo || '').length;
-      const isDetailedRequirement = additionalInfoLength > 100; // 超过100字认为是详细要求
-      
-      /*
-       * 优先级（2026-10-05 质量整改）：原来补充要求不到 100 字时写的是「MCN 标准 > 用户补充要求」——
-       * 「别改正文，只换开头」只有十来个字，却排在模板下面。现在用户的明确要求不按字数决定地位，永远排在模板前面；
-       * 字数只决定「没写到的部分」由谁来补：用户给了详细框架就照框架写，没给就按 MCN 标准补全。顺序见 lib/output-rules。
-       */
-      const promptStrategy = isDetailedRequirement
-        ? '⚠️ **用户已提供详细脚本框架，请严格按照用户补充要求生成**，MCN标准只作格式参考。'
-        : '⚠️ **用户补充要求里的明确约束必须严格遵守**（哪怕只有一句，比如「只换开头」「别提价格」「控制在 30 秒」）；没写到的部分按 MCN 标准补全。';
-
-      const priorityNote = `
-## 📋 生成策略
-
-**优先级**：${PRIORITY_ORDER}
-
-${isDetailedRequirement
-  ? `用户已提供详细的脚本框架（${additionalInfoLength}字）：
-1. **首要**：严格按照【补充要求】中的脚本框架、秒数、台词方向生成，不要偏离用户的思路
-2. **其次**：参考MCN标准中的格式要求（钩子、金句、秒数、镜头、波点等）`
-  : `用户补充要求较简单（${additionalInfoLength}字）：
-1. **首要**：补充要求里说了的（改哪里、不改哪里、提不提什么、多长）一字不差地遵守
-2. **其次**：补充要求没说到的部分，按MCN标准的脚本结构、钩子要求、爆款元素补全`}
-`;
-      // ========== 智能判断结束 ==========
-      const query = (autoScriptType || !isAd) ? buildAdaptiveScriptPrompt({
-        topic, platform, duration: isAiDuration ? 'AI推荐' : finalDuration,
-        context: profileInfo + positioningInfo,
-        source: [originContent, autoSetup.settings.focusContent].filter(Boolean).join('\n\n'),
-        requirements: additionalInfo,
-        settings: currentSettings,
-        structureGuide: scriptStructure !== 'auto' ? structureGuide : undefined,
-        hookGuide: openingLine.trim() ? undefined : hookType !== 'auto' ? hookGuide : undefined,
-        tacticGuide: tactic && tactic !== AUTO_TACTIC ? tacticSection : undefined,
-        scriptTypeGuide: !autoScriptType ? formulaSection : undefined,
-        craftFocus: [
-          boomElements.length ? `用户勾选元素：${boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label ?? id).join('、')}` : '',
-          directorThoughts.length ? `表达重点：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label ?? id).join('、')}` : '',
-        ].filter(Boolean).join('\n'),
-      }) : isAd ? `# 广告引流短视频脚本生成
-
-${promptStrategy}
-
-${priorityNote}
-${fourStepWorkflow}
-${executionContext}
-
-⚠️ **重要提示**：这是一个广告引流类脚本，请使用广告公式和成交理由知识库，重点突出产品卖点和转化行动。
-
-## 基础信息
-- **广告类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
-- **行业**：${selectedIndustry}
-- **平台**：${platform}
-- **时长**：${isAiDuration ? "不限，以效果最好为准" : finalDuration}
-- **主题/活动**：${topic}
-
-${profileInfo}${positioningInfo}
-
-${structureGuide}
-${formulaSection}
-${roleSection}
-${tacticSection}
-${openingSection}
-${effectiveHookGuide}
-
-## 产品信息（核心）
-${productInfo ? `**产品介绍**：${productInfo}` : "⚠️ 未填写产品信息"}
-${priceInfo ? `**价格策略**：${priceInfo}` : ""}
-
-## 目标用户
-- **精准人群**：${selectedTargetGroup}
-- **沟通风格**：${selectedStyle}
-
-## 成交策略（核心要求）
-**选中的成交理由**：${dealReasonsText}
-
-⚠️ **必须严格执行**：
-1. 脚本中必须明确体现每一个成交理由，不能只是泛泛而谈
-2. 每个成交理由至少要有1处具体的场景或话术体现
-3. 在脚本最后增加【成交理由应用自检】：
-   - 列出每个成交理由在脚本中的具体体现位置
-   - 确认每个理由都被真实应用，而非空泛提及
-
-示例格式：
-【成交理由应用自检】
-✅ 性价比：引用已确认价格或真实可拍的产品信息，无资料不写数字
-✅ 品质保证：拍摄用户确实提供的制作过程，不虚构年限或认证
-✅ 老板好：使用已提供的真实服务行为，不编折扣承诺
-
-## 创意要求
-- **开场方式**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（3秒内抓住目标用户）
-- **脚本结构**：${SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "推荐型"}
-- **爆款元素**：${boomElements.length > 0 ? boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label).join("、") : "根据行业推荐"}
-
-## 拍摄执行
-- **场景**：${scene} | **设备**：${device} | **预算**：${budget} | **人员**：${personnel}
-- **编导思路**：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label).join("、")}
-
-${accountPositioning ? `## 账号定位信息
-${accountPositioning}
-
-` : ""}${additionalInfo ? `## 补充要求
-${additionalInfo}` : ""}
-
----
-**生成要求**：
-1. 使用【广告公式知识库】和【成交理由知识库】
-2. 开场3秒必须直击痛点或利益点
-3. 中段重点展示产品卖点和成交理由
-4. 结尾只要一个明确的行动指令（到店、团购、加微信里选最贴这条的一个，说清楚怎么做）
-5. 全程植入产品信息，自然不生硬
-6. 价格、优惠和限时限量仅使用用户已确认信息；未提供就不用，不编福利或经营承诺
-
-${formatRequirements}
-
-请生成完整的广告引流脚本。` : `# 内容创作短视频脚本生成
-
-${promptStrategy}
-
-${priorityNote}
-${fourStepWorkflow}
-${executionContext}
-
-⚠️ **重要提示**：这是一个内容创作类脚本，请使用编导技巧和脚本公式知识库，重点突出价值输出和情感共鸣。
-
-## 基础信息
-- **内容类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
-- **行业领域**：${selectedIndustry}
-- **平台**：${platform}
-- **时长**：${isAiDuration ? "不限，以效果最好为准" : finalDuration}
-- **主题**：${topic}
-
-${profileInfo}${positioningInfo}
-
-${structureGuide}
-${formulaSection}
-${roleSection}
-${tacticSection}
-${openingSection}
-${effectiveHookGuide}
-
-## 目标定位
-- **目标受众**：${selectedTargetGroup}
-- **内容风格**：${selectedStyle}
-
-## 创意设计
-- **开场钩子**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（吸引目标受众停留）
-- **脚本结构**：${SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "AI推荐"}
-- **爆款元素**：${boomElements.length > 0 ? boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label).join("、") : "根据主题推荐"}
-
-## 价值主张
-${dealReasons.length > 0 && effectiveRole !== '变现型' ? `**这个号的卖点（背景）**：${dealReasonsText}
-
-这条是${effectiveRole}视频，卖点只作背景，**不要在片子里讲卖点、不要引导成交**——那是变现型视频的活。` : dealReasons.length > 0 ? `**核心价值点**：${dealReasonsText}
-
-⚠️ **必须严格执行**：
-1. 脚本必须围绕这些价值点设计，每个价值点至少体现1次
-2. 不能只是提及，要有具体的实用技巧或方法
-3. 在脚本最后增加【价值点应用自检】：
-   - 列出每个价值点在脚本中的具体体现
-   - 确认内容真正帮助用户解决了问题
-
-示例格式：
-【价值点应用自检】
-✅ 性价比：推荐了3款50元以内的平价好物
-✅ 节省时间：提供了5分钟快速上妆的具体步骤` : "**核心价值**：提供实用价值，建立信任关系"}
-
-## 拍摄执行
-- **场景**：${scene} | **设备**：${device} | **预算**：${budget} | **人员**：${personnel}
-- **编导思路**：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label).join("、")}
-
-${accountPositioning ? `## 账号定位信息
-${accountPositioning}
-
-` : ""}${additionalInfo ? `## 补充要求
-${additionalInfo}` : ""}
-
----
-**生成要求**：
-1. 使用【编导技巧知识库】和【脚本公式知识库】
-2. 开场清楚点出当前议题或现场切口，正文能够兑现；不为制造冲突改变主题
-3. 中段沿用户目的与材料逐层展开；采访写主问、追问与证据，不编未知回答
-4. 结尾自然收束；用户需要互动或转化时才设计一个与目的对应的行动
-5. 全程注重情感连接，建立信任
-6. 避免硬广，自然输出价值
-
-${formatRequirements}
-
-请生成完整的内容创作脚本。`;
 
       const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
@@ -942,7 +517,7 @@ ${formatRequirements}
           taskType: "脚本生成",
           creationSettings: currentSettings,
           profileId: selectedProfileId || null,
-          query: query + creationSettingsBlock(currentSettings) + (originContent ? continuationRules('script') : '') + (incomingSetup && scriptRole === '自动' ? '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。' : '') + (autoScriptType ? '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。' : ''),
+          query: query + (originContent ? continuationRules('script') : '') + (incomingSetup && scriptRole === '自动' ? '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。' : '') + (autoScriptType ? '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。' : ''),
         }),
       });
 
@@ -958,9 +533,8 @@ ${formatRequirements}
       fullResult += accumulated;
 
       if (fullResult.trim()) {
-        const qualityEvaluation = evaluateScriptQualityStrict(fullResult, { adaptive: true });
-        const qualityReport = `\n\n---\n\n${formatQualityReport(qualityEvaluation)}`;
-        fullResult += qualityReport;
+        // 质检报告的拼接在 lib/boards/script-query，助理存的历史和结果也是这一份
+        fullResult = scriptResultWithQuality(fullResult);
         setResult(fullResult);
       }
     } catch (error: any) {

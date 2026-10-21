@@ -2,7 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { resolveCreationSettings, mergeCreationSettings, settingsForResult, settingsFromText, REVIEW_SCRIPT_TYPES, creationSettingsBlock, scriptTypeForLabel } from '@/lib/creation-settings';
+import { resolveCreationSettings, settingsForResult, settingsFromText, REVIEW_SCRIPT_TYPES } from '@/lib/creation-settings';
 
 
 import { useRouter } from "next/navigation";
@@ -14,11 +14,11 @@ import { reviewDraftStats } from '@/lib/script-result-utils';
 import { recordStage } from "@/lib/works";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
-import { buildReviewPrompt, personalRequirementsReminder, reviewDimensionLabels, AMBIGUOUS_REVIEW_DURATION, AI_DURATION } from "@/lib/review-standards";
+import { reviewDimensionLabels, AMBIGUOUS_REVIEW_DURATION, AI_DURATION } from "@/lib/review-standards";
+import { buildReviewBoardQuery, reviewCreationSettings } from "@/lib/boards/review-query";
 import { reviewDrift } from "@/lib/review-drift";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
-import { buildContextBlock } from "@/lib/creator-context";
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
@@ -110,14 +110,8 @@ export default function ReviewPage() {
   });
   // 自定义只填了数字就当秒数；没填等于交给 AI
   const effectiveDuration = /^\d+$/.test(duration.trim()) ? `${duration.trim()}秒` : duration.trim() || AI_DURATION;
-  const resolvedSettings = resolveCreationSettings({ from: '审稿优化', sourceContent: draftContent, settings: mergeCreationSettings(autoSetup.settings, { platform, duration: effectiveDuration, scriptType: REVIEW_SCRIPT_TYPES[autoSetup.settings.scriptType!] === scriptType ? autoSetup.settings.scriptType : scriptTypeForLabel(scriptType) }) }, creatorContext);
-  /*
-   * resolveCreationSettings 只认「数字+秒/分钟」，「AI推荐」「2分半」「长视频」都会被换成 60 秒，
-   * 再写进连续设置里要求"时长不得更换"——和用户选的对不上。
-   * 所以：AI 推荐时连续设置里不写时长；其它时候原样用用户选的
-   */
-  const { duration: _resolvedDuration, ...settingsWithoutDuration } = resolvedSettings;
-  const currentSettings = effectiveDuration === AI_DURATION ? settingsWithoutDuration : { ...resolvedSettings, duration: effectiveDuration };
+  // 和助理共用同一个算法（lib/boards/review-query）：AI 推荐时连续设置里不写时长，见那边的说明
+  const currentSettings = reviewCreationSettings({ draftContent, platform, duration, scriptType, autoSettings: autoSetup.settings, creatorContext });
 
   // 接收从脚本页带来的正文作为待审稿件
   useEffect(() => {
@@ -261,13 +255,14 @@ export default function ReviewPage() {
       // 把「秒数标注只有 1 处」「金句 27 字超长」这类客观事实喂给模型。
       // 后端检测到已有 query 就不再自行拼装。
       // 本轮材料：账号背景、创作设置、相关方案参考。审稿拿它做事实依据（原稿本身不算依据）
-      const reviewMaterial = buildContextBlock(creatorContext, "review") + creationSettingsBlock(currentSettings) + (sourceReference ? `\n【相关方案参考】\n${sourceReference}\n以上仅为背景资料。只审下方待审脚本，不把迁移说明、拍摄清单算作口播。` : '');
-      const query = buildReviewPrompt({
-        // 账号背景随每次生成带上，不用用户在这一页重填一遍
-        contextBlock: reviewMaterial,
+      // 账号背景随每次生成带上，不用用户在这一页重填一遍。拼装在 lib/boards/review-query，和开物助理共用
+      const { query, reviewMaterial } = buildReviewBoardQuery({
+        creatorContext,
+        currentSettings,
+        sourceReference,
         draftContent,
         platform,
-        duration: effectiveDuration,
+        effectiveDuration,
         scriptType,
         personalRequirements,
         reviewDimensions: reviewDimensions.join("\n"),
@@ -283,7 +278,7 @@ export default function ReviewPage() {
         body: JSON.stringify({
           taskType: "审稿优化",
           creationSettings: currentSettings,
-          query: query + personalRequirementsReminder(personalRequirements),
+          query,
           draftContent,
           personalRequirements,
           // 校对步骤的事实依据：账号档案、创作设置、相关方案参考（不含原稿）

@@ -72,6 +72,8 @@ describe('恢复预检（只读）', () => {
   it('导出覆盖到所有用户内容表（素材库、风格预设、对话、作品需求都在）', () => {
     const names = EXPORT_TABLES.map((t) => t.table);
     for (const t of ['material_library', 'creator_presets', 'chat_conversations', 'creation_sessions', 'works', 'script_history']) expect(names).toContain(t);
+    // 2026-10-21 补上：账号作品资料/概况、助理的对话和记忆都是用户自己的内容，导出时不能漏
+    for (const t of ['account_materials', 'account_work_insights', 'assistant_threads', 'assistant_messages', 'assistant_memories']) expect(names).toContain(t);
     expect(readCode('app/dashboard/account/page.tsx')).toMatch(/<DataExportCard \/>/);
   });
 });

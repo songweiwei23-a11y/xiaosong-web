@@ -9,6 +9,8 @@ import { Menu } from "lucide-react";
 import { Suspense } from 'react';
 import { TopBarSlotProvider, TopBarSlotTarget, useTopBarSlotClaimed } from '@/components/dashboard/TopBarSlot';
 import { InProgressStrip } from '@/components/dashboard/InProgressStrip';
+import { GuideChip } from '@/components/guide/GuideChip';
+import { AssistantWidget } from '@/components/assistant/AssistantWidget';
 import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate';
 import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
 
@@ -28,6 +30,8 @@ function TopBar() {
       </button>
       {/* 中间空位：自由对话页把标题行放在这里（components/dashboard/TopBarSlot），别的页面空着 */}
       <TopBarSlotTarget />
+      {/* 新手引导小条：顶栏一行说清现在的阶段和下一步；取不到数据时不占位 */}
+      <GuideChip className="order-last basis-full md:order-none md:basis-auto md:max-w-[280px] md:shrink-0" />
       <InProgressStrip
         className={
           slotClaimed
@@ -66,6 +70,8 @@ export default function DashboardLayout({
           </main>
           {/* 全站付费引导：任何板块额度用完 / 快用完都由它接（见 lib/upgrade） */}
           <UpgradePrompt />
+          {/* 开物助理：右下角一直在，告诉它遇到什么事，它自己查、自己判断，结果回到窗口里（见 lib/assistant） */}
+          <AssistantWidget />
           {/* 连接保活：闲几分钟后线路掐掉空闲连接，再点保存、带去下一步就发不出去 */}
           <ConnectionKeepAlive />
         </div>

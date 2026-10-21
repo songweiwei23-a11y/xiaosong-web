@@ -29,3 +29,21 @@ export const readSource = (rel: string) =>
 
 /** 只剩会真正跑起来/渲染出去的代码 */
 export const readCode = (rel: string) => stripComments(readSource(rel));
+
+/**
+ * 选题板块的提示词拼装已经搬到 lib/boards/topic-query.ts，页面只剩收集状态。
+ * 检查「提示词里有没有某句话」的测试，要读页面和这个模块合起来的源码。
+ */
+export const TOPIC_PAGE = 'app/dashboard/topic/page.tsx';
+export const TOPIC_BOARD = 'lib/boards/topic-query.ts';
+export const readTopicBoardCode = () => readCode(TOPIC_PAGE) + '\n' + readCode(TOPIC_BOARD);
+export const readTopicBoardRaw = () => readSource(TOPIC_PAGE) + '\n' + readSource(TOPIC_BOARD);
+
+/**
+ * 脚本板块的提示词拼装同样搬到了 lib/boards/script-query.ts，页面只剩收集状态。
+ * 检查「提示词里有没有某句话」的测试，要读页面和这个模块合起来的源码。
+ */
+export const SCRIPT_PAGE = 'app/dashboard/script/page.tsx';
+export const SCRIPT_BOARD = 'lib/boards/script-query.ts';
+export const readScriptBoardCode = () => readCode(SCRIPT_PAGE) + '\n' + readCode(SCRIPT_BOARD);
+export const readScriptBoardRaw = () => readSource(SCRIPT_PAGE) + '\n' + readSource(SCRIPT_BOARD);

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { extractTitle, splitQualityReport, formatRelativeTime } from "@/lib/script-result-utils";
 import { listWorks, listWorksPage, progressGroup, workGroupCounts, type Work } from "@/lib/works";
 import { nextStage, workStageUrl } from "@/lib/resume";
+import { CountPackRow } from "@/components/quota/CountPackPanel";
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile';
 import { profileHistoryQuery } from '@/lib/profile-history';
 import { setupSteps, nextSetupStep, setupProgress, foundationDone, type SetupStepKey } from '@/lib/setup-progress';
@@ -16,9 +17,11 @@ import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import { LibraryCard } from '@/components/dashboard/LibraryCard';
 import { QuickStart } from '@/components/dashboard/QuickStart';
 import { PreferenceNews } from '@/components/preferences/PreferenceHint';
+import { AssistantHomeBar } from '@/components/assistant/AssistantHomeBar';
 import { LearningCard } from '@/components/preferences/LearningCard';
 import { PlanThisWeek } from '@/components/dashboard/PlanThisWeek';
-import { NextStepHero } from '@/components/dashboard/NextStepHero';
+import { GuideCard } from '@/components/guide/GuideCard';
+import { onProgressChanged } from '@/lib/progress-events';
 import { PendingMetrics } from '@/components/dashboard/PendingMetrics';
 import { useCollapsed } from '@/lib/home-prefs';
 import {
@@ -237,6 +240,8 @@ export default function DashboardPage() {
       remaining: number;
       percentage: number;
     } | null;
+    /** 次数包余额（买断的那批创作次数）。读不到为 null，不显示成 0 */
+    packCredits: number | null;
   } | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [recent, setRecent] = useState<RecentItem[]>([]);
@@ -257,6 +262,7 @@ export default function DashboardPage() {
       limit: d.totalLimit ?? 0,
       plan: d.planName || "免费版",
       tightest: d.tightest ?? null,
+      packCredits: d.packCredits ?? null,
     });
 
   /*
@@ -349,13 +355,20 @@ export default function DashboardPage() {
       : []);
   };
   useEffect(() => {
-    return onActiveProfileChange(() => {
+    // 切换档案，或者建档、定位、简报、作品有变化：重新取档案、定位类型和作品（同一页面里也马上更新）
+    const refresh = () => {
       fetch("/api/profiles")
         .then((r) => (r.ok ? r.json() : null))
         .then((list) => list && applyProfiles(list))
         .catch(() => {});
       loadProfileWork().catch(() => {});
-    });
+    };
+    const offProfile = onActiveProfileChange(refresh);
+    const offProgress = onProgressChanged(refresh);
+    return () => {
+      offProfile();
+      offProgress();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProfileWork 只用到 setState，订阅一次即可
   }, []);
 
@@ -428,8 +441,11 @@ export default function DashboardPage() {
           <ProfileQuickSwitch loading={loading} hasProfile={!!profile} />
         </header>
 
-        {/* 首屏只留一个主动作：地基没做完时是「下一步」，做完了不出现（整改 A1） */}
-        <NextStepHero loading={loading} next={setupState.next} done={setupState.done} total={setupState.total} />
+        {/* 顶部的一句话条：说一句，助理就去干（和右下角的助理是同一个）。放在问候语下面，首屏第一眼就能看到 */}
+        <AssistantHomeBar />
+
+        {/* 新手引导（新老用户都有）：现在处于什么阶段、下一步做什么、几条建议。随数据实时变，见 lib/guide */}
+        <GuideCard />
 
         {/* 我的创作偏好：最近又学到几条新习惯（lib/preferences），没有新的就不出现 */}
         <PreferenceNews />
@@ -765,7 +781,12 @@ export default function DashboardPage() {
                 </div>
               ) : null}
 
-              <div className="mt-3 flex items-center justify-between">
+              {/* 次数包和会员额度分开排：会员按期清零，次数包长期有效，不能混成一个数。这里只放一行；完整介绍在会员中心 */}
+              <div className="mt-4 border-t border-border/60 pt-4">
+                <CountPackRow balance={quota?.packCredits ?? null} loading={loading} />
+              </div>
+
+              <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
                 <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                   <Crown className="h-3.5 w-3.5" />
                   {quota?.plan ?? "免费版"}
