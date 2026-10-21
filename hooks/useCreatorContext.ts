@@ -153,13 +153,23 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
       }
     }
 
+    // 账号作品概况（lib/work-insight）：和数据回流一起取，服务端的板块也是同一份
+    let workInsight: CreatorContext["workInsight"] = null;
+    if (profile) {
+      const insightRes = await fetch(`/api/work-insights?profileId=${encodeURIComponent(profile.id)}`).catch(() => null);
+      if (insightRes?.ok) {
+        const d = await insightRes.json().catch(() => null);
+        workInsight = d?.insight ?? null;
+      }
+    }
+
     // 风格预设（lib/creator-presets）：这个档案在用的那份；没有或表没建都当没有，不挡生成
     const preset = await fetchActivePreset(profile?.id ?? profileId);
     // 我的创作偏好（lib/preferences）：学习开着时生效的那几条；读不到当没有，不挡生成
     const preferences = await fetchActivePreferences(profile?.id ?? profileId);
 
     const ctx: CreatorContext = {
-      profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, preset, preferences,
+      profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, workInsight, preset, preferences,
       advice, adviceAt, adviceStale, contentPositioning, businessPositioning,
     };
     if (version === cacheVersion) cache.set(key, ctx);

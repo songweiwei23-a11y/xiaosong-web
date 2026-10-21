@@ -17,6 +17,7 @@ import type { WorkMetrics } from "./performance";
 import { getActiveProfileId } from "./active-profile";
 import { DEFAULT_PROFILE_SCOPE } from "./profile-history";
 import { postSafely } from "./safe-post";
+import { notifyProgressChanged } from "./progress-events";
 
 export interface WorkStage {
   name: string;
@@ -57,6 +58,7 @@ export async function createWork(title: string, profileId?: string | null): Prom
       body: JSON.stringify({ title, profileId: profileId ?? null }),
     });
     if (!res.ok) return null;
+    notifyProgressChanged();
     const data = await res.json();
     return data?.id ?? null;
   } catch {
@@ -69,11 +71,12 @@ export async function createWork(title: string, profileId?: string | null): Prom
 export async function touchWork(id: string, patch: { title?: string; isDone?: boolean } = {}) {
   if (!id) return;
   try {
-    await fetch(`/api/works?id=${encodeURIComponent(id)}`, {
+    const res = await fetch(`/api/works?id=${encodeURIComponent(id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
+    if (res.ok) notifyProgressChanged();
   } catch {
     // 同上，静默失败
   }
@@ -170,6 +173,7 @@ export async function setShootStatus(id: string, status: ShootStatus): Promise<W
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "保存失败，请重试");
+  notifyProgressChanged();
   return data;
 }
 
@@ -215,6 +219,7 @@ export function progressGroup(w: Work): ProgressGroup {
 export async function deleteWork(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/works?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (res.ok) notifyProgressChanged();
     return res.ok;
   } catch {
     return false;

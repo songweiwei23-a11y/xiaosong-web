@@ -11,6 +11,7 @@ import type { WorkMetrics } from "@/lib/performance";
 import { confirmDialog, notify } from "@/components/ui/feedback";
 import { WorkCard } from "@/components/works/WorkCard";
 import { MetricsImport } from "@/components/works/MetricsImport";
+import { MaterialsPanel } from "@/components/works/MaterialsPanel";
 import { onActiveProfileChange } from "@/lib/active-profile";
 
 /*
@@ -103,6 +104,8 @@ export default function WorksPage() {
     if (await deleteWork(w.id)) {
       setWorks((prev) => (prev ?? []).filter((x) => x.id !== w.id));
       refreshCounts();
+      // 作品被删了，各板块参考的作品概况也要跟着变
+      invalidateCreatorContext();
       notify("已删除");
     } else {
       notify("删除失败，请重试");
@@ -114,6 +117,8 @@ export default function WorksPage() {
       const saved = await setShootStatus(w.id, status);
       // 改完不立刻从当前组挪走（免得一点就不见了、以为没点上），数量先跟上
       setWorks((prev) => (prev ?? []).map((x) => (x.id === w.id ? { ...x, ...saved, stages: x.stages, optional: x.optional, doneCount: x.doneCount } : x)));
+      // 拍摄 / 发布状态变了，作品概况的计数和配比跟着变
+      invalidateCreatorContext();
       refreshCounts();
       notify(status === "published" ? "已标记为发布 🎉" : status === "shot" ? "已标记为拍摄完成" : "已改回还没拍");
     } catch (e) {
@@ -153,6 +158,9 @@ export default function WorksPage() {
           <Link href="/dashboard/library" className="mx-1 text-primary hover:underline">素材库</Link>
         </p>
       </header>
+      {/* 账号作品概况：导入文件、分析内容配比和反馈；结果给选题、方向等规划类板块用 */}
+      <MaterialsPanel />
+
       {/* 学习进度（整改 B2）：离「开物验证写法」还差几条数据 */}
       <LearningProgressNote />
 

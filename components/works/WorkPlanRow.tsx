@@ -5,6 +5,7 @@ import { CalendarDays, Link2 } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import type { Work } from "@/lib/works";
 import { fromDateInput, toDateInput } from "@/lib/publish-plan";
+import { notifyProgressChanged } from "@/lib/progress-events";
 
 /**
  * 作品卡片上的一行：计划哪天发（体检 F2）+ 素材放在哪（体检 F4）。
@@ -25,6 +26,7 @@ export function WorkPlanRow({ work }: { work: Work }) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || "没存上，请稍后再试");
+      notifyProgressChanged();
     } catch (e) {
       notify((e as Error).message, "error");
     } finally {

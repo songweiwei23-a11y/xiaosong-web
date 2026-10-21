@@ -30,6 +30,7 @@ import { taboosPromptBlock, readTabooSettings } from './taboos';
 import { scrubProfile } from './interview-exclusions';
 import { personaFactsBlock } from './persona-facts';
 import { performancePromptBlock, type PerformanceSummary } from './performance';
+import { workInsightPromptBlock, type WorkInsight } from './work-insight';
 import { PRESET_BOARDS, presetPromptBlock, type CreatorPreset } from './creator-presets';
 import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from './preferences';
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
@@ -123,6 +124,8 @@ export interface CreatorContext {
   briefFacts?: string | null;
   /** 数据回流：这个号发出去的作品录的数据汇总（lib/performance） */
   performance?: PerformanceSummary | null;
+  /** 账号作品概况（lib/work-insight）：确定的配比、三类数据反馈、下一批建议；和数据回流走同一批板块 */
+  workInsight?: WorkInsight | null;
   /** 这个档案在用的风格预设（lib/creator-presets）：写稿类板块照这个写法 */
   preset?: CreatorPreset | null;
   /** 我的创作偏好（lib/preferences）：从修改、收藏、发布里学到的，只有生效的那几条 */
@@ -380,6 +383,9 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
   if (PERFORMANCE_BOARDS.has(module)) {
     const perf = performancePromptBlock(ctx.performance);
     if (perf) parts.push('', perf);
+    // 账号作品概况：配比、三类反馈、下一批建议。和数据回流一样只给规划类板块
+    const insight = workInsightPromptBlock(ctx.workInsight);
+    if (insight) parts.push('', insight);
   }
 
   // 风格预设：用户认可的写法，只给写稿类板块；只学表达和结构，事实仍以上面的档案为准
