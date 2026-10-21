@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { compareControl } from '@/lib/learning-stats';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * 反馈没对上生成记录的不算；数据不够（每边不到 30 条）时 enoughSample 为 false，只给数不下结论。
  */
 export async function GET() {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_analytics');
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
 
   const since = new Date(Date.now() - 60 * 86_400_000).toISOString();

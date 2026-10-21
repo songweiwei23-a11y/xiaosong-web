@@ -84,6 +84,8 @@ describe('最近活跃用户：谁、什么套餐、哪几个号、最后做了�
         { id: 'g1', user_id: 'u1', task_type: '脚本生成', created_at: T(2, now), input_data: { topic: '猫粮怎么选', profile_id: 'p1' } },
       ],
       usage: [{ id: 'e1', user_id: 'u1', feature: 'script', task_type: '脚本生成', created_at: T(2, now) }],
+      // 在线看心跳：一分钟前还在脚本页
+      presence: new Map([['u1', { at: now - 60_000, path: '/dashboard/script', build: '' }]]),
       dir,
       now,
     });
@@ -95,6 +97,7 @@ describe('最近活跃用户：谁、什么套餐、哪几个号、最后做了�
     expect(a.profiles).toEqual(['宠物店老板号', '个人IP号']);
     expect(a.lastAction).toBe('脚本生成 · 主题：猫粮怎么选');
     expect(a.online).toBe(true);
+    expect(a.currentPage).toBe('脚本生成');
     expect(a.todayCount).toBe(1);
     expect(list[1].lastAction).toBe('登录');
     expect(list[1].plan).toBe('免费版');
@@ -414,14 +417,18 @@ describe('页面本身的几条硬要求', () => {
     expect(read('app/admin/layout.tsx')).toContain('/admin/monitor');
   });
 
-  it('接口不打码：取了用户、输入和结果，也没有调用打码', () => {
+  it('按角色裁剪：取了用户、输入和结果；打码只在统一的裁剪函数里，接口本身不直接打码', () => {
     const route = readCode('app/api/admin/monitor/route.ts');
     expect(route).toMatch(/select\('id, user_id, task_type, created_at, work_id, input_data, result'\)/);
-    expect(route).toMatch(/from\('user_profiles'\)/);
-    expect(route).toMatch(/from\('subscriptions'\)/);
+    expect(route).toMatch(/lookupUsers\(supabase/);
     expect(route).toMatch(/billing_cycle/);
     expect(route).not.toMatch(/maskEmail/);
-    expect(readCode('lib/monitor.ts').match(/maskEmail\(/g)?.length).toBe(1); // 只剩定义本身
+    // 裁剪按当前管理员的权限决定（view_content 管内容，view_users 管邮箱），不按「一律打码」
+    expect(route).toContain('redactSnapshot(payload');
+    expect(route).toContain("hasPermission(admin.role, 'view_content')");
+    expect(route).toContain("hasPermission(admin.role, 'view_users')");
+    // 打码函数只在 lib/monitor.ts 里被裁剪函数用到（定义 + redactSnapshot 里的几处）
+    expect(readCode('lib/monitor.ts')).toMatch(/export function redactSnapshot/);
   });
 
   it('点开看全文的接口也要管理员权限', () => {

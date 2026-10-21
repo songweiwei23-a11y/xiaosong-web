@@ -1,5 +1,6 @@
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/admin-auth';
+import { presenceRevision } from '@/lib/presence';
 
 export type MonitorSignal = { mode: 'realtime' | 'polling'; error?: string; refresh?: boolean };
 
@@ -56,7 +57,8 @@ export class MonitorSignalBus {
         this.emit({ mode: 'polling', error: error && !['PGRST205', '42P01'].includes(error.code) ? '实时通道校验失败，正在重试' : undefined, refresh: true });
         return;
       }
-      const revision = `${data.revision}:${data.updated_at}`;
+      // 数据库版本 + 心跳版本（有人新上线）：任何一个变了，大屏都要刷新
+      const revision = `${data.revision}:${data.updated_at}|p${presenceRevision()}`;
       const changed = revision !== this.revision;
       this.revision = revision;
       this.emit({ mode: this.subscribed ? 'realtime' : 'polling', refresh: changed });

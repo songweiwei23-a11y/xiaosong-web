@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { countAuthUsers, sumFeatureUsage, buildPlanDistribution } from '@/lib/admin-stats';
 import { effectivePlanId } from '@/lib/config/plans';
 import { readAllRows } from '@/lib/admin-monitor-data';
@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAdminPermission('view_dashboard');
     if (!admin) {
       return NextResponse.json({ error: '无管理员权限' }, { status: 403 });
     }

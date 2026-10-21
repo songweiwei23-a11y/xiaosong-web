@@ -15,26 +15,41 @@ import { FEATURE_NAMES } from '@/lib/config/plans';
 
 export const dynamic = 'force-dynamic';
 
-/** 一条记录的全文太长时截到这里——大屏上看得完，也不至于一次拉几十 KB */
-const RESULT_CAP = 20000;
+/**
+ * 一条记录的全文上限。2026-10-22 从 2 万字放宽到 20 万字：要的是完整版，
+ * 只在超过这个长度时才截断，并标出 truncated。
+ */
+const RESULT_CAP = 200_000;
 
 /**
  * 监控大屏上点开一条动态：这次是谁、哪个档案、输入的每一项、生成的全文。
  *
- * 大屏每 5 秒轮询一次，不能每次都带全文；所以列表只给摘要，
- * 全文在点开时单独取这一条。
+ * 大屏每秒刷新一次，列表不带全文（只有摘要）；全文在点开时单独取这一条。
  */
-export async function GET(request: Request) {
+/*
+ * 2026-10-22（后台扩展方案 P1-1）：改成 POST，理由放在请求体里，不放进 URL（URL 会留在服务器日志里）。
+ * 查看全文必须写明理由（至少 4 个字），理由和查看的记录一起写进审计日志。
+ */
+export async function POST(request: Request) {
   const admin = await requireAdminPermission('view_content');
   if (!admin) {
     return NextResponse.json({ error: '无权查看用户内容' }, { status: 403 });
   }
 
-  const url = new URL(request.url);
-  const kind = url.searchParams.get('kind');
-  const id = url.searchParams.get('id');
-  if ((kind !== 'history' && kind !== 'usage') || !id) {
+  let body: { kind?: unknown; id?: unknown; reason?: unknown } = {};
+  try {
+    body = (await request.json()) as { kind?: unknown; id?: unknown; reason?: unknown };
+  } catch {
+    return NextResponse.json({ error: '请求格式不对' }, { status: 400 });
+  }
+  const kind = body.kind === 'history' || body.kind === 'usage' ? body.kind : null;
+  const id = typeof body.id === 'string' ? body.id : '';
+  const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+  if (!kind || !id) {
     return NextResponse.json({ error: '参数不对' }, { status: 400 });
+  }
+  if (reason.length < 4) {
+    return NextResponse.json({ error: '请写明查看理由（至少 4 个字），会记入审计日志' }, { status: 400 });
   }
 
   try {
@@ -61,7 +76,7 @@ export async function GET(request: Request) {
       action: AdminActions.VIEW_USER_CONTENT,
       target_type: 'user',
       target_id: userId,
-      details: { kind, recordId: id },
+      details: { kind, recordId: id, reason },
     });
     const [userRes, profileRes, subRes, workRes] = await Promise.all([
       db.auth.admin.getUserById(userId),

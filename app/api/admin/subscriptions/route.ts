@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
+import { adminWriteLimited } from '@/lib/admin-rate';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, getPlan, sumCountedUsage } from '@/lib/config/plans';
 import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
@@ -26,7 +27,7 @@ function emptyPage(offset: number, limit: number, counts: Record<string, number>
 }
 
 export async function GET(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_users');
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
 
   const sp = new URL(request.url).searchParams;
@@ -131,6 +132,9 @@ export async function PATCH(request: Request) {
     const admin = await requireAdminPermission('manage_membership');
     if (!admin) {
       return NextResponse.json({ error: '无权修改会员：这项操作需要更高的管理员权限' }, { status: 403 });
+    }
+    if (adminWriteLimited(admin.userId)) {
+      return NextResponse.json({ error: '操作太频繁，请稍后再试' }, { status: 429 });
     }
 
     const { userId, plan, endDate, action, days } = await request.json();

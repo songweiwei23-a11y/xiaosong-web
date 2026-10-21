@@ -49,7 +49,7 @@ describe('汇总', () => {
 describe('管理员接口：只给管理员', () => {
   it('非管理员 403', async () => {
     vi.resetModules();
-    vi.doMock('@/lib/admin-auth', () => ({ requireAdmin: async () => null, getServiceSupabase: () => ({}) }));
+    vi.doMock('@/lib/admin-auth', () => ({ requireAdmin: async () => null, requireAdminPermission: async () => null, getServiceSupabase: () => ({}) }));
     const { GET } = await import('@/app/api/admin/migrations/route');
     expect((await GET()).status).toBe(403);
     vi.doUnmock('@/lib/admin-auth');

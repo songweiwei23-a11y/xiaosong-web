@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth'
+import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth'
 import { runRegression } from '@/lib/quality-regression'
 import { getRunState, startRun } from '@/lib/quality-regression-run'
 
@@ -43,7 +43,7 @@ async function runAndStore() {
  * 定时任务（带暗号）仍然同步跑完再返回，因为夜间脚本要把结果写进日志。
  */
 export async function GET() {
-  const admin = await requireAdmin()
+  const admin = await requireAdminPermission('view_quality')
   if (!admin) return NextResponse.json({ error: '无权查看' }, { status: 403 })
   return NextResponse.json(getRunState() ?? { status: 'idle' }, { headers: { 'Cache-Control': 'no-store' } })
 }
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     })
   }
 
-  const admin = await requireAdmin()
+  const admin = await requireAdminPermission('manage_quality')
   if (!admin) return NextResponse.json({ error: '无权运行' }, { status: 403 })
 
   // 已经在跑时 startRun 不会重复开，返回的是那一次的状态；两种情况都是 202「已接受，在后台跑」

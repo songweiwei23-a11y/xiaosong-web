@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminPermission } from '@/lib/admin-auth';
+import { adminWriteLimited } from '@/lib/admin-rate';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, activationPlan } from '@/lib/config/plans';
 import { approveViaRpc } from '@/lib/order-approval';
@@ -18,6 +19,9 @@ export async function POST(request: Request) {
     const admin = await requireAdminPermission('review_orders');
     if (!admin) {
       return NextResponse.json({ error: '无权审核订单' }, { status: 403 });
+    }
+    if (adminWriteLimited(admin.userId)) {
+      return NextResponse.json({ error: '操作太频繁，请稍后再试' }, { status: 429 });
     }
 
     const { orderId, approved, note } = await request.json();
@@ -39,6 +43,11 @@ export async function POST(request: Request) {
 
     if (fetchError || !order) {
       return NextResponse.json({ error: '订单不存在' }, { status: 404 });
+    }
+
+    // 别人正在认领（租约未过期）的订单，我不能审（P1-3）。没有执行认领迁移时这两列不存在，跳过
+    if (order.claimed_by && order.claimed_by !== admin.userId && order.claim_lease_until && new Date(order.claim_lease_until) > new Date()) {
+      return NextResponse.json({ error: '这笔订单正由另一位管理员认领处理，请先联系对方，或等认领到期后再处理' }, { status: 409 });
     }
 
     // 只有传了凭证（reviewing）的订单才谈得上审核。

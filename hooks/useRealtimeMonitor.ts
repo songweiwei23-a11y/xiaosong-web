@@ -30,7 +30,8 @@ export function useRealtimeMonitor() {
         setMode('connecting'); refresh();
       }
     }, 1000);
-    const aging = setInterval(refresh, 30_000);
+    // 每 1 秒兜底刷新一次：「在线」「多久前」「使用情况」都随时间变，不能只等数据变化才更新
+    const aging = setInterval(refresh, 1_000);
     const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', refresh);

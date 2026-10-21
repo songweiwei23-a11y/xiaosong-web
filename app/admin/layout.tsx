@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
+import { PresenceBeat } from "@/components/dashboard/PresenceBeat";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
@@ -176,6 +177,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <FloatingThemeToggle />
         {children}
       </main>
+      {/* 管理员自己在后台的在线也要算：心跳里带的是后台页面路径（见 lib/presence 的页面名） */}
+      <PresenceBeat />
     </div>
   );
 }

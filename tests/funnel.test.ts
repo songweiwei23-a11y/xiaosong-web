@@ -70,7 +70,7 @@ describe('埋点都在', () => {
 describe('后台', () => {
   it('漏斗接口要管理员；后三步按同一批注册的人算', () => {
     const api = readCode('app/api/admin/funnel/route.ts');
-    expect(api).toContain('requireAdmin()');
+    expect(api).toContain("requireAdminPermission('view_dashboard')");
     expect(api).toContain('loadFunnel');
     expect(readCode('lib/admin-monitor-data.ts')).toMatch(/filter\(\(id\) => signups\.has\(id\)\)/);
   });

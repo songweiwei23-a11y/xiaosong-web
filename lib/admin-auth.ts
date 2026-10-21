@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { supabaseFetch } from './supabase/fetch';
-import { hasPermission, type AdminPermission } from './admin-permissions';
+import { hasPermission, isKnownRole, type AdminPermission } from './admin-permissions';
 import { mfaStepPending } from './admin-mfa';
 
 /**
@@ -85,6 +85,8 @@ export async function requireAdmin(): Promise<AdminContext | null> {
     .maybeSingle();
 
   if (roleData?.role) {
+    // 默认拒绝：认不出来的角色不进后台（2026-10-22，见 lib/admin-permissions）
+    if (!isKnownRole(roleData.role)) return null;
     return { userId: user.id, email: user.email || '', role: roleData.role };
   }
 

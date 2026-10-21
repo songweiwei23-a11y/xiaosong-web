@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Users, TrendingUp, ChevronDown } from "lucide-react";
-import { relativeTime, ONLINE_WINDOW_MIN, type MonitorEvent, type ActiveUser, type RecordRef } from "@/lib/monitor";
+import { relativeTime, type MonitorEvent, type ActiveUser, type RecordRef } from "@/lib/monitor";
+import { APP_BUILD } from "@/lib/presence";
 import { useMonitorQuery } from '@/hooks/useRealtimeMonitor';
 
 
@@ -110,7 +111,7 @@ export function ActiveUserCard({
             className={`h-2 w-2 shrink-0 rounded-full ${
               u.online ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.9)]" : "bg-muted-foreground/50"
             }`}
-            title={u.online ? `${ONLINE_WINDOW_MIN} 分钟内有操作` : ""}
+            title={u.online ? "正在工作台里（心跳在线）" : "当前不在工作台"}
           />
           <span className="break-all text-[13px] font-medium text-foreground">{email}</span>
         </span>
@@ -133,6 +134,17 @@ export function ActiveUserCard({
           <span className="text-muted-foreground">还没建档案</span>
         )}
       </div>
+
+      {u.online && u.currentPage && (
+        <div className="mt-1.5 text-[12px] text-emerald-300/90">
+          <span className="text-muted-foreground">正在：</span>
+          {u.currentPage}
+          {/* 页面是部署前打开的旧代码：刷新一次才会用上新版本（心跳和接口请求都还在算它在线） */}
+          {u.build !== "" && u.build !== APP_BUILD && (
+            <span className="ml-2 rounded bg-amber-400/15 px-1.5 py-0.5 text-[10.5px] text-amber-300">旧版本页面</span>
+          )}
+        </div>
+      )}
 
       <div className="mt-1.5 break-all text-[12px] text-foreground/85">
         <span className="text-muted-foreground">最后：</span>
@@ -168,6 +180,7 @@ type RecordDetail = {
 /** 一条动态：谁、哪个档案、用了什么、输入、结果开头；能点开看全文 */
 export function EventCard({ e, email, hideContent }: { e: MonitorEvent; email: string; hideContent: boolean }) {
   const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
   const tone =
     e.level === "urgent"
       ? "border-rose-400 bg-rose-500/[0.10]"
@@ -225,26 +238,42 @@ export function EventCard({ e, email, hideContent }: { e: MonitorEvent; email: s
       {e.ref && !hideContent && (
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            if (open) return setOpen(false);
+            // 看全文要写明理由（会记入审计日志），没写就不打开
+            const text = window.prompt("请写明查看这条记录的理由（至少 4 个字，会记入审计日志）", "");
+            if (text === null) return;
+            if (text.trim().length < 4) {
+              window.alert("理由至少 4 个字");
+              return;
+            }
+            setReason(text.trim());
+            setOpen(true);
+          }}
           className="mt-1.5 flex items-center gap-1 text-[11.5px] text-primary hover:text-primary"
         >
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
           {open ? "收起" : "看完整记录"}
         </button>
       )}
-      {open && e.ref && !hideContent && <RecordView refInfo={e.ref} />}
+      {open && e.ref && !hideContent && <RecordView refInfo={e.ref} reason={reason} />}
     </div>
   );
 }
 
 /** 点开后才去取这一条的全文——列表每 5 秒轮询一次，不能每次都带几十条全文 */
-export function RecordView({ refInfo }: { refInfo: RecordRef }) {
+export function RecordView({ refInfo, reason }: { refInfo: RecordRef; reason: string }) {
   const [rec, setRec] = useState<RecordDetail | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/admin/monitor/record?kind=${refInfo.kind}&id=${encodeURIComponent(refInfo.id)}`, { cache: "no-store" })
+    fetch("/api/admin/monitor/record", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kind: refInfo.kind, id: refInfo.id, reason }),
+      cache: "no-store",
+    })
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(body.error || `接口返回 ${r.status}`);
@@ -254,7 +283,7 @@ export function RecordView({ refInfo }: { refInfo: RecordRef }) {
     return () => {
       alive = false;
     };
-  }, [refInfo.kind, refInfo.id]);
+  }, [refInfo.kind, refInfo.id, reason]);
 
   if (error) return <div className="mt-2 text-[12px] text-rose-300">{error}</div>;
   if (!rec) return <div className="mt-2 text-[12px] text-muted-foreground">正在取完整记录…</div>;

@@ -1,4 +1,4 @@
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/read-body';
 
 export const dynamic = 'force-dynamic';
@@ -7,7 +7,7 @@ const ID = /^[a-zA-Z0-9_-]{16,128}$/;
 const response = (data: unknown, status=200) => Response.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } });
 
 export async function GET() {
-  if (!await requireAdmin()) return response({ error: '无权查看' },403);
+  if (!await requireAdminPermission('view_usage')) return response({ error: '无权查看' },403);
   try {
     const { data,error } = await getServiceSupabase().from('creation_requests')
       .select('user_id,request_id,feature,status,created_at,expires_at,creation_completion_evidence(content_chars,result_sha256,terminal,completed_at,usage_metadata)')
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('manage_users');
   if (!admin) return response({ error: '无权对账' },403);
   let body: Record<string, unknown>;
   try { body=await readJsonBody(request,admin.userId); }

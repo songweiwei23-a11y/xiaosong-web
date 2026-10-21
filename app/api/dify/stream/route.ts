@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { askDify } from '@/lib/dify-task';
 import { reviewSource, reviewVerificationPrompt, combinedReviewUsage, reconcileReviewSpeechStats } from '@/lib/review-verification';
 import { reserveCreation, releaseCreation, recordCreationCompletion, completionUsage, type CreationCompletion, type CreationReservation } from '@/lib/creation-quota';
+import { acquireSlot, slotOptionsFromEnv } from '@/lib/generation-slots';
 import { requireUser, requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { readJsonBody, BodyError } from '@/lib/read-body';
 import { buildSearchQuery } from '@/lib/search-query';
@@ -72,6 +73,8 @@ function difyImageFiles(ids: unknown): { files?: { type: 'image'; transfer_metho
 export async function POST(req: NextRequest) {
   let reservation: CreationReservation | undefined;
   let generationCompleted = false;
+  // 生成并发名额（默认不限制，见 lib/generation-slots）：所有结束路径都要归还
+  let releaseSlot: () => void = () => {};
   try {
     /*
      * 请求体可能是压缩 / 分块发来的（lib/safe-post：用户线路差时超过约 8KB 的 POST 会被切断）。
@@ -282,6 +285,17 @@ export async function POST(req: NextRequest) {
     const reserved = await reserveCreation(guard.userId!, getFeatureFromTaskType(body.taskType), req, body);
     if (!reserved.ok) return reserved.response;
     reservation = reserved.reservation;
+    // 排队等名额：等太久或队列满就明确失败（额度同步释放），不让请求无限挂着
+    try {
+      releaseSlot = await acquireSlot(guard.userId!, slotOptionsFromEnv(), 0);
+    } catch (err) {
+      await releaseCreation(reservation);
+      const code = (err as { code?: string }).code;
+      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : '生成排队失败', code }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '30' },
+      });
+    }
     let response = await callDify();
 
     // 会话可能因过期、被删或应用重建而失效。若不处理，本地存着的旧 id
@@ -301,6 +315,7 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       await releaseCreation(reservation);
+      releaseSlot();
       const err = await response.text();
       console.error('Dify Error:', err);
       return new Response(JSON.stringify({ error: 'API调用失败' }), {
@@ -659,6 +674,7 @@ export async function POST(req: NextRequest) {
           }
 
           if (!generationCompleted) await releaseCreation(reservation);
+          releaseSlot();
 
           // 持久化会话 id，使下一次同作用域的生成延续本轮对话。
           // 仅在确有内容产出时保存，避免把失败的空会话记下来。
@@ -678,6 +694,7 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           clearInterval(heartbeat);
           if (!generationCompleted) await releaseCreation(reservation);
+          releaseSlot();
           console.error('Stream error:', err);
           try {
             controller.error(err);
@@ -701,6 +718,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (!generationCompleted) await releaseCreation(reservation);
+    releaseSlot();
     console.error('API Error:', error);
     return new Response(JSON.stringify({ error: '服务器错误' }), { 
       status: 500,

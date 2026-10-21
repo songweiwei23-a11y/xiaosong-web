@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { isUsableQrcodeUrl } from '@/lib/payment-qrcode';
 
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
  */
 
 export async function GET() {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_orders');
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
 
   const supabase = getServiceSupabase();

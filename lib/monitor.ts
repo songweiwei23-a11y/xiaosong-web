@@ -9,12 +9,19 @@
  */
 
 import { effectivePlanId, getPlan, FEATURE_NAMES } from '@/lib/config/plans';
+import { PRESENCE_ONLINE_MS, presenceLabel, type PresenceEntry } from '@/lib/presence';
 
-/** 多久没动静就算离线 */
-export const ONLINE_WINDOW_MIN = 15;
+/** 在线 = 最近 PRESENCE_ONLINE_MS 内有心跳（见 lib/presence）。这里的分钟数只用于页面文字 */
+export const ONLINE_WINDOW_MIN = PRESENCE_ONLINE_MS / 60_000;
 
 /** 「最近活跃用户」列多久以内有动静的人 */
 export const ACTIVE_WINDOW_HOURS = 24;
+
+/**
+ * 实时动态列表：最近这么多条生成和对话，每一条都带完整的输入和结果（点「看完整记录」看全文）。
+ * 列表和接口共用这一个数字。
+ */
+export const EVENT_LIMIT = 200;
 
 export type MonitorEventType = 'usage' | 'signup' | 'order' | 'order_proof';
 
@@ -315,12 +322,16 @@ export interface ActiveUser {
   plan: string;
   /** 名下所有档案 */
   profiles: string[];
-  /** 最后一次动静 */
+  /** 最后一次动静（登录、生成、使用、心跳里最近的一个） */
   lastAt: string;
   minutesAgo: number;
-  /** ONLINE_WINDOW_MIN 内有动静 */
+  /** 这一刻正在工作台里（PRESENCE_ONLINE_MS 内有心跳，见 lib/presence） */
   online: boolean;
-  /** 最后做了什么 */
+  /** 正在停留的页面（没有心跳时为空） */
+  currentPage: string;
+  /** 页面用的版本号（心跳带上来的；没有心跳时为空）。和服务器版本不同的就是旧代码页面 */
+  build: string;
+  /** 最后做了什么（登录、生成、使用记录里最近的；只浏览过的人写「只在浏览」） */
   lastAction: string;
   /** 今天用了几次，按功能分 */
   todayCount: number;
@@ -339,6 +350,8 @@ export function activeUsers(input: {
   users?: RawUser[];
   generations?: RawGeneration[];
   usage?: RawUsage[];
+  /** 工作台心跳（见 lib/presence）：决定谁在线、停在哪一页 */
+  presence?: Map<string, PresenceEntry>;
   dir: Directory;
   now?: number;
 }): ActiveUser[] {
@@ -351,6 +364,11 @@ export function activeUsers(input: {
     const prev = last.get(uid);
     if (!prev || t > prev.t) last.set(uid, { t, action });
   };
+  // 心跳只决定「在不在线、停在哪」，不冒充成一次操作
+  const beats = new Map<string, PresenceEntry>();
+  for (const [uid, e] of input.presence ?? []) {
+    if (uid && e.at <= now + 60_000) beats.set(uid, e);
+  }
 
   for (const u of input.users ?? []) touch(u.id, u.last_sign_in_at, '登录');
   for (const g of input.generations ?? []) {
@@ -375,7 +393,11 @@ export function activeUsers(input: {
   }
 
   const out: ActiveUser[] = [];
-  for (const [uid, { t, action }] of last) {
+  // 有操作记录的人，加上只是挂在工作台里的人（有心跳）
+  for (const uid of new Set([...last.keys(), ...beats.keys()])) {
+    const act = last.get(uid);
+    const beat = beats.get(uid);
+    const t = Math.max(act?.t ?? 0, beat?.at ?? 0);
     const m = Math.max(0, Math.floor((now - t) / 60000));
     if (m > ACTIVE_WINDOW_HOURS * 60) continue;
     const who = whoIs(uid, input.dir)!;
@@ -387,8 +409,10 @@ export function activeUsers(input: {
       profiles: input.dir.profilesOf.get(uid) ?? [],
       lastAt: new Date(t).toISOString(),
       minutesAgo: m,
-      online: m <= ONLINE_WINDOW_MIN,
-      lastAction: action,
+      online: !!beat && now - beat.at <= PRESENCE_ONLINE_MS,
+      currentPage: beat?.path ? presenceLabel(beat.path) : '',
+      build: beat?.build ?? '',
+      lastAction: act?.action ?? '只在浏览',
       todayCount: feats.reduce((s, f) => s + f.count, 0),
       todayFeatures: feats,
       registeredAt: input.dir.users.get(uid)?.created_at ?? null,
@@ -647,6 +671,45 @@ export function soundFor(type: MonitorEventType): 'ping' | 'chime' | 'alert' {
   if (type === 'order' || type === 'order_proof') return 'alert';
   if (type === 'signup') return 'chime';
   return 'ping';
+}
+
+/**
+ * 按角色裁剪监控快照（2026-10-22，P1-1）。
+ *
+ * 快照是所有管理员共用的缓存，所以裁剪放在每次请求返回之前做，不放进缓存里。
+ *   content：能不能看到生成的输入摘要、结果开头、「看完整记录」入口（对应 view_content）
+ *   users：能不能看到完整邮箱（对应 view_users）
+ * 看不到的字段直接去掉或打码，不是只在界面上隐藏。
+ */
+export interface ViewScope {
+  content: boolean;
+  users: boolean;
+}
+
+export function redactSnapshot<T extends { active: ActiveUser[]; events: MonitorEvent[] }>(snap: T, scope: ViewScope): T {
+  if (scope.content && scope.users) return snap;
+  const maskEmailIn = (text: string, email: string) => (email ? text.split(email).join(maskEmail(email)) : text);
+  return {
+    ...snap,
+    active: snap.active.map((u) => ({
+      ...u,
+      email: scope.users ? u.email : maskEmail(u.email),
+      lastAction: scope.content ? u.lastAction : (u.lastAction.split(' · ')[0] || u.lastAction),
+    })),
+    events: snap.events.map((e) => {
+      const email = e.user?.email ?? '';
+      return {
+        ...e,
+        title: scope.users ? e.title : maskEmailIn(e.title, email),
+        user: e.user && !scope.users ? { ...e.user, email: maskEmail(e.user.email) } : e.user,
+        summary: scope.content ? e.summary : undefined,
+        excerpt: scope.content ? e.excerpt : undefined,
+        // 生成和对话的详情里有输入内容，没有内容权限就不给；订单的金额说明保留
+        detail: scope.content || e.type !== 'usage' ? (scope.users ? e.detail : maskEmailIn(e.detail, email)) : '',
+        ref: scope.content ? e.ref : undefined,
+      };
+    }),
+  };
 }
 
 /** 相对时间，给事件流用 */

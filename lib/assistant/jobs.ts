@@ -33,6 +33,13 @@ export function hasRunningJob(userId: string): boolean {
   return false;
 }
 
+/** 现在有多少个助理任务在跑（所有用户合计，只统计本进程内存里的） */
+export function runningJobCount(): number {
+  let n = 0;
+  for (const job of jobs.values()) if (job.status === 'running') n++;
+  return n;
+}
+
 export function createJob(userId: string, now = Date.now()): AssistantJob {
   sweepJobs(now);
   const job: AssistantJob = {

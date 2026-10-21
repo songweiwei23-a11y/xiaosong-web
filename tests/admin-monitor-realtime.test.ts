@@ -1,6 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { chinaDayStart, funnelWindow, loadFunnel, readAllRows, readAllUsers } from '@/lib/admin-monitor-data';
+import {
+  chinaDayStart,
+  funnelWindow,
+  loadFunnel,
+  readAllRows,
+  readAllUsers,
+  readMonitorRevision,
+  resetSnapshot,
+  snapshotForRevision,
+  USERS_CACHE_MS,
+} from '@/lib/admin-monitor-data';
 import { isToday, pulseByMinute } from '@/lib/monitor';
 import { MonitorSignalBus } from '@/lib/admin-monitor-signal';
 
@@ -72,6 +84,44 @@ describe('完整统计与北京时间', () => {
     expect((await loadFunnel(db, 7, now)).steps[0].count).toBe(2100);
     vi.mocked(db.rpc).mockResolvedValueOnce({ data: null, error: { code: '42501', message: 'permission denied' } } as any);
     await expect(loadFunnel(db, 7, now)).rejects.toThrow('permission denied');
+  });
+});
+
+describe('快照按数据版本缓存：数据一变，大屏就取到新的', () => {
+  afterEach(() => resetSnapshot());
+
+  it('版本没变：共享同一份结果（包括正在算的）；版本变了：重新计算', async () => {
+    let calls = 0;
+    const compute = () => async () => ++calls;
+    const [a, b] = await Promise.all([snapshotForRevision('7:T1', compute()), snapshotForRevision('7:T1', compute())]);
+    expect([a, b]).toEqual([1, 1]);
+    expect(await snapshotForRevision('7:T1', compute())).toBe(1);
+    expect(await snapshotForRevision('8:T2', compute())).toBe(2);
+    expect(calls).toBe(2);
+  });
+
+  it('算失败的结果不缓存，下一次请求重算', async () => {
+    await expect(snapshotForRevision('7:T1', async () => { throw new Error('boom'); })).rejects.toThrow('boom');
+    expect(await snapshotForRevision('7:T1', async () => 'ok')).toBe('ok');
+  });
+
+  it('读数据版本号：读到就返回「版本:时间」；读不到（迁移没跑、报错）返回 null', async () => {
+    const row = (result: unknown) => ({
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => result }) }) }),
+    }) as unknown as SupabaseClient;
+    expect(await readMonitorRevision(row({ data: { revision: 7, updated_at: 'T' }, error: null }))).toBe('7:T');
+    expect(await readMonitorRevision(row({ data: null, error: { code: 'PGRST205', message: 'missing' } }))).toBeNull();
+  });
+
+  it('用户目录的缓存不超过 1 秒（新注册的用户很快就能显示）', () => {
+    expect(USERS_CACHE_MS).toBeLessThanOrEqual(1_000);
+  });
+
+  it('数据接口用版本号做快照键，读不到版本号时才退回按时间缓存', () => {
+    const route = fs.readFileSync(path.join(process.cwd(), 'app/api/admin/monitor/route.ts'), 'utf8');
+    expect(route).toContain('readMonitorRevision(supabase)');
+    expect(route).toContain('snapshotForRevision(key');
+    expect(route).toContain("revision ?? 'no-version'");
   });
 });
 

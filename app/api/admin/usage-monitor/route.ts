@@ -51,7 +51,7 @@ async function fetchAuthUsers(): Promise<MonitorUser[]> {
 }
 
 export async function GET(request: Request) {
-  const admin = await requireAdminPermission('manage_users');
+  const admin = await requireAdminPermission('view_usage');
   if (!admin) return NextResponse.json({ error: '无权查看用户使用监控' }, { status: 403 });
 
   const requested = Number(new URL(request.url).searchParams.get('days'));

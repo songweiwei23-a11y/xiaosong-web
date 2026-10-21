@@ -15,7 +15,7 @@ import { basisText, emptyEvidence, readStoredItems, settle, type PreferenceItem 
 import { compareControl, MIN_SAMPLE_PER_SIDE } from '@/lib/learning-stats';
 
 const env = vi.hoisted(() => ({ db: null as any, userId: 'u1', ask: null as any, admin: null as any }));
-vi.mock('@/lib/admin-auth', () => ({ getServiceSupabase: () => env.db, requireAdmin: async () => env.admin }));
+vi.mock('@/lib/admin-auth', () => ({ getServiceSupabase: () => env.db, requireAdmin: async () => env.admin, requireAdminPermission: async () => env.admin }));
 vi.mock('@/lib/dify-task', () => ({ askDify: (...a: unknown[]) => env.ask(...a), sseTask: () => new Response('') }));
 
 const U1 = '11111111-1111-4111-8111-111111111111';

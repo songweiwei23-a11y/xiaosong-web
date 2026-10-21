@@ -1,4 +1,4 @@
-import { requireAdmin, requireAdminPermission } from '@/lib/admin-auth';
+import { requireAdminPermission } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { readJsonBody } from '@/lib/read-body';
 import { aliSearch, SEARCH_FAILURE_TEXT } from '@/lib/ali-search';
@@ -7,7 +7,7 @@ import { DEFAULT_SEARCH_ENDPOINT, saveSearchConfig, searchConfigStatus, validApi
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store' };
 export async function GET() {
-  if (!(await requireAdmin())) return Response.json({ error: '需要管理员权限' }, { status: 403 });
+  if (!(await requireAdminPermission('manage_secrets'))) return Response.json({ error: '需要管理员权限' }, { status: 403 });
   return Response.json(await searchConfigStatus(), { headers });
 }
 export async function POST(request: Request) {

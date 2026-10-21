@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { dayWindows, startOfBeijingDay, sumAmounts } from '@/lib/admin-overview';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * 质检、反馈两张表可能还没建：没建时对应项返回 null，页面写明「未启用」，不显示成 0。
  */
 export async function GET() {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_dashboard');
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
 
   const db = getServiceSupabase();

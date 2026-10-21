@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireAdmin, requireAdminPermission } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions, ACTION_LABELS } from '@/lib/admin-logger';
 import { generateTempPassword } from '@/lib/password';
 import { COUNTED_FEATURES, sumCountedUsage } from '@/lib/config/plans';
@@ -55,7 +55,7 @@ async function setSubscriptionStatus(userId: string, status: 'active' | 'inactiv
  */
 export async function GET(request: Request) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAdminPermission('view_users');
     if (!admin) {
       return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     }

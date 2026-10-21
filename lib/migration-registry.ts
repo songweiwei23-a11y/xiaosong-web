@@ -332,6 +332,16 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [],
   },
   {
+    file: "20261022_ops_indexes.sql",
+    tables: [],
+    columns: [],
+  },
+  {
+    file: "20261022_order_claims.sql",
+    tables: [],
+    columns: [{"table":"payment_orders","column":"claim_lease_until"},{"table":"payment_orders","column":"claimed_at"},{"table":"payment_orders","column":"claimed_by"}],
+  },
+  {
     file: "admin_logs.sql",
     tables: ["admin_logs"],
     columns: [],

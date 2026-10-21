@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth'
+import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth'
 import { summarizeQuality, type QualityRow } from '@/lib/quality-checks'
 
 export const dynamic = 'force-dynamic'
 
 /** 后台质检看板：近 N 天（默认 7）的体检记录汇总（lib/quality-checks 的 summarizeQuality） */
 export async function GET(request: Request) {
-  const admin = await requireAdmin()
+  const admin = await requireAdminPermission('view_quality')
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 })
   const days = Math.min(30, Math.max(1, Number(new URL(request.url).searchParams.get('days')) || 7))
   const since = new Date(Date.now() - days * 864e5).toISOString()

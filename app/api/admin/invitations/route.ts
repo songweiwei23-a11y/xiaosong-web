@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
+import { requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
+import { adminWriteLimited } from '@/lib/admin-rate';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import { generateInvitationCode } from '@/lib/invitation-code';
@@ -24,7 +25,7 @@ function withComputedStatus<T extends { status: string; expires_at: string | nul
 }
 
 export async function GET(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('manage_invitations');
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
 
   const supabase = getServiceSupabase();
@@ -81,6 +82,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const admin = await requireAdminPermission('manage_invitations');
   if (!admin) return NextResponse.json({ error: '无权生成邀请码' }, { status: 403 });
+  if (adminWriteLimited(admin.userId)) return NextResponse.json({ error: '操作太频繁，请稍后再试' }, { status: 429 });
 
   const body = await request.json();
   const countRaw = Number(body.count);
@@ -150,6 +152,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const admin = await requireAdminPermission('manage_invitations');
   if (!admin) return NextResponse.json({ error: '无权作废邀请码' }, { status: 403 });
+  if (adminWriteLimited(admin.userId)) return NextResponse.json({ error: '操作太频繁，请稍后再试' }, { status: 429 });
 
   const { id, ids, action } = await request.json();
   const targets: string[] = ids ?? (id ? [id] : []);

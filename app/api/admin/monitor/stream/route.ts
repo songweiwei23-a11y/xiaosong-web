@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireAdminPermission } from '@/lib/admin-auth';
 import { monitorSignalBus } from '@/lib/admin-monitor-signal';
 
 export const dynamic = 'force-dynamic';
@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_monitor');
   if (!admin) return Response.json({ error: '需要管理员权限' }, { status: 403 });
   const encoder = new TextEncoder();
   let cleanup = () => {};
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       });
       if (closed) { unsubscribe(); return; }
       // 即使没人操作也校验在线状态、日界线和“最近一小时”的移动窗口。
-      heartbeat = setInterval(() => send('state', { mode, error: lastError }), 5000);
+      heartbeat = setInterval(() => send('state', { mode, error: lastError }), 1000);
       send('state', { mode, error: lastError });
       expiry = setTimeout(cleanup, 55_000); // 重连重新鉴权，撤销管理员权限最多保留这一小段连接
       request.signal.addEventListener('abort', cleanup, { once: true });

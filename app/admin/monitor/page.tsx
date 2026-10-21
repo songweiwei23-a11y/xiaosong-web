@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Activity, Bell, BellOff, Users, Zap, Wallet, AlertTriangle, Wifi, WifiOff, TrendingUp, Eye, EyeOff, X } from "lucide-react";
-import { soundFor, newEventsSince, rememberSeen, maskEmail, ONLINE_WINDOW_MIN, ACTIVE_WINDOW_HOURS, type MonitorEvent, type ActiveUser } from "@/lib/monitor";
+import { soundFor, newEventsSince, rememberSeen, maskEmail, ACTIVE_WINDOW_HOURS, EVENT_LIMIT, type MonitorEvent, type ActiveUser } from "@/lib/monitor";
+import { PRESENCE_ONLINE_MS } from "@/lib/presence";
 import { useMonitorQuery, useRealtimeMonitor } from '@/hooks/useRealtimeMonitor';
 import { scheduleSound, createOutput, DEFAULT_VOLUME, type SoundKind } from "@/lib/monitor-sound";
 import { useLocalPref } from "@/lib/local-pref";
@@ -33,7 +34,24 @@ type Snapshot = {
   pulse: number[];
   byFeature: { name: string; count: number }[];
   events: MonitorEvent[];
+  /** 系统状态：服务器版本、数据库延迟、快照耗时、助理进行中、旧版本页面在线 */
+  status?: {
+    build: string;
+    uptimeSec: number;
+    dbLatencyMs: number;
+    snapshotMs: number;
+    assistantRunning: number;
+    staleOnline: number;
+    serverNow: string;
+  };
 };
+
+/** 运行时长：几小时几分（不到一小时只显示分钟） */
+function uptimeText(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h} 小时 ${m} 分` : `${m} 分`;
+}
 
 /** 用 Web Audio 合成提示音，不引入任何音频文件 */
 const VOLUME_KEY = "kaiwu-monitor-volume";
@@ -327,7 +345,7 @@ export default function MonitorPage() {
         {/* KPI */}
         <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi icon={Users} label="正在用" value={snap?.onlineCount ?? 0}
-               hint={`${ONLINE_WINDOW_MIN} 分钟内有操作 · ${ACTIVE_WINDOW_HOURS} 小时内 ${snap?.active.length ?? 0} 人`} tone="cyan" />
+               hint={`工作台里 ${PRESENCE_ONLINE_MS / 1000} 秒内有心跳 · ${ACTIVE_WINDOW_HOURS} 小时内 ${snap?.active.length ?? 0} 人`} tone="cyan" />
           <Kpi icon={Zap} label="今日生成" value={snap?.today.generations ?? 0}
                hint={`累计 ${snap?.totals.generations ?? 0} 次`} tone="violet" />
           <Kpi icon={TrendingUp} label="今日新注册" value={snap?.today.newUsers ?? 0}
@@ -462,7 +480,7 @@ export default function MonitorPage() {
           <Panel
             title={`最近活跃用户（${snap?.active.length ?? 0}）`}
             icon={Wifi}
-            right={<span className="text-[11px] text-muted-foreground">{ACTIVE_WINDOW_HOURS} 小时内 · 点一个人只看他的动态</span>}
+            right={<span className="text-[11px] text-muted-foreground">心跳 · 接口请求 · 登录 · 生成 · 使用记录，{ACTIVE_WINDOW_HOURS} 小时内</span>}
           >
             {(snap?.active ?? []).length === 0 ? (
               <EmptyBox text={`${ACTIVE_WINDOW_HOURS} 小时内没有人用过`} height={120} />
@@ -495,7 +513,7 @@ export default function MonitorPage() {
                   <X className="h-3 w-3 shrink-0" />
                 </button>
               ) : (
-                <span className="text-[11px] text-muted-foreground">谁 · 哪个档案 · 输入了什么 · 生成了什么</span>
+                <span className="text-[11px] text-muted-foreground">最近 {EVENT_LIMIT} 条 · 每条都能点「看完整记录」看完整输入和全文</span>
               )
             }
           >
@@ -524,14 +542,20 @@ export default function MonitorPage() {
           而是这些数字散落在各处没人汇总。放成一条等宽的状态带，
           既填了版面，也回答了"整体什么情况"这个问题。
         */}
-        <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-primary/15 bg-primary/10 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-primary/15 bg-primary/10 sm:grid-cols-5 lg:grid-cols-5">
           {[
             { k: "数据链路", v: live ? mode === 'realtime' ? '实时推送' : '秒级更新' : "中断", ok: live },
             { k: "刷新间隔", v: mode === 'realtime' ? '变更即刷新' : '1 秒', ok: live },
-            { k: "声音提醒", v: sound.enabled ? "已开" : "未开", ok: sound.enabled },
+            { k: "数据库延迟", v: snap?.status ? `${snap.status.dbLatencyMs} ms` : "--", ok: (snap?.status?.dbLatencyMs ?? 0) < 1000 },
+            { k: "快照耗时", v: snap?.status ? `${snap.status.snapshotMs} ms` : "--", ok: (snap?.status?.snapshotMs ?? 0) < 2000 },
+            { k: "助理进行中", v: String(snap?.status?.assistantRunning ?? 0), ok: true },
+            { k: "旧版本在线", v: String(snap?.status?.staleOnline ?? 0), ok: (snap?.status?.staleOnline ?? 0) === 0 },
+            { k: "运行时长", v: snap?.status ? uptimeText(snap.status.uptimeSec) : "--", ok: true },
+            { k: "服务版本", v: snap?.status ? snap.status.build.slice(-8) : "--", ok: true },
             { k: "待审订单", v: String(snap?.totals.pendingReview ?? 0), ok: (snap?.totals.pendingReview ?? 0) === 0 },
             { k: "待付款", v: String(snap?.totals.pendingPay ?? 0), ok: true },
             { k: "累计生成", v: String(snap?.totals.generations ?? 0), ok: true },
+            { k: "声音提醒", v: sound.enabled ? "已开" : "未开", ok: sound.enabled },
           ].map((x) => (
             <div key={x.k} className="bg-card px-4 py-3">
               <div className="text-[10.5px] tracking-[0.16em] text-muted-foreground">{x.k}</div>

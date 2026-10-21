@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 const STATUSES = ['pending', 'reviewing', 'approved', 'rejected'] as const;
 
 export async function GET(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_orders');
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
 
   const sp = new URL(request.url).searchParams;
@@ -89,6 +89,8 @@ export async function GET(request: Request) {
         ...o,
         user_email: emailById.get(o.user_id) || '（用户已注销）',
         proof_image_url: proofUrl,
+        // 是不是当前管理员认领的（认领列没迁移时字段为空，这里就是 false）
+        claimed_by_me: o.claimed_by === admin.userId,
       };
     })
   );

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/admin-auth';
+import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { ACTION_LABELS, AdminActions, SENSITIVE_ACTIONS, logAdminAction, logTargetUserId } from '@/lib/admin-logger';
 import { emailsByIds } from '@/lib/admin-users';
 import { toCsv } from '@/lib/csv';
@@ -32,7 +32,7 @@ function dayEndExclusive(s: string | null): string | null {
 }
 
 export async function GET(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('view_logs');
   if (!admin) return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
 
   const sp = new URL(request.url).searchParams;

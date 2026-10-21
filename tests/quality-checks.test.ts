@@ -113,7 +113,7 @@ describe('每晚回归', () => {
     expect(route).toMatch(/secret\.length < 16/);
     expect(route).toMatch(/timingSafeEqual/);
     // 暗号判断在前（定时任务同步跑完）；管理员判断在后（手动运行改为后台执行）
-    expect(route).toMatch(/if \(cronAuthorized\(request\)\)[\s\S]{0,1200}requireAdmin\(\)/);
+    expect(route).toMatch(/if \(cronAuthorized\(request\)\)[\s\S]{0,1200}requireAdminPermission\('manage_quality'\)/);
     expect(route).toContain('无权运行');
   });
 });

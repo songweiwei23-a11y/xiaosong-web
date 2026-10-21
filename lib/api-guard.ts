@@ -7,6 +7,7 @@ import { apiGateBlocked } from '@/lib/gate-tickets';
 import { costOfFeature } from '@/lib/config/count-packs';
 import { countPackBalance } from '@/lib/count-pack';
 import { SITE_GATE_COOKIE } from '@/lib/site-gate';
+import { markActive } from '@/lib/presence';
 
 export interface GuardResult {
   ok: boolean;
@@ -61,6 +62,8 @@ async function checkCurrentUser(): Promise<GuardResult> {
         ),
       };
     }
+    // 登录用户的每次接口请求都算在用（大屏「正在用」「最近活跃」靠它，不只靠心跳）
+    markActive(user.id);
     return { ok: true, userId: user.id };
   } catch (error) {
     return authFailure(error);

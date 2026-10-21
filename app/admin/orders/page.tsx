@@ -24,6 +24,10 @@ interface Order {
   created_at: string;
   proof_uploaded_at?: string | null;
   reviewed_at?: string | null;
+  // 认领（P1-3，需要迁移 20261022_order_claims.sql）
+  claimed_by?: string | null;
+  claim_lease_until?: string | null;
+  claimed_by_me?: boolean;
 }
 
 type Counts = Record<string, number>;
@@ -89,6 +93,22 @@ export default function AdminOrdersPage() {
       setLoading(false);
     }
   }, [tab, q, from, to, page]);
+
+  /** 认领 / 释放认领（P1-3）。接口没成功时把它的说明告诉管理员 */
+  const claimOrder = async (orderId: string, action: "claim" | "release") => {
+    const res = await fetch("/api/admin/orders/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, action }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      notify(data.error || "认领没有成功", "warning");
+      return;
+    }
+    notify(data.message || "已更新认领", "success");
+    load();
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -202,6 +222,22 @@ export default function AdminOrdersPage() {
           )}
           {o.status === "reviewing" && (
             <>
+              {/* 认领（P1-3）：认领后 15 分钟内只有认领的人能审；别人认领的不能审。
+                  只有认领列已经迁移（订单里带 claimed_by 字段）时才显示，没迁移就不出现这些按钮 */}
+              {"claimed_by" in o && (
+                <>
+                  {o.claimed_by && o.claim_lease_until && new Date(o.claim_lease_until).getTime() > Date.now() ? (
+                    <span className="self-center text-[11.5px] text-muted-foreground">
+                      {o.claimed_by_me ? "你已认领" : "已被他人认领"}
+                    </span>
+                  ) : (
+                    <Button size="sm" variant="default" onClick={() => void claimOrder(o.id, "claim")}>认领</Button>
+                  )}
+                  {o.claimed_by_me && (
+                    <Button size="sm" variant="default" onClick={() => void claimOrder(o.id, "release")}>释放</Button>
+                  )}
+                </>
+              )}
               <Button size="sm" variant="primary" onClick={() => { setReview({ order: o, action: "approve" }); setNote(""); }}>通过</Button>
               <Button size="sm" variant="danger" onClick={() => { setReview({ order: o, action: "reject" }); setNote(""); }}>驳回</Button>
             </>

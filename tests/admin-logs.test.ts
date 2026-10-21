@@ -51,7 +51,7 @@ describe('操作日志', () => {
 
   it('接口要求管理员权限', () => {
     const route = readCode('app/api/admin/logs/route.ts');
-    const guard = route.indexOf('requireAdmin()');
+    const guard = route.indexOf("requireAdminPermission('view_logs')");
     const query = route.indexOf(".from('admin_logs')");
     expect(guard).toBeGreaterThan(0);
     expect(guard, '权限检查必须在查日志之前').toBeLessThan(query);

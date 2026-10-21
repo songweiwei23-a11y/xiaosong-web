@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state=vi.hoisted(()=>({admin:vi.fn(),rpc:vi.fn(),from:vi.fn(),service:vi.fn(),select:vi.fn()}));
-vi.mock('@/lib/admin-auth',()=>({requireAdmin:()=>state.admin(),getServiceSupabase:()=>{state.service();return {rpc:state.rpc,from:state.from};}}));
+vi.mock('@/lib/admin-auth',()=>({requireAdmin:()=>state.admin(),requireAdminPermission:()=>state.admin(),getServiceSupabase:()=>{state.service();return {rpc:state.rpc,from:state.from};}}));
 import { GET,POST } from '@/app/api/admin/quota/reconcile/route';
 const owner='11111111-1111-4111-8111-111111111111';
 const request=(body:unknown)=>new Request('http://localhost/api/admin/quota/reconcile',{method:'POST',body:JSON.stringify(body)});

@@ -13,6 +13,7 @@ import { GuideChip } from '@/components/guide/GuideChip';
 import { AssistantWidget } from '@/components/assistant/AssistantWidget';
 import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate';
 import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
+import { PresenceBeat } from '@/components/dashboard/PresenceBeat';
 
 function TopBar() {
   const { toggle } = useSidebar();
@@ -74,6 +75,8 @@ export default function DashboardLayout({
           <AssistantWidget />
           {/* 连接保活：闲几分钟后线路掐掉空闲连接，再点保存、带去下一步就发不出去 */}
           <ConnectionKeepAlive />
+          {/* 在线心跳：后台「实时监控」里的在线人数靠它（见 lib/presence） */}
+          <PresenceBeat />
         </div>
       </div>
       </TopBarSlotProvider>

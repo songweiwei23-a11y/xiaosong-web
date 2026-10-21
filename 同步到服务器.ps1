@@ -237,7 +237,7 @@ Write-Host "  在服务器上构建（后台执行，不受连接中断影响）
   标记对不上 = 这次构建根本没起来，直接报错，绝不往下走。
 #>
 $buildTag = "BUILD_" + (Get-Date -Format "yyyyMMddHHmmss")
-$buildCmd = "cd $serverPath; rm -f /tmp/build.log; echo $buildTag > /tmp/build.log; NODE_OPTIONS=--max-old-space-size=1400 nohup npm run build >> /tmp/build.log 2>&1 & echo BUILD_STARTED"
+$buildCmd = "cd $serverPath; rm -f /tmp/build.log; echo $buildTag > /tmp/build.log; NEXT_PUBLIC_APP_BUILD=$buildTag NODE_OPTIONS=--max-old-space-size=1400 nohup npm run build >> /tmp/build.log 2>&1 & echo BUILD_STARTED"
 $startOut = (ssh -i "$sshKey" ${serverUser}@${serverIP} $buildCmd | Out-String)
 if ($startOut -notmatch "BUILD_STARTED") {
     Write-Host "  构建命令没能在服务器上启动，线上仍是旧版本" -ForegroundColor Red
