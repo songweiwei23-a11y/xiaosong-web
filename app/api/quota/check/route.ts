@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/api-guard';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { getPlan, COUNTED_FEATURES, sumCountedUsage, judgeQuota, effectivePlanId, quotaRollover } from '@/lib/config/plans';
 import { monthStartShanghai } from '@/lib/usage-month';
+import { countPackBalance } from '@/lib/count-pack';
 
 /**
  * 本月（北京时间自然月）实际生成了几次。
@@ -49,7 +50,7 @@ export async function GET() {
      * 套餐、额度和本月实际用量互不依赖，同时查询。
      * 月用量不必等前两条返回，避免首页额外等待一次数据库往返。
      */
-    const [{ data: subscription }, { data: quota }, monthUsed] = await Promise.all([
+    const [{ data: subscription }, { data: quota }, monthUsed, packCredits] = await Promise.all([
       supabase
         .from('subscriptions')
         .select('plan, status, end_date')
@@ -61,6 +62,8 @@ export async function GET() {
         .eq('user_id', userId)
         .maybeSingle(),
       countMonthUsage(supabase, userId),
+      // 次数包余额（不可读时为 null，前端不显示，不假装是 0）
+      countPackBalance(userId).catch(() => null),
     ]);
 
     // 与 api-guard 共用同一份到期判定，两边不能各写各的
@@ -77,7 +80,7 @@ export async function GET() {
       monthUsed,
     };
 
-    if (!quota) return NextResponse.json(empty);
+    if (!quota) return NextResponse.json({ ...empty, packCredits });
 
     /*
      * 换期按服务端同一个规则在内存里套一遍（不写库，写库归 api-guard）。
@@ -102,6 +105,7 @@ export async function GET() {
           totalUsed,
           monthUsed,
           totalLimit: 0, // 0 表示不限量，前端只显示用量
+          packCredits,
         });
       }
 
@@ -128,6 +132,7 @@ export async function GET() {
         totalUsed,
         monthUsed,
         totalLimit: plan.totalQuota,
+        packCredits,
       });
     }
 
@@ -194,6 +199,7 @@ export async function GET() {
        */
       totalLimit: 0,
       tightest,
+      packCredits,
     });
   } catch (error: any) {
     console.error('[quota/check] 查询失败:', error);

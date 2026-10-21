@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Crown, Zap, Shield, Star } from "lucide-react";
 import { SUBSCRIPTION_PLANS, quotaSummary, unsupportedFeatures, planSellingPoints, PAID_PERIOD_NOTE } from "@/lib/config/plans";
+import { CountPackHero, countPackOpen } from "@/components/quota/CountPackPanel";
+import { PurchaseKindSwitch, type PurchaseKind } from "@/components/quota/PurchaseKindSwitch";
 import { SUPPORT_WECHAT } from "@/lib/config/contact";
 import { WebSearchQuota } from '@/components/chat/WebSearchQuota';
 
@@ -98,6 +100,11 @@ export default function MembershipPage() {
   }, []);
   const currentPlan = status?.planId ?? null;
 
+  // 顶部切换：「包月会员 / 次数包」。销售关闭时没有次数包标签，只显示套餐
+  const packOpen = countPackOpen();
+  const [tab, setTab] = useState<PurchaseKind>("plans");
+  const showPlans = tab === "plans" || !packOpen;
+
   const handleUpgrade = (planId: string) => {
     // 免费版不用买；当前的付费套餐可以点——那是续费。
     // 续费从原到期日往后顺延，不会吞掉剩余天数（见 activationPlan）
@@ -153,7 +160,11 @@ export default function MembershipPage() {
         <div className="mt-3"><WebSearchQuota /></div>
       </div>
 
+      {/* 两类购买方式：包月会员 / 次数包（毛玻璃卡片，见 PurchaseKindSwitch）。销售关闭时不显示 */}
+      <PurchaseKindSwitch value={tab} onChange={setTab} />
+
       {/* 会员套餐卡片 */}
+      {showPlans && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {membershipPlans.map((plan) => {
           const Icon = plan.icon;
@@ -262,6 +273,15 @@ export default function MembershipPage() {
           );
         })}
       </div>
+
+      )}
+
+      {/* 次数包大卡片：只在「次数包」标签下显示；销售关闭时 countPackOpen 为假，不出现 */}
+      {tab === "pack" && packOpen && (
+        <div className="mx-auto max-w-4xl">
+          <CountPackHero />
+        </div>
+      )}
 
       {/* 常见问题 */}
       <div className="mt-10 sm:mt-16 bg-muted rounded-2xl p-5 sm:p-8">

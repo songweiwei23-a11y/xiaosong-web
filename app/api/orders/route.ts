@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
 import { getServerSupabase } from '@/lib/admin-auth';
 import { getPlan, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
+import { countPackById, countPackPurchaseBlock, isCountPackId } from '@/lib/config/count-packs';
+import { countApprovedPackOrders } from '@/lib/count-pack';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +58,11 @@ export async function POST(request: Request) {
   const cycle = 'monthly';
   const method = body.paymentMethod === 'wechat' ? 'wechat' : 'alipay';
 
+  // 次数包（一次付款买断一批创作次数）走单独的分支：价格和限购都从 lib/config/count-packs.ts 读
+  if (isCountPackId(planId)) {
+    return createCountPackOrder(guard.userId!, planId, method);
+  }
+
   if (!(planId in SUBSCRIPTION_PLANS) || planId === 'free') {
     return NextResponse.json({ error: '请选择一个有效的付费套餐' }, { status: 400 });
   }
@@ -108,6 +115,61 @@ export async function POST(request: Request) {
     );
   }
 
+  return NextResponse.json(data);
+}
+
+/**
+ * 次数包下单。销售入口关闭时直接拒绝（COUNT_PACK_SALES_ENABLED = false）。
+ * 价格、次数、限购都由服务端配置决定，前端传来的价格一律不采信。
+ */
+async function createCountPackOrder(userId: string, packId: string, method: 'wechat' | 'alipay') {
+  const block = countPackPurchaseBlock(packId);
+  if (block) {
+    return NextResponse.json({ error: block, code: 'COUNT_PACK_CLOSED' }, { status: 403 });
+  }
+  const pack = countPackById(packId)!;
+
+  let bought: number;
+  try {
+    bought = pack.maxPurchasesPerAccount === null ? 0 : await countApprovedPackOrders(userId, packId);
+  } catch {
+    return NextResponse.json({ error: '次数包限购暂时无法确认，稍后再试' }, { status: 503 });
+  }
+  if (pack.maxPurchasesPerAccount !== null && bought >= pack.maxPurchasesPerAccount) {
+    return NextResponse.json({ error: `这个次数包每个账号最多购买 ${pack.maxPurchasesPerAccount} 次`, code: 'COUNT_PACK_LIMIT' }, { status: 403 });
+  }
+
+  const supabase = await getServerSupabase();
+  // 已有未完成的同款订单就复用，和会员订单一样
+  const { data: existing } = await supabase
+    .from('payment_orders')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('plan_id', packId)
+    .in('status', ['pending', 'reviewing'])
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return NextResponse.json({ ...existing[0], reused: true });
+  }
+
+  const { data, error } = await supabase
+    .from('payment_orders')
+    .insert({
+      user_id: userId,
+      plan_id: packId,
+      plan_name: pack.name,
+      amount: pack.price,
+      billing_cycle: 'pack',
+      payment_method: method,
+      status: 'pending',
+    })
+    .select()
+    .single();
+  if (error) {
+    console.error('[orders] 次数包下单失败:', error.message);
+    return NextResponse.json({ error: '下单失败，稍后再试' }, { status: 500 });
+  }
   return NextResponse.json(data);
 }
 

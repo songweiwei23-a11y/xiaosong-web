@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { COUNTED_FEATURES, SUBSCRIPTION_PLANS, usedColumnOf } from '@/lib/config/plans';
+import { costOfFeature } from '@/lib/config/count-packs';
+import { reserveCountPackCredit, settleCountPackCredit, type CountPackReserveResult } from '@/lib/count-pack';
 
 export interface CreationReservation { userId: string; requestId: string; feature: string }
 export interface CreationCompletion {
@@ -45,13 +47,27 @@ export async function reserveCreation(userId: string, feature: string, request: 
       console.error('[creation-quota] reserve unavailable', error?.code ?? 'empty result');
       return { ok: false, response: quotaUnavailable() };
     }
-    if (!data.allowed) {
-      const duplicate = data.reason === 'duplicate' || data.reason === 'conflict';
-      const status = duplicate ? 409 : data.reason === 'banned' ? 403 : 402;
+    // 会员额度用完（quota）时，若该功能计次数包，改从次数包预留（会员额度优先，次数包兜底）。
+    // 次数包也没有时，才照常返回额度用完。
+    let denied: { allowed: boolean; reason?: string; state?: string; used?: number; limit?: number } = data;
+    const packCost = costOfFeature(feature);
+    if (!data.allowed && data.reason === 'quota' && packCost !== null) {
+      let pack: CountPackReserveResult;
+      try {
+        pack = await reserveCountPackCredit(userId, requestId, feature, fingerprint, packCost);
+      } catch {
+        return { ok: false, response: quotaUnavailable() };
+      }
+      if (pack.allowed) return { ok: true, reservation: { userId, requestId, feature } };
+      if (pack.reason !== 'pack_empty') denied = { allowed: false, reason: pack.reason, state: pack.state };
+    }
+    if (!denied.allowed) {
+      const duplicate = denied.reason === 'duplicate' || denied.reason === 'conflict';
+      const status = duplicate ? 409 : denied.reason === 'banned' ? 403 : 402;
       return { ok: false, response: Response.json({
-        error: duplicate ? '这次生成已提交，请查看原来的结果；重新生成请发起新的操作' : data.reason === 'banned' ? '您的账户已被封禁，请联系管理员' : '本期创作额度已用完或正在生成中，请稍后查看结果或升级会员',
+        error: duplicate ? '这次生成已提交，请查看原来的结果；重新生成请发起新的操作' : denied.reason === 'banned' ? '您的账户已被封禁，请联系管理员' : '本期创作额度已用完或正在生成中，请稍后查看结果或升级会员',
         code: duplicate ? 'GENERATION_ALREADY_SUBMITTED' : 'QUOTA_EXHAUSTED', feature,
-        requestId, state: data.state, used: data.used, limit: data.limit,
+        requestId, state: denied.state, used: denied.used, limit: denied.limit,
       }, { status, headers: { 'Cache-Control': 'no-store' } }) };
     }
     return { ok: true, reservation: { userId, requestId, feature } };
@@ -70,7 +86,13 @@ export async function settleCreation(reservation: CreationReservation, success: 
         p_success: success, p_task_type: taskType ?? null, p_detail: detail ?? null,
       });
       if (!error && data?.settled) return;
-      lastError = error?.code ?? 'reservation not settled';
+      // 会员额度里找不到这条预留：可能是次数包预留（见 lib/count-pack），改试次数包结算
+      if (!error && data && data.settled === false) {
+        if (await settleCountPackCredit(reservation.userId, reservation.requestId, success, taskType, detail)) return;
+        lastError = 'reservation not settled';
+      } else {
+        lastError = error?.code ?? 'reservation not settled';
+      }
     } catch (error) { lastError = error; }
   }
   console.error('[creation-quota] settlement unavailable', lastError instanceof Error ? lastError.name : lastError);

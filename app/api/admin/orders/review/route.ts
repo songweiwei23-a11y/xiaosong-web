@@ -4,6 +4,8 @@ import { requireAdminPermission } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, activationPlan } from '@/lib/config/plans';
 import { approveViaRpc } from '@/lib/order-approval';
+import { countPackById, countPackExpiry, isCountPackId } from '@/lib/config/count-packs';
+import { approveCountPackOrder } from '@/lib/count-pack';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,6 +66,46 @@ export async function POST(request: Request) {
      * 不是任何一个合法套餐，写进 subscriptions 之后 getPlan() 会兜底成
      * 免费版：用户付了钱，权益一点没涨，而且没有任何报错。
      */
+    // 次数包订单：只发放次数，不动会员。订单状态和发放在同一个事务里（见 admin_approve_count_pack_order）
+    if (isCountPackId(order.plan_id)) {
+      const pack = countPackById(order.plan_id);
+      if (approved && !pack) {
+        return NextResponse.json({ error: `这个次数包的配置已下架或不存在（${order.plan_id}），无法发放，请技术处理` }, { status: 400 });
+      }
+      const result = await approveCountPackOrder({
+        orderId,
+        adminId: admin.userId,
+        approved: !!approved,
+        note: note ? String(note).trim() || null : null,
+        credits: pack?.credits ?? 0,
+        validUntil: approved && pack ? countPackExpiry(pack, new Date()) : null,
+        now,
+      });
+      if (result.kind === 'missing') {
+        return NextResponse.json({ error: '次数包的数据库函数还没有执行，暂时无法审核，请先执行迁移', stage: 'migration' }, { status: 503 });
+      }
+      if (result.kind === 'error') {
+        if (/order_not_reviewing/.test(result.message)) {
+          return NextResponse.json({ error: '这个订单刚被处理过，请刷新看最新状态' }, { status: 409 });
+        }
+        if (/order_not_found/.test(result.message)) return NextResponse.json({ error: '订单不存在' }, { status: 404 });
+        console.error('[admin/orders/review] 次数包审核失败，已整体回滚:', result.message);
+        return NextResponse.json({ error: `审核失败，订单和次数都没有改动，请重试：${result.message}` }, { status: 500 });
+      }
+      await logAdminAction({
+        admin_id: admin.userId,
+        action: approved ? AdminActions.APPROVE_ORDER : AdminActions.REJECT_ORDER,
+        target_type: 'order',
+        target_id: orderId,
+        details: { plan: order.plan_id, plan_name: order.plan_name, kind: 'count_pack', credits: result.credits, note },
+      });
+      return NextResponse.json({
+        success: true,
+        message: approved ? `次数包已发放（${result.credits} 次）` : '订单已拒绝',
+        data: { orderId, status: result.status, credits: result.credits },
+      });
+    }
+
     const planId = order.plan_id;
     if (approved && (!planId || !(planId in SUBSCRIPTION_PLANS))) {
       console.error('[admin/orders/review] 订单上的套餐 id 非法:', planId);

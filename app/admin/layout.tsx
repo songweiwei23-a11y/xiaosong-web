@@ -7,7 +7,7 @@ import { FloatingThemeToggle } from "@/components/theme/FloatingThemeToggle";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
-  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe, Lock, Database,
+  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe, Lock, Database, Activity,
 } from "lucide-react";
 
 /*
@@ -33,6 +33,8 @@ const navGroups: {
       { name: "用户管理", href: "/admin/users", icon: UserCog },
       { name: "会员管理", href: "/admin/subscriptions", icon: Users },
       { name: "邀请码", href: "/admin/invitations", icon: Ticket },
+      // 使用监控（2026-10-20）：所有用户的使用频率、次数、token 与额度消耗、五维四率
+      { name: "使用监控", href: "/admin/usage-monitor", icon: Activity },
     ],
   },
   {

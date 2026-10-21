@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>尝鲜次数包 · 展示方案对比</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #070b14; color: #e6ebf5; font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 36px 20px 80px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  .lead { color: #8b97ab; margin: 0 0 28px; font-size: 14px; }
+  h2 { font-size: 18px; margin: 44px 0 4px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
+  .frame { margin: 26px 0 36px; }
+  .label { font-size: 13px; color: #8b97ab; margin-bottom: 10px; }
+  .label b { color: #e6ebf5; font-size: 15px; margin-right: 8px; }
+  .screen { background: linear-gradient(180deg, #0d1424, #0a101d); border: 1px solid rgba(255,255,255,.08); border-radius: 18px; padding: 22px; }
+  .glass { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; }
+  .btn { background: linear-gradient(135deg, #5b8cff, #38bdf8); color: #fff; border: 0; border-radius: 12px; padding: 10px 18px; font-weight: 600; font-size: 14px; cursor: default; white-space: nowrap; }
+  .btn.ghost { background: rgba(255,255,255,.06); color: #e6ebf5; border: 1px solid rgba(255,255,255,.12); }
+  .muted { color: #8b97ab; }
+  .small { font-size: 12px; }
+  .chip { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: rgba(91,140,255,.14); color: #9db9ff; margin: 0 6px 6px 0; }
+  .price { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+  .note { font-size: 13px; color: #8b97ab; margin-top: 12px; line-height: 1.75; }
+  .note b { color: #cfd8ea; }
+
+  /* 会员中心 */
+  .seg { display: inline-flex; padding: 4px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); margin-bottom: 18px; }
+  .seg span { padding: 8px 16px; border-radius: 10px; font-size: 14px; color: #8b97ab; }
+  .seg span.on { background: rgba(255,255,255,.1); color: #e6ebf5; }
+  .hero { display: flex; gap: 20px; justify-content: space-between; align-items: center; padding: 22px; flex-wrap: wrap; }
+  .hero h3 { margin: 6px 0 6px; font-size: 22px; }
+  .hero .right { text-align: right; }
+  .plans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+  .plans .glass { padding: 14px; }
+  .plans .n { font-size: 14px; font-weight: 600; }
+  .plans .p { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .strip { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 16px 20px; margin-top: 14px; border-color: rgba(91,140,255,.35); }
+  .strip .sep { width: 1px; height: 34px; background: rgba(255,255,255,.12); }
+  .strip .m { font-size: 13px; color: #cfd8ea; }
+  .strip .m small { display: block; color: #8b97ab; font-size: 11.5px; }
+  .banner { padding: 22px 24px; background: linear-gradient(120deg, rgba(91,140,255,.2), rgba(56,189,248,.08)); border-color: rgba(91,140,255,.35); display: flex; justify-content: space-between; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .banner h3 { margin: 0 0 4px; font-size: 20px; }
+
+  /* 首页 */
+  .home { display: grid; grid-template-columns: 1fr 300px; gap: 18px; }
+  .main { min-height: 230px; }
+  .main .bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.06); margin: 12px 0; }
+  .main .bar.s { width: 62%; }
+  .aside .glass { padding: 16px; }
+  .aside .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; }
+  .track { height: 6px; border-radius: 6px; background: rgba(255,255,255,.08); margin-top: 6px; overflow: hidden; }
+  .track i { display: block; height: 100%; background: #5b8cff; border-radius: 6px; }
+  .divider { border-top: 1px solid rgba(255,255,255,.08); margin: 14px 0; }
+  .packrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .ring { width: 64px; height: 64px; flex: 0 0 64px; }
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) {
+    .plans { grid-template-columns: 1fr 1fr; }
+    .home { grid-template-columns: 1fr; }
+    .twocol { grid-template-columns: 1fr; }
+    .hero .right { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>尝鲜次数包 · 展示方案对比</h1>
+  <p class="lead">会员中心 3 个方案、首页 3 个方案。画面里的数字来自现在的配置（19.9 元、20 次、12 个月有效、不限购）；文案是示意，正式文案可以再改。选定后我按它落地，并把侧边栏里的次数包一并保持撤掉。</p>
+
+  <h2>一、会员中心</h2>
+
+  <div class="frame">
+    <div class="label"><b>会员中心 · 方案 1</b>顶部切换：「包月会员 / 次数包」两个页签</div>
+    <div class="screen">
+      <div class="seg"><span>包月会员</span><span class="on">次数包 ¥19.9</span></div>
+      <div class="glass hero">
+        <div style="flex:1 1 360px">
+          <span class="chip">不限购 · 用完可再买</span>
+          <h3>尝鲜次数包</h3>
+          <p class="muted" style="margin:0">一次付款，获得 20 次创作额度。会员额度用完后自动使用，12 个月内有效，到期未用完的次数作废。</p>
+          <div style="margin-top:12px"><span class="chip">20 次</span><span class="chip">12 个月有效</span><span class="chip">会员额度优先</span></div>
+        </div>
+        <div class="right">
+          <div class="price">¥19.9</div>
+          <div class="muted small" style="margin:4px 0 12px">当前余额 0 次</div>
+          <button class="btn">购买次数包</button>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>怎么用：</b>页签切换，次数包和会员套餐互不挤占版面。<br><b>优点：</b>页面最干净，次数包可以讲得很清楚。<br><b>代价：</b>用户要多点一次才看得到次数包，容易被忽略。</p>
+  </div>
+
+  <div class="frame">
+    <div class="label"><b>会员中心 · 方案 2</b>套餐卡片下方的一条「对比条」</div>
+    <div class="screen">
+      <div class="plans">
+        <div class="glass"><div class="n">基础会员</div><div class="p">¥49</div><div class="muted small">月付</div></div>
+        <div class="glass"><div class="n">专业会员</div><div class="p">¥99</div><div class="muted small">月付</div></div>
+        <div class="glass"><div class="n">高频会员</div><div class="p">¥199</div><div class="muted small">月付</div></div>
+        <div class="glass"><div class="n">免费版</div><div class="p">免费</div><div class="muted small">一次性体验</div></div>
+      </div>
+      <div class="glass strip">
+        <div class="m"><span style="color:#9db9ff">尝鲜次数包</span><small>一次付款</small></div>
+        <div class="sep"></div>
+        <div class="m">20 次创作<small>会员额度用完后自动用</small></div>
+        <div class="sep"></div>
+        <div class="m">12 个月有效<small>到期未用完的次数作废</small></div>
+        <div class="sep"></div>
+        <div class="m">不限购<small>用完可以再买</small></div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+          <span class="price" style="font-size:24px">¥19.9</span>
+          <button class="btn">购买</button>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>怎么用：</b>次数包放在套餐下面，像「补充包」，和套餐是两层。<br><b>优点：</b>会员和次数包在同一页，用户一眼能比较。<br><b>代价：</b>一条横向信息较多，窄屏要折行，需要把四项压缩。</p>
+  </div>
+
+  <div class="frame">
+    <div class="label"><b>会员中心 · 方案 3</b>页面顶部的「先试后订」横幅，套餐放在下面</div>
+    <div class="screen">
+      <div class="glass banner">
+        <div style="flex:1 1 380px">
+          <span class="chip">还不确定要不要订阅？</span>
+          <h3>先买一次，试试再决定</h3>
+          <p class="muted" style="margin:0">19.9 元，20 次创作额度。会员额度用完后自动使用，满意再订会员。</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <span class="price">¥19.9</span>
+          <button class="btn">购买次数包</button>
+        </div>
+      </div>
+      <div class="plans">
+        <div class="glass"><div class="n">基础会员</div><div class="p">¥49</div><div class="muted small">月付</div></div>
+        <div class="glass"><div class="n">专业会员</div><div class="p">¥99</div><div class="muted small">月付</div></div>
+        <div class="glass"><div class="n">高频会员</div><div class="p">¥199</div><div class="muted small">月付</div></div>
+        <div class="glass"><div class="n">免费版</div><div class="p">免费</div><div class="muted small">一次性体验</div></div>
+      </div>
+    </div>
+    <p class="note"><b>怎么用：</b>次数包是「入门试用」，放在最显眼的位置，套餐退到第二层。<br><b>优点：</b>最直接，适合「没用过、先试试」的用户，也是这次想做的主要目的。<br><b>代价：</b>会员卡被挤到下面，对已经想订会员的人不够直接。</p>
+  </div>
+
+  <h2>二、首页（右侧额度面板里的展示位）</h2>
+
+  <div class="frame">
+    <div class="label"><b>首页 · 方案 1</b>额度面板内嵌一行（现在的位置，只把它排整齐）</div>
+    <div class="screen">
+      <div class="home">
+        <div class="main glass" style="padding:18px"><div class="muted small">首页主区（作品、最近生成等，示意）</div><div class="bar"></div><div class="bar s"></div><div class="bar"></div></div>
+        <div class="aside">
+          <div class="glass" style="padding:16px">
+            <div class="row"><span class="muted">本月已用</span><span style="font-size:20px;font-weight:600">12 <span class="muted small">次</span></span></div>
+            <div class="row" style="margin-top:12px"><span class="muted">脚本生成</span><span>还剩 3 次</span></div>
+            <div class="track"><i style="width:78%"></i></div>
+            <div class="divider"></div>
+            <div class="packrow">
+              <div><div class="small" style="font-weight:600">尝鲜次数包</div><div class="muted small">余额 0 次 · 可再买</div></div>
+              <button class="btn" style="padding:7px 12px;font-size:12.5px">购买 ¥19.9</button>
+            </div>
+            <div class="divider"></div>
+            <div class="row"><span class="muted">高频会员</span><span style="color:#9db9ff">升级</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>怎么用：</b>次数包留在会员额度面板里，和会员额度同一张卡。<br><b>优点：</b>改动最小，用户在看额度的地方直接看到购买。<br><b>代价：</b>面板本身不大，次数包只能占一行，展示力度有限。</p>
+  </div>
+
+  <div class="frame">
+    <div class="label"><b>首页 · 方案 2</b>额度面板下面一张独立小卡，带余额环</div>
+    <div class="screen">
+      <div class="home">
+        <div class="main glass" style="padding:18px"><div class="muted small">首页主区（示意）</div><div class="bar"></div><div class="bar s"></div><div class="bar"></div></div>
+        <div class="aside" style="display:grid;gap:12px">
+          <div class="glass" style="padding:16px">
+            <div class="row"><span class="muted">本月已用</span><span style="font-size:20px;font-weight:600">12 <span class="muted small">次</span></span></div>
+            <div class="row" style="margin-top:12px"><span class="muted">脚本生成</span><span>还剩 3 次</span></div>
+            <div class="track"><i style="width:78%"></i></div>
+          </div>
+          <div class="glass" style="padding:16px;display:flex;gap:14px;align-items:center">
+            <svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="6"/>
+              <circle cx="32" cy="32" r="27" fill="none" stroke="#5b8cff" stroke-width="6" stroke-linecap="round" stroke-dasharray="0 170" transform="rotate(-90 32 32)"/>
+              <text x="32" y="36" text-anchor="middle" font-size="14" font-weight="700" fill="#e6ebf5">0</text>
+            </svg>
+            <div style="flex:1;min-width:0">
+              <div class="small" style="font-weight:600">尝鲜次数包</div>
+              <div class="muted small">会员额度用完后自动使用</div>
+              <button class="btn" style="margin-top:8px;padding:7px 12px;font-size:12.5px">购买 ¥19.9</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>怎么用：</b>次数包单独成卡，余额用环形表示（20 次为满环），和会员额度分开。<br><b>优点：</b>次数包有自己的位置，视觉上一眼能找到，两种额度不会混在一起。<br><b>代价：</b>右侧多一张卡，面板变高；余额为 0 时环是空的，看着有点冷。</p>
+  </div>
+
+  <div class="frame">
+    <div class="label"><b>首页 · 方案 3</b>主区顶部一条细横幅，右侧额度面板不变</div>
+    <div class="screen">
+      <div class="home">
+        <div class="main">
+          <div class="glass" style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-color:rgba(91,140,255,.35)">
+            <div><span class="chip" style="margin:0 8px 0 0">尝鲜次数包</span><span class="small">20 次创作 · 会员用完后自动用 · 余额 0 次</span></div>
+            <button class="btn" style="padding:7px 14px;font-size:12.5px">购买 ¥19.9</button>
+          </div>
+          <div class="glass" style="padding:18px;margin-top:14px"><div class="muted small">首页主区（作品、最近生成等，示意）</div><div class="bar"></div><div class="bar s"></div><div class="bar"></div></div>
+        </div>
+        <div class="aside">
+          <div class="glass" style="padding:16px">
+            <div class="row"><span class="muted">本月已用</span><span style="font-size:20px;font-weight:600">12 <span class="muted small">次</span></span></div>
+            <div class="row" style="margin-top:12px"><span class="muted">脚本生成</span><span>还剩 3 次</span></div>
+            <div class="track"><i style="width:78%"></i></div>
+            <div class="divider"></div>
+            <div class="row"><span class="muted">高频会员</span><span style="color:#9db9ff">升级</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>怎么用：</b>主区顶部放一条细横幅，次数包不进额度面板，面板只管会员额度。<br><b>优点：</b>展示位最显眼，文字一行说清楚；面板保持干净。<br><b>代价：</b>占用主区一行高度，老用户每次进首页都会看到，需要考虑是否可以收起。</p>
+  </div>
+
+  <p class="muted small" style="margin-top:40px">示意稿，颜色取自当前深色界面的蓝色主色；实际落地时跟随用户选择的主题配色。</p>
+</div>
+</body>
+</html>

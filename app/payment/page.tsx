@@ -12,6 +12,10 @@ import { notify } from "@/components/ui/feedback";
 import { supabase } from "@/lib/supabase/client";
 import { getPlan, SUBSCRIPTION_PLANS, quotaSummary, PAID_PERIOD_NOTE } from "@/lib/config/plans";
 import { SUPPORT_WECHAT } from "@/lib/config/contact";
+import {
+  countPackById, countPackPurchaseBlock, COUNT_PACK_RULES, type CountPack,
+} from "@/lib/config/count-packs";
+import { packValidityText } from "@/components/quota/CountPackPanel";
 
 /*
  * 付款页。
@@ -29,6 +33,16 @@ import { SUPPORT_WECHAT } from "@/lib/config/contact";
  */
 
 type Step = "confirm" | "pay" | "done";
+
+/** 次数包的权益说明（付款前就让人看到）：次数、扣减顺序、有效期、可以再买 */
+function packBenefits(pack: CountPack): string[] {
+  return [
+    `${pack.credits} 次创作额度，每次创作扣 ${COUNT_PACK_RULES.costPerCreation} 次（知识库查询不计入）`,
+    "会员额度用完后自动使用，会员额度优先",
+    pack.validDays === null ? "次数没有时间限制，不会过期" : `${packValidityText(pack)}，到期未用完的次数作废`,
+    "用完可以再买",
+  ];
+}
 
 interface Order {
   id: string;
@@ -52,9 +66,14 @@ function PaymentContent() {
   const planId = searchParams?.get("plan") || "basic";
   // 所有会员一律按月收费。老链接上带着 cycle=yearly 也按月付，下单接口同样只开月付
 
+  // 次数包和会员套餐走同一个付款流程（下单、收款码、上传截图、待审），只是价格、权益、文案不同
+  const pack = countPackById(planId);
+  const packBlock = pack ? countPackPurchaseBlock(pack.id) : null;
+
   const plan = getPlan(planId);
-  const isPayable = planId !== "free" && planId in SUBSCRIPTION_PLANS;
-  const amount = plan.price;
+  const isPayable = pack ? packBlock === null : planId !== "free" && planId in SUBSCRIPTION_PLANS;
+  const amount = pack ? pack.price ?? 0 : plan.price;
+  const productName = pack ? pack.displayName : plan.name;
 
   const [method, setMethod] = useState<"alipay" | "wechat">("alipay");
   const [step, setStep] = useState<Step>("confirm");
@@ -133,7 +152,7 @@ function PaymentContent() {
     return (
       <Shell>
         <div className="glass-panel rounded-2xl p-5 sm:p-8 text-center">
-          <p className="text-[14px] text-foreground">这个套餐不需要付费</p>
+          <p className="text-[14px] text-foreground">{packBlock ?? "这个套餐不需要付费"}</p>
           <Link href="/dashboard/membership" className="mt-3 inline-block text-[13px] text-primary">
             回去选套餐
           </Link>
@@ -150,8 +169,12 @@ function PaymentContent() {
           <h2 className="mb-5 text-[16px] font-semibold text-foreground">订单详情</h2>
 
           <dl className="space-y-3 text-[13px]">
-            <Row label="套餐" value={plan.name} />
-            <Row label="计费周期" value="月付（一期一个月）" />
+            <Row label="套餐" value={productName} />
+            {pack ? (
+              <Row label="有效期" value={packValidityText(pack)} />
+            ) : (
+              <Row label="计费周期" value="月付（一期一个月）" />
+            )}
             <div className="flex items-baseline justify-between border-t border-border/60 pt-3">
               <dt className="text-muted-foreground">应付金额</dt>
               <dd className="text-[24px] font-semibold tabular-nums text-foreground">¥{amount}</dd>
@@ -161,7 +184,7 @@ function PaymentContent() {
           <div className="mt-5 rounded-xl border border-border/60 p-4">
             <p className="mb-2 text-[12px] font-medium text-foreground">开通后你将获得</p>
             <ul className="space-y-1">
-              {quotaSummary(planId).map((l) => (
+              {(pack ? packBenefits(pack) : quotaSummary(planId)).map((l) => (
                 <li key={l} className="flex gap-1.5 text-[12px] text-muted-foreground">
                   <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-primary" />
                   {l}
@@ -170,7 +193,11 @@ function PaymentContent() {
             </ul>
             {/* 付钱之前就说清楚：没用完的不累计。事后才知道，就是纠纷 */}
             <p className="mt-2 border-t border-border/60 pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-              {PAID_PERIOD_NOTE}。
+              {pack
+                ? pack.validDays === null
+                  ? "次数包一次付款，到账后没有时间限制，次数不会过期。"
+                  : "次数包一次付款，到账后在有效期内使用，到期未用完的次数作废。"
+                : `${PAID_PERIOD_NOTE}。`}
             </p>
           </div>
         </section>
@@ -200,7 +227,7 @@ function PaymentContent() {
                 事后才知道退不了，是最容易变成纠纷的情形。
               */}
               <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
-                会员属于虚拟商品，<span className="font-medium text-foreground">开通后不支持无理由退款</span>，目前也暂不支持开发票。
+                {pack ? "次数包" : "会员"}属于虚拟商品，<span className="font-medium text-foreground">{pack ? "到账后" : "开通后"}不支持无理由退款</span>，目前也暂不支持开发票。
                 付款即表示同意
                 <Link href="/terms" target="_blank" className="mx-0.5 text-primary hover:underline">服务条款</Link>。
                 有疑问请先加客服微信 {SUPPORT_WECHAT} 问清楚再付款。
@@ -274,20 +301,22 @@ function PaymentContent() {
             </>
           )}
 
-          {step === "done" && order && <OrderStatus order={order} />}
+          {step === "done" && order && <OrderStatus order={order} pack={!!pack} />}
         </section>
       </div>
     </Shell>
   );
 }
 
-function OrderStatus({ order }: { order: Order }) {
+function OrderStatus({ order, pack }: { order: Order; pack: boolean }) {
   if (order.status === "approved") {
     return (
       <div className="py-6 text-center">
         <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
-        <p className="mt-3 text-[15px] font-semibold text-foreground">已开通</p>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">{order.plan_name} 已生效</p>
+        <p className="mt-3 text-[15px] font-semibold text-foreground">{pack ? "已到账" : "已开通"}</p>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
+          {pack ? `${order.plan_name} 已到账，可以开始使用` : `${order.plan_name} 已生效`}
+        </p>
         <Link href="/dashboard" className="mt-4 inline-block text-[13px] text-primary">
           回到工作台
         </Link>
@@ -315,13 +344,15 @@ function OrderStatus({ order }: { order: Order }) {
       <Clock className="mx-auto h-10 w-10 text-amber-500" />
       <p className="mt-3 text-[15px] font-semibold text-foreground">已提交，等待确认</p>
       <p className="mt-1 text-[12.5px] text-muted-foreground">
-        管理员核对后会为你开通 {order.plan_name}，通常当天处理。
+        {pack
+          ? `管理员核对到账后，${order.plan_name} 的次数会加到你的账户，通常当天处理。`
+          : `管理员核对后会为你开通 ${order.plan_name}，通常当天处理。`}
       </p>
       {/* 体检 P1-4：进度说清楚——等的是什么、多久、超时找谁 */}
       <ol className="mx-auto mt-4 flex max-w-xs flex-col gap-1.5 text-left text-[12px] text-muted-foreground">
         <li>✅ 已提交付款截图</li>
         <li>⏳ 管理员核对到账（通常当天）</li>
-        <li>○ 开通会员，额度回满</li>
+        <li>○ {pack ? "次数到账，可以开始使用" : "开通会员，额度回满"}</li>
       </ol>
       <p className="mt-3 text-[11.5px] text-muted-foreground">
         超过一个工作日仍未开通，加客服微信 {SUPPORT_WECHAT} 并说明订单号，我们马上看。

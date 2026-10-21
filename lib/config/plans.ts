@@ -553,8 +553,8 @@ export function activationPlan(
   return { endDate: addCycle(now), isRenewal: false, resetQuota: true, quotaPeriodEnd };
 }
 
-/** effectivePlanId 的可注入时间版本，给 membershipStatus 和测试用 */
-function effectivePlanIdAt(
+/** effectivePlanId 的可注入时间版本，给 membershipStatus、使用监控和测试用 */
+export function effectivePlanIdAt(
   sub: { plan?: string | null; status?: string | null; end_date?: string | null } | null | undefined,
   now: number
 ): string {

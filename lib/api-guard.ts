@@ -4,6 +4,8 @@ import { getServerSupabase, getServiceSupabase } from '@/lib/admin-auth';
 import { getPlan, judgeQuota, effectivePlanId, quotaRollover } from '@/lib/config/plans';
 import { quotaUnavailable, settleCreation, refreshCreationPeriod, type CreationReservation } from '@/lib/creation-quota';
 import { apiGateBlocked } from '@/lib/gate-tickets';
+import { costOfFeature } from '@/lib/config/count-packs';
+import { countPackBalance } from '@/lib/count-pack';
 import { SITE_GATE_COOKIE } from '@/lib/site-gate';
 
 export interface GuardResult {
@@ -185,6 +187,12 @@ export async function requireUserWithQuota(feature?: string): Promise<GuardResul
   if (feature) {
     const verdict = judgeQuota(planId, feature, quota);
     if (!verdict.allowed) {
+      // 会员额度用完：次数包还有余额就放行。真正的扣减在 reserveCreation 里做（会员额度优先，次数包兜底）
+      const packCost = costOfFeature(feature);
+      // 余额读不到按 0 算：宁可拒绝（402），不能因为查询出错就放行
+      if (packCost !== null && (await countPackBalance(userId).catch(() => 0)) >= packCost) {
+        return { ok: true, userId };
+      }
       return {
         ok: false,
         response: NextResponse.json(
