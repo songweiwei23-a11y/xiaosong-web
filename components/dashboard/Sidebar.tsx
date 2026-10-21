@@ -281,6 +281,7 @@ export function Sidebar() {
           })}
         </nav>
 
+        {/* 底部只放档案切换。额度不放在侧边栏（占地方）：会员额度看首页，次数包在会员中心 */}
         <div className="shrink-0 border-t border-border/60 p-3">
           <ProfileSwitcher />
         </div>

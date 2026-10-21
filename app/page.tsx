@@ -5,6 +5,8 @@ import {
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { SUBSCRIPTION_PLANS, quotaSummary, planSellingPoints } from "@/lib/config/plans";
+import { PurchaseKindSwitch, type PurchaseKind } from "@/components/quota/PurchaseKindSwitch";
+import { CountPackHero, countPackOpen } from "@/components/quota/CountPackPanel";
 import { SUPPORT_WECHAT } from "@/lib/config/contact";
 import { SHOWCASE_TACTICS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, FACTS } from "@/lib/showcase";
 import { VIRAL_ELEMENTS, SCRIPT_FAMILIES } from "@/lib/viral-elements";
@@ -31,6 +33,9 @@ import { MAX_CHAT_FILES } from "@/lib/chat-attachments";
 import { DEEP_RESEARCH_LIMITS } from "@/lib/config/plans";
 
 export default function HomePage() {
+  // 价格方案的两类切换：包月会员（四张套餐卡）/ 次数包（一张大卡）。销售关闭时只有套餐
+  const [purchaseKind, setPurchaseKind] = useState<PurchaseKind>("plans");
+  const packOpen = countPackOpen();
   /**
    * 落地页的三个大数字。
    *
@@ -1198,7 +1203,8 @@ export default function HomePage() {
       </section>
 
       {/* 价格对比 */}
-      <section id="pricing" className="py-20 px-4 bg-muted dark:bg-muted">
+      {/* 用 glass-panel 和 features、faq 区块一样：实心 bg-muted 在浅色下和页面底色几乎一样，背景等于没画 */}
+      <section id="pricing" className="py-20 px-4 glass-panel">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/15 dark:bg-purple-900/30 rounded-full mb-4">
@@ -1215,7 +1221,11 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* 4个定价方案 */}
+          {/* 两类切换：包月会员 / 次数包（毛玻璃卡片，和会员中心同一个组件） */}
+          <PurchaseKindSwitch value={purchaseKind} onChange={setPurchaseKind} />
+
+          {/* 4个定价方案（包月会员） */}
+          {(purchaseKind === "plans" || !packOpen) && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {pricingPlans.map((plan, idx) => (
               <div key={idx} className={`relative ${plan.highlight ? 'md:scale-105' : ''}`}>
@@ -1270,6 +1280,14 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+          )}
+
+          {/* 次数包大卡：只在「次数包」下显示；销售关闭时不出现 */}
+          {purchaseKind === "pack" && packOpen && (
+            <div className="max-w-4xl mx-auto">
+              <CountPackHero />
+            </div>
+          )}
 
           <div className="text-center mt-12 text-sm text-muted-foreground">
             {/*

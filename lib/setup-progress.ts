@@ -105,3 +105,13 @@ export function landingPath(input: SetupInput): string {
   const { done } = setupProgress(input);
   return done === 0 ? '/onboarding' : '/dashboard';
 }
+
+/**
+ * 地基要看的是哪一个档案：当前档案（浏览器里选中的）在列表里就用它，否则用第一个。
+ * 和作品、创作板块用的「当前档案」是同一个，不能一边看 A 一边看 B。
+ * 和 app/onboarding 的选法一致。
+ */
+export function pickProfileForSetup<T extends { id: string }>(profiles: T[], activeId: string | null): T | null {
+  if (!profiles.length) return null;
+  return profiles.find((p) => p.id === activeId) ?? profiles[0];
+}
