@@ -30,4 +30,6 @@ export async function runClientAction(raw: unknown): Promise<void> {
   }
 
   if (action.name === "ambient.stop") pause();
+
+  // page.open 不在这里做：面板要等回答结束后再跳转，否则跳转会打断正在进行的对话（见 AssistantWidget）
 }

@@ -20,6 +20,8 @@ export interface AssistantJob {
   stopRequested: boolean;
   createdAt: number;
   finishedAt: number | null;
+  /** 界面提交时带来的请求编号：同一个编号重复提交（网络重试）时，返回已有的任务，不再跑一遍 */
+  requestId: string | null;
 }
 
 const JOB_TTL_MS = 30 * 60_000;
@@ -40,7 +42,7 @@ export function runningJobCount(): number {
   return n;
 }
 
-export function createJob(userId: string, now = Date.now()): AssistantJob {
+export function createJob(userId: string, now = Date.now(), requestId: string | null = null): AssistantJob {
   sweepJobs(now);
   const job: AssistantJob = {
     id: randomUUID(),
@@ -51,9 +53,18 @@ export function createJob(userId: string, now = Date.now()): AssistantJob {
     stopRequested: false,
     createdAt: now,
     finishedAt: null,
+    requestId,
   };
   jobs.set(job.id, job);
   return job;
+}
+
+/** 同一个用户、同一个请求编号的任务（还在内存里的）。没有就返回 null */
+export function findJobByRequest(userId: string, requestId: string): AssistantJob | null {
+  for (const job of jobs.values()) {
+    if (job.userId === userId && job.requestId === requestId) return job;
+  }
+  return null;
 }
 
 /** 只能取自己的任务；别人的或不存在的一律返回 null */

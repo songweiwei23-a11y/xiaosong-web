@@ -142,7 +142,7 @@ describe('接线：存对话、带记忆、记住、压缩都接上了', () => {
 
   it('助理跑完把回答存进对话，并在需要时压缩旧消息；失败只记日志', () => {
     const run = read('lib/assistant/run.ts');
-    expect(run).toContain('persistTurn(job, input.cfg, input.threadId, answer)');
+    expect(run).toContain('persistTurn(job, input.cfg, input.threadId, answer, receipts)');
     expect(run).toContain("appendMessage(job.userId, threadId, 'assistant', answer");
     expect(run).toContain('summarizeMessages(cfg, thread.summary, toSummarize)');
     expect(run).toContain('saveSummary(job.userId, threadId, next, upto)');
@@ -169,7 +169,7 @@ describe('接线：存对话、带记忆、记住、压缩都接上了', () => {
 
   it('界面带上对话编号；历史和记忆的接口存在；对话删除有确认的入口', () => {
     const widget = read('components/assistant/AssistantWidget.tsx');
-    expect(widget).toContain('threadId }');
+    expect(widget).toContain('threadId, requestId: newRequestId() }');
     expect(widget).toContain('/api/assistant/threads');
     expect(widget).toContain('/api/assistant/memories');
     // 头部按钮的标签通过 label 属性传进去，最后落到 aria-label 上

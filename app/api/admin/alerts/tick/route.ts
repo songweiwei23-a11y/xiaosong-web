@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { cronRequestAuthorized } from '@/lib/cron-auth';
-import { alertConfig, dueAlerts, evaluateAlerts, sendAlert, thresholdsFromEnv, type AlertFacts } from '@/lib/alerts';
+import { alertConfig, dueAlerts, evaluateAlerts, medianOf, sendAlert, thresholdsFromEnv, type AlertFacts } from '@/lib/alerts';
 import { readMonitorRevision } from '@/lib/admin-monitor-data';
 import { slotStats } from '@/lib/generation-slots';
 import { parseTime } from '@/lib/monitor';
@@ -25,9 +25,14 @@ export async function GET(request: Request) {
 
   try {
     const supabase = getServiceSupabase();
-    const t0 = Date.now();
-    await readMonitorRevision(supabase);
-    const dbLatencyMs = Date.now() - t0;
+    // 三次采样取中位数：单次偶发的冷启动或网络抖动不会触发告警（服务器到数据库本身有 ~0.9 秒的往返，见 lib/alerts）
+    const samples: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const t0 = Date.now();
+      await readMonitorRevision(supabase);
+      samples.push(Date.now() - t0);
+    }
+    const dbLatencyMs = Math.round(medianOf(samples));
 
     const [pending, oldest] = await Promise.all([
       supabase.from('payment_orders').select('id', { count: 'exact', head: true }).eq('status', 'reviewing'),

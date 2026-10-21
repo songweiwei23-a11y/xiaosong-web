@@ -546,7 +546,7 @@ export default function MonitorPage() {
           {[
             { k: "数据链路", v: live ? mode === 'realtime' ? '实时推送' : '秒级更新' : "中断", ok: live },
             { k: "刷新间隔", v: mode === 'realtime' ? '变更即刷新' : '1 秒', ok: live },
-            { k: "数据库延迟", v: snap?.status ? `${snap.status.dbLatencyMs} ms` : "--", ok: (snap?.status?.dbLatencyMs ?? 0) < 1000 },
+            { k: "数据库延迟", v: snap?.status ? `${snap.status.dbLatencyMs} ms` : "--", ok: (snap?.status?.dbLatencyMs ?? 0) < 2500 },
             { k: "快照耗时", v: snap?.status ? `${snap.status.snapshotMs} ms` : "--", ok: (snap?.status?.snapshotMs ?? 0) < 2000 },
             { k: "助理进行中", v: String(snap?.status?.assistantRunning ?? 0), ok: true },
             { k: "旧版本在线", v: String(snap?.status?.staleOnline ?? 0), ok: (snap?.status?.staleOnline ?? 0) === 0 },

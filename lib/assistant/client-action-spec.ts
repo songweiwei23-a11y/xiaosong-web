@@ -6,8 +6,22 @@ import { AMBIENT_SOUNDS, type AmbientId } from '@/lib/ambient/synth';
  * 这里只放纯逻辑：动作白名单、参数校验，服务端和测试都能用。
  */
 
-export const CLIENT_ACTION_NAMES = ['ambient.play', 'ambient.stop'] as const;
+export const CLIENT_ACTION_NAMES = ['ambient.play', 'ambient.stop', 'page.open'] as const;
 export type ClientActionName = (typeof CLIENT_ACTION_NAMES)[number];
+
+/**
+ * 助理能打开的页面（白名单）：只认这里的编号，路径由界面写死，模型不能指定任意地址。
+ * 助理不替用户在页面里填内容，只帮他走到那个页面。
+ */
+export const OPEN_PAGES: Record<string, { path: string; label: string }> = {
+  home: { path: '/dashboard', label: '工作台' },
+  topic: { path: '/dashboard/topic', label: '选题策划' },
+  script: { path: '/dashboard/script', label: '脚本生成' },
+  review: { path: '/dashboard/review', label: '审稿优化' },
+  profiles: { path: '/dashboard/profiles', label: '账号档案' },
+  works: { path: '/dashboard/works', label: '作品' },
+  knowledge: { path: '/dashboard/knowledge', label: '编导知识库' },
+};
 
 export interface ClientAction {
   name: ClientActionName;
@@ -62,6 +76,11 @@ export function parseClientAction(raw: unknown): ClientAction | null {
     const sound = resolveSound(args.sound);
     if (!sound) return null;
     return { name: 'ambient.play', args: { sound, minutes: clampMinutes(args.minutes) } };
+  }
+  if (r.name === 'page.open') {
+    const page = typeof args.page === 'string' && Object.prototype.hasOwnProperty.call(OPEN_PAGES, args.page) ? args.page : null;
+    if (!page) return null;
+    return { name: 'page.open', args: { page } };
   }
   return { name: 'ambient.stop', args: {} };
 }

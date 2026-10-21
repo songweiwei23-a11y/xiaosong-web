@@ -108,11 +108,12 @@ describe('接线：提示、界面和对话接口都接上了', () => {
 
   it('界面：提议的忘掉只列出来，点「确定忘掉」才删，删失败留着卡片', () => {
     const src = read('components/assistant/AssistantWidget.tsx');
-    expect(src).toContain('if (a.name === "memory.forget") proposeForget(a.args);');
+    // 助理的动作先转成待确认的提议（忘掉、删待办、改档案、改作品状态），确认前什么都不改
+    expect(src).toContain('const p = proposalFrom(a.name, a.args);');
     expect(src).toContain('确定忘掉');
-    expect(src).toContain('先留着');
-    const confirm = src.slice(src.indexOf('const confirmForget'), src.indexOf('const keepForget'));
-    expect(confirm.indexOf('if (!res?.ok)')).toBeLessThan(confirm.indexOf('setForgets((fs) => fs.filter'));
+    expect(src).toContain('先不改');
+    const confirm = src.slice(src.indexOf('const confirmProposal'), src.indexOf('const keepProposal'));
+    expect(confirm.indexOf('if (!ok)')).toBeLessThan(confirm.indexOf('setProposals((ps) => ps.filter'));
   });
 
   it('对话接口告诉界面摘要有没有跟上；界面在滞后时提醒用户', () => {

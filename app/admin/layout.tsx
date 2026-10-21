@@ -8,7 +8,7 @@ import { PresenceBeat } from "@/components/dashboard/PresenceBeat";
 import { BrandSeal, BrandWordmark } from "@/components/brand/Brand";
 import {
   Home, ShoppingCart, QrCode, Users, Settings, BarChart, ShieldCheck, ArrowLeft, Ticket, Radar,
-  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe, Lock, Database, Activity,
+  UserCog, ScrollText, Menu, ClipboardCheck, KeyRound, Globe, Lock, Database, Activity, Bot,
 } from "lucide-react";
 
 /*
@@ -36,6 +36,8 @@ const navGroups: {
       { name: "邀请码", href: "/admin/invitations", icon: Ticket },
       // 使用监控（2026-10-20）：所有用户的使用频率、次数、token 与额度消耗、五维四率
       { name: "使用监控", href: "/admin/usage-monitor", icon: Activity },
+      // 助理概览（升级方案 J1）：完成率、没有回执的完成说法次数、用户反馈
+      { name: "助理概览", href: "/admin/assistant", icon: Bot },
     ],
   },
   {

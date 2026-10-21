@@ -19,6 +19,7 @@ import {
 import {
   evaluateAlerts,
   dueAlerts,
+  medianOf,
   webhookBody,
   alertConfig,
   sendAlert,
@@ -222,8 +223,20 @@ describe('用户资料和会员：只查活跃的人，分批、短期缓存', (
 describe('告警：规则、节流、推送格式', () => {
   it('超过阈值才命中；没超过什么也不报', () => {
     expect(evaluateAlerts({ dbLatencyMs: 10, pendingReview: 0, oldestPendingMinutes: null, generationQueued: 0 })).toEqual([]);
-    const hits = evaluateAlerts({ dbLatencyMs: 1200, pendingReview: 2, oldestPendingMinutes: 45, generationQueued: 60 }, DEFAULT_THRESHOLDS);
+    const hits = evaluateAlerts({ dbLatencyMs: 3000, pendingReview: 2, oldestPendingMinutes: 45, generationQueued: 60 }, DEFAULT_THRESHOLDS);
     expect(hits.map((h) => h.id).sort()).toEqual(['db-latency', 'generation-queue', 'orders-unreviewed']);
+  });
+
+  it('数据库延迟阈值按实测定：服务器到数据库中位数约 0.9 秒，1 秒以内的正常波动不报警', () => {
+    expect(DEFAULT_THRESHOLDS.dbLatencyMs).toBe(2500);
+    const normal = evaluateAlerts({ dbLatencyMs: 1200, pendingReview: 0, oldestPendingMinutes: null, generationQueued: 0 });
+    expect(normal).toEqual([]);
+  });
+
+  it('三次采样取中位数：单次偶发的尖峰不影响结果', () => {
+    expect(medianOf([890, 2180, 900])).toBe(900);
+    expect(medianOf([1, 3])).toBe(2);
+    expect(medianOf([])).toBe(0);
   });
 
   it('同一条规则节流：30 分钟内只推一次，过了再推', () => {

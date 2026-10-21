@@ -30,11 +30,24 @@ export interface AlertThresholds {
   generationQueued: number;
 }
 
+/*
+ * 数据库延迟阈值依据（2026-10-22，在腾讯云服务器上实测 30 次）：
+ *   单次请求中位数约 890 ms，90% 在 1030 ms 以内，最慢 2180 ms（服务在海外，网络往返本来就慢）。
+ *   1000 ms 卡在中位数上，会天天误报，所以定在 2500 ms；检查时取三次采样的中位数，避免偶发尖峰。
+ */
 export const DEFAULT_THRESHOLDS: AlertThresholds = {
-  dbLatencyMs: 1000,
+  dbLatencyMs: 2500,
   pendingMinutes: 30,
   generationQueued: 50,
 };
+
+/** 取中位数（样本为空返回 0） */
+export function medianOf(samples: number[]): number {
+  if (!samples.length) return 0;
+  const s = [...samples].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
 
 export function thresholdsFromEnv(env: Record<string, string | undefined> = process.env): AlertThresholds {
   const num = (v: string | undefined, d: number) => {

@@ -332,6 +332,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [],
   },
   {
+    file: "20261022_assistant_ops.sql",
+    tables: ["assistant_feedback","assistant_jobs","assistant_notes"],
+    columns: [],
+  },
+  {
     file: "20261022_ops_indexes.sql",
     tables: [],
     columns: [],

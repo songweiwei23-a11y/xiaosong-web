@@ -1,5 +1,6 @@
-import { callAssistantLlm, type LlmBlock, type LlmMessage, type LlmResponse, type LlmToolDef } from './llm';
+import { callAssistantLlm, type LlmBlock, type LlmMessage, type LlmResponse, type LlmToolDef, type LlmUsage } from './llm';
 import type { AssistantConfig } from './config';
+import type { ActionReceipt } from './receipts';
 
 /**
  * 助理的对话循环：模型要什么工具就执行什么，把结果交回去，直到它给出最终回复。
@@ -32,7 +33,9 @@ export type AssistantEvent =
   | { type: 'error'; text: string }
   | ({ type: 'web' } & WebFeedback)
   /** 要在页面上替用户做的事（见 lib/assistant/client-action-spec） */
-  | { type: 'action'; name: string; args: Record<string, unknown> };
+  | { type: 'action'; name: string; args: Record<string, unknown> }
+  /** 写操作的回执（见 lib/assistant/receipts.ts）：界面显示成卡片，能撤销的带撤销按钮 */
+  | { type: 'receipt'; receipt: ActionReceipt };
 
 export type LlmFn = (
   cfg: AssistantConfig,
@@ -55,6 +58,8 @@ export async function runAssistantAgent(opts: {
   isStopped: () => boolean;
   maxSteps?: number;
   llm?: LlmFn;
+  /** 每次模型调用返回的用量（记账用，见 lib/assistant/run.ts） */
+  onUsage?: (usage: LlmUsage) => void;
 }): Promise<string> {
   const maxSteps = opts.maxSteps ?? 6;
   const llm = opts.llm ?? callAssistantLlm;
@@ -74,6 +79,7 @@ export async function runAssistantAgent(opts: {
       return '';
     }
     const res = await llm(opts.cfg, { system: opts.system, messages, tools: toolDefs });
+    if (res.usage) opts.onUsage?.(res.usage);
     const text = res.content
       .filter((b): b is Extract<LlmBlock, { type: 'text' }> => b.type === 'text')
       .map((b) => b.text)
