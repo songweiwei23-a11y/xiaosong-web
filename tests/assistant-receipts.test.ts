@@ -119,6 +119,14 @@ describe('知识库：相关度门槛和资料的注入防护', () => {
     expect(applyRelevanceFloor(hits, 0.25).map((h) => h.doc)).toEqual(['a', 'c']);
   });
 
+  it('默认门槛 0.58（2026-10-22 标定）：0.564 的无关段落去掉，0.591 的相关段落保留', () => {
+    const hits = [
+      { doc: '无关', content: 'x', score: 0.564 },
+      { doc: '相关', content: 'y', score: 0.591 },
+    ];
+    expect(applyRelevanceFloor(hits).map((h) => h.doc)).toEqual(['相关']);
+  });
+
   it('所有段落都没有分数：原样返回，不因为库不给分就全丢', () => {
     const hits = [{ doc: 'a', content: 'x', score: 0 }];
     expect(applyRelevanceFloor(hits, 0.25)).toEqual(hits);

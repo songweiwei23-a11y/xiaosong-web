@@ -975,6 +975,27 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       },
     },
     {
+      name: 'propose_create_profile',
+      label: '正在准备新建档案',
+      description:
+        '用户要新建一个账号档案时使用。这个工具只填档案名称和行业；其它信息（定位、经营品类、人设等）请用户建好后到「账号档案」页面补。这个工具不会直接建：页面上会列出要建的档案，用户点「确定新建」才真的建。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          profileName: { type: 'string', description: '档案名称' },
+          industry: { type: 'string', description: '行业；不知道就不填' },
+        },
+        required: ['profileName'],
+      },
+      async run(input) {
+        const profileName = typeof input.profileName === 'string' ? input.profileName.trim().slice(0, 60) : '';
+        const industry = typeof input.industry === 'string' ? input.industry.trim().slice(0, 60) : '';
+        if (!profileName) return '还不知道档案叫什么名字。请先问清楚用户想叫什么';
+        ctx.onAction?.({ name: 'profile.create', args: { profileName, industry } });
+        return `已在页面上列出要新建的档案「${profileName}」，等用户点「确定新建」后才会建。请告诉用户在页面上确认；定位、经营品类等建好后再到「账号档案」页面补。`;
+      },
+    },
+    {
       name: 'propose_work_status',
       label: '正在准备作品状态',
       description:

@@ -2,7 +2,7 @@ import { requireUser } from '@/lib/api-guard';
 import { reserveCreation } from '@/lib/creation-quota';
 import { createRateLimiter } from '@/lib/rate-limit';
 import { readAssistantConfig } from '@/lib/assistant/config';
-import { createJob, eventsSince, findJobByRequest, getJob, hasRunningJob, requestStop } from '@/lib/assistant/jobs';
+import { createJob, eventsSince, findJobByRequest, getJob, hasRunningJob, requestStop, type AssistantJob } from '@/lib/assistant/jobs';
 import { runAssistantJob } from '@/lib/assistant/run';
 import { markJobInterrupted, readStoredJob, recordJobStart } from '@/lib/assistant/job-store';
 import { threadContext, titleOf } from '@/lib/assistant/memory';
@@ -49,6 +49,8 @@ export async function GET(request: Request) {
   const userId = guard.userId!;
   const id = url.searchParams.get('job') ?? '';
   const job = getJob(id, userId);
+  // 流式：事件一产生就推过来（每行一段 JSON）；界面用它代替轮询，断了就退回轮询
+  if (job && url.searchParams.get('stream')) return streamJob(job, request, Number(url.searchParams.get('since') || 0));
   if (job) return Response.json(eventsSince(job, Number(url.searchParams.get('since') || 0)));
 
   // 内存里已经没有这个任务：多半是服务重启了。看一眼存根，告诉界面「没有做完」，而不是一直「找不到」
@@ -64,6 +66,53 @@ export async function GET(request: Request) {
     });
   }
   return Response.json({ status: stored.status === 'interrupted' ? 'error' : stored.status, events: [], next: 0, answer: '' });
+}
+
+const STREAM_TICK_MS = 300;
+/** 最多推 6 分钟；超过还没结束，界面会退回轮询（任务本身不受影响） */
+const STREAM_MAX_TICKS = 1200;
+
+/** 把任务的进度按行推给界面：有新事件就推，直到任务结束或客户端断开 */
+function streamJob(job: AssistantJob, request: Request, since: number): Response {
+  const encoder = new TextEncoder();
+  let closed = false;
+  request.signal.addEventListener('abort', () => {
+    closed = true;
+  });
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let from = since;
+      for (let i = 0; i < STREAM_MAX_TICKS && !closed; i++) {
+        const data = eventsSince(job, from);
+        if (data.events.length || data.status !== 'running') {
+          try {
+            controller.enqueue(encoder.encode(`${JSON.stringify(data)}\n`));
+          } catch {
+            break;
+          }
+        }
+        from = data.next;
+        if (data.status !== 'running') break;
+        await new Promise((resolve) => setTimeout(resolve, STREAM_TICK_MS));
+      }
+      try {
+        controller.close();
+      } catch {
+        // 客户端已经断开，不用再关
+      }
+    },
+    cancel() {
+      closed = true;
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      'content-type': 'application/x-ndjson; charset=utf-8',
+      'cache-control': 'no-store',
+      // 反向代理不要缓冲，否则进度要等整段结束才到
+      'x-accel-buffering': 'no',
+    },
+  });
 }
 
 export async function POST(request: Request) {

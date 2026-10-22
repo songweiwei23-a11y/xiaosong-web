@@ -67,7 +67,7 @@ describe('工具白名单（H2）：助理的工具清单就是这一份，多�
 
   it('提议类工具不会直接改数据：工具源码里它们只调用 onAction，不调用写接口', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'lib', 'assistant', 'tools.ts'), 'utf8');
-    for (const name of ['propose_delete_todo', 'propose_profile_update', 'propose_work_status']) {
+    for (const name of ['propose_delete_todo', 'propose_profile_update', 'propose_create_profile', 'propose_work_status']) {
       const start = src.indexOf(`name: '${name}'`);
       expect(start, name).toBeGreaterThan(0);
       const body = src.slice(start, src.indexOf('\n    },', start));

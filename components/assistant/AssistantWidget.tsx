@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BellRing, Bot, Brain, Check, Copy, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
+import { BellRing, Bot, Brain, Check, Copy, FileDown, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
 import { getActiveProfileId } from "@/lib/active-profile";
 import { memoryEnabled } from "@/lib/settings-memory";
 import { ASSISTANT_ASK_EVENT } from "@/lib/assistant/ask";
@@ -59,7 +59,7 @@ interface Task {
  * 助理提议要做、但要用户点确认才真的做的事（删待办、忘掉记忆、改档案、改作品状态）。
  * 确认前什么都不改；确认后由 runProposal 调用对应的接口。
  */
-type ProposalKind = "memory.forget" | "todo.delete" | "profile.update" | "work.status";
+type ProposalKind = "memory.forget" | "todo.delete" | "profile.update" | "profile.create" | "work.status";
 interface Proposal {
   id: string;
   kind: ProposalKind;
@@ -83,6 +83,34 @@ interface MemoryItem {
 
 type View = "chat" | "history" | "memories";
 type StoredMeta = { web?: WebInfo; receipts?: ReceiptView[] } | null;
+
+/** 服务器给的一批进度（轮询和流式都是这个形状），事件同服务端 AssistantEvent */
+interface JobChunk {
+  status: string;
+  answer: string;
+  next: number;
+  events: ({ type: string; text?: string; name?: string; args?: Record<string, unknown>; receipt?: ActionReceipt } & Partial<WebInfo>)[];
+}
+
+/** 「存为文档」：把一条回答（连同操作记录）存成 Markdown 文件，用户自己保存 */
+function downloadAsDocument(task: Task): void {
+  const title = task.request.split("\n")[0].slice(0, 40) || "助理回答";
+  const lines = [`# ${title}`, "", task.answer];
+  if (task.receipts.length) {
+    lines.push("", "## 操作记录", "");
+    for (const r of task.receipts) lines.push(`- ${r.ok ? "已完成" : "没有完成"}：${r.text}${r.undone ? "（已撤销）" : ""}`);
+  }
+  const blob = new Blob([`${lines.join("\n")}\n`], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const day = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Shanghai" });
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `开物助理-${day}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 const POLL_MS = 1200;
 /** 带给助理的上文：只带已经完成的任务，最近 8 条消息（服务器存得下的时候，服务器自己会带摘要和原文） */
@@ -183,6 +211,19 @@ function proposalFrom(name: string, args: Record<string, unknown>): Proposal | n
       args,
     };
   }
+  if (name === "profile.create") {
+    const profileName = s(args.profileName);
+    if (!profileName) return null;
+    const industry = s(args.industry);
+    return {
+      id: `profile:new:${profileName}`,
+      kind: "profile.create",
+      title: `新建档案「${profileName}」`,
+      detail: industry ? `行业：${industry}` : "行业未填，建好后可以到档案页面补",
+      confirmLabel: "确定新建",
+      args,
+    };
+  }
   if (name === "work.status") {
     const id = s(args.id);
     if (!id) return null;
@@ -202,6 +243,7 @@ const PROPOSAL_DONE: Record<ProposalKind, string> = {
   "memory.forget": "已忘掉这件事",
   "todo.delete": "已删除待办",
   "profile.update": "已修改档案",
+  "profile.create": "已新建档案",
   "work.status": "已修改作品状态",
 };
 
@@ -218,6 +260,11 @@ async function runProposal(p: Proposal): Promise<boolean> {
     const field = s(p.args.field);
     if (field !== "profile_name" && field !== "industry") return false;
     res = await postSafely("/api/profiles", { method: "PATCH", headers: json, body: JSON.stringify({ id: s(p.args.id), [field]: s(p.args.value) }) });
+  } else if (p.kind === "profile.create") {
+    const profileName = s(p.args.profileName);
+    if (!profileName) return false;
+    const industry = s(p.args.industry);
+    res = await postSafely("/api/profiles", { method: "POST", headers: json, body: JSON.stringify({ profile_name: profileName, ...(industry ? { industry } : {}) }) });
   } else {
     res = await fetch(`/api/works?id=${encodeURIComponent(s(p.args.id))}`, { method: "PUT", headers: json, body: JSON.stringify({ shootStatus: s(p.args.status) }) });
   }
@@ -284,63 +331,117 @@ export function AssistantWidget() {
   // 助理提议要做的事：同一件只列一次
   const propose = (p: Proposal) => setProposals((ps) => (ps.some((x) => x.id === p.id) ? ps : [...ps, p]));
 
-  // 有任务在跑：每隔一段时间取增量进度，直到结束
+  // 有任务在跑：优先用流式接收进度（事件一产生就推过来）；流断了，退回每隔一段时间取一次
   useEffect(() => {
     if (!running) return;
     const { taskId, jobId } = running;
-    const timer = setInterval(async () => {
+    const ctrl = new AbortController();
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let finished = false;
+
+    // 把服务器给的一批进度（增量）放进界面；任务已经结束就返回 true
+    const apply = (data: JobChunk): boolean => {
+      sinceRef.current = data.next;
+      const added: string[] = [];
+      const got: ReceiptView[] = [];
+      let failure = "";
+      let web: WebInfo | null = null;
+      let page: string | null = null;
+      const actions: { name: string; args: Record<string, unknown> }[] = [];
+      for (const e of data.events) {
+        if (e.type === "step" && e.text) added.push(e.text);
+        if (e.type === "error" && e.text) failure = e.text;
+        if (e.type === "web" && e.status) web = { status: e.status, message: e.message, sources: e.sources ?? [] };
+        // 写操作的回执：显示在回答下面
+        if (e.type === "receipt" && e.receipt) got.push(e.receipt);
+        // 助理安排的页面动作：声音这里马上做，页面跳转等回答结束后再做
+        if (e.type === "action" && e.name) actions.push({ name: e.name, args: e.args ?? {} });
+      }
+      for (const a of actions) {
+        if (a.name === "page.open") {
+          const target = typeof a.args.page === "string" ? OPEN_PAGES[a.args.page] : undefined;
+          if (target) page = target.path;
+          continue;
+        }
+        const p = proposalFrom(a.name, a.args);
+        if (p) propose(p);
+        else void runClientAction(a);
+      }
+      if (added.length || failure || web || got.length) {
+        setTasks((ts) =>
+          ts.map((t) =>
+            t.id === taskId
+              ? { ...t, steps: [...t.steps, ...added], error: failure || t.error, web: web ?? t.web, receipts: got.length ? [...t.receipts, ...got] : t.receipts }
+              : t,
+          ),
+        );
+      }
+      if (data.status === "running") return false;
+      setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, status: data.status as TaskStatus, answer: data.answer || t.answer } : t)));
+      setRunning(null);
+      if (page) router.push(page);
+      return true;
+    };
+
+    const stopPolling = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+    const pollOnce = async () => {
       try {
         const res = await fetch(`/api/assistant?job=${encodeURIComponent(jobId)}&since=${sinceRef.current}`, { cache: "no-store" });
-        const data = await res.json().catch(() => null);
+        const data = (await res.json().catch(() => null)) as JobChunk | null;
         if (!res.ok || !data) {
           setNotice("取进度没有成功，稍后会再试");
           return;
         }
-        sinceRef.current = data.next;
-        const added: string[] = [];
-        const got: ReceiptView[] = [];
-        let failure = "";
-        let web: WebInfo | null = null;
-        let page: string | null = null;
-        const actions: { name: string; args: Record<string, unknown> }[] = [];
-        for (const e of data.events as ({ type: string; text?: string; name?: string; args?: Record<string, unknown>; receipt?: ActionReceipt } & Partial<WebInfo>)[]) {
-          if (e.type === "step" && e.text) added.push(e.text);
-          if (e.type === "error" && e.text) failure = e.text;
-          if (e.type === "web" && e.status) web = { status: e.status, message: e.message, sources: e.sources ?? [] };
-          // 写操作的回执：显示在回答下面
-          if (e.type === "receipt" && e.receipt) got.push(e.receipt);
-          // 助理安排的页面动作：声音这里马上做，页面跳转等回答结束后再做
-          if (e.type === "action" && e.name) actions.push({ name: e.name, args: e.args ?? {} });
-        }
-        for (const a of actions) {
-          if (a.name === "page.open") {
-            const target = typeof a.args.page === "string" ? OPEN_PAGES[a.args.page] : undefined;
-            if (target) page = target.path;
-            continue;
-          }
-          const p = proposalFrom(a.name, a.args);
-          if (p) propose(p);
-          else void runClientAction(a);
-        }
-        if (added.length || failure || web || got.length) {
-          setTasks((ts) =>
-            ts.map((t) =>
-              t.id === taskId
-                ? { ...t, steps: [...t.steps, ...added], error: failure || t.error, web: web ?? t.web, receipts: got.length ? [...t.receipts, ...got] : t.receipts }
-                : t,
-            ),
-          );
-        }
-        if (data.status !== "running") {
-          setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, status: data.status, answer: data.answer || t.answer } : t)));
-          setRunning(null);
-          if (page) router.push(page);
+        if (apply(data)) {
+          finished = true;
+          stopPolling();
         }
       } catch {
         // 网络断了一下没关系，下一轮再取
       }
-    }, POLL_MS);
-    return () => clearInterval(timer);
+    };
+    const startPolling = () => {
+      if (finished || timer) return;
+      timer = setInterval(() => void pollOnce(), POLL_MS);
+    };
+
+    // 流式：服务器有新进度就按行推过来；没结束就断了，退回轮询（进度位置保留，不会重复也不会丢）
+    const stream = async () => {
+      try {
+        const res = await fetch(`/api/assistant?job=${encodeURIComponent(jobId)}&since=${sinceRef.current}&stream=1`, { cache: "no-store", signal: ctrl.signal });
+        if (!res.ok || !res.body) throw new Error("流式接口不可用");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let nl = buf.indexOf("\n");
+          while (nl >= 0) {
+            const line = buf.slice(0, nl).trim();
+            buf = buf.slice(nl + 1);
+            if (line && apply(JSON.parse(line) as JobChunk)) {
+              finished = true;
+              return;
+            }
+            nl = buf.indexOf("\n");
+          }
+        }
+        if (!finished) throw new Error("流式提前结束");
+      } catch {
+        if (ctrl.signal.aborted || finished) return;
+        startPolling();
+      }
+    };
+    void stream();
+    return () => {
+      ctrl.abort();
+      stopPolling();
+    };
   }, [running, router]);
 
   // 打开面板：看一眼待办（到期的、今天要做的，提醒用户；网页关着的时候不会提醒，这是现在的边界）
@@ -540,7 +641,7 @@ export function AssistantWidget() {
     setProposals((ps) => ps.filter((x) => x.id !== p.id));
     if (p.kind === "memory.forget") setMemories((ms) => (ms ?? []).filter((m) => m.id !== String(p.args.id)));
     // 档案、作品改了，进度页要立刻看到变化（和其他写入的地方一样）
-    if (p.kind === "profile.update" || p.kind === "work.status") notifyProgressChanged();
+    if (p.kind === "profile.update" || p.kind === "profile.create" || p.kind === "work.status") notifyProgressChanged();
     setFlash(PROPOSAL_DONE[p.kind]);
   };
 
@@ -742,6 +843,7 @@ export function AssistantWidget() {
                   task={t}
                   copied={copiedId === t.id}
                   onCopy={() => void copy(t)}
+                  onExport={() => downloadAsDocument(t)}
                   onUndo={(index) => void undoReceipt(t.id, index)}
                   onFeedback={(helpful) => void sendFeedback(t, helpful)}
                 />
@@ -926,12 +1028,14 @@ function TaskThread({
   task,
   copied,
   onCopy,
+  onExport,
   onUndo,
   onFeedback,
 }: {
   task: Task;
   copied: boolean;
   onCopy: () => void;
+  onExport: () => void;
   onUndo: (index: number) => void;
   onFeedback: (helpful: boolean) => void;
 }) {
@@ -993,6 +1097,16 @@ function TaskThread({
         {task.answer && (
           <div className="flex items-center justify-between gap-2 pl-1">
             <p className="text-[11px] text-muted-foreground">用了 1 次助理对话；板块按各自额度扣费</p>
+            <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={onExport}
+              aria-label="存为文档"
+              className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[12px] text-muted-foreground transition hover:bg-foreground/[0.06] hover:text-foreground"
+            >
+              <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+              存为文档
+            </button>
             <button
               type="button"
               onClick={onCopy}
@@ -1002,6 +1116,7 @@ function TaskThread({
               {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
               {copied ? "已复制" : "复制"}
             </button>
+            </div>
           </div>
         )}
 

@@ -125,7 +125,8 @@ describe('检索：合并、去重、排序', () => {
   it('数据集列表读不出来：返回 null，而且不缓存失败结果，下次会重新读', async () => {
     const bad = fakeDify('fail', {});
     expect(await searchKnowledge('问', { fetchImpl: bad.fetchImpl, config: CFG })).toBeNull();
-    const good = fakeDify([{ id: 'a', name: '库A' }], { a: { records: [rec('开篇36计', '开篇内容', 0.5)] } });
+    // 分数要过相关度门槛（0.58），这里只测「失败不缓存」，分数随便给一个够高的
+    const good = fakeDify([{ id: 'a', name: '库A' }], { a: { records: [rec('开篇36计', '开篇内容', 0.7)] } });
     const hits = await searchKnowledge('问', { fetchImpl: good.fetchImpl, config: CFG });
     expect(hits!.map((h) => h.doc)).toEqual(['开篇36计']);
   });
