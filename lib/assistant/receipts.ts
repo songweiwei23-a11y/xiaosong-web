@@ -81,6 +81,8 @@ export const CLAIM_RULES: readonly ClaimRule[] = [
   {
     id: 'todo-delete',
     say: /(已经?|已)[^。！？\n]{0,6}(删除|删掉|移除|去掉|清掉)[^。！？\n]{0,8}(待办|计划|任务|这条|那条)/,
+    // 「去掉那条待办的日期」是改日期，不是删待办（黄金集误判，2026-10-22）
+    unless: /日期|到期|时间|截止/,
     need: ['todo.delete'],
     reason: '删除要你在页面上点确认，这次还没有删',
   },

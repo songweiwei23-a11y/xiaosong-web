@@ -64,6 +64,13 @@ describe('声明核对：没有回执的完成说法，改写成「没有完成�
     expect(checkClaims('已记下你的偏好：只做川菜。', [ok('memory.add')]).rewritten).toEqual([]);
   });
 
+  it('回归（黄金集误判）：「已去掉那条待办的日期」是改日期，不是删待办', () => {
+    expect(checkClaims('已去掉那条待办的到期日期。', [ok('todo.update')]).rewritten).toEqual([]);
+    expect(checkClaims('已去掉那条待办的日期。', [ok('todo.update')]).rewritten).toEqual([]);
+    // 真的删待办，仍然要有删除的确认，否则改写
+    expect(checkClaims('已删除那条待办。', [])).toMatchObject({ rewritten: ['todo-delete'] });
+  });
+
   it('回归（黄金集误判）：「已停止播放」是停的说法，不当成播放', () => {
     expect(checkClaims('已停止播放白噪音。', [ok('ambient.stop')]).rewritten).toEqual([]);
     expect(checkClaims('已停止播放白噪音。', [])).toMatchObject({ rewritten: ['ambient-stop'] });
