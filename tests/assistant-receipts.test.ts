@@ -54,6 +54,21 @@ describe('声明核对：没有回执的完成说法，改写成「没有完成�
     expect(checkClaims('已记住你不喜欢夸张的标题。', []).rewritten).toEqual(['memory-add']);
   });
 
+  it('回归（黄金集误判）：成功记下的待办、笔记，「已记下」不算记忆的说法，不改写', () => {
+    expect(checkClaims('已记下：「给客户交稿」，10 月 28 日到期。', [ok('todo.add')]).rewritten).toEqual([]);
+    expect(checkClaims('已记下这个想法，存成笔记了。', [ok('note.add')]).rewritten).toEqual([]);
+    // 含糊的「已记下」没有记忆词，不当成记忆的说法（宁可不查，也不误伤）
+    expect(checkClaims('已记下：「给客户交稿」', []).rewritten).toEqual([]);
+    // 带上记忆词的「已记下」，仍然要有记忆回执
+    expect(checkClaims('已记下你的偏好：只做川菜。', [])).toMatchObject({ rewritten: ['memory-add'] });
+    expect(checkClaims('已记下你的偏好：只做川菜。', [ok('memory.add')]).rewritten).toEqual([]);
+  });
+
+  it('回归（黄金集误判）：「已停止播放」是停的说法，不当成播放', () => {
+    expect(checkClaims('已停止播放白噪音。', [ok('ambient.stop')]).rewritten).toEqual([]);
+    expect(checkClaims('已停止播放白噪音。', [])).toMatchObject({ rewritten: ['ambient-stop'] });
+  });
+
   it('白噪音：说「已播放」必须同时提到声音，并且有播放回执', () => {
     expect(checkClaims('已经为你播放白噪音，专注 25 分钟。', [])).toMatchObject({ rewritten: ['ambient-play'] });
     expect(checkClaims('已经为你播放白噪音，专注 25 分钟。', [ok('ambient.play')]).rewritten).toEqual([]);

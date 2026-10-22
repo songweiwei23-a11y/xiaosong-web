@@ -86,7 +86,8 @@ export const CLAIM_RULES: readonly ClaimRule[] = [
   },
   {
     id: 'memory-add',
-    say: /(已经?|已)(记下|记住|记好|记着)/,
+    // 「已记下」单独说太含糊（待办、笔记也常这么说），只有带上记忆相关的词，才当成记忆的说法
+    say: /(已经?|已)(记住|记着|记好)|(已经?|已)记下[^。！？\n]{0,12}(偏好|记忆|习惯|要求)/,
     unless: /待办|笔记|备忘/,
     need: ['memory.add', 'memory.update'],
     reason: '这件事没有记进助理的记忆',
@@ -101,6 +102,8 @@ export const CLAIM_RULES: readonly ClaimRule[] = [
     id: 'ambient-play',
     say: /(已经?|已)[^。！？\n]{0,4}(播放|开始播放|打开|开启|放起来)/,
     also: /白噪音|白噪声|雨声|咖啡|篝火|翻书|海浪|声音|环境音|专注/,
+    // 「已停止播放」是停的说法，不是播放的说法
+    unless: /停止|停了|关掉|关了|暂停|不再/,
     need: ['ambient.play'],
     reason: '声音没有打开',
   },
