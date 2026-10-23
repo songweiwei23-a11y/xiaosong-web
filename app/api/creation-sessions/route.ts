@@ -8,12 +8,35 @@ import { creationSettingsForPersistence } from '@/lib/creation-settings';
 
 export const dynamic = 'force-dynamic';
 
+/** 「最近的创作」列表里一条只给摘要：完整内容用编号再取（避免列表一次返回几十份长稿） */
+function summarizeSession(row: { id: string; payload: unknown; created_at: string }) {
+  const p = (row.payload ?? {}) as { from?: unknown; sourceTitle?: unknown; sourceContent?: unknown; target?: unknown };
+  const body = typeof p.sourceContent === 'string' ? p.sourceContent : '';
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    from: typeof p.from === 'string' ? p.from : '',
+    title: typeof p.sourceTitle === 'string' ? p.sourceTitle.slice(0, 80) : '',
+    target: typeof p.target === 'string' ? p.target : '',
+    chars: body.length,
+    preview: body.replace(/\s+/g, ' ').slice(0, 120),
+  };
+}
+
 export async function GET(request: Request) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response!;
-  const id = new URL(request.url).searchParams.get('id');
-  if (!id || !CREATION_UUID.test(id)) return NextResponse.json({ error: '创作编号不正确' }, { status: 400 });
+  const params = new URL(request.url).searchParams;
   const db = await getServerSupabase();
+  // 助理用：列出这个账号最近的创作（页面带去下一步的、助理板块的结果都在里面），按时间从新到旧
+  if (params.has('recent')) {
+    const limit = Math.min(Math.max(Number(params.get('recent')) || 10, 1), 30);
+    const { data, error } = await db.from('creation_sessions').select('id, payload, created_at').eq('user_id', guard.userId!).order('created_at', { ascending: false }).limit(limit);
+    if (error) return NextResponse.json({ error: '暂时无法读取最近的创作，请稍后重试' }, { status: 503 });
+    return NextResponse.json((data ?? []).map(summarizeSession), { headers: { 'Cache-Control': 'private, no-store' } });
+  }
+  const id = params.get('id');
+  if (!id || !CREATION_UUID.test(id)) return NextResponse.json({ error: '创作编号不正确' }, { status: 400 });
   // created_at：恢复时和作品里的新版本比先后（lib/creation-restore）
   const { data, error } = await db.from('creation_sessions').select('id, payload, created_at').eq('id', id).eq('user_id', guard.userId!).maybeSingle();
   if (error) return NextResponse.json({ error: '暂时无法恢复创作需求，请稍后重试' }, { status: 503 });

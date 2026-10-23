@@ -11,19 +11,26 @@ import { buildGrowthPlanPrompt, buildOpeningPrompt, extractContentPlan } from '@
 import { DEFAULT_LAYERS, DEFAULT_OUTPUTS, MAX_SOURCE_CHARS, REMIX_TASK_TYPE, buildRemixPrompt, COUNT_OPTIONS, type RemixCount, type RemixDuration } from '@/lib/remix';
 import { buildTextBreakdownPrompt } from '@/lib/text-breakdown';
 import { BREAKDOWN_TASK_TYPE } from '@/lib/viral-breakdown';
+import { continuationRules } from '@/lib/creation-continuation';
+import { incomingNote } from '@/lib/creation-flow';
 import type { CreationSettings } from '@/lib/creation-settings';
+import type { HandoffPayload } from '@/lib/handoff';
 import type { BoardContext, BoardResult } from './boards';
 import { callBoardStream, clampCount, loadContext, withNote } from './boards-more';
+import { pageHandoff } from '@/lib/assistant/carry-consume';
 
 /**
  * 管理员能派活的另外七个板块：账号定位、创作简报、行业建议、起号方案、开篇钩子、跨行业二创、文案拆解。
  * 提示词用各板块自己的构造函数（lib/*），背景用档案里的创作上下文，和页面一致；
+ * 带过来的内容（carry）按页面收到「带去下一步」时的规则接进来（见 lib/assistant/carry-consume）。
  * 内容由 Dify 生成，走的是同一个生成接口 /api/dify/stream，额度由那个接口按板块自己的功能扣。
  *
  * 不做的：视频截图的拆解（要上传视频，只能在拆解页面做）；前采（有自己的流程和附件）。深度研究在 boards-research.ts。
  */
 
 export interface PositioningInput {
+  /** 带过来的上一步结果：页面「带去账号定位」时，它的内容进补充说明，桥接段和设置也跟着来 */
+  carry?: HandoffPayload;
   /** 主平台（档案里有就不填） */
   platform?: string;
   /** 老板的补充要求 */
@@ -32,6 +39,8 @@ export interface PositioningInput {
 }
 
 export interface BriefInput {
+  /** 带过来的上一步结果：页面「带去创作简报」时，它的内容进补充说明，没有定位就用它当定位原文 */
+  carry?: HandoffPayload;
   notes?: string;
   /** 上一步产出的账号定位（管理员派的计划里带过来）。有它就用它，不再读库里的定位 */
   upstream?: string;
@@ -56,6 +65,8 @@ export interface GrowthInput {
 }
 
 export interface OpeningInput {
+  /** 带过来的上一步结果：页面「带去开篇钩子」时，它的主题、现有开头、开篇卡、参考都跟着来 */
+  carry?: HandoffPayload;
   /** 这条内容讲什么（必填） */
   topic: string;
   count?: number;
@@ -65,6 +76,8 @@ export interface OpeningInput {
 }
 
 export interface RemixInput {
+  /** 带过来的上一步结果：页面「带去跨行业二创」时，它的整份文案或拆解报告就是要借鉴的原文 */
+  carry?: HandoffPayload;
   /** 要借鉴的原文：别的行业的文案，或上一步拆解的结果（必填） */
   text: string;
   /** 原片叫什么（老板说了才填） */
@@ -80,6 +93,8 @@ export interface RemixInput {
 }
 
 export interface BreakdownInput {
+  /** 带过来的上一步结果：拆解的是它的正文 */
+  carry?: HandoffPayload;
   /** 要拆解的文案原文（必填） */
   script: string;
   extraNote?: string;
@@ -90,12 +105,13 @@ function platformOf(account: unknown): string {
   return Array.isArray(account) ? String(account[0] ?? '') : typeof account === 'string' ? account : '';
 }
 
-/** 账号定位：快速版只出核心几节（和定位页的快速生成一致），六维地基 */
+/** 账号定位：快速版只出核心几节（和定位页的快速生成一致），六维地基。带来的内容进补充说明，并追加桥接段 */
 export async function runPositioningBoard(ctx: BoardContext, input: PositioningInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
   const profile = creatorContext.profile;
   if (!profile) return { ok: false, text: '', error: '还没有账号档案，请先建档再做账号定位' };
-  const notes = withNote(input.notes?.trim() ?? '', input.extraNote);
+  const page = input.carry ? pageHandoff(input.carry, 'positioning', creatorContext) : null;
+  const notes = withNote([input.notes?.trim(), page ? incomingNote(page.incoming) : ''].filter(Boolean).join('\n'), input.extraNote);
   const platform = input.platform?.trim() || platformOf(profile.account_platform);
   const query = buildPositioningPrompt({
     profileSummary: buildProfileSummary(profile as never),
@@ -106,17 +122,27 @@ export async function runPositioningBoard(ctx: BoardContext, input: PositioningI
     outputSpec: buildQuickOutputSpec(),
     mixBlock: mixPromptBlock(resolveMix(profile, null, notes)),
     taboos: taboosPromptBlock(profile),
+  }) + (page?.bridgePrompt ?? '');
+  return callBoardStream(ctx, {
+    taskType: '账号定位',
+    creationSettings: page?.bridgeSettings ?? {},
+    query,
+    profileId: profile.id ?? null,
+    platform,
   });
-  return callBoardStream(ctx, { taskType: '账号定位', creationSettings: {}, query, profileId: profile.id ?? null, platform });
 }
 
-/** 创作简报：把账号定位转译成给选题、脚本用的简报。定位要先有（库里的，或计划上一步的） */
+/**
+ * 创作简报：把账号定位转译成给选题、脚本用的简报。定位要先有：计划上一步的、库里的，或者带来的内容（页面上就是这个顺序）。
+ * 带来的内容进补充说明，并追加桥接段。
+ */
 export async function runBriefBoard(ctx: BoardContext, input: BriefInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
   const profile = creatorContext.profile;
-  const positioningFull = input.upstream?.trim() || creatorContext.positioning?.full || '';
+  const page = input.carry ? pageHandoff(input.carry, 'creative-brief', creatorContext) : null;
+  const positioningFull = input.upstream?.trim() || creatorContext.positioning?.full || page?.reference || '';
   if (!positioningFull) return { ok: false, text: '', error: '还没有账号定位。先做账号定位，定好以后再做创作简报' };
-  const notes = withNote(input.notes?.trim() ?? '', input.extraNote);
+  const notes = withNote([input.notes?.trim(), page ? incomingNote(page.incoming) : ''].filter(Boolean).join('\n'), input.extraNote);
   const query = buildBriefPrompt({
     positioningFull,
     businessPositioning: creatorContext.businessPositioning || undefined,
@@ -125,8 +151,13 @@ export async function runBriefBoard(ctx: BoardContext, input: BriefInput): Promi
     notes: notes || undefined,
     mixBlock: profile ? mixPromptBlock(resolveMix(profile, null, notes)) : undefined,
     taboos: profile ? taboosPromptBlock(profile) : undefined,
+  }) + (page?.bridgePrompt ?? '');
+  return callBoardStream(ctx, {
+    taskType: BRIEF_TYPE,
+    creationSettings: page?.bridgeSettings ?? {},
+    query,
+    profileId: profile?.id ?? null,
   });
-  return callBoardStream(ctx, { taskType: BRIEF_TYPE, creationSettings: {}, query, profileId: profile?.id ?? null });
 }
 
 /** 行业建议（药方）：按账号目的和当前阶段开药方。定位、作品数据有就带上 */
@@ -170,29 +201,49 @@ export async function runGrowthBoard(ctx: BoardContext, input: GrowthInput): Pro
   return callBoardStream(ctx, { taskType: '起号方案', creationSettings: {}, query, profileId: profile?.id ?? null });
 }
 
-/** 开篇钩子：按这条内容讲什么写几条开头，每条都要兑现得了 */
+/**
+ * 开篇钩子：按这条内容讲什么写几条开头，每条都要兑现得了。
+ * 页面收到带来的内容时：主题、现有开头、开篇卡（设置里的）照它来，参考内容追加在末尾（和开篇页一样）。
+ */
 export async function runOpeningBoard(ctx: BoardContext, input: OpeningInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
+  const page = input.carry ? pageHandoff(input.carry, 'growth', creatorContext) : null;
+  const picked = (page?.settings.openingCards ?? []).filter((x): x is string => typeof x === 'string' && x.length > 0);
+  const referenceBlock = page?.reference?.trim()
+    ? `\n【已有创作参考】\n${page.reference}${continuationRules('growth')}`
+    : '';
   const query = buildOpeningPrompt({
     contextBlock: buildContextBlock(creatorContext, 'script'),
     topic: withNote(input.topic.trim(), input.extraNote),
-    currentOpening: input.currentOpening?.trim() || undefined,
+    currentOpening: input.currentOpening?.trim() || page?.incoming.currentOpening || undefined,
+    picked: picked.length ? picked : undefined,
     count: clampCount(input.count, 3, 1, 6),
+  }) + referenceBlock;
+  return callBoardStream(ctx, {
+    taskType: '开篇钩子',
+    creationSettings: page?.settings ?? {},
+    query,
+    profileId: creatorContext.profile?.id ?? null,
   });
-  return callBoardStream(ctx, { taskType: '开篇钩子', creationSettings: {}, query, profileId: creatorContext.profile?.id ?? null });
 }
 
-/** 跨行业二创：借原片的开篇、结构、拍法，换成老板自己店里的事。档案就是「哪家店」 */
+/**
+ * 跨行业二创：借原片的开篇、结构、拍法，换成老板自己店里的事。档案就是「哪家店」。
+ * 从拆解页带来的（来源是拆解爆款）按拆解报告借；其它按粘贴的文案借。
+ */
 export async function runRemixBoard(ctx: BoardContext, input: RemixInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
   const profile = creatorContext.profile;
+  const page = input.carry ? pageHandoff(input.carry, 'remix', creatorContext) : null;
   const notes = withNote(input.notes?.trim() ?? '', input.extraNote);
   const count: RemixCount = COUNT_OPTIONS.find((c) => c === input.count) ?? 1;
+  const fromBreakdown = page?.incoming.from === '拆解爆款';
+  const text = page?.incoming.remixSource?.text?.trim() || input.text.trim();
   const query = buildRemixPrompt(
     {
-      kind: 'paste',
-      text: input.text.trim().slice(0, MAX_SOURCE_CHARS),
-      title: input.title?.trim() || undefined,
+      kind: fromBreakdown ? 'breakdown' : 'paste',
+      text: text.slice(0, MAX_SOURCE_CHARS),
+      title: input.title?.trim() || page?.incoming.remixSource?.title || undefined,
       industry: input.industry?.trim() || undefined,
     },
     {
@@ -211,12 +262,25 @@ export async function runRemixBoard(ctx: BoardContext, input: RemixInput): Promi
       notes: notes || undefined,
     },
   );
-  return callBoardStream(ctx, { taskType: REMIX_TASK_TYPE, creationSettings: {}, query, profileId: profile?.id ?? null });
+  return callBoardStream(ctx, {
+    taskType: REMIX_TASK_TYPE,
+    creationSettings: page?.settings ?? {},
+    query,
+    profileId: profile?.id ?? null,
+  });
 }
 
-/** 文案拆解（文字版）：拆结构和表达机制。视频截图的拆解要在拆解页面上传视频，这里不做 */
+/** 文案拆解（文字版）：拆结构和表达机制。带来的内容拆它的正文，设置照页面的。视频截图的拆解要在拆解页面上传视频，这里不做 */
 export async function runBreakdownBoard(ctx: BoardContext, input: BreakdownInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
-  const query = buildTextBreakdownPrompt(input.script.trim(), buildContextBlock(creatorContext, 'breakdown'), {} as CreationSettings);
-  return callBoardStream(ctx, { taskType: BREAKDOWN_TASK_TYPE, creationSettings: {}, query, profileId: creatorContext.profile?.id ?? null });
+  const page = input.carry ? pageHandoff(input.carry, 'breakdown', creatorContext) : null;
+  const script = page?.reference?.trim() || input.script.trim();
+  const settings: CreationSettings = page?.settings ?? {};
+  const query = buildTextBreakdownPrompt(script, buildContextBlock(creatorContext, 'breakdown'), settings);
+  return callBoardStream(ctx, {
+    taskType: BREAKDOWN_TASK_TYPE,
+    creationSettings: settings,
+    query,
+    profileId: creatorContext.profile?.id ?? null,
+  });
 }

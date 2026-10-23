@@ -28,6 +28,7 @@ import {
   type RemixInput,
 } from '@/lib/assistant/boards-extra';
 import { ADVICE_PURPOSES, ADVICE_STAGES } from '@/lib/industry-advice';
+import type { HandoffPayload } from '@/lib/handoff';
 import { DEPTHS, TOPIC_MAX } from '@/lib/research';
 import { runResearchBoard, RESEARCH_TOPIC_MIN, type ResearchInput } from '@/lib/assistant/boards-research';
 
@@ -74,7 +75,7 @@ export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> 
   research: { label: '深度研究', feature: '研究' },
 };
 
-export type BoardAny =
+type BoardAnyShape =
   | { kind: 'topic'; input: TopicInput }
   | { kind: 'script'; input: ScriptInput }
   | { kind: 'review'; input: ReviewInput }
@@ -91,6 +92,12 @@ export type BoardAny =
   | { kind: 'remix'; input: RemixInput }
   | { kind: 'breakdown'; input: BreakdownInput }
   | { kind: 'research'; input: ResearchInput };
+
+/**
+ * 派活的一条。carry 是「带过来的上一步结果」（页面「带去下一步」那份内容，由 fromResultId 取出来）：
+ * 有它，板块就按页面的方式接着它做（原方向、目的、创作设置、当前脚本都跟着走），结果存下来时也沿着它接续。
+ */
+export type BoardAny = BoardAnyShape & { carry?: HandoffPayload };
 
 /** 多步计划：按顺序派给几个板块，前一步的产出交给后一步 */
 export interface PlanSpec {
@@ -109,35 +116,35 @@ export function maxRunsOf(board: { kind: string }, max: number): number {
 export function runAnyBoard(ctx: BoardContext, board: BoardAny): Promise<BoardResult> {
   switch (board.kind) {
     case 'topic':
-      return runTopicBoard(ctx, board.input);
+      return runTopicBoard(ctx, { ...board.input, carry: board.carry });
     case 'script':
-      return runScriptBoard(ctx, board.input);
+      return runScriptBoard(ctx, { ...board.input, carry: board.carry });
     case 'review':
-      return runReviewBoard(ctx, board.input);
+      return runReviewBoard(ctx, { ...board.input, carry: board.carry });
     case 'title':
-      return runTitleBoard(ctx, board.input);
+      return runTitleBoard(ctx, { ...board.input, carry: board.carry });
     case 'storyboard':
-      return runStoryboardBoard(ctx, board.input);
+      return runStoryboardBoard(ctx, { ...board.input, carry: board.carry });
     case 'direction':
-      return runDirectionBoard(ctx, board.input);
+      return runDirectionBoard(ctx, { ...board.input, carry: board.carry });
     case 'content-plan':
       return runContentPlanBoard(ctx, board.input);
     case 'deal-reason':
-      return runDealReasonBoard(ctx, board.input);
+      return runDealReasonBoard(ctx, { ...board.input, carry: board.carry });
     case 'positioning':
-      return runPositioningBoard(ctx, board.input);
+      return runPositioningBoard(ctx, { ...board.input, carry: board.carry });
     case 'brief':
-      return runBriefBoard(ctx, board.input);
+      return runBriefBoard(ctx, { ...board.input, carry: board.carry });
     case 'advice':
       return runAdviceBoard(ctx, board.input);
     case 'growth':
       return runGrowthBoard(ctx, board.input);
     case 'opening':
-      return runOpeningBoard(ctx, board.input);
+      return runOpeningBoard(ctx, { ...board.input, carry: board.carry });
     case 'remix':
-      return runRemixBoard(ctx, board.input);
+      return runRemixBoard(ctx, { ...board.input, carry: board.carry });
     case 'breakdown':
-      return runBreakdownBoard(ctx, board.input);
+      return runBreakdownBoard(ctx, { ...board.input, carry: board.carry });
     case 'research':
       return runResearchBoard(ctx, board.input);
   }
@@ -157,13 +164,15 @@ export function missingFields(board: BoardAny): string[] {
     case 'storyboard':
       return (board.input.script ?? '').trim().length >= 30 ? [] : ['完整的脚本原文（至少 30 字）'];
     case 'direction':
-      return board.input.goal?.trim() ? [] : ['这次想达到的目的'];
+      // 带了上一步的结果：这次就是在它的方向上拓展，目的跟着它走
+      return board.input.goal?.trim() || board.carry ? [] : ['这次想达到的目的'];
     case 'content-plan':
       return board.input.goal?.trim() ? [] : ['这个月想主攻什么'];
     case 'deal-reason': {
       const missing: string[] = [];
       if (!board.input.storeName?.trim()) missing.push('店铺名称');
-      if (!board.input.storeFeatures?.trim()) missing.push('店铺特色（有什么具体的服务、产品、优势）');
+      // 带了上一步的内容，店铺特色可以从那份内容里来
+      if (!board.input.storeFeatures?.trim() && !board.carry) missing.push('店铺特色（有什么具体的服务、产品、优势）');
       return missing;
     }
     case 'positioning':

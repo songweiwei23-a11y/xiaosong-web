@@ -1,4 +1,7 @@
+import type { HandoffPayload } from '@/lib/handoff';
+import { topicReference } from '@/lib/creation-continuation';
 import { loadBoardContext } from './board-context';
+import { pageHandoff } from '@/lib/assistant/carry-consume';
 import { VIRAL_ELEMENTS } from '@/lib/viral-elements';
 import { readDifyStream } from '@/lib/sse-stream';
 import { resolveMix } from '@/lib/content-mix';
@@ -33,6 +36,8 @@ export interface BoardContext {
 }
 
 export interface TopicInput {
+  /** 带过来的上一步结果：有它，选题就按页面「带去生成选题」的方式，从这份内容出发、守住它的原方向 */
+  carry?: HandoffPayload;
   request: string;
   count: number;
   role: '按配比' | '流量型' | '人设型' | '变现型';
@@ -54,6 +59,8 @@ export interface TopicInput {
 }
 
 export interface ScriptInput {
+  /** 带过来的上一步结果：有它，脚本按页面「带去脚本」的方式接着它写（开头、拍法、参考内容都带上） */
+  carry?: HandoffPayload;
   request: string;
   role?: '流量型' | '人设型' | '变现型';
   platform?: string;
@@ -63,6 +70,8 @@ export interface ScriptInput {
 }
 
 export interface ReviewInput {
+  /** 带过来的上一步结果：待审的是它的脚本正文，参考是它的原始方案 */
+  carry?: HandoffPayload;
   draft: string;
   platform?: string;
   scriptType?: string;
@@ -71,7 +80,10 @@ export interface ReviewInput {
 
 export interface BoardResult {
   ok: boolean;
+  /** 给对话里看的版本（超长会截断） */
   text: string;
+  /** 完整的产出：存进创作会话、带去下一步用的是它，不能截断 */
+  full?: string;
   /** 失败的原因（给用户看，也给管理员判断要不要继续） */
   error?: string;
 }
@@ -123,7 +135,7 @@ async function saveBoardHistory(ctx: BoardContext, row: BoardHistoryRow): Promis
     }
     const doFetch = ctx.fetchImpl ?? fetch;
     const isTopic = row.taskType === '选题策划';
-    await doFetch(`${internalBase(ctx)}${isTopic ? '/api/topics' : '/api/script-history'}`, {
+    const res = await doFetch(`${internalBase(ctx)}${isTopic ? '/api/topics' : '/api/script-history'}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: ctx.cookie },
       body: JSON.stringify(isTopic
@@ -131,8 +143,10 @@ async function saveBoardHistory(ctx: BoardContext, row: BoardHistoryRow): Promis
         : { input_data: row.inputData, result: row.result, task_type: row.taskType }),
       cache: 'no-store',
     });
-  } catch {
-    // 存失败不影响结果
+    if (!res.ok) console.error(`[助理] 板块「${row.taskType}」的历史保存返回 ${res.status}`);
+  } catch (e) {
+    // 存失败不影响结果本身，但要留下痕迹：否则页面历史里少了这一条，没人知道为什么
+    console.error(`[助理] 板块「${row.taskType}」的历史没有保存：`, e);
   }
 }
 
@@ -155,11 +169,15 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
 
   const creatorContext = await loadBoardContext({ cookie: ctx.cookie, base, fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
   const resolvedMix = resolveMix(creatorContext.profile as unknown as Record<string, unknown> | null, null, requirement);
+  // 带过来的内容：和页面「带去生成选题」一样，按目标页重新组装，再交给选题的提示词
+  const page = input.carry ? pageHandoff(input.carry, 'topic', creatorContext) : null;
+  const incoming = page?.incoming ?? null;
+  const sourceReference = incoming ? topicReference(incoming) : '';
   const currentSettings = topicCreationSettings({
-    keyword1: keywords[0] ?? '', personalRequirement: requirement, sourceReference: '',
+    keyword1: keywords[0] ?? '', personalRequirement: requirement, sourceReference,
     selectedPlatforms: platform ? [platform] : [], selectedTracks: tracks, selectedContentTypes: [], selectedStyles: styles,
     selectedElements: elementIds, selectedDealReasons: [], topicRole: input.role, topicCount, tactic: '',
-    autoSettings: {}, creatorContext,
+    autoSettings: page?.settings ?? {}, creatorContext,
   });
   const built = buildTopicBoardQuery({
     creatorContext,
@@ -169,9 +187,9 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     topicType,
     topicRole: input.role,
     mode: 'quick',
-    sourceReference: '',
-    sourceFrom: '',
-    incomingSetup: null,
+    sourceReference,
+    sourceFrom: incoming?.from ?? '',
+    incomingSetup: incoming,
     keyword1: keywords[0] ?? '',
     keyword2: keywords[1] ?? '',
     keyword3: keywords[2] ?? '',
@@ -239,7 +257,7 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     },
     result: text,
   });
-  return { ok: true, text: boardClip(text) };
+  return { ok: true, text: boardClip(text), full: text };
 }
 
 /** 脚本：和脚本页面的算法一致（lib/boards/script-query），记忆预填也按页面的规则 */
@@ -253,6 +271,13 @@ export async function runScriptBoard(ctx: BoardContext, input: ScriptInput): Pro
   const creatorContext = await loadBoardContext({ cookie: ctx.cookie, base, fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
 
   const d = SCRIPT_PAGE_DEFAULTS;
+  // 带过来的内容：和页面「带去脚本」一样，参考内容、已选的开头、拍法都从它来
+  const page = input.carry ? pageHandoff(input.carry, 'script', creatorContext) : null;
+  const incoming = page?.incoming ?? null;
+  const carriedNote = incoming?.note ?? '';
+  const carriedOpening = incoming?.openingLine ?? '';
+  const carriedCard = incoming?.openingCards?.[0] ?? '';
+  const carriedTactic = incoming?.tactic || d.tactic;
   let state = {
     platform: platformInput || d.platform,
     durationMode: d.durationMode as 'preset' | 'custom' | 'ai',
@@ -279,9 +304,9 @@ export async function runScriptBoard(ctx: BoardContext, input: ScriptInput): Pro
     topic: request, platform: state.platform, durationMode: state.durationMode, duration: state.duration, customDuration: state.customDuration,
     scriptType: d.scriptType, autoScriptType: true, scriptRole: state.scriptRole, effectiveRole,
     style: input.style || d.style, customStyle: '', targetGroup: d.targetGroup, customTargetGroup: '', industry: '', customIndustry: '',
-    boomElements: [], dealReasons: [], additionalInfo: '', scriptStructure: state.scriptStructure, hookType: d.hookType,
-    tactic: d.tactic, openingLine: '', openingCard: '', scene: input.scene || d.scene, device: d.device, budget: d.budget, personnel: d.personnel,
-    originContent: '', autoSettings: {}, fromHandoff: false, creatorContext,
+    boomElements: [], dealReasons: [], additionalInfo: carriedNote, scriptStructure: state.scriptStructure, hookType: d.hookType,
+    tactic: carriedTactic, openingLine: carriedOpening, openingCard: carriedCard, scene: input.scene || d.scene, device: d.device, budget: d.budget, personnel: d.personnel,
+    originContent: '', autoSettings: page?.settings ?? {}, fromHandoff: false, creatorContext,
   });
   const query = buildScriptBoardQuery({
     topic: request, platform: state.platform, scriptType: d.scriptType, autoScriptType: true, effectiveRole, isAd: false,
@@ -290,8 +315,8 @@ export async function runScriptBoard(ctx: BoardContext, input: ScriptInput): Pro
     profile: creatorContext.profile ?? null,
     positioningContent: null,
     scriptStructure: state.scriptStructure, hookType: d.hookType, boomElements: [], directorThoughts: d.directorThoughts,
-    tactic: d.tactic, openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: input.scene || d.scene, device: d.device,
-    budget: d.budget, personnel: d.personnel, accountPositioning: '', additionalInfo: '', dealReasons: [],
+    tactic: carriedTactic, openingLine: carriedOpening, openingCard: carriedCard, productInfo: '', priceInfo: '', scene: input.scene || d.scene, device: d.device,
+    budget: d.budget, personnel: d.personnel, accountPositioning: '', additionalInfo: carriedNote, dealReasons: [],
     originContent: '', focusContent: '', currentSettings,
   });
 
@@ -329,13 +354,11 @@ export async function runScriptBoard(ctx: BoardContext, input: ScriptInput): Pro
     },
     result: text,
   });
-  return { ok: true, text: boardClip(text) };
+  return { ok: true, text: boardClip(text), full: text };
 }
 
 /** 审稿：和审稿页面的算法一致（lib/boards/review-query），按时长 AI 推荐 */
 export async function runReviewBoard(ctx: BoardContext, input: ReviewInput): Promise<BoardResult> {
-  const draft = input.draft.trim();
-  if (draft.length < 30) return { ok: false, text: '', error: '稿子太短或者没有给出原文' };
   const doFetch = ctx.fetchImpl ?? fetch;
   const base = internalBase(ctx);
   const platform = input.platform?.trim() || '抖音';
@@ -343,11 +366,16 @@ export async function runReviewBoard(ctx: BoardContext, input: ReviewInput): Pro
   const personalRequirements = input.extraNote ? `【管理员返工意见】${input.extraNote}` : '';
 
   const creatorContext = await loadBoardContext({ cookie: ctx.cookie, base, fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
-  const currentSettings = reviewCreationSettings({ draftContent: draft, platform, duration: AI_DURATION, scriptType, autoSettings: {}, creatorContext });
+  // 审稿页收到带来的内容：待审的是它的脚本正文（scriptContent），「相关参考」是原始方案 + 当前版本（creationReference，和正文不同才带）
+  const page = input.carry ? pageHandoff(input.carry, 'review', creatorContext) : null;
+  const draft = page?.incoming.scriptContent?.trim() || input.draft.trim();
+  if (draft.length < 30) return { ok: false, text: '', error: '稿子太短或者没有给出原文' };
+  const sourceReference = page && page.reference && page.reference !== (page.incoming.scriptContent ?? '') ? page.reference : '';
+  const currentSettings = reviewCreationSettings({ draftContent: draft, platform, duration: AI_DURATION, scriptType, autoSettings: page?.settings ?? {}, creatorContext });
   const { query, reviewMaterial } = buildReviewBoardQuery({
     creatorContext,
     currentSettings,
-    sourceReference: '',
+    sourceReference,
     draftContent: draft,
     platform,
     effectiveDuration: AI_DURATION,
@@ -402,5 +430,5 @@ export async function runReviewBoard(ctx: BoardContext, input: ReviewInput): Pro
     },
     result: text,
   });
-  return { ok: true, text: boardClip(text) };
+  return { ok: true, text: boardClip(text), full: text };
 }

@@ -1,5 +1,6 @@
 import { finishJob, pushEvent, type AssistantJob } from './jobs';
-import type { BoardContext } from './boards';
+import type { BoardContext, BoardResult } from './boards';
+import { saveBoardResult } from '@/lib/assistant/carry';
 import {
   BOARD_LABEL,
   factContextOf,
@@ -48,6 +49,8 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
   const ctx: BoardContext = { ...opts.ctx, isStopped: () => job.stopRequested };
   let current = opts.board;
   let best = '';
+  // 完整的产出（对话里的版本可能截断）：存下来给下一个板块接着用
+  let bestFull = '';
   let problems: string[] = [];
   let attempts = 0;
   const maxRuns = maxRunsOf(opts.board, opts.maxRuns);
@@ -59,9 +62,10 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
       type: 'step',
       text: `${tag}管理员：${attempt === 1 ? `派给「${label}」板块` : `第 ${attempt} 次返工，「${label}」重新生成`}`,
     });
-    const res = await runAnyBoard(ctx, current).catch(() => ({ ok: false, text: '', error: '板块调用出错，请稍后再试' }));
+    const res: BoardResult = await runAnyBoard(ctx, current).catch(() => ({ ok: false, text: '', error: '板块调用出错，请稍后再试' }));
     if (!res.ok) return { ok: false, text: best, attempts, problems, error: res.error ?? '板块没有完成' };
     best = res.text;
+    bestFull = res.full ?? res.text;
 
     // 第一道：规则（长度、脚本质量、事实依据）；第二道：管理员模型对照派活要求
     let check = checkBoardOutput(current.kind, res.text, context);
@@ -71,6 +75,7 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
     }
     if (check.ok) {
       pushEvent(job, { type: 'step', text: `${tag}管理员：验收通过（第 ${attempt} 次）` });
+      await keepResult(opts.ctx, opts.board, bestFull);
       return { ok: true, text: best, attempts, problems: [] };
     }
     problems = check.problems;
@@ -82,7 +87,15 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
       pushEvent(job, { type: 'step', text: `${tag}管理员：${cap}，仍有 ${problems.length} 处问题，交给你判断` });
     }
   }
+  // 返工到上限仍不合格：产出已经交给老板判断，也要存下来，老板可以接着用它继续创作
+  await keepResult(opts.ctx, opts.board, bestFull);
   return { ok: true, text: best, attempts, problems };
+}
+
+/** 存成可以按编号带去下一步的创作（失败不影响交付；见 lib/assistant/carry） */
+async function keepResult(ctx: BoardContext, board: BoardAny, full: string): Promise<void> {
+  if (!full.trim()) return;
+  await saveBoardResult(ctx, board, full).catch(() => null);
 }
 
 export interface BoardJobInput {

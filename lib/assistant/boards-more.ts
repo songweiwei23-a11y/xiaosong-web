@@ -7,17 +7,27 @@ import { VISUAL_STYLES } from '@/lib/content-types';
 import { buildDirectionPrompt } from '@/lib/direction';
 import { buildDealReasonPrompt } from '@/lib/deal-reasons';
 import { buildContentPlanPrompt } from '@/lib/content-plan';
+import { carriedIntent, intentBlock } from '@/lib/creation-continuation';
+import { incomingNote } from '@/lib/creation-flow';
+import { creationSettingsBlock, mergeCreationSettings } from '@/lib/creation-settings';
+import type { HandoffPayload } from '@/lib/handoff';
 import { readDifyStream } from '@/lib/sse-stream';
 import { loadBoardContext } from './board-context';
 import { internalBase, type BoardContext, type BoardResult } from './boards';
+import { pageHandoff } from '@/lib/assistant/carry-consume';
 
 /**
- * 管理员能派活的另外四个板块：标题封面、分镜脚本、创作方向、内容规划。
+ * 管理员能派活的另外四个板块：标题封面、分镜脚本、创作方向、内容规划（成交理由也在这里）。
  * 提示词用的是各板块自己的构造函数（lib/*），背景用档案里的创作上下文，和页面一致。
+ * 带过来的内容（carry）按页面收到「带去下一步」时的规则接进来（见 lib/assistant/carry-consume）。
  * 内容由 Dify 生成，走的是同一个生成接口 /api/dify/stream，额度也按板块自己的功能扣。
  */
 
 export interface TitleInput {
+  /** 带过来的上一步结果：标题只能兑现这份内容里有的东西，开篇卡也跟着它走 */
+  carry?: HandoffPayload;
+  /** 带过来的参考内容（派活时写入，执行时以 carry 为准） */
+  sourceContent?: string;
   /** 要起标题的主题（一句话） */
   topic: string;
   count?: number;
@@ -28,6 +38,8 @@ export interface TitleInput {
 }
 
 export interface StoryboardInput {
+  /** 带过来的上一步结果：分镜拆的是它的当前脚本 */
+  carry?: HandoffPayload;
   /** 要拆分镜的脚本原文 */
   script: string;
   platform?: string;
@@ -41,7 +53,9 @@ export interface StoryboardInput {
 }
 
 export interface DirectionInput {
-  /** 这次想达到的目的，一两句话（必填） */
+  /** 带过来的上一步结果：这一次就是在它的方向上拓展（页面的「拓展」） */
+  carry?: HandoffPayload;
+  /** 这次想达到的目的，一两句话（必填；带过来的内容时可以不填，目的跟着它走） */
   goal: string;
   count?: number;
   industry?: string;
@@ -79,17 +93,20 @@ export async function callBoardStream(ctx: BoardContext, body: Record<string, un
     return { ok: false, text: '', error: data?.error ?? '服务暂时不可用，请稍后再试' };
   }
   const text = await readDifyStream(res);
-  return { ok: true, text: text.length > 6000 ? `${text.slice(0, 6000)}\n…（内容太长，已截断）` : text };
+  return { ok: true, text: text.length > 6000 ? `${text.slice(0, 6000)}\n…（内容太长，已截断）` : text, full: text };
 }
 
 export async function loadContext(ctx: BoardContext) {
   return loadBoardContext({ cookie: ctx.cookie, base: internalBase(ctx), fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
 }
 
-/** 标题封面：标题公式、关键词策略都按默认（AI 挑），和标题页的快速生成一致 */
+/** 标题封面：标题公式、关键词策略都按默认（AI 挑），和标题页的快速生成一致。带来的内容按标题页的规则接进来 */
 export async function runTitleBoard(ctx: BoardContext, input: TitleInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
+  const page = input.carry ? pageHandoff(input.carry, 'title', creatorContext) : null;
   const platform = input.platform?.trim() || '抖音';
+  // 标题页：参考正文取「相关参考」，没有才用脚本正文；开篇卡从带来的内容里拿
+  const sourceContent = page ? page.reference || page.incoming.scriptContent || '' : input.sourceContent?.trim() || '';
   const query = buildTitlePrompt({
     topic: withNote(input.topic.trim(), input.extraNote),
     titleTypeLabel: 'AI推荐',
@@ -101,10 +118,12 @@ export async function runTitleBoard(ctx: BoardContext, input: TitleInput): Promi
     targetAudience: input.audience?.trim() ?? '',
     count: clampCount(input.count, 5, 3, 10),
     contextBlock: buildContextBlock(creatorContext, 'title'),
+    sourceContent: sourceContent || undefined,
+    openingCards: page?.incoming.openingCards ?? undefined,
   });
   return callBoardStream(ctx, {
     taskType: '标题封面',
-    creationSettings: { platform },
+    creationSettings: mergeCreationSettings(page?.settings, { platform }),
     query,
     profileId: creatorContext.profile?.id ?? null,
     platform,
@@ -112,36 +131,48 @@ export async function runTitleBoard(ctx: BoardContext, input: TitleInput): Promi
   });
 }
 
-/** 分镜脚本：按脚本拆镜头，拍摄条件用档案里的（设备、团队、场地） */
+/** 分镜脚本：按脚本拆镜头，拍摄条件用档案里的（设备、团队、场地）。带来的内容：拆的是它的当前脚本，其余作为相关参考 */
 export async function runStoryboardBoard(ctx: BoardContext, input: StoryboardInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
+  const page = input.carry ? pageHandoff(input.carry, 'storyboard', creatorContext) : null;
   const platform = input.platform?.trim() || '抖音';
   const duration = input.duration?.trim() || '60秒';
   const contentType = input.contentType?.trim() || 'talking';
   const visualStyle = input.visualStyle?.trim() || VISUAL_STYLES[0].value;
+  const script = page?.incoming.scriptContent?.trim() || input.script.trim();
+  // 分镜页：参考和脚本正文不同才单独放进「相关方案参考」，和页面一样只让正文进分镜
+  const reference = page && page.reference && page.reference !== (page.incoming.scriptContent ?? '')
+    ? `【相关方案参考】\n${page.reference}\n以上仅为背景资料，请对脚本输入框中的正文拆分镜。`
+    : '';
   const query = buildStoryboardPrompt({
-    scriptContent: input.script.trim(),
+    scriptContent: script,
     platform,
     duration,
     contentType,
     visualStyle,
     visualStyleLabel: VISUAL_STYLES.find((v) => v.value === visualStyle)?.label ?? '',
-    additionalInfo: input.extraNote ?? '',
+    additionalInfo: [reference, input.extraNote ?? ''].filter(Boolean).join('\n'),
     contextBlock: buildContextBlock(creatorContext, 'storyboard'),
   });
   return callBoardStream(ctx, {
     taskType: '分镜脚本',
-    creationSettings: { platform, duration },
+    creationSettings: mergeCreationSettings(page?.settings, { platform, duration }),
     query,
     profileId: creatorContext.profile?.id ?? null,
     platform,
   });
 }
 
-/** 创作方向：按目的铺开几个方向，每个方向说清楚思路和形式 */
+/**
+ * 创作方向：按目的铺开几个方向，每个方向说清楚思路和形式。
+ * 带来的内容就是页面的「拓展」：那个方向单独放进 expand（来源、内容、原方向的目的和思路），
+ * 页面还会在末尾追加桥接段和创作设置，这里一样。
+ */
 export async function runDirectionBoard(ctx: BoardContext, input: DirectionInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
   const profile = creatorContext.profile;
+  const page = input.carry ? pageHandoff(input.carry, 'direction', creatorContext) : null;
+  const expandContent = page?.reference?.trim() ?? '';
   const query = buildDirectionPrompt({
     purposes: [],
     customGoal: withNote(input.goal.trim(), input.extraNote),
@@ -152,10 +183,17 @@ export async function runDirectionBoard(ctx: BoardContext, input: DirectionInput
     profileSummary: profile ? buildProfileSummary(profile as never) : '',
     contextBlock: buildContextBlock(creatorContext, 'direction'),
     industry: input.industry?.trim() || undefined,
-  });
+    expand: expandContent
+      ? {
+          from: page?.incoming.from || '其他板块',
+          content: expandContent,
+          intent: intentBlock(carriedIntent({ sourceContent: expandContent, originContent: '' })),
+        }
+      : undefined,
+  }) + (page ? `${page.bridgePrompt}${creationSettingsBlock(page.settings)}` : '');
   return callBoardStream(ctx, {
     taskType: '创作方向',
-    creationSettings: {},
+    creationSettings: page?.settings ?? {},
     query,
     profileId: profile?.id ?? null,
   });
@@ -187,11 +225,13 @@ export async function runContentPlanBoard(ctx: BoardContext, input: ContentPlanI
 }
 
 export interface DealReasonInput {
+  /** 带过来的上一步结果：页面「带去成交理由」时，它的内容填进店铺特色，设置里的目标人群也跟着来 */
+  carry?: HandoffPayload;
   /** 店铺名称（必填） */
   storeName: string;
   /** 店铺类型，例如 火锅店、美容院 */
   storeType?: string;
-  /** 店铺特色（必填）：没有依据的成交理由会被判不适用 */
+  /** 店铺特色（必填，带来的内容时可以先空着）：没有依据的成交理由会被判不适用 */
   storeFeatures: string;
   /** 目标客户（老板说了才填） */
   targetCustomer?: string;
@@ -201,16 +241,18 @@ export interface DealReasonInput {
 /** 成交理由：判断十七条成交理由各自成不成立，并给出怎么在视频里拍出来。店铺信息由老板给，不编 */
 export async function runDealReasonBoard(ctx: BoardContext, input: DealReasonInput): Promise<BoardResult> {
   const creatorContext = await loadContext(ctx);
+  const page = input.carry ? pageHandoff(input.carry, 'deal-reason', creatorContext) : null;
+  const storeFeatures = [input.storeFeatures.trim(), page ? incomingNote(page.incoming, 1200) : ''].filter(Boolean).join('\n\n');
   const query = buildDealReasonPrompt({
     accountContext: buildContextBlock(creatorContext, 'dealReason'),
     storeName: input.storeName.trim(),
     storeType: input.storeType?.trim() ?? '',
-    storeFeatures: withNote(input.storeFeatures.trim(), input.extraNote),
-    targetCustomer: input.targetCustomer?.trim() || undefined,
-  });
+    storeFeatures: withNote(storeFeatures, input.extraNote),
+    targetCustomer: input.targetCustomer?.trim() || page?.bridgeSettings.audience || undefined,
+  }) + (page?.bridgePrompt ?? '');
   return callBoardStream(ctx, {
     taskType: '成交理由',
-    creationSettings: {},
+    creationSettings: page?.bridgeSettings ?? {},
     query,
     topic: query,
     profileId: creatorContext.profile?.id ?? null,

@@ -12,6 +12,8 @@ import { internalBase, readInternal, type BoardHistoryRow } from './boards';
 import { BOARD_LABEL, maxRunsOf, missingFields, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
 import { isDepth } from '@/lib/research';
 import { createPendingRun } from './pending-runs';
+import { listRecentResults, loadCarry } from '@/lib/assistant/carry';
+import { applyCarry } from '@/lib/assistant/carry-shape';
 import { MAX_BOARD_RUNS } from './manager';
 import type { AssistantTool, WebFeedback } from './agent';
 
@@ -106,6 +108,39 @@ function stepToBoard(s: { board?: unknown; text?: unknown; count?: unknown; plat
     case 'research':
       // 计划里的深度研究只给了主题，深度按标准，资料由上一步的产出带过去
       return { kind: 'research', input: { topic: text } };
+    default:
+      return null;
+  }
+}
+
+/**
+ * 接着上一步的结果做：只填老板这次说的那一点（想要的主题、目的、这次的要求），其余的正文和原方向由带过来的结果补。
+ * 认不出的板块返回 null。
+ */
+function continueBoard(to: string, request: string, count: number | undefined, platform: string): BoardAny | null {
+  switch (to) {
+    case 'topic':
+      return { kind: 'topic', input: { request, count: clampCount(count, 10, 3, 10), role: '按配比', platform, keywords: [], tracks: [], styles: [], elements: [], benchmarkAccounts: '', viralCases: '', difficulty: '中等创意' } };
+    case 'script':
+      return { kind: 'script', input: { request, platform } };
+    case 'review':
+      return { kind: 'review', input: { draft: '', platform } };
+    case 'storyboard':
+      return { kind: 'storyboard', input: { script: '', platform } };
+    case 'title':
+      return { kind: 'title', input: { topic: request, count: clampCount(count, 5, 3, 10), platform } };
+    case 'opening':
+      return { kind: 'opening', input: { topic: request, count: clampCount(count, 3, 1, 6) } };
+    case 'direction':
+      return { kind: 'direction', input: { goal: request, count: clampCount(count, 5, 3, 8) } };
+    case 'positioning':
+      return { kind: 'positioning', input: { platform, notes: request } };
+    case 'brief':
+      return { kind: 'brief', input: { notes: request } };
+    case 'remix':
+      return { kind: 'remix', input: { text: '', notes: request, count: 1 } };
+    case 'breakdown':
+      return { kind: 'breakdown', input: { script: '' } };
     default:
       return null;
   }
@@ -572,6 +607,22 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       },
     },
     {
+      name: 'list_results',
+      label: '正在查最近的创作',
+      description:
+        '列出这个账号最近的创作结果（板块跑出来的、页面带去下一步的），每条有编号。老板说「用刚才的」「接着写」「用那个方向」「把那条脚本拿去做选题」时，先用它找到要接着做的那一份，再用 propose_continue 带过去。只读，不改任何内容。',
+      input_schema: { type: 'object', properties: {}, required: [] },
+      async run() {
+        const list = await listRecentResults(ctx, 10);
+        if (!list.length) return '这个账号还没有可以接着做的创作结果。请先让板块生成一份。';
+        const lines = list.map((r) => {
+          const when = new Date(r.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+          return `- 编号 ${r.id}｜${r.from || '创作'}｜${when}｜${r.title || r.preview}`;
+        });
+        return `最近的创作（从新到旧）：\n${lines.join('\n')}`.slice(0, 4000);
+      },
+    },
+    {
       name: 'list_materials',
       label: '正在查素材库',
       description:
@@ -778,6 +829,33 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
           kind: 'research',
           input: { topic, depth: isDepth(input.depth) ? input.depth : 'standard', material: str(input.material) },
         });
+      },
+    },
+    {
+      name: 'propose_continue',
+      label: '正在接着上一步的结果派活',
+      description:
+        '把一份已经做好的创作结果（编号从 list_results 查得到）带去另一个板块接着做，走页面「带去下一步」同样的路子：原方向、目的、创作设置、当前脚本、开头都跟着过去，不会丢。to 填要去的板块：topic 选题、script 脚本、review 审稿、storyboard 分镜、title 标题、opening 开篇、direction 创作方向、positioning 账号定位、brief 创作简报、remix 跨行业二创、breakdown 文案拆解。request 填老板这次的具体要求（例如「写 3 个选题」「改成口播」），没有就不填，由带过来的内容决定。这一步只是列给老板看，确认后才开跑。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          fromResultId: { type: 'string', description: '要接着做的那份结果的编号（list_results 里的）' },
+          to: { type: 'string', enum: ['topic', 'script', 'review', 'storyboard', 'title', 'opening', 'direction', 'positioning', 'brief', 'remix', 'breakdown'], description: '要去的板块' },
+          request: { type: 'string', description: '老板这次的具体要求，没有就不填' },
+          count: { type: 'number', description: '条数或方案个数，老板说了才填' },
+          platform: { type: 'string', description: '发布平台，不确定就不填' },
+        },
+        required: ['fromResultId', 'to'],
+      },
+      async run(input) {
+        const id = str(input.fromResultId);
+        if (!id) return '还不知道要接着哪份结果做。请先用 list_results 查最近的创作，选出要接着做的那一份';
+        const to = str(input.to);
+        const board = continueBoard(to, str(input.request), typeof input.count === 'number' ? input.count : undefined, str(input.platform));
+        if (!board) return `「${to || '这个'}」板块不能接着做。可以接着做的有：选题、脚本、审稿、分镜、标题、开篇、创作方向、账号定位、创作简报、跨行业二创、文案拆解`;
+        const carry = await loadCarry(ctx, id);
+        if (!carry) return `没有找到结果编号「${id}」。请先用 list_results 查最近的创作，再用正确的编号。`;
+        return proposeBoard(applyCarry(board, carry));
       },
     },
     {
