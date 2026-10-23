@@ -9,7 +9,8 @@ import { MEMORY_MAX_COUNT } from '@/lib/assistant/memory';
 import { clampMinutes, OPEN_PAGES, resolveSound, soundChoices } from '@/lib/assistant/client-action-spec';
 import type { ActionReceipt } from '@/lib/assistant/receipts';
 import { internalBase, readInternal, type BoardHistoryRow } from './boards';
-import { BOARD_LABEL, missingFields, revisionCapOf, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
+import { BOARD_LABEL, BOARD_TASK_TYPE, missingFields, revisionCapOf, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
+import { foundationGate, foundationNeedOf } from '@/lib/foundation-gate';
 import { isDepth } from '@/lib/research';
 import { createPendingRun } from './pending-runs';
 import { listRecentResults, loadCarry } from '@/lib/assistant/carry';
@@ -239,13 +240,23 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
    * 派活：把板块任务列出来，等用户确认才真的跑。板块每跑一次都扣额度，所以这里绝不直接执行。
    * 管理员的验收和返工在确认之后、板块跑的过程中进行（见 lib/assistant/board-job.ts）。
    */
-  const proposeBoard = (board: BoardAny | PlanSpec): string => {
+  const proposeBoard = async (board: BoardAny | PlanSpec): Promise<string> => {
     // 必填项缺了就先问老板，不列任务、不派活
     const missing = board.kind === 'plan'
       ? board.steps.flatMap((step, i) => missingFields(step).map((m) => `第 ${i + 1} 步缺${m}`))
       : missingFields(board);
     if (missing.length) return `还缺：${missing.join('、')}。请先问老板补齐，补齐后再派活，不要自己编。`;
     const steps = board.kind === 'plan' ? board.steps : [board];
+    // 地基没打好（建档、账号定位、创作简报）的板块不列任务：和生成接口同一套规则，这里提前拦，不让老板确认一个跑不了的任务
+    for (const need of new Set(steps.map((s) => foundationNeedOf(BOARD_TASK_TYPE[s.kind])))) {
+      let blocked: string | null;
+      try {
+        blocked = await foundationGate(ctx.userId, need, ctx.profileId ?? null);
+      } catch {
+        return '暂时没有读到老板的地基进度，这次先不派活。请稍后再试。';
+      }
+      if (blocked) return `这次不派活：${blocked}这些板块要先打好地基才能生成，所以不列任务、不扣额度。请先告诉老板先去做上面这一步，做好以后再派。`;
+    }
     const summary = board.kind === 'plan'
       ? board.steps.map((s, i) => `${i + 1}. ${summaryOf(s)}`).join('\n')
       : summaryOf(board);

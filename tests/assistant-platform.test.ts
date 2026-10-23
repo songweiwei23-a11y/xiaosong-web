@@ -1,3 +1,8 @@
+// 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
+vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
+  foundationGate: async () => null,
+}));
 /**
  * 管理员新补的部分（2026-10-23）：成交理由板块、作品进度、素材库查看和删除确认，以及档案类说法的规则。
  * 全部用假接口，不调用真实模型。

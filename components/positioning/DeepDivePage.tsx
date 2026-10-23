@@ -27,8 +27,8 @@ import { ContentMixBar } from '@/components/workspace/ContentMix'
  * 所以不另起炉灶：先读这个档案已有的账号定位当地基，再往下深挖一层。
  * 这样用户不用重填信息，两份产出也不会互相打架。
  *
- * 没有地基时不拦着生成——只提示一句，因为有的用户就想先看变现思路。
- * 但会在提示词里说明"没有已确定的定位"，让模型自己把话说圆。
+ * 没有账号定位（地基）时不让生成：2026-10-23 地基门槛，服务端也会拦（见 lib/foundation-gate.ts），
+ * 这里按钮置灰，并说明先去做账号定位。
  */
 
 interface Props {
@@ -290,12 +290,12 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
                   </p>
                 ) : (
                   <p className="text-amber-500">
-                    还没有生成过账号定位。可以直接做，但先出一份六维地基会更准。
+                    还没有账号定位，先做好账号定位，才能在它的基础上深挖。
                     <button
                       onClick={() => router.push('/dashboard/positioning')}
                       className="ml-1 underline"
                     >
-                      去生成
+                      去做账号定位
                     </button>
                   </p>
                 )}
@@ -317,7 +317,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
 
           <button
             onClick={generate}
-            disabled={isGenerating || loadingCtx}
+            disabled={isGenerating || loadingCtx || !baseline}
             className="mt-4 w-full rounded-xl bg-primary py-2.5 text-[13.5px] font-medium text-primary-foreground disabled:opacity-50"
           >
             {isGenerating

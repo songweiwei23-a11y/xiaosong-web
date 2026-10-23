@@ -1,3 +1,8 @@
+// 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
+vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
+  foundationGate: async () => null,
+}));
 /**
  * 深度研究接入派活（2026-10-23）：主题必填、创建 → 等计划 → 开跑 → 轮询 → 报告交给验收，
  * 超时、失败、被停下时的结果，以及派活工具只列不跑。

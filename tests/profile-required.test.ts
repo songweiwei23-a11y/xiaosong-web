@@ -1,3 +1,8 @@
+// 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
+vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
+  foundationGate: async () => null,
+}));
 // 有档案的用户，创作请求必须带档案 id（企业商用检测 P5：103 条记录没有档案 id，可能串档）。
 // 没有任何档案的用户、知识库和自由对话不受影响。
 const mockProfiles = vi.hoisted(() => ({ rows: [] as Array<{ id: string }> }));

@@ -1,3 +1,8 @@
+// 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
+vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
+  foundationGate: async () => null,
+}));
 vi.mock('@/lib/creation-quota', () => ({ reserveCreation: vi.fn(async () => ({ ok: true, reservation: { userId: 'owner', feature: 'direction', requestId: 'season-req' } })), releaseCreation: vi.fn(async () => {}), recordCreationCompletion: vi.fn(async () => {}), completionUsage: vi.fn(() => ({})) }));
 vi.mock('@/lib/api-guard', () => ({ requireUserWithQuota: async () => ({ ok: true, userId: 'owner' }), requireUser: async () => ({ ok: true, userId: 'owner' }), incrementUsageServer: vi.fn(async () => {}) }));
 vi.mock('@/lib/dify-conversation', () => ({ getDifyConversationId: vi.fn(async () => null), saveDifyConversationId: vi.fn(async () => {}), clearDifyConversationId: vi.fn(async () => {}), isInvalidConversationError: () => false }));

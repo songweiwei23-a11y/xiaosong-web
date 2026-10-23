@@ -1,8 +1,13 @@
+// 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
+vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
+  foundationGate: async () => null,
+}));
 /**
  * 板块之间带内容（2026-10-23）：助理跑出来的结果存成创作会话，编号取回后接着给下一个板块，
  * 原方向、目的、创作设置、当前脚本都要跟着过去（和页面「带去下一步」一样）。全部用假接口。
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import type { HandoffPayload } from '@/lib/handoff';
 import { loadCarry, listRecentResults, saveBoardResult } from '@/lib/assistant/carry';

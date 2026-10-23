@@ -1,8 +1,13 @@
+// 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
+vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
+  foundationGate: async () => null,
+}));
 /**
  * 管理员新派的七个板块：账号定位、创作简报、行业建议、起号方案、开篇钩子、跨行业二创、文案拆解。
  * 全部用假接口（档案、定位、生成接口都是桩），不调用真实模型。
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { missingFields, runAnyBoard, summaryOf, withUpstream, type BoardAny } from '@/lib/assistant/board-dispatch';
 import { createAssistantTools } from '@/lib/assistant/tools';
 

@@ -38,6 +38,7 @@ import { keepStructureBlock } from '@/lib/breakdown-templates';
 import { CHUNK_TRIGGER_CHARS, fixInChunks, mergeUsage } from '@/lib/fact-fix-chunks';
 import { scriptRepairReason, buildScriptRepairPrompt, acceptScriptRepair, scriptRepairLimited, spokenStep, explicitBudget, trimSpokenStep } from '@/lib/script-repair';
 import { holdUnsupported } from '@/lib/evidence-guard';
+import { foundationGate, foundationNeedOf } from '@/lib/foundation-gate';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
 const NO_FACT_GUARD_TASKS = new Set(['AI推荐', '前采建档']);
@@ -106,6 +107,14 @@ export async function POST(req: NextRequest) {
         return Response.json({ error: '请先选择一个账号档案，再生成内容，内容需要归属到具体档案' }, { status: 400 });
       }
     }
+    // 地基没打好不生成（2026-10-23 老板定）：拦在扣额度之前，告诉用户先去做哪一步。规则见 lib/foundation-gate.ts
+    let foundationNote: string | null;
+    try {
+      foundationNote = await foundationGate(guard.userId!, foundationNeedOf(body.taskType), body.profileId || body.profile_id || null);
+    } catch {
+      return Response.json({ error: '暂时没有读到你的地基进度，请稍后再试' }, { status: 503 });
+    }
+    if (foundationNote) return Response.json({ error: foundationNote, code: 'foundation_missing' }, { status: 400 });
     // 新版拆解/二创由服务端落库，关页不会阻止保存。旧版客户端仍走原保存流程。
     const creativeTask = DURABLE_CREATIVE_TASKS.has(body.taskType);
     const durableHistory = creativeTask && typeof body.historyId === 'string' && PROFILE_UUID.test(body.historyId);

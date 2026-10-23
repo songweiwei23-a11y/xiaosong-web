@@ -1,6 +1,7 @@
 import { after } from 'next/server';
 import { requireUser, requireUserWithQuota } from '@/lib/api-guard';
 import { getServiceSupabase } from '@/lib/admin-auth';
+import { foundationGate } from '@/lib/foundation-gate';
 import { readJsonBody } from '@/lib/read-body';
 import { verifiedAttachments, attachmentTextBlock, CHAT_FILES_BUCKET } from '@/lib/chat-attachments-server';
 import { attachmentReadable, attachmentToText } from '@/lib/document-text';
@@ -72,6 +73,11 @@ export async function POST(request: Request) {
     if (error) return failure('档案暂时无法读取');
     if (!data) return failure('不能使用其他账号的档案', 403);
   }
+  // 地基没打好不做深度研究（2026-10-23 老板定，和生成接口同一套规则，不扣额度）
+  let foundationNote: string | null;
+  try { foundationNote = await foundationGate(userId, 'brief', profileId); }
+  catch { return failure('暂时没有读到你的地基进度，请稍后再试'); }
+  if (foundationNote) return failure(foundationNote, 400);
   try {
     const quota = await readResearchQuota(userId);
     if (['plan_not_included', 'membership_expired', 'account_inactive', 'period_unavailable'].includes(quota.reason ?? '')) return failure(quotaMessage(quota), 402);

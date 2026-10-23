@@ -75,6 +75,29 @@ export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> 
   research: { label: '深度研究', feature: '研究' },
 };
 
+/**
+ * 板块对应的任务类型（和各板块实际发给生成接口的 taskType 一致）。
+ * 用来判断这个板块需要哪一步地基（lib/foundation-gate.ts）。
+ */
+export const BOARD_TASK_TYPE: Record<BoardKind, string> = {
+  topic: '选题策划',
+  script: '脚本生成',
+  review: '审稿优化',
+  title: '标题封面',
+  storyboard: '分镜脚本',
+  direction: '创作方向',
+  'content-plan': '内容规划',
+  'deal-reason': '成交理由',
+  positioning: '账号定位',
+  brief: '创作简报',
+  advice: '行业建议',
+  growth: '起号方案',
+  opening: '开篇钩子',
+  remix: '跨行业二创',
+  breakdown: '拆解爆款',
+  research: '深度研究',
+};
+
 type BoardAnyShape =
   | { kind: 'topic'; input: TopicInput }
   | { kind: 'script'; input: ScriptInput }

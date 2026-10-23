@@ -1,3 +1,8 @@
+// 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
+vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
+  foundationGate: async () => null,
+}));
 /**
  * 助理作为管理员（2026-10-23）：派活要先确认；板块产出由管理员验收，不合格就返工，最多返工两次。
  * 内容由板块（Dify）生成，这里全部用假接口，不调用真实模型。
