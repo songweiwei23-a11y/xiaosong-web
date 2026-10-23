@@ -8,7 +8,8 @@ import { addMemory, listMemories, updateMemory } from '@/lib/assistant/memory-st
 import { MEMORY_MAX_COUNT } from '@/lib/assistant/memory';
 import { clampMinutes, OPEN_PAGES, resolveSound, soundChoices } from '@/lib/assistant/client-action-spec';
 import type { ActionReceipt } from '@/lib/assistant/receipts';
-import { BOARD_LABEL, internalBase, readInternal, type BoardHistoryRow, type BoardInput, type BoardKind } from './boards';
+import { internalBase, readInternal, type BoardHistoryRow } from './boards';
+import { BOARD_LABEL, missingFields, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
 import { createPendingRun } from './pending-runs';
 import { MAX_BOARD_RUNS } from './manager';
 import type { AssistantTool, WebFeedback } from './agent';
@@ -58,6 +59,35 @@ const KNOWLEDGE_NONE =
   '编导知识库里没有和这个问题相关的资料。请如实告诉用户，可以按一般经验回答，但不能说成来自知识库。';
 
 const clip = (s: unknown) => (typeof s === 'string' ? s.slice(0, TRUNC) : '');
+
+/** 派活参数的小工具：字符串去空白、字符串数组、条数夹在范围里 */
+const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+const clampCount = (n: unknown, fallback: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, Math.round(typeof n === 'number' && Number.isFinite(n) ? n : fallback)));
+
+/** 多步计划的一步（模型给的参数）转成派活格式；认不出的板块返回 null */
+function stepToBoard(s: { board?: unknown; text?: unknown; count?: unknown; platform?: unknown }): BoardAny | null {
+  const text = str(s.text);
+  const platform = str(s.platform);
+  switch (s.board) {
+    case 'topic':
+      return { kind: 'topic', input: { request: text, count: clampCount(s.count, 10, 3, 10), role: '按配比', platform, keywords: [], tracks: [], styles: [], elements: [], benchmarkAccounts: '', viralCases: '', difficulty: '中等创意' } };
+    case 'script':
+      return { kind: 'script', input: { request: text, platform } };
+    case 'review':
+      return { kind: 'review', input: { draft: text, platform } };
+    case 'title':
+      return { kind: 'title', input: { topic: text, count: clampCount(s.count, 5, 3, 10), platform } };
+    case 'storyboard':
+      return { kind: 'storyboard', input: { script: text, platform } };
+    case 'direction':
+      return { kind: 'direction', input: { goal: text, count: clampCount(s.count, 5, 3, 8) } };
+    case 'content-plan':
+      return { kind: 'content-plan', input: { goal: text, count: clampCount(s.count, 12, 4, 30) } };
+    default:
+      return null;
+  }
+}
 
 /** 待办的一条（接口返回的形状） */
 interface TodoItem {
@@ -151,20 +181,31 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
    * 派活：把板块任务列出来，等用户确认才真的跑。板块每跑一次都扣额度，所以这里绝不直接执行。
    * 管理员的验收和返工在确认之后、板块跑的过程中进行（见 lib/assistant/board-job.ts）。
    */
-  const proposeBoard = (kind: BoardKind, board: BoardInput, summary: string): string => {
-    const meta = BOARD_LABEL[kind];
+  const proposeBoard = (board: BoardAny | PlanSpec): string => {
+    // 必填项缺了就先问老板，不列任务、不派活
+    const missing = board.kind === 'plan'
+      ? board.steps.flatMap((step, i) => missingFields(step).map((m) => `第 ${i + 1} 步缺${m}`))
+      : missingFields(board);
+    if (missing.length) return `还缺：${missing.join('、')}。请先问老板补齐，补齐后再派活，不要自己编。`;
+    const steps = board.kind === 'plan' ? board.steps : [board];
+    const summary = board.kind === 'plan'
+      ? board.steps.map((s, i) => `${i + 1}. ${summaryOf(s)}`).join('\n')
+      : summaryOf(board);
+    const features = [...new Set(steps.map((s) => BOARD_LABEL[s.kind].feature))].join('、');
+    const isPlan = board.kind === 'plan';
+    const label = isPlan ? `执行计划（${steps.length} 步）` : BOARD_LABEL[board.kind].label;
     const run = createPendingRun({
       userId: ctx.userId,
       board,
-      kind,
-      label: meta.label,
+      kind: isPlan ? 'plan' : board.kind,
+      label,
       summary,
       maxRuns: MAX_BOARD_RUNS,
       profileId: ctx.profileId ?? null,
       memoryOn: ctx.memoryOn !== false,
     });
-    ctx.onAction?.({ name: 'board.run', args: { runId: run.id, board: kind, label: meta.label, summary, maxRuns: MAX_BOARD_RUNS, feature: meta.feature } });
-    return `已把「${meta.label}」的任务列给用户，等他点确认后才开跑（最多跑 ${MAX_BOARD_RUNS} 次，每次扣一次「${meta.feature}」额度；不达标我会让板块返工）。请告诉用户在面板上确认。在他确认之前，不要说已经做好了。`;
+    ctx.onAction?.({ name: 'board.run', args: { runId: run.id, board: run.kind, label, summary, maxRuns: MAX_BOARD_RUNS, feature: features } });
+    return `已把${isPlan ? `这 ${steps.length} 步计划` : `「${label}」的任务`}列给老板，等他点确认后才开跑（${isPlan ? '每一步' : ''}最多跑 ${MAX_BOARD_RUNS} 次，每次扣「${features}」额度；不达标我会让板块返工）。请告诉老板在面板上确认。在他确认之前，不要说已经做好了。`;
   };
 
   return [
@@ -271,6 +312,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
           benchmarkAccounts: { type: 'string', description: '对标账号（用户说了才填）' },
           viralCases: { type: 'string', description: '爆款案例（用户说了才填）' },
           difficulty: { type: 'string', enum: ['简单易上手', '中等创意', '高难度'], description: '创意难度，默认中等创意' },
+          elements: { type: 'array', items: { type: 'string' }, description: '页面上选的爆款元素（名字），老板说了才填' },
         },
         required: ['request'],
       },
@@ -286,15 +328,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         const styles = strings(input.styles);
         const difficulty = typeof input.difficulty === 'string' && input.difficulty.trim() ? input.difficulty.trim() : '中等创意';
         const platform = typeof input.platform === 'string' ? input.platform.trim() : '';
-        const summary = [
-          `选题 ${count} 条（${role}）`,
-          `方向：${request}`,
-          platform ? `平台：${platform}` : '',
-          keywords.length ? `关键词：${keywords.join('、')}` : '',
-          tracks.length ? `赛道：${tracks.join('、')}` : '',
-          `难度：${difficulty}`,
-        ].filter(Boolean).join('｜');
-        return proposeBoard('topic', {
+        return proposeBoard({
           kind: 'topic',
           input: {
             request,
@@ -304,11 +338,12 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
             keywords,
             tracks,
             styles,
+            elements: strings(input.elements),
             benchmarkAccounts: typeof input.benchmarkAccounts === 'string' ? input.benchmarkAccounts : '',
             viralCases: typeof input.viralCases === 'string' ? input.viralCases : '',
             difficulty,
           },
-        }, summary);
+        });
       },
     },
     {
@@ -334,12 +369,10 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         const platform = typeof input.platform === 'string' ? input.platform.trim() : '';
         const scene = typeof input.scene === 'string' ? input.scene.trim() : '';
         const style = typeof input.style === 'string' ? input.style.trim() : '';
-        const summary = [`脚本：${request}`, role ? `目的：${role}` : '', platform ? `平台：${platform}` : '', scene ? `场景：${scene}` : '', style ? `风格：${style}` : '']
-          .filter(Boolean).join('｜');
-        return proposeBoard('script', {
+        return proposeBoard({
           kind: 'script',
           input: { request, role, platform, scene, style },
-        }, summary);
+        });
       },
     },
     {
@@ -361,11 +394,134 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         if (draft.length < 30) return '稿子太短或者没有给出原文。请先请用户把要审的稿子完整发过来';
         const platform = typeof input.platform === 'string' ? input.platform.trim() : '';
         const scriptType = typeof input.scriptType === 'string' ? input.scriptType.trim() : '';
-        const summary = `审稿：${draft.slice(0, 30)}${draft.length > 30 ? '…' : ''}｜${platform || '抖音'}`;
-        return proposeBoard('review', {
+        return proposeBoard({
           kind: 'review',
           input: { draft, platform, scriptType },
-        }, summary);
+        });
+      },
+    },
+    {
+      name: 'propose_title',
+      label: '正在派标题板块',
+      description:
+        '把标题封面任务派给「标题封面」板块（板块用 Dify 写标题，你不自己写）。要有主题（一句话说清楚这条内容讲什么）；条数默认 5 个，目标人群老板说了才填。这一步只是列给老板看，确认后才开跑，每次扣标题额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: '要起标题的主题，一句话' },
+          count: { type: 'number', description: '标题个数，3 到 10，默认 5' },
+          platform: { type: 'string', description: '发布平台，不确定就不填，默认抖音' },
+          audience: { type: 'string', description: '目标人群，老板说了才填' },
+        },
+        required: ['topic'],
+      },
+      async run(input) {
+        return proposeBoard({
+          kind: 'title',
+          input: { topic: str(input.topic), count: clampCount(input.count, 5, 3, 10), platform: str(input.platform), audience: str(input.audience) },
+        });
+      },
+    },
+    {
+      name: 'propose_storyboard',
+      label: '正在派分镜板块',
+      description:
+        '把分镜任务派给「分镜脚本」板块（板块用 Dify 拆镜头，你不自己拆）。要有完整的脚本原文（至少 30 字）；时长、平台不确定就不填。这一步只是列给老板看，确认后才开跑，每次扣分镜额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          script: { type: 'string', description: '要拆分镜的脚本原文，完整保留' },
+          platform: { type: 'string', description: '发布平台，不确定就不填' },
+          duration: { type: 'string', description: '时长，例如 60秒，不确定就不填' },
+        },
+        required: ['script'],
+      },
+      async run(input) {
+        return proposeBoard({
+          kind: 'storyboard',
+          input: { script: str(input.script), platform: str(input.platform), duration: str(input.duration) },
+        });
+      },
+    },
+    {
+      name: 'propose_direction',
+      label: '正在派方向板块',
+      description:
+        '把创作方向任务派给「创作方向」板块（板块用 Dify 铺开几个方向，你不自己想方向）。要有这次想达到的目的（一两句话）；个数默认 5 个。这一步只是列给老板看，确认后才开跑，每次扣方向额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          goal: { type: 'string', description: '这次想达到的目的，一两句话' },
+          count: { type: 'number', description: '方向个数，3 到 8，默认 5' },
+          industry: { type: 'string', description: '行业，档案里没有时才填' },
+          ideas: { type: 'string', description: '老板已有的想法，可以不填' },
+        },
+        required: ['goal'],
+      },
+      async run(input) {
+        return proposeBoard({
+          kind: 'direction',
+          input: { goal: str(input.goal), count: clampCount(input.count, 5, 3, 8), industry: str(input.industry), ideas: str(input.ideas) },
+        });
+      },
+    },
+    {
+      name: 'propose_content_plan',
+      label: '正在派内容规划板块',
+      description:
+        '把内容规划任务派给「内容规划」板块（板块用 Dify 排一个月的内容，你不自己排）。要有这个月想主攻什么（一句话）；条数默认 12 条，这个月的大事可以不填。这一步只是列给老板看，确认后才开跑，每次扣方向额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          goal: { type: 'string', description: '这个月想主攻什么，一句话' },
+          count: { type: 'number', description: '这个月发几条，4 到 30，默认 12' },
+          events: { type: 'string', description: '这个月的大事、节点，可以不填' },
+        },
+        required: ['goal'],
+      },
+      async run(input) {
+        return proposeBoard({
+          kind: 'content-plan',
+          input: { goal: str(input.goal), count: clampCount(input.count, 12, 4, 30), events: str(input.events) },
+        });
+      },
+    },
+    {
+      name: 'propose_plan',
+      label: '正在整理执行计划',
+      description:
+        '老板的需求要几步才能做完时，先把计划列出来（最多 5 步，按顺序执行，前一步的产出交给后一步）。每一步 board 填板块：topic 选题、script 脚本、review 审稿、title 标题、storyboard 分镜、direction 方向、content-plan 内容规划；text 填这一步的主要输入（主题、要拍的内容、稿子原文、脚本原文或目的）。计划只是列给老板看，他确认后才开跑。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          steps: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 5,
+            items: {
+              type: 'object',
+              properties: {
+                board: { type: 'string', enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan'] },
+                text: { type: 'string', description: '这一步的主要输入' },
+                count: { type: 'number', description: '条数，不确定就不填' },
+                platform: { type: 'string', description: '平台，不确定就不填' },
+              },
+              required: ['board', 'text'],
+            },
+          },
+        },
+        required: ['steps'],
+      },
+      async run(input) {
+        const raw = Array.isArray(input.steps) ? (input.steps as Record<string, unknown>[]) : [];
+        if (raw.length < 1 || raw.length > 5) return '计划要 1 到 5 步。请先把计划拆成这个范围内的几步';
+        const steps: BoardAny[] = [];
+        for (let i = 0; i < raw.length; i++) {
+          const b = stepToBoard(raw[i]);
+          if (!b) return `第 ${i + 1} 步的板块不认识。板块只能是选题、脚本、审稿、标题、分镜、方向、内容规划`;
+          steps.push(b);
+        }
+        return proposeBoard({ kind: 'plan', steps });
       },
     },
     {

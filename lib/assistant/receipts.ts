@@ -23,7 +23,8 @@ export type ReceiptKind =
   | 'todo.delete'
   | 'profile.update'
   | 'work.status'
-  | 'knowledge.hits';
+  | 'knowledge.hits'
+  | 'board.done';
 
 /** 撤销的做法：界面点「撤销」时，用用户自己的 Cookie 调用对应接口 */
 export type UndoSpec =
@@ -139,6 +140,13 @@ export const CLAIM_RULES: readonly ClaimRule[] = [
     say: /(已经?|已)[^。！？\n]{0,6}(标记|标为|设为|记为)[^。！？\n]{0,6}(已拍|已发布|已拍摄|拍完|发布了)/,
     need: ['work.status'],
     reason: '作品状态没有改动，需要你在页面上确认',
+  },
+  {
+    // 板块的产出只能在老板确认开跑、板块跑完之后才有；对话里说「已经生成好了」一定是假的
+    id: 'board-claim',
+    say: /(已经?|已)[^。！？\n]{0,6}(生成|写好|做好|做完|完成|出了|跑完|拍好)[^。！？\n]{0,8}(选题|脚本|标题|分镜|方向|规划|审稿|计划)/,
+    need: ['board.done'],
+    reason: '板块还没有跑，要老板确认开跑后才会生成',
   },
 ];
 

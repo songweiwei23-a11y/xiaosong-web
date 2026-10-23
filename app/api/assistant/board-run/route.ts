@@ -1,13 +1,14 @@
 import { requireUser } from '@/lib/api-guard';
 import { createRateLimiter } from '@/lib/rate-limit';
+import { readAssistantConfig } from '@/lib/assistant/config';
 import { createJob, hasRunningJob } from '@/lib/assistant/jobs';
 import { takePendingRun } from '@/lib/assistant/pending-runs';
-import { runBoardJob } from '@/lib/assistant/board-job';
+import { runBoardJob, runPlanJob } from '@/lib/assistant/board-job';
 
 /**
- * 用户确认「开跑」一个板块任务（管理员派活经过确认后才会走到这里）。
+ * 老板确认「开跑」一个板块任务或一个多步计划（管理员派活经确认后才会走到这里）。
  *   POST {runId}  → 立刻返回任务号，板块在后台跑，界面用助理同一套进度接口取结果
- * 每次板块调用都按板块自己的额度扣费（在 /api/dify/stream 里）；这里只负责派活和验收。
+ * 每次板块调用都按板块自己的额度扣费（在 /api/dify/stream 里）；这里只负责派活、验收和返工。
  */
 
 export const dynamic = 'force-dynamic';
@@ -30,15 +31,12 @@ export async function POST(request: Request) {
   if (!run) return Response.json({ error: '这个任务已经过期或已经开跑过了，请重新让助理派活' }, { status: 404 });
 
   const job = createJob(userId);
-  void runBoardJob(job, {
-    ctx: {
-      userId,
-      cookie: request.headers.get('cookie') ?? '',
-      profileId: run.profileId,
-      memoryOn: run.memoryOn,
-    },
-    board: run.board,
-    maxRuns: run.maxRuns,
-  });
-  return Response.json({ jobId: job.id, label: run.kind, maxRuns: run.maxRuns });
+  const ctx = { userId, cookie: request.headers.get('cookie') ?? '', profileId: run.profileId, memoryOn: run.memoryOn };
+  const cfg = readAssistantConfig() ?? undefined;
+  if (run.board.kind === 'plan') {
+    void runPlanJob(job, { ctx, plan: run.board, maxRuns: run.maxRuns, cfg });
+  } else {
+    void runBoardJob(job, { ctx, board: run.board, maxRuns: run.maxRuns, cfg });
+  }
+  return Response.json({ jobId: job.id, label: run.label, maxRuns: run.maxRuns });
 }

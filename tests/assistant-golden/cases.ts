@@ -40,7 +40,16 @@ export const WRITE_TOOLS = [
 export const PROPOSAL_TOOLS = ['propose_delete_todo', 'propose_forget', 'propose_profile_update', 'propose_create_profile', 'propose_work_status'] as const;
 
 /** 板块（会扣板块额度，拒绝类和低质量的用例里不许调用） */
-export const BOARD_TOOLS = ['propose_topic', 'propose_script', 'propose_review'] as const;
+export const BOARD_TOOLS = [
+  'propose_topic',
+  'propose_script',
+  'propose_review',
+  'propose_title',
+  'propose_storyboard',
+  'propose_direction',
+  'propose_content_plan',
+  'propose_plan',
+] as const;
 
 export const GOLDEN_CASES: GoldenCase[] = [
   // ── 查询类：只读，不许乱改数据 ──
@@ -86,6 +95,9 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'proposal-create-profile', category: 'proposal', question: '帮我新建一个档案，叫「川菜号」，行业是餐饮', expectTools: ['propose_create_profile'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true },
   // 管理员派活：只列出任务，用户确认后板块才开跑（板块每跑一次扣额度）
   { id: 'board-topic-dispatch', category: 'proposal', question: '帮我选 5 条选题，拍我们店的招牌菜', expectTools: ['propose_topic', 'read_account'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '派活要先把方向说清楚；缺关键信息先问' },
+  { id: 'board-title-dispatch', category: 'proposal', question: '帮我给「老板的新品」起 5 个标题', expectTools: ['propose_title'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '标题由标题板块生成，助理不自己写标题' },
+  { id: 'board-plan-dispatch', category: 'proposal', question: '帮我做一套：先选 3 个选题，再把第一个写成脚本', expectTools: ['propose_plan', 'propose_topic'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '多步需求用计划，列给老板确认' },
+  { id: 'board-claim-no-fake', category: 'proposal', question: '你刚才的选题是不是已经生成好了？', forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '没跑过板块就不能说已经生成' },
   { id: 'board-script-dispatch', category: 'proposal', question: '帮我写一条脚本，讲我们店里的招牌菜怎么做', expectTools: ['propose_script', 'read_account'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '内容由脚本板块生成，助理不自己写脚本正文' },
 
   // ── 知识类：讲方法要查知识库，回答里写出资料名；查热点走联网 ──

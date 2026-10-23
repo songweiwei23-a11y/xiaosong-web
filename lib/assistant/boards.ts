@@ -1,4 +1,5 @@
 import { loadBoardContext } from './board-context';
+import { VIRAL_ELEMENTS } from '@/lib/viral-elements';
 import { readDifyStream } from '@/lib/sse-stream';
 import { resolveMix } from '@/lib/content-mix';
 import { tacticInText, type CreativeRoute } from '@/lib/creative-routes';
@@ -14,15 +15,6 @@ import { buildScriptBoardQuery, SCRIPT_PAGE_DEFAULTS, scriptCreationSettings, sc
  * 这里的执行函数和板块页面走同一个生成接口（/api/dify/stream），额度由那个接口按板块扣，
  * 这里不另外扣。输入尽量和页面一致：页面有的字段（关键词、赛道、风格、对标账号、爆款案例、难度）都会带过去。
  */
-
-export type BoardKind = 'topic' | 'script' | 'review';
-
-/** 板块的显示名和它扣的额度功能（和 lib/task-type.ts 的映射一致） */
-export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> = {
-  topic: { label: '选题策划', feature: '选题' },
-  script: { label: '脚本生成', feature: '脚本' },
-  review: { label: '审稿优化', feature: '审稿' },
-};
 
 export interface BoardContext {
   userId: string;
@@ -53,6 +45,8 @@ export interface TopicInput {
   viralCases?: string;
   /** 创意难度：简单易上手 / 中等创意 / 高难度 */
   difficulty?: string;
+  /** 页面上选的爆款元素（用名字或编号都可以，这里统一换成编号） */
+  elements?: string[];
   /** 返工时带上的修改意见（管理员写的） */
   extraNote?: string;
 }
@@ -72,8 +66,6 @@ export interface ReviewInput {
   scriptType?: string;
   extraNote?: string;
 }
-
-export type BoardInput = { kind: 'topic'; input: TopicInput } | { kind: 'script'; input: ScriptInput } | { kind: 'review'; input: ReviewInput };
 
 export interface BoardResult {
   ok: boolean;
@@ -154,13 +146,17 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
   const difficulty = input.difficulty?.trim() || '中等创意';
   const tracks = input.tracks ?? [];
   const styles = input.styles ?? [];
+  // 页面上的爆款元素是编号，助理派活时可能给的是名字：两种都认，认不出来的丢掉
+  const elementIds = (input.elements ?? [])
+    .map((x) => VIRAL_ELEMENTS.find((e) => e.id === x || e.name === x)?.id)
+    .filter((x): x is string => !!x);
 
   const creatorContext = await loadBoardContext({ cookie: ctx.cookie, base, fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
   const resolvedMix = resolveMix(creatorContext.profile as unknown as Record<string, unknown> | null, null, requirement);
   const currentSettings = topicCreationSettings({
     keyword1: keywords[0] ?? '', personalRequirement: requirement, sourceReference: '',
     selectedPlatforms: platform ? [platform] : [], selectedTracks: tracks, selectedContentTypes: [], selectedStyles: styles,
-    selectedElements: [], selectedDealReasons: [], topicRole: input.role, topicCount, tactic: '',
+    selectedElements: elementIds, selectedDealReasons: [], topicRole: input.role, topicCount, tactic: '',
     autoSettings: {}, creatorContext,
   });
   const built = buildTopicBoardQuery({
@@ -187,7 +183,7 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     selectedContentTypes: [],
     selectedStyles: styles,
     positioningExtra: '',
-    selectedElements: [],
+    selectedElements: elementIds,
     dealReasonLabels: [],
     benchmarkAccounts: input.benchmarkAccounts ?? '',
     viralCases: input.viralCases ?? '',
@@ -405,11 +401,4 @@ export async function runReviewBoard(ctx: BoardContext, input: ReviewInput): Pro
     result: text,
   });
   return { ok: true, text: boardClip(text) };
-}
-
-/** 统一入口：管理员派活时只认这三种板块 */
-export function runBoard(ctx: BoardContext, job: BoardInput): Promise<BoardResult> {
-  if (job.kind === 'topic') return runTopicBoard(ctx, job.input);
-  if (job.kind === 'script') return runScriptBoard(ctx, job.input);
-  return runReviewBoard(ctx, job.input);
 }

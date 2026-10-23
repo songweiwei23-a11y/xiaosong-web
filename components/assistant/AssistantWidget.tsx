@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BellRing, Bot, Brain, Check, Copy, FileDown, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
 import { getActiveProfileId } from "@/lib/active-profile";
@@ -83,6 +83,41 @@ interface MemoryItem {
 
 type View = "chat" | "history" | "memories";
 type StoredMeta = { web?: WebInfo; receipts?: ReceiptView[] } | null;
+
+/** 悬浮按钮和面板的位置（像素，左上角）。没拖过就是 undefined，用默认位置 */
+type Pos = { x: number; y: number };
+interface SavedPos {
+  launcher?: Pos;
+  panel?: Pos;
+}
+const POS_KEY = "kaiwu-assistant-pos";
+/** 手机宽度：面板变成底部弹出的整幅面板，不能拖 */
+const NARROW_QUERY = "(max-width: 639px)";
+
+/** 把位置夹在可视范围里，免得拖出屏幕找不回来 */
+function clampPos(p: Pos, w: number, h: number): Pos {
+  if (typeof window === "undefined") return p;
+  return {
+    x: Math.min(Math.max(8, p.x), Math.max(8, window.innerWidth - w - 8)),
+    y: Math.min(Math.max(8, p.y), Math.max(8, window.innerHeight - h - 8)),
+  };
+}
+
+function readSavedPos(): SavedPos {
+  try {
+    return JSON.parse(window.localStorage.getItem(POS_KEY) || "{}") as SavedPos;
+  } catch {
+    return {};
+  }
+}
+
+function writeSavedPos(p: SavedPos): void {
+  try {
+    window.localStorage.setItem(POS_KEY, JSON.stringify(p));
+  } catch {
+    // 存不了（隐私模式等）就每次回到默认位置，不影响使用
+  }
+}
 
 /** 服务器给的一批进度（轮询和流式都是这个形状），事件同服务端 AssistantEvent */
 interface JobChunk {
@@ -329,6 +364,77 @@ export function AssistantWidget() {
   const endRef = useRef<HTMLDivElement | null>(null);
   const loadedRef = useRef(false);
   const submitRef = useRef<(text: string) => Promise<void>>(async () => undefined);
+
+  // 悬浮按钮、面板可以拖到任意位置（位置记在这台设备的浏览器里）；手机宽度下面板固定在底部，不能拖
+  const [launcherPos, setLauncherPos] = useState<Pos | undefined>(undefined);
+  const [panelPos, setPanelPos] = useState<Pos | undefined>(undefined);
+  const [narrow, setNarrow] = useState(false);
+  const dragRef = useRef<{ which: "launcher" | "panel"; startX: number; startY: number; originX: number; originY: number; w: number; h: number; moved: boolean } | null>(null);
+  const posRef = useRef<SavedPos>({});
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    const saved = readSavedPos();
+    posRef.current = saved;
+    setLauncherPos(saved.launcher);
+    setPanelPos(saved.panel);
+    const mq = window.matchMedia(NARROW_QUERY);
+    const onNarrow = () => setNarrow(mq.matches);
+    onNarrow();
+    mq.addEventListener("change", onNarrow);
+    // 窗口大小变了（转屏、拉窄浏览器）：把位置夹回可视范围
+    const onResize = () => {
+      setLauncherPos((p) => (p ? clampPos(p, 56, 56) : p));
+      setPanelPos((p) => (p ? clampPos(p, Math.min(400, window.innerWidth * 0.92), 360) : p));
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      mq.removeEventListener("change", onNarrow);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  // 拖动：指针在窗口上移动、松开。移动超过几个像素才算拖，免得误触打开助理
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      if (!d.moved && Math.hypot(dx, dy) < 6) return;
+      d.moved = true;
+      const next = clampPos({ x: d.originX + dx, y: d.originY + dy }, d.w, d.h);
+      posRef.current = { ...posRef.current, [d.which]: next };
+      if (d.which === "launcher") setLauncherPos(next);
+      else setPanelPos(next);
+    };
+    const up = () => {
+      const d = dragRef.current;
+      dragRef.current = null;
+      if (!d || !d.moved) return;
+      // 刚拖完松手，浏览器还会发一次点击：这一次不当成「打开」
+      if (d.which === "launcher") suppressClickRef.current = true;
+      writeSavedPos(posRef.current);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, []);
+
+  /** 在按钮或面板的标题上按下：记下起点，之后由窗口上的移动事件处理拖动 */
+  const beginDrag = (which: "launcher" | "panel") => (e: ReactPointerEvent<HTMLElement>) => {
+    if (which === "panel" && narrow) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const box = which === "launcher" ? (e.currentTarget as HTMLElement) : (e.currentTarget.closest("section") as HTMLElement | null);
+    if (!box) return;
+    const r = box.getBoundingClientRect();
+    dragRef.current = { which, startX: e.clientX, startY: e.clientY, originX: r.left, originY: r.top, w: r.width, h: r.height, moved: false };
+  };
 
   useEffect(() => {
     let alive = true;
@@ -721,15 +827,27 @@ export function AssistantWidget() {
   };
 
   const shownStarters = startersFor(pathname);
+  // 拖出来的面板：高度取一个合适的值（不超过屏幕，也不超过 640）。服务端渲染时没有窗口，给个默认值
+  const panelH = typeof window !== "undefined" ? Math.min(640, window.innerHeight - 40) : 600;
 
   return (
     <>
       {!open && (
         <button
           type="button"
-          onClick={() => setOpen(true)}
-          aria-label="打开开物助理"
-          className="brand-gradient fixed right-[85px] top-[68%] z-40 flex items-center gap-2.5 rounded-full py-3 pl-3.5 pr-5 text-[15px] font-semibold text-white shadow-lg"
+          onClick={() => {
+            // 刚拖完松手不算点击
+            if (suppressClickRef.current) {
+              suppressClickRef.current = false;
+              return;
+            }
+            setOpen(true);
+          }}
+          onPointerDown={beginDrag("launcher")}
+          aria-label="打开开物助理（按住可以拖动）"
+          title="打开开物助理，按住可以拖到任意位置"
+          style={launcherPos ? { left: launcherPos.x, top: launcherPos.y, right: "auto", bottom: "auto" } : undefined}
+          className={`brand-gradient fixed z-40 flex touch-none select-none items-center gap-2 rounded-full py-2.5 pl-3 pr-4 text-[14px] font-semibold text-white shadow-lg sm:gap-2.5 sm:py-3 sm:pl-3.5 sm:pr-5 sm:text-[15px] ${launcherPos ? "cursor-grab" : "bottom-24 right-4 sm:bottom-auto sm:right-[85px] sm:top-[68%]"}`}
         >
           {/* 小绿点：助理随时待命。减少动效的人看到的是静止的点 */}
           <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
@@ -743,9 +861,17 @@ export function AssistantWidget() {
       {open && (
         <section
           aria-label="开物助理"
-          className="glass-panel fixed bottom-4 right-4 top-20 z-40 flex w-[min(92vw,400px)] flex-col overflow-hidden rounded-3xl border border-border/70 shadow-2xl sm:bottom-6 sm:right-6"
+          style={!narrow && panelPos ? { left: panelPos.x, top: panelPos.y, right: "auto", bottom: "auto", height: panelH } : undefined}
+          className={`glass-panel fixed z-40 flex flex-col overflow-hidden border border-border/70 shadow-2xl ${
+            narrow
+              ? "inset-x-0 bottom-0 h-[88dvh] w-full rounded-t-3xl"
+              : `w-[min(92vw,400px)] rounded-3xl ${panelPos ? "" : "bottom-4 right-4 top-20 sm:bottom-6 sm:right-6"}`
+          }`}
         >
-          <header className="flex items-center gap-2 border-b border-border/60 px-3 py-3 sm:gap-3 sm:px-4">
+          <header
+            onPointerDown={beginDrag("panel")}
+            className={`flex items-center gap-2 border-b border-border/60 px-3 py-3 sm:gap-3 sm:px-4 ${narrow ? "" : "cursor-move touch-none select-none"}`}
+          >
             <span className="brand-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
               <Bot className="h-[18px] w-[18px]" aria-hidden="true" />
             </span>

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { BoardInput, BoardKind } from './boards';
+import type { BoardAny, BoardKind, PlanSpec } from '@/lib/assistant/board-dispatch';
 
 /**
  * 待确认的派活：管理员把板块任务列出来，用户点「确定开跑」才真的跑。
@@ -12,8 +12,9 @@ const TTL_MS = 30 * 60_000;
 export interface PendingRun {
   id: string;
   userId: string;
-  board: BoardInput;
-  kind: BoardKind;
+  /** 单个板块，或者多步计划 */
+  board: BoardAny | PlanSpec;
+  kind: BoardKind | 'plan';
   label: string;
   summary: string;
   maxRuns: number;
