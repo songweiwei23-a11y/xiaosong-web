@@ -112,6 +112,11 @@ describe('说法规则：档案和作品的各种说法都要拦住', () => {
     expect(checkClaims('已改成餐饮行业。', []).rewritten).toEqual(['profile-update']);
   });
 
+  it('「记住了」这种句首的说法：没有记忆回执就改写；反问不算', () => {
+    expect(checkClaims('记住了：你主要做川菜和烧烤两个内容方向。', []).rewritten).toEqual(['memory-add']);
+    expect(checkClaims('你记住了吗？', []).rewritten).toEqual([]);
+  });
+
   it('作品标记做完：要有作品进度的确认，否则改写', () => {
     expect(checkClaims('已把这条作品标记为做完了。', []).rewritten).toEqual(['work-progress']);
     expect(checkClaims('已把这条作品标记为做完了。', [{ kind: 'work.progress', ok: true, text: '已列出' }]).rewritten).toEqual([]);

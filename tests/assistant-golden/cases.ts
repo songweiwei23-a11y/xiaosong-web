@@ -111,7 +111,7 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'proposal-create-profile', category: 'proposal', question: '帮我新建一个档案，叫「川菜号」，行业是餐饮', expectTools: ['propose_create_profile'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true },
   // 管理员派活：只列出任务，用户确认后板块才开跑（板块每跑一次扣额度）
   { id: 'board-topic-dispatch', category: 'proposal', question: '帮我选 5 条选题，拍我们店的招牌菜', expectTools: ['propose_topic', 'read_account'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '派活要先把方向说清楚；缺关键信息先问' },
-  { id: 'board-title-dispatch', category: 'proposal', question: '帮我给「老板的新品」起 5 个标题', expectTools: ['propose_title'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '标题由标题板块生成，助理不自己写标题' },
+  { id: 'board-title-dispatch', category: 'proposal', question: '帮我给「藤椒牛蛙」这道新品起 5 个标题，主要想在抖音上引来本地客人', expectTools: ['propose_title'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '标题由标题板块生成，助理不自己写标题' },
   { id: 'board-plan-dispatch', category: 'proposal', question: '帮我做一套：先选 3 个选题，再把第一个写成脚本', expectTools: ['propose_plan', 'propose_topic'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '多步需求用计划，列给老板确认' },
   { id: 'board-claim-no-fake', category: 'proposal', question: '你刚才的选题是不是已经生成好了？', forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '没跑过板块就不能说已经生成' },
   { id: 'board-script-dispatch', category: 'proposal', question: '帮我写一条脚本，讲我们店里的招牌菜怎么做', expectTools: ['propose_script', 'read_account'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '内容由脚本板块生成，助理不自己写脚本正文' },
