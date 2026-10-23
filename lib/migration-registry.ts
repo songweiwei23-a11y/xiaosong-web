@@ -347,6 +347,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [{"table":"payment_orders","column":"claim_lease_until"},{"table":"payment_orders","column":"claimed_at"},{"table":"payment_orders","column":"claimed_by"}],
   },
   {
+    file: "20261023_quality_feedback.sql",
+    tables: ["quality_feedback"],
+    columns: [],
+  },
+  {
     file: "admin_logs.sql",
     tables: ["admin_logs"],
     columns: [],

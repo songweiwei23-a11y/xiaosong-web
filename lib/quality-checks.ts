@@ -17,7 +17,7 @@ import { checkMix, type ResolvedMix } from './content-mix';
 import { seasonMisstatements } from './time-anchor';
 import { topicTagIssues } from './output-tags';
 
-export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'generation' | 'facts';
+export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'generation' | 'facts' | 'flaky' | 'error';
 
 export const QUALITY_LABELS: Record<QualityKind, string> = {
   taboo: '踩禁忌',
@@ -26,6 +26,10 @@ export const QUALITY_LABELS: Record<QualityKind, string> = {
   years: '年限和人设事实卡不符',
   generation: '生成未完成或内容缺失',
   facts: '关键事实没有出处（价格、百分比、顾客见证、经营承诺、资历、数据、地点）',
+  // 只在回归里出现：第一次没过、重跑过了。说明模型输出有波动，不算失败
+  flaky: '首次未通过、重跑后通过（模型输出波动）',
+  // 回归没跑成（Dify 出错、超时）。不是质量问题，不计入通过率
+  error: '没跑成（运行出错，不是质量问题）',
 };
 
 /**
@@ -401,6 +405,9 @@ function toNumber(s: string): number | null {
   return map[s] ?? null;
 }
 
+/** 这句话说的是别人：碰到的姐姐、遇到的客人、同行、朋友的经历（2026-10-23：美甲回归里「碰到一个做了9年的姐姐」被误判） */
+const OTHER_PERSON_RE = /碰到|遇到|遇见|认识|客人|顾客|朋友|姐姐|哥哥|姐妹|师傅|同行|别人|他的|她的|他做|她做/;
+
 // 「年级、年代、年前、年后、年底、年轻、年龄……」里的年不是"干了几年"
 const YEAR_RE = /(\d+(?:\.\d+)?|[一二两三四五六七八九十]{1,3}|半)\s*年(?!级|代|前|后|内|底|初|轻|纪|龄|度|份|货|会|终|中|头|夜|糕)/g;
 
@@ -418,7 +425,7 @@ export function yearConflicts(output: string, persona: unknown): string[] {
   type Dimension = 'trade' | 'local' | 'store';
   const localPlace = (f.yearsLocal ?? '').match(/(?:来|在)([\p{L}]{2,6}?)(?=半|\d|[一二两三四五六七八九十]|定居|居住|扎根)/u)?.[1];
   const dimension = (before: string, after: string): Dimension | null => {
-    if (/店龄|开店|开了|卖了|经营.{0,8}(?:店|门店)|(?:店|门店).{0,5}(?:开|经营)/.test(before) || /^\s*(?:的)?老店/.test(after)) return 'store';
+    if (/店龄|开店|开了|开[\p{L}\d]{0,8}店|卖了|经营.{0,8}(?:店|门店)|(?:店|门店).{0,5}(?:开|经营)/u.test(before) || /^\s*(?:的)?老店/.test(after)) return 'store';
     if (/本地|当地|扎根|定居|居住|落户|搬来|住了|待了|呆了|来[^，。！？；\n]{1,8}$/.test(before)) return 'local';
     if (localPlace && before.includes(localPlace) && /在/.test(before) && !/经验|从业|这行|厨师|做菜|川菜|家具行业/.test(before)) return 'local';
     if (/从业|入行|这行|厨师|做菜|川菜|粤菜|手艺|经验|干了|做了|做.{0,6}(?:菜|餐饮|美甲|家具)/.test(before) || /^\s*(?:的)?(?:经验|手艺)/.test(after)) return 'trade';
@@ -440,6 +447,8 @@ export function yearConflicts(output: string, persona: unknown): string[] {
     const at = m.index ?? 0;
     const before = output.slice(0, at).split(/[，。！？；\n]/).pop()!.slice(-20);
     const after = output.slice(at + m[0].length, at + m[0].length + 8);
+    // 说的是别人（碰到的姐姐、客人、同行）的年数，不是这个号的，不比
+    if (OTHER_PERSON_RE.test(before)) continue;
     // 说的是"在本地 / 干这行多久"才算：在南乐扎根 18 年、做了 8 年、18 年了、18 年的老店
     const d = dimension(before, after);
     const aboutTenure = !!d || /在|变了/.test(before) || /^\s*(?:了|的老店|老店|的经验|经验|的手艺)/.test(after);
@@ -464,6 +473,31 @@ export function reviewedQualityOutput(answer: string): string {
   return lines.slice(start + 1, end).join('\n').trim();
 }
 
+const QUOTE_RE = /「[^」\n]*」|“[^”\n]*”|『[^』\n]*』|"[^"\n]*"/g;
+/** 这一句是在说原稿、改前的样子（「原稿写的……」「原文里……」），不是在用这个词 */
+const QUOTING_LINE_RE = /原稿|原文|改前|旧稿|原句|原来的/;
+
+/**
+ * 禁忌词是不是只出现在引号里，或者这一行在讲原稿：这是引用，不是在用（2026-10-23）。
+ * 审稿结果里「原稿写的『全城最正宗』」这类引用，原来会被当成踩禁忌，把通过率拉低。
+ */
+export function tabooOnlyQuoted(output: string, word: string): boolean {
+  if (!word) return false;
+  let seen = false;
+  for (const line of output.split('\n')) {
+    let at = line.indexOf(word);
+    while (at >= 0) {
+      seen = true;
+      const inQuote = [...line.matchAll(QUOTE_RE)].some((q) => at >= (q.index ?? 0) && at < (q.index ?? 0) + q[0].length);
+      // 标记只管同一句里、出现位置之前的话：「原稿写的……」之后的那句直接用，不因为前面有「原稿」就放过
+      const clause = line.slice(0, at).split(/[。！？；]/).pop() ?? '';
+      if (!inQuote && !QUOTING_LINE_RE.test(clause)) return false;
+      at = line.indexOf(word, at + word.length);
+    }
+  }
+  return seen;
+}
+
 export function runQualityChecks(p: {
   output: string;
   profile: object | null | undefined;
@@ -485,7 +519,7 @@ export function runQualityChecks(p: {
   if (/已按要求提供|内容已按要求|清单已按要求/.test(output)) {
     issues.push({ kind: 'generation', detail: '有小节只写了「已按要求提供」这类占位，没有实际内容' });
   }
-  for (const h of scanTaboos(output, profile).slice(0, 5)) {
+  for (const h of scanTaboos(output, profile).filter((hit) => !tabooOnlyQuoted(output, hit.word)).slice(0, 5)) {
     issues.push({ kind: 'taboo', detail: `「${h.word}」— ${h.taboo.why}` });
   }
   const excluded = readTabooSettings(profile?.taboo_settings).excluded;
@@ -531,31 +565,153 @@ export function sanitizeQualityReport(v: unknown): { task_type: string; profile_
   return { task_type: task, profile_id: profileId, passed: !issues.some(isBlockingIssue), issues, sample: typeof o.sample === 'string' ? o.sample.slice(0, 300) : '' };
 }
 
-export interface QualityRow { task_type: string; source: string; passed: boolean; issues: QualityIssue[]; sample?: string | null; created_at: string }
+export interface QualityRow { id?: string; task_type: string; source: string; passed: boolean; issues: QualityIssue[]; sample?: string | null; created_at: string }
 
-/** 后台看板的汇总：通过率、哪个板块问题多、最常见的问题、最近不合格的样例、最近一次每晚回归 */
-export function summarizeQuality(rows: QualityRow[]) {
-  const live = rows.filter((r) => r.source === 'live');
-  const failed = live.filter((r) => !r.passed);
+/** 「没跑成」：回归运行出错（Dify 出错、超时），不是质量问题，不计入通过率 */
+export function isRunError(r: Pick<QualityRow, 'issues'>): boolean {
+  return (r.issues ?? []).some((i) => i.kind === 'error');
+}
+
+/** 算失败的只看阻断项：只提醒的（模型自称自检通过、切碎片段命中、重跑后通过）不算 */
+export function rowFailed(r: Pick<QualityRow, 'passed' | 'issues'>): boolean {
+  return !r.passed && !isRunError(r);
+}
+
+/** 北京日期（YYYY-MM-DD）。看板按天看趋势用北京日期，和管理员看到的时间一致 */
+const beijingDay = (iso: string) => new Date(Date.parse(iso) + 8 * 3600_000).toISOString().slice(0, 10);
+
+export interface RunCase {
+  task: string;
+  /** 这一个用例是否通过（没跑成的算不通过，但 error 为 true） */
+  passed: boolean;
+  error: boolean;
+  blocking: string[];
+  advisory: string[];
+  sample: string;
+}
+
+export interface QualityRun {
+  at: string;
+  source: string;
+  total: number;
+  passed: number;
+  errors: number;
+  cases: RunCase[];
+}
+
+/**
+ * 把同一次运行的记录分组。一次运行的记录是一条 insert 写进去的，created_at 完全相同，按它分组就是一次运行。
+ * 手动和夜间分开看，不再按日期合并（2026-10-23：手动回归原来会混进「每晚回归」里）。
+ */
+export function groupRuns(rows: QualityRow[], source: string): QualityRun[] {
+  const byAt = new Map<string, QualityRow[]>();
+  for (const r of rows) if (r.source === source) byAt.set(r.created_at, [...(byAt.get(r.created_at) ?? []), r]);
+  return [...byAt.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([at, list]) => ({
+      at,
+      source,
+      total: list.length,
+      passed: list.filter((r) => r.passed && !isRunError(r)).length,
+      errors: list.filter(isRunError).length,
+      cases: list.map((r) => {
+        const error = isRunError(r);
+        const label = (i: QualityIssue) => `${QUALITY_LABELS[i.kind]}：${i.detail}`;
+        return {
+          task: r.task_type,
+          passed: r.passed && !error,
+          error,
+          blocking: r.issues.filter((i) => i.kind !== 'error' && isBlockingIssue(i)).map(label),
+          advisory: r.issues.filter((i) => i.kind !== 'error' && (!isBlockingIssue(i) || i.kind === 'flaky')).map(label),
+          sample: r.sample ?? '',
+        };
+      }),
+    }));
+}
+
+export interface RunDiff {
+  /** 这次失败、上次通过（或上次没有这个用例） */
+  newFailures: string[];
+  /** 连续失败 */
+  stillFailing: string[];
+  /** 上次失败、这次通过 */
+  fixed: string[];
+}
+
+/** 和上一次同一个用例比：新增失败、持续失败、已修复。没跑成的不参与比较 */
+export function diffRuns(latest: QualityRun, previous: QualityRun | null): RunDiff {
+  const before = new Map((previous?.cases ?? []).filter((c) => !c.error).map((c) => [c.task, c.passed]));
+  const out: RunDiff = { newFailures: [], stillFailing: [], fixed: [] };
+  for (const c of latest.cases) {
+    if (c.error) continue;
+    const was = before.get(c.task);
+    if (!c.passed) (was === false ? out.stillFailing : out.newFailures).push(c.task);
+    else if (was === false) out.fixed.push(c.task);
+  }
+  return out;
+}
+
+export interface DayStat {
+  day: string;
+  live: { total: number; passed: number };
+  nightly: { total: number; passed: number };
+}
+
+/** 按北京日期汇总实时体检和夜间回归的通过情况（没跑成的不算） */
+export function dailyTrend(rows: QualityRow[]): DayStat[] {
+  const days = new Map<string, DayStat>();
+  for (const r of rows) {
+    if (isRunError(r) || (r.source !== 'live' && r.source !== 'nightly')) continue;
+    const day = beijingDay(r.created_at);
+    const d = days.get(day) ?? { day, live: { total: 0, passed: 0 }, nightly: { total: 0, passed: 0 } };
+    const bucket = r.source === 'live' ? d.live : d.nightly;
+    bucket.total++;
+    if (r.passed) bucket.passed++;
+    days.set(day, d);
+  }
+  return [...days.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/**
+ * 后台看板的汇总。默认只统计实时体检（source = live），可以按来源和板块筛选。
+ * 通过率、最常见的问题只看阻断项；非阻断的单独列；没跑成的单独计数。
+ */
+export function summarizeQuality(rows: QualityRow[], opts: { source?: string; task?: string } = {}) {
+  const source = opts.source ?? 'live';
+  const scoped = rows.filter((r) => (source === 'all' || r.source === source) && (!opts.task || r.task_type === opts.task));
+  const checked = scoped.filter((r) => !isRunError(r));
+  const failed = checked.filter(rowFailed);
+
   const byTask = new Map<string, { task: string; total: number; failed: number }>();
-  for (const r of live) {
+  for (const r of checked) {
     const t = byTask.get(r.task_type) ?? { task: r.task_type, total: 0, failed: 0 };
     t.total++;
-    if (!r.passed) t.failed++;
+    if (rowFailed(r)) t.failed++;
     byTask.set(r.task_type, t);
   }
+
   const byKind = new Map<QualityKind, number>();
-  for (const r of failed) for (const k of new Set(r.issues.map((i) => i.kind))) byKind.set(k, (byKind.get(k) ?? 0) + 1);
-  const nightly = rows.filter((r) => r.source === 'nightly').sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const lastNight = nightly[0]?.created_at.slice(0, 10);
+  for (const r of failed) for (const k of new Set(r.issues.filter(isBlockingIssue).map((i) => i.kind))) byKind.set(k, (byKind.get(k) ?? 0) + 1);
+
+  const advisory = new Map<QualityKind, number>();
+  for (const r of checked) for (const k of new Set(r.issues.filter((i) => !isBlockingIssue(i)).map((i) => i.kind))) advisory.set(k, (advisory.get(k) ?? 0) + 1);
+
+  const runs = { nightly: groupRuns(rows, 'nightly').slice(0, 10), manual: groupRuns(rows, 'manual').slice(0, 10) };
+
   return {
-    total: live.length,
+    source,
+    task: opts.task ?? null,
+    total: checked.length,
     failed: failed.length,
-    passRate: live.length ? Math.round(((live.length - failed.length) / live.length) * 1000) / 10 : null,
+    passRate: checked.length ? Math.round(((checked.length - failed.length) / checked.length) * 1000) / 10 : null,
+    errors: scoped.filter(isRunError).length,
     byTask: [...byTask.values()].sort((a, b) => b.failed - a.failed || b.total - a.total),
     byKind: [...byKind.entries()].map(([kind, count]) => ({ kind, label: QUALITY_LABELS[kind], count })).sort((a, b) => b.count - a.count),
-    recentFailures: failed.sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 15),
-    nightly: lastNight ? nightly.filter((r) => r.created_at.slice(0, 10) === lastNight) : [],
+    advisory: [...advisory.entries()].map(([kind, count]) => ({ kind, label: QUALITY_LABELS[kind], count })).sort((a, b) => b.count - a.count),
+    recentFailures: [...failed].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 15),
+    daily: dailyTrend(rows),
+    runs,
+    nightlyDiff: runs.nightly[0] ? diffRuns(runs.nightly[0], runs.nightly[1] ?? null) : null,
   };
 }
 

@@ -74,14 +74,16 @@ describe('上报和汇总', () => {
     expect(s.passRate).toBe(66.7);
     expect(s.byTask[0]).toEqual({ task: '选题策划', total: 2, failed: 1 });
     expect(s.byKind).toEqual([{ kind: 'taboo', label: '踩禁忌', count: 1 }]); // 同一条里两个禁忌只算一次
-    expect(s.nightly).toHaveLength(1);
+    // 夜间的两条 created_at 不同，是两次运行，按运行分组
+    expect(s.runs.nightly).toHaveLength(2);
+    expect(s.runs.nightly[0].at).toBe('2026-10-03T19:00:00Z');
   });
 });
 
 describe('每晚回归', () => {
   it('测试档案把这周的坑都埋进去了：事实卡半年、排除公益直播、审稿原稿写 18 年和全城最正宗', () => {
     const cases = regressionCases();
-    expect(cases.map((c) => c.task)).toEqual(['回归:创作方向', '回归:审稿优化', '回归:画布改写', '回归:美甲选题', '回归:家具开篇', '回归:无价格引流脚本', '回归:只换开头']);
+    expect(cases.map((c) => c.task)).toEqual(['回归:创作方向', '回归:审稿优化', '回归:画布改写', '回归:美甲选题', '回归:家具开篇', '回归:无价格引流脚本', '回归:只换开头', '回归:通用口播脚本', '回归:跨行业二创', '回归:自由对话']);
     expect(cases[0].query).toContain('人设事实卡');
     expect(cases[0].query).toContain('刻意去掉的信息');
     expect(cases[0].query).toMatch(/流量型 \d+ 个/);

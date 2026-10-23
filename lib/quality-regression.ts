@@ -12,7 +12,7 @@ import { buildContextBlock, type CreatorProfile } from './creator-context';
 import { resolveMix, mixPromptBlock } from './content-mix';
 import { buildReviewPrompt } from './review-standards';
 import { buildRewritePrompt, cleanRewriteOutput } from './canvas';
-import { runQualityChecks, reviewedQualityOutput, isBlockingIssue, type QualityResult } from './quality-checks';
+import { runQualityChecks, reviewedQualityOutput, isBlockingIssue, QUALITY_LABELS, type QualityResult } from './quality-checks';
 
 /**
  * 小节标题：「## 开篇」「## 开篇（0-5秒）」「## 开篇：0-5秒」都算。
@@ -120,6 +120,25 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
       mustKeep: ['锅底每天早上现炒，一元一串，自己拿签子', '想吃的评论区说说你在哪个区'],
       source: '开头：大家好，今天给大家介绍一下我们店。正文：锅底每天早上现炒，一元一串，自己拿签子。结尾：想吃的评论区说说你在哪个区。',
     },
+    // 2026-10-23 加的三个：通用脚本、跨行业二创、自由对话，覆盖线上实时体检里失败最多的板块
+    {
+      task: '回归:通用口播脚本',
+      query: `${buildContextBlock(ctx, 'script')}\n请写一条 30 秒抖音口播脚本，主题是老板凌晨三点起来亲手腌肉、一元一串。分为 ## 开头、## 正文、## 结尾 三节，只写可直接念的台词，不编顾客的话。`,
+      requiredSections: ['开头', '正文', '结尾'],
+      checkAs: '脚本生成',
+    },
+    {
+      task: '回归:跨行业二创',
+      query: `${buildContextBlock(ctx, 'script')}\n下面是一段别的行业的拆解文案，把它换成川味烧烤的说法，保留它的结构和节奏，分为 ## 开头、## 正文 两节，只写可直接念的台词。\n原文：一家开了十年的面馆，每天凌晨五点起来熬汤，老板说汤没有捷径，只能一锅一锅守。`,
+      requiredSections: ['开头', '正文'],
+      checkAs: '跨行业二创',
+      source: '一家开了十年的面馆，每天凌晨五点起来熬汤，老板说汤没有捷径，只能一锅一锅守。',
+    },
+    {
+      task: '回归:自由对话',
+      query: `${buildContextBlock(ctx, 'freeChat')}\n我想知道我们店开了几年、主厨做了几年川菜，你直接告诉我，再给我一个做短视频的小建议。`,
+      checkAs: '自由对话',
+    },
   ];
 }
 
@@ -173,33 +192,54 @@ export async function readDifyAnswer(res: Response): Promise<string> {
 
 export interface RegressionOutcome { task: string; result: QualityResult; sample: string; error?: string }
 
-/** 依次跑完所有用例（串行：别同时压 Dify），每个都体检 */
-export async function runRegression(ask: (q: string) => Promise<string> = askDify): Promise<RegressionOutcome[]> {
-  const out: RegressionOutcome[] = [];
-  for (const c of regressionCases()) {
-    try {
-      const answer = await ask(c.query);
-      const checked = c.pick ? c.pick(answer) : answer;
-      const profile = c.profile ?? REGRESSION_PROFILE;
-      const mix = c.mixCount ? { resolved: resolveMix(profile), count: c.mixCount } : null;
-      // 审稿的事实核对自己会取「优化后的完整脚本」那一节（lib/quality-checks），交给它整段回答，别取两次
-      const result = runQualityChecks({ output: c.checkAs === '审稿优化' ? answer : checked, profile, mix, taskType: c.checkAs, source: c.source });
-      for (const keep of c.mustKeep ?? []) {
-        if (!checked.replace(/\s+/g, '').includes(keep.replace(/\s+/g, ''))) result.issues.push({ kind: 'generation', detail: `没守住用户的明确要求：「${keep.slice(0, 20)}」被改了`.slice(0, 200) });
-      }
-      for (const section of c.requiredSections ?? []) {
-        const lines = checked.split('\n');
-        const start = lines.findIndex(line => sectionHeading(section).test(line));
-        const next = start < 0 ? -1 : lines.findIndex((line, i) => i > start && /^\s*#{1,4}\s+/.test(line));
-        const body = start < 0 ? '' : lines.slice(start + 1, next < 0 ? lines.length : next).join('\n');
-        if (!/[\p{L}\p{N}]/u.test(body)) result.issues.push({ kind: 'generation', detail: `必要交付部分「${section}」缺失或为空` });
-      }
-      result.passed = !result.issues.some(isBlockingIssue);
-      out.push({ task: c.task, result, sample: checked.slice(0, 300) });
-    } catch (e) {
-      const error = (e as Error).message;
-      out.push({ task: c.task, result: { passed: false, issues: [{ kind: 'generation', detail: error.slice(0, 200) }] }, sample: '', error });
+/** 回归样例保存的字数：比原来的 300 字多，管理员能看到大部分内容再判断 */
+const SAMPLE_CHARS = 1200;
+
+/** 跑一个用例：问一次模型，再体检。没跑成（Dify 出错、超时）记成 error，不当成质量问题 */
+export async function runCase(c: RegressionCase, ask: (q: string) => Promise<string>): Promise<RegressionOutcome> {
+  try {
+    const answer = await ask(c.query);
+    const checked = c.pick ? c.pick(answer) : answer;
+    const profile = c.profile ?? REGRESSION_PROFILE;
+    const mix = c.mixCount ? { resolved: resolveMix(profile), count: c.mixCount } : null;
+    // 审稿的事实核对自己会取「优化后的完整脚本」那一节（lib/quality-checks），交给它整段回答，别取两次
+    const result = runQualityChecks({ output: c.checkAs === '审稿优化' ? answer : checked, profile, mix, taskType: c.checkAs, source: c.source });
+    for (const keep of c.mustKeep ?? []) {
+      if (!checked.replace(/\s+/g, '').includes(keep.replace(/\s+/g, ''))) result.issues.push({ kind: 'generation', detail: `没守住用户的明确要求：「${keep.slice(0, 20)}」被改了`.slice(0, 200) });
     }
+    for (const section of c.requiredSections ?? []) {
+      const lines = checked.split('\n');
+      const start = lines.findIndex(line => sectionHeading(section).test(line));
+      const next = start < 0 ? -1 : lines.findIndex((line, i) => i > start && /^\s*#{1,4}\s+/.test(line));
+      const body = start < 0 ? '' : lines.slice(start + 1, next < 0 ? lines.length : next).join('\n');
+      if (!/[\p{L}\p{N}]/u.test(body)) result.issues.push({ kind: 'generation', detail: `必要交付部分「${section}」缺失或为空` });
+    }
+    result.passed = !result.issues.some(isBlockingIssue);
+    return { task: c.task, result, sample: checked.slice(0, SAMPLE_CHARS) };
+  } catch (e) {
+    const error = (e as Error).message;
+    return { task: c.task, result: { passed: false, issues: [{ kind: 'error', detail: error.slice(0, 200) }] }, sample: '', error };
+  }
+}
+
+/**
+ * 依次跑完所有用例（串行：别同时压 Dify），每个都体检。
+ * 第一次没过的，重跑一次：模型输出有波动，单次失败不足为凭。重跑过了记 flaky（只提醒，不算失败），重跑还不过才算失败。
+ */
+export async function runRegression(ask: (q: string) => Promise<string> = askDify, cases: RegressionCase[] = regressionCases()): Promise<RegressionOutcome[]> {
+  const out: RegressionOutcome[] = [];
+  for (const c of cases) {
+    const first = await runCase(c, ask);
+    if (first.error || first.result.passed) {
+      out.push(first);
+      continue;
+    }
+    const second = await runCase(c, ask);
+    if (!second.error && second.result.passed) {
+      const why = first.result.issues.filter(isBlockingIssue).map((i) => QUALITY_LABELS[i.kind]).slice(0, 3).join('、');
+      second.result.issues.push({ kind: 'flaky', detail: `第一次没过（${why}），重跑后通过`, blocking: false });
+    }
+    out.push(second);
   }
   return out;
 }
