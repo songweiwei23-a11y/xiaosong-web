@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BellRing, Bot, Brain, Check, Copy, FileDown, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
+import { ArrowRight, BellRing, Bot, Brain, Check, Copy, FileDown, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
 import { getActiveProfileId } from "@/lib/active-profile";
 import { memoryEnabled } from "@/lib/settings-memory";
 import { ASSISTANT_ASK_EVENT } from "@/lib/assistant/ask";
@@ -1051,6 +1051,7 @@ export function AssistantWidget() {
                   onExport={() => downloadAsDocument(t)}
                   onUndo={(index) => void undoReceipt(t.id, index)}
                   onFeedback={(helpful) => void sendFeedback(t, helpful)}
+                  onContinue={() => setInput("接着做这份结果：")}
                 />
               ))}
 
@@ -1236,6 +1237,7 @@ function TaskThread({
   onExport,
   onUndo,
   onFeedback,
+  onContinue,
 }: {
   task: Task;
   copied: boolean;
@@ -1243,6 +1245,7 @@ function TaskThread({
   onExport: () => void;
   onUndo: (index: number) => void;
   onFeedback: (helpful: boolean) => void;
+  onContinue: () => void;
 }) {
   const tone =
     task.status === "done"
@@ -1260,20 +1263,31 @@ function TaskThread({
         </p>
       </div>
 
-      <article className="space-y-3">
+      <article className="assistant-rise space-y-3">
         <div className="flex items-center gap-2">
-          <span className="brand-gradient flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white">
+          <span className="brand-gradient relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white">
             <Bot className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}>{STATUS_LABEL[task.status]}</span>
+          <span className="text-[12px] font-medium text-foreground">开物助理</span>
+          <span
+            key={task.status}
+            className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${tone} ${task.status === "done" ? "assistant-stamp" : ""}`}
+          >
+            {task.status === "done" && <Check className="h-3 w-3" aria-hidden="true" />}
+            {STATUS_LABEL[task.status]}
+          </span>
         </div>
 
         {task.status === "running" && (
-          <div className="space-y-2 pl-1">
-            <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> 正在处理…
+          <div className="space-y-2 rounded-2xl border border-border/60 bg-card/70 px-3.5 py-3">
+            <p className="flex items-center gap-2 text-[12px] font-medium text-foreground">
+              <span className="relative inline-flex h-2 w-2 text-primary">
+                <span className="assistant-halo absolute inset-0 rounded-full" aria-hidden="true" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
+              </span>
+              正在按你的要求办事
             </p>
-            <Steps steps={task.steps} />
+            <Steps steps={task.steps} running />
           </div>
         )}
 
@@ -1293,8 +1307,12 @@ function TaskThread({
         <ReceiptList receipts={task.receipts} onUndo={onUndo} />
 
         {task.answer && (
-          <div className="whitespace-pre-wrap rounded-2xl rounded-tl-md border border-border/60 bg-card px-3.5 py-3 text-[13.5px] leading-7 text-foreground shadow-sm">
-            {task.answer}
+          <div className="assistant-rise overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+            <div className="flex items-center gap-1.5 border-b border-border/50 bg-foreground/[0.02] px-3.5 py-2 text-[11.5px] font-medium text-muted-foreground">
+              <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+              交付结果
+            </div>
+            <div className="whitespace-pre-wrap px-3.5 py-3 text-[13.5px] leading-7 text-foreground">{task.answer}</div>
           </div>
         )}
         {task.error && <p className="rounded-xl bg-destructive/10 px-3 py-2 text-[12px] text-destructive">{task.error}</p>}
@@ -1303,6 +1321,15 @@ function TaskThread({
           <div className="flex items-center justify-between gap-2 pl-1">
             <p className="text-[11px] text-muted-foreground">用了 1 次助理对话；板块按各自额度扣费</p>
             <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={onContinue}
+              aria-label="接着做这份结果"
+              className="flex shrink-0 items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[12px] font-medium text-primary transition hover:bg-primary/15"
+            >
+              接着做
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
             <button
               type="button"
               onClick={onExport}
@@ -1357,17 +1384,32 @@ function TaskThread({
   );
 }
 
-/** 过程用竖线时间线串起来，看起来就是助理一步步在做 */
-function Steps({ steps }: { steps: string[] }) {
+/**
+ * 过程：前面的步骤打勾，正在做的那一步有呼吸光环，每一步依次浮入。
+ * 没在进行中（已完成或停了）时，所有步骤都打勾。
+ */
+function Steps({ steps, running = false }: { steps: string[]; running?: boolean }) {
   if (!steps.length) return null;
   return (
-    <ol className="space-y-2 border-l border-border pl-3.5 text-[12px] leading-relaxed text-muted-foreground">
-      {steps.map((s, i) => (
-        <li key={i} className="relative">
-          <span className="absolute -left-[18px] top-1.5 h-1.5 w-1.5 rounded-full bg-primary/60" aria-hidden="true" />
-          {s}
-        </li>
-      ))}
+    <ol className="space-y-2.5 text-[12px] leading-relaxed text-muted-foreground">
+      {steps.map((s, i) => {
+        const current = running && i === steps.length - 1;
+        return (
+          <li key={i} className="assistant-rise flex items-start gap-2.5" style={{ animationDelay: `${i * 70}ms` }}>
+            <span className="mt-[5px] flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+              {current ? (
+                <span className="relative inline-flex h-2 w-2 text-primary">
+                  <span className="assistant-halo absolute inset-0 rounded-full" aria-hidden="true" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
+                </span>
+              ) : (
+                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+              )}
+            </span>
+            <span className={current ? "text-foreground" : undefined}>{s}</span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
