@@ -1,6 +1,8 @@
 import { finishJob, pushEvent, type AssistantJob } from './jobs';
 import type { BoardContext, BoardResult } from './boards';
-import { saveBoardResult } from '@/lib/assistant/carry';
+import { saveBoardResult, type SavedResult } from '@/lib/assistant/carry';
+import { applyCarry } from '@/lib/assistant/carry-shape';
+import type { HandoffPayload } from '@/lib/handoff';
 import {
   BOARD_LABEL,
   factContextOf,
@@ -28,6 +30,8 @@ export interface BoardRunResult {
   attempts: number;
   problems: string[];
   error?: string;
+  /** 交付的那份创作（已存成创作会话）：下一步按它接续，和页面「带去下一步」一样 */
+  carry?: HandoffPayload;
 }
 
 export interface BoardRunOptions {
@@ -75,8 +79,8 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
     }
     if (check.ok) {
       pushEvent(job, { type: 'step', text: `${tag}管理员：验收通过（第 ${attempt} 次）` });
-      await keepResult(opts.ctx, opts.board, bestFull);
-      return { ok: true, text: best, attempts, problems: [] };
+      const saved = await keepResult(opts.ctx, opts.board, bestFull);
+      return { ok: true, text: best, attempts, problems: [], carry: saved?.payload };
     }
     problems = check.problems;
     if (attempt < maxRuns) {
@@ -88,14 +92,14 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
     }
   }
   // 返工到上限仍不合格：产出已经交给老板判断，也要存下来，老板可以接着用它继续创作
-  await keepResult(opts.ctx, opts.board, bestFull);
-  return { ok: true, text: best, attempts, problems };
+  const saved = await keepResult(opts.ctx, opts.board, bestFull);
+  return { ok: true, text: best, attempts, problems, carry: saved?.payload };
 }
 
 /** 存成可以按编号带去下一步的创作（失败不影响交付；见 lib/assistant/carry） */
-async function keepResult(ctx: BoardContext, board: BoardAny, full: string): Promise<void> {
-  if (!full.trim()) return;
-  await saveBoardResult(ctx, board, full).catch(() => null);
+async function keepResult(ctx: BoardContext, board: BoardAny, full: string): Promise<SavedResult | null> {
+  if (!full.trim()) return null;
+  return saveBoardResult(ctx, board, full).catch(() => null);
 }
 
 export interface BoardJobInput {
@@ -123,10 +127,13 @@ export interface PlanJobInput {
 export async function runPlanJob(job: AssistantJob, input: PlanJobInput): Promise<void> {
   const total = input.plan.steps.length;
   const sections: string[] = [];
-  let carry: string | null = null;
+  // 上一步交付的那份创作：优先按页面「带去下一步」的规则接续（原方向、目的、设置、当前稿子都跟着走）；
+  // 没存成功的，退回用文字传（和以前一样）
+  let previous: HandoffPayload | null = null;
+  let previousText: string | null = null;
   for (let i = 0; i < total; i++) {
     const original = input.plan.steps[i];
-    const board = carry ? withUpstream(original, carry) : original;
+    const board = previous ? applyCarry(original, previous) : previousText ? withUpstream(original, previousText) : original;
     const tag = `第 ${i + 1}/${total} 步 · `;
     const r = await runBoardWithReview(job, {
       ctx: input.ctx,
@@ -139,7 +146,8 @@ export async function runPlanJob(job: AssistantJob, input: PlanJobInput): Promis
       pushEvent(job, { type: 'error', text: `${tag}「${BOARD_LABEL[original.kind].label}」没有完成：${r.error ?? '请稍后再试'}，后面的步骤先不做` });
       break;
     }
-    carry = r.text;
+    previous = r.carry ?? null;
+    previousText = r.carry ? null : r.text;
     sections.push(`## ${i + 1}. ${BOARD_LABEL[original.kind].label}\n\n${managerAnswer(r.text, r.attempts, r.problems)}`);
   }
   finishJob(job, sections.length ? 'done' : 'error', sections.join('\n\n'));

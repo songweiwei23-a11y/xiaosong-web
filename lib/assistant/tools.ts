@@ -14,6 +14,7 @@ import { isDepth } from '@/lib/research';
 import { createPendingRun } from './pending-runs';
 import { listRecentResults, loadCarry } from '@/lib/assistant/carry';
 import { applyCarry } from '@/lib/assistant/carry-shape';
+import { adviseRoute } from '@/lib/assistant/route-advice';
 import { MAX_BOARD_RUNS } from './manager';
 import type { AssistantTool, WebFeedback } from './agent';
 
@@ -604,6 +605,42 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         const label = done ? '内容已做完' : '改回没做完';
         ctx.onAction?.({ name: 'work.progress', args: { id: target.id, title: target.title || '未命名', done, label } });
         return `已在页面上列出要修改的内容（「${target.title || '未命名'}」改为${label}），等老板点确认后才会生效。请告诉老板在页面上确认。`;
+      },
+    },
+    {
+      name: 'suggest_path',
+      label: '正在看怎么做最合适',
+      description:
+        '老板的需求说得模糊时用（「最近没灵感」「想更新几期」「不知道拍什么」）：先判断他要做什么（need），再看账号现在有什么（档案、定位、简报、最近的结果），推荐该走哪几个板块、每一步为什么。只读，不派活。拿到推荐后，用一两句话告诉老板为什么这么做，再用 propose_plan 把这几步列给他确认。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          need: {
+            type: 'string',
+            enum: ['inspiration', 'batch', 'script', 'title', 'storyboard', 'review', 'positioning', 'other'],
+            description: '老板要做什么：inspiration 没灵感想找方向，batch 想更新几期，script 写脚本，title 起标题，storyboard 拆分镜，review 审稿，positioning 定位，other 说不清',
+          },
+        },
+        required: ['need'],
+      },
+      async run(input) {
+        const need = (['inspiration', 'batch', 'script', 'title', 'storyboard', 'review', 'positioning'] as const).find((n) => n === input.need) ?? 'other';
+        const profiles = await readInternal(ctx, '/api/profiles').catch(() => []);
+        const hasProfile = Array.isArray(profiles) && profiles.length > 0;
+        const positioning = await readInternal(ctx, `/api/positioning?type=${encodeURIComponent('账号定位')}`).catch(() => []);
+        const brief = await readInternal(ctx, `/api/positioning?type=${encodeURIComponent('创作简报')}`).catch(() => []);
+        const results = await listRecentResults(ctx, 10);
+        const advice = adviseRoute(need, {
+          hasProfile,
+          hasPositioning: Array.isArray(positioning) && positioning.length > 0,
+          hasBrief: Array.isArray(brief) && brief.length > 0,
+          recentResults: results.length,
+        });
+        if (!hasProfile) return '还没有账号档案。先请老板建一个档案，再推荐怎么做。';
+        if (!advice.steps.length) return `还不能推荐路线。还缺：${advice.missing.join('、')}。先问清楚老板要做什么。`;
+        const lines = advice.steps.map((s, i) => `${i + 1}. ${s.label}（${s.board}）：${s.why}`);
+        const tail = advice.missing.length ? `\n还缺：${advice.missing.join('、')}（问老板，不要自己编）。` : '';
+        return `推荐路线（按账号现在的状态）：\n${lines.join('\n')}${tail}\n接下来用 propose_plan 把这几步列给老板确认；确认后按顺序跑，前一步的创作会直接接给下一步。`;
       },
     },
     {

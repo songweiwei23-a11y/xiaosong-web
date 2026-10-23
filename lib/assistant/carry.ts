@@ -23,11 +23,17 @@ export interface RecentResult {
   preview: string;
 }
 
+/** 存下来的一份创作：编号，以及服务端返回的完整内容（下一个板块按它接续，和页面带去下一步拿到的一样） */
+export interface SavedResult {
+  id: string;
+  payload: HandoffPayload;
+}
+
 /**
- * 板块结果存成创作会话。失败不影响结果本身（只是之后不能按编号带过去），返回编号或 null。
+ * 板块结果存成创作会话。失败不影响结果本身（只是之后不能按编号带过去），返回编号和内容，失败返回 null。
  * 带着上一步来的（board.carry）：沿用它的原方向和作品，这样链路的「原始创作方案」不会丢。
  */
-export async function saveBoardResult(ctx: BoardContext, board: BoardAny, text: string): Promise<string | null> {
+export async function saveBoardResult(ctx: BoardContext, board: BoardAny, text: string): Promise<SavedResult | null> {
   const body = text.trim();
   if (!body) return null;
   const carry = board.carry;
@@ -49,8 +55,10 @@ export async function saveBoardResult(ctx: BoardContext, board: BoardAny, text: 
       cache: 'no-store',
     });
     if (!res.ok) return null;
-    const data = (await res.json().catch(() => null)) as { id?: unknown } | null;
-    return typeof data?.id === 'string' ? data.id : null;
+    const data = (await res.json().catch(() => null)) as { id?: unknown; payload?: unknown } | null;
+    if (typeof data?.id !== 'string') return null;
+    // 服务端规范化过的内容优先；认不出就用刚才发出去的那份（内容一样）
+    return { id: data.id, payload: readCreationSnapshot(data.payload) ?? { ...payload, profileId } };
   } catch {
     return null;
   }

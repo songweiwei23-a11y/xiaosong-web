@@ -11,7 +11,7 @@ import { GOLDEN_CASES, WRITE_TOOLS, PROPOSAL_TOOLS, BOARD_TOOLS } from './assist
 import { createAssistantTools } from '@/lib/assistant/tools';
 
 /** 只读的工具（查询，不改数据） */
-const READ_TOOLS = ['read_account', 'read_quota', 'search_web', 'search_knowledge', 'list_todos', 'list_notes', 'daily_brief', 'list_materials', 'list_results'];
+const READ_TOOLS = ['read_account', 'read_quota', 'search_web', 'search_knowledge', 'list_todos', 'list_notes', 'daily_brief', 'list_materials', 'list_results', 'suggest_path'];
 
 describe('黄金测试集：结构', () => {
   it('用例够多（至少 30 条），编号不重复', () => {

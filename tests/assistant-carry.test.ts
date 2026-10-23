@@ -8,6 +8,8 @@ import type { HandoffPayload } from '@/lib/handoff';
 import { loadCarry, listRecentResults, saveBoardResult } from '@/lib/assistant/carry';
 import { applyCarry, rebuildCarry, sourceKeyOf } from '@/lib/assistant/carry-shape';
 import { runAnyBoard, type BoardAny } from '@/lib/assistant/board-dispatch';
+import { runPlanJob } from '@/lib/assistant/board-job';
+import { createJob } from '@/lib/assistant/jobs';
 import { createAssistantTools } from '@/lib/assistant/tools';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -98,8 +100,8 @@ describe('创作方向接选题：原方向、目的、思路要跟着过去', (
 describe('结果存下来，再按编号取回', () => {
   it('板块结果存成创作会话：来源名、完整正文、目标页、原方向都按页面的规则', async () => {
     const posted: Record<string, unknown>[] = [];
-    const id = await saveBoardResult(ctxWith(stub({ posted }), { profileId: 'not-a-uuid' }), { kind: 'direction', input: { goal: '想拍夜宵场景的真实故事', count: 3 } }, DIRECTION);
-    expect(id).toBe(UUID);
+    const saved = await saveBoardResult(ctxWith(stub({ posted }), { profileId: 'not-a-uuid' }), { kind: 'direction', input: { goal: '想拍夜宵场景的真实故事', count: 3 } }, DIRECTION);
+    expect(saved?.id).toBe(UUID);
     const payload = posted[0].payload as Record<string, unknown>;
     expect(payload.from).toBe('创作方向');
     expect(payload.sourceContent).toBe(DIRECTION);
