@@ -7,8 +7,9 @@ import type { AssistantConfig } from '@/lib/assistant/config';
 /**
  * 管理员的验收与修改（板块派活、监督）。
  * 两道关：先用确定性规则（长度、脚本质量、事实依据），再由管理员模型对照派活要求判断一遍。
- * 验收不过，管理员直接把问题改好（只改有问题的地方），改完复核再交给老板。
- * 不再整份重跑板块：重跑要再扣一次板块额度，还可能跑出新的问题，修改几处成本低得多。
+ * 验收不过，管理员做小改：只给出「原文一句 → 改后一句」的编辑，由系统精确替换；
+ * 目的、方向、方法建议这些原来的东西一律保留，改动总量有上限；改不了的交给老板判断。
+ * 修改参考知识库里的方法论（《资料名》），不凭空发明做法。不再整份重跑板块（重跑要再扣额度，还可能跑出新问题）。
  */
 
 /** 验收不过时，管理员最多直接修改几次（2026-10-23 老板定：不整份重跑，直接改） */
@@ -97,47 +98,112 @@ export async function judgeBoardOutput(
   }
 }
 
-/** 修改后的产出不能比原稿短太多（短了多半是模型删掉了内容而不是改了问题） */
-const MIN_KEEP_RATIO = 0.7;
-/** 超过这个长度的产出不交给修改（修改会截断，且成本高），直接交给老板判断 */
+/** 一处小改：原文里的一句（或一小段）→ 改后的文字 */
+export interface RevisionEdit {
+  old: string;
+  new: string;
+}
+
+/** 修改的结果：改好的全文、实际改了几处、跳过了几处（原文找不到或不止一处） */
+export interface RevisionResult {
+  text: string;
+  applied: number;
+  skipped: number;
+}
+
+/** 一次最多几处小改；超出的不要（大改交给老板判断） */
+const MAX_EDITS = 8;
+/** 修改的字数不能超过全文的这个比例：超过就是大改，整体不采用 */
+const MAX_CHANGE_RATIO = 0.3;
+/** 超过这个长度的产出不交给修改（修改成本高，直接交给老板判断） */
 const MAX_REVISE_CHARS = 8000;
 
+/** 从模型的回答里取出编辑列表（只认 {"edits": [{"old", "new"}]}） */
+export function parseRevisionEdits(raw: string): RevisionEdit[] | null {
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]) as { edits?: unknown };
+    if (!Array.isArray(parsed.edits)) return null;
+    const edits: RevisionEdit[] = [];
+    for (const e of parsed.edits.slice(0, MAX_EDITS)) {
+      if (!e || typeof e !== 'object') continue;
+      const item = e as { old?: unknown; new?: unknown };
+      if (typeof item.old === 'string' && typeof item.new === 'string') edits.push({ old: item.old, new: item.new });
+    }
+    return edits.length ? edits : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * 管理员直接修改：只改验收指出的问题，其余原样保留。
- * 返回修改后的完整产出；模型出错、长度不对、或者超出能修改的范围时返回 null（这时保留原稿，交给老板判断）。
+ * 按编辑精确替换：每一处的原文必须在当前稿子里只出现一次，才替换；找不到或不止一处的跳过（不猜位置）。
+ * 改动总字数超过全文的 MAX_CHANGE_RATIO，或者一处都没改成，返回 null（整体不采用）。
+ */
+export function applyRevisionEdits(output: string, edits: RevisionEdit[]): RevisionResult | null {
+  let text = output;
+  let applied = 0;
+  let skipped = 0;
+  let changed = 0;
+  for (const edit of edits) {
+    if (!edit.old.trim() || edit.old === edit.new) {
+      skipped++;
+      continue;
+    }
+    const occurrences = text.split(edit.old).length - 1;
+    if (occurrences !== 1) {
+      skipped++;
+      continue;
+    }
+    text = text.replace(edit.old, () => edit.new);
+    applied++;
+    changed += edit.old.length + edit.new.length;
+  }
+  if (applied === 0 || changed > output.length * MAX_CHANGE_RATIO) return null;
+  return { text, applied, skipped };
+}
+
+/**
+ * 管理员做小改：只针对验收指出的问题，给出「原文一句 → 改后一句」的编辑。
+ * 目的、方向、方法建议保留；参考知识库里的方法论来改。返回改好的稿子和修改情况；改不了返回 null（保留原稿，交给老板）。
  */
 export async function reviseBoardOutput(
   cfg: AssistantConfig,
   kind: BoardKind,
   output: string,
   problems: string[],
-  opts: { llm?: typeof callAssistantLlm } = {},
-): Promise<string | null> {
+  opts: { llm?: typeof callAssistantLlm; requirement?: string; knowledge?: string } = {},
+): Promise<RevisionResult | null> {
   if (!problems.length || output.length > MAX_REVISE_CHARS) return null;
   const call = opts.llm ?? callAssistantLlm;
   const system = [
-    '你是开物的管理员。板块刚交出的产出，验收发现了下面这些问题。',
-    '你只修改这些问题所在的句子或段落，其余的字一个不动，结构和顺序保持原样。',
-    '不许新增原文里没有依据的数字、经历、客户对话、价格或效果承诺；改不了的地方保留原句，并标上「待核实」。',
-    '只输出修改后的完整产出，不要解释，不要加前言。',
+    '你是开物的管理员，负责把板块产出里验收发现的小问题改好。',
+    '只做小改：只输出 JSON，格式是 {"edits": [{"old": "原文里一句原样的话", "new": "改后的话"}]}。',
+    'old 必须是产出里原样存在、且全文只出现一次的一句话或一小段（不超过 200 字）；new 是替换后的文字。',
+    '原来的目的、方向、核心思路、方法建议一律保留，不改变稿子的主张；只改问题所在的那几句。',
+    '参考资料里的方法论可以用来改写，但要改得贴合原文，不能凭空发明做法。',
+    '不许新增原文没有依据的数字、经历、客户对话、价格或效果承诺；改不了的不要硬改，直接省略。',
+    `最多 ${MAX_EDITS} 处。只输出 JSON，不要任何别的文字。`,
   ].join('');
   const user = [
     `板块：${BOARD_LABEL[kind].label}`,
+    opts.requirement ? `派活要求（要保留的原意）：${opts.requirement}` : '',
     '需要修改的问题：',
     ...problems.map((p, i) => `${i + 1}. ${p}`),
-    '',
-    '原产出：',
+    opts.knowledge ? `\n参考资料（知识库）：\n${opts.knowledge}` : '',
+    '\n原产出：',
     output,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
   try {
-    const res = await call(cfg, { system, messages: [{ role: 'user', content: user }], tools: [], maxTokens: 6000 });
-    const revised = res.content
+    const res = await call(cfg, { system, messages: [{ role: 'user', content: user }], tools: [], maxTokens: 2000 });
+    const raw = res.content
       .filter((b): b is Extract<LlmBlock, { type: 'text' }> => b.type === 'text')
       .map((b) => b.text)
-      .join('')
-      .trim();
-    if (!revised || revised.length < output.length * MIN_KEEP_RATIO) return null;
-    return revised;
+      .join('');
+    const edits = parseRevisionEdits(raw);
+    if (!edits) return null;
+    return applyRevisionEdits(output, edits);
   } catch {
     return null;
   }

@@ -8,7 +8,7 @@ vi.mock('@/lib/api-guard', () => ({
   requireUser: async () => ({ ok: true, userId: 'u-route' }),
 }));
 
-import { checkBoardOutput, managerAnswer, reviseBoardOutput, MAX_REVISIONS } from '@/lib/assistant/manager';
+import { applyRevisionEdits, checkBoardOutput, managerAnswer, reviseBoardOutput, MAX_REVISIONS } from '@/lib/assistant/manager';
 import { createPendingRun, takePendingRun } from '@/lib/assistant/pending-runs';
 import { createAssistantTools } from '@/lib/assistant/tools';
 import { runBoardJob } from '@/lib/assistant/board-job';
@@ -46,18 +46,36 @@ describe('验收：板块的产出合不合格', () => {
     expect(checkBoardOutput('review', '审稿结论：开头可以更直接。'.repeat(10), '').ok).toBe(true);
   });
 
-  it('直接修改：把验收的问题交给管理员模型，只改有问题的地方；修改后的稿子不能缩水太多', async () => {
-    const seen: string[] = [];
-    const llm = (async (_cfg: unknown, req: { system: string; messages: { content: string }[] }) => {
-      seen.push(req.messages[0].content);
-      return { content: [{ type: 'text', text: '修改后的完整稿子：'.repeat(20) }], stopReason: 'end_turn' };
-    }) as never;
-    const out = await reviseBoardOutput({ apiKey: 'k' } as never, 'script', '原稿：有一处说法需要改。'.repeat(10), ['有没有依据的说法'], { llm });
-    expect(out).toContain('修改后的完整稿子');
-    expect(seen[0]).toContain('有没有依据的说法');
-    // 模型把稿子删到剩不下多少：不算修改，返回 null，保留原稿
-    const shrink = (async () => ({ content: [{ type: 'text', text: '太短' }], stopReason: 'end_turn' })) as never;
-    expect(await reviseBoardOutput({ apiKey: 'k' } as never, 'script', '原稿'.repeat(100), ['有问题'], { llm: shrink })).toBeNull();
+  it('小改：按编辑精确替换，只动原文里出现一次的那句；其余原样保留', () => {
+    // 正文够长，一处小改不超过三成
+    const filler = '这是一段用来占位的正文内容。'.repeat(6);
+    const body = filler + '第二句有问题。' + filler;
+    const out = applyRevisionEdits(body, [{ old: '第二句有问题。', new: '第二句改好了。' }]);
+    expect(out?.text).toBe(body.replace('第二句有问题。', '第二句改好了。'));
+    expect(out?.applied).toBe(1);
+  });
+
+  it('小改：原文找不到或出现不止一处的编辑跳过，不猜位置；一处都改不了就整体不采用', () => {
+    expect(applyRevisionEdits('甲。甲。乙。', [{ old: '甲。', new: '丙。' }])).toBeNull();
+    expect(applyRevisionEdits('甲乙丙丁戊己庚辛壬癸'.repeat(3), [{ old: '不存在的句子', new: '改' }])).toBeNull();
+    const mixed = applyRevisionEdits('甲乙丙丁戊己庚辛壬癸'.repeat(3) + '占位内容'.repeat(40) + '独一句。', [{ old: '甲乙', new: '甲乙改' }, { old: '独一句。', new: '独一句（已改）。' }]);
+    expect(mixed?.applied).toBe(1);
+    expect(mixed?.skipped).toBe(1);
+  });
+
+  it('小改：改动超过全文三成就是大改，整体不采用', () => {
+    // 每段都不一样，保证这里测的是「比例」而不是「找不到」
+    const body = Array.from({ length: 5 }, (_, i) => `第${i}段正文内容，用来测试改动的比例。`).join('');
+    expect(applyRevisionEdits(body, [{ old: body.slice(0, 40), new: '替换' }])).toBeNull();
+  });
+
+  it('小改：模型的回答必须是编辑列表，否则不修改', async () => {
+    const output = Array.from({ length: 10 }, (_, i) => `第${i}句原文。`).join('') + '原文第二句有问题。';
+    const good = (async () => ({ content: [{ type: 'text', text: '{"edits": [{"old": "原文第二句有问题。", "new": "改后第二句。"}]}' }], stopReason: 'end_turn' })) as never;
+    const r = await reviseBoardOutput({ apiKey: 'k' } as never, 'script', output, ['有没有依据的说法'], { llm: good, requirement: '写一条脚本' });
+    expect(r?.text).toContain('改后第二句');
+    const bad = (async () => ({ content: [{ type: 'text', text: '好的，我改好了：……' }], stopReason: 'end_turn' })) as never;
+    expect(await reviseBoardOutput({ apiKey: 'k' } as never, 'script', output, ['有问题'], { llm: bad })).toBeNull();
   });
 
   it('最终回答：通过就写明直接修改了几次；仍有问题就交给用户判断', () => {
@@ -123,7 +141,7 @@ describe('派活：先列出来，用户确认后才开跑', () => {
 
 describe('管理员执行：板块只跑一次，不合格由管理员直接修改', () => {
   it('第一版太短，管理员直接修改，改好后交付；板块只被调用一次，不整份重跑', async () => {
-    const streamAnswers = ['太短'];
+    const streamAnswers = [LONG_TOPIC];
     let boardCalls = 0;
     const fetchImpl = (async (url: string) => {
       if (String(url).includes('/api/dify/stream')) {
@@ -132,11 +150,17 @@ describe('管理员执行：板块只跑一次，不合格由管理员直接修�
       }
       return json([]);
     }) as unknown as typeof fetch;
-    // 管理员模型：验收员的判断照常放行；修改请求返回一版够长的稿子
-    const llm = (async (_cfg: unknown, req: { system: string }) =>
-      req.system.includes('管理员')
-        ? { content: [{ type: 'text', text: LONG_TOPIC }], stopReason: 'end_turn' }
-        : { content: [{ type: 'text', text: '{"pass": true, "problems": []}' }], stopReason: 'end_turn' }) as never;
+    // 管理员模型：第一次验收判不合格；管理员用一处小改编辑修好（只换开头那几个字）；复核通过
+    let judgeCalls = 0;
+    const llm = (async (_cfg: unknown, req: { system: string }) => {
+      if (req.system.includes('管理员')) {
+        const edits = { edits: [{ old: '凌晨四点的菜市场', new: '凌晨五点的菜市场' }] };
+        return { content: [{ type: 'text', text: JSON.stringify(edits) }], stopReason: 'end_turn' };
+      }
+      judgeCalls++;
+      const verdict = judgeCalls === 1 ? { pass: false, problems: ['第 2 条没有回应派活要求'] } : { pass: true, problems: [] };
+      return { content: [{ type: 'text', text: JSON.stringify(verdict) }], stopReason: 'end_turn' };
+    }) as never;
 
     const job = createJob('u-job-1');
     await runBoardJob(job, {
@@ -150,9 +174,11 @@ describe('管理员执行：板块只跑一次，不合格由管理员直接修�
     expect(job.status).toBe('done');
     expect(job.answer).toContain('菜市场老板的真实一天');
     expect(job.answer).toContain('已直接修改 1 次');
+    expect(job.answer).toContain('凌晨五点的菜市场');
+    expect(job.answer).not.toContain('凌晨四点的菜市场');
     expect(boardCalls).toBe(1);
     const steps = job.events.filter((e) => e.type === 'step').map((e) => (e as { text: string }).text);
-    expect(steps.some((s) => s.includes('我直接修改（第 1 次）'))).toBe(true);
+    expect(steps.some((s) => s.includes('我直接改（第 1 次）'))).toBe(true);
     expect(steps.some((s) => s.includes('验收通过'))).toBe(true);
     expect(steps.some((s) => s.includes('返工'))).toBe(false);
   });
@@ -181,7 +207,7 @@ describe('管理员执行：板块只跑一次，不合格由管理员直接修�
     expect(job.answer).not.toContain('验收：通过');
     expect(boardCalls).toBe(1);
     const steps = job.events.filter((e) => e.type === 'step').map((e) => (e as { text: string }).text);
-    expect(steps.some((s) => s.includes('这几处没能改好'))).toBe(true);
+    expect(steps.some((s) => s.includes('这几处改动太大或对不上原文'))).toBe(true);
   });
 
   it('板块报错（比如额度用完）：停下来，不再返工，把原因告诉用户', async () => {

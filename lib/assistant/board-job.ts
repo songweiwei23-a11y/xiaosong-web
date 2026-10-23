@@ -16,6 +16,7 @@ import {
 import { checkBoardOutput, judgeBoardOutput, managerAnswer, MAX_REVISIONS, reviseBoardOutput, type BoardCheck } from '@/lib/assistant/manager';
 import type { AssistantConfig } from '@/lib/assistant/config';
 import type { callAssistantLlm } from '@/lib/assistant/llm';
+import { knowledgeConfigured, knowledgeResultText, searchKnowledge } from '@/lib/assistant/knowledge';
 
 /**
  * 管理员派活的执行（2026-10-23 老板定：不整份返工，管理员直接改）。
@@ -79,14 +80,20 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
   // 验收不过：管理员直接改有问题的地方，改完复核；改不动就停，保留原稿交给老板判断
   while (!check.ok && revisions < revisionCap && opts.cfg && !job.stopRequested) {
     revisions++;
-    pushEvent(job, { type: 'step', text: `${tag}管理员：验收发现 ${check.problems.length} 处问题，我直接修改（第 ${revisions} 次）` });
-    const revised = await reviseBoardOutput(opts.cfg, kind, full, check.problems, { llm: opts.llm });
+    pushEvent(job, { type: 'step', text: `${tag}管理员：验收发现 ${check.problems.length} 处问题，我直接改（第 ${revisions} 次）` });
+    // 修改参考知识库里的方法论（检索失败就不带资料，照样改）
+    const knowledge = await knowledgeFor(kind, check.problems);
+    const revised = await reviseBoardOutput(opts.cfg, kind, full, check.problems, { llm: opts.llm, requirement, knowledge });
     if (!revised) {
-      pushEvent(job, { type: 'step', text: `${tag}管理员：这几处没能改好，保留原稿，交给你判断` });
+      pushEvent(job, { type: 'step', text: `${tag}管理员：这几处改动太大或对不上原文，保留原稿，交给你判断` });
       revisions--;
       break;
     }
-    full = revised;
+    full = revised.text;
+    pushEvent(job, {
+      type: 'step',
+      text: `${tag}管理员：已改好 ${revised.applied} 处${revised.skipped ? `（${revised.skipped} 处原文对不上，没有动）` : ''}，复核中`,
+    });
     check = await verify(full);
   }
 
@@ -105,6 +112,17 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
     problems: check.ok ? [] : check.problems,
     carry: saved?.payload,
   };
+}
+
+/** 修改用的知识库资料：按板块和问题检索；没配置或检索失败就返回 undefined（不影响修改） */
+async function knowledgeFor(kind: BoardAny['kind'], problems: string[]): Promise<string | undefined> {
+  if (!knowledgeConfigured()) return undefined;
+  try {
+    const hits = await searchKnowledge(`${BOARD_LABEL[kind].label}：${problems.join('；')}`);
+    return hits && hits.length ? knowledgeResultText(hits.slice(0, 3)) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** 存成可以按编号带去下一步的创作（失败不影响交付；见 lib/assistant/carry） */
