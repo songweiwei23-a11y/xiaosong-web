@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/workspace/PageHeader";
-import { listWorks, type Work } from "@/lib/works";
+import { listAllWorks, type Work } from "@/lib/works";
 import { buildMonthlyReport, monthLabel, previousMonth } from "@/lib/monthly-report";
+import { onActiveProfileChange } from "@/lib/active-profile";
 
 /**
  * 月报（体检 F3）：一个月做了什么、效果怎样、下个月计划。可以打印，或者「存为 PDF」发给客户。
@@ -24,13 +25,20 @@ export default function ReportPage() {
   }, []);
   const [month, setMonth] = useState(months[0]);
 
+  // 切换档案时重新统计：旧档案的作品不能留在报告里（体检 F02）
+  const [loadKey, setLoadKey] = useState(0);
+  useEffect(() => onActiveProfileChange(() => setLoadKey((k) => k + 1)), []);
+
+  // 把作品全部取完再算。取不到就只显示错误，不生成「发布 0 条」之类的报告（体检 F01、F02）
   useEffect(() => {
     let off = false;
-    listWorks(200)
+    setWorks(null);
+    setError("");
+    listAllWorks()
       .then((w) => { if (!off) setWorks(w); })
-      .catch(() => { if (!off) setError("作品没取到，请刷新重试"); });
+      .catch((e: Error) => { if (!off) setError(e.message || "作品没取到，请刷新重试"); });
     return () => { off = true; };
-  }, []);
+  }, [loadKey]);
 
   const report = works ? buildMonthlyReport(works, month) : null;
 
@@ -69,6 +77,7 @@ export default function ReportPage() {
       {report && (
         <article className="glass-panel rounded-2xl p-6 print:rounded-none print:border-0 print:shadow-none">
           <h2 className="text-[20px] font-semibold text-foreground">{report.label} 内容报告</h2>
+          <p className="mt-1 text-[12px] text-muted-foreground">统计依据：当前档案的 {works?.length ?? 0} 条作品（已全部读取）</p>
 
           <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl bg-foreground/[0.04] p-3"><dt className="text-[11.5px] text-muted-foreground">拍摄完成</dt><dd className="mt-1 text-[20px] font-semibold tabular-nums text-foreground">{report.shot} 条</dd></div>

@@ -14,6 +14,7 @@ import { AssistantWidget } from '@/components/assistant/AssistantWidget';
 import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate';
 import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
 import { PresenceBeat } from '@/components/dashboard/PresenceBeat';
+import { UnsavedResultsNotice } from '@/components/workspace/UnsavedResultsNotice';
 
 function TopBar() {
   const { toggle } = useSidebar();
@@ -71,6 +72,8 @@ export default function DashboardLayout({
           </main>
           {/* 全站付费引导：任何板块额度用完 / 快用完都由它接（见 lib/upgrade） */}
           <UpgradePrompt />
+          {/* 生成结果没保存进历史：顶部/底部提示重试、复制、丢弃（见 lib/unsaved-results） */}
+          <UnsavedResultsNotice />
           {/* 开物助理：右下角一直在，告诉它遇到什么事，它自己查、自己判断，结果回到窗口里（见 lib/assistant） */}
           <AssistantWidget />
           {/* 连接保活：闲几分钟后线路掐掉空闲连接，再点保存、带去下一步就发不出去 */}

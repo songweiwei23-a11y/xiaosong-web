@@ -352,6 +352,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [],
   },
   {
+    file: "20261024_work_production_checklist.sql",
+    tables: [],
+    columns: [{"table":"works","column":"production_checklist"}],
+  },
+  {
     file: "admin_logs.sql",
     tables: ["admin_logs"],
     columns: [],

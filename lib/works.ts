@@ -15,6 +15,7 @@
 import { STAGE_ORDER } from "./resume";
 import type { WorkMetrics } from "./performance";
 import { getActiveProfileId } from "./active-profile";
+import type { ShootChecklist } from "./production-checklist";
 import { DEFAULT_PROFILE_SCOPE } from "./profile-history";
 import { postSafely } from "./safe-post";
 import { notifyProgressChanged } from "./progress-events";
@@ -41,6 +42,8 @@ export interface Work {
   material_note?: string | null;
   /** 发布后的数据（数据回流，lib/performance）。迁移没跑时没有 */
   metrics?: WorkMetrics | null;
+  /** 拍摄标记（逐镜头拍完了），同步到云端（体检 F03）。迁移没跑时没有 */
+  production_checklist?: ShootChecklist | null;
   created_at: string;
   updated_at: string;
   stages: WorkStage[];
@@ -144,6 +147,22 @@ export async function listWorks(limit = 20): Promise<Work[]> {
 /**
  * 一页作品（2026-10-04）：按组筛、翻页。失败抛出带中文的错误（列表页要区分"没有"和"没取到"）
  */
+/**
+ * 把当前档案的作品全部取回来：接口一页最多 50 条，这里按页取完。
+ * 月报用它；只取前 200 条会漏掉较早的作品（2026-10-24 体检 F01）。任何一页失败都抛错，不返回不完整的结果。
+ */
+export async function listAllWorks(maxPages = 40): Promise<Work[]> {
+  const out: Work[] = [];
+  for (let page = 0; page < maxPages; page++) {
+    const res = await fetch(`/api/works?limit=50&offset=${page * 50}&${profileScope()}`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !Array.isArray(data)) throw new Error(data?.error || "作品没取到，请刷新重试");
+    out.push(...data);
+    if (data.length < 50) return out;
+  }
+  throw new Error("作品太多，暂时无法完整统计，请联系管理员");
+}
+
 export async function listWorksPage(opts: { group?: ProgressGroup | null; offset?: number; limit?: number } = {}): Promise<Work[]> {
   const p = new URLSearchParams({ limit: String(opts.limit ?? 20), offset: String(opts.offset ?? 0) });
   if (opts.group) p.set("group", opts.group);
@@ -178,6 +197,18 @@ export async function setShootStatus(id: string, status: ShootStatus): Promise<W
 }
 
 /** 录发布后的数据（数据回流）。失败抛出带中文的错误 */
+/** 保存拍摄标记到云端。返回服务端最终采用的那一份（它可能比这次提交的更新） */
+export async function saveWorkChecklist(id: string, checklist: ShootChecklist): Promise<ShootChecklist | null> {
+  const res = await fetch(`/api/works?id=${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productionChecklist: checklist }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "拍摄标记没有同步");
+  return (data.production_checklist ?? null) as ShootChecklist | null;
+}
+
 export async function saveWorkMetrics(id: string, metrics: WorkMetrics | null): Promise<Work> {
   const res = await fetch(`/api/works?id=${encodeURIComponent(id)}`, {
     method: "PUT",

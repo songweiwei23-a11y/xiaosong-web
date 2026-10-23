@@ -15,6 +15,7 @@
  */
 
 import { splitQualityReport } from './script-result-utils';
+import type { ShootChecklist } from './production-checklist';
 
 /** 作品的主线环节，顺序即创作流程。进度点、"下一步"都按它算 */
 export const STAGE_ORDER = ['选题策划', '脚本生成', '分镜脚本', '审稿优化', '标题封面'] as const;
@@ -113,6 +114,8 @@ export interface WorkDetail {
   items: WorkItem[];
   /** 作品需求（20261003_creation_sessions.sql）：跨板块跳转时服务端合并保存；迁移没跑时没有 */
   creation_brief?: Record<string, unknown> | null;
+  /** 拍摄标记（逐镜头拍完了），同步到云端（体检 F03）；迁移没跑时没有 */
+  production_checklist?: ShootChecklist | null;
 }
 
 /** 某个环节最新的一条内容。一个环节可能做过好几版，取最后一版 */

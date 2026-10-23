@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase/client";
 import { getPlan, judgeQuota, sumCountedUsage, effectivePlanId, quotaRollover } from '@/lib/config/plans';
 import { notifyGenerated } from '@/lib/upgrade';
 import { getActiveProfileId } from '@/lib/active-profile';
+import { addUnsaved } from '@/lib/unsaved-results';
 
 /**
  * 保存生成历史记录到数据库
@@ -24,6 +25,19 @@ export async function saveGenerationHistory(
   if (!('profileId' in scopedInput) && !('profile_id' in scopedInput)) {
     scopedInput.profileId = getActiveProfileId();
   }
+  const ok = await persistGenerationHistory(taskType, scopedInput, result, workId);
+  // 没保存进去：先暂存在本机，顶部提示用户重试（lib/unsaved-results），不再只写控制台（2026-10-24）
+  if (!ok) addUnsaved({ taskType, inputData: scopedInput, result, workId: workId || null });
+  return ok;
+}
+
+/** 真正写库。失败返回 false，不暂存（重试时用它，避免同一份结果被重复暂存） */
+export async function persistGenerationHistory(
+  taskType: string,
+  scopedInput: Record<string, unknown>,
+  result: string,
+  workId?: string | null
+): Promise<boolean> {
   try {
     console.log("💾 保存生成历史记录...");
 

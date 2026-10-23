@@ -5,6 +5,7 @@ import { STAGE_ORDER, OPTIONAL_STAGES } from '@/lib/resume'
 import { readMetrics } from '@/lib/performance'
 import { fetchAllPages } from '@/lib/db-pages'
 import { DEFAULT_PROFILE_SCOPE, PROFILE_UUID } from '@/lib/profile-history'
+import { mergeChecklist, sanitizeChecklist } from '@/lib/production-checklist'
 
 export const dynamic = 'force-dynamic'
 
@@ -256,6 +257,28 @@ export async function PUT(request: Request) {
     if (latest) m.contentVersion = { historyId: latest.id, taskType: latest.task_type, at: latest.created_at }
   }
 
+  /*
+   * 拍摄标记同步（2026-10-24，体检 F03）：只改标记时不刷新 updated_at，否则每点一下都会把作品顶到列表最前。
+   * 服务端已经有更新的标记时保留它：断网期间本机的旧标记推上来，不会覆盖较新的。
+   */
+  if (body.productionChecklist !== undefined) {
+    const incoming = sanitizeChecklist(body.productionChecklist)
+    if (!incoming) return NextResponse.json({ error: '拍摄标记格式不对' }, { status: 400 })
+    const { data: current, error: readError } = await supabase
+      .from('works')
+      .select('production_checklist')
+      .eq('id', id)
+      .eq('user_id', guard.userId!)
+      .maybeSingle()
+    if (readError) {
+      if (/production_checklist/.test(readError.message)) return NextResponse.json({ error: '拍摄标记暂时不能同步，已保存在本机' }, { status: 503 })
+      return NextResponse.json({ error: readError.message }, { status: 500 })
+    }
+    if (!current) return NextResponse.json({ error: '作品不存在或无权限' }, { status: 404 })
+    patch.production_checklist = mergeChecklist(sanitizeChecklist(current.production_checklist), incoming)
+    if (Object.keys(body).length === 1) delete patch.updated_at
+  }
+
   const { data, error } = await supabase
     .from('works')
     .update(patch)
@@ -265,6 +288,9 @@ export async function PUT(request: Request) {
     .maybeSingle()
 
   if (error) {
+    if (/production_checklist/.test(error.message)) {
+      return NextResponse.json({ error: '拍摄标记暂时不能同步，已保存在本机' }, { status: 503 })
+    }
     if (/shoot_status|shot_at|published_at/.test(error.message)) {
       return NextResponse.json({ error: '拍摄状态暂时不可用，稍后再试' }, { status: 503 })
     }

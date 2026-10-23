@@ -1,24 +1,56 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, Download, FileText, ListChecks, Type } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { workStageUrl } from '@/lib/resume';
-import { buildProductionPack, productionChecklistKey, readProductionChecklist, productionMarkdown, productionFilename, type ProductionWork } from '@/lib/production-pack';
+import { buildProductionPack, productionChecklistKey, productionMarkdown, productionFilename, type ProductionWork } from '@/lib/production-pack';
+import { mergeChecklist, parseLocalChecklist, sameChecklist, type ShootChecklist } from '@/lib/production-checklist';
+import { saveWorkChecklist } from '@/lib/works';
 
-/** 只组合已有内容，不生成新内容；逐镜头标记仅在当前账号/档案/作品的本机保存。 */
+function writeLocal(key: string | null, value: ShootChecklist) {
+  if (!key) return;
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 本机存不下就只靠云端 */ }
+}
+
+/**
+ * 只组合已有内容，不生成新内容。逐镜头「拍完了」的标记同步到云端（换设备也能看到），
+ * 本机同时留一份：断网时照常标记，恢复联网后自动推上去（2026-10-24，体检 F03）。
+ */
 export function ProductionPack({ work, userId }: { work: ProductionWork; userId?: string | null }) {
   const pack = useMemo(() => buildProductionPack(work), [work]);
   const [ownerId, setOwnerId] = useState<string | null>(userId ?? null);
-  const [checklist, setChecklist] = useState<{ key: string | null; ids: string[] }>({ key: null, ids: [] });
+  const [checklist, setChecklist] = useState<{ key: string | null; value: ShootChecklist | null }>({ key: null, value: null });
   const [large, setLarge] = useState(false);
   const [fontSize, setFontSize] = useState(30);
-  const [storageNotice, setStorageNotice] = useState('');
+  const [syncState, setSyncState] = useState<'idle' | 'saving' | 'synced' | 'local'>('idle');
   const [downloadError, setDownloadError] = useState('');
   const scopedOwner = userId === undefined || userId === ownerId ? ownerId : null;
   const storageKey = productionChecklistKey(scopedOwner, work.profile_id, work.id);
-  const completed = checklist.key === storageKey ? checklist.ids.filter(id => pack.shots.some(shot => shot.id === id)) : [];
+  const shotIds = useMemo(() => pack.shots.map(shot => shot.id), [pack.shots]);
+  const completed = checklist.key === storageKey ? (checklist.value?.ids ?? []).filter(id => shotIds.includes(id)) : [];
+  /** 还没推到云端的那一份（断网、失败时留着，恢复后再推） */
+  const pending = useRef<ShootChecklist | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pushRemote = useCallback(async (value: ShootChecklist) => {
+    if (!scopedOwner) return;
+    pending.current = value;
+    setSyncState('saving');
+    try {
+      const saved = await saveWorkChecklist(work.id, value);
+      if (pending.current === value) pending.current = null;
+      // 云端已经有更新的标记：以它为准，并同步回本机
+      if (saved && !sameChecklist(saved, value)) {
+        setChecklist({ key: storageKey, value: saved });
+        writeLocal(storageKey, saved);
+      }
+      setSyncState('synced');
+    } catch {
+      setSyncState('local');
+    }
+  }, [scopedOwner, work.id, storageKey]);
 
   useEffect(() => {
     let alive = true;
@@ -28,20 +60,45 @@ export function ProductionPack({ work, userId }: { work: ProductionWork; userId?
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, [userId]);
 
+  // 加载：本机和云端各一份，谁更新用谁；本机比云端新（比如断网时改的），推上去
   useEffect(() => {
-    setChecklist({ key: storageKey, ids: [] });
-    if (!storageKey) { setStorageNotice('请登录后保存拍摄标记。'); return; }
-    try { setChecklist({ key: storageKey, ids: readProductionChecklist(localStorage.getItem(storageKey), pack.shots) }); setStorageNotice('拍摄标记仅保存在当前浏览器，不会同步到其他设备。'); }
-    catch { setStorageNotice('浏览器禁止本地保存，本次标记仅在当前页面有效。'); }
-  }, [storageKey, pack.shots]);
+    if (!storageKey) { setChecklist({ key: null, value: null }); setSyncState('idle'); return; }
+    let local: ShootChecklist | null = null;
+    try { local = parseLocalChecklist(localStorage.getItem(storageKey), shotIds); } catch { local = null; }
+    const remote = work.production_checklist ? { ids: work.production_checklist.ids.filter(id => shotIds.includes(id)), updatedAt: work.production_checklist.updatedAt } : null;
+    const merged = mergeChecklist(local, remote);
+    setChecklist({ key: storageKey, value: merged });
+    if (merged && scopedOwner && !sameChecklist(merged, remote)) void pushRemote(merged);
+  }, [storageKey, shotIds, work.production_checklist, scopedOwner, pushRemote]);
+
+  // 断网期间没推上去的，恢复联网时自动再推一次
+  useEffect(() => {
+    const retry = () => { if (pending.current) void pushRemote(pending.current); };
+    window.addEventListener('online', retry);
+    return () => {
+      window.removeEventListener('online', retry);
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [pushRemote]);
 
   const toggle = (id: string) => {
-    const next = completed.includes(id) ? completed.filter(value => value !== id) : [...completed, id];
-    setChecklist({ key: storageKey, ids: next });
-    if (!storageKey) return;
-    try { localStorage.setItem(storageKey, JSON.stringify(next)); }
-    catch { setStorageNotice('本地保存失败，本次标记仅在当前页面有效。'); }
+    const ids = completed.includes(id) ? completed.filter(value => value !== id) : [...completed, id];
+    const value: ShootChecklist = { ids, updatedAt: new Date().toISOString() };
+    setChecklist({ key: storageKey, value });
+    writeLocal(storageKey, value);
+    if (!scopedOwner) return;
+    // 连续点几下只推最后一次，少发请求
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => void pushRemote(value), 600);
   };
+
+  const syncNotice = !scopedOwner
+    ? '请登录后保存拍摄标记。'
+    : syncState === 'saving'
+      ? '正在同步到云端…'
+      : syncState === 'local'
+        ? '暂时没同步到云端，已保存在本机。恢复网络后会自动同步，也可以再点一下标记。'
+        : '拍摄标记会同步到云端，换设备也能看到。';
   const download = (extension: 'md' | 'txt') => {
     setDownloadError('');
     let url: string | null = null;
@@ -80,7 +137,7 @@ export function ProductionPack({ work, userId }: { work: ProductionWork; userId?
     </div>}
     {pack.shots.length > 0 && <div className="space-y-2">
       <div className="flex items-center justify-between text-sm"><span>逐镜头清单</span><span className="text-xs text-muted-foreground">拍完 {completed.length}/{pack.shots.length}</span></div>
-      <p className="text-xs text-muted-foreground">{storageNotice}</p>
+      <p className="text-xs text-muted-foreground">{syncNotice}</p>
       {pack.shots.map(shot => <div key={shot.id} className={`rounded-xl border p-3 ${completed.includes(shot.id) ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border'}`}>
         <button type="button" onClick={() => toggle(shot.id)} aria-pressed={completed.includes(shot.id)} aria-label={`${completed.includes(shot.id) ? '取消拍完' : '标记拍完'}镜头${shot.number}`} className="flex min-h-10 w-full items-center gap-2 text-left text-sm">
           <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${completed.includes(shot.id) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-border'}`}>{completed.includes(shot.id) && <Check className="h-3.5 w-3.5" />}</span>
