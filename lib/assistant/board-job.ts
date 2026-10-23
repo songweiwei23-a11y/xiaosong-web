@@ -3,6 +3,7 @@ import type { BoardContext } from './boards';
 import {
   BOARD_LABEL,
   factContextOf,
+  maxRunsOf,
   requirementOf,
   runAnyBoard,
   withNote,
@@ -43,19 +44,22 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
   const tag = opts.stepTag ?? '';
   const context = factContextOf(opts.board);
   const requirement = requirementOf(opts.board);
+  // 板块能看到老板有没有停下（深度研究这类长任务靠它停掉后台的研究）
+  const ctx: BoardContext = { ...opts.ctx, isStopped: () => job.stopRequested };
   let current = opts.board;
   let best = '';
   let problems: string[] = [];
   let attempts = 0;
+  const maxRuns = maxRunsOf(opts.board, opts.maxRuns);
 
-  for (let attempt = 1; attempt <= opts.maxRuns; attempt++) {
+  for (let attempt = 1; attempt <= maxRuns; attempt++) {
     if (job.stopRequested) return { ok: false, text: best, attempts, problems, error: '已经停下来了' };
     attempts = attempt;
     pushEvent(job, {
       type: 'step',
       text: `${tag}管理员：${attempt === 1 ? `派给「${label}」板块` : `第 ${attempt} 次返工，「${label}」重新生成`}`,
     });
-    const res = await runAnyBoard(opts.ctx, current).catch(() => ({ ok: false, text: '', error: '板块调用出错，请稍后再试' }));
+    const res = await runAnyBoard(ctx, current).catch(() => ({ ok: false, text: '', error: '板块调用出错，请稍后再试' }));
     if (!res.ok) return { ok: false, text: best, attempts, problems, error: res.error ?? '板块没有完成' };
     best = res.text;
 
@@ -70,11 +74,12 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
       return { ok: true, text: best, attempts, problems: [] };
     }
     problems = check.problems;
-    if (attempt < opts.maxRuns) {
+    if (attempt < maxRuns) {
       pushEvent(job, { type: 'step', text: `${tag}管理员：验收没通过（${problems.length} 处），交回「${label}」返工` });
       current = withNote(current, reworkNote(problems));
     } else {
-      pushEvent(job, { type: 'step', text: `${tag}管理员：已到返工上限，仍有 ${problems.length} 处问题，交给你判断` });
+      const cap = opts.board.kind === 'research' ? '深度研究不返工' : '已到返工上限';
+      pushEvent(job, { type: 'step', text: `${tag}管理员：${cap}，仍有 ${problems.length} 处问题，交给你判断` });
     }
   }
   return { ok: true, text: best, attempts, problems };

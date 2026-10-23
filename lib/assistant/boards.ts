@@ -23,6 +23,8 @@ export interface BoardContext {
   profileId?: string | null;
   /** 记忆预填开着时，脚本按上次的习惯填（和脚本页面一样） */
   memoryOn?: boolean;
+  /** 助理这件事有没有被老板停下：深度研究这类长任务每次轮询时看一眼，停了就把后台的研究也停掉 */
+  isStopped?: () => boolean;
   /** 板块跑完存历史用；测试时可以替换 */
   saveHistory?: (row: BoardHistoryRow) => Promise<void>;
   /** 默认 http://127.0.0.1:端口，测试时可以替换 */

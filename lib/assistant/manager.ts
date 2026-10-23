@@ -30,6 +30,7 @@ const MIN_LENGTH: Record<BoardKind, number> = {
   opening: 120,
   remix: 300,
   breakdown: 200,
+  research: 600,
 };
 
 export interface BoardCheck {

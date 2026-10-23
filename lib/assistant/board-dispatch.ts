@@ -28,6 +28,8 @@ import {
   type RemixInput,
 } from '@/lib/assistant/boards-extra';
 import { ADVICE_PURPOSES, ADVICE_STAGES } from '@/lib/industry-advice';
+import { DEPTHS, TOPIC_MAX } from '@/lib/research';
+import { runResearchBoard, RESEARCH_TOPIC_MIN, type ResearchInput } from '@/lib/assistant/boards-research';
 
 /**
  * 管理员能派的所有板块，和统一的派活格式（BoardAny）。
@@ -49,7 +51,8 @@ export type BoardKind =
   | 'growth'
   | 'opening'
   | 'remix'
-  | 'breakdown';
+  | 'breakdown'
+  | 'research';
 
 /** 板块的显示名和它扣的额度功能（和 lib/task-type.ts 的映射一致；内容规划和创作方向共用一项额度） */
 export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> = {
@@ -68,6 +71,7 @@ export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> 
   opening: { label: '开篇钩子', feature: '脚本' },
   remix: { label: '跨行业二创', feature: '二创' },
   breakdown: { label: '文案拆解', feature: '拆解' },
+  research: { label: '深度研究', feature: '研究' },
 };
 
 export type BoardAny =
@@ -85,12 +89,21 @@ export type BoardAny =
   | { kind: 'growth'; input: GrowthInput }
   | { kind: 'opening'; input: OpeningInput }
   | { kind: 'remix'; input: RemixInput }
-  | { kind: 'breakdown'; input: BreakdownInput };
+  | { kind: 'breakdown'; input: BreakdownInput }
+  | { kind: 'research'; input: ResearchInput };
 
 /** 多步计划：按顺序派给几个板块，前一步的产出交给后一步 */
 export interface PlanSpec {
   kind: 'plan';
   steps: BoardAny[];
+}
+
+/**
+ * 一个派活最多跑几次。深度研究只跑一次：返工就是整个重跑（再扣一次研究额度、再等十几分钟），
+ * 验收不过的问题直接交给老板判断。其它板块按传入的上限（第一次 + 返工）。
+ */
+export function maxRunsOf(board: { kind: string }, max: number): number {
+  return board.kind === 'research' ? 1 : max;
 }
 
 export function runAnyBoard(ctx: BoardContext, board: BoardAny): Promise<BoardResult> {
@@ -125,6 +138,8 @@ export function runAnyBoard(ctx: BoardContext, board: BoardAny): Promise<BoardRe
       return runRemixBoard(ctx, board.input);
     case 'breakdown':
       return runBreakdownBoard(ctx, board.input);
+    case 'research':
+      return runResearchBoard(ctx, board.input);
   }
 }
 
@@ -167,6 +182,11 @@ export function missingFields(board: BoardAny): string[] {
       return (board.input.text ?? '').trim().length >= 30 ? [] : ['要借鉴的原文（至少 30 字：别的行业的文案，或拆解的结果）'];
     case 'breakdown':
       return (board.input.script ?? '').trim().length >= 30 ? [] : ['要拆解的文案原文（至少 30 字）'];
+    case 'research': {
+      const topic = (board.input.topic ?? '').trim();
+      if (topic.length < RESEARCH_TOPIC_MIN) return [`研究主题（至少 ${RESEARCH_TOPIC_MIN} 字）`];
+      return topic.length > TOPIC_MAX ? [`研究主题（最多 ${TOPIC_MAX} 字）`] : [];
+    }
   }
 }
 
@@ -203,6 +223,8 @@ export function requirementOf(board: BoardAny): string {
       return '跨行业二创：借原片的开篇、结构、拍法，换成本店的事来拍，每个方案都要能照着拍';
     case 'breakdown':
       return '文案拆解：找出可保留的表达机制和具体的改进方法';
+    case 'research':
+      return `深度研究报告「${board.input.topic}」：有核心结论，每一节依据读过的网页，句子后面标来源编号，来源里没有的数字不编`;
   }
 }
 
@@ -244,6 +266,8 @@ export function summaryOf(board: BoardAny): string {
       return `跨行业二创 ${board.input.count ?? 1} 个方案｜原文：${board.input.text.slice(0, 30)}${board.input.text.length > 30 ? '…' : ''}`;
     case 'breakdown':
       return `文案拆解｜原文：${board.input.script.slice(0, 30)}${board.input.script.length > 30 ? '…' : ''}`;
+    case 'research':
+      return `深度研究｜主题：${board.input.topic}｜${DEPTHS[board.input.depth ?? 'standard'].label}研究${board.input.material ? '｜带了背景资料' : ''}`;
   }
 }
 
@@ -282,6 +306,9 @@ export function withUpstream(board: BoardAny, text: string): BoardAny {
       return { kind: 'remix', input: { ...board.input, text: text.slice(0, 20000) } };
     case 'breakdown':
       return { kind: 'breakdown', input: { ...board.input, script: text.slice(0, 20000) } };
+    case 'research':
+      // 研究的主要输入是主题（一句话）；上一步的产出当成「材料」放进 material，研究接口把它当背景资料
+      return { kind: 'research', input: { ...board.input, material: `${board.input.material ?? ''}${note}`.trim() } };
   }
 }
 
