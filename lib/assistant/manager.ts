@@ -5,13 +5,14 @@ import { callAssistantLlm, type LlmBlock } from '@/lib/assistant/llm';
 import type { AssistantConfig } from '@/lib/assistant/config';
 
 /**
- * 管理员的验收（板块派活、监督、返工）。
+ * 管理员的验收与修改（板块派活、监督）。
  * 两道关：先用确定性规则（长度、脚本质量、事实依据），再由管理员模型对照派活要求判断一遍。
- * 验收不过，问题写成返工意见交回板块；返工到上限，交给老板判断。
+ * 验收不过，管理员直接把问题改好（只改有问题的地方），改完复核再交给老板。
+ * 不再整份重跑板块：重跑要再扣一次板块额度，还可能跑出新的问题，修改几处成本低得多。
  */
 
-/** 一次派活最多跑几次：第一次 + 返工 2 次（2026-10-23 老板定的） */
-export const MAX_BOARD_RUNS = 3;
+/** 验收不过时，管理员最多直接修改几次（2026-10-23 老板定：不整份重跑，直接改） */
+export const MAX_REVISIONS = 2;
 
 /** 每类产出的最低长度：短到不成样子的，直接算没完成 */
 const MIN_LENGTH: Record<BoardKind, number> = {
@@ -96,16 +97,61 @@ export async function judgeBoardOutput(
   }
 }
 
-/** 交回板块的返工意见：逐条写清楚要改什么 */
-export function reworkNote(problems: string[]): string {
-  return `上一版存在以下问题，请逐条修正后重新生成：\n${problems.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
+/** 修改后的产出不能比原稿短太多（短了多半是模型删掉了内容而不是改了问题） */
+const MIN_KEEP_RATIO = 0.7;
+/** 超过这个长度的产出不交给修改（修改会截断，且成本高），直接交给老板判断 */
+const MAX_REVISE_CHARS = 8000;
+
+/**
+ * 管理员直接修改：只改验收指出的问题，其余原样保留。
+ * 返回修改后的完整产出；模型出错、长度不对、或者超出能修改的范围时返回 null（这时保留原稿，交给老板判断）。
+ */
+export async function reviseBoardOutput(
+  cfg: AssistantConfig,
+  kind: BoardKind,
+  output: string,
+  problems: string[],
+  opts: { llm?: typeof callAssistantLlm } = {},
+): Promise<string | null> {
+  if (!problems.length || output.length > MAX_REVISE_CHARS) return null;
+  const call = opts.llm ?? callAssistantLlm;
+  const system = [
+    '你是开物的管理员。板块刚交出的产出，验收发现了下面这些问题。',
+    '你只修改这些问题所在的句子或段落，其余的字一个不动，结构和顺序保持原样。',
+    '不许新增原文里没有依据的数字、经历、客户对话、价格或效果承诺；改不了的地方保留原句，并标上「待核实」。',
+    '只输出修改后的完整产出，不要解释，不要加前言。',
+  ].join('');
+  const user = [
+    `板块：${BOARD_LABEL[kind].label}`,
+    '需要修改的问题：',
+    ...problems.map((p, i) => `${i + 1}. ${p}`),
+    '',
+    '原产出：',
+    output,
+  ].join('\n');
+  try {
+    const res = await call(cfg, { system, messages: [{ role: 'user', content: user }], tools: [], maxTokens: 6000 });
+    const revised = res.content
+      .filter((b): b is Extract<LlmBlock, { type: 'text' }> => b.type === 'text')
+      .map((b) => b.text)
+      .join('')
+      .trim();
+    if (!revised || revised.length < output.length * MIN_KEEP_RATIO) return null;
+    return revised;
+  } catch {
+    return null;
+  }
 }
 
-/** 交给老板的最终回答：板块的产出，加上管理员的验收结论 */
+/**
+ * 交给老板的最终回答：板块的产出，加上管理员的验收结论。
+ * attempts 是「管理员直接修改」的次数加 1（第一次交出的那版算一次）。
+ */
 export function managerAnswer(text: string, attempts: number, problems: string[]): string {
   if (!text) return '';
+  const revisions = Math.max(0, attempts - 1);
   if (problems.length === 0) {
-    return `${text}\n\n——管理员验收：通过${attempts > 1 ? `（返工 ${attempts - 1} 次后合格）` : ''}。`;
+    return `${text}\n\n——管理员验收：通过${revisions ? `（已直接修改 ${revisions} 次）` : ''}。`;
   }
-  return `${text}\n\n——管理员验收：返工 ${attempts - 1} 次后仍有问题，请你判断是否采用：\n${problems.map((p) => `- ${p}`).join('\n')}`;
+  return `${text}\n\n——管理员验收：直接修改 ${revisions} 次后仍有问题，请你判断是否采用：\n${problems.map((p) => `- ${p}`).join('\n')}`;
 }

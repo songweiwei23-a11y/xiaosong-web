@@ -8,7 +8,7 @@ vi.mock('@/lib/api-guard', () => ({
   requireUser: async () => ({ ok: true, userId: 'u-route' }),
 }));
 
-import { checkBoardOutput, managerAnswer, reworkNote, MAX_BOARD_RUNS } from '@/lib/assistant/manager';
+import { checkBoardOutput, managerAnswer, reviseBoardOutput, MAX_REVISIONS } from '@/lib/assistant/manager';
 import { createPendingRun, takePendingRun } from '@/lib/assistant/pending-runs';
 import { createAssistantTools } from '@/lib/assistant/tools';
 import { runBoardJob } from '@/lib/assistant/board-job';
@@ -46,20 +46,29 @@ describe('验收：板块的产出合不合格', () => {
     expect(checkBoardOutput('review', '审稿结论：开头可以更直接。'.repeat(10), '').ok).toBe(true);
   });
 
-  it('返工意见逐条写清楚要改什么', () => {
-    const note = reworkNote(['产出太短', '有没有依据的说法']);
-    expect(note).toContain('1. 产出太短');
-    expect(note).toContain('2. 有没有依据的说法');
+  it('直接修改：把验收的问题交给管理员模型，只改有问题的地方；修改后的稿子不能缩水太多', async () => {
+    const seen: string[] = [];
+    const llm = (async (_cfg: unknown, req: { system: string; messages: { content: string }[] }) => {
+      seen.push(req.messages[0].content);
+      return { content: [{ type: 'text', text: '修改后的完整稿子：'.repeat(20) }], stopReason: 'end_turn' };
+    }) as never;
+    const out = await reviseBoardOutput({ apiKey: 'k' } as never, 'script', '原稿：有一处说法需要改。'.repeat(10), ['有没有依据的说法'], { llm });
+    expect(out).toContain('修改后的完整稿子');
+    expect(seen[0]).toContain('有没有依据的说法');
+    // 模型把稿子删到剩不下多少：不算修改，返回 null，保留原稿
+    const shrink = (async () => ({ content: [{ type: 'text', text: '太短' }], stopReason: 'end_turn' })) as never;
+    expect(await reviseBoardOutput({ apiKey: 'k' } as never, 'script', '原稿'.repeat(100), ['有问题'], { llm: shrink })).toBeNull();
   });
 
-  it('最终回答：通过就写明返工几次后合格；仍有问题就交给用户判断', () => {
-    expect(managerAnswer('正文', 2, [])).toContain('返工 1 次后合格');
+  it('最终回答：通过就写明直接修改了几次；仍有问题就交给用户判断', () => {
+    expect(managerAnswer('正文', 3, [])).toContain('已直接修改 2 次');
+    expect(managerAnswer('正文', 1, [])).toBe('正文\n\n——管理员验收：通过。');
     expect(managerAnswer('正文', 3, ['产出太短'])).toContain('请你判断是否采用');
     expect(managerAnswer('', 1, [])).toBe('');
   });
 
-  it('返工上限是两次（第一次 + 返工 2 次，共 3 次）', () => {
-    expect(MAX_BOARD_RUNS).toBe(3);
+  it('直接修改的上限是两次', () => {
+    expect(MAX_REVISIONS).toBe(2);
   });
 });
 
@@ -83,7 +92,7 @@ describe('派活：先列出来，用户确认后才开跑', () => {
     expect(out).toContain('等他点确认后才开跑');
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(actions).toHaveLength(1);
-    expect(actions[0]).toMatchObject({ name: 'board.run', args: { board: 'topic', label: '选题策划', maxRuns: 3, feature: '选题' } });
+    expect(actions[0]).toMatchObject({ name: 'board.run', args: { board: 'topic', label: '选题策划', maxRuns: 2, feature: '选题' } });
     expect(String(actions[0].args.summary)).toContain('关键词：菜市场、老板');
     // 列出的任务可以被取走一次，取走后就没了（防重复开跑）
     const runId = String(actions[0].args.runId);
@@ -112,53 +121,67 @@ describe('派活：先列出来，用户确认后才开跑', () => {
   });
 });
 
-describe('管理员执行：板块产出不合格就返工，合格就交付', () => {
-  it('第一版太短，验收不过，交回板块返工，第二版合格后交付', async () => {
-    const streamAnswers = ['太短', LONG_TOPIC];
-    const sentRequirements: string[] = [];
-    const fetchImpl = (async (url: string, init?: RequestInit) => {
-      const u = String(url);
-      if (u.includes('/api/dify/stream')) {
-        const body = JSON.parse(String(init?.body)) as { inputs?: { personalRequirement?: string } };
-        sentRequirements.push(String(body.inputs?.personalRequirement ?? ''));
+describe('管理员执行：板块只跑一次，不合格由管理员直接修改', () => {
+  it('第一版太短，管理员直接修改，改好后交付；板块只被调用一次，不整份重跑', async () => {
+    const streamAnswers = ['太短'];
+    let boardCalls = 0;
+    const fetchImpl = (async (url: string) => {
+      if (String(url).includes('/api/dify/stream')) {
+        boardCalls++;
         return sse(streamAnswers.shift() ?? LONG_TOPIC);
       }
       return json([]);
     }) as unknown as typeof fetch;
+    // 管理员模型：验收员的判断照常放行；修改请求返回一版够长的稿子
+    const llm = (async (_cfg: unknown, req: { system: string }) =>
+      req.system.includes('管理员')
+        ? { content: [{ type: 'text', text: LONG_TOPIC }], stopReason: 'end_turn' }
+        : { content: [{ type: 'text', text: '{"pass": true, "problems": []}' }], stopReason: 'end_turn' }) as never;
 
     const job = createJob('u-job-1');
     await runBoardJob(job, {
       ctx: { userId: 'u-job-1', cookie: 'c=1', internalBase: 'http://x', fetchImpl },
       board: { kind: 'topic', input: { request: '拍菜市场的真实故事', count: 5, role: '按配比' } },
-      maxRuns: MAX_BOARD_RUNS,
+      maxRuns: MAX_REVISIONS,
+      cfg: { apiKey: 'k' } as never,
+      llm,
     });
 
     expect(job.status).toBe('done');
     expect(job.answer).toContain('菜市场老板的真实一天');
-    expect(job.answer).toContain('返工 1 次后合格');
+    expect(job.answer).toContain('已直接修改 1 次');
+    expect(boardCalls).toBe(1);
     const steps = job.events.filter((e) => e.type === 'step').map((e) => (e as { text: string }).text);
-    expect(steps.some((s) => s.includes('验收没通过') && s.includes('交回「选题策划」返工'))).toBe(true);
-    expect(steps.some((s) => s.includes('第 2 次返工'))).toBe(true);
-    // 第二次板块拿到的是返工意见
-    expect(sentRequirements).toHaveLength(2);
-    expect(sentRequirements[0]).not.toContain('管理员返工意见');
-    expect(sentRequirements[1]).toContain('上一版存在以下问题');
+    expect(steps.some((s) => s.includes('我直接修改（第 1 次）'))).toBe(true);
+    expect(steps.some((s) => s.includes('验收通过'))).toBe(true);
+    expect(steps.some((s) => s.includes('返工'))).toBe(false);
   });
 
-  it('返工到上限还不合格：交给用户判断，不假装已经合格', async () => {
-    const fetchImpl = (async (url: string) => (String(url).includes('/api/dify/stream') ? sse('太短') : json([]))) as unknown as typeof fetch;
+  it('直接修改也改不好：保留原稿，交给用户判断，不假装已经合格', async () => {
+    let boardCalls = 0;
+    const fetchImpl = (async (url: string) => {
+      if (String(url).includes('/api/dify/stream')) boardCalls++;
+      return String(url).includes('/api/dify/stream') ? sse('太短') : json([]);
+    }) as unknown as typeof fetch;
+    // 管理员模型修改不出来（出错）：保留原稿
+    const llm = (async (_cfg: unknown, req: { system: string }) => {
+      if (req.system.includes('管理员')) throw new Error('模型暂时不可用');
+      return { content: [{ type: 'text', text: '{"pass": true, "problems": []}' }], stopReason: 'end_turn' };
+    }) as never;
     const job = createJob('u-job-2');
     await runBoardJob(job, {
       ctx: { userId: 'u-job-2', cookie: 'c=1', internalBase: 'http://x', fetchImpl },
       board: { kind: 'topic', input: { request: '拍菜市场的真实故事', count: 5, role: '按配比' } },
-      maxRuns: MAX_BOARD_RUNS,
+      maxRuns: MAX_REVISIONS,
+      cfg: { apiKey: 'k' } as never,
+      llm,
     });
     expect(job.status).toBe('done');
     expect(job.answer).toContain('请你判断是否采用');
     expect(job.answer).not.toContain('验收：通过');
+    expect(boardCalls).toBe(1);
     const steps = job.events.filter((e) => e.type === 'step').map((e) => (e as { text: string }).text);
-    expect(steps.filter((s) => s.includes('第') && s.includes('次返工'))).toHaveLength(2);
-    expect(steps.some((s) => s.includes('已到返工上限'))).toBe(true);
+    expect(steps.some((s) => s.includes('这几处没能改好'))).toBe(true);
   });
 
   it('板块报错（比如额度用完）：停下来，不再返工，把原因告诉用户', async () => {
@@ -167,7 +190,7 @@ describe('管理员执行：板块产出不合格就返工，合格就交付', (
     await runBoardJob(job, {
       ctx: { userId: 'u-job-3', cookie: 'c=1', internalBase: 'http://x', fetchImpl },
       board: { kind: 'topic', input: { request: '拍菜市场的真实故事', count: 5, role: '按配比' } },
-      maxRuns: MAX_BOARD_RUNS,
+      maxRuns: MAX_REVISIONS,
     });
     expect(job.status).toBe('error');
     const errors = job.events.filter((e) => e.type === 'error').map((e) => (e as { text: string }).text);

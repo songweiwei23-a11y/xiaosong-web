@@ -4,7 +4,7 @@
  * 全部用假的研究接口和假时钟：不调用真实研究接口，不真等，结果每次一样。
  */
 import { describe, it, expect, vi } from 'vitest';
-import { maxRunsOf, missingFields, requirementOf, summaryOf, withUpstream, runAnyBoard, type BoardAny } from '@/lib/assistant/board-dispatch';
+import { revisionCapOf, missingFields, requirementOf, summaryOf, withUpstream, runAnyBoard, type BoardAny } from '@/lib/assistant/board-dispatch';
 import { runResearchBoard, RESEARCH_TIMEOUT_MS, RESEARCH_POLL_MS } from '@/lib/assistant/boards-research';
 import { runBoardJob, runPlanJob } from '@/lib/assistant/board-job';
 import { createJob } from '@/lib/assistant/jobs';
@@ -228,10 +228,10 @@ describe('派活框架：研究板块的各项登记', () => {
 });
 
 describe('验收不过也不返工：深度研究只跑一次，报告和问题交给老板判断', () => {
-  it('maxRunsOf：深度研究是 1，其它板块按传入的上限', () => {
-    expect(maxRunsOf({ kind: 'research' }, 3)).toBe(1);
-    expect(maxRunsOf({ kind: 'topic' }, 3)).toBe(3);
-    expect(maxRunsOf({ kind: 'plan' }, 3)).toBe(3);
+  it('revisionCapOf：深度研究不改（0 次），其它板块按传入的上限', () => {
+    expect(revisionCapOf({ kind: 'research' }, 2)).toBe(0);
+    expect(revisionCapOf({ kind: 'topic' }, 2)).toBe(2);
+    expect(revisionCapOf({ kind: 'plan' }, 2)).toBe(2);
   });
 
   it('报告太短，验收不过：只派一次，报告和问题一起交给老板', async () => {
@@ -241,7 +241,7 @@ describe('验收不过也不返工：深度研究只跑一次，报告和问题�
     expect(calls.filter((c) => c.method === 'POST')).toHaveLength(1);
     expect(job.status).toBe('done');
     expect(job.answer).toContain('很短的报告');
-    expect(job.answer).toContain('返工 0 次后仍有问题');
+    expect(job.answer).toContain('直接修改 0 次后仍有问题');
     expect(job.answer).toContain('产出太短');
   });
 
@@ -272,7 +272,7 @@ describe('派活工具：只列给老板，不调用研究接口', () => {
     const out = await tools.find((t) => t.name === 'propose_research')!.run({ topic: TOPIC, depth: 'deep' });
     expect(out).toContain('等他点确认');
     expect(out).toContain('只跑一次');
-    expect(actions[0]).toMatchObject({ name: 'board.run', args: { board: 'research', maxRuns: 1 } });
+    expect(actions[0]).toMatchObject({ name: 'board.run', args: { board: 'research', maxRuns: 0 } });
     expect(String(actions[0].args.summary)).toContain('深入研究');
     expect(fetchImpl).not.toHaveBeenCalled();
   });

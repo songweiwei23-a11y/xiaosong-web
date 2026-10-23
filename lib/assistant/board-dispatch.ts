@@ -106,11 +106,11 @@ export interface PlanSpec {
 }
 
 /**
- * 一个派活最多跑几次。深度研究只跑一次：返工就是整个重跑（再扣一次研究额度、再等十几分钟），
- * 验收不过的问题直接交给老板判断。其它板块按传入的上限（第一次 + 返工）。
+ * 验收不过时，管理员最多直接修改几次。深度研究不改：报告很长，改动的成本和风险都大，
+ * 问题直接交给老板判断。其它板块按传入的上限。
  */
-export function maxRunsOf(board: { kind: string }, max: number): number {
-  return board.kind === 'research' ? 1 : max;
+export function revisionCapOf(board: { kind: string }, max: number): number {
+  return board.kind === 'research' ? 0 : max;
 }
 
 export function runAnyBoard(ctx: BoardContext, board: BoardAny): Promise<BoardResult> {

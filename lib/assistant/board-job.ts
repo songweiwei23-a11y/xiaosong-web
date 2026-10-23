@@ -6,20 +6,21 @@ import type { HandoffPayload } from '@/lib/handoff';
 import {
   BOARD_LABEL,
   factContextOf,
-  maxRunsOf,
   requirementOf,
+  revisionCapOf,
   runAnyBoard,
-  withNote,
   withUpstream,
   type BoardAny,
   type PlanSpec,
 } from '@/lib/assistant/board-dispatch';
-import { checkBoardOutput, judgeBoardOutput, managerAnswer, MAX_BOARD_RUNS, reworkNote } from '@/lib/assistant/manager';
+import { checkBoardOutput, judgeBoardOutput, managerAnswer, MAX_REVISIONS, reviseBoardOutput, type BoardCheck } from '@/lib/assistant/manager';
 import type { AssistantConfig } from '@/lib/assistant/config';
+import type { callAssistantLlm } from '@/lib/assistant/llm';
 
 /**
- * 管理员派活的执行：用户确认后，把板块任务交给对应的板块去跑（板块用 Dify 生成），
- * 每一版都由管理员验收（规则 + 管理员模型）；不合格就把问题写成返工意见交回板块，最多返工到上限。
+ * 管理员派活的执行（2026-10-23 老板定：不整份返工，管理员直接改）。
+ * 板块只跑一次；每一版先过规则，再过管理员模型。验收不过，管理员只改有问题的地方，改完复核；
+ * 最多修改 MAX_REVISIONS 次，还不合格就交给老板判断。整份重跑要再扣一次板块额度，还可能跑出新的问题，所以不用。
  * 多步计划：按顺序派给几个板块，前一步的产出交给后一步。进度和结果走助理同一套任务通道。
  */
 
@@ -27,6 +28,7 @@ export interface BoardRunResult {
   /** 有没有拿到产出（拿到了就交给老板，验收结论写在产出后面） */
   ok: boolean;
   text: string;
+  /** 第一次交出的那版算 1 次，之后每直接修改一次加 1 */
   attempts: number;
   problems: string[];
   error?: string;
@@ -37,63 +39,72 @@ export interface BoardRunResult {
 export interface BoardRunOptions {
   ctx: BoardContext;
   board: BoardAny;
+  /** 最多直接修改几次（深度研究不改，见 revisionCapOf） */
   maxRuns: number;
   cfg?: AssistantConfig;
   /** 多步计划里显示在进度前面的「第几步」 */
   stepTag?: string;
+  /** 管理员模型（测试时替换；默认用助理的模型） */
+  llm?: typeof callAssistantLlm;
 }
 
-/** 派一个板块，最多返工 maxRuns 次。每次产出先过规则，再过管理员模型 */
+/** 派一个板块：只跑一次；验收不过就由管理员直接修改，改完复核，最多改 maxRuns 次 */
 export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOptions): Promise<BoardRunResult> {
   const label = BOARD_LABEL[opts.board.kind].label;
   const tag = opts.stepTag ?? '';
   const context = factContextOf(opts.board);
   const requirement = requirementOf(opts.board);
+  const kind = opts.board.kind;
   // 板块能看到老板有没有停下（深度研究这类长任务靠它停掉后台的研究）
   const ctx: BoardContext = { ...opts.ctx, isStopped: () => job.stopRequested };
-  let current = opts.board;
-  let best = '';
-  // 完整的产出（对话里的版本可能截断）：存下来给下一个板块接着用
-  let bestFull = '';
-  let problems: string[] = [];
-  let attempts = 0;
-  const maxRuns = maxRunsOf(opts.board, opts.maxRuns);
+  const revisionCap = revisionCapOf(opts.board, opts.maxRuns);
 
-  for (let attempt = 1; attempt <= maxRuns; attempt++) {
-    if (job.stopRequested) return { ok: false, text: best, attempts, problems, error: '已经停下来了' };
-    attempts = attempt;
-    pushEvent(job, {
-      type: 'step',
-      text: `${tag}管理员：${attempt === 1 ? `派给「${label}」板块` : `第 ${attempt} 次返工，「${label}」重新生成`}`,
-    });
-    const res: BoardResult = await runAnyBoard(ctx, current).catch(() => ({ ok: false, text: '', error: '板块调用出错，请稍后再试' }));
-    if (!res.ok) return { ok: false, text: best, attempts, problems, error: res.error ?? '板块没有完成' };
-    best = res.text;
-    bestFull = res.full ?? res.text;
+  if (job.stopRequested) return { ok: false, text: '', attempts: 0, problems: [], error: '已经停下来了' };
+  pushEvent(job, { type: 'step', text: `${tag}管理员：派给「${label}」板块` });
+  const res: BoardResult = await runAnyBoard(ctx, opts.board).catch(() => ({ ok: false, text: '', error: '板块调用出错，请稍后再试' }));
+  if (!res.ok) return { ok: false, text: '', attempts: 1, problems: [], error: res.error ?? '板块没有完成' };
 
-    // 第一道：规则（长度、脚本质量、事实依据）；第二道：管理员模型对照派活要求
-    let check = checkBoardOutput(current.kind, res.text, context);
-    if (check.ok && opts.cfg) {
-      const judged = await judgeBoardOutput(opts.cfg, current.kind, requirement, res.text);
-      if (judged) check = judged;
+  // 完整的产出（对话里的版本可能截断）：修改、存下来给下一个板块接着用的都是它
+  let full = res.full ?? res.text;
+
+  // 第一道：规则（长度、脚本质量、事实依据）；第二道：管理员模型对照派活要求（规则不过就不再花模型的钱）
+  const verify = async (text: string): Promise<BoardCheck> => {
+    const rules = checkBoardOutput(kind, text, context);
+    if (!rules.ok || !opts.cfg) return rules;
+    return (await judgeBoardOutput(opts.cfg, kind, requirement, text, { llm: opts.llm })) ?? rules;
+  };
+
+  let check = await verify(full);
+  let revisions = 0;
+  // 验收不过：管理员直接改有问题的地方，改完复核；改不动就停，保留原稿交给老板判断
+  while (!check.ok && revisions < revisionCap && opts.cfg && !job.stopRequested) {
+    revisions++;
+    pushEvent(job, { type: 'step', text: `${tag}管理员：验收发现 ${check.problems.length} 处问题，我直接修改（第 ${revisions} 次）` });
+    const revised = await reviseBoardOutput(opts.cfg, kind, full, check.problems, { llm: opts.llm });
+    if (!revised) {
+      pushEvent(job, { type: 'step', text: `${tag}管理员：这几处没能改好，保留原稿，交给你判断` });
+      revisions--;
+      break;
     }
-    if (check.ok) {
-      pushEvent(job, { type: 'step', text: `${tag}管理员：验收通过（第 ${attempt} 次）` });
-      const saved = await keepResult(opts.ctx, opts.board, bestFull);
-      return { ok: true, text: best, attempts, problems: [], carry: saved?.payload };
-    }
-    problems = check.problems;
-    if (attempt < maxRuns) {
-      pushEvent(job, { type: 'step', text: `${tag}管理员：验收没通过（${problems.length} 处），交回「${label}」返工` });
-      current = withNote(current, reworkNote(problems));
-    } else {
-      const cap = opts.board.kind === 'research' ? '深度研究不返工' : '已到返工上限';
-      pushEvent(job, { type: 'step', text: `${tag}管理员：${cap}，仍有 ${problems.length} 处问题，交给你判断` });
-    }
+    full = revised;
+    check = await verify(full);
   }
-  // 返工到上限仍不合格：产出已经交给老板判断，也要存下来，老板可以接着用它继续创作
-  const saved = await keepResult(opts.ctx, opts.board, bestFull);
-  return { ok: true, text: best, attempts, problems, carry: saved?.payload };
+
+  if (check.ok) {
+    pushEvent(job, { type: 'step', text: `${tag}管理员：验收通过${revisions ? `（已直接修改 ${revisions} 次）` : ''}` });
+  } else {
+    pushEvent(job, { type: 'step', text: `${tag}管理员：仍有 ${check.problems.length} 处问题，交给你判断` });
+  }
+
+  const saved = await keepResult(opts.ctx, opts.board, full);
+  return {
+    ok: true,
+    // 对话里显示的版本：有修改就用修改后的完整稿，没有就用板块原样的输出
+    text: revisions ? full : res.text,
+    attempts: revisions + 1,
+    problems: check.ok ? [] : check.problems,
+    carry: saved?.payload,
+  };
 }
 
 /** 存成可以按编号带去下一步的创作（失败不影响交付；见 lib/assistant/carry） */
@@ -107,11 +118,12 @@ export interface BoardJobInput {
   board: BoardAny;
   maxRuns?: number;
   cfg?: AssistantConfig;
+  llm?: typeof callAssistantLlm;
 }
 
 /** 单个板块的派活 */
 export async function runBoardJob(job: AssistantJob, input: BoardJobInput): Promise<void> {
-  const r = await runBoardWithReview(job, { ctx: input.ctx, board: input.board, maxRuns: input.maxRuns ?? MAX_BOARD_RUNS, cfg: input.cfg });
+  const r = await runBoardWithReview(job, { ctx: input.ctx, board: input.board, maxRuns: input.maxRuns ?? MAX_REVISIONS, cfg: input.cfg, llm: input.llm });
   if (r.error) pushEvent(job, { type: 'error', text: `「${BOARD_LABEL[input.board.kind].label}」没有完成：${r.error}` });
   finishJob(job, r.text ? 'done' : 'error', r.text ? managerAnswer(r.text, r.attempts, r.problems) : '');
 }
@@ -121,6 +133,7 @@ export interface PlanJobInput {
   plan: PlanSpec;
   maxRuns?: number;
   cfg?: AssistantConfig;
+  llm?: typeof callAssistantLlm;
 }
 
 /** 多步计划：按顺序派活，前一步的产出交给后一步；某一步没有完成就停下，已经做完的照常交付 */
@@ -138,9 +151,10 @@ export async function runPlanJob(job: AssistantJob, input: PlanJobInput): Promis
     const r = await runBoardWithReview(job, {
       ctx: input.ctx,
       board,
-      maxRuns: input.maxRuns ?? MAX_BOARD_RUNS,
+      maxRuns: input.maxRuns ?? MAX_REVISIONS,
       cfg: input.cfg,
       stepTag: tag,
+      llm: input.llm,
     });
     if (!r.ok || !r.text) {
       pushEvent(job, { type: 'error', text: `${tag}「${BOARD_LABEL[original.kind].label}」没有完成：${r.error ?? '请稍后再试'}，后面的步骤先不做` });

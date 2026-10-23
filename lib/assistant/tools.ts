@@ -9,13 +9,13 @@ import { MEMORY_MAX_COUNT } from '@/lib/assistant/memory';
 import { clampMinutes, OPEN_PAGES, resolveSound, soundChoices } from '@/lib/assistant/client-action-spec';
 import type { ActionReceipt } from '@/lib/assistant/receipts';
 import { internalBase, readInternal, type BoardHistoryRow } from './boards';
-import { BOARD_LABEL, maxRunsOf, missingFields, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
+import { BOARD_LABEL, missingFields, revisionCapOf, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
 import { isDepth } from '@/lib/research';
 import { createPendingRun } from './pending-runs';
 import { listRecentResults, loadCarry } from '@/lib/assistant/carry';
 import { applyCarry } from '@/lib/assistant/carry-shape';
 import { adviseRoute } from '@/lib/assistant/route-advice';
-import { MAX_BOARD_RUNS } from './manager';
+import { MAX_REVISIONS } from './manager';
 import type { AssistantTool, WebFeedback } from './agent';
 
 /**
@@ -252,8 +252,8 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
     const features = [...new Set(steps.map((s) => BOARD_LABEL[s.kind].feature))].join('、');
     const isPlan = board.kind === 'plan';
     const label = isPlan ? `执行计划（${steps.length} 步）` : BOARD_LABEL[board.kind].label;
-    // 深度研究只跑一次；计划里其它板块仍按上限返工
-    const runs = maxRunsOf(board, MAX_BOARD_RUNS);
+    // 板块只跑一次；不达标的地方由管理员直接修改（深度研究不改）
+    const runs = revisionCapOf(board, MAX_REVISIONS);
     const run = createPendingRun({
       userId: ctx.userId,
       board,
@@ -266,10 +266,10 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
     });
     ctx.onAction?.({ name: 'board.run', args: { runId: run.id, board: run.kind, label, summary, maxRuns: runs, feature: features } });
     const rework = isPlan
-      ? `每一步最多跑 ${MAX_BOARD_RUNS} 次，不达标我会让板块返工${steps.some((s) => s.kind === 'research') ? '；深度研究那一步不返工，不达标直接交给老板判断' : ''}`
-      : runs === 1
-        ? '只跑一次，不达标的地方不返工，直接交给老板判断'
-        : `最多跑 ${MAX_BOARD_RUNS} 次，不达标我会让板块返工`;
+      ? `每一步只跑一次，不达标的地方我直接修改，最多改 ${MAX_REVISIONS} 次${steps.some((s) => s.kind === 'research') ? '；深度研究那一步不改，不达标直接交给老板判断' : ''}`
+      : runs === 0
+        ? '只跑一次，不达标的地方直接交给老板判断'
+        : `只跑一次，不达标的地方我直接修改，最多改 ${MAX_REVISIONS} 次`;
     return `已把${isPlan ? `这 ${steps.length} 步计划` : `「${label}」的任务`}列给老板，等他点确认后才开跑（${rework}，每次扣「${features}」额度）。请告诉老板在面板上确认。在他确认之前，不要说已经做好了。`;
   };
 

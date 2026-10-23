@@ -199,7 +199,7 @@ describe('派活工具：缺信息、步数不对、板块不认识，都不列�
       steps: [{ board: 'topic', text: '菜市场的故事' }, { board: 'script', text: '把第一条写成脚本' }],
     });
     expect(out).toContain('等他点确认');
-    expect(actions[0]).toMatchObject({ name: 'board.run', args: { board: 'plan', maxRuns: 3 } });
+    expect(actions[0]).toMatchObject({ name: 'board.run', args: { board: 'plan', maxRuns: 2 } });
     expect(String(actions[0].args.summary)).toContain('1. 选题');
     expect(fetchImpl).not.toHaveBeenCalledWith(expect.stringContaining('/api/dify/stream'), expect.anything());
   });

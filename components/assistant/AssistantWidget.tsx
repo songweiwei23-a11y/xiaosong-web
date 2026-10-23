@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRight, BellRing, Bot, Brain, Check, Copy, FileDown, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
+import { ArrowRight, BellRing, Bot, Brain, Check, ChevronDown, Copy, FileDown, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
 import { getActiveProfileId } from "@/lib/active-profile";
 import { memoryEnabled } from "@/lib/settings-memory";
 import { ASSISTANT_ASK_EVENT } from "@/lib/assistant/ask";
@@ -1312,7 +1312,9 @@ function TaskThread({
               <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
               交付结果
             </div>
-            <div className="whitespace-pre-wrap px-3.5 py-3 text-[13.5px] leading-7 text-foreground">{task.answer}</div>
+            <div className="px-3 py-3">
+              <ResultSections text={task.answer} />
+            </div>
           </div>
         )}
         {task.error && <p className="rounded-xl bg-destructive/10 px-3 py-2 text-[12px] text-destructive">{task.error}</p>}
@@ -1380,6 +1382,53 @@ function TaskThread({
           </div>
         )}
       </article>
+    </div>
+  );
+}
+
+/**
+ * 产出按标题拆开：每一项（选题 1、方向二、第 2 步……）默认收起，点开才看具体内容。
+ * 只有一段、或者不足两个标题的内容原样显示。管理员的验收结论不折叠，放在最下面。
+ */
+function ResultSections({ text }: { text: string }) {
+  const verdictAt = text.lastIndexOf("\n\n——管理员验收");
+  const body = verdictAt >= 0 ? text.slice(0, verdictAt) : text;
+  const verdict = verdictAt >= 0 ? text.slice(verdictAt).trim() : "";
+  const lines = body.split("\n");
+  const starts = lines.flatMap((l, i) => (/^#{2,4}\s+\S/.test(l) ? [i] : []));
+  // 只有板块产出（带管理员验收结论）才拆开；普通对话里的小标题照常连着读
+  if (!verdict || starts.length < 2) {
+    return (
+      <div className="assistant-rise space-y-3">
+        <div className="whitespace-pre-wrap text-[13.5px] leading-7 text-foreground">{body.trim()}</div>
+        {verdict && <p className="text-[11.5px] leading-relaxed text-muted-foreground">{verdict}</p>}
+      </div>
+    );
+  }
+  const intro = lines.slice(0, starts[0]).join("\n").trim();
+  const sections = starts.map((start, k) => {
+    const end = k + 1 < starts.length ? starts[k + 1] : lines.length;
+    return {
+      title: lines[start].replace(/^#{2,4}\s+/, "").trim(),
+      body: lines.slice(start + 1, end).join("\n").trim(),
+    };
+  });
+  return (
+    <div className="assistant-rise space-y-3">
+      {intro && <div className="whitespace-pre-wrap text-[13.5px] leading-7 text-foreground">{intro}</div>}
+      <div className="space-y-2">
+        {sections.map((s, i) => (
+          <details key={`${i}-${s.title}`} className="group overflow-hidden rounded-xl border border-border/60 bg-background/60">
+            <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 text-[13px] font-medium text-foreground transition hover:bg-foreground/[0.03] [&::-webkit-details-marker]:hidden">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] text-primary">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate">{s.title}</span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="whitespace-pre-wrap border-t border-border/50 px-3.5 py-3 text-[13px] leading-7 text-foreground">{s.body}</div>
+          </details>
+        ))}
+      </div>
+      {verdict && <p className="text-[11.5px] leading-relaxed text-muted-foreground">{verdict}</p>}
     </div>
   );
 }
