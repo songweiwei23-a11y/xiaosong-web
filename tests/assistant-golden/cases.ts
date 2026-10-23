@@ -121,6 +121,8 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'board-script-dispatch', category: 'proposal', question: '帮我写一条脚本，讲我们店里的招牌菜怎么做', expectTools: ['propose_script', 'read_account'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '内容由脚本板块生成，助理不自己写脚本正文' },
   { id: 'board-positioning-dispatch', category: 'proposal', question: '帮我重新做一份账号定位', expectTools: ['propose_positioning'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '定位由账号定位板块写，助理不自己写六维地基' },
   { id: 'board-opening-dispatch', category: 'proposal', question: '帮我想 3 个开头，这条讲我们店的招牌烤串怎么腌', expectTools: ['propose_opening'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '开头由开篇钩子板块写' },
+  { id: 'route-no-inspiration', category: 'proposal', question: '最近没有灵感了', expectTools: ['suggest_path'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '模糊需求：先看账号状态推荐路线（没灵感从创作方向开始），不直接派活' },
+  { id: 'route-batch-episodes', category: 'proposal', question: '想更新几期视频', expectTools: ['suggest_path'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '模糊需求：先推荐路线（内容规划→选题→脚本），几期不知道就问，不直接派活' },
   { id: 'board-continue-list', category: 'proposal', question: '用刚才的创作方向继续写 3 个选题', expectTools: ['list_results'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '接着做先找结果编号；查不到就如实说，不能编编号、不能直接派活' },
   { id: 'board-remix-ask-text', category: 'proposal', question: '把我看到的一条别行业的爆款，换成我们烧烤店来拍', forbidTools: [...WRITE_TOOLS, 'propose_remix'], noFalseSuccess: true, note: '没有原文，要先请老板把文案发过来，不派活' },
 
