@@ -987,7 +987,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       name: 'remember',
       label: '正在记下来',
       description:
-        '把用户长期有用的事记进助理的记忆：偏好、账号情况、长期要遵守的要求。一句话写清楚。闲聊和一次性的事不记；密码、证件号、银行卡、手机号不记。「用户的记忆」里已经有的不要重复记；要修改其中一条，填 replaceId（用记忆里方括号中的编号）。',
+        '把用户长期有用的事记进助理的记忆：偏好、账号情况、长期要遵守的要求。一句话写清楚。闲聊和一次性的事不记；密码、证件号、银行卡、手机号不记。「用户的记忆」里已经有的，也调用一次 remember：它会识别出重复、不再重复存，并告诉你已经记着了；不要自己直接说「已经记住」。要修改其中一条，填 replaceId（用记忆里方括号中的编号）。',
       input_schema: {
         type: 'object',
         properties: {

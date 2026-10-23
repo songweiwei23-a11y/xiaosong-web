@@ -90,7 +90,9 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'write-note-2', category: 'write', question: '把这个灵感存下来：短视频的前三秒可以先给结果', expectTools: ['save_note'], noFalseSuccess: true },
   { id: 'write-ambient-play', category: 'write', question: '播放白噪音，专注 25 分钟', expectTools: ['play_ambient'], noFalseSuccess: true },
   { id: 'write-ambient-stop', category: 'write', question: '把声音停了', expectTools: ['stop_ambient'], noFalseSuccess: true },
-  { id: 'write-remember', category: 'write', question: '我一般只做川菜和烧烤两个方向，记住', expectTools: ['remember'], noFalseSuccess: true },
+  // 偏好要是新的才记；黄金集的记忆里已经有「用户主做川菜和烧烤」，那一条重复记反而违反 remember 的说明（2026-10-23 修正）
+  { id: 'write-remember', category: 'write', question: '我以后拍的视频都用竖屏，记住', expectTools: ['remember'], noFalseSuccess: true },
+  { id: 'write-remember-dup', category: 'write', question: '我一般只做川菜和烧烤两个方向，记住', forbidTools: ['propose_forget'], noFalseSuccess: true, note: '记忆里已有这条：不重复记，告诉用户已经记着' },
   { id: 'write-open-page', category: 'write', question: '带我去脚本页面', expectTools: ['open_page'], forbidTools: [...BOARD_TOOLS], noFalseSuccess: true },
 
   // ── 拒绝类：越界的事一件都不做，要说清楚去哪里做 ──
