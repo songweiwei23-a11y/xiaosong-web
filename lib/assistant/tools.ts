@@ -87,6 +87,21 @@ function stepToBoard(s: { board?: unknown; text?: unknown; count?: unknown; plat
     case 'deal-reason':
       // 计划里的成交理由只给了「特色」，店铺名称缺了就会被必填项挡住，让老板补齐
       return { kind: 'deal-reason', input: { storeName: '', storeFeatures: text } };
+    case 'positioning':
+      return { kind: 'positioning', input: { platform, notes: text } };
+    case 'brief':
+      return { kind: 'brief', input: { notes: text } };
+    case 'advice':
+      // 计划里的行业建议只给了现状，目的和阶段缺了就会被必填项挡住，让老板补齐
+      return { kind: 'advice', input: { purpose: '', stage: '', situation: text } };
+    case 'growth':
+      return { kind: 'growth', input: { notes: text } };
+    case 'opening':
+      return { kind: 'opening', input: { topic: text, count: clampCount(s.count, 3, 1, 6) } };
+    case 'remix':
+      return { kind: 'remix', input: { text, count: clampCount(s.count, 1, 1, 15) } };
+    case 'breakdown':
+      return { kind: 'breakdown', input: { script: text } };
     default:
       return null;
   }
@@ -209,6 +224,13 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
     });
     ctx.onAction?.({ name: 'board.run', args: { runId: run.id, board: run.kind, label, summary, maxRuns: MAX_BOARD_RUNS, feature: features } });
     return `已把${isPlan ? `这 ${steps.length} 步计划` : `「${label}」的任务`}列给老板，等他点确认后才开跑（${isPlan ? '每一步' : ''}最多跑 ${MAX_BOARD_RUNS} 次，每次扣「${features}」额度；不达标我会让板块返工）。请告诉老板在面板上确认。在他确认之前，不要说已经做好了。`;
+  };
+
+  /** 定位、起号这类板块都要先有账号档案；没有就先请老板建档 */
+  const NO_PROFILE = '还没有账号档案。请先请老板建一个档案，再派这个板块。';
+  const hasProfile = async (): Promise<boolean> => {
+    const profiles = await readInternal(ctx, '/api/profiles').catch(() => []);
+    return Array.isArray(profiles) && profiles.length > 0;
   };
 
   return [
@@ -587,10 +609,148 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       },
     },
     {
+      name: 'propose_positioning',
+      label: '正在派账号定位板块',
+      description:
+        '把账号定位派给「账号定位」板块（板块用 Dify 按档案写六维地基，你不自己写）。要先有账号档案，没有就请老板先建档。平台、补充要求老板说了才填。这一步只是列给老板看，确认后才开跑，每次扣定位额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          platform: { type: 'string', description: '主平台，档案里有就不填，例如抖音、快手、视频号' },
+          notes: { type: 'string', description: '老板的补充要求，没有就不填' },
+        },
+        required: [],
+      },
+      async run(input) {
+        if (!(await hasProfile())) return NO_PROFILE;
+        return proposeBoard({ kind: 'positioning', input: { platform: str(input.platform), notes: str(input.notes) } });
+      },
+    },
+    {
+      name: 'propose_brief',
+      label: '正在派创作简报板块',
+      description:
+        '把创作简报派给「创作简报」板块（板块用 Dify 把账号定位转译成给选题、脚本用的简报，你不自己转译）。前提是账号定位已经做好；没有就先派账号定位。补充要求老板说了才填。这一步只是列给老板看，确认后才开跑，每次扣定位额度。',
+      input_schema: {
+        type: 'object',
+        properties: { notes: { type: 'string', description: '老板的补充要求，没有就不填' } },
+        required: [],
+      },
+      async run(input) {
+        const rows = await readInternal(ctx, `/api/positioning?type=${encodeURIComponent('账号定位')}`).catch(() => []);
+        if (!Array.isArray(rows) || rows.length === 0) return '还没有账号定位。请先派账号定位，定好以后再做创作简报。';
+        return proposeBoard({ kind: 'brief', input: { notes: str(input.notes) } });
+      },
+    },
+    {
+      name: 'propose_industry_advice',
+      label: '正在派行业建议板块',
+      description:
+        '把行业建议（给这个号开的药方）派给「行业建议」板块：按账号目的和当前阶段，写清楚每一步针对哪类人、怎么拍、什么时候换阶段（板块用 Dify 写，你不自己开）。目的和阶段必须问清楚：目的取 traffic=大流量、persona=人设型、monetize=变现型、staged=分阶段推进；阶段取 start=起号期、accumulate=积累期、scale=放量期、monetize=变现期。现状、想达到的结果老板说了才填。这一步只是列给老板看，确认后才开跑，每次扣定位额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          purpose: { type: 'string', enum: ['traffic', 'persona', 'monetize', 'staged'], description: '账号目的，老板没说就先问' },
+          stage: { type: 'string', enum: ['start', 'accumulate', 'scale', 'monetize'], description: '当前阶段，老板没说就先问' },
+          situation: { type: 'string', description: '现状：发了多少条、哪类数据好、卡在哪，老板说了才填' },
+          goal: { type: 'string', description: '这一阶段想达到的具体结果，老板说了才填' },
+        },
+        required: ['purpose', 'stage'],
+      },
+      async run(input) {
+        if (!(await hasProfile())) return NO_PROFILE;
+        return proposeBoard({
+          kind: 'advice',
+          input: { purpose: str(input.purpose), stage: str(input.stage), situation: str(input.situation), goal: str(input.goal) },
+        });
+      },
+    },
+    {
+      name: 'propose_growth_plan',
+      label: '正在派起号方案板块',
+      description:
+        '把起号方案派给「起号方案」板块（板块用 Dify 推起号打法、每一计说清楚第一条拍什么，你不自己推）。要先有账号档案。补充要求老板说了才填。这一步只是列给老板看，确认后才开跑，每次扣脚本额度。',
+      input_schema: {
+        type: 'object',
+        properties: { notes: { type: 'string', description: '老板的补充要求，没有就不填' } },
+        required: [],
+      },
+      async run(input) {
+        if (!(await hasProfile())) return NO_PROFILE;
+        return proposeBoard({ kind: 'growth', input: { notes: str(input.notes) } });
+      },
+    },
+    {
+      name: 'propose_opening',
+      label: '正在派开篇钩子板块',
+      description:
+        '把开篇钩子派给「开篇钩子」板块（板块用 Dify 写开头，你不自己写）。要有这条内容讲什么（一句话）；要几条默认 3 条；老板已有的开头、想优化时才填。这一步只是列给老板看，确认后才开跑，每次扣脚本额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: '这条内容讲什么，一句话' },
+          count: { type: 'number', description: '要几条，1 到 6，默认 3' },
+          currentOpening: { type: 'string', description: '老板已有的开头，想优化时才填' },
+        },
+        required: ['topic'],
+      },
+      async run(input) {
+        return proposeBoard({
+          kind: 'opening',
+          input: { topic: str(input.topic), count: clampCount(input.count, 3, 1, 6), currentOpening: str(input.currentOpening) },
+        });
+      },
+    },
+    {
+      name: 'propose_remix',
+      label: '正在派跨行业二创板块',
+      description:
+        '把跨行业二创派给「跨行业二创」板块：拿别的行业的爆款文案，或上一步拆解的结果，借它的开篇、结构、拍法，换成老板自己的店来拍（板块用 Dify 写，你不自己写）。要有原文（至少 30 字）；方案个数默认 1 个，只认 1、2、3、5、10、15；时长、原片名、行业老板说了才填。每次扣二创额度。这一步只是列给老板看，确认后才开跑。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: '要借鉴的原文，完整保留' },
+          title: { type: 'string', description: '原片叫什么，老板说了才填' },
+          industry: { type: 'string', description: '原片是什么行业，老板说了才填' },
+          count: { type: 'number', description: '方案个数，1、2、3、5、10、15 之一，默认 1' },
+          duration: { type: 'string', description: '时长，例如 60秒，不填跟原片' },
+          notes: { type: 'string', description: '老板的补充要求，没有就不填' },
+        },
+        required: ['text'],
+      },
+      async run(input) {
+        return proposeBoard({
+          kind: 'remix',
+          input: {
+            text: str(input.text),
+            title: str(input.title),
+            industry: str(input.industry),
+            count: clampCount(input.count, 1, 1, 15),
+            duration: str(input.duration),
+            notes: str(input.notes),
+          },
+        });
+      },
+    },
+    {
+      name: 'propose_breakdown',
+      label: '正在派文案拆解板块',
+      description:
+        '把文案拆解派给「拆解爆款」板块的文字版：老板贴的文案原文，板块拆结构和表达机制，找出可以保留和改进的地方（板块用 Dify 拆，你不自己拆）。要有完整原文（至少 30 字）。视频截图的拆解要老板去拆解页面上传视频，这里不做。这一步只是列给老板看，确认后才开跑，每次扣拆解额度。',
+      input_schema: {
+        type: 'object',
+        properties: { script: { type: 'string', description: '要拆解的文案原文，完整保留' } },
+        required: ['script'],
+      },
+      async run(input) {
+        return proposeBoard({ kind: 'breakdown', input: { script: str(input.script) } });
+      },
+    },
+    {
       name: 'propose_plan',
       label: '正在整理执行计划',
       description:
-        '老板的需求要几步才能做完时，先把计划列出来（最多 5 步，按顺序执行，前一步的产出交给后一步）。每一步 board 填板块：topic 选题、script 脚本、review 审稿、title 标题、storyboard 分镜、direction 方向、content-plan 内容规划；text 填这一步的主要输入（主题、要拍的内容、稿子原文、脚本原文或目的）。计划只是列给老板看，他确认后才开跑。',
+        '老板的需求要几步才能做完时，先把计划列出来（最多 5 步，按顺序执行，前一步的产出交给后一步）。每一步 board 填板块：topic 选题、script 脚本、review 审稿、title 标题、storyboard 分镜、direction 方向、content-plan 内容规划、deal-reason 成交理由、positioning 账号定位、brief 创作简报、advice 行业建议、growth 起号方案、opening 开篇钩子、remix 跨行业二创、breakdown 文案拆解；text 填这一步的主要输入（主题、要拍的内容、稿子原文、脚本原文、定位的补充要求或目的）。行业建议的目的和阶段计划里给不了，会被挡住让老板补。计划只是列给老板看，他确认后才开跑。',
       input_schema: {
         type: 'object',
         properties: {
@@ -601,7 +761,10 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
             items: {
               type: 'object',
               properties: {
-                board: { type: 'string', enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan', 'deal-reason'] },
+                board: {
+                  type: 'string',
+                  enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan', 'deal-reason', 'positioning', 'brief', 'advice', 'growth', 'opening', 'remix', 'breakdown'],
+                },
                 text: { type: 'string', description: '这一步的主要输入' },
                 count: { type: 'number', description: '条数，不确定就不填' },
                 platform: { type: 'string', description: '平台，不确定就不填' },
@@ -618,7 +781,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         const steps: BoardAny[] = [];
         for (let i = 0; i < raw.length; i++) {
           const b = stepToBoard(raw[i]);
-          if (!b) return `第 ${i + 1} 步的板块不认识。板块只能是选题、脚本、审稿、标题、分镜、方向、内容规划`;
+          if (!b) return `第 ${i + 1} 步的板块不认识。板块只能是选题、脚本、审稿、标题、分镜、方向、内容规划、成交理由、账号定位、创作简报、行业建议、起号方案、开篇钩子、跨行业二创、文案拆解`;
           steps.push(b);
         }
         return proposeBoard({ kind: 'plan', steps });

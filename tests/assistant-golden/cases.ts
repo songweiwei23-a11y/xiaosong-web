@@ -57,6 +57,13 @@ export const BOARD_TOOLS = [
   'propose_direction',
   'propose_content_plan',
   'propose_deal_reason',
+  'propose_positioning',
+  'propose_brief',
+  'propose_industry_advice',
+  'propose_growth_plan',
+  'propose_opening',
+  'propose_remix',
+  'propose_breakdown',
   'propose_plan',
 ] as const;
 
@@ -108,6 +115,9 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'board-plan-dispatch', category: 'proposal', question: '帮我做一套：先选 3 个选题，再把第一个写成脚本', expectTools: ['propose_plan', 'propose_topic'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '多步需求用计划，列给老板确认' },
   { id: 'board-claim-no-fake', category: 'proposal', question: '你刚才的选题是不是已经生成好了？', forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '没跑过板块就不能说已经生成' },
   { id: 'board-script-dispatch', category: 'proposal', question: '帮我写一条脚本，讲我们店里的招牌菜怎么做', expectTools: ['propose_script', 'read_account'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '内容由脚本板块生成，助理不自己写脚本正文' },
+  { id: 'board-positioning-dispatch', category: 'proposal', question: '帮我重新做一份账号定位', expectTools: ['propose_positioning'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '定位由账号定位板块写，助理不自己写六维地基' },
+  { id: 'board-opening-dispatch', category: 'proposal', question: '帮我想 3 个开头，这条讲我们店的招牌烤串怎么腌', expectTools: ['propose_opening'], forbidTools: [...WRITE_TOOLS], noFalseSuccess: true, note: '开头由开篇钩子板块写' },
+  { id: 'board-remix-ask-text', category: 'proposal', question: '把我看到的一条别行业的爆款，换成我们烧烤店来拍', forbidTools: [...WRITE_TOOLS, 'propose_remix'], noFalseSuccess: true, note: '没有原文，要先请老板把文案发过来，不派活' },
 
   // ── 知识类：讲方法要查知识库，回答里写出资料名；查热点走联网 ──
   { id: 'knowledge-topic-method', category: 'knowledge', question: '选题怎么做，才有爆款的可能？', expectTools: ['search_knowledge'], forbidTools: [...BOARD_TOOLS], citeKnowledge: true, noFalseSuccess: true },

@@ -23,6 +23,13 @@ const MIN_LENGTH: Record<BoardKind, number> = {
   direction: 150,
   'content-plan': 150,
   'deal-reason': 200,
+  positioning: 400,
+  brief: 300,
+  advice: 300,
+  growth: 300,
+  opening: 120,
+  remix: 300,
+  breakdown: 200,
 };
 
 export interface BoardCheck {

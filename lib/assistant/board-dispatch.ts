@@ -11,13 +11,45 @@ import {
   type StoryboardInput,
   type TitleInput,
 } from '@/lib/assistant/boards-more';
+import {
+  runAdviceBoard,
+  runBreakdownBoard,
+  runBriefBoard,
+  runGrowthBoard,
+  runOpeningBoard,
+  runPositioningBoard,
+  runRemixBoard,
+  type AdviceInput,
+  type BreakdownInput,
+  type BriefInput,
+  type GrowthInput,
+  type OpeningInput,
+  type PositioningInput,
+  type RemixInput,
+} from '@/lib/assistant/boards-extra';
+import { ADVICE_PURPOSES, ADVICE_STAGES } from '@/lib/industry-advice';
 
 /**
  * 管理员能派的所有板块，和统一的派活格式（BoardAny）。
  * 派活前先查必填项（缺了就问老板）；多步计划里，上一步的产出交给下一步（withUpstream）。
  */
 
-export type BoardKind = 'topic' | 'script' | 'review' | 'title' | 'storyboard' | 'direction' | 'content-plan' | 'deal-reason';
+export type BoardKind =
+  | 'topic'
+  | 'script'
+  | 'review'
+  | 'title'
+  | 'storyboard'
+  | 'direction'
+  | 'content-plan'
+  | 'deal-reason'
+  | 'positioning'
+  | 'brief'
+  | 'advice'
+  | 'growth'
+  | 'opening'
+  | 'remix'
+  | 'breakdown';
 
 /** 板块的显示名和它扣的额度功能（和 lib/task-type.ts 的映射一致；内容规划和创作方向共用一项额度） */
 export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> = {
@@ -29,6 +61,13 @@ export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> 
   direction: { label: '创作方向', feature: '方向' },
   'content-plan': { label: '内容规划', feature: '方向' },
   'deal-reason': { label: '成交理由', feature: '成交理由' },
+  positioning: { label: '账号定位', feature: '定位' },
+  brief: { label: '创作简报', feature: '定位' },
+  advice: { label: '行业建议', feature: '定位' },
+  growth: { label: '起号方案', feature: '脚本' },
+  opening: { label: '开篇钩子', feature: '脚本' },
+  remix: { label: '跨行业二创', feature: '二创' },
+  breakdown: { label: '文案拆解', feature: '拆解' },
 };
 
 export type BoardAny =
@@ -39,7 +78,14 @@ export type BoardAny =
   | { kind: 'storyboard'; input: StoryboardInput }
   | { kind: 'direction'; input: DirectionInput }
   | { kind: 'content-plan'; input: ContentPlanInput }
-  | { kind: 'deal-reason'; input: DealReasonInput };
+  | { kind: 'deal-reason'; input: DealReasonInput }
+  | { kind: 'positioning'; input: PositioningInput }
+  | { kind: 'brief'; input: BriefInput }
+  | { kind: 'advice'; input: AdviceInput }
+  | { kind: 'growth'; input: GrowthInput }
+  | { kind: 'opening'; input: OpeningInput }
+  | { kind: 'remix'; input: RemixInput }
+  | { kind: 'breakdown'; input: BreakdownInput };
 
 /** 多步计划：按顺序派给几个板块，前一步的产出交给后一步 */
 export interface PlanSpec {
@@ -65,6 +111,20 @@ export function runAnyBoard(ctx: BoardContext, board: BoardAny): Promise<BoardRe
       return runContentPlanBoard(ctx, board.input);
     case 'deal-reason':
       return runDealReasonBoard(ctx, board.input);
+    case 'positioning':
+      return runPositioningBoard(ctx, board.input);
+    case 'brief':
+      return runBriefBoard(ctx, board.input);
+    case 'advice':
+      return runAdviceBoard(ctx, board.input);
+    case 'growth':
+      return runGrowthBoard(ctx, board.input);
+    case 'opening':
+      return runOpeningBoard(ctx, board.input);
+    case 'remix':
+      return runRemixBoard(ctx, board.input);
+    case 'breakdown':
+      return runBreakdownBoard(ctx, board.input);
   }
 }
 
@@ -91,6 +151,22 @@ export function missingFields(board: BoardAny): string[] {
       if (!board.input.storeFeatures?.trim()) missing.push('店铺特色（有什么具体的服务、产品、优势）');
       return missing;
     }
+    case 'positioning':
+    case 'brief':
+    case 'growth':
+      return [];
+    case 'advice': {
+      const missing: string[] = [];
+      if (!ADVICE_PURPOSES.some((p) => p.key === board.input.purpose)) missing.push('账号目的（大流量、人设型、变现型、分阶段推进）');
+      if (!ADVICE_STAGES.some((s) => s.key === board.input.stage)) missing.push('当前阶段（起号期、积累期、放量期、变现期）');
+      return missing;
+    }
+    case 'opening':
+      return (board.input.topic ?? '').trim().length >= 2 ? [] : ['这条内容讲什么'];
+    case 'remix':
+      return (board.input.text ?? '').trim().length >= 30 ? [] : ['要借鉴的原文（至少 30 字：别的行业的文案，或拆解的结果）'];
+    case 'breakdown':
+      return (board.input.script ?? '').trim().length >= 30 ? [] : ['要拆解的文案原文（至少 30 字）'];
   }
 }
 
@@ -113,6 +189,20 @@ export function requirementOf(board: BoardAny): string {
       return `这个月的内容规划，目标：${board.input.goal}`;
     case 'deal-reason':
       return `成交理由：${board.input.storeName}，店铺特色：${board.input.storeFeatures}`;
+    case 'positioning':
+      return '账号定位：六维地基，每个结论都要有理由，能直接指导后面的选题和脚本';
+    case 'brief':
+      return '创作简报：把账号定位转译成每一句都能直接指导创作的简报';
+    case 'advice':
+      return `行业建议：目的「${board.input.purpose}」，阶段「${board.input.stage}」，每一步针对哪类人、怎么拍、何时换阶段`;
+    case 'growth':
+      return '起号方案：给出可以照着拍的起号打法，每一计说清楚第一条拍什么';
+    case 'opening':
+      return `开篇钩子 ${board.input.count ?? 3} 条，主题：${board.input.topic}`;
+    case 'remix':
+      return '跨行业二创：借原片的开篇、结构、拍法，换成本店的事来拍，每个方案都要能照着拍';
+    case 'breakdown':
+      return '文案拆解：找出可保留的表达机制和具体的改进方法';
   }
 }
 
@@ -140,10 +230,24 @@ export function summaryOf(board: BoardAny): string {
       return `内容规划｜目标：${board.input.goal}`;
     case 'deal-reason':
       return `成交理由｜店铺：${board.input.storeName}｜特色：${board.input.storeFeatures.slice(0, 30)}`;
+    case 'positioning':
+      return `账号定位${board.input.platform ? `｜平台：${board.input.platform}` : ''}${board.input.notes ? `｜补充：${board.input.notes.slice(0, 30)}` : ''}`;
+    case 'brief':
+      return `创作简报${board.input.notes ? `｜补充：${board.input.notes.slice(0, 30)}` : ''}`;
+    case 'advice':
+      return `行业建议｜目的：${board.input.purpose}｜阶段：${board.input.stage}${board.input.situation ? `｜现状：${board.input.situation.slice(0, 30)}` : ''}`;
+    case 'growth':
+      return `起号方案${board.input.notes ? `｜补充：${board.input.notes.slice(0, 30)}` : ''}`;
+    case 'opening':
+      return `开篇钩子 ${board.input.count ?? 3} 条｜主题：${board.input.topic}`;
+    case 'remix':
+      return `跨行业二创 ${board.input.count ?? 1} 个方案｜原文：${board.input.text.slice(0, 30)}${board.input.text.length > 30 ? '…' : ''}`;
+    case 'breakdown':
+      return `文案拆解｜原文：${board.input.script.slice(0, 30)}${board.input.script.length > 30 ? '…' : ''}`;
   }
 }
 
-/** 上一步的产出交给下一步：有主要输入的接在后面；本身就是「加工对象」的（审稿、分镜）直接换成上一步的产出 */
+/** 上一步的产出交给下一步：有主要输入的接在后面；本身就是「加工对象」的（审稿、分镜、二创、拆解）直接换成上一步的产出 */
 export function withUpstream(board: BoardAny, text: string): BoardAny {
   const note = `\n\n【参考：上一步的产出】\n${text.slice(0, 3000)}`;
   switch (board.kind) {
@@ -163,6 +267,21 @@ export function withUpstream(board: BoardAny, text: string): BoardAny {
       return { kind: 'content-plan', input: { ...board.input, goal: board.input.goal + note } };
     case 'deal-reason':
       return { kind: 'deal-reason', input: { ...board.input, storeFeatures: board.input.storeFeatures + note } };
+    case 'positioning':
+      return { kind: 'positioning', input: { ...board.input, notes: (board.input.notes ?? '') + note } };
+    case 'brief':
+      // 简报要的是「账号定位」本身：上一步的产出就是定位，直接用它，不再读库里的
+      return { kind: 'brief', input: { ...board.input, upstream: text.slice(0, 20000) } };
+    case 'advice':
+      return { kind: 'advice', input: { ...board.input, situation: (board.input.situation ?? '') + note } };
+    case 'growth':
+      return { kind: 'growth', input: { ...board.input, notes: (board.input.notes ?? '') + note } };
+    case 'opening':
+      return { kind: 'opening', input: { ...board.input, topic: board.input.topic + note } };
+    case 'remix':
+      return { kind: 'remix', input: { ...board.input, text: text.slice(0, 20000) } };
+    case 'breakdown':
+      return { kind: 'breakdown', input: { ...board.input, script: text.slice(0, 20000) } };
   }
 }
 

@@ -60,13 +60,13 @@ export interface ContentPlanInput {
   extraNote?: string;
 }
 
-const clampCount = (n: number | undefined, fallback: number, min: number, max: number) =>
+export const clampCount = (n: number | undefined, fallback: number, min: number, max: number) =>
   Math.min(max, Math.max(min, Math.round(typeof n === 'number' && Number.isFinite(n) ? n : fallback)));
 
-const withNote = (text: string, note?: string) => (note ? `${text}\n【管理员返工意见】${note}` : text);
+export const withNote = (text: string, note?: string) => (note ? `${text}\n【管理员返工意见】${note}` : text);
 
 /** 把板块的请求发到 Dify 生成接口，按回来的文字或错误原因返回 */
-async function callBoardStream(ctx: BoardContext, body: Record<string, unknown>): Promise<BoardResult> {
+export async function callBoardStream(ctx: BoardContext, body: Record<string, unknown>): Promise<BoardResult> {
   const doFetch = ctx.fetchImpl ?? fetch;
   const res = await doFetch(`${internalBase(ctx)}/api/dify/stream`, {
     method: 'POST',
@@ -82,7 +82,7 @@ async function callBoardStream(ctx: BoardContext, body: Record<string, unknown>)
   return { ok: true, text: text.length > 6000 ? `${text.slice(0, 6000)}\n…（内容太长，已截断）` : text };
 }
 
-async function loadContext(ctx: BoardContext) {
+export async function loadContext(ctx: BoardContext) {
   return loadBoardContext({ cookie: ctx.cookie, base: internalBase(ctx), fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
 }
 
