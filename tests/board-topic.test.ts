@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { buildTopicBoardQuery, extractRelevantPositioningInfo, type TopicBoardInput } from '@/lib/boards/topic-query';
 import { createAssistantTools } from '@/lib/assistant/tools';
+import { runTopicBoard, type TopicInput } from '@/lib/assistant/boards';
 import { resolveMix } from '@/lib/content-mix';
 import type { CreatorContext } from '@/lib/creator-context';
 
@@ -147,16 +148,23 @@ describe('助理的选题工具', () => {
       headers: { 'content-type': 'text/event-stream' },
     });
 
-  const topicTool = (fetchImpl: typeof fetch) =>
-    createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl }).find((t) => t.name === 'run_topic')!;
+  // 板块的执行：派活经用户确认后跑的就是 runTopicBoard（lib/assistant/boards.ts）
+  const topicTool = (fetchImpl: typeof fetch) => ({
+    run: async (input: Record<string, unknown>): Promise<string> => {
+      const r = await runTopicBoard({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl }, { count: 10, role: '按配比', ...input } as TopicInput);
+      return r.ok ? r.text : r.error ?? '';
+    },
+  });
 
-  it('没说清楚想拍什么：不调用板块，先去问清楚', async () => {
+  it('没说清楚想拍什么：派活工具不列出任务，先去问清楚', async () => {
     const calls: string[] = [];
     const fakeFetch = (async (url: string) => {
       calls.push(String(url));
       return json([]);
     }) as unknown as typeof fetch;
-    const out = await topicTool(fakeFetch).run({ request: '  ' });
+    const out = await createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch })
+      .find((t) => t.name === 'propose_topic')!
+      .run({ request: '  ' });
     expect(out).toContain('还不知道用户想拍什么');
     expect(calls.some((u) => u.includes('/api/dify/stream'))).toBe(false);
   });
@@ -198,6 +206,6 @@ describe('助理的选题工具', () => {
   it('额度不够或服务错误：把原因如实交给助理', async () => {
     const fakeFetch = (async (url: string) => (String(url).includes('/api/dify/stream') ? json({ error: '本期选题额度已用完' }, 402) : json([]))) as unknown as typeof fetch;
     const out = await topicTool(fakeFetch).run({ request: '想拍点新内容' });
-    expect(out).toBe('选题没有完成：本期选题额度已用完');
+    expect(out).toContain('本期选题额度已用完');
   });
 });

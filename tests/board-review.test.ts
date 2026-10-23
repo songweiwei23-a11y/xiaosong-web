@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildReviewBoardQuery } from '@/lib/boards/review-query';
 import { loadBoardContext } from '@/lib/assistant/board-context';
-import { createAssistantTools } from '@/lib/assistant/tools';
+import { runReviewBoard, type ReviewInput } from '@/lib/assistant/boards';
 import type { CreatorContext } from '@/lib/creator-context';
 
 const EMPTY_CTX = { profile: null, positioning: null, dealReasons: [] } as unknown as CreatorContext;
@@ -104,8 +104,13 @@ describe('助理的审稿工具', () => {
       headers: { 'content-type': 'text/event-stream' },
     });
 
-  const reviewTool = (fetchImpl: typeof fetch) =>
-    createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl }).find((t) => t.name === 'run_review')!;
+  // 板块的执行：派活经用户确认后跑的就是 runReviewBoard（lib/assistant/boards.ts）
+  const reviewTool = (fetchImpl: typeof fetch) => ({
+    run: async (input: Record<string, unknown>): Promise<string> => {
+      const r = await runReviewBoard({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl }, input as unknown as ReviewInput);
+      return r.ok ? r.text : r.error ?? '';
+    },
+  });
 
   it('稿子太短或没给原文：不调用板块，直接请用户补全', async () => {
     const calls: string[] = [];
@@ -146,6 +151,6 @@ describe('助理的审稿工具', () => {
       return json([]);
     }) as unknown as typeof fetch;
     const out = await reviewTool(fakeFetch).run({ draft: '这是一段足够长的稿子，用来测试额度不够时的提示内容是否如实返回。' });
-    expect(out).toBe('审稿没有完成：本期审稿额度已用完');
+    expect(out).toContain('本期审稿额度已用完');
   });
 });

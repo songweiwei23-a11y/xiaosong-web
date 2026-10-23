@@ -5,7 +5,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createAssistantTools } from '@/lib/assistant/tools';
+import { runTopicBoard, runScriptBoard, runReviewBoard, type BoardContext, type ReviewInput, type ScriptInput, type TopicInput } from '@/lib/assistant/boards';
 import { ASSISTANT_SYSTEM } from '@/lib/assistant/run';
 import { SCRIPT_PAGE_DEFAULTS, scriptMemoryPatch, scriptResultWithQuality } from '@/lib/boards/script-query';
 import { AI_DURATION } from '@/lib/review-standards';
@@ -18,6 +18,24 @@ const sse = (answer: string) =>
     status: 200,
     headers: { 'content-type': 'text/event-stream' },
   });
+
+/**
+ * 板块的执行：助理派活经用户确认后，真正跑的就是 lib/assistant/boards.ts 里的这三个函数。
+ * 这里按旧的工具名调用它们，返回板块的文字（失败返回原因）。
+ */
+function boardRunner(name: string, ctx: BoardContext) {
+  return {
+    name,
+    run: async (input: Record<string, unknown>): Promise<string> => {
+      const r = name === 'run_topic'
+        ? await runTopicBoard(ctx, { count: 10, role: '按配比', ...input } as TopicInput)
+        : name === 'run_script'
+          ? await runScriptBoard(ctx, input as unknown as ScriptInput)
+          : await runReviewBoard(ctx, input as unknown as ReviewInput);
+      return r.ok ? r.text : r.error ?? '';
+    },
+  };
+}
 
 /** 假接口：档案 p1；记忆接口按 memory 返回；板块接口记下请求体 */
 function harness(memory: unknown | null) {
@@ -37,8 +55,8 @@ function harness(memory: unknown | null) {
     if (u.includes('/api/profiles')) return json([{ id: 'p1', profile_name: 'A号', account_track: ['本地服务'] }]);
     return json([]);
   }) as unknown as typeof fetch;
-  const tools = createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch, memoryOn: memory !== undefined ? true : false });
-  const find = (name: string) => tools.find((t) => t.name === name)!;
+  const ctx: BoardContext = { userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch, memoryOn: memory !== undefined ? true : false };
+  const find = (name: string) => boardRunner(name, ctx);
   return { sent, memoryCalls, find, fakeFetch };
 }
 
@@ -126,8 +144,7 @@ describe('助理发出去的请求：和页面默认操作一致', () => {
 
   it('脚本：记忆预填关掉时不读记忆，也不按上次的习惯填', async () => {
     const { sent, memoryCalls, fakeFetch } = harness({ defaults: { purpose: { value: '人设型' } }, summary: '上次的习惯' });
-    const tools = createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch, memoryOn: false });
-    await tools.find((t) => t.name === 'run_script')!.run({ request: '节前节后门店生意对比' });
+    await boardRunner('run_script', { userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch, memoryOn: false }).run({ request: '节前节后门店生意对比' });
     expect(memoryCalls).toHaveLength(0);
     expect((sent['脚本生成'].creationSettings as Record<string, unknown>).purpose).toBeUndefined();
   });
@@ -169,11 +186,10 @@ describe('助理跑完板块后，历史记录和页面一样存下来', () => {
   it('脚本：存进历史的结果带质检报告（和页面显示的一样），输入里有主题和档案', async () => {
     const rows: { taskType: string; inputData: Record<string, unknown>; result: string }[] = [];
     const { fakeFetch } = harness(null);
-    const tools = createAssistantTools({
+    const out = await boardRunner('run_script', {
       userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch,
       saveHistory: async (row) => { rows.push(row); },
-    });
-    const out = await tools.find((t) => t.name === 'run_script')!.run({ request: '节前节后门店生意对比' });
+    }).run({ request: '节前节后门店生意对比' });
     expect(rows).toHaveLength(1);
     expect(rows[0].taskType).toBe('脚本生成');
     expect(rows[0].result).toBe(scriptResultWithQuality('ok'));
@@ -186,13 +202,13 @@ describe('助理跑完板块后，历史记录和页面一样存下来', () => {
   it('选题、审稿：各自的历史类型，选题带上条数', async () => {
     const rows: { taskType: string; inputData: Record<string, unknown>; result: string }[] = [];
     const { fakeFetch } = harness(null);
-    const tools = createAssistantTools({
+    const boardCtx: BoardContext = {
       userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch,
       saveHistory: async (row) => { rows.push(row); },
-    });
+    };
     const draft = '这是一段足够长的口播稿，用来测试审稿板块跑完以后存进历史的内容，要超过三十个字才会去审。';
-    await tools.find((t) => t.name === 'run_topic')!.run({ request: '想拍菜市场的真实故事' });
-    await tools.find((t) => t.name === 'run_review')!.run({ draft });
+    await boardRunner('run_topic', boardCtx).run({ request: '想拍菜市场的真实故事' });
+    await boardRunner('run_review', boardCtx).run({ draft });
     expect(rows.map((r) => r.taskType)).toEqual(['选题策划', '审稿优化']);
     expect(rows[0].inputData.topicCount).toBe(10);
     expect(rows[1].inputData.draftContent).toBe(draft);
@@ -209,11 +225,11 @@ describe('助理跑完板块后，历史记录和页面一样存下来', () => {
       }
       return json([]);
     }) as unknown as typeof fetch;
-    const tools = createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch });
+    const boardCtx: BoardContext = { userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch };
     const draft = '这是一段足够长的口播稿，用来测试审稿板块跑完以后存进历史的内容，要超过三十个字才会去审。';
-    await tools.find((t) => t.name === 'run_topic')!.run({ request: '想拍菜市场的真实故事' });
-    await tools.find((t) => t.name === 'run_script')!.run({ request: '节前节后门店生意对比' });
-    await tools.find((t) => t.name === 'run_review')!.run({ draft });
+    await boardRunner('run_topic', boardCtx).run({ request: '想拍菜市场的真实故事' });
+    await boardRunner('run_script', boardCtx).run({ request: '节前节后门店生意对比' });
+    await boardRunner('run_review', boardCtx).run({ draft });
     expect(posts.map((p) => p.url)).toEqual(['http://x/api/topics', 'http://x/api/script-history', 'http://x/api/script-history']);
     expect(posts[1].body.task_type).toBe('脚本生成');
     expect(posts[2].body.task_type).toBe('审稿优化');
@@ -222,11 +238,10 @@ describe('助理跑完板块后，历史记录和页面一样存下来', () => {
 
   it('存历史失败不影响结果返回', async () => {
     const { fakeFetch } = harness(null);
-    const tools = createAssistantTools({
+    const out = await boardRunner('run_topic', {
       userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch,
       saveHistory: async () => { throw new Error('db down'); },
-    });
-    const out = await tools.find((t) => t.name === 'run_topic')!.run({ request: '想拍菜市场的真实故事' });
+    }).run({ request: '想拍菜市场的真实故事' });
     expect(out).toBe('ok');
   });
 });

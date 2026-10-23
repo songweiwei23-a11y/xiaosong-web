@@ -13,7 +13,8 @@ const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
 describe('助理的工具不会重复扣额度', () => {
   it('工具文件不调用自由对话接口（它扣自由对话额度，会和助理对话重复）；板块接口只用于审稿，且走和页面一样的生成接口', () => {
-    const src = read('lib/assistant/tools.ts');
+    // 板块的执行函数（含走 /api/dify/stream 的那几行）已经拆到 boards.ts，两个文件合起来看
+    const src = read('lib/assistant/tools.ts') + read('lib/assistant/boards.ts');
     // 只看代码里的字符串（注释里提到这些接口是为了说明，不算调用）
     expect(src).not.toMatch(/['"`]\/api\/dify\/chat/);
     expect(src).not.toMatch(/\baskDify\s*\(/);

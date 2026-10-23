@@ -8,32 +8,23 @@ import { addMemory, listMemories, updateMemory } from '@/lib/assistant/memory-st
 import { MEMORY_MAX_COUNT } from '@/lib/assistant/memory';
 import { clampMinutes, OPEN_PAGES, resolveSound, soundChoices } from '@/lib/assistant/client-action-spec';
 import type { ActionReceipt } from '@/lib/assistant/receipts';
-import { buildReviewBoardQuery, reviewCreationSettings } from '@/lib/boards/review-query';
-import { buildTopicBoardQuery, topicCreationSettings } from '@/lib/boards/topic-query';
-import { buildScriptBoardQuery, SCRIPT_PAGE_DEFAULTS, scriptCreationSettings, scriptMemoryPatch, scriptResultWithQuality } from '@/lib/boards/script-query';
-import { resolveMix } from '@/lib/content-mix';
-import { tacticInText, type CreativeRoute } from '@/lib/creative-routes';
-import { defaultRoleOfScriptType, type ContentRole } from '@/lib/content-roles';
-import type { MemoryDefaults } from '@/lib/settings-memory';
-import { AI_DURATION } from '@/lib/review-standards';
-import { readDifyStream } from '@/lib/sse-stream';
+import { BOARD_LABEL, internalBase, readInternal, type BoardHistoryRow, type BoardInput, type BoardKind } from './boards';
+import { createPendingRun } from './pending-runs';
+import { MAX_BOARD_RUNS } from './manager';
 import type { AssistantTool, WebFeedback } from './agent';
-import { loadBoardContext } from './board-context';
 
 /**
- * 助理能用的工具。每个工具都只是包装现有的能力，不另起一套：
+ * 助理能用的工具。助理是管理员：它理解需求、派活给板块、验收结果；内容本身由板块用 Dify 生成。
  *   read_account  读档案、定位、进行中的作品（走现有接口，权限和隔离沿用原来的）
  *   read_quota    读额度（走现有接口）
  *   search_web    联网查热点、新闻（走现有的联网搜索，扣联网额度）
  *   search_knowledge  查编导知识库里的方法论（走知识库检索，扣知识库查询额度）
  *
- *   run_review    把稿子交给审稿板块（走 /api/dify/stream，和审稿页面同一个接口）
- *   run_topic     把选题需求交给选题板块（同上）
- *   run_script    把拍摄需求交给脚本板块（同上）
+ *   propose_topic / propose_script / propose_review  派活给选题、脚本、审稿板块。只是列出来，
+ *       用户点「确定开跑」后才真的跑（板块每跑一次都扣额度），跑完由管理员验收（见 lib/assistant/board-job.ts）
  *
  * 注意：这里刻意不调用自由对话接口 /api/dify/chat。它扣的是「自由对话」额度，而助理对话本身已经扣过一次，
- * 再经它调用就会重复扣。板块接口 /api/dify/stream 扣的是板块自己的额度，这是正常的：
- * 助理对话扣 1 次自由对话，它调用的板块各自按原来的规则扣。
+ * 再经它调用就会重复扣。板块接口 /api/dify/stream 扣的是板块自己的额度，这是正常的。
  */
 
 export interface AssistantToolContext {
@@ -48,7 +39,7 @@ export interface AssistantToolContext {
   saveHistory?: (row: BoardHistoryRow) => Promise<void>;
   /** 联网这一轮的质量反馈（状态、来源）推给界面，用户能看到每条结论依据哪些来源 */
   onWeb?: (feedback: WebFeedback) => void;
-  /** 要在页面上替用户做的事（播放声音等），由界面执行；见 lib/assistant/client-action-spec */
+  /** 要在页面上替用户做的事（播放声音、派活确认等），由界面执行；见 lib/assistant/client-action-spec */
   onAction?: (action: { name: string; args: Record<string, unknown> }) => void;
   /** 写类工具执行的结果（回执）：界面显示成卡片；回答核对也用它（见 lib/assistant/receipts.ts） */
   onReceipt?: (receipt: ActionReceipt) => void;
@@ -59,68 +50,6 @@ export interface AssistantToolContext {
 
 const TRUNC = 1500;
 
-function internalBase(ctx: AssistantToolContext): string {
-  return ctx.internalBase ?? process.env.ASSISTANT_INTERNAL_URL ?? `http://127.0.0.1:${process.env.PORT || 3000}`;
-}
-
-async function readInternal(ctx: AssistantToolContext, path: string): Promise<unknown> {
-  const doFetch = ctx.fetchImpl ?? fetch;
-  const res = await doFetch(`${internalBase(ctx)}${path}`, {
-    headers: { cookie: ctx.cookie },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`读取 ${path.split('?')[0]} 失败（${res.status}）`);
-  return res.json();
-}
-
-/**
- * 脚本页面打开时会读「设置记忆」按上次的习惯预填（同一个接口、同一个 scope）。读不到就不预填，和页面一样。
- */
-async function readScriptMemory(ctx: AssistantToolContext, profileId: string | null): Promise<MemoryDefaults | null> {
-  try {
-    const scope = profileId || 'default';
-    const data = (await readInternal(ctx, `/api/settings-memory?board=script&profileId=${encodeURIComponent(scope)}`)) as {
-      defaults?: MemoryDefaults;
-      summary?: string;
-    } | null;
-    return data?.defaults && data.summary ? data.defaults : null;
-  } catch {
-    return null;
-  }
-}
-
-/** 板块跑完存进历史的一条，字段和页面各自保存时写的一样 */
-export interface BoardHistoryRow {
-  taskType: '选题策划' | '脚本生成' | '审稿优化';
-  inputData: Record<string, unknown>;
-  result: string;
-}
-
-/**
- * 板块的产出存进用户自己的历史记录，和页面用的是同一批保存接口（用户的 Cookie 认人，权限沿用）。
- * 选题走 /api/topics，脚本和审稿走 /api/script-history。存失败不影响助理给出的结果。
- */
-async function saveBoardHistory(ctx: AssistantToolContext, row: BoardHistoryRow): Promise<void> {
-  try {
-    if (ctx.saveHistory) {
-      await ctx.saveHistory(row);
-      return;
-    }
-    const doFetch = ctx.fetchImpl ?? fetch;
-    const isTopic = row.taskType === '选题策划';
-    await doFetch(`${internalBase(ctx)}${isTopic ? '/api/topics' : '/api/script-history'}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', cookie: ctx.cookie },
-      body: JSON.stringify(isTopic
-        ? { input_data: row.inputData, result: row.result }
-        : { input_data: row.inputData, result: row.result, task_type: row.taskType }),
-      cache: 'no-store',
-    });
-  } catch {
-    // 存失败不影响结果
-  }
-}
-
 const KNOWLEDGE_DOWN =
   '编导知识库这次没有查到结果。请如实告诉用户这次没有查知识库，可以按一般经验回答，但要说明不是来自知识库，不编造资料来源。';
 const KNOWLEDGE_EXHAUSTED =
@@ -128,10 +57,7 @@ const KNOWLEDGE_EXHAUSTED =
 const KNOWLEDGE_NONE =
   '编导知识库里没有和这个问题相关的资料。请如实告诉用户，可以按一般经验回答，但不能说成来自知识库。';
 
-const clip = (s: unknown) =>(typeof s === 'string' ? s.slice(0, TRUNC) : '');
-/** 板块的产出（选题、审稿意见）比读取类的信息长得多，单独放宽 */
-const BOARD_TRUNC = 6000;
-const boardClip = (s: string) => (s.length > BOARD_TRUNC ? `${s.slice(0, BOARD_TRUNC)}\n…（内容太长，已截断）` : s);
+const clip = (s: unknown) => (typeof s === 'string' ? s.slice(0, TRUNC) : '');
 
 /** 待办的一条（接口返回的形状） */
 interface TodoItem {
@@ -158,6 +84,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
   let webRound: Promise<string> | null = null;
   /** 这一轮（一条消息）的知识库检索：只查一次、只扣一次额度，之后的 search_knowledge 调用都用同一份（和联网一致） */
   let knowledgeRound: Promise<string> | null = null;
+
   const emit = (receipt: ActionReceipt) => ctx.onReceipt?.(receipt);
   const doFetch = ctx.fetchImpl ?? fetch;
   const base = internalBase(ctx);
@@ -176,6 +103,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       body: JSON.stringify(body),
       cache: 'no-store',
     });
+
   const runKnowledgeSearch = async (question: string): Promise<string> => {
     if (!knowledgeConfigured()) return KNOWLEDGE_DOWN;
     // 和知识库板块一样扣「知识库查询」额度：先预留，查到了才结算，没查到就释放
@@ -219,12 +147,32 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
     }
   };
 
+  /**
+   * 派活：把板块任务列出来，等用户确认才真的跑。板块每跑一次都扣额度，所以这里绝不直接执行。
+   * 管理员的验收和返工在确认之后、板块跑的过程中进行（见 lib/assistant/board-job.ts）。
+   */
+  const proposeBoard = (kind: BoardKind, board: BoardInput, summary: string): string => {
+    const meta = BOARD_LABEL[kind];
+    const run = createPendingRun({
+      userId: ctx.userId,
+      board,
+      kind,
+      label: meta.label,
+      summary,
+      maxRuns: MAX_BOARD_RUNS,
+      profileId: ctx.profileId ?? null,
+      memoryOn: ctx.memoryOn !== false,
+    });
+    ctx.onAction?.({ name: 'board.run', args: { runId: run.id, board: kind, label: meta.label, summary, maxRuns: MAX_BOARD_RUNS, feature: meta.feature } });
+    return `已把「${meta.label}」的任务列给用户，等他点确认后才开跑（最多跑 ${MAX_BOARD_RUNS} 次，每次扣一次「${meta.feature}」额度；不达标我会让板块返工）。请告诉用户在面板上确认。在他确认之前，不要说已经做好了。`;
+  };
+
   return [
     {
       name: 'read_account',
       label: '正在查你的档案和作品',
       description:
-        '读取用户的账号档案列表、每个档案已经有的定位类型，以及最近的作品和它们的进度。回答与用户账号、进度、该做什么有关的问题前先用它。',
+        '读取用户的账号档案列表、每个档案已经有的定位类型，以及最近的作品和它们的进度。回答与用户账号、进度、该做什么有关的问题前先用它。结果里方括号中的编号，是修改档案、作品时要用的。',
       input_schema: { type: 'object', properties: {}, required: [] },
       async run() {
         const profiles = await readInternal(ctx, '/api/profiles');
@@ -306,10 +254,99 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       },
     }] : []),
     {
-      name: 'run_review',
-      label: '正在审稿（对照你的账号背景逐条核对）',
+      name: 'propose_topic',
+      label: '正在派选题板块',
       description:
-        '把用户给出的一份口播稿交给审稿优化板块检查：开头、结构、事实依据、禁忌等，给出可以直接改的意见。需要用户提供稿子的完整原文；稿子太短时先请用户补全。这个板块按审稿的额度扣费。',
+        '把选题任务派给「选题策划」板块（板块用 Dify 真正产出选题，你不自己写选题）。派之前先把需求补全：要拍的方向或主题、条数、目的（流量/人设/变现，不确定就按配比）、关键词、赛道、风格、对标账号、爆款案例、创意难度。缺关键信息先问用户，不要自己编。这一步只是列给用户看，用户点确认后才开跑，每次扣选题额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          request: { type: 'string', description: '要拍的方向或主题，用中文写清楚' },
+          count: { type: 'number', description: '条数，3 到 10，默认 10' },
+          role: { type: 'string', enum: ['按配比', '流量型', '人设型', '变现型'], description: '视频目的，默认按配比' },
+          platform: { type: 'string', description: '发布平台，不确定就不填' },
+          keywords: { type: 'array', items: { type: 'string' }, description: '关键词，最多 3 个' },
+          tracks: { type: 'array', items: { type: 'string' }, description: '赛道' },
+          styles: { type: 'array', items: { type: 'string' }, description: '风格' },
+          benchmarkAccounts: { type: 'string', description: '对标账号（用户说了才填）' },
+          viralCases: { type: 'string', description: '爆款案例（用户说了才填）' },
+          difficulty: { type: 'string', enum: ['简单易上手', '中等创意', '高难度'], description: '创意难度，默认中等创意' },
+        },
+        required: ['request'],
+      },
+      async run(input) {
+        const request = typeof input.request === 'string' ? input.request.trim() : '';
+        if (!request) return '还不知道用户想拍什么。请先问清楚想要的方向或需求';
+        const count = Math.min(10, Math.max(3, Math.round(typeof input.count === 'number' ? input.count : 10)));
+        const roles = ['按配比', '流量型', '人设型', '变现型'] as const;
+        const role = (roles as readonly string[]).includes(String(input.role)) ? (input.role as (typeof roles)[number]) : '按配比';
+        const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim()) : []);
+        const keywords = strings(input.keywords).slice(0, 3);
+        const tracks = strings(input.tracks);
+        const styles = strings(input.styles);
+        const difficulty = typeof input.difficulty === 'string' && input.difficulty.trim() ? input.difficulty.trim() : '中等创意';
+        const platform = typeof input.platform === 'string' ? input.platform.trim() : '';
+        const summary = [
+          `选题 ${count} 条（${role}）`,
+          `方向：${request}`,
+          platform ? `平台：${platform}` : '',
+          keywords.length ? `关键词：${keywords.join('、')}` : '',
+          tracks.length ? `赛道：${tracks.join('、')}` : '',
+          `难度：${difficulty}`,
+        ].filter(Boolean).join('｜');
+        return proposeBoard('topic', {
+          kind: 'topic',
+          input: {
+            request,
+            count,
+            role,
+            platform,
+            keywords,
+            tracks,
+            styles,
+            benchmarkAccounts: typeof input.benchmarkAccounts === 'string' ? input.benchmarkAccounts : '',
+            viralCases: typeof input.viralCases === 'string' ? input.viralCases : '',
+            difficulty,
+          },
+        }, summary);
+      },
+    },
+    {
+      name: 'propose_script',
+      label: '正在派脚本板块',
+      description:
+        '把拍摄需求派给「脚本生成」板块（板块用 Dify 真正写脚本，你不自己写脚本正文）。要拍的主题或内容必须说清楚；目的、平台、场景、风格不确定就不填，由板块按档案和页面默认设置处理。这一步只是列给用户看，用户点确认后才开跑，每次扣脚本额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          request: { type: 'string', description: '要拍的主题或内容，用中文写清楚' },
+          role: { type: 'string', enum: ['流量型', '人设型', '变现型'], description: '视频目的，不确定就不填' },
+          platform: { type: 'string', description: '发布平台，不确定就不填，默认抖音' },
+          scene: { type: 'string', description: '拍摄场景，用户说了才填' },
+          style: { type: 'string', description: '风格，用户说了才填' },
+        },
+        required: ['request'],
+      },
+      async run(input) {
+        const request = typeof input.request === 'string' ? input.request.trim() : '';
+        if (!request) return '还不知道用户想拍什么。请先问清楚要拍的主题或内容';
+        const role = (['流量型', '人设型', '变现型'] as const).find((r) => r === input.role);
+        const platform = typeof input.platform === 'string' ? input.platform.trim() : '';
+        const scene = typeof input.scene === 'string' ? input.scene.trim() : '';
+        const style = typeof input.style === 'string' ? input.style.trim() : '';
+        const summary = [`脚本：${request}`, role ? `目的：${role}` : '', platform ? `平台：${platform}` : '', scene ? `场景：${scene}` : '', style ? `风格：${style}` : '']
+          .filter(Boolean).join('｜');
+        return proposeBoard('script', {
+          kind: 'script',
+          input: { request, role, platform, scene, style },
+        }, summary);
+      },
+    },
+    {
+      name: 'propose_review',
+      label: '正在派审稿板块',
+      description:
+        '把一份口播稿派给「审稿优化」板块（板块用 Dify 逐条核对，你不自己改稿）。需要用户提供稿子的完整原文；稿子太短时先请用户补全。这一步只是列给用户看，用户点确认后才开跑，每次扣审稿额度。',
       input_schema: {
         type: 'object',
         properties: {
@@ -322,302 +359,13 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       async run(input) {
         const draft = typeof input.draft === 'string' ? input.draft.trim() : '';
         if (draft.length < 30) return '稿子太短或者没有给出原文。请先请用户把要审的稿子完整发过来';
-        const platform = typeof input.platform === 'string' && input.platform.trim() ? input.platform.trim() : '抖音';
+        const platform = typeof input.platform === 'string' ? input.platform.trim() : '';
         const scriptType = typeof input.scriptType === 'string' ? input.scriptType.trim() : '';
-        const doFetch = ctx.fetchImpl ?? fetch;
-        const base = internalBase(ctx);
-
-        const creatorContext = await loadBoardContext({ cookie: ctx.cookie, base, fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
-        // 和审稿页面同一个算法（lib/boards/review-query）：时长是页面的 AI 推荐初始值
-        const currentSettings = reviewCreationSettings({ draftContent: draft, platform, duration: AI_DURATION, scriptType, autoSettings: {}, creatorContext });
-        const { query, reviewMaterial } = buildReviewBoardQuery({
-          creatorContext,
-          currentSettings,
-          sourceReference: '',
-          draftContent: draft,
-          platform,
-          effectiveDuration: AI_DURATION,
-          scriptType,
-          personalRequirements: '',
-          reviewDimensions: '',
-          optimizationGoals: '',
-          benchmarkScript: '',
-          compareMode: true,
-          severityLabels: true,
-        });
-
-        // 和审稿页面走同一个生成接口：额度、事实核对、修复都由它处理，这里不另起一套
-        const res = await doFetch(`${base}/api/dify/stream`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', cookie: ctx.cookie },
-          body: JSON.stringify({
-            taskType: '审稿优化',
-            creationSettings: currentSettings,
-            query,
-            draftContent: draft,
-            personalRequirements: '',
-            reviewMaterial,
-            reviewFocus: '',
-            profileId: creatorContext.profile?.id ?? null,
-            platform,
-            scriptType,
-          }),
-          cache: 'no-store',
-        });
-        if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          return `审稿没有完成：${data?.error ?? '服务暂时不可用，请稍后再试'}`;
-        }
-        const text = await readDifyStream(res);
-        await saveBoardHistory(ctx, {
-          taskType: '审稿优化',
-          inputData: {
-            profileId: creatorContext.profile?.id ?? null,
-            draftContent: draft,
-            sourceReference: '',
-            originContent: draft,
-            creationSettings: currentSettings,
-            scriptType,
-            platform,
-            duration: AI_DURATION,
-            personalRequirements: '',
-            reviewDimensions: '',
-            optimizationGoals: '',
-            benchmarkScript: '',
-            compareMode: true,
-            severityLabels: true,
-          },
-          result: text,
-        });
-        return boardClip(text);
-      },
-    },
-    {
-      name: 'run_topic',
-      label: '正在选题（对照你的账号定位和配比）',
-      description:
-        '让选题策划板块按用户的账号定位出一批选题。需要用户说清楚想拍什么方向或需求；条数默认 10，最多 10；视频目的默认按配比。这个板块按选题的额度扣费。',
-      input_schema: {
-        type: 'object',
-        properties: {
-          request: { type: 'string', description: '用户想要的选题方向或需求，用中文写清楚' },
-          count: { type: 'number', description: '条数，3 到 10，默认 10' },
-          role: { type: 'string', enum: ['按配比', '流量型', '人设型', '变现型'], description: '视频目的，默认按配比' },
-          platform: { type: 'string', description: '发布平台，不确定就不填' },
-        },
-        required: ['request'],
-      },
-      async run(input) {
-        const request = typeof input.request === 'string' ? input.request.trim() : '';
-        if (!request) return '还不知道用户想拍什么。请先问清楚想要的方向或需求';
-        const requestedCount = typeof input.count === 'number' ? Math.round(input.count) : 10;
-        const topicCount = Math.min(10, Math.max(3, requestedCount));
-        const roles = ['按配比', '流量型', '人设型', '变现型'];
-        const topicRole = (roles.includes(String(input.role)) ? input.role : '按配比') as '按配比' | '流量型' | '人设型' | '变现型';
-        const platform = typeof input.platform === 'string' && input.platform.trim() ? input.platform.trim() : '';
-        const doFetch = ctx.fetchImpl ?? fetch;
-        const base = internalBase(ctx);
-
-        const creatorContext = await loadBoardContext({ cookie: ctx.cookie, base, fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
-        const topicType = topicRole === '按配比' ? '选题（流量型、人设型、变现型按配比搭配）' : `${topicRole}选题`;
-        const resolvedMix = resolveMix(creatorContext.profile as unknown as Record<string, unknown> | null, null, request);
-        // 和选题页面同一个算法（lib/boards/topic-query）：没勾选的项都是页面的初始空值
-        const currentSettings = topicCreationSettings({
-          keyword1: '', personalRequirement: request, sourceReference: '',
-          selectedPlatforms: platform ? [platform] : [], selectedTracks: [], selectedContentTypes: [], selectedStyles: [],
-          selectedElements: [], selectedDealReasons: [], topicRole, topicCount, tactic: '',
-          autoSettings: {}, creatorContext,
-        });
-        const built = buildTopicBoardQuery({
-          creatorContext,
-          selectedProfile: creatorContext.profile ?? null,
-          // 页面的选题从不选定位（没有设置选中定位的地方），助理也不带
-          positioningForCtx: null,
-          topicCount,
-          topicType,
-          topicRole,
-          mode: 'quick',
-          sourceReference: '',
-          sourceFrom: '',
-          incomingSetup: null,
-          keyword1: '',
-          keyword2: '',
-          keyword3: '',
-          personalRequirement: request,
-          currentSettings,
-          accountStage: '',
-          fansLevel: '',
-          avgViewsInput: '',
-          selectedPlatforms: platform ? [platform] : [],
-          selectedTracks: [],
-          selectedContentTypes: [],
-          selectedStyles: [],
-          positioningExtra: '',
-          selectedElements: [],
-          dealReasonLabels: [],
-          benchmarkAccounts: '',
-          viralCases: '',
-          difficulty: '中等创意',
-          withHook: true,
-          tactic: '',
-          route: '两种都出' as CreativeRoute,
-          routeExplicit: false,
-          resolvedMix,
-          quickTopics: false,
-        });
-
-        // 和选题页面走同一个生成接口：额度、事实核对、去重都由它处理
-        const res = await doFetch(`${base}/api/dify/stream`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', cookie: ctx.cookie },
-          body: JSON.stringify({
-            taskType: '选题策划',
-            creationSettings: currentSettings,
-            query: built.query,
-            profileId: creatorContext.profile?.id ?? null,
-            inputs: {
-              profile_id: creatorContext.profile?.id ?? null,
-              mode: 'quick',
-              topicCount,
-              topicType,
-              topicRole,
-              personalRequirement: request,
-            },
-          }),
-          cache: 'no-store',
-        });
-        if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          return `选题没有完成：${data?.error ?? '服务暂时不可用，请稍后再试'}`;
-        }
-        const text = await readDifyStream(res);
-        await saveBoardHistory(ctx, {
-          taskType: '选题策划',
-          inputData: {
-            profile_id: creatorContext.profile?.id ?? null,
-            mode: 'quick',
-            topicType,
-            topicRole,
-            route: '两种都出',
-            routeExplicit: false,
-            platforms: platform,
-            personalRequirement: request,
-            keywords: '',
-            topicCount,
-            creationSettings: currentSettings,
-          },
-          result: text,
-        });
-        return boardClip(text);
-      },
-    },
-    {
-      name: 'run_script',
-      label: '正在写脚本（对照你的账号定位）',
-      description:
-        '让脚本生成板块按用户的账号定位写一条可以直接拍的口播脚本。需要用户说清楚要拍的主题或内容；视频目的不确定就不填，由板块按内容判断。这个板块按脚本的额度扣费。',
-      input_schema: {
-        type: 'object',
-        properties: {
-          request: { type: 'string', description: '要拍的主题或内容，用中文写清楚' },
-          role: { type: 'string', enum: ['流量型', '人设型', '变现型'], description: '视频目的，不确定就不填' },
-          platform: { type: 'string', description: '发布平台，不确定就不填，默认抖音' },
-        },
-        required: ['request'],
-      },
-      async run(input) {
-        const request = typeof input.request === 'string' ? input.request.trim() : '';
-        if (!request) return '还不知道用户想拍什么。请先问清楚要拍的主题或内容';
-        const roles: ContentRole[] = ['流量型', '人设型', '变现型'];
-        const role = String(input.role ?? '');
-        const platformInput = typeof input.platform === 'string' && input.platform.trim() ? input.platform.trim() : '';
-        const doFetch = ctx.fetchImpl ?? fetch;
-        const base = internalBase(ctx);
-
-        const creatorContext = await loadBoardContext({ cookie: ctx.cookie, base, fetchImpl: ctx.fetchImpl }, ctx.profileId ?? null);
-
-        // 没说的项用脚本页面打开时的初始值；记忆预填开着时，再按页面的同一规则填上次的习惯
-        const d = SCRIPT_PAGE_DEFAULTS;
-        let state = {
-          platform: platformInput || d.platform,
-          durationMode: d.durationMode as 'preset' | 'custom' | 'ai',
-          duration: d.duration,
-          customDuration: '',
-          scriptRole: roles.find((r) => r === role) ?? ('自动' as const),
-          scriptStructure: d.scriptStructure,
-        };
-        const memory = ctx.memoryOn === false ? null : await readScriptMemory(ctx, creatorContext.profile?.id ?? null);
-        if (memory) {
-          const patch = scriptMemoryPatch(memory, state);
-          state = {
-            platform: patch.platform ?? state.platform,
-            durationMode: patch.durationMode ?? state.durationMode,
-            duration: patch.duration ?? state.duration,
-            customDuration: patch.customDuration ?? state.customDuration,
-            scriptRole: patch.scriptRole ?? state.scriptRole,
-            scriptStructure: patch.scriptStructure ?? state.scriptStructure,
-          };
-        }
-        const effectiveRole = state.scriptRole !== '自动' ? state.scriptRole : defaultRoleOfScriptType(d.scriptType);
-
-        const currentSettings = scriptCreationSettings({
-          topic: request, platform: state.platform, durationMode: state.durationMode, duration: state.duration, customDuration: state.customDuration,
-          scriptType: d.scriptType, autoScriptType: true, scriptRole: state.scriptRole, effectiveRole,
-          style: d.style, customStyle: '', targetGroup: d.targetGroup, customTargetGroup: '', industry: '', customIndustry: '',
-          boomElements: [], dealReasons: [], additionalInfo: '', scriptStructure: state.scriptStructure, hookType: d.hookType,
-          tactic: d.tactic, openingLine: '', openingCard: '', scene: d.scene, device: d.device, budget: d.budget, personnel: d.personnel,
-          originContent: '', autoSettings: {}, fromHandoff: false, creatorContext,
-        });
-        const query = buildScriptBoardQuery({
-          topic: request, platform: state.platform, scriptType: d.scriptType, autoScriptType: true, effectiveRole, isAd: false,
-          industry: '', customIndustry: '', targetGroup: d.targetGroup, customTargetGroup: '', style: d.style, customStyle: '',
-          durationMode: state.durationMode, duration: state.duration, customDuration: state.customDuration,
-          profile: creatorContext.profile ?? null,
-          // 脚本页面不带定位（方案 D，见 lib/boards/script-query），助理也不带
-          positioningContent: null,
-          scriptStructure: state.scriptStructure, hookType: d.hookType, boomElements: [], directorThoughts: d.directorThoughts,
-          tactic: d.tactic, openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: d.scene, device: d.device,
-          budget: d.budget, personnel: d.personnel, accountPositioning: '', additionalInfo: '', dealReasons: [],
-          originContent: '', focusContent: '', currentSettings,
-        });
-
-        // 和脚本页面走同一个生成接口：额度、事实核对由它处理
-        const res = await doFetch(`${base}/api/dify/stream`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', cookie: ctx.cookie },
-          body: JSON.stringify({
-            taskType: '脚本生成',
-            creationSettings: currentSettings,
-            profileId: creatorContext.profile?.id ?? null,
-            query,
-          }),
-          cache: 'no-store',
-        });
-        if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          return `脚本没有完成：${data?.error ?? '服务暂时不可用，请稍后再试'}`;
-        }
-        // 和脚本页面一样：结果后面追加质检报告，存进历史的也是这一份
-        const text = scriptResultWithQuality(await readDifyStream(res));
-        const duration = state.durationMode === 'ai'
-          ? 'AI推荐'
-          : state.durationMode === 'custom' && state.customDuration ? `${state.customDuration}秒` : state.duration;
-        await saveBoardHistory(ctx, {
-          taskType: '脚本生成',
-          inputData: {
-            profileId: creatorContext.profile?.id ?? null,
-            topic: request,
-            platform: state.platform,
-            creationSettings: currentSettings,
-            additionalInfo: '',
-            originContent: '',
-            duration,
-            // 页面的打法是「AI 挑」时，存的是 AI 实际挑中的那一计
-            tactic: tacticInText(text) || undefined,
-          },
-          result: text,
-        });
-        return boardClip(text);
+        const summary = `审稿：${draft.slice(0, 30)}${draft.length > 30 ? '…' : ''}｜${platform || '抖音'}`;
+        return proposeBoard('review', {
+          kind: 'review',
+          input: { draft, platform, scriptType },
+        }, summary);
       },
     },
     {
@@ -1026,7 +774,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       name: 'daily_brief',
       label: '正在整理今天的安排',
       description:
-        '给用户一份今天的安排：今天到期和已经过期的待办、还没拍的作品、额度。用户问「今天要做什么」「今天的安排」时用。这是用户问了才生成的，不会主动推送。',
+        '给用户一份今天的安排：今天到期和已经过期的待办、还没拍的作品、额度。用户问「今天要做什么」「今天的安排」时用。这是按需生成的，不会主动推送。',
       input_schema: { type: 'object', properties: {}, required: [] },
       async run() {
         const [todos, quota, works] = await Promise.all([

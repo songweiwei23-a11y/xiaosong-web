@@ -8,6 +8,7 @@ import path from 'node:path';
 import { buildScriptBoardQuery, type ScriptBoardInput } from '@/lib/boards/script-query';
 import { creationSettingsBlock, type CreationSettings } from '@/lib/creation-settings';
 import { createAssistantTools } from '@/lib/assistant/tools';
+import { runScriptBoard, type ScriptInput } from '@/lib/assistant/boards';
 
 const SETTINGS = { purpose: '流量型', audience: '实体店老板' } as unknown as CreationSettings;
 
@@ -150,16 +151,23 @@ describe('助理的脚本工具', () => {
       headers: { 'content-type': 'text/event-stream' },
     });
 
-  const scriptTool = (fetchImpl: typeof fetch) =>
-    createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl }).find((t) => t.name === 'run_script')!;
+  // 板块的执行：派活经用户确认后跑的就是 runScriptBoard（lib/assistant/boards.ts）
+  const scriptTool = (fetchImpl: typeof fetch) => ({
+    run: async (input: Record<string, unknown>): Promise<string> => {
+      const r = await runScriptBoard({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl }, input as unknown as ScriptInput);
+      return r.ok ? r.text : r.error ?? '';
+    },
+  });
 
-  it('没说清楚要拍什么：不调用板块，先去问清楚', async () => {
+  it('没说清楚要拍什么：派活工具不列出任务，先去问清楚', async () => {
     const calls: string[] = [];
     const fakeFetch = (async (url: string) => {
       calls.push(String(url));
       return json([]);
     }) as unknown as typeof fetch;
-    const out = await scriptTool(fakeFetch).run({ request: '  ' });
+    const out = await createAssistantTools({ userId: 'u1', cookie: 'c=1', profileId: 'p1', internalBase: 'http://x', fetchImpl: fakeFetch })
+      .find((t) => t.name === 'propose_script')!
+      .run({ request: '  ' });
     expect(out).toContain('还不知道用户想拍什么');
     expect(calls.some((u) => u.includes('/api/dify/stream'))).toBe(false);
   });
@@ -202,12 +210,12 @@ describe('助理的脚本工具', () => {
   it('额度不够或服务错误：把原因如实交给助理', async () => {
     const fakeFetch = (async (url: string) => (String(url).includes('/api/dify/stream') ? json({ error: '本期脚本额度已用完' }, 402) : json([]))) as unknown as typeof fetch;
     const out = await scriptTool(fakeFetch).run({ request: '想拍点新内容' });
-    expect(out).toBe('脚本没有完成：本期脚本额度已用完');
+    expect(out).toContain('本期脚本额度已用完');
   });
 
-  it('助理的系统提示不再说「还不能直接生成脚本」，并告诉它用 run_script', async () => {
+  it('助理的系统提示不再说「还不能直接生成脚本」，并告诉它用 propose_script 派活', async () => {
     const run = fs.readFileSync(path.join(process.cwd(), 'lib/assistant/run.ts'), 'utf8');
-    expect(run).toContain('run_script');
+    expect(run).toContain('propose_script');
     expect(run).not.toContain('你现在还不能直接生成');
   });
 });

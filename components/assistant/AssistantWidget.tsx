@@ -59,7 +59,7 @@ interface Task {
  * 助理提议要做、但要用户点确认才真的做的事（删待办、忘掉记忆、改档案、改作品状态）。
  * 确认前什么都不改；确认后由 runProposal 调用对应的接口。
  */
-type ProposalKind = "memory.forget" | "todo.delete" | "profile.update" | "profile.create" | "work.status";
+type ProposalKind = "memory.forget" | "todo.delete" | "profile.update" | "profile.create" | "work.status" | "board.run";
 interface Proposal {
   id: string;
   kind: ProposalKind;
@@ -211,6 +211,20 @@ function proposalFrom(name: string, args: Record<string, unknown>): Proposal | n
       args,
     };
   }
+  if (name === "board.run") {
+    const runId = s(args.runId);
+    if (!runId) return null;
+    const label = s(args.label) || "板块";
+    const maxRuns = typeof args.maxRuns === "number" ? args.maxRuns : 3;
+    return {
+      id: `board:${runId}`,
+      kind: "board.run",
+      title: `开跑「${label}」`,
+      detail: `${s(args.summary)}。最多跑 ${maxRuns} 次，每次扣一次「${s(args.feature)}」额度；不达标我会让板块返工。`,
+      confirmLabel: "确定开跑",
+      args,
+    };
+  }
   if (name === "profile.create") {
     const profileName = s(args.profileName);
     if (!profileName) return null;
@@ -245,6 +259,7 @@ const PROPOSAL_DONE: Record<ProposalKind, string> = {
   "profile.update": "已修改档案",
   "profile.create": "已新建档案",
   "work.status": "已修改作品状态",
+  "board.run": "已派给板块，进度在下面",
 };
 
 /** 确认后真的去做（接口都是用户自己的 Cookie，权限和页面一样） */
@@ -635,7 +650,40 @@ export function AssistantWidget() {
   };
 
   // 用户点了确认才真的做；做失败就留着卡片，方便再点一次
+  // 用户确定开跑：服务端接手执行（板块跑、验收、返工），界面按任务显示进度
+  const startBoardRun = async (p: Proposal) => {
+    if (busy) return setNotice(BUSY_NOTICE);
+    const runId = String(p.args.runId ?? "");
+    const res = await fetch("/api/assistant/board-run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId }),
+    }).catch(() => null);
+    const data = (await res?.json().catch(() => ({}))) as { jobId?: string; error?: string };
+    if (!res?.ok || !data.jobId) return setNotice(data.error || "开跑没有成功，请稍后再试");
+    const id = nextIdRef.current++;
+    setProposals((ps) => ps.filter((x) => x.id !== p.id));
+    setTasks((ts) => [
+      ...ts,
+      {
+        id,
+        request: `（管理员派活）${String(p.args.label ?? "板块")}：${String(p.args.summary ?? "")}`,
+        status: "running",
+        steps: [],
+        answer: "",
+        error: "",
+        web: null,
+        receipts: [],
+        jobId: data.jobId ?? null,
+        feedback: null,
+      },
+    ]);
+    sinceRef.current = 0;
+    setRunning({ taskId: id, jobId: data.jobId });
+  };
+
   const confirmProposal = async (p: Proposal) => {
+    if (p.kind === "board.run") return startBoardRun(p);
     const ok = await runProposal(p).catch(() => false);
     if (!ok) return setNotice("这次没有改成功，请稍后再试");
     setProposals((ps) => ps.filter((x) => x.id !== p.id));
