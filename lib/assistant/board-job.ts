@@ -32,6 +32,8 @@ export interface BoardRunResult {
   /** 第一次交出的那版算 1 次，之后每直接修改一次加 1 */
   attempts: number;
   problems: string[];
+  /** 账号定位是否写进了账号定位表（只有账号定位的板块才有这一项） */
+  positioningSaved?: boolean;
   error?: string;
   /** 交付的那份创作（已存成创作会话）：下一步按它接续，和页面「带去下一步」一样 */
   carry?: HandoffPayload;
@@ -106,6 +108,17 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
   }
 
   const saved = await keepResult(opts.ctx, opts.board, full);
+  // 账号定位要写进账号定位表，地基门槛和之后的板块才读得到（2026-10-24）。只写通过验收的；没通过的交给老板判断，不直接变成当前生效的定位
+  let positioningSaved: boolean | undefined;
+  if (opts.board.kind === 'positioning' && opts.ctx.persistPositioning) {
+    if (check.ok) {
+      positioningSaved = await opts.ctx.persistPositioning(full).catch(() => false);
+      if (!positioningSaved) pushEvent(job, { type: 'step', text: `${tag}⚠ 「${label}」没能写进账号定位表，请到定位页手动保存` });
+    } else {
+      positioningSaved = false;
+      pushEvent(job, { type: 'step', text: `${tag}⚠ 「${label}」没通过验收，没有写进账号定位表，请你判断后到定位页保存` });
+    }
+  }
   // 历史必须存成功：创作会话没存下来，或者页面历史没存下来，都要让老板知道，先去复制保存
   const stored = saved !== null && res.historySaved !== false;
   if (!stored) {
@@ -119,6 +132,7 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
     problems: check.ok ? [] : check.problems,
     carry: saved?.payload,
     stored,
+    positioningSaved,
   };
 }
 
@@ -142,6 +156,11 @@ async function keepResult(ctx: BoardContext, board: BoardAny, full: string): Pro
   return saveBoardResult(ctx, board, full).catch(() => null);
 }
 
+/** 账号定位没写进账号定位表（没通过验收，或者写库失败），在回答末尾说清楚 */
+function positioningNote(saved: boolean | undefined): string {
+  return saved === false ? '\n\n⚠ 这份账号定位没有写进账号定位表，地基门槛和之后的板块读不到它。请判断后到定位页保存。' : '';
+}
+
 /** 没存进历史的结果，在交给老板的回答末尾加一句明确的提示 */
 function unstoredNote(stored: boolean | undefined): string {
   return stored === false ? '\n\n⚠ 这份结果没能存进历史，请先复制保存，再继续。' : '';
@@ -159,7 +178,7 @@ export interface BoardJobInput {
 export async function runBoardJob(job: AssistantJob, input: BoardJobInput): Promise<void> {
   const r = await runBoardWithReview(job, { ctx: input.ctx, board: input.board, maxRuns: input.maxRuns ?? MAX_REVISIONS, cfg: input.cfg, llm: input.llm });
   if (r.error) pushEvent(job, { type: 'error', text: `「${BOARD_LABEL[input.board.kind].label}」没有完成：${r.error}` });
-  finishJob(job, r.text ? 'done' : 'error', r.text ? managerAnswer(r.text, r.attempts, r.problems) + unstoredNote(r.stored) : '');
+  finishJob(job, r.text ? 'done' : 'error', r.text ? managerAnswer(r.text, r.attempts, r.problems) + unstoredNote(r.stored) + positioningNote(r.positioningSaved) : '');
 }
 
 export interface PlanJobInput {
@@ -196,7 +215,7 @@ export async function runPlanJob(job: AssistantJob, input: PlanJobInput): Promis
     }
     previous = r.carry ?? null;
     previousText = r.carry ? null : r.text;
-    sections.push(`## ${i + 1}. ${BOARD_LABEL[original.kind].label}\n\n${managerAnswer(r.text, r.attempts, r.problems)}${unstoredNote(r.stored)}`);
+    sections.push(`## ${i + 1}. ${BOARD_LABEL[original.kind].label}\n\n${managerAnswer(r.text, r.attempts, r.problems)}${unstoredNote(r.stored)}${positioningNote(r.positioningSaved)}`);
   }
   finishJob(job, sections.length ? 'done' : 'error', sections.join('\n\n'));
 }

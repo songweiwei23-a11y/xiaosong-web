@@ -30,6 +30,8 @@ export interface BoardContext {
   isStopped?: () => boolean;
   /** 板块跑完存历史用；测试时可以替换 */
   saveHistory?: (row: BoardHistoryRow) => Promise<void>;
+  /** 账号定位通过验收后，写进账号定位表（地基门槛和板块读的是那张表）。返回是否写进去了（2026-10-24） */
+  persistPositioning?: (text: string) => Promise<boolean>;
   /** 默认 http://127.0.0.1:端口，测试时可以替换 */
   internalBase?: string;
   fetchImpl?: typeof fetch;

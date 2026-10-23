@@ -4,6 +4,8 @@ import { readAssistantConfig } from '@/lib/assistant/config';
 import { createJob, hasRunningJob } from '@/lib/assistant/jobs';
 import { takePendingRun } from '@/lib/assistant/pending-runs';
 import { runBoardJob, runPlanJob } from '@/lib/assistant/board-job';
+import type { BoardContext } from '@/lib/assistant/boards';
+import { saveFoundationRow } from '@/lib/foundation-save';
 
 /**
  * 老板确认「开跑」一个板块任务或一个多步计划（管理员派活经确认后才会走到这里）。
@@ -31,7 +33,17 @@ export async function POST(request: Request) {
   if (!run) return Response.json({ error: '这个任务已经过期或已经开跑过了，请重新让助理派活' }, { status: 404 });
 
   const job = createJob(userId);
-  const ctx = { userId, cookie: request.headers.get('cookie') ?? '', profileId: run.profileId, memoryOn: run.memoryOn };
+  const profileId = run.profileId
+  const ctx: BoardContext = {
+    userId,
+    cookie: request.headers.get('cookie') ?? '',
+    profileId,
+    memoryOn: run.memoryOn,
+    // 账号定位通过验收后写进账号定位表（和页面保存的字段一致），地基门槛和之后的板块才读得到（2026-10-24）
+    persistPositioning: profileId
+      ? (text) => saveFoundationRow({ userId, profileId, kind: 'positioning', text }).then(() => true, () => false)
+      : undefined,
+  };
   const cfg = readAssistantConfig() ?? undefined;
   if (run.board.kind === 'plan') {
     void runPlanJob(job, { ctx, plan: run.board, maxRuns: run.maxRuns, cfg });
