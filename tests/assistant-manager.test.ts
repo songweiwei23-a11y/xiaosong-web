@@ -8,7 +8,7 @@ vi.mock('@/lib/api-guard', () => ({
   requireUser: async () => ({ ok: true, userId: 'u-route' }),
 }));
 
-import { applyRevisionEdits, checkBoardOutput, managerAnswer, reviseBoardOutput, MAX_REVISIONS } from '@/lib/assistant/manager';
+import { applyRevisionEdits, checkBoardOutput, managerAnswer, parseRevisionEdits, reviseBoardOutput, MAX_REVISIONS } from '@/lib/assistant/manager';
 import { createPendingRun, takePendingRun } from '@/lib/assistant/pending-runs';
 import { createAssistantTools } from '@/lib/assistant/tools';
 import { runBoardJob } from '@/lib/assistant/board-job';
@@ -67,6 +67,29 @@ describe('验收：板块的产出合不合格', () => {
     // 每段都不一样，保证这里测的是「比例」而不是「找不到」
     const body = Array.from({ length: 5 }, (_, i) => `第${i}段正文内容，用来测试改动的比例。`).join('');
     expect(applyRevisionEdits(body, [{ old: body.slice(0, 40), new: '替换' }])).toBeNull();
+  });
+
+  it('小改：模型把跨行的一句原样换行写进了 JSON 字符串里，也能解析出来', () => {
+    const raw = '好的，修改如下：\n{"edits": [{"old": "3. 早上七点的晨跑攻略\n：三个动作", "new": "3. 老板晚上收摊后的复盘"}]}';
+    const edits = parseRevisionEdits(raw);
+    expect(edits).toEqual([{ old: '3. 早上七点的晨跑攻略\n：三个动作', new: '3. 老板晚上收摊后的复盘' }]);
+    expect(parseRevisionEdits('不是 JSON')).toBeNull();
+  });
+
+  it('小改：第一次引用了整段原文（超出改动上限），再要一次，要求每处只写一句', async () => {
+    const output = '第一句原文。第二句有问题。第三句原文。' + '占位'.repeat(60);
+    const longOld = output.slice(0, 80);
+    let calls = 0;
+    const llm = (async () => {
+      calls++;
+      const text = calls === 1
+        ? JSON.stringify({ edits: [{ old: longOld, new: '改' }] })
+        : JSON.stringify({ edits: [{ old: '第二句有问题。', new: '第二句改好了。' }] });
+      return { content: [{ type: 'text', text }], stopReason: 'end_turn' };
+    }) as never;
+    const r = await reviseBoardOutput({ apiKey: 'k' } as never, 'script', output, ['有问题'], { llm });
+    expect(calls).toBe(2);
+    expect(r?.text).toContain('第二句改好了');
   });
 
   it('小改：模型的回答必须是编辑列表，否则不修改', async () => {

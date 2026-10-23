@@ -123,7 +123,9 @@ export function parseRevisionEdits(raw: string): RevisionEdit[] | null {
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) return null;
   try {
-    const parsed = JSON.parse(match[0]) as { edits?: unknown };
+    // 模型常把跨行的一句原样换行写进 JSON 字符串里，这在 JSON 里不合法：只修字符串内部的换行，结构不动
+    const repaired = match[0].replace(/"(?:[^"\\]|\\.)*"/g, (s) => s.replace(/\r?\n/g, '\\n'));
+    const parsed = JSON.parse(repaired) as { edits?: unknown };
     if (!Array.isArray(parsed.edits)) return null;
     const edits: RevisionEdit[] = [];
     for (const e of parsed.edits.slice(0, MAX_EDITS)) {
@@ -139,15 +141,22 @@ export function parseRevisionEdits(raw: string): RevisionEdit[] | null {
 
 /**
  * 按编辑精确替换：每一处的原文必须在当前稿子里只出现一次，才替换；找不到或不止一处的跳过（不猜位置）。
- * 改动总字数超过全文的 MAX_CHANGE_RATIO，或者一处都没改成，返回 null（整体不采用）。
+ * 被替换掉的原文超过全文的 MAX_CHANGE_RATIO，或者一处都没改成，返回 null（整体不采用）。
+ * 新句子比原句长出一倍多，也跳过（小改不该变成大段添写）。
  */
 export function applyRevisionEdits(output: string, edits: RevisionEdit[]): RevisionResult | null {
   let text = output;
   let applied = 0;
   let skipped = 0;
-  let changed = 0;
+  // 「改动量」按被替换掉的原文算：一句话的小改不应因为新句子也算进去就超过三成
+  let removed = 0;
   for (const edit of edits) {
     if (!edit.old.trim() || edit.old === edit.new) {
+      skipped++;
+      continue;
+    }
+    // 新句子不能比原句长太多，否则就是借小改塞进大段内容
+    if (edit.new.length > edit.old.length * 2 + 30) {
       skipped++;
       continue;
     }
@@ -158,9 +167,9 @@ export function applyRevisionEdits(output: string, edits: RevisionEdit[]): Revis
     }
     text = text.replace(edit.old, () => edit.new);
     applied++;
-    changed += edit.old.length + edit.new.length;
+    removed += edit.old.length;
   }
-  if (applied === 0 || changed > output.length * MAX_CHANGE_RATIO) return null;
+  if (applied === 0 || removed > output.length * MAX_CHANGE_RATIO) return null;
   return { text, applied, skipped };
 }
 
@@ -195,15 +204,26 @@ export async function reviseBoardOutput(
     '\n原产出：',
     output,
   ].filter(Boolean).join('\n');
+  // 第一次的回答要是引用了整段原文（超出改动上限），或者格式不对，就再要一次，并明确要求每处只写一句
+  const retryNote = '上一版的修改里有几处原文引用得太长或格式不对。这次每处 old 只写一句话（不超过 80 个字），只输出 JSON。';
   try {
-    const res = await call(cfg, { system, messages: [{ role: 'user', content: user }], tools: [], maxTokens: 2000 });
-    const raw = res.content
-      .filter((b): b is Extract<LlmBlock, { type: 'text' }> => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
-    const edits = parseRevisionEdits(raw);
-    if (!edits) return null;
-    return applyRevisionEdits(output, edits);
+    for (const note of ['', retryNote]) {
+      const res = await call(cfg, {
+        system,
+        messages: [{ role: 'user', content: note ? `${user}\n\n${note}` : user }],
+        tools: [],
+        maxTokens: 2000,
+      });
+      const raw = res.content
+        .filter((b): b is Extract<LlmBlock, { type: 'text' }> => b.type === 'text')
+        .map((b) => b.text)
+        .join('');
+      const edits = parseRevisionEdits(raw);
+      if (!edits) continue;
+      const applied = applyRevisionEdits(output, edits);
+      if (applied) return applied;
+    }
+    return null;
   } catch {
     return null;
   }
