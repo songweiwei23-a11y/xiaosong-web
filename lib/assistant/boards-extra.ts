@@ -20,7 +20,7 @@ import { callBoardStream, clampCount, loadContext, withNote } from './boards-mor
  * 提示词用各板块自己的构造函数（lib/*），背景用档案里的创作上下文，和页面一致；
  * 内容由 Dify 生成，走的是同一个生成接口 /api/dify/stream，额度由那个接口按板块自己的功能扣。
  *
- * 不做的：视频截图的拆解（要上传视频，只能在拆解页面做）；深度研究和前采（有自己的流程和附件）。
+ * 不做的：视频截图的拆解（要上传视频，只能在拆解页面做）；前采（有自己的流程和附件）。深度研究在 boards-research.ts。
  */
 
 export interface PositioningInput {

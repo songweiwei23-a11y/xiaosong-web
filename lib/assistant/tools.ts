@@ -9,7 +9,8 @@ import { MEMORY_MAX_COUNT } from '@/lib/assistant/memory';
 import { clampMinutes, OPEN_PAGES, resolveSound, soundChoices } from '@/lib/assistant/client-action-spec';
 import type { ActionReceipt } from '@/lib/assistant/receipts';
 import { internalBase, readInternal, type BoardHistoryRow } from './boards';
-import { BOARD_LABEL, missingFields, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
+import { BOARD_LABEL, maxRunsOf, missingFields, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
+import { isDepth } from '@/lib/research';
 import { createPendingRun } from './pending-runs';
 import { MAX_BOARD_RUNS } from './manager';
 import type { AssistantTool, WebFeedback } from './agent';
@@ -102,6 +103,9 @@ function stepToBoard(s: { board?: unknown; text?: unknown; count?: unknown; plat
       return { kind: 'remix', input: { text, count: clampCount(s.count, 1, 1, 15) } };
     case 'breakdown':
       return { kind: 'breakdown', input: { script: text } };
+    case 'research':
+      // 计划里的深度研究只给了主题，深度按标准，资料由上一步的产出带过去
+      return { kind: 'research', input: { topic: text } };
     default:
       return null;
   }
@@ -212,18 +216,25 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
     const features = [...new Set(steps.map((s) => BOARD_LABEL[s.kind].feature))].join('、');
     const isPlan = board.kind === 'plan';
     const label = isPlan ? `执行计划（${steps.length} 步）` : BOARD_LABEL[board.kind].label;
+    // 深度研究只跑一次；计划里其它板块仍按上限返工
+    const runs = maxRunsOf(board, MAX_BOARD_RUNS);
     const run = createPendingRun({
       userId: ctx.userId,
       board,
       kind: isPlan ? 'plan' : board.kind,
       label,
       summary,
-      maxRuns: MAX_BOARD_RUNS,
+      maxRuns: runs,
       profileId: ctx.profileId ?? null,
       memoryOn: ctx.memoryOn !== false,
     });
-    ctx.onAction?.({ name: 'board.run', args: { runId: run.id, board: run.kind, label, summary, maxRuns: MAX_BOARD_RUNS, feature: features } });
-    return `已把${isPlan ? `这 ${steps.length} 步计划` : `「${label}」的任务`}列给老板，等他点确认后才开跑（${isPlan ? '每一步' : ''}最多跑 ${MAX_BOARD_RUNS} 次，每次扣「${features}」额度；不达标我会让板块返工）。请告诉老板在面板上确认。在他确认之前，不要说已经做好了。`;
+    ctx.onAction?.({ name: 'board.run', args: { runId: run.id, board: run.kind, label, summary, maxRuns: runs, feature: features } });
+    const rework = isPlan
+      ? `每一步最多跑 ${MAX_BOARD_RUNS} 次，不达标我会让板块返工${steps.some((s) => s.kind === 'research') ? '；深度研究那一步不返工，不达标直接交给老板判断' : ''}`
+      : runs === 1
+        ? '只跑一次，不达标的地方不返工，直接交给老板判断'
+        : `最多跑 ${MAX_BOARD_RUNS} 次，不达标我会让板块返工`;
+    return `已把${isPlan ? `这 ${steps.length} 步计划` : `「${label}」的任务`}列给老板，等他点确认后才开跑（${rework}，每次扣「${features}」额度）。请告诉老板在面板上确认。在他确认之前，不要说已经做好了。`;
   };
 
   /** 定位、起号这类板块都要先有账号档案；没有就先请老板建档 */
@@ -747,10 +758,33 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       },
     },
     {
+      name: 'propose_research',
+      label: '正在派深度研究板块',
+      description:
+        '把深度研究派给「深度研究」板块：围绕主题联网搜集网页、逐个子问题读正文，写成带来源编号的研究报告（报告由板块的研究接口生成，你不自己写）。主题要说清楚，4 到 500 字。深度：quick 快速（约 3～5 分钟）、standard 标准（默认，约 6～10 分钟）、deep 深入（约 12～20 分钟）。老板给的背景资料、上一步的产出可以填进 material。每次扣研究额度，耗时长。这一步只是列给老板看，他在面板上确认后才开跑。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: '研究主题，用中文写清楚，4 到 500 字' },
+          depth: { type: 'string', enum: ['quick', 'standard', 'deep'], description: '深度，不确定就按 standard' },
+          material: { type: 'string', description: '老板给的背景资料，没有就不填' },
+        },
+        required: ['topic'],
+      },
+      async run(input) {
+        const topic = str(input.topic);
+        if (!topic) return '还不知道要研究什么。请先问清楚研究主题';
+        return proposeBoard({
+          kind: 'research',
+          input: { topic, depth: isDepth(input.depth) ? input.depth : 'standard', material: str(input.material) },
+        });
+      },
+    },
+    {
       name: 'propose_plan',
       label: '正在整理执行计划',
       description:
-        '老板的需求要几步才能做完时，先把计划列出来（最多 5 步，按顺序执行，前一步的产出交给后一步）。每一步 board 填板块：topic 选题、script 脚本、review 审稿、title 标题、storyboard 分镜、direction 方向、content-plan 内容规划、deal-reason 成交理由、positioning 账号定位、brief 创作简报、advice 行业建议、growth 起号方案、opening 开篇钩子、remix 跨行业二创、breakdown 文案拆解；text 填这一步的主要输入（主题、要拍的内容、稿子原文、脚本原文、定位的补充要求或目的）。行业建议的目的和阶段计划里给不了，会被挡住让老板补。计划只是列给老板看，他确认后才开跑。',
+        '老板的需求要几步才能做完时，先把计划列出来（最多 5 步，按顺序执行，前一步的产出交给后一步）。每一步 board 填板块：topic 选题、script 脚本、review 审稿、title 标题、storyboard 分镜、direction 方向、content-plan 内容规划、deal-reason 成交理由、positioning 账号定位、brief 创作简报、advice 行业建议、growth 起号方案、opening 开篇钩子、remix 跨行业二创、breakdown 文案拆解、research 深度研究（主题 4 字以上，耗时长）；text 填这一步的主要输入（主题、要拍的内容、稿子原文、脚本原文、定位的补充要求或目的）。行业建议的目的和阶段计划里给不了，会被挡住让老板补。计划只是列给老板看，他确认后才开跑。',
       input_schema: {
         type: 'object',
         properties: {
@@ -763,7 +797,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
               properties: {
                 board: {
                   type: 'string',
-                  enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan', 'deal-reason', 'positioning', 'brief', 'advice', 'growth', 'opening', 'remix', 'breakdown'],
+                  enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan', 'deal-reason', 'positioning', 'brief', 'advice', 'growth', 'opening', 'remix', 'breakdown', 'research'],
                 },
                 text: { type: 'string', description: '这一步的主要输入' },
                 count: { type: 'number', description: '条数，不确定就不填' },
@@ -781,7 +815,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         const steps: BoardAny[] = [];
         for (let i = 0; i < raw.length; i++) {
           const b = stepToBoard(raw[i]);
-          if (!b) return `第 ${i + 1} 步的板块不认识。板块只能是选题、脚本、审稿、标题、分镜、方向、内容规划、成交理由、账号定位、创作简报、行业建议、起号方案、开篇钩子、跨行业二创、文案拆解`;
+          if (!b) return `第 ${i + 1} 步的板块不认识。板块只能是选题、脚本、审稿、标题、分镜、方向、内容规划、成交理由、账号定位、创作简报、行业建议、起号方案、开篇钩子、跨行业二创、文案拆解、深度研究`;
           steps.push(b);
         }
         return proposeBoard({ kind: 'plan', steps });

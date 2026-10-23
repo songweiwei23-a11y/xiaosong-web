@@ -64,6 +64,7 @@ export const BOARD_TOOLS = [
   'propose_opening',
   'propose_remix',
   'propose_breakdown',
+  'propose_research',
   'propose_plan',
 ] as const;
 
