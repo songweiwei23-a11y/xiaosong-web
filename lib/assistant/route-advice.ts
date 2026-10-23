@@ -14,13 +14,16 @@ export interface AccountState {
   hasBrief: boolean;
   /** 最近有几份创作结果（可以直接接着做） */
   recentResults: number;
+  /** 最近一份创作方向的结果编号（没灵感时，直接接着它出选题，不用重新铺开方向） */
+  recentDirectionId?: string;
 }
 
-/** 一步推荐：板块（plan 里用的名字）、显示名、为什么这一步 */
+/** 一步推荐：板块（plan 里用的名字）、显示名、为什么这一步。接着某份已有结果做的，带 fromResultId */
 export interface RouteStep {
   board: string;
   label: string;
   why: string;
+  fromResultId?: string;
 }
 
 export interface RouteAdvice {
@@ -60,6 +63,13 @@ export function adviseRoute(need: NeedKind, state: AccountState): RouteAdvice {
   const pre = prerequisites(state);
   switch (need) {
     case 'inspiration':
+      // 最近已经有一份创作方向：接着它出选题（不用重新铺开）；没有才从创作方向开始
+      if (state.recentDirectionId) {
+        return {
+          steps: [{ ...STEP.topic, why: '最近已经做过一份创作方向，直接接着它出选题，不用重新找', fromResultId: state.recentDirectionId }],
+          missing: [],
+        };
+      }
       return {
         steps: [...pre, { ...STEP.direction, why: '没灵感时，先按账号定位和目的铺开几个方向，挑一个最想拍的' }, { ...STEP.topic, why: '把挑中的方向落到具体的几条选题' }],
         missing: [],

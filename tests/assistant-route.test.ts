@@ -26,6 +26,12 @@ describe('需求到路线的规则', () => {
     expect(r.steps[0].why).toContain('定位');
   });
 
+  it('没灵感：最近已经有一份创作方向，直接接着它出选题（带上它的编号）', () => {
+    const r = adviseRoute('inspiration', { ...READY, recentResults: 1, recentDirectionId: 'd-1' });
+    expect(boards(r.steps)).toEqual(['topic']);
+    expect(r.steps[0].fromResultId).toBe('d-1');
+  });
+
   it('想更新几期：先排内容，再出选题，挑一条写脚本；缺「几期」就问一句', () => {
     const r = adviseRoute('batch', READY);
     expect(boards(r.steps)).toEqual(['content-plan', 'topic', 'script']);
@@ -44,16 +50,26 @@ describe('需求到路线的规则', () => {
 });
 
 describe('suggest_path 工具：按账号现在的状态推荐', () => {
-  function tools(profiles: unknown[], positioning: unknown[], brief: unknown[]) {
+  function tools(profiles: unknown[], positioning: unknown[], brief: unknown[], recent: unknown[] = []) {
     const fetchImpl = (async (url: string) => {
       const u = String(url);
-      if (u.includes('/api/profiles')) return new Response(JSON.stringify(profiles), { headers: { 'content-type': 'application/json' } });
-      if (u.includes('创作简报')) return new Response(JSON.stringify(brief), { headers: { 'content-type': 'application/json' } });
-      if (u.includes('/api/positioning')) return new Response(JSON.stringify(positioning), { headers: { 'content-type': 'application/json' } });
-      return new Response('[]', { headers: { 'content-type': 'application/json' } });
+      const body = (x: unknown) => new Response(JSON.stringify(x), { headers: { 'content-type': 'application/json' } });
+      if (u.includes('/api/profiles')) return body(profiles);
+      if (u.includes('/api/creation-sessions?recent=')) return body(recent);
+      // 定位和简报都走 type= 参数，编码后分不出来，按顺序返回：先定位、后简报
+      if (u.includes('/api/positioning') && u.includes(encodeURIComponent('创作简报'))) return body(brief);
+      if (u.includes('/api/positioning')) return body(positioning);
+      return body([]);
     }) as unknown as typeof fetch;
     return createAssistantTools({ userId: 'u-route', cookie: 'c=1', internalBase: 'http://x', fetchImpl });
   }
+
+  it('最近有创作方向：推荐直接接着它出选题，并提示用 propose_continue', async () => {
+    const t = tools([{ id: 'p1' }], [{ profile_id: 'p1' }], [{ id: 'b1' }], [{ id: 'd-recent', from: '创作方向', createdAt: '2026-10-23T02:00:00Z', title: '', preview: '凌晨收摊' }]);
+    const out = await t.find((x) => x.name === 'suggest_path')!.run({ need: 'inspiration' });
+    expect(out).toContain('d-recent');
+    expect(out).toContain('propose_continue');
+  });
 
   it('没定位：推荐先做账号定位，再给方向、选题，并说明下一步用 propose_plan 列给老板', async () => {
     const t = tools([{ id: 'p1' }], [], []);

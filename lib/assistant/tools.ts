@@ -630,17 +630,24 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         const positioning = await readInternal(ctx, `/api/positioning?type=${encodeURIComponent('账号定位')}`).catch(() => []);
         const brief = await readInternal(ctx, `/api/positioning?type=${encodeURIComponent('创作简报')}`).catch(() => []);
         const results = await listRecentResults(ctx, 10);
+        const recentDirectionId = results.find((r) => r.from === '创作方向')?.id;
         const advice = adviseRoute(need, {
           hasProfile,
           hasPositioning: Array.isArray(positioning) && positioning.length > 0,
           hasBrief: Array.isArray(brief) && brief.length > 0,
           recentResults: results.length,
+          recentDirectionId,
         });
         if (!hasProfile) return '还没有账号档案。先请老板建一个档案，再推荐怎么做。';
         if (!advice.steps.length) return `还不能推荐路线。还缺：${advice.missing.join('、')}。先问清楚老板要做什么。`;
-        const lines = advice.steps.map((s, i) => `${i + 1}. ${s.label}（${s.board}）：${s.why}`);
+        const lines = advice.steps.map((s, i) => `${i + 1}. ${s.label}（${s.board}）：${s.why}${s.fromResultId ? `（接着编号 ${s.fromResultId} 的创作做）` : ''}`);
         const tail = advice.missing.length ? `\n还缺：${advice.missing.join('、')}（问老板，不要自己编）。` : '';
-        return `推荐路线（按账号现在的状态）：\n${lines.join('\n')}${tail}\n接下来用 propose_plan 把这几步列给老板确认；确认后按顺序跑，前一步的创作会直接接给下一步。`;
+        // 只有一步、且是接着已有结果做的：直接用 propose_continue；多步才列计划
+        const onlyContinue = advice.steps.length === 1 && advice.steps[0].fromResultId;
+        const next = onlyContinue
+          ? `接下来用 propose_continue（fromResultId=${advice.steps[0].fromResultId}，to=${advice.steps[0].board}）把它接着做，列给老板确认。`
+          : '接下来用 propose_plan 把这几步列给老板确认；确认后按顺序跑，前一步的创作会直接接给下一步。';
+        return `推荐路线（按账号现在的状态）：\n${lines.join('\n')}${tail}\n${next}`;
       },
     },
     {
