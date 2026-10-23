@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
+import { releaseCreation, reserveCreation, settleCreation } from '@/lib/creation-quota';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { createRateLimiter } from '@/lib/rate-limit';
 import { readAssistantConfig } from '@/lib/assistant/config';
@@ -109,6 +110,10 @@ export async function POST(request: Request) {
 
   // 模型：没配置或者出错，都只是少了文字部分，确定的配比和数据照常给出
   const cfg = readAssistantConfig();
+  // 调用模型前先预留「自由对话」额度（和别的生成一样）：额度不够直接告诉用户，不调用模型
+  const reserved = cfg ? await reserveCreation(userId, 'freeChat', request, { workInsight: profileId }) : null;
+  if (reserved && !reserved.ok) return reserved.response;
+  const reservation = reserved && reserved.ok ? reserved.reservation : null;
   let model: { used: boolean; parsed: ReturnType<typeof parseInsightJson>; notes: string[] };
   if (!cfg) {
     model = { used: false, parsed: null, notes: ['分析模型还没有配置，规划和文件概况暂时没有生成'] };
@@ -130,7 +135,10 @@ export async function POST(request: Request) {
         parsed,
         notes: parsed ? [] : ['模型这次没有按格式给出分析，规划和反馈暂时没有生成，可以再分析一次'],
       };
+      // 模型给了回答才扣次数；没按格式给出的也算一次调用，照常扣
+      if (reservation) await settleCreation(reservation, true, '作品洞察').catch(() => undefined);
     } catch {
+      if (reservation) await releaseCreation(reservation).catch(() => undefined);
       model = { used: false, parsed: null, notes: ['分析模型暂时没有回应，规划和文件概况暂时没有生成，可以稍后再分析'] };
     }
   }

@@ -5,6 +5,7 @@ import { buildTitlePrompt } from '@/lib/title-standards';
 import { buildStoryboardPrompt } from '@/lib/storyboard-standards';
 import { VISUAL_STYLES } from '@/lib/content-types';
 import { buildDirectionPrompt } from '@/lib/direction';
+import { buildDealReasonPrompt } from '@/lib/deal-reasons';
 import { buildContentPlanPrompt } from '@/lib/content-plan';
 import { readDifyStream } from '@/lib/sse-stream';
 import { loadBoardContext } from './board-context';
@@ -182,5 +183,36 @@ export async function runContentPlanBoard(ctx: BoardContext, input: ContentPlanI
     creationSettings: {},
     query,
     profileId: profile?.id ?? null,
+  });
+}
+
+export interface DealReasonInput {
+  /** 店铺名称（必填） */
+  storeName: string;
+  /** 店铺类型，例如 火锅店、美容院 */
+  storeType?: string;
+  /** 店铺特色（必填）：没有依据的成交理由会被判不适用 */
+  storeFeatures: string;
+  /** 目标客户（老板说了才填） */
+  targetCustomer?: string;
+  extraNote?: string;
+}
+
+/** 成交理由：判断十七条成交理由各自成不成立，并给出怎么在视频里拍出来。店铺信息由老板给，不编 */
+export async function runDealReasonBoard(ctx: BoardContext, input: DealReasonInput): Promise<BoardResult> {
+  const creatorContext = await loadContext(ctx);
+  const query = buildDealReasonPrompt({
+    accountContext: buildContextBlock(creatorContext, 'dealReason'),
+    storeName: input.storeName.trim(),
+    storeType: input.storeType?.trim() ?? '',
+    storeFeatures: withNote(input.storeFeatures.trim(), input.extraNote),
+    targetCustomer: input.targetCustomer?.trim() || undefined,
+  });
+  return callBoardStream(ctx, {
+    taskType: '成交理由',
+    creationSettings: {},
+    query,
+    topic: query,
+    profileId: creatorContext.profile?.id ?? null,
   });
 }

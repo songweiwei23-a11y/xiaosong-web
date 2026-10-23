@@ -1,10 +1,12 @@
 import { runTopicBoard, runScriptBoard, runReviewBoard, type BoardContext, type BoardResult, type ReviewInput, type ScriptInput, type TopicInput } from '@/lib/assistant/boards';
 import {
   runContentPlanBoard,
+  runDealReasonBoard,
   runDirectionBoard,
   runStoryboardBoard,
   runTitleBoard,
   type ContentPlanInput,
+  type DealReasonInput,
   type DirectionInput,
   type StoryboardInput,
   type TitleInput,
@@ -12,10 +14,10 @@ import {
 
 /**
  * 管理员能派的所有板块，和统一的派活格式（BoardAny）。
- * 派活前先查必填项（缺了就问用户）；多步计划里，上一步的产出交给下一步（withUpstream）。
+ * 派活前先查必填项（缺了就问老板）；多步计划里，上一步的产出交给下一步（withUpstream）。
  */
 
-export type BoardKind = 'topic' | 'script' | 'review' | 'title' | 'storyboard' | 'direction' | 'content-plan';
+export type BoardKind = 'topic' | 'script' | 'review' | 'title' | 'storyboard' | 'direction' | 'content-plan' | 'deal-reason';
 
 /** 板块的显示名和它扣的额度功能（和 lib/task-type.ts 的映射一致；内容规划和创作方向共用一项额度） */
 export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> = {
@@ -26,6 +28,7 @@ export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> 
   storyboard: { label: '分镜脚本', feature: '分镜' },
   direction: { label: '创作方向', feature: '方向' },
   'content-plan': { label: '内容规划', feature: '方向' },
+  'deal-reason': { label: '成交理由', feature: '成交理由' },
 };
 
 export type BoardAny =
@@ -35,7 +38,8 @@ export type BoardAny =
   | { kind: 'title'; input: TitleInput }
   | { kind: 'storyboard'; input: StoryboardInput }
   | { kind: 'direction'; input: DirectionInput }
-  | { kind: 'content-plan'; input: ContentPlanInput };
+  | { kind: 'content-plan'; input: ContentPlanInput }
+  | { kind: 'deal-reason'; input: DealReasonInput };
 
 /** 多步计划：按顺序派给几个板块，前一步的产出交给后一步 */
 export interface PlanSpec {
@@ -59,10 +63,12 @@ export function runAnyBoard(ctx: BoardContext, board: BoardAny): Promise<BoardRe
       return runDirectionBoard(ctx, board.input);
     case 'content-plan':
       return runContentPlanBoard(ctx, board.input);
+    case 'deal-reason':
+      return runDealReasonBoard(ctx, board.input);
   }
 }
 
-/** 必填项没有填的，返回要问用户的内容；都填了返回空数组 */
+/** 必填项没有填的，返回要问老板的内容；都填了返回空数组 */
 export function missingFields(board: BoardAny): string[] {
   switch (board.kind) {
     case 'topic':
@@ -79,6 +85,12 @@ export function missingFields(board: BoardAny): string[] {
       return board.input.goal?.trim() ? [] : ['这次想达到的目的'];
     case 'content-plan':
       return board.input.goal?.trim() ? [] : ['这个月想主攻什么'];
+    case 'deal-reason': {
+      const missing: string[] = [];
+      if (!board.input.storeName?.trim()) missing.push('店铺名称');
+      if (!board.input.storeFeatures?.trim()) missing.push('店铺特色（有什么具体的服务、产品、优势）');
+      return missing;
+    }
   }
 }
 
@@ -90,15 +102,17 @@ export function requirementOf(board: BoardAny): string {
     case 'script':
       return `脚本，要拍：${board.input.request}`;
     case 'review':
-      return `审稿这份稿子，找出问题并给出可以直接改的意见`;
+      return '审稿这份稿子，找出问题并给出可以直接改的意见';
     case 'title':
       return `为「${board.input.topic}」起 ${board.input.count ?? 5} 个标题`;
     case 'storyboard':
-      return `把脚本拆成分镜，每个镜头写清楚画面和台词`;
+      return '把脚本拆成分镜，每个镜头写清楚画面和台词';
     case 'direction':
       return `方向 ${board.input.count ?? 5} 个，目的：${board.input.goal}`;
     case 'content-plan':
       return `这个月的内容规划，目标：${board.input.goal}`;
+    case 'deal-reason':
+      return `成交理由：${board.input.storeName}，店铺特色：${board.input.storeFeatures}`;
   }
 }
 
@@ -107,7 +121,7 @@ export function factContextOf(board: BoardAny): string {
   return board.kind === 'script' ? board.input.request : '';
 }
 
-/** 派活单的一句话摘要（给用户确认时看） */
+/** 派活单的一句话摘要（给老板确认时看） */
 export function summaryOf(board: BoardAny): string {
   switch (board.kind) {
     case 'topic':
@@ -124,6 +138,8 @@ export function summaryOf(board: BoardAny): string {
       return `方向 ${board.input.count ?? 5} 个｜目的：${board.input.goal}`;
     case 'content-plan':
       return `内容规划｜目标：${board.input.goal}`;
+    case 'deal-reason':
+      return `成交理由｜店铺：${board.input.storeName}｜特色：${board.input.storeFeatures.slice(0, 30)}`;
   }
 }
 
@@ -145,6 +161,8 @@ export function withUpstream(board: BoardAny, text: string): BoardAny {
       return { kind: 'direction', input: { ...board.input, goal: board.input.goal + note } };
     case 'content-plan':
       return { kind: 'content-plan', input: { ...board.input, goal: board.input.goal + note } };
+    case 'deal-reason':
+      return { kind: 'deal-reason', input: { ...board.input, storeFeatures: board.input.storeFeatures + note } };
   }
 }
 

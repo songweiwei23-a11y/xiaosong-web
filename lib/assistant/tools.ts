@@ -84,6 +84,9 @@ function stepToBoard(s: { board?: unknown; text?: unknown; count?: unknown; plat
       return { kind: 'direction', input: { goal: text, count: clampCount(s.count, 5, 3, 8) } };
     case 'content-plan':
       return { kind: 'content-plan', input: { goal: text, count: clampCount(s.count, 12, 4, 30) } };
+    case 'deal-reason':
+      // 计划里的成交理由只给了「特色」，店铺名称缺了就会被必填项挡住，让老板补齐
+      return { kind: 'deal-reason', input: { storeName: '', storeFeatures: text } };
     default:
       return null;
   }
@@ -487,6 +490,103 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       },
     },
     {
+      name: 'propose_deal_reason',
+      label: '正在派成交理由板块',
+      description:
+        '把成交理由任务派给「成交理由」板块（板块用 Dify 逐条判断十七条成交理由是否成立，并给出怎么拍，你不自己判断）。要有店铺名称和店铺特色（具体的服务、产品、优势，没有依据的不要编）；店铺类型、目标客户老板说了才填。这一步只是列给老板看，确认后才开跑，每次扣成交理由额度。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          storeName: { type: 'string', description: '店铺名称' },
+          storeType: { type: 'string', description: '店铺类型，例如火锅店、美容院，老板说了才填' },
+          storeFeatures: { type: 'string', description: '店铺特色：具体的服务、产品、优势' },
+          targetCustomer: { type: 'string', description: '目标客户，老板说了才填' },
+        },
+        required: ['storeName', 'storeFeatures'],
+      },
+      async run(input) {
+        return proposeBoard({
+          kind: 'deal-reason',
+          input: { storeName: str(input.storeName), storeType: str(input.storeType), storeFeatures: str(input.storeFeatures), targetCustomer: str(input.targetCustomer) },
+        });
+      },
+    },
+    {
+      name: 'propose_work_progress',
+      label: '正在准备作品进度',
+      description:
+        '老板说某个作品的内容做完了、或要改回没做完时使用（只改「内容做完」这一项）。作品编号从 read_account 里来（方括号中的那串）；没有编号就用作品名。这个工具不会直接改：页面上会列出要改的内容，老板点确认才生效。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          workId: { type: 'string', description: '作品编号（read_account 里方括号中的那串）' },
+          title: { type: 'string', description: '作品名（没有编号时用）' },
+          done: { type: 'boolean', description: 'true=内容做完，false=改回没做完' },
+        },
+        required: ['done'],
+      },
+      async run(input) {
+        if (typeof input.done !== 'boolean') return '要改成做完还是没做完，请先问清楚老板';
+        const done = input.done;
+        const works = (await readInternal(ctx, '/api/works?limit=50').catch(() => [])) as { id?: string; title?: string }[];
+        const wanted = str(input.workId);
+        const title = str(input.title);
+        const target = works.find((w) => (wanted && w.id === wanted) || (!wanted && title && w.title === title));
+        if (!target?.id) return '没有找到要改的作品。请先用 read_account 查出作品，再说清楚是哪一个。';
+        const label = done ? '内容已做完' : '改回没做完';
+        ctx.onAction?.({ name: 'work.progress', args: { id: target.id, title: target.title || '未命名', done, label } });
+        return `已在页面上列出要修改的内容（「${target.title || '未命名'}」改为${label}），等老板点确认后才会生效。请告诉老板在页面上确认。`;
+      },
+    },
+    {
+      name: 'list_materials',
+      label: '正在查素材库',
+      description:
+        '查看老板这个账号的素材库里有哪些文件（名称、状态）。老板问「我有哪些素材」「素材库里有什么」时用。档案不填就用当前选中的档案。',
+      input_schema: {
+        type: 'object',
+        properties: { profileId: { type: 'string', description: '档案编号（read_account 里方括号中的那串），不填就用当前档案' } },
+        required: [],
+      },
+      async run(input) {
+        const profileId = str(input.profileId) || ctx.profileId || '';
+        if (!profileId) return '还没有选账号档案，素材库需要先选一个档案。请先问老板要用哪个档案。';
+        const data = (await readInternal(ctx, `/api/work-materials?profileId=${encodeURIComponent(profileId)}`).catch(() => null)) as {
+          materials?: { filename?: string; status?: string }[];
+        } | null;
+        const list = data?.materials ?? [];
+        if (!list.length) return '这个档案的素材库里还没有文件。';
+        return clip(`素材库 ${list.length} 个文件：\n${list.slice(0, 30).map((m) => `- ${m.filename ?? '未命名'}（${m.status ?? '未知'}）`).join('\n')}`);
+      },
+    },
+    {
+      name: 'propose_delete_material',
+      label: '正在找要删的素材',
+      description:
+        '老板要删掉素材库里的某个文件时使用，填文件名（list_materials 查得到）。这个工具不会直接删：页面上会列出来，老板点「确定删除」才真的删。所以回答时告诉老板「请在页面上点确定删除」。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          filename: { type: 'string', description: '要删的文件名，和 list_materials 里的一致' },
+          profileId: { type: 'string', description: '档案编号，不填就用当前档案' },
+        },
+        required: ['filename'],
+      },
+      async run(input) {
+        const filename = str(input.filename);
+        if (!filename) return '还不知道要删哪个文件。请先用 list_materials 查出文件名';
+        const profileId = str(input.profileId) || ctx.profileId || '';
+        if (!profileId) return '还没有选账号档案。请先问老板要用哪个档案。';
+        const data = (await readInternal(ctx, `/api/work-materials?profileId=${encodeURIComponent(profileId)}`).catch(() => null)) as {
+          materials?: { id?: string; filename?: string }[];
+        } | null;
+        const found = (data?.materials ?? []).find((m) => m.filename === filename && m.id);
+        if (!found?.id) return `素材库里没有「${filename}」这个文件。请先用 list_materials 查出正确的文件名。`;
+        ctx.onAction?.({ name: 'material.delete', args: { id: found.id, profileId, filename } });
+        return `已在页面上列出要删除的文件「${filename}」，等老板点「确定删除」后才会删。请告诉老板在页面上确认。`;
+      },
+    },
+    {
       name: 'propose_plan',
       label: '正在整理执行计划',
       description:
@@ -501,7 +601,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
             items: {
               type: 'object',
               properties: {
-                board: { type: 'string', enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan'] },
+                board: { type: 'string', enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan', 'deal-reason'] },
                 text: { type: 'string', description: '这一步的主要输入' },
                 count: { type: 'number', description: '条数，不确定就不填' },
                 platform: { type: 'string', description: '平台，不确定就不填' },

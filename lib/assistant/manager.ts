@@ -22,6 +22,7 @@ const MIN_LENGTH: Record<BoardKind, number> = {
   storyboard: 200,
   direction: 150,
   'content-plan': 150,
+  'deal-reason': 200,
 };
 
 export interface BoardCheck {

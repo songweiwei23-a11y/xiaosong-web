@@ -37,7 +37,15 @@ export const WRITE_TOOLS = [
 ] as const;
 
 /** 提议类工具：只列出来，用户点确认才真的做 */
-export const PROPOSAL_TOOLS = ['propose_delete_todo', 'propose_forget', 'propose_profile_update', 'propose_create_profile', 'propose_work_status'] as const;
+export const PROPOSAL_TOOLS = [
+  'propose_delete_todo',
+  'propose_forget',
+  'propose_profile_update',
+  'propose_create_profile',
+  'propose_work_status',
+  'propose_work_progress',
+  'propose_delete_material',
+] as const;
 
 /** 板块（会扣板块额度，拒绝类和低质量的用例里不许调用） */
 export const BOARD_TOOLS = [
@@ -48,6 +56,7 @@ export const BOARD_TOOLS = [
   'propose_storyboard',
   'propose_direction',
   'propose_content_plan',
+  'propose_deal_reason',
   'propose_plan',
 ] as const;
 

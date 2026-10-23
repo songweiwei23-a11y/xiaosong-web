@@ -59,7 +59,7 @@ interface Task {
  * 助理提议要做、但要用户点确认才真的做的事（删待办、忘掉记忆、改档案、改作品状态）。
  * 确认前什么都不改；确认后由 runProposal 调用对应的接口。
  */
-type ProposalKind = "memory.forget" | "todo.delete" | "profile.update" | "profile.create" | "work.status" | "board.run";
+type ProposalKind = "memory.forget" | "todo.delete" | "profile.update" | "profile.create" | "work.status" | "work.progress" | "material.delete" | "board.run";
 interface Proposal {
   id: string;
   kind: ProposalKind;
@@ -246,6 +246,31 @@ function proposalFrom(name: string, args: Record<string, unknown>): Proposal | n
       args,
     };
   }
+  if (name === "work.progress") {
+    const id = s(args.id);
+    if (!id) return null;
+    return {
+      id: `work-progress:${id}`,
+      kind: "work.progress",
+      title: `修改作品「${s(args.title) || "未命名"}」`,
+      detail: `${s(args.label) || "内容做完情况"}`,
+      confirmLabel: "确定修改",
+      args,
+    };
+  }
+  if (name === "material.delete") {
+    const id = s(args.id);
+    const profileId = s(args.profileId);
+    if (!id || !profileId) return null;
+    return {
+      id: `material:${id}`,
+      kind: "material.delete",
+      title: `删除素材「${s(args.filename) || "未命名"}」`,
+      detail: "删除后素材库里就没有这个文件了。",
+      confirmLabel: "确定删除",
+      args,
+    };
+  }
   if (name === "board.run") {
     const runId = s(args.runId);
     if (!runId) return null;
@@ -295,6 +320,8 @@ const PROPOSAL_DONE: Record<ProposalKind, string> = {
   "profile.create": "已新建档案",
   "work.status": "已修改作品状态",
   "board.run": "已派给板块，进度在下面",
+  "work.progress": "已更新作品进度",
+  "material.delete": "已删除素材",
 };
 
 /** 确认后真的去做（接口都是用户自己的 Cookie，权限和页面一样） */
@@ -310,6 +337,10 @@ async function runProposal(p: Proposal): Promise<boolean> {
     const field = s(p.args.field);
     if (field !== "profile_name" && field !== "industry") return false;
     res = await postSafely("/api/profiles", { method: "PATCH", headers: json, body: JSON.stringify({ id: s(p.args.id), [field]: s(p.args.value) }) });
+  } else if (p.kind === "work.progress") {
+    res = await fetch(`/api/works?id=${encodeURIComponent(s(p.args.id))}`, { method: "PUT", headers: json, body: JSON.stringify({ isDone: p.args.done === true }) });
+  } else if (p.kind === "material.delete") {
+    res = await fetch(`/api/work-materials?id=${encodeURIComponent(s(p.args.id))}&profileId=${encodeURIComponent(s(p.args.profileId))}`, { method: "DELETE" });
   } else if (p.kind === "profile.create") {
     const profileName = s(p.args.profileName);
     if (!profileName) return false;
