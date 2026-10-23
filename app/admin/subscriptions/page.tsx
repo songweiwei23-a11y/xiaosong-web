@@ -312,7 +312,7 @@ export default function SubscriptionsManagement() {
         <DataTable
           columns={columns}
           rows={items}
-          rowKey={(s) => s.id}
+          rowKey={(s) => s.user_id}
           loading={loading}
           error={error || undefined}
           onRetry={() => void load()}

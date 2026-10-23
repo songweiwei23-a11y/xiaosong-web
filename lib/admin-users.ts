@@ -38,7 +38,8 @@ type AuthUser = {
   banned_until?: string | null;
 };
 
-async function scanAllUsers(db: SupabaseClient): Promise<AdminUserRow[]> {
+/** 逐页读取认证系统里的全部用户（会员管理要把它和订阅记录合起来看） */
+export async function scanAllUsers(db: SupabaseClient): Promise<AdminUserRow[]> {
   const all: AdminUserRow[] = [];
   for (let page = 1; page <= MAX_SCAN_PAGES; page++) {
     const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 });

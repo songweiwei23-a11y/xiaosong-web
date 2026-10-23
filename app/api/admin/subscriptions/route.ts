@@ -3,13 +3,14 @@ import { requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
 import { adminWriteLimited } from '@/lib/admin-rate';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { SUBSCRIPTION_PLANS, COUNTED_FEATURES, getPlan, sumCountedUsage } from '@/lib/config/plans';
-import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
+import { cleanQuery, scanAllUsers, UUID_RE } from '@/lib/admin-users';
 import { extendEndDate } from '@/lib/admin-membership';
 import { parseEndDateInput } from '@/lib/admin-dates';
+import { readAllRows } from '@/lib/admin-monitor-data';
+import { buildMembers, countMembers, filterMembers, type SubRow } from '@/lib/admin-subscription-view';
 
 export const dynamic = 'force-dynamic';
 
-const PLAN_IDS = Object.keys(SUBSCRIPTION_PLANS);
 const EXPIRING_SOON_DAYS = 7;
 
 /*
@@ -21,10 +22,6 @@ const EXPIRING_SOON_DAYS = 7;
  *   - action=extend  在原到期日上加 days 天（永久会员不延期，要先改成具体日期）
  *   - action=reset_quota  清零本期额度
  */
-
-function emptyPage(offset: number, limit: number, counts: Record<string, number>) {
-  return { items: [], total: 0, offset, limit, counts };
-}
 
 export async function GET(request: Request) {
   const admin = await requireAdminPermission('view_users');
@@ -39,90 +36,53 @@ export async function GET(request: Request) {
   const limit = Math.min(100, Math.max(1, Number.parseInt(sp.get('limit') || '30', 10) || 30));
 
   const db = getServiceSupabase();
+  const now = Date.now();
 
-  let userIds: string[] | null = null;
-  if (q) {
-    userIds = UUID_RE.test(q) ? [q] : (await searchUsers(db, q, 0, 200)).users.map((u) => u.id);
-  }
+  /*
+   * 以认证系统的全部用户为准，再和订阅记录合起来看。注册时只给付费用户写订阅记录，
+   * 免费用户没有记录，只数订阅表会让免费版人数严重偏少（2026-10-23 发现）。
+   * 没有记录的按免费版算，和概览、数据分析的口径一致（见 lib/admin-subscription-view.ts）。
+   */
+  const [users, subs] = await Promise.all([
+    scanAllUsers(db),
+    readAllRows<SubRow>((from, to) => db.from('subscriptions').select('*').order('user_id').range(from, to)),
+  ]);
+  const members = buildMembers(users, subs, now);
+  const counts = countMembers(members, subs, now, EXPIRING_SOON_DAYS);
+  const listed = filterMembers(members, {
+    plan,
+    status,
+    expiringDays: Number.isFinite(expiringDays) ? expiringDays : 0,
+    q,
+    now,
+  });
 
-  const counts = await countPlans(db);
+  const page = listed.slice(offset, offset + limit);
+  const ids = page.map((m) => m.user.id);
+  const quotaRows = ids.length ? ((await db.from('user_quotas').select('*').in('user_id', ids)).data ?? []) : [];
+  const quotaByUser = new Map(quotaRows.map((row) => [row.user_id as string, row]));
 
-  if (userIds && userIds.length === 0) {
-    return NextResponse.json(emptyPage(offset, limit, counts));
-  }
-
-  const build = () => {
-    let query = db.from('subscriptions').select('*', { count: 'exact' });
-    if (plan !== 'all' && PLAN_IDS.includes(plan)) query = query.eq('plan', plan);
-    if (status !== 'all') query = query.eq('status', status);
-    if (userIds) query = query.in('user_id', userIds);
-    if (Number.isFinite(expiringDays) && expiringDays > 0) {
-      query = query
-        .neq('plan', 'free')
-        .gte('end_date', new Date().toISOString())
-        .lte('end_date', new Date(Date.now() + expiringDays * 86400_000).toISOString());
-    }
-    return query;
-  };
-
-  const { data: subs, error, count } = await build()
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error) {
-    console.error('[admin/subscriptions] 查询失败:', error.message);
-    return NextResponse.json({ error: '读取会员列表失败' }, { status: 500 });
-  }
-
-  const list = subs ?? [];
-  const ids = list.map((s) => s.user_id);
-  const emails = await emailsByIds(db, ids);
-  const quotas = ids.length ? ((await db.from('user_quotas').select('*').in('user_id', ids)).data ?? []) : [];
-
-  const items = list.map((sub) => {
-    const quota = quotas.find((x) => x.user_id === sub.user_id);
-    const configured = getPlan(sub.plan);
+  const items = page.map(({ user, sub }) => {
+    const quota = quotaByUser.get(user.id);
+    const configured = getPlan(sub?.plan ?? 'free');
     const totalLimit =
       configured.totalQuota ??
       COUNTED_FEATURES.reduce((sum, f) => sum + Math.max(0, configured.quotas[f.key] as number), 0);
     return {
-      id: sub.id,
-      user_id: sub.user_id,
-      email: emails.get(sub.user_id) || '（用户已注销）',
-      plan: sub.plan,
-      status: sub.status,
+      id: sub?.id ?? null,
+      user_id: user.id,
+      email: user.email || '（无邮箱）',
+      plan: sub?.plan ?? 'free',
+      status: sub?.status ?? 'active',
       quota: { used: sumCountedUsage(quota), total: totalLimit },
-      startDate: quota?.current_period_start ?? sub.start_date,
-      endDate: sub.end_date,
-      created_at: sub.created_at,
-      updated_at: sub.updated_at,
+      startDate: quota?.current_period_start ?? sub?.start_date ?? null,
+      endDate: sub?.end_date ?? null,
+      created_at: sub?.created_at ?? user.created_at,
+      updated_at: sub?.updated_at ?? null,
     };
   });
 
-  return NextResponse.json({ items, total: count ?? items.length, offset, limit, counts });
-}
-
-/** 顶部统计：全部会员按套餐的数量，以及 7 天内到期的付费会员数 */
-async function countPlans(db: ReturnType<typeof getServiceSupabase>): Promise<Record<string, number>> {
-  // 计数查询的构造器泛型很深（select / eq / neq 每一步类型都不同），这里只关心最后能 await 出 count
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 查询构造器，见上面的说明
-  const countOf = async (apply: (q: any) => any) => {
-    const { count } = await apply(db.from('subscriptions').select('id', { count: 'exact', head: true }));
-    return count ?? 0;
-  };
-  const [all, ...perPlan] = await Promise.all([
-    countOf((q) => q),
-    ...PLAN_IDS.map((p) => countOf((q) => q.eq('plan', p))),
-  ]);
-  const expiringSoon = await countOf((q) =>
-    q
-      .neq('plan', 'free')
-      .gte('end_date', new Date().toISOString())
-      .lte('end_date', new Date(Date.now() + EXPIRING_SOON_DAYS * 86400_000).toISOString())
-  );
-  const out: Record<string, number> = { all, expiringSoon };
-  PLAN_IDS.forEach((p, i) => (out[p] = perPlan[i]));
-  return out;
+  return NextResponse.json({ items, total: listed.length, offset, limit, counts });
 }
 
 // PATCH - 更新会员信息
