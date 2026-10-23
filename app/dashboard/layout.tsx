@@ -15,6 +15,7 @@ import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate'
 import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
 import { PresenceBeat } from '@/components/dashboard/PresenceBeat';
 import { UnsavedResultsNotice } from '@/components/workspace/UnsavedResultsNotice';
+import { FoundationSetup } from '@/components/foundation/FoundationSetup';
 
 function TopBar() {
   const { toggle } = useSidebar();
@@ -74,6 +75,8 @@ export default function DashboardLayout({
           <UpgradePrompt />
           {/* 生成结果没保存进历史：顶部/底部提示重试、复制、丢弃（见 lib/unsaved-results） */}
           <UnsavedResultsNotice />
+          {/* 先打好地基：建档后一键生成账号定位、创作简报（和行业建议），后台运行（见 lib/foundation-job） */}
+          <FoundationSetup />
           {/* 开物助理：右下角一直在，告诉它遇到什么事，它自己查、自己判断，结果回到窗口里（见 lib/assistant） */}
           <AssistantWidget />
           {/* 连接保活：闲几分钟后线路掐掉空闲连接，再点保存、带去下一步就发不出去 */}
