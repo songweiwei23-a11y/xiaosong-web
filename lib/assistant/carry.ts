@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { buildCreationHandoff } from '@/lib/creation-flow';
+import { buildCreationHandoff, CREATION_SOURCES, creationTitle } from '@/lib/creation-flow';
+import type { CreationSettings } from '@/lib/creation-settings';
 import { CREATION_UUID, readCreationSnapshot } from '@/lib/creation-snapshot';
 import type { HandoffPayload } from '@/lib/handoff';
 import { internalBase, readInternal, type BoardContext } from './boards';
@@ -66,6 +67,8 @@ export async function saveBoardResult(ctx: BoardContext, board: BoardAny, text: 
 
 /** 按编号取回一份创作内容（只能取自己的）。取不到返回 null，调用方说明原因 */
 export async function loadCarry(ctx: BoardContext, id: string): Promise<HandoffPayload | null> {
+  // 页面历史里的结果：编号以 h: 开头，按历史记录的内容组装（和页面带去下一步的规则一样）
+  if (id.startsWith('h:')) return loadHistoryCarry(ctx, id.slice(2));
   if (!CREATION_UUID.test(id)) return null;
   const doFetch = ctx.fetchImpl ?? fetch;
   try {
@@ -83,10 +86,60 @@ export async function loadCarry(ctx: BoardContext, id: string): Promise<HandoffP
 
 /** 这个账号最近的创作（页面带去下一步的、助理板块跑出来的都有），从新到旧 */
 export async function listRecentResults(ctx: BoardContext, limit = 10): Promise<RecentResult[]> {
+  const n = Math.min(Math.max(limit, 1), 30);
+  let sessions: RecentResult[] = [];
   try {
-    const data = await readInternal(ctx, `/api/creation-sessions?recent=${Math.min(Math.max(limit, 1), 30)}`);
-    return Array.isArray(data) ? (data as RecentResult[]) : [];
+    const data = await readInternal(ctx, `/api/creation-sessions?recent=${n}`);
+    sessions = Array.isArray(data) ? (data as RecentResult[]) : [];
+  } catch {
+    sessions = [];
+  }
+  // 页面上生成的结果（没有带去下一步的）也在历史表里：一起列出来，编号以 h: 开头
+  const history = (await historyRows(ctx, n))
+    .filter((row) => (row.result ?? '').trim())
+    .map((row): RecentResult => {
+      const body = (row.result ?? '').trim();
+      return {
+        id: `h:${row.id}`,
+        createdAt: row.created_at ?? '',
+        from: row.task_type ?? '',
+        title: creationTitle(body),
+        target: '/dashboard/free-chat',
+        chars: body.length,
+        preview: body.replace(/\s+/g, ' ').slice(0, 120),
+      };
+    });
+  return [...sessions, ...history].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, n);
+}
+
+/** 页面历史表的一行（脚本、审稿等页面保存的结果） */
+interface HistoryRow {
+  id: string;
+  task_type?: string;
+  input_data?: Record<string, unknown> | null;
+  result?: string | null;
+  created_at?: string;
+}
+
+/** 读这个账号的页面历史（最近 limit 条）；读不到就空 */
+async function historyRows(ctx: BoardContext, limit: number): Promise<HistoryRow[]> {
+  try {
+    const data = await readInternal(ctx, `/api/script-history?taskType=all&limit=${limit}`);
+    return Array.isArray(data) ? (data as HistoryRow[]) : [];
   } catch {
     return [];
   }
+}
+
+/** 按编号从页面历史里取一份，组装成带去下一步的内容 */
+async function loadHistoryCarry(ctx: BoardContext, rowId: string): Promise<HandoffPayload | null> {
+  const row = (await historyRows(ctx, 100)).find((r) => String(r.id) === rowId);
+  const body = (row?.result ?? '').trim();
+  if (!row || !body) return null;
+  const taskType = row.task_type ?? '脚本生成';
+  const source = Object.entries(CREATION_SOURCES).find(([, label]) => label === taskType)?.[0] ?? 'free-chat';
+  const input = row.input_data ?? {};
+  const settings = input.creationSettings && typeof input.creationSettings === 'object' ? (input.creationSettings as CreationSettings) : undefined;
+  const origin = typeof input.originContent === 'string' && input.originContent ? input.originContent : undefined;
+  return buildCreationHandoff(source, 'free-chat', body, { from: taskType, originContent: origin, settings });
 }

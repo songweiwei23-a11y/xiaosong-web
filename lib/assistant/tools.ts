@@ -273,6 +273,14 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
     return `已把${isPlan ? `这 ${steps.length} 步计划` : `「${label}」的任务`}列给老板，等他点确认后才开跑（${rework}，每次扣「${features}」额度）。请告诉老板在面板上确认。在他确认之前，不要说已经做好了。`;
   };
 
+  /** 当前档案的名字（没有就空）：成交理由的店铺名称、档案里已经有的，不用老板再说一遍 */
+  const currentProfileName = async (): Promise<string> => {
+    const profiles = await readInternal(ctx, '/api/profiles').catch(() => []);
+    const list = Array.isArray(profiles) ? (profiles as { id?: string; profile_name?: string | null }[]) : [];
+    const own = list.find((p) => p.id === ctx.profileId) ?? list[0];
+    return own?.profile_name?.trim() ?? '';
+  };
+
   /** 定位、起号这类板块都要先有账号档案；没有就先请老板建档 */
   const NO_PROFILE = '还没有账号档案。请先请老板建一个档案，再派这个板块。';
   const hasProfile = async (): Promise<boolean> => {
@@ -571,12 +579,14 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
           storeFeatures: { type: 'string', description: '店铺特色：具体的服务、产品、优势' },
           targetCustomer: { type: 'string', description: '目标客户，老板说了才填' },
         },
-        required: ['storeName', 'storeFeatures'],
+        required: ['storeFeatures'],
       },
       async run(input) {
+        // 店铺名称老板没说，就用档案里的店名（成交理由说的就是这家店）
+        const storeName = str(input.storeName) || (await currentProfileName());
         return proposeBoard({
           kind: 'deal-reason',
-          input: { storeName: str(input.storeName), storeType: str(input.storeType), storeFeatures: str(input.storeFeatures), targetCustomer: str(input.targetCustomer) },
+          input: { storeName, storeType: str(input.storeType), storeFeatures: str(input.storeFeatures), targetCustomer: str(input.targetCustomer) },
         });
       },
     },

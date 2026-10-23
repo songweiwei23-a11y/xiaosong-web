@@ -84,6 +84,8 @@ export interface BoardResult {
   text: string;
   /** 完整的产出：存进创作会话、带去下一步用的是它，不能截断 */
   full?: string;
+  /** 有页面历史的板块（选题、脚本、审稿）：历史有没有存成功。false 时要让老板先复制保存 */
+  historySaved?: boolean;
   /** 失败的原因（给用户看，也给管理员判断要不要继续） */
   error?: string;
 }
@@ -127,11 +129,11 @@ async function readScriptMemory(ctx: BoardContext, profileId: string | null): Pr
 }
 
 /** 板块的产出存进用户自己的历史记录，和页面用的是同一批保存接口。存失败不影响结果 */
-async function saveBoardHistory(ctx: BoardContext, row: BoardHistoryRow): Promise<void> {
+async function writeBoardHistory(ctx: BoardContext, row: BoardHistoryRow): Promise<boolean> {
   try {
     if (ctx.saveHistory) {
       await ctx.saveHistory(row);
-      return;
+      return true;
     }
     const doFetch = ctx.fetchImpl ?? fetch;
     const isTopic = row.taskType === '选题策划';
@@ -143,11 +145,22 @@ async function saveBoardHistory(ctx: BoardContext, row: BoardHistoryRow): Promis
         : { input_data: row.inputData, result: row.result, task_type: row.taskType }),
       cache: 'no-store',
     });
-    if (!res.ok) console.error(`[助理] 板块「${row.taskType}」的历史保存返回 ${res.status}`);
+    if (!res.ok) {
+      console.error(`[助理] 板块「${row.taskType}」的历史保存返回 ${res.status}`);
+      return false;
+    }
+    return true;
   } catch (e) {
-    // 存失败不影响结果本身，但要留下痕迹：否则页面历史里少了这一条，没人知道为什么
     console.error(`[助理] 板块「${row.taskType}」的历史没有保存：`, e);
+    return false;
   }
+}
+
+/** 历史必须存成功：失败就再存一次；两次都失败返回 false，由板块结果带上提示，让老板先复制保存 */
+async function saveBoardHistory(ctx: BoardContext, row: BoardHistoryRow): Promise<boolean> {
+  if (await writeBoardHistory(ctx, row)) return true;
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  return writeBoardHistory(ctx, row);
 }
 
 /** 选题：页面的算法（lib/boards/topic-query），输入和页面一致 */
@@ -240,7 +253,7 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     return { ok: false, text: '', error: data?.error ?? '服务暂时不可用，请稍后再试' };
   }
   const text = await readDifyStream(res);
-  await saveBoardHistory(ctx, {
+  const historySaved = await saveBoardHistory(ctx, {
     taskType: '选题策划',
     inputData: {
       profile_id: creatorContext.profile?.id ?? null,
@@ -257,7 +270,7 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     },
     result: text,
   });
-  return { ok: true, text: boardClip(text), full: text };
+  return { ok: true, text: boardClip(text), full: text, historySaved };
 }
 
 /** 脚本：和脚本页面的算法一致（lib/boards/script-query），记忆预填也按页面的规则 */
@@ -340,7 +353,7 @@ export async function runScriptBoard(ctx: BoardContext, input: ScriptInput): Pro
   const duration = state.durationMode === 'ai'
     ? 'AI推荐'
     : state.durationMode === 'custom' && state.customDuration ? `${state.customDuration}秒` : state.duration;
-  await saveBoardHistory(ctx, {
+  const historySaved = await saveBoardHistory(ctx, {
     taskType: '脚本生成',
     inputData: {
       profileId: creatorContext.profile?.id ?? null,
@@ -354,7 +367,7 @@ export async function runScriptBoard(ctx: BoardContext, input: ScriptInput): Pro
     },
     result: text,
   });
-  return { ok: true, text: boardClip(text), full: text };
+  return { ok: true, text: boardClip(text), full: text, historySaved };
 }
 
 /** 审稿：和审稿页面的算法一致（lib/boards/review-query），按时长 AI 推荐 */
@@ -410,7 +423,7 @@ export async function runReviewBoard(ctx: BoardContext, input: ReviewInput): Pro
     return { ok: false, text: '', error: data?.error ?? '服务暂时不可用，请稍后再试' };
   }
   const text = await readDifyStream(res);
-  await saveBoardHistory(ctx, {
+  const historySaved = await saveBoardHistory(ctx, {
     taskType: '审稿优化',
     inputData: {
       profileId: creatorContext.profile?.id ?? null,
@@ -430,5 +443,5 @@ export async function runReviewBoard(ctx: BoardContext, input: ReviewInput): Pro
     },
     result: text,
   });
-  return { ok: true, text: boardClip(text), full: text };
+  return { ok: true, text: boardClip(text), full: text, historySaved };
 }

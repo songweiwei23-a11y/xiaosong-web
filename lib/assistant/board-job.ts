@@ -35,6 +35,8 @@ export interface BoardRunResult {
   error?: string;
   /** 交付的那份创作（已存成创作会话）：下一步按它接续，和页面「带去下一步」一样 */
   carry?: HandoffPayload;
+  /** 结果有没有存进历史（创作会话和页面历史都要成功）。false 时要提醒老板先复制保存 */
+  stored?: boolean;
 }
 
 export interface BoardRunOptions {
@@ -104,6 +106,11 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
   }
 
   const saved = await keepResult(opts.ctx, opts.board, full);
+  // 历史必须存成功：创作会话没存下来，或者页面历史没存下来，都要让老板知道，先去复制保存
+  const stored = saved !== null && res.historySaved !== false;
+  if (!stored) {
+    pushEvent(job, { type: 'step', text: `${tag}⚠ 「${label}」这份结果没能存进历史，回答里会提醒你先复制保存` });
+  }
   return {
     ok: true,
     // 对话里显示的版本：有修改就用修改后的完整稿，没有就用板块原样的输出
@@ -111,6 +118,7 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
     attempts: revisions + 1,
     problems: check.ok ? [] : check.problems,
     carry: saved?.payload,
+    stored,
   };
 }
 
@@ -128,7 +136,15 @@ async function knowledgeFor(kind: BoardAny['kind'], problems: string[]): Promise
 /** 存成可以按编号带去下一步的创作（失败不影响交付；见 lib/assistant/carry） */
 async function keepResult(ctx: BoardContext, board: BoardAny, full: string): Promise<SavedResult | null> {
   if (!full.trim()) return null;
+  // 存失败就再存一次（网络抖动常见），两次都失败才返回 null，由调用方提示老板
+  const first = await saveBoardResult(ctx, board, full).catch(() => null);
+  if (first) return first;
   return saveBoardResult(ctx, board, full).catch(() => null);
+}
+
+/** 没存进历史的结果，在交给老板的回答末尾加一句明确的提示 */
+function unstoredNote(stored: boolean | undefined): string {
+  return stored === false ? '\n\n⚠ 这份结果没能存进历史，请先复制保存，再继续。' : '';
 }
 
 export interface BoardJobInput {
@@ -143,7 +159,7 @@ export interface BoardJobInput {
 export async function runBoardJob(job: AssistantJob, input: BoardJobInput): Promise<void> {
   const r = await runBoardWithReview(job, { ctx: input.ctx, board: input.board, maxRuns: input.maxRuns ?? MAX_REVISIONS, cfg: input.cfg, llm: input.llm });
   if (r.error) pushEvent(job, { type: 'error', text: `「${BOARD_LABEL[input.board.kind].label}」没有完成：${r.error}` });
-  finishJob(job, r.text ? 'done' : 'error', r.text ? managerAnswer(r.text, r.attempts, r.problems) : '');
+  finishJob(job, r.text ? 'done' : 'error', r.text ? managerAnswer(r.text, r.attempts, r.problems) + unstoredNote(r.stored) : '');
 }
 
 export interface PlanJobInput {
@@ -180,7 +196,7 @@ export async function runPlanJob(job: AssistantJob, input: PlanJobInput): Promis
     }
     previous = r.carry ?? null;
     previousText = r.carry ? null : r.text;
-    sections.push(`## ${i + 1}. ${BOARD_LABEL[original.kind].label}\n\n${managerAnswer(r.text, r.attempts, r.problems)}`);
+    sections.push(`## ${i + 1}. ${BOARD_LABEL[original.kind].label}\n\n${managerAnswer(r.text, r.attempts, r.problems)}${unstoredNote(r.stored)}`);
   }
   finishJob(job, sections.length ? 'done' : 'error', sections.join('\n\n'));
 }

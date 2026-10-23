@@ -16,7 +16,8 @@ const ok = (kind: ActionReceipt['kind']): ActionReceipt => ({ kind, ok: true, te
 describe('声明核对：没有回执的完成说法，改写成「没有完成」', () => {
   it('测试第 10 项的原话：「已改到本周五」没有修改回执 → 改写，不再保留虚假成功', () => {
     const r = checkClaims('已改到本周五（2026-10-23），到期会提醒你。', []);
-    expect(r.answer).toContain('（没有完成：待办没有改动');
+    expect(r.answer).toContain('这条待办我还没有改动');
+    expect(r.answer).not.toContain('没有完成');
     expect(r.answer).not.toContain('已改到本周五');
     expect(r.rewritten).toEqual(['todo-update']);
   });
@@ -38,7 +39,7 @@ describe('声明核对：没有回执的完成说法，改写成「没有完成�
     expect(r.answer.split('\n')).toHaveLength(3);
     expect(r.answer.startsWith('好的，我先看了你的档案。\n')).toBe(true);
     expect(r.answer.endsWith('\n下周再看数据。')).toBe(true);
-    expect(r.answer).toContain('（没有完成：待办没有记进去');
+    expect(r.answer).toContain('这条待办我还没有记进去');
   });
 
   it('删除、忘掉、改档案、改作品状态：本轮不可能有成功回执（要用户点确认），说「已删除」就会被改写', () => {
@@ -328,7 +329,7 @@ describe('端到端（脚本化模型）', () => {
     const job = newJob('u-e2e');
     await runAssistantJob(job, { cfg: CFG, cookie: 'c=1', message: '把「给客户交稿」那条待办改到周五', history: [], reservation: { userId: 'u-e2e', requestId: 'r', feature: 'freeChat' } as never });
     expect(job.status).toBe('done');
-    expect(job.answer).toContain('（没有完成：待办没有改动');
+    expect(job.answer).toContain('这条待办我还没有改动');
     expect(job.events.some((e) => e.type === 'receipt')).toBe(false);
     expect(todos[0].due_at).toBeNull();
   });
