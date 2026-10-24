@@ -350,6 +350,8 @@ export function activeUsers(input: {
   users?: RawUser[];
   generations?: RawGeneration[];
   usage?: RawUsage[];
+  /** 用户动态流水（supabase/migrations/20261024_user_activity）：登录、定位保存等，和生成记录一起算「最后做了什么」 */
+  activity?: ActivityRow[];
   /** 工作台心跳（见 lib/presence）：决定谁在线、停在哪一页 */
   presence?: Map<string, PresenceEntry>;
   dir: Directory;
@@ -375,6 +377,7 @@ export function activeUsers(input: {
     const s = inputSummary(g.input_data, 30);
     touch(g.user_id, g.created_at, `${g.task_type || '未知功能'}${s ? ` · ${s}` : ''}`);
   }
+  for (const a of input.activity ?? []) touch(a.user_id, a.created_at, activityAction(a));
   for (const u of input.usage ?? []) {
     const q = oneLine(asObject(u.detail)?.question, 30);
     touch(u.user_id, u.created_at, `${featureName(u)}${q ? ` · 提问：${q}` : ''}`);
@@ -710,6 +713,75 @@ export function redactSnapshot<T extends { active: ActiveUser[]; events: Monitor
       };
     }),
   };
+}
+
+/**
+ * 用户动态流水的一行（表 user_activity）。登录、注册、生成、对话、保存定位、充值下单都在里面。
+ * ref_kind + ref_id 指向原始记录，点开时据此取完整内容。
+ */
+export interface ActivityRow {
+  id?: string | number;
+  user_id?: string | null;
+  kind?: string | null;
+  label?: string | null;
+  ref_kind?: string | null;
+  ref_id?: string | null;
+  created_at?: string | null;
+}
+
+/** 一条流水在页面上写什么。管理员要看到的是「做了什么」，不是内部的类别名 */
+export function activityAction(row: ActivityRow): string {
+  const label = (row.label || '').trim();
+  if (row.kind === 'login') return '登录了';
+  if (row.kind === 'signup') return '注册了';
+  if (row.kind === 'positioning') return `保存了「${label || '账号定位'}」`;
+  if (row.kind === 'order') return `下了充值订单（${label || '充值'}）`;
+  return `用了「${label || '未知功能'}」`;
+}
+
+/** 点开流水时取到的原始内容（只有有权限的人才会取） */
+export interface ActivityContent {
+  input?: unknown;
+  result?: string | null;
+  question?: string | null;
+  answer?: string | null;
+}
+
+/**
+ * 流水转成动态卡片：和实时动态共用同一种卡片。
+ * contents 的键是 `${ref_kind}:${ref_id}`；没有内容的（没权限、超出取数范围）只写动作，不编内容。
+ */
+export function activityEvents(
+  rows: ActivityRow[],
+  opts: { dir?: Directory; contents?: Map<string, ActivityContent>; now?: number } = {}
+): MonitorEvent[] {
+  const dir = opts.dir ?? EMPTY_DIR;
+  const now = opts.now ?? Date.now();
+  const out: MonitorEvent[] = [];
+  for (const r of rows) {
+    const t = parseTime(r.created_at);
+    if (t === null || t > now + 60_000) continue;
+    const at = r.created_at as string;
+    const who = whoIs(r.user_id, dir);
+    const c = r.ref_kind && r.ref_id ? opts.contents?.get(`${r.ref_kind}:${r.ref_id}`) : undefined;
+    const question = c?.question ? `提问：${oneLine(c.question, 60)}` : '';
+    const summary = question || inputSummary(c?.input);
+    const isUse = r.kind === 'generation' || r.kind === 'usage';
+    out.push({
+      id: `act:${r.id ?? at}`,
+      type: 'usage',
+      at,
+      title: `${who?.email ?? '有人'} ${activityAction(r)}`,
+      detail: summary,
+      level: 'info',
+      user: who,
+      feature: isUse ? (r.label || undefined) : undefined,
+      summary: summary || undefined,
+      excerpt: oneLine(c?.result ?? c?.answer, 140) || undefined,
+      ref: r.ref_kind === 'history' || r.ref_kind === 'usage' ? { kind: r.ref_kind, id: String(r.ref_id) } : undefined,
+    });
+  }
+  return out.sort((a, b) => (parseTime(b.at) ?? 0) - (parseTime(a.at) ?? 0));
 }
 
 /** 相对时间，给事件流用 */

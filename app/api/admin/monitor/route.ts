@@ -25,7 +25,9 @@ import { runningJobCount } from '@/lib/assistant/jobs';
 import { slotStats } from '@/lib/generation-slots';
 import {
   buildEvents,
+  activityEvents,
   buildDirectory,
+  type ActivityRow,
   activeUsers,
   featureBreakdown,
   pulseByMinute,
@@ -111,7 +113,7 @@ export async function GET() {
     const since = new Date(Math.min(chinaDayStart(now), now - 24 * 60 * 60 * 1000)).toISOString();
 
     // 活跃窗口内的元数据分页取全（不带正文）。正文只补最近 EVENT_LIMIT 条。
-    const [recentGenerations, usageMeta, orders, users, pendingReview, pendingPay, oldestAt, totalCount] = await Promise.all([
+    const [recentGenerations, usageMeta, orders, users, pendingReview, pendingPay, oldestAt, totalCount, activityRows] = await Promise.all([
       readAllRows<RawGeneration>((from, to) => supabase
         .from('script_history')
         .select('id, user_id, task_type, created_at, work_id')
@@ -135,6 +137,12 @@ export async function GET() {
       countOrders('pending'),
       oldestPendingAt(),
       totalGenerations(),
+      // 用户动态流水（登录、注册、生成、对话、保存定位、充值）：迁移还没执行时没有这张表，当作没有，不影响大屏其余部分
+      readAllRows<ActivityRow>((from, to) => supabase
+        .from('user_activity')
+        .select('id, user_id, kind, label, ref_kind, ref_id, created_at')
+        .gte('created_at', since).lte('created_at', upper)
+        .order('created_at', { ascending: false }).order('id').range(from, to)).catch(() => [] as ActivityRow[]),
     ]);
 
     // 实时动态要的最近 EVENT_LIMIT 条生成：补齐完整内容（缓存里有的不再读）
@@ -174,6 +182,7 @@ export async function GET() {
     const activeIds = new Set<string>();
     for (const g of recentGenerations) if (g.user_id) activeIds.add(g.user_id);
     for (const u of usageMeta) if (u.user_id) activeIds.add(u.user_id);
+    for (const a of activityRows) if (a.user_id) activeIds.add(a.user_id);
     for (const id of presence.keys()) activeIds.add(id);
     const sinceMs = Date.parse(since);
     for (const u of users) if (u.last_sign_in_at && Date.parse(u.last_sign_in_at) >= sinceMs) activeIds.add(u.id ?? '');
@@ -197,7 +206,7 @@ export async function GET() {
     const todayGen = generations.filter((g) => isToday(g.created_at, now));
     const todayUsers = users.filter((u) => isToday(u.created_at, now));
     const todayOrders = orders.filter((o) => isToday(o.created_at, now));
-    const active = activeUsers({ users, generations, usage, presence, dir, now });
+    const active = activeUsers({ users, generations, usage, activity: activityRows, presence, dir, now });
     const oldestMs = oldestAt ? parseTime(oldestAt) : null;
 
     return {
@@ -227,14 +236,20 @@ export async function GET() {
       pulse: pulseByMinute(generations, now),
       byFeature: featureBreakdown(generations, now),
       // 动态列表：最近 EVENT_LIMIT 条生成和对话，都带完整内容；注册、订单另算
-      events: buildEvents({
-        generations: eventGens.map((g) => generationContent.get(String(g.id)) ?? g),
-        usage,
-        users,
-        orders,
-        dir,
-        now,
-      }).slice(0, EVENT_LIMIT),
+      // 生成和对话按最近 EVENT_LIMIT 条取（带完整内容）；登录、保存定位来自流水，两者合起来按时间排
+      events: [
+        ...buildEvents({
+          generations: eventGens.map((g) => generationContent.get(String(g.id)) ?? g),
+          usage,
+          users,
+          orders,
+          dir,
+          now,
+        }),
+        ...activityEvents(activityRows.filter((a) => a.kind === 'login' || a.kind === 'positioning'), { dir, now }),
+      ]
+        .sort((a, b) => (parseTime(b.at) ?? 0) - (parseTime(a.at) ?? 0))
+        .slice(0, EVENT_LIMIT),
     };
     });
     // 每次请求现取的部分：数据库延迟、运行时长、助理进行中的任务、生成排队、服务器版本（不进快照缓存）

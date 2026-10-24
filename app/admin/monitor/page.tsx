@@ -123,6 +123,43 @@ export default function MonitorPage() {
   const privacy = privacyRaw === "1";
   /** 点了某个活跃用户：动态只看他的 */
   const [focusUser, setFocusUser] = useState<{ id: string; email: string } | null>(null);
+  /*
+   * 选中某人后，动态区显示他的完整时间线（最近 14 天，登录、生成、对话、保存定位、充值），每 5 秒刷新。
+   * 不再是全站最近几条里筛出来的——那样只要他的记录早于最近几条，就会「看得到人、看不到动作」。
+   */
+  const [timeline, setTimeline] = useState<{ events: MonitorEvent[]; truncated: boolean } | null>(null);
+  const [timelineError, setTimelineError] = useState("");
+  const focusId = focusUser?.id ?? null;
+  useEffect(() => {
+    if (!focusId) {
+      setTimeline(null);
+      setTimelineError("");
+      return;
+    }
+    let alive = true;
+    const load = () => {
+      fetch(`/api/admin/monitor/timeline?userId=${encodeURIComponent(focusId)}`, { cache: "no-store" })
+        .then(async (r) => {
+          const d = (await r.json().catch(() => ({}))) as { events?: MonitorEvent[]; truncated?: boolean; error?: string };
+          if (!alive) return;
+          if (!r.ok) {
+            setTimelineError(d.error || "时间线读取失败");
+            return;
+          }
+          setTimelineError("");
+          setTimeline({ events: d.events ?? [], truncated: !!d.truncated });
+        })
+        .catch(() => {
+          if (alive) setTimelineError("时间线读取失败，网络可能断了");
+        });
+    };
+    load();
+    const t = setInterval(load, 5000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [focusId]);
 
   const togglePrivacy = () => setPrivacyRaw(privacy ? "0" : "1");
   const showEmail = (email: string) => (privacy ? maskEmail(email) : email);
@@ -518,9 +555,22 @@ export default function MonitorPage() {
             }
           >
             {(() => {
-              const list = (snap?.events ?? []).filter((e) => !focusUser || e.user?.id === focusUser.id);
+              if (focusUser) {
+                if (timelineError) return <p className="text-[13px] text-destructive">{timelineError}</p>;
+                if (!timeline) return <EmptyBox text="正在读取这个人的动态…" height={120} />;
+                if (timeline.events.length === 0) return <EmptyBox text="最近 14 天这个人没有动态记录" height={120} />;
+                return (
+                  <div className="space-y-2 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1">
+                    {timeline.truncated && <p className="text-[11.5px] text-muted-foreground">只显示最近 300 条</p>}
+                    {timeline.events.map((e) => (
+                      <EventCard key={e.id} e={e} email={e.user ? showEmail(e.user.email) : ""} hideContent={privacy} />
+                    ))}
+                  </div>
+                );
+              }
+              const list = snap?.events ?? [];
               if (list.length === 0) {
-                return <EmptyBox text={focusUser ? "最近的动态里没有这个人的记录" : "暂无动态"} height={120} />;
+                return <EmptyBox text="暂无动态" height={120} />;
               }
               return (
                 <div className="space-y-2 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1">

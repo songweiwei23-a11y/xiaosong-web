@@ -186,11 +186,18 @@ describe('反馈接口：挂到本人档案、对回生成记录', () => {
   });
 
   it('档案是本人的才记上；对回生成记录的，记下对照组标记', async () => {
-    const { POST } = await route();
-    const res = await POST(body({ board: 'script', rating: -1, reason: '不像我的口吻', profileId: P1, excerpt: LONG }));
-    expect(res.status).toBe(200);
-    const row = env.db.tables.result_feedback[0];
-    expect(row).toMatchObject({ profile_id: P1, control: true, excerpt: LONG.slice(0, FEEDBACK_EXCERPT_MAX), reason: '不像我的口吻' });
+    // 生成记录的时间在 NOW 附近，关联只认 7 天以内的记录：时钟固定在 NOW，结果才不随今天的日期变（2026-10-24 发现这里依赖今天的日期）
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+    try {
+      const { POST } = await route();
+      const res = await POST(body({ board: 'script', rating: -1, reason: '不像我的口吻', profileId: P1, excerpt: LONG }));
+      expect(res.status).toBe(200);
+      const row = env.db.tables.result_feedback[0];
+      expect(row).toMatchObject({ profile_id: P1, control: true, excerpt: LONG.slice(0, FEEDBACK_EXCERPT_MAX), reason: '不像我的口吻' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('别人的档案不记上（档案编号是伪造的也一样）', async () => {
