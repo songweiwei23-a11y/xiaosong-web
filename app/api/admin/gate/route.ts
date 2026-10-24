@@ -10,6 +10,7 @@ import {
   gateEnabled,
   hasActiveAdminTicket,
   listTickets,
+  NotRevocableError,
   revokeTicket,
   setAdminLoginEnabled,
   setGateEnabled,
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
         const changed = await revokeTicket(id);
         if (!changed) return NextResponse.json({ error: '这张门票已经撤销过了' }, { status: 400, headers });
       } catch (e) {
+        if (e instanceof NotRevocableError) return NextResponse.json({ error: e.message }, { status: 400, headers });
         return NextResponse.json({ error: (e as Error).message }, { status: 503, headers });
       }
       await logAdminAction({ admin_id: admin.userId, action: AdminActions.REVOKE_GATE_TICKET, target_type: 'system', target_id: id, details: {} });
@@ -87,14 +89,16 @@ export async function POST(request: Request) {
     }
     const claimDays = clampInt(body.claimDays, INVITE_CLAIM_DAYS.min, INVITE_CLAIM_DAYS.max, INVITE_CLAIM_DAYS.default);
     const maxDevices = clampInt(body.maxDevices, INVITE_MAX_DEVICES.min, INVITE_MAX_DEVICES.max, INVITE_MAX_DEVICES.default);
+    // 能不能撤销：默认能（只有明确传 false 才是不可撤销）
+    const revocable = body.revocable !== false;
     try {
-      const created = await createInviteTicket({ label, claimDays, maxDevices, createdBy: admin.userId });
+      const created = await createInviteTicket({ label, claimDays, maxDevices, createdBy: admin.userId, revocable });
       await logAdminAction({
         admin_id: admin.userId,
         action: AdminActions.CREATE_GATE_TICKET,
         target_type: 'system',
         target_id: created.id,
-        details: { kind: 'invite', label, claimDays, maxDevices },
+        details: { kind: 'invite', label, claimDays, maxDevices, revocable },
       });
       return NextResponse.json({ ok: true, secret: created.secret }, { headers });
     } catch (e) {

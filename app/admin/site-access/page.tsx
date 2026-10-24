@@ -22,6 +22,8 @@ interface TicketRow {
   max_devices: number;
   devices_used: number;
   revoked_at: string | null;
+  /** 能不能撤销（2026-10-24：每张门票都有这一项） */
+  revocable: boolean;
   status: "active" | "revoked" | "expired" | "full";
 }
 
@@ -58,6 +60,7 @@ export default function GatePage() {
   const [label, setLabel] = useState("");
   const [claimDays, setClaimDays] = useState<number>(INVITE_CLAIM_DAYS.default);
   const [maxDevices, setMaxDevices] = useState<number>(INVITE_MAX_DEVICES.default);
+  const [revocable, setRevocable] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState("");
@@ -111,7 +114,7 @@ export default function GatePage() {
   const createInvite = async () => {
     const d = await act(
       "invite",
-      { action: "create-invite", label: label.trim(), claimDays, maxDevices },
+      { action: "create-invite", label: label.trim(), claimDays, maxDevices, revocable },
       "门票已生成，把下面的链接发给对方。",
     );
     if (d?.secret) {
@@ -131,7 +134,7 @@ export default function GatePage() {
     act("enabled", { action: "set-enabled", enabled }, enabled ? "首页拦截已开启。" : "首页拦截已关闭，所有人都能看首页。");
 
   const revoke = (id: string, title: string) => {
-    if (!window.confirm(`撤销「${title}」？它发出去的所有设备约 30 秒内失效；用这张门票进门的账号（包括已经登录的）也会被请回门外，只能凭新门票重新进门。`)) return;
+    if (!window.confirm(`撤销「${title}」？它发出去的设备约 30 秒内失效，不能再进开物。已经注册并有使用记录的账号不受影响；还没有使用记录的，会被请出门外。`)) return;
     void act(`revoke-${id}`, { action: "revoke", id }, "门票已撤销。");
   };
 
@@ -240,6 +243,10 @@ export default function GatePage() {
                 />
               </label>
             </div>
+            <label className="flex items-start gap-2 text-[12.5px] text-muted-foreground">
+              <input type="checkbox" checked={revocable} onChange={(e) => setRevocable(e.target.checked)} className="mt-0.5" />
+              <span>可撤销（默认勾选）：之后随时可以撤掉这张门票。不勾选的门票撤不掉。</span>
+            </label>
             <AdminPanelHint>
               进门期限：门票发出后多久内能用来进门。进门后这台设备 30 天内不用再进。
             </AdminPanelHint>
@@ -298,11 +305,12 @@ export default function GatePage() {
                       <td className="py-2 pr-3">{t.kind === "admin" ? "—" : TIME(t.claim_until)}</td>
                       <td className="py-2 pr-3">{TIME(t.created_at)}</td>
                       <td className="py-2 text-right">
-                        {t.status === "active" && (
+                        {t.status === "active" && t.revocable && (
                           <Button size="sm" onClick={() => revoke(t.id, t.label || "这张门票")} busy={busy === `revoke-${t.id}`}>
                             撤销
                           </Button>
                         )}
+                        {t.status === "active" && !t.revocable && <span className="text-[12px] text-muted-foreground">不可撤销</span>}
                       </td>
                     </tr>
                   ))}

@@ -193,21 +193,23 @@ export async function createInviteTicket(input: {
   claimDays: number;
   maxDevices: number;
   createdBy: string;
+  /** 能不能撤销，默认能（2026-10-24） */
+  revocable?: boolean;
 }): Promise<CreatedTicket> {
   const secret = newSecret(24);
   const claimUntil = new Date(Date.now() + input.claimDays * 86_400_000).toISOString();
-  const { data, error } = await db()
-    .from('gate_tickets')
-    .insert({
-      kind: 'invite',
-      secret_hash: await hashSecret(secret),
-      label: input.label.slice(0, 200),
-      created_by: input.createdBy,
-      claim_until: claimUntil,
-      max_devices: input.maxDevices,
-    })
-    .select('id')
-    .single();
+  const base = {
+    kind: 'invite',
+    secret_hash: await hashSecret(secret),
+    label: input.label.slice(0, 200),
+    created_by: input.createdBy,
+    claim_until: claimUntil,
+    max_devices: input.maxDevices,
+  };
+  // 迁移没跑时没有 revocable 列：照常生成（按能撤销处理），不因此失败
+  let res = await db().from('gate_tickets').insert({ ...base, revocable: input.revocable !== false }).select('id').single();
+  if (res.error && /revocable/.test(res.error.message)) res = await db().from('gate_tickets').insert(base).select('id').single();
+  const { data, error } = res;
   if (error || !data) throw new Error(error?.message || '生成门票失败');
   return { id: data.id, secret };
 }
@@ -280,6 +282,9 @@ async function recordBlockedAccounts(ticketId: string): Promise<void> {
  * 先记账号、再撤销门票：记不下来就不撤销，免得门票撤了、账号却还能进。
  */
 export async function revokeTicket(id: string): Promise<boolean> {
+  const { data: ticket, error: readError } = await db().from('gate_tickets').select('revocable').eq('id', id).maybeSingle();
+  if (readError && !isMissingSchema(asError(readError))) throw new Error(`撤销没完成（读取门票失败）：${readError.message}`);
+  if (!readError && !ticketRevocable(ticket)) throw new NotRevocableError('这张门票是不可撤销的，撤不掉');
   await recordBlockedAccounts(id);
   const { data, error } = await db()
     .from('gate_tickets')
@@ -290,6 +295,44 @@ export async function revokeTicket(id: string): Promise<boolean> {
   if (error) throw new Error(error.message);
   resetGateCaches();
   return (data?.length ?? 0) > 0;
+}
+
+/** 撤销门票时，门票不能撤销的错误（接口返回 400，而不是 503） */
+export class NotRevocableError extends Error {}
+
+/**
+ * 撤销后要不要拦这个账号（纯规则）：在拦截名单里、不是管理员、并且没有任何使用记录，才拦。
+ * 已经注册并有使用记录的账号不受影响。
+ */
+export function accountBlockedBy(input: { listed: boolean; isAdmin: boolean; hasHistory: boolean }): boolean {
+  return input.listed && !input.isAdmin && !input.hasHistory;
+}
+
+/** 这张门票能不能撤销。字段没有（迁移没跑）、或者没有读到：按能撤销处理 */
+export function ticketRevocable(row: { revocable?: boolean | null } | null | undefined): boolean {
+  return row?.revocable !== false;
+}
+
+const historyCache = new Map<string, Cached<boolean>>();
+
+/**
+ * 这个账号有没有使用记录（生成过内容、用过任何功能）。读不到时按「有」处理：宁可不拦老用户，也不误伤。
+ */
+export async function hasUsageHistory(userId: string, now: number = Date.now()): Promise<boolean> {
+  const cached = historyCache.get(userId);
+  if (cached && now - cached.at < TTL_BLOCK_MS) return cached.value;
+  try {
+    const [gen, use] = await Promise.all([
+      db().from('script_history').select('id').eq('user_id', userId).limit(1),
+      db().from('usage_events').select('id').eq('user_id', userId).limit(1),
+    ]);
+    if (gen.error || use.error) throw asError((gen.error ?? use.error)!);
+    const value = (gen.data?.length ?? 0) > 0 || (use.data?.length ?? 0) > 0;
+    remember(historyCache, userId, value, now);
+    return value;
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -305,7 +348,8 @@ export async function accountGateBlocked(userId: string, now: number = Date.now(
   try {
     const { data, error } = await db().from('gate_user_blocks').select('user_id').eq('user_id', userId).maybeSingle();
     if (error) throw asError(error);
-    const blocked = !!data;
+    // 在拦截名单里，但已经有使用记录的老账号不拦（2026-10-24：撤销门票只挡没有使用记录的人）
+    const blocked = accountBlockedBy({ listed: !!data, isAdmin: false, hasHistory: !!data && (await hasUsageHistory(userId, now)) });
     remember(blockCache, userId, blocked, now);
     return blocked;
   } catch (e) {
@@ -357,19 +401,25 @@ export interface TicketRow {
   devices_used: number;
   revoked_at: string | null;
   last_claimed_at: string | null;
+  /** 能不能撤销（每张门票都有这一项；不能撤销的不显示撤销按钮） */
+  revocable: boolean;
   status: TicketStatus;
 }
 
+const TICKET_COLS = 'id, kind, label, created_at, claim_until, max_devices, devices_used, revoked_at, last_claimed_at';
+
 export async function listTickets(now: number = Date.now()): Promise<TicketRow[]> {
-  const { data, error } = await db()
-    .from('gate_tickets')
-    .select('id, kind, label, created_at, claim_until, max_devices, devices_used, revoked_at, last_claimed_at')
-    .order('created_at', { ascending: false })
-    .limit(200);
+  let res = await db().from('gate_tickets').select(`${TICKET_COLS}, revocable`).order('created_at', { ascending: false }).limit(200);
+  if (res.error && /revocable/.test(res.error.message)) {
+    // 迁移没跑：不带 revocable 列再查一次，按能撤销处理
+    res = (await db().from('gate_tickets').select(TICKET_COLS).order('created_at', { ascending: false }).limit(200)) as typeof res;
+  }
+  const { data, error } = res;
   if (error) throw new Error(error.message);
   return (data ?? []).map((t) => ({
     ...t,
     kind: t.kind as TicketKind,
+    revocable: ticketRevocable(t as { revocable?: boolean }),
     status: ticketStatus({ kind: t.kind as TicketKind, revoked_at: t.revoked_at, claim_until: t.claim_until, devices_used: t.devices_used, max_devices: t.max_devices }, now),
   }));
 }

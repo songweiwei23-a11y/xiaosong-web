@@ -352,6 +352,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [],
   },
   {
+    file: "20261024_gate_ticket_revocable.sql",
+    tables: [],
+    columns: [{"table":"gate_tickets","column":"revocable"}],
+  },
+  {
     file: "20261024_user_activity.sql",
     tables: ["user_activity"],
     columns: [],
