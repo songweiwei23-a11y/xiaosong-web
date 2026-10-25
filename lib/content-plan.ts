@@ -10,7 +10,7 @@
  * lib/creation-items 靠「方向N」认出可勾选的条目，lib/creation-settings 的 settingsFromText 靠这几个标签
  * 把目的、类型、方向、条数带到下一页，下一页自动选好。
  */
-import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD, CONTENT_ROLE_LIST, type ContentRole } from './content-roles';
+import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD, CONTENT_ROLE_LIST, DEAL_REASON_METHOD, type ContentRole } from './content-roles';
 import { formatMix, mixToCounts, type ResolvedMix } from './content-mix';
 import type { Work } from './works';
 import { tacticMixRule } from './tactic-mix';
@@ -18,7 +18,7 @@ import { tacticMixRule } from './tactic-mix';
 export const CONTENT_PLAN_TASK_TYPE = '内容规划';
 
 /** 内容类型怎么选：内容规划和创作方向共用。形式（36 计或四大脚本）不决定目的，目的由人货场、三有和爆款元素决定 */
-export const CONTENT_TYPE_RULE = '先在「出发点」里定好内容（人、货、场、三有、爆款元素），再从 36 计或四大脚本的结构里选一个形式把它拍出来，哪种目的都能用。形式不决定出发点';
+export const CONTENT_TYPE_RULE = '先在「出发点」里定好内容（流量：人货场、三有、爆款元素；变现：人货场和要突出的成交理由），再从 36 计或四大脚本的结构里选一个形式把它拍出来，哪种目的都能用。形式不决定出发点';
 
 /** 上个月发了多少条（勾一个区间；代表值用来推荐这个月的条数） */
 export const LAST_MONTH_OPTIONS = [
@@ -114,13 +114,13 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 
 ## 📊 配比一览
 | 目的 | 条数 | 主要用什么类型 |
-三行，流量型 / 人设型 / 变现型。三行各写这一类方向用的人、货、场和噱头。形式（36 计或四大脚本）哪种目的都能用，不因为是教知识、行业干货或避坑就归到哪一行。
+三行，流量型 / 人设型 / 变现型。三行各写这一类方向的出发点：流量写人、货、场和爆款元素（噱头），变现写人、货、场和要突出的成交理由，人设写经历。形式（36 计或四大脚本）哪种目的都能用，不因为是教知识、行业干货或避坑就归到哪一行。
 
 ## 🧭 内容方向（勾选想做的方向，带去创作方向、选题或脚本接着做）
 
 ### 方向1：[方向名，10 个字左右，说的是一类内容，不是一条选题]
 - **视频目的**：流量型 / 人设型 / 变现型 选一个
-- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头，以及它怎么落在这个档案的条件上、普通人能不能拍出来；人设、变现写这条的核心卖点或经历
+- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头，以及它怎么落在这个档案的条件上、普通人能不能拍出来。流量型不带成交理由（不讲卖点、不引导成交）；变现型必填：这条要突出的成交理由（用户为什么选你，从档案和 17 条里挑、有依据），以及人货场怎么落在具体的事上；人设型写这条的核心经历
 - **内容类型**：${CONTENT_TYPE_RULE}
 - **内容方向**：一两句话说清这一类拍什么范围、从哪类素材取材（不写具体哪一期、不写标题）
 - **本月条数**：N 条
@@ -138,9 +138,11 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
   parts.push(`## 要求
 - 方向必须写满 15～20 个，少于 15 个不算完成；每个方向只写一类内容，不要把几类合成一个方向
 - 形式不决定目的：教知识、行业干货、避坑、观点，都可以是大流量，也都可以是人设或变现，要看它的人货场、三有和爆款元素
-- 流量型方向还要满足大流量标准：${BIG_TRAFFIC_STANDARD}
+- 流量型方向还要满足大流量标准（不带成交理由）：${BIG_TRAFFIC_STANDARD}
 - 流量型方向的做法（照这个顺序想）：
 ${BIG_TRAFFIC_METHOD}
+- 变现型方向的做法（照这个顺序想，不局限于某个脚本）：
+${DEAL_REASON_METHOD}
 - 方向名和内容方向写的是"一类内容"（例如「装修避坑知识」），不是一条选题（例如「买沙发前一定要问的三个问题」）
 - 方向要落在这个号真实在卖的品类、真实的团队和拍摄条件上；档案里没有的经营事实（价格、活动、客户故事、数据）不写成真事
 - 没有作品数据就不编"上个月哪类数据好"；不写"完播率低于多少就换"这类合格线，改成和自己前几条比

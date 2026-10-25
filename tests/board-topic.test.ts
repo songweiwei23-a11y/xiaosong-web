@@ -82,7 +82,7 @@ describe('选题提示词的共用拼装', () => {
 
   it('成交理由写进变现型的要求里', () => {
     const { query } = buildTopicBoardQuery(baseInput({ topicRole: '变现型', topicType: '变现型选题', dealReasonLabels: ['包邮', '七天无理由'] }));
-    expect(query).toContain('成交理由：包邮、七天无理由');
+    expect(query).toContain('成交理由（只给变现型选题用）：包邮、七天无理由');
   });
 
   it('输出格式要求都在（页面会按它解析选题）', () => {

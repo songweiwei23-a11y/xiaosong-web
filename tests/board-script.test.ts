@@ -62,7 +62,8 @@ describe('脚本提示词的共用拼装', () => {
   });
 
   it('广告引流且已选类型：走广告模板，类型名和成交理由都在', () => {
-    const q = buildScriptBoardQuery(baseInput({ isAd: true, scriptType: 'ad_lead', dealReasons: ['price'] }));
+    // 广告引流是变现型：成交理由只属于变现型（大流量不带成交理由，2026-10-25）
+    const q = buildScriptBoardQuery(baseInput({ isAd: true, scriptType: 'ad_lead', effectiveRole: '变现型', dealReasons: ['price'] }));
     expect(q).toContain('# 广告引流短视频脚本生成');
     expect(q).toContain('**广告类型**：留资获客');
     expect(q).toContain('价格优势');

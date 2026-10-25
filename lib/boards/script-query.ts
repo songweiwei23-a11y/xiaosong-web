@@ -12,7 +12,7 @@ import { getRelevantExample } from '@/lib/quality-checker';
 import { AI_SCRIPT_LENGTH_RULE, AI_SCRIPT_TARGET_TEXT, EXAMPLE_LENGTH_NOTE, scriptLengthRule } from '@/lib/ai-recommend';
 import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex } from '@/lib/creative-routes';
-import { roleBrief, type ContentRole } from '@/lib/content-roles';
+import { dealReasonsForPurpose, roleBrief, type ContentRole } from '@/lib/content-roles';
 import {
   creationSettingsBlock,
   durationSeconds,
@@ -177,7 +177,8 @@ export function scriptCreationSettings(input: ScriptSettingsInput): CreationSett
       audience: input.customTargetGroup || input.targetGroup,
       industry: input.customIndustry || input.industry,
       elements: input.boomElements.map((id) => (id === 'crowd' ? 'people' : id)),
-      dealReasons: normalizeCreationReasons([...auto.dealReasons || [], ...input.dealReasons]),
+      // 大流量视频不带成交理由（2026-10-25）：流量型的脚本设置里不存成交理由
+      dealReasons: dealReasonsForPurpose(input.scriptRole === '自动' ? auto.purpose : input.effectiveRole, normalizeCreationReasons([...auto.dealReasons || [], ...input.dealReasons])),
       notes: input.fromHandoff ? auto.notes : input.additionalInfo,
       tactic: input.tactic === AUTO_TACTIC ? undefined : input.tactic,
       openingLine: input.openingLine,
@@ -257,9 +258,11 @@ export function buildScriptBoardQuery(input: ScriptBoardInput): string {
     durationMode, duration, customDuration, profile, positioningContent,
     scriptStructure, hookType, boomElements, directorThoughts, tactic,
     openingLine, openingCard, productInfo, priceInfo, scene, device, budget,
-    personnel, accountPositioning, additionalInfo, dealReasons, originContent,
+    personnel, accountPositioning, additionalInfo, originContent,
     focusContent, currentSettings,
   } = input;
+  // 大流量视频不带成交理由（2026-10-25）：流量型的脚本一律不带成交理由，下面的提示词只看这里过滤后的
+  const dealReasons = dealReasonsForPurpose(effectiveRole, input.dealReasons);
 
       // 构建结构化的query给Dify
       const dealReasonsText = dealReasons.length > 0 

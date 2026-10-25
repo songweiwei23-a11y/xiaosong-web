@@ -427,8 +427,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
         query += `- 覆盖要广，但人群要对——垂直是人群垂直：选这个号的目标人群也关心的话题，不是随便什么热闹都蹭\n\n`;
       }
       if (dealReasonsText && topicRole !== '流量型' && topicRole !== '人设型') {
-        query += `- 成交理由：${dealReasonsText}\n`;
-        query += `⚠️ 变现型选题必须落在这些成交理由上：标题体现、内容围绕它拍、编导思路服务于它的说服力\n\n`;
+        query += `- 成交理由（只给变现型选题用）：${dealReasonsText}\n`;
+        query += `⚠️ 变现型选题的逻辑：围绕人、货、场，突出一个成交理由（用户为什么选你），要在画面、过程或结果里看得见，不局限于某个脚本；标题可以体现它，但不能只写在标题里。流量型选题不带成交理由，人设型也不写成交理由\n\n`;
       } else if (topicRole === '变现型') {
         query += `⚠️ 用户没选成交理由：从档案的核心卖点和客人常问里找出这个号的成交理由，每条变现型选题落在其中一个上\n\n`;
       }

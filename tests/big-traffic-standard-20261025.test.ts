@@ -4,6 +4,8 @@ import { buildDirectionPrompt } from '@/lib/direction'
 import { buildContentPlanPrompt } from '@/lib/content-plan'
 import { resolveMix } from '@/lib/content-mix'
 import { VIRAL_ELEMENTS } from '@/lib/viral-elements'
+import { dealReasonsForPurpose } from '@/lib/content-roles'
+import { creationSettingsBlock } from '@/lib/creation-settings'
 
 const base = { purposes: ['fans'], formats: ['any'], count: 5, depth: 'quick' as const }
 const planBase = {
@@ -39,9 +41,18 @@ describe('大流量标准', () => {
     expect(p).toContain('落地检查')
   })
 
+  it('大流量不带成交理由：过滤函数只放行非流量；创作设置块里流量型不出现成交理由', () => {
+    expect(dealReasonsForPurpose('流量型', ['包邮'])).toEqual([])
+    expect(dealReasonsForPurpose('变现型', ['包邮'])).toEqual(['包邮'])
+    expect(dealReasonsForPurpose('人设型', ['包邮'])).toEqual(['包邮'])
+    expect(dealReasonsForPurpose(undefined, ['包邮'])).toEqual(['包邮'])
+    expect(creationSettingsBlock({ purpose: '流量型', dealReasons: ['包邮'], topic: '选题' })).not.toContain('成交理由')
+    expect(creationSettingsBlock({ purpose: '变现型', dealReasons: ['包邮'], topic: '选题' })).toContain('成交理由：包邮')
+  })
+
   it('内容规划：流量型要求里带上做法', () => {
     const p = buildContentPlanPrompt(planBase)
-    expect(p).toContain(`- 流量型方向还要满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
+    expect(p).toContain(`- 流量型方向还要满足大流量标准（不带成交理由）：${BIG_TRAFFIC_STANDARD}`)
     expect(p).toContain('落地检查')
   })
 })

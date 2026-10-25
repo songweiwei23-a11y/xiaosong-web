@@ -3,6 +3,7 @@ import type { HandoffPayload } from './handoff';
 import { OPENING_CARDS } from './opening-cards';
 import { SCRIPT_TYPES, SCRIPT_STRUCTURES, HOOK_TYPES } from '@/app/dashboard/script/constants';
 import { DEAL_REASONS } from './deal-reasons';
+import { dealReasonsForPurpose } from './content-roles';
 
 /** 一条创作链的设置。页面字段可以不同，但意图、人群和结构只有一份。 */
 export interface CreationSettings {
@@ -245,7 +246,7 @@ export function resolveCreationSettings(data: HandoffPayload, context?: CreatorC
     openingLine: data.openingLine || explicit.openingLine,
     openingCards,
     elements: explicit.elements,
-    dealReasons: normalizeCreationReasons(explicit.dealReasons?.length ? explicit.dealReasons : context?.dealReasons || []),
+    dealReasons: dealReasonsForPurpose(explicit.purpose, normalizeCreationReasons(explicit.dealReasons?.length ? explicit.dealReasons : context?.dealReasons || [])),
     scene: text(p?.shooting_location) || undefined, device: text(p?.equipment) || undefined,
     personnel: text(p?.team_structure) || undefined, budget: text(p?.budget_per_video) || undefined,
     // 这几样由脚本类型推出来：类型是写明的才推
@@ -286,7 +287,7 @@ export function hasExplicitCreationContext(settings: unknown): boolean {
 export function creationSettingsBlock(settings: CreationSettings): string {
   const b = mergeCreationSettings(settings);
   if (b.lockedTexts?.length) b.notes = [b.notes, '以下用户锁定片段必须逐字保留，不得改写或删除：', ...b.lockedTexts.map(t => `【锁定片段】${t}`)].filter(Boolean).join('\n');
-  const lines = [['主题', b.topic], ['内容方向', b.direction], ['目标人群', b.audience], ['行业', b.industry], ['发布平台', b.platform], ['视频时长', b.duration], ['脚本类型', b.scriptType && SCRIPT_TYPE_LABELS[b.scriptType]], ['脚本结构', SCRIPT_STRUCTURES.find(s => s.id === b.structure)?.label], ['视频目的', b.purpose], ['内容风格', b.style], ['拍法', b.tactic], ['确定的开头', b.openingLine], ['开篇卡', b.openingCards?.join('、')], ['成交理由', b.dealReasons?.join('、')], ['拍摄场地', b.scene], ['设备', b.device], ['预算', b.budget], ['人员', b.personnel], ['补充要求', b.notes]].filter(([, v]) => v);
+  const lines = [['主题', b.topic], ['内容方向', b.direction], ['目标人群', b.audience], ['行业', b.industry], ['发布平台', b.platform], ['视频时长', b.duration], ['脚本类型', b.scriptType && SCRIPT_TYPE_LABELS[b.scriptType]], ['脚本结构', SCRIPT_STRUCTURES.find(s => s.id === b.structure)?.label], ['视频目的', b.purpose], ['内容风格', b.style], ['拍法', b.tactic], ['确定的开头', b.openingLine], ['开篇卡', b.openingCards?.join('、')], ['成交理由', dealReasonsForPurpose(b.purpose, b.dealReasons ?? []).join('、')], ['拍摄场地', b.scene], ['设备', b.device], ['预算', b.budget], ['人员', b.personnel], ['补充要求', b.notes]].filter(([, v]) => v);
   // 视频目的只是三选一的类别；具体要达到什么（「推新品、口碑、涨粉」）在完整目的里，有类别也要带上
   if (b.purposeText && b.purposeText !== b.purpose) lines.push(['完整目的', b.purposeText]);
   if (b.userIntent) lines.push(['原始用户想法', b.userIntent]);

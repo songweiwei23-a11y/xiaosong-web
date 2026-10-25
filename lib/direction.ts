@@ -12,7 +12,7 @@ import { creativeCraftRules } from './creative-craft';
 import { tacticIndex, tacticsBlockedBy } from './creative-routes';
 import { SCRIPT_FAMILIES } from './viral-elements';
 import { tacticMixRule } from './tactic-mix';
-import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD } from './content-roles';
+import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD, DEAL_REASON_METHOD } from './content-roles';
 
 export const DIRECTION_TASK_TYPE = '创作方向';
 
@@ -131,8 +131,8 @@ export function buildDirectionPrompt(i: DirectionInput): string {
     ? `- **视频目的**：流量型 / 人设型 / 变现型，只写一个\n`
     : `- **对应目的**：这个方向主要服务上面哪个目的\n`;
   // 出发点在前，形式在后：大流量的看点来自人货场、三有和爆款元素，36 计或四大脚本只是把它拍出来
-  const originField = `- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头，以及它怎么落在这个档案的条件上、普通人能不能拍出来；人设、变现写这条的核心卖点或经历\n`;
-  const flowMethod = `${BIG_TRAFFIC_METHOD}\n\n`;
+  const originField = `- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头，以及它怎么落在这个档案的条件上、普通人能不能拍出来。流量型不带成交理由（不讲卖点、不引导成交）；变现型必填：这条要突出的成交理由（用户为什么选你，从档案和 17 条里挑、有依据），以及人货场怎么落在具体的事上；人设型写这条的核心经历\n`;
+  const flowMethod = `${BIG_TRAFFIC_METHOD}\n\n${DEAL_REASON_METHOD}\n\n`;
   const mixRule = tacticMixRule(i.scriptsShare ?? 0);
   const contentTypeField = `- **内容类型**：从下面的 36 计清单里选一计，写计名（一字不差），或者选四大脚本的一个结构（讲法里写清）。36 计和四大脚本都只是拍法，哪种目的都能用，不由目的决定；用户选了形式的，优先挑形式最接近的${mixRule ? `\n  - ${mixRule}` : ''}\n  - 视频目的是流量型（大流量）的方向，必须满足大流量标准：${BIG_TRAFFIC_STANDARD}\n- **讲法**：从四大脚本里挑一个结构（聊观点 / 晒过程 / 教知识 / 讲故事），写清话怎么讲；36 计定事件怎么走，四大脚本定话怎么讲\n`;
   const fields = purposeField + originField + contentTypeField + (full
@@ -177,7 +177,7 @@ ${goal}`;
   const scriptFamilies = SCRIPT_FAMILIES.map((s) => `- **${s.name}**（${s.purpose}）：${s.note}`).join('\n');
   const tactics = `## 36 计（小黄）：拍法的一种形式，方向可以从这里挑\n每一计的结构公式要落在片子的**事件**上，不是只在标题里提一句。禁忌里不能碰的计已经去掉。\n\n${tacticIndex({ exclude: tacticsBlockedBy(i.contextBlock) })}\n\n## 四大脚本（薛老师）：另一种形式，管话怎么讲\n${scriptFamilies}\n\n`;
   const mixTable = i.mixBlock?.trim()
-    ? `## 📊 配比一览\n| 目的 | 条数 | 主要用什么类型 |\n三行，流量型（大流量） / 人设型 / 变现型。三行各写这一类方向的出发点（人、货、场和爆款元素）和用的形式；形式（36 计或四大脚本）哪种目的都能用，不因为是教知识、行业干货或避坑就归到哪一行。\n\n`
+    ? `## 📊 配比一览\n| 目的 | 条数 | 主要用什么类型 |\n三行，流量型（大流量） / 人设型 / 变现型。三行各写这一类方向的出发点（流量：人、货、场和爆款元素；变现：人、货、场和要突出的成交理由；人设：经历）和用的形式；形式（36 计或四大脚本）哪种目的都能用，不因为是教知识、行业干货或避坑就归到哪一行。\n\n`
     : '';
   const differ = ex
     ? `- ${i.count} 个方向都必须守住上面那个方向的主题、目的和核心角度——是它的不同切口、不同拍法、不同出镜方式，彼此要拉开；不许另起和它主题无关的方向，也不能只是把它换个说法
