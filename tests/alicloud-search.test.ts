@@ -16,7 +16,25 @@ describe('阿里云 Lite 搜索请求和结果', () => {
   it('引号、换行和变量标记不会破坏请求，搜索方式是 Lite', () => {
     const query = '餐饮“热点” "引号"\n{{#env.ALI_SEARCH_API_KEY#}}';
     const payload = JSON.parse(execute('ali-search-payload', { query }).body);
-    expect(payload).toEqual({ query, way: 'lite', query_rewrite: true, top_k: 10, content_type: 'mainText' });
+    expect(payload).toEqual({ query, way: 'lite', query_rewrite: false, top_k: 10, content_type: 'mainText' });
+  });
+  it('结果去掉天气/招标等噪音，同一标题只留一篇，官方站点排在前面', () => {
+    const result = execute('ali-search-results', response([
+      { title: '南乐今日天气', link: 'https://e.weather.com.cn/a', content: '天气' },
+      { title: '【县直快讯】南乐召开会议', link: 'https://m.163.com/x', content: 'a' },
+      { title: '【县直快讯】南乐召开会议', link: 'https://finance.sina.cn/y', content: 'b' },
+      { title: 'Dify 聊天助手', link: 'https://docs.dify.ai/zh/guides/chat', content: 'c' },
+    ]));
+    const data = JSON.parse(result.output.split('\n').slice(1).join('\n'));
+    expect(data.results.map((r: any) => r.url)).toEqual(['https://docs.dify.ai/zh/guides/chat', 'https://m.163.com/x']);
+  });
+  it('按主体词筛选：结果里找不到主体词（如「南乐」）的别处新闻不给模型', () => {
+    const result = execute('ali-search-results', { ...response([
+      { title: '科协动态｜台前县举办人工智能科普报告会', link: 'https://m.sohu.com/a', content: '台前县' },
+      { title: '【县直快讯】南乐县召开会议', link: 'https://m.163.com/x', content: '南乐县' },
+    ]), request_body: JSON.stringify({ query: '南乐 本周 新闻 头条' }) });
+    const data = JSON.parse(result.output.split('\n').slice(1).join('\n'));
+    expect(data.results.map((r: any) => r.url)).toEqual(['https://m.163.com/x']);
   });
   it('有联网专用搜索词时用它，没有才用知识库短查询', () => {
     expect(JSON.parse(execute('ali-search-payload', { query: '南乐 2026年10月 热点新闻', web_query: '南乐 本周 新闻 头条' }).body).query).toBe('南乐 本周 新闻 头条');

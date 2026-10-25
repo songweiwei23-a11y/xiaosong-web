@@ -91,7 +91,7 @@ describe('自由对话搜索源头', () => {
     const read = vi.fn<typeof fetchPage>(async () => ({ ok: false as const, reason: 'http' as const, status: 403 }));
     const result = await searchFreeChatWeb('行业方法', { config, search, read, onStarted });
     expect(search).toHaveBeenCalledTimes(1);
-    expect(search.mock.calls[0][2]).toMatchObject({ way: 'pro-fetch', rewrite: true, topK: 10 });
+    expect(search.mock.calls[0][2]).toMatchObject({ way: 'pro-fetch', rewrite: false, topK: 10 });
     expect(onStarted).toHaveBeenCalledTimes(1);
     expect(result?.status.status).toBe('done'); expect(result?.readCount).toBe(0);
     expect(result?.context).toContain('搜索返回的正文或片段');

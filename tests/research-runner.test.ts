@@ -19,7 +19,7 @@ describe('研究后台真实执行状态',()=>{
     const search=vi.fn().mockImplementation(()=>sources());
     await runResearch(id,{config,search,fetch:open});
     expect(search).toHaveBeenCalledTimes(1);
-    expect(search.mock.calls[0][2]).toMatchObject({way:'pro-fetch',topK:8,rewrite:true,today:expect.stringMatching(/^\d{4}年\d{1,2}月\d{1,2}日$/)});
+    expect(search.mock.calls[0][2]).toMatchObject({way:'pro-fetch',topK:8,rewrite:false,today:expect.stringMatching(/^\d{4}年\d{1,2}月\d{1,2}日$/)});
     expect(env.db.tables.research_jobs[0].status).toBe('done');
   });
   it('Markdown官方正文不会被HTML标签清洗丢掉，正文失败不会伪装全文',async()=>{

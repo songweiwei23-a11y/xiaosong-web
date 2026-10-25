@@ -267,7 +267,7 @@ export async function runResearch(id: string, deps: { search?: typeof aliSearch;
         for (const query of q.queries.slice(0, DEPTHS[depth].queries)) {
           if (await canceled()) throw new LostLease('任务已停止');
           const w = freeChatWebQuery(query);
-          const r = await search(w.query, config!, { topK: 8, way: 'pro-fetch', rewrite: !/site:/i.test(w.query), today: w.today });
+          const r = await search(w.query, config!, { topK: 8, way: 'pro-fetch', rewrite: false, today: w.today });
           if (r.ok) { await markSearched(); hits.push(...r.hits); }
           else {
             lastFailure = SEARCH_FAILURE_TEXT[r.reason];

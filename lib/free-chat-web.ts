@@ -57,12 +57,13 @@ export async function searchFreeChatWeb(question: string, deps: Dependencies): P
   // 定向搜索按优先级排队，封顶 MAX_TARGETED_SEARCHES 次：地方官网 > 热榜官网 > 官方站点 > 全国新闻站。
   // 阿里云按次计费，封顶后一个问题最多 1 次通用 + 4 次定向，不会因为同时命中几类规则而叠到七八次。
   const targeted: { query: string; rewrite: boolean }[] = [
-    ...(local ? local.sites.map(site => ({ query: `site:${site} ${local.place} 新闻`, rewrite: true })) : []),
+    // 关闭改写：开启后地名会被改掉（2026-10-25 实测「南乐」被换成台前县、华龙区）
+    ...(local ? local.sites.map(site => ({ query: `site:${site} ${local.place} 新闻`, rewrite: false })) : []),
     ...(hot ?? []).map(h => ({ query: `site:${h.site} ${h.keyword}`, rewrite: false })),
     ...officialSiteQueries(question).map(q => ({ query: q.query, rewrite: false })),
     ...(national ?? []).map(n => ({ query: `site:${n.site} ${n.keyword}`, rewrite: false })),
   ].slice(0, MAX_TARGETED_SEARCHES);
-  const generalSearch = (): Promise<SearchResult> => search(w.query, config, { topK: 10, way: 'pro-fetch', rewrite: !/site:|官方创作指南/i.test(w.query), today: w.today, timeoutMs: 20_000 })
+  const generalSearch = (): Promise<SearchResult> => search(w.query, config, { topK: 10, way: 'pro-fetch', rewrite: false, today: w.today, timeoutMs: 20_000 })
     .catch((): SearchResult => ({ ok: false, reason: 'network' }));
   // 全部并行发出：通用搜索失败也不直接放弃，定向搜索和官方文档的结果照样用。定向搜索单路失败就忽略那一路。
   const [general, targetedHits, official] = await Promise.all([
