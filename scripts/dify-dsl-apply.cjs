@@ -120,11 +120,19 @@ if (llm.data.memory && /sys\.files/.test(llm.data.memory.query_prompt_template |
   llm.data.memory.query_prompt_template = '{{#sys.query#}}';
 }
 const fu = doc.workflow.features.file_upload;
-if (!fu.image.enabled || fu.image.number_limits < 6 || fu.number_limits < 6) {
-  note(`应用文件上传：图片 ${fu.image.enabled ? '开' : '关'} → 开；每条消息上限 ${fu.number_limits} → 6`);
-  fu.image.enabled = true;
-  fu.image.number_limits = Math.max(6, fu.image.number_limits);
-  fu.number_limits = Math.max(6, fu.number_limits);
+if (fu.image) {
+  // 旧格式：图片和文件分开设置
+  if (!fu.image.enabled || fu.image.number_limits < 6 || fu.number_limits < 6) {
+    note(`应用文件上传：图片 ${fu.image.enabled ? '开' : '关'} → 开；每条消息上限 ${fu.number_limits} → 6`);
+    fu.image.enabled = true;
+    fu.image.number_limits = Math.max(6, fu.image.number_limits);
+    fu.number_limits = Math.max(6, fu.number_limits);
+  }
+} else if (!fu.enabled || fu.number_limits < 6) {
+  // 新格式（阿里云兼容版）：只有一组上限，图片和文档共用
+  note(`应用文件上传：${fu.enabled ? '开' : '关'} → 开；每条消息上限 ${fu.number_limits} → 6`);
+  fu.enabled = true;
+  fu.number_limits = Math.max(6, fu.number_limits || 0);
 }
 
 // ⑤ 自检：提示词里引用的节点都存在；连线两端都存在；没有孤立节点

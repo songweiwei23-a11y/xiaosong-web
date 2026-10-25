@@ -127,9 +127,12 @@ describe('套餐和联网额度展示', () => {
   it('已保存的工作流只允许true分支调用搜索，缺少输入默认关闭', async () => {
     const yaml=loadCjs('js-yaml');
     const doc=yaml.load(fs.readFileSync('docs/dify/小宋编导文案工作台.yml','utf8')) as any;
-    const g=doc.workflow.graph; const search=g.nodes.find((n:any)=>n.data.title==='Tavily Search');
+    const g=doc.workflow.graph; const search=g.nodes.find((n:any)=>n.id==='1790086576262');
     const incoming=g.edges.filter((e:any)=>e.target===search.id);
-    expect(incoming).toHaveLength(1); expect(incoming[0]).toMatchObject({source:'web_search_gate',sourceHandle:'true'});
+    expect(incoming).toHaveLength(1); expect(incoming[0]).toMatchObject({source:'ali_search_payload'});
+    // 搜索请求只能从闸门的 true 分支进入
+    const payload=g.edges.filter((e:any)=>e.target==='ali_search_payload');
+    expect(payload).toHaveLength(1); expect(payload[0]).toMatchObject({source:'web_search_gate',sourceHandle:'true'});
     expect(g.nodes.find((n:any)=>n.id==='start').data.variables.find((v:any)=>v.variable==='web_search_enabled').default).toBe('0');
     expect(search.data.retry_config.retry_enabled).toBe(false);
     expect(g.nodes.find((n:any)=>n.data.type==='llm').data.prompt_template.some((p:any)=>(p.text||'').includes('{{#web_search_merge.output#}}'))).toBe(true);
