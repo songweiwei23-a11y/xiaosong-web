@@ -15,7 +15,8 @@ const planBase = {
 
 describe('大流量标准', () => {
   it('写明三有和出发点，八大爆款元素名单与知识库「八大爆款元素选题」一致', () => {
-    expect(BIG_TRAFFIC_STANDARD).toContain('有用、有趣、有共鸣三条都要有')
+    expect(BIG_TRAFFIC_STANDARD).toContain('有用、有趣、有共鸣至少符合其中一条')
+    expect(BIG_TRAFFIC_STANDARD).toContain('必须用上至少一个八大爆款元素')
     expect(VIRAL_ELEMENT_NAMES).toHaveLength(8)
     for (const el of VIRAL_ELEMENTS) {
       const name = el.name.replace(/选题$/, '')
@@ -24,14 +25,14 @@ describe('大流量标准', () => {
   })
 
   it('做法按顺序：先看档案，再挑元素，有落地检查，最后选形式', () => {
-    const order = ['1. 先看档案', '2. 再挑爆款元素', '3. 围绕所选元素按三有检查', '4. 把人、货、场搭进去', '5. 落地检查', '6. 最后选形式']
+    const order = ['1. 先看档案', '2. 先把爆款元素设计进内容', '3. 围绕所选元素按三有检查', '4. 把人、货、场搭进去', '5. 落地检查', '6. 最后选形式']
     let at = -1
     for (const step of order) {
       const i = BIG_TRAFFIC_METHOD.indexOf(step)
       expect(i, step).toBeGreaterThan(at)
       at = i
     }
-    expect(BIG_TRAFFIC_METHOD).toContain('不为了爆款而爆款')
+    expect(BIG_TRAFFIC_METHOD).toContain('不为爆款而爆款')
   })
 
   it('创作方向：出发点字段和做法都带上', () => {

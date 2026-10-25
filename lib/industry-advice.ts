@@ -117,7 +117,7 @@ ${performanceBlock ? `${performanceBlock}\n` : ''}${taboos ? `${taboos}\n` : ''}
  */
 export function threeHavesBlock(): string {
   return [
-    '## ✅ 三有自检（每一条都要过）',
+    '## ✅ 三有自检（每一条至少符合其中一条）',
     '',
     '- **有用处**：观众看完能带走一个具体的东西（一招、一个判断、一个避坑）。说不出来的，不出。',
     '- **有兴趣**：开头要让目标人群停下来，和他们的问题、场景直接相关，不是泛泛的知识。',
