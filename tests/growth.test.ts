@@ -231,7 +231,7 @@ describe('起号期配比与内容定位对齐', () => {
     const { GROWTH_MIX } = await import('@/lib/growth-standards');
     const p = buildGrowthPlanPrompt({});
     expect(p).toContain(GROWTH_MIX);
-    expect(GROWTH_MIX).toContain('**大多是流量型内容**');
+    expect(GROWTH_MIX).toContain('**大流量视频**');
     expect(GROWTH_MIX).toContain('零粉做到一千粉，而且发出去的视频流量都比较稳定');
     expect(p).toContain('## 🧮 起号期内容配比');
   });

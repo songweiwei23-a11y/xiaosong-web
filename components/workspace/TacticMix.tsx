@@ -4,7 +4,7 @@ import { SCRIPT_SHARE_STEP, TACTIC_MIX_PRESETS, normalizeScriptShare, tacticSpli
 
 /**
  * 36 计与四大脚本的搭配比例（规则都在 lib/tactic-mix）。
- * 只作用在人设型、变现型方向上；流量型一律用 36 计的流量计。
+ * 对所有目的生效：36 计和四大脚本都是拍法的形式，大流量由出发点（人货场、三有、爆款元素）决定。
  */
 export function TacticMixBar({ value, onChange, className = '' }: { value: number; onChange: (share: number) => void; className?: string }) {
   const share = normalizeScriptShare(value)
@@ -45,7 +45,7 @@ export function TacticMixBar({ value, onChange, className = '' }: { value: numbe
         />
         <span className="w-10 shrink-0 text-right tabular-nums">{share}%</span>
       </label>
-      <p className="mt-2 text-[11px] text-muted-foreground">只作用在人设型、变现型方向上；流量型一律用 36 计的流量计，四大脚本讲不了流量。</p>
+      <p className="mt-2 text-[11px] text-muted-foreground">两种形式都能拍大流量，比例不分目的；大流量看人货场、三有和爆款元素，不看用了哪套形式。</p>
     </div>
   )
 }

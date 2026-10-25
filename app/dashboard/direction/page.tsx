@@ -254,7 +254,7 @@ export default function DirectionPage() {
               </div>
               {useMix && <ContentMixBar className="mt-2" profile={profile} override={mixOverride} onOverride={setMixOverride} count={count} goal={goalText} />}
             </Field>
-            <Field label="36 计与四大脚本的搭配" stacked hint="人设型、变现型的内容类型，按这个比例在两套打法之间分">
+            <Field label="36 计与四大脚本的搭配" stacked hint="内容类型按这个比例在 36 计和四大脚本之间分，不分目的">
               <TacticMixBar value={scriptsShare} onChange={setScriptsShare} />
             </Field>
           </CollapsibleSection>

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  SCRIPT_STRUCTURES_FOR, SCRIPT_SHARE_STEP, TACTIC_MIX_PRESETS,
+  SCRIPT_STRUCTURE_NAMES, SCRIPT_SHARE_STEP, TACTIC_MIX_PRESETS,
   normalizeScriptShare, tacticMixRule, tacticSplit,
 } from '@/lib/tactic-mix'
 import { buildDirectionPrompt } from '@/lib/direction'
@@ -49,7 +49,7 @@ describe('搭配规则文字', () => {
     expect(r).toContain('大约 50%')
     expect(r).toContain('讲故事·故事型')
     expect(r).toContain('晒过程·火车节')
-    expect(r).toContain('流量型方向一律只写 36 计的流量计')
+    expect(r).toContain('这个比例不分目的')
   })
 
   it('100 时写「全部」而不是「大约」', () => {
@@ -63,8 +63,8 @@ describe('搭配规则文字', () => {
       '晒过程·火车节': 'train', '晒过程·观察型': 'observe', '教知识·解题型': 'problem',
       '教知识·推荐型': 'recommend', '教知识·案例型': 'case', '讲故事·故事型': 'story', '聊观点·论证型': 'argue',
     }
-    for (const names of Object.values(SCRIPT_STRUCTURES_FOR)) {
-      for (const name of names ?? []) {
+    for (const names of [SCRIPT_STRUCTURE_NAMES]) {
+      for (const name of names) {
         const s = settingsFromText(`内容类型：${name}`)
         expect(s.structure, name).toBe(expected[name])
       }
@@ -106,6 +106,6 @@ describe('页面接入', () => {
   it('搭配条组件只在人设、变现上生效，流量型写明不动', () => {
     const src = read('components/workspace/TacticMix.tsx')
     expect(src).toMatch(/TACTIC_MIX_PRESETS/)
-    expect(src).toMatch(/流量型一律用 36 计的流量计/)
+    expect(src).toMatch(/比例不分目的/)
   })
 })

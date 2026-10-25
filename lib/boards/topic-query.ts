@@ -375,8 +375,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
         
         query += `\n⚠️ 每条选题必须明确标注使用的脚本类型！\n`;
         query += `⚠️ 严格按照上述数量分配，不得超出或减少！\n`;
-        query += `\n💡 脚本类型不等于目的：同一种脚本可以做不同目的——泛知识是流量型、专业难题是变现型；\n`;
-        query += `讲自己的成长是人设型、讲帮客户做成的事是变现型。每条先定目的，再按目的选结构。\n\n`;
+        query += `\n💡 脚本类型不等于目的，目的也不由脚本决定：同一种脚本可以做大流量、人设或变现。\n`;
+        query += `大流量看出发点（人、货、场，三有，爆款元素），脚本只是把它拍出来的形式。每条先定目的和出发点，再选结构。\n\n`;
       }
       if (selectedStyles.length > 0) query += `- 风格：${selectedStyles.join('、')}\n`;
       if (positioningExtra) {
@@ -423,7 +423,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       }
       if (topicRole === '流量型') {
         // 举例从同一份数据取，别再手写——上一版写的「反差」原文里根本没有（叫「对立选题」）
-        query += `- 流量型的核心手段：八大爆款元素（${VIRAL_ELEMENTS.slice(0, 4).map((e) => e.name).join('、')}等）+ 扩大覆盖（用大众入口承载专业）\n`;
+        query += `- 大流量的出发点：围绕人、货、场，符合三有（有用、有趣、有共鸣），用上八大爆款元素（${VIRAL_ELEMENTS.slice(0, 4).map((e) => e.name).join('、')}等）做看点和噱头，有看点、有噱头、吸引眼球；形式（36 计或四大脚本）在出发点之后选\n`;
         query += `- 覆盖要广，但人群要对——垂直是人群垂直：选这个号的目标人群也关心的话题，不是随便什么热闹都蹭\n\n`;
       }
       if (dealReasonsText && topicRole !== '流量型' && topicRole !== '人设型') {

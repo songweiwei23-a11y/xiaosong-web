@@ -49,7 +49,7 @@ describe('三种视频的定义', () => {
   it('流量型的结构不再用观点句式，大流量靠三十六计里标了流量型的打法', () => {
     const structures = ROLE_SPECS.流量型.structures.join('\n');
     expect(structures).not.toMatch(/观点并列|观点正反|争议开篇/);
-    expect(ROLE_SPECS.流量型.scriptTypes).toMatch(/聊观点不是流量主力/);
+    expect(ROLE_SPECS.流量型.scriptTypes).toMatch(/不限：36 计、四大脚本/);
     expect(ROLE_SPECS.人设型.structures.some((x) => x.startsWith('观点立场'))).toBe(true);
   });
 

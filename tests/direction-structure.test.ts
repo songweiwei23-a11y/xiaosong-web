@@ -42,7 +42,7 @@ describe('创作方向沿用内容规划的结构', () => {
   it('有配比时带配比一览，流量型不许写教知识', () => {
     const p = buildDirectionPrompt({ ...base, mixBlock: '配比：流量型 3 条' });
     expect(p).toContain('## 📊 配比一览');
-    expect(p).toContain('流量型那一行只写流量打法');
+    expect(p).toContain('三行各写这一类方向的出发点');
     expect(p).toContain('- **视频目的**：流量型 / 人设型 / 变现型，只写一个');
   });
 
@@ -54,7 +54,7 @@ describe('创作方向沿用内容规划的结构', () => {
 
   it('36 计为主，四大脚本作为辅助讲法', () => {
     const p = buildDirectionPrompt(base);
-    expect(p).toContain('## 四大脚本（薛老师）：辅助');
+    expect(p).toContain('## 四大脚本（薛老师）：另一种形式，管话怎么讲');
     expect(p).toContain('- **讲法**：从四大脚本里挑一个结构');
     expect(p.indexOf('#### 起号 36 计清单')).toBeLessThan(p.indexOf('## 四大脚本（薛老师）'));
   });

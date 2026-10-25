@@ -33,10 +33,11 @@ describe('36 计清单', () => {
     }
   });
 
-  it('按目的筛、按禁忌排除', () => {
+  it('不按目的筛、只按禁忌排除', () => {
+    // 36 计哪种目的都能用，roles 只是排序提示，不再过滤
     const only = tacticIndex({ roles: ['人设型'] });
     expect(only).toContain('一句话设定故事感');
-    expect(only).not.toContain('**反向操作**');
+    expect(only).toContain('**反向操作**');
     const blocked = tacticsBlockedBy('不能揭秘行业内幕');
     expect(blocked).toContain('内幕揭秘');
     expect(tacticIndex({ exclude: blocked })).not.toContain('内幕揭秘');
@@ -74,7 +75,7 @@ describe('两套打法的说明', () => {
   it('讲清各自的短板和怎么互补', () => {
     expect(ROUTES_GUIDE).toMatch(/太依赖爆款元素/);
     expect(ROUTES_GUIDE).toMatch(/不容易落地/);
-    expect(ROUTES_GUIDE).toMatch(/讲不清成交理由/);
+    expect(ROUTES_GUIDE).toMatch(/没有成交理由/);
     expect(ROUTES_GUIDE).toMatch(/计管\*\*片子里发生什么\*\*/);
   });
 
@@ -87,14 +88,14 @@ describe('两套打法的说明', () => {
 });
 
 describe('每个板块都接上了', () => {
-  it('账号定位三种 focus 都带两套打法和带公式的清单；商业定位只给变现型的计', () => {
+  it('账号定位三种 focus 都带两套打法和带公式的清单；商业定位也给全部计（不按目的筛）', () => {
     for (const focus of ['full', 'content', 'business'] as const) {
       const p = buildPositioningPrompt({ profileSummary, additionalNotes: '', focus });
       expect(p, focus).toContain('两套打法');
       expect(p, focus).toContain('情境还原');
     }
     const biz = buildPositioningPrompt({ profileSummary, additionalNotes: '', focus: 'business' });
-    expect(biz).not.toContain('**反向操作**');
+    expect(biz).toContain('**反向操作**');
   });
 
   it('定位输出要求两套都给，系列里两套至少各一个', () => {

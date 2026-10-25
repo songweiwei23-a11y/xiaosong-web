@@ -21,7 +21,7 @@ describe('大流量标准', () => {
   })
 
   it('创作方向：流量型方向的提示词带上大流量标准', () => {
-    expect(buildDirectionPrompt(base)).toContain(`流量型方向另外要满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
+    expect(buildDirectionPrompt(base)).toContain(`视频目的是流量型（大流量）的方向，必须满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
   })
 
   it('内容规划：流量型的要求里带上大流量标准', () => {
