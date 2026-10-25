@@ -29,6 +29,7 @@ import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summar
 import { buildContextBlock } from "@/lib/creator-context";
 import { resolveMix, mixPromptBlock, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
 import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
+import { TacticMixBar } from "@/components/workspace/TacticMix";
 import {
   CAPACITY, DEFAULT_DIRECTION_COUNT, DIRECTION_COUNT_MAX, DIRECTION_COUNT_MIN, DEPTHS, DIRECTION_TASK_TYPE, FORMATS, HORIZON, ON_CAMERA, PURPOSES,
   buildDirectionPrompt, clampDirectionCount, hasGoal, type Choice,
@@ -92,6 +93,8 @@ export default function DirectionPage() {
   const [useMix, setUseMix] = useState(false);
   const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
   const [mixUsed, setMixUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
+  // 36 计与四大脚本的搭配比例（lib/tactic-mix）：0 = 全用 36 计，和以前一样
+  const [scriptsShare, setScriptsShare] = useState(0);
   const goalText = [customGoal, ideas, expandContent].filter(Boolean).join("；");
   const resolvedMix = resolveMix(profile, mixOverride, goalText);
 
@@ -153,7 +156,7 @@ export default function DirectionPage() {
     if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) { openUpgrade("direction"); setRunning(false); return; }
     setResult("");
-    const historyInput = { purposes, customGoal, ideas, expandFrom: expandContent.trim() ? handoffFrom : "", expandContent, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null, creationSettings: currentSettings, originContent: bridge.originContent || [customGoal, ideas, selectedGoals].filter(Boolean).join('\n') };
+    const historyInput = { purposes, customGoal, ideas, expandFrom: expandContent.trim() ? handoffFrom : "", expandContent, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null, scriptsShare, creationSettings: currentSettings, originContent: bridge.originContent || [customGoal, ideas, selectedGoals].filter(Boolean).join('\n') };
     try {
       const historyId = createHistoryId();
       const query = buildDirectionPrompt({
@@ -163,6 +166,7 @@ export default function DirectionPage() {
         contextBlock: buildContextBlock(context, "direction"),
         industry: profile ? undefined : industry,
         mixBlock: useMix ? mixPromptBlock(resolvedMix, { count, unit: "个" }) : undefined,
+        scriptsShare,
         expand: expandContent.trim() ? { from: handoffFrom || "其他板块", content: expandContent, intent: intentBlock(carriedIntent({ sourceContent: expandContent, originContent: "" })) } : undefined,
       }) + creationBridgePrompt(incomingSetup) + creationSettingsBlock(currentSettings);
       setMixUsed(useMix ? { resolved: resolvedMix, count } : null);
@@ -249,6 +253,9 @@ export default function DirectionPage() {
                 <button type="button" onClick={() => setUseMix(false)} aria-pressed={!useMix} className={chipCls(!useMix)}>只跟着目的走</button>
               </div>
               {useMix && <ContentMixBar className="mt-2" profile={profile} override={mixOverride} onOverride={setMixOverride} count={count} goal={goalText} />}
+            </Field>
+            <Field label="36 计与四大脚本的搭配" stacked hint="人设型、变现型的内容类型，按这个比例在两套打法之间分">
+              <TacticMixBar value={scriptsShare} onChange={setScriptsShare} />
             </Field>
           </CollapsibleSection>
 

@@ -18,6 +18,13 @@
 export type ContentRole = '流量型' | '人设型' | '变现型';
 export const CONTENT_ROLE_LIST: ContentRole[] = ['流量型', '人设型', '变现型'];
 
+/**
+ * 大流量的判断标准（2026-10-25 产品方定）：有用、有趣、有共鸣三条都要有，并且用上一个爆款元素。
+ * 依据：知识库第17节「能否为用户提供价值」列了有趣、有用、有共鸣；爆款元素见 lib/viral-elements。
+ * 36 计只是把它拍出来的一种打法，内容类型写了 36 计的计名，照样要过这条标准。
+ */
+export const BIG_TRAFFIC_STANDARD = '有用、有趣、有共鸣三条都要有，并写清用上了哪个爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）';
+
 export interface RoleSpec {
   /** 这条视频替账号干什么活（SOP 原话） */
   job: string;

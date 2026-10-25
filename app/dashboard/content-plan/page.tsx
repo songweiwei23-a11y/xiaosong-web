@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
 import { ContentMixBar } from "@/components/workspace/ContentMix";
+import { TacticMixBar } from "@/components/workspace/TacticMix";
 import { notify } from "@/components/ui/feedback";
 import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -68,6 +69,8 @@ export default function ContentPlanPage() {
   const [industry, setIndustry] = useState("");
   const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
   const [planUsed, setPlanUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
+  // 36 计与四大脚本的搭配比例（lib/tactic-mix）：0 = 全用 36 计，和以前一样
+  const [scriptsShare, setScriptsShare] = useState(0);
   const goalText = [focus.map((id) => PLAN_FOCUS.find((f) => f.id === id)?.label).join("、"), events, notes].filter(Boolean).join("；");
   const resolvedMix = resolveMix(profile, mixOverride, goalText);
 
@@ -136,11 +139,11 @@ export default function ContentPlanPage() {
     if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) { openUpgrade("direction"); setRunning(false); return; }
     setResult("");
-    const historyInput = { lastMonth, recordedLastMonth: recorded, count, focus, events, notes, mixOverride, month: monthLabel(), profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: resolvedMix.mix };
+    const historyInput = { lastMonth, recordedLastMonth: recorded, count, focus, events, notes, mixOverride, month: monthLabel(), profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: resolvedMix.mix, scriptsShare };
     try {
       const historyId = createHistoryId();
       const query = buildContentPlanPrompt({
-        lastMonth, recordedLastMonth: recorded, count, focus, events, notes, resolved: resolvedMix,
+        lastMonth, recordedLastMonth: recorded, count, focus, events, notes, resolved: resolvedMix, scriptsShare,
         profileSummary: profile ? buildProfileSummary(profile) : undefined,
         // 和创作方向读同一份账号记忆：简报、成交理由、禁忌、发布后的数据
         contextBlock: buildContextBlock(context, "direction"),
@@ -207,6 +210,9 @@ export default function ContentPlanPage() {
             <p className="mt-1.5 text-[11.5px] text-muted-foreground">一周约 {Math.max(1, Math.round(count / 4))} 条。{!countTouched && lastMonth ? "按上个月的量推荐的，可以改" : "定一个能坚持下来的量，比定得多发不出来有用"}</p>
             <Field label="怎么配比" stacked hint="条数按配比分到流量型、人设型、变现型">
               <ContentMixBar className="mt-1" profile={profile} override={mixOverride} onOverride={setMixOverride} count={count} goal={goalText} />
+            </Field>
+            <Field label="36 计与四大脚本的搭配" stacked hint="人设型、变现型的内容类型，按这个比例在两套打法之间分">
+              <TacticMixBar value={scriptsShare} onChange={setScriptsShare} />
             </Field>
           </CollapsibleSection>
 

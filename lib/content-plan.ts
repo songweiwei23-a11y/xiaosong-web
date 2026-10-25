@@ -10,9 +10,10 @@
  * lib/creation-items 靠「方向N」认出可勾选的条目，lib/creation-settings 的 settingsFromText 靠这几个标签
  * 把目的、类型、方向、条数带到下一页，下一页自动选好。
  */
-import { CONTENT_ROLE_LIST, type ContentRole } from './content-roles';
+import { BIG_TRAFFIC_STANDARD, CONTENT_ROLE_LIST, type ContentRole } from './content-roles';
 import { formatMix, mixToCounts, type ResolvedMix } from './content-mix';
 import type { Work } from './works';
+import { tacticMixRule } from './tactic-mix';
 
 export const CONTENT_PLAN_TASK_TYPE = '内容规划';
 
@@ -75,6 +76,8 @@ export interface ContentPlanInput {
   events: string;
   notes: string;
   resolved: ResolvedMix;
+  /** 四大脚本占人设型、变现型内容类型的比例（0–100，步长 10；0 = 全用 36 计）。lib/tactic-mix */
+  scriptsShare?: number;
   profileSummary?: string;
   contextBlock?: string;
   industry?: string;
@@ -134,10 +137,11 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
   parts.push(`## 要求
 - 方向必须写满 15～20 个，少于 15 个不算完成；每个方向只写一类内容，不要把几类合成一个方向
 - 流量型方向的内容类型只能是流量打法（反向操作、冷知识、借势、地域差异、街头采访、整蛊、反认知）；教知识、行业干货、避坑一律归变现型，不许出现在流量型里
+- 流量型方向还要满足大流量标准：${BIG_TRAFFIC_STANDARD}
 - 方向名和内容方向写的是"一类内容"（例如「装修避坑知识」），不是一条选题（例如「买沙发前一定要问的三个问题」）
 - 方向要落在这个号真实在卖的品类、真实的团队和拍摄条件上；档案里没有的经营事实（价格、活动、客户故事、数据）不写成真事
 - 没有作品数据就不编"上个月哪类数据好"；不写"完播率低于多少就换"这类合格线，改成和自己前几条比
-- 用户说过不要做的，任何方向都不能违背`);
+- 用户说过不要做的，任何方向都不能违背${tacticMixRule(p.scriptsShare ?? 0) ? `\n- ${tacticMixRule(p.scriptsShare ?? 0)}` : ''}`);
   return parts.join('\n\n');
 }
 

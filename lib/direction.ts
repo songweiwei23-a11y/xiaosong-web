@@ -11,6 +11,8 @@
 import { creativeCraftRules } from './creative-craft';
 import { tacticIndex, tacticsBlockedBy } from './creative-routes';
 import { SCRIPT_FAMILIES } from './viral-elements';
+import { tacticMixRule } from './tactic-mix';
+import { BIG_TRAFFIC_STANDARD } from './content-roles';
 
 export const DIRECTION_TASK_TYPE = '创作方向';
 
@@ -95,6 +97,8 @@ export interface DirectionInput {
   industry?: string;
   /** 内容配比（lib/content-mix 的 mixPromptBlock，按方向个数换成条数）。有它就要求每个方向标明是哪种视频 */
   mixBlock?: string;
+  /** 四大脚本占人设型、变现型内容类型的比例（0–100，步长 10；0 = 全用 36 计，和原来一样）。lib/tactic-mix */
+  scriptsShare?: number;
   /**
    * 别的板块带过来、要在它上面继续拓展的方向（2026-10-06）。
    * 线上：自由对话里勾了「国庆后的县城消费观察」带过来拓展，原来只当「已有的想法」一并参考，
@@ -126,7 +130,8 @@ export function buildDirectionPrompt(i: DirectionInput): string {
   const purposeField = i.mixBlock?.trim()
     ? `- **视频目的**：流量型 / 人设型 / 变现型，只写一个\n`
     : `- **对应目的**：这个方向主要服务上面哪个目的\n`;
-  const contentTypeField = `- **内容类型**：从下面的 36 计清单里选一计，写计名（一字不差）。流量型只用流量计，人设型只用人设计，变现型只用变现计；教知识只放变现型；用户选了形式的，优先挑形式最接近的计\n- **讲法**：从四大脚本里挑一个结构（聊观点 / 晒过程 / 教知识 / 讲故事），写清话怎么讲；36 计定事件怎么走，四大脚本定话怎么讲\n`;
+  const mixRule = tacticMixRule(i.scriptsShare ?? 0);
+  const contentTypeField = `- **内容类型**：从下面的 36 计清单里选一计，写计名（一字不差）。流量型只用流量计，人设型只用人设计，变现型只用变现计；教知识只放变现型；用户选了形式的，优先挑形式最接近的计${mixRule ? `\n  - ${mixRule}` : ''}\n  - 流量型方向另外要满足大流量标准：${BIG_TRAFFIC_STANDARD}\n- **讲法**：从四大脚本里挑一个结构（聊观点 / 晒过程 / 教知识 / 讲故事），写清话怎么讲；36 计定事件怎么走，四大脚本定话怎么讲\n`;
   const fields = purposeField + contentTypeField + (full
     ? `- **内容方向**：一两句话说清这一类拍什么范围、从哪类素材取材（不写具体哪一条）
 - **为什么能达到目的**：说清楚因果，结合这个账号的实际情况
