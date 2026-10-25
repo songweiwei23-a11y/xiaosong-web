@@ -423,7 +423,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       }
       if (topicRole === '流量型') {
         // 举例从同一份数据取，别再手写——上一版写的「反差」原文里根本没有（叫「对立选题」）
-        query += `- 大流量的出发点：围绕人、货、场，符合三有（有用、有趣、有共鸣），用上八大爆款元素（${VIRAL_ELEMENTS.slice(0, 4).map((e) => e.name).join('、')}等）做看点和噱头，有看点、有噱头、吸引眼球；形式（36 计或四大脚本）在出发点之后选\n`;
+        query += `- 大流量的出发点：先看这个档案的行业、人、货、场和团队条件，只从八大爆款元素（${VIRAL_ELEMENTS.map((e) => e.name).join('、')}）里挑普通人拍得出来的那几个；围绕它符合三有（有用、有趣、有共鸣），做出看点和噱头、吸引眼球。不为了爆款而爆款；形式（36 计或四大脚本）在出发点之后选\n`;
         query += `- 覆盖要广，但人群要对——垂直是人群垂直：选这个号的目标人群也关心的话题，不是随便什么热闹都蹭\n\n`;
       }
       if (dealReasonsText && topicRole !== '流量型' && topicRole !== '人设型') {

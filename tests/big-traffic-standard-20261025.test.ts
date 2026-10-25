@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { BIG_TRAFFIC_STANDARD } from '@/lib/content-roles'
+import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD, VIRAL_ELEMENT_NAMES } from '@/lib/content-roles'
 import { buildDirectionPrompt } from '@/lib/direction'
 import { buildContentPlanPrompt } from '@/lib/content-plan'
 import { resolveMix } from '@/lib/content-mix'
-import { BOOM_ELEMENTS } from '@/app/dashboard/script/constants'
+import { VIRAL_ELEMENTS } from '@/lib/viral-elements'
 
 const base = { purposes: ['fans'], formats: ['any'], count: 5, depth: 'quick' as const }
 const planBase = {
@@ -12,19 +12,36 @@ const planBase = {
 }
 
 describe('大流量标准', () => {
-  it('写明三有和爆款元素，爆款元素与页面上的八个一致', () => {
+  it('写明三有和出发点，八大爆款元素名单与知识库「八大爆款元素选题」一致', () => {
     expect(BIG_TRAFFIC_STANDARD).toContain('有用、有趣、有共鸣三条都要有')
-    for (const el of BOOM_ELEMENTS) {
-      const name = el.label.replace(/^\S+\s*/, '')
+    expect(VIRAL_ELEMENT_NAMES).toHaveLength(8)
+    for (const el of VIRAL_ELEMENTS) {
+      const name = el.name.replace(/选题$/, '')
       expect(BIG_TRAFFIC_STANDARD, name).toContain(name)
     }
   })
 
-  it('创作方向：流量型方向的提示词带上大流量标准', () => {
-    expect(buildDirectionPrompt(base)).toContain(`视频目的是流量型（大流量）的方向，必须满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
+  it('做法按顺序：先看档案，再挑元素，有落地检查，最后选形式', () => {
+    const order = ['1. 先看档案', '2. 再挑爆款元素', '3. 围绕所选元素按三有检查', '4. 把人、货、场搭进去', '5. 落地检查', '6. 最后选形式']
+    let at = -1
+    for (const step of order) {
+      const i = BIG_TRAFFIC_METHOD.indexOf(step)
+      expect(i, step).toBeGreaterThan(at)
+      at = i
+    }
+    expect(BIG_TRAFFIC_METHOD).toContain('不为了爆款而爆款')
   })
 
-  it('内容规划：流量型的要求里带上大流量标准', () => {
-    expect(buildContentPlanPrompt(planBase)).toContain(`- 流量型方向还要满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
+  it('创作方向：出发点字段和做法都带上', () => {
+    const p = buildDirectionPrompt(base)
+    expect(p).toContain(`视频目的是流量型（大流量）的方向，必须满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
+    expect(p).toContain('先看档案')
+    expect(p).toContain('落地检查')
+  })
+
+  it('内容规划：流量型要求里带上做法', () => {
+    const p = buildContentPlanPrompt(planBase)
+    expect(p).toContain(`- 流量型方向还要满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
+    expect(p).toContain('落地检查')
   })
 })

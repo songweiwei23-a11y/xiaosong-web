@@ -10,7 +10,7 @@
  * lib/creation-items 靠「方向N」认出可勾选的条目，lib/creation-settings 的 settingsFromText 靠这几个标签
  * 把目的、类型、方向、条数带到下一页，下一页自动选好。
  */
-import { BIG_TRAFFIC_STANDARD, CONTENT_ROLE_LIST, type ContentRole } from './content-roles';
+import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD, CONTENT_ROLE_LIST, type ContentRole } from './content-roles';
 import { formatMix, mixToCounts, type ResolvedMix } from './content-mix';
 import type { Work } from './works';
 import { tacticMixRule } from './tactic-mix';
@@ -120,7 +120,7 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 
 ### 方向1：[方向名，10 个字左右，说的是一类内容，不是一条选题]
 - **视频目的**：流量型 / 人设型 / 变现型 选一个
-- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头；人设、变现写这条的核心卖点或经历
+- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头，以及它怎么落在这个档案的条件上、普通人能不能拍出来；人设、变现写这条的核心卖点或经历
 - **内容类型**：${CONTENT_TYPE_RULE}
 - **内容方向**：一两句话说清这一类拍什么范围、从哪类素材取材（不写具体哪一期、不写标题）
 - **本月条数**：N 条
@@ -139,6 +139,8 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 - 方向必须写满 15～20 个，少于 15 个不算完成；每个方向只写一类内容，不要把几类合成一个方向
 - 形式不决定目的：教知识、行业干货、避坑、观点，都可以是大流量，也都可以是人设或变现，要看它的人货场、三有和爆款元素
 - 流量型方向还要满足大流量标准：${BIG_TRAFFIC_STANDARD}
+- 流量型方向的做法（照这个顺序想）：
+${BIG_TRAFFIC_METHOD}
 - 方向名和内容方向写的是"一类内容"（例如「装修避坑知识」），不是一条选题（例如「买沙发前一定要问的三个问题」）
 - 方向要落在这个号真实在卖的品类、真实的团队和拍摄条件上；档案里没有的经营事实（价格、活动、客户故事、数据）不写成真事
 - 没有作品数据就不编"上个月哪类数据好"；不写"完播率低于多少就换"这类合格线，改成和自己前几条比

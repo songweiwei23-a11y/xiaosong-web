@@ -12,7 +12,7 @@ import { creativeCraftRules } from './creative-craft';
 import { tacticIndex, tacticsBlockedBy } from './creative-routes';
 import { SCRIPT_FAMILIES } from './viral-elements';
 import { tacticMixRule } from './tactic-mix';
-import { BIG_TRAFFIC_STANDARD } from './content-roles';
+import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD } from './content-roles';
 
 export const DIRECTION_TASK_TYPE = '创作方向';
 
@@ -131,7 +131,8 @@ export function buildDirectionPrompt(i: DirectionInput): string {
     ? `- **视频目的**：流量型 / 人设型 / 变现型，只写一个\n`
     : `- **对应目的**：这个方向主要服务上面哪个目的\n`;
   // 出发点在前，形式在后：大流量的看点来自人货场、三有和爆款元素，36 计或四大脚本只是把它拍出来
-  const originField = `- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头；人设、变现写这条的核心卖点或经历\n`;
+  const originField = `- **出发点**：流量型（大流量）必填——人、货、场各是什么，三有（有用、有趣、有共鸣）各怎么做到，用哪个爆款元素做看点和噱头，以及它怎么落在这个档案的条件上、普通人能不能拍出来；人设、变现写这条的核心卖点或经历\n`;
+  const flowMethod = `${BIG_TRAFFIC_METHOD}\n\n`;
   const mixRule = tacticMixRule(i.scriptsShare ?? 0);
   const contentTypeField = `- **内容类型**：从下面的 36 计清单里选一计，写计名（一字不差），或者选四大脚本的一个结构（讲法里写清）。36 计和四大脚本都只是拍法，哪种目的都能用，不由目的决定；用户选了形式的，优先挑形式最接近的${mixRule ? `\n  - ${mixRule}` : ''}\n  - 视频目的是流量型（大流量）的方向，必须满足大流量标准：${BIG_TRAFFIC_STANDARD}\n- **讲法**：从四大脚本里挑一个结构（聊观点 / 晒过程 / 教知识 / 讲故事），写清话怎么讲；36 计定事件怎么走，四大脚本定话怎么讲\n`;
   const fields = purposeField + originField + contentTypeField + (full
@@ -193,7 +194,7 @@ ${i.contextBlock?.trim() ? `\n${i.contextBlock.trim()}\n` : ''}${mix}
 ## 输出格式（Markdown，标题和字段名原样保留）
 ${opening}
 
-${tactics}${mixTable}## 🧭 内容方向（勾选想做的方向，带去选题或脚本接着做）
+${tactics}${mixTable}${flowMethod}## 🧭 内容方向（勾选想做的方向，带去选题或脚本接着做）
 
 然后出 ${i.count} 个方向，每个都用这个样子，方向之间用 --- 隔开：
 

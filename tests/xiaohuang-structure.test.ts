@@ -16,7 +16,7 @@ describe('流量不靠教知识：小黄结构优先', () => {
   it('配比规则不再说泛知识能做流量', () => {
     const ps = read('lib/positioning-standards.ts');
     expect(ps).not.toContain('只有**泛知识、长见识**的角度才能做流量');
-    expect(ps).toContain('人货场和八大爆款元素');
+    expect(ps).toContain('先看档案的行业、人、货、场和团队条件');
   });
 
   it('内容规划的内容类型不再把四大脚本当唯一选项', () => {
