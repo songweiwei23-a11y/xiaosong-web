@@ -44,9 +44,16 @@ describe('八大爆款元素与原始资料一致', () => {
     expect(src).toContain('八大爆款元素选题');
   });
 
-  it('八个名字都能在原文里原样找到', () => {
+  // 薛老师的名字 → 原文小标题（同一个元素，两边叫法不同：对立=反差、猎奇=奇葩、圈人群=人群）
+  const HEADING: Record<string, string> = {
+    成本: '成本选题', 人群: '圈人群选题', 头牌: '头牌选题', 奇葩: '猎奇选题',
+    最差: '最差选题', 反差: '对立选题', 怀旧: '怀旧选题', 荷尔蒙: '荷尔蒙选题',
+  };
+  it('八个名字都能在原文里找到对应的小标题', () => {
     for (const e of VIRAL_ELEMENTS) {
-      expect(src, `原文里找不到「${e.name}」，名字可能抄错了`).toContain(e.name);
+      const heading = HEADING[e.name];
+      expect(heading, `「${e.name}」没有对应的原文小标题`).toBeDefined();
+      expect(src, `原文里找不到「${heading}」`).toContain(heading);
     }
   });
 
@@ -143,7 +150,7 @@ describe('选中的元素会把句式带进提示词', () => {
     expect(viralElementPrompt(['不存在的id'])).toBe('');
     const out = viralElementPrompt(['不存在的id', 'worst']);
     expect(out).not.toContain('不存在的id');
-    expect(out).toContain('最差选题');
+    expect(out).toContain('最差');
   });
 
   it('每个 id 都取得到，且 id 不重复', () => {

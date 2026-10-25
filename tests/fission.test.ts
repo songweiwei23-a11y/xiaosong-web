@@ -74,10 +74,10 @@ describe('裂变设置写进提示词', () => {
 
 describe('二创提示词：裂变 + 压缩 + 二创结构来源', () => {
   it('15 个变体：写进变体数、裂变块，并压缩（不写全文和分镜）', () => {
-    const p = buildRemixPrompt(SOURCE, { ...base, fission: { mode: 'vary', selections: { element: ['element:对立选题'] } } });
+    const p = buildRemixPrompt(SOURCE, { ...base, fission: { mode: 'vary', selections: { element: ['element:反差'] } } });
     expect(p).toContain('出 15 个方案');
     expect(p).toContain('## 裂变设置');
-    expect(p).toContain('只从这几个里用：对立选题');
+    expect(p).toContain('只从这几个里用：反差');
     expect(p).toContain('#### 分段');
     expect(p).not.toContain('#### 口播全文');
     expect(p).not.toContain('#### 分镜');
