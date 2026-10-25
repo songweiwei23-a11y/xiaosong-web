@@ -2,7 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { cleanTitle, settingsForResult, durationSeconds, scriptReasonIds } from '@/lib/creation-settings';
+import { cleanTitle, settingsForResult, durationSeconds, scriptReasonIds, FOUR_SCRIPT_CHOICES, fourScriptOfStructure, structureName, type FourScriptChoice } from '@/lib/creation-settings';
 
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { useRouter } from "next/navigation";
@@ -49,7 +49,7 @@ import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { AUTO_TACTIC, tacticInText } from "@/lib/creative-routes";
 import { memoryEnabled, setMemoryEnabled, type MemoryDefaults, type MemoryField } from "@/lib/settings-memory";
-import { CONTENT_ROLE_LIST, ROLE_SPECS, defaultRoleOfScriptType, type ContentRole } from "@/lib/content-roles";
+import { CONTENT_ROLE_LIST, ROLE_SPECS, defaultRoleOfScriptType, roleOfTactic, type ContentRole } from "@/lib/content-roles";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import { createWork, recordStage } from "@/lib/works";
@@ -73,6 +73,11 @@ const CONTROL_BASE =
 const SELECT_CLS = `${CONTROL_BASE} px-3 py-2.5`;
 const INPUT_CLS = `${CONTROL_BASE} px-3 py-2.5`;
 const TEXTAREA_CLS = `${CONTROL_BASE} resize-none px-3.5 py-3 leading-relaxed`;
+
+/**
+ * 四大脚本之外的结构（旧的 20 结构表里剩下的那些）。四大脚本的 7 种已经单独摆在前面，这里收进「更多结构」。
+ */
+const OTHER_STRUCTURES = SCRIPT_STRUCTURES.filter((s) => s.id !== "auto" && !fourScriptOfStructure(s.id));
 
 /** 可点选的小标签：平台、时长、爆款元素等多处共用 */
 function chipCls(selected: boolean) {
@@ -131,6 +136,8 @@ export default function ScriptPage() {
   const [boomElements, setBoomElements] = useState<string[]>([]);
   const [hookType, setHookType] = useState("auto");
   const [scriptStructure, setScriptStructure] = useState("auto");
+  // 「更多结构」默认收起；带来的结构若在里面，下面会自动展开
+  const [showOtherStructures, setShowOtherStructures] = useState(false);
   const [directorThoughts, setDirectorThoughts] = useState<string[]>(["emotion", "picture"]);
   const [scene, setScene] = useState("室内");
   const [device, setDevice] = useState("手机");
@@ -425,6 +432,27 @@ export default function ScriptPage() {
   const isAdScript = () => activeTab === "ad";
 
   /*
+   * 换脚本类型：结构若是另一类四大脚本的，回到 AI 推荐，免得「教知识 + 晒过程·火车节」对不上。
+   * 其余结构（旧的、AI 推荐）与类型无关，不动。
+   */
+  const changeScriptType = (key: string) => {
+    setScriptType(key);
+    setScriptTypePicked(true);
+    const four = fourScriptOfStructure(scriptStructure);
+    if (four && four.scriptType !== key) setScriptStructure("auto");
+  };
+
+  // 点四大脚本的一种结构：脚本类型和结构一起定下，并切回内容创作
+  const pickFourScript = (c: FourScriptChoice) => {
+    setActiveTab("content");
+    setScriptType(c.scriptType);
+    setScriptTypePicked(true);
+    setScriptStructure(c.structure);
+  };
+
+  const otherStructuresOpen = showOtherStructures || OTHER_STRUCTURES.some((s) => s.id === scriptStructure);
+
+  /*
    * 智能推荐：时长交给 AI 按内容定（原来按平台写死：抖音 60 秒、快手 30 秒——"智能推荐"反而把上限框死了），
    * 风格按平台给个常用的起点
    */
@@ -653,8 +681,7 @@ export default function ScriptPage() {
           <button
             onClick={() => {
               setActiveTab("content");
-              setScriptType("teach");
-              setScriptTypePicked(true);
+              changeScriptType("teach");
             }}
             className={`flex-1 rounded-xl py-2.5 px-4 text-sm font-medium transition-all ${
               activeTab === "content"
@@ -713,7 +740,7 @@ export default function ScriptPage() {
                         title={value.label}
                         desc={value.desc}
                         selected={!autoScriptType && scriptType === key}
-                        onClick={() => { setScriptType(key); setScriptTypePicked(true); }}
+                        onClick={() => changeScriptType(key)}
                       />
                     );
                   })}
@@ -980,36 +1007,6 @@ export default function ScriptPage() {
               </div>
             )}
 
-            {/*
-              拍法。和下面的「脚本结构」分工不同：
-              结构管时间怎么分，拍法管片子里发生什么事。
-            */}
-            <Field
-              label="拍法（起号 36+1 计）"
-              optional
-              hint={
-                tactic === AUTO_TACTIC
-                  ? `AI 按这条的目的（${effectiveRole}）挑一计叠在四大脚本上，挑不出合适的就不叠`
-                  : tactic
-                    ? GROWTH_TACTICS.find((t) => t.name === tactic)?.formula
-                    : '只按四大脚本写，不叠起号打法'
-              }
-            >
-              <select
-                value={tactic}
-                onChange={(e) => setTactic(e.target.value)}
-                className={SELECT_CLS}
-              >
-                <option value={AUTO_TACTIC}>AI 按目的挑一计（推荐）</option>
-                <option value="">不用，只按四大脚本</option>
-                {GROWTH_TACTICS.map((t) => (
-                  <option key={t.no} value={t.name}>
-                    {t.no}. {t.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
             {/* 广告类专属：产品信息 */}
             {isAdScript() && (
               <>
@@ -1057,26 +1054,124 @@ export default function ScriptPage() {
               </div>
             </Field>
 
-            <Field label="脚本结构" optional stacked>
+            {/*
+              两层分开摆，各自可选、可以叠用：
+              脚本结构（四大脚本）管话怎么讲，选一个会一起定下脚本类型；
+              36 计管事件怎么走，选不选都行，选了就叠在脚本结构上。
+            */}
+            <Field
+              label="脚本结构（四大脚本）"
+              optional
+              stacked
+              hint={scriptStructure === "auto" ? "不指定，AI 按内容挑结构" : `已选：${structureName(scriptStructure)}`}
+            >
               <div className="grid grid-cols-2 gap-2">
-                {SCRIPT_STRUCTURES.map((structure) => (
+                <button
+                  type="button"
+                  onClick={() => setScriptStructure("auto")}
+                  aria-pressed={scriptStructure === "auto"}
+                  className={`glass-interactive rounded-xl border p-2.5 text-left text-[12.5px] font-medium ${
+                    scriptStructure === "auto" ? "glass-selected text-primary" : "glass-panel text-muted-foreground"
+                  }`}
+                >
+                  🎯 AI 推荐
+                </button>
+                {FOUR_SCRIPT_CHOICES.map((c) => (
                   <button
-                    key={structure.id}
-                    onClick={() => setScriptStructure(structure.id)}
-                    aria-pressed={scriptStructure === structure.id}
+                    key={c.name}
+                    type="button"
+                    onClick={() => pickFourScript(c)}
+                    aria-pressed={scriptStructure === c.structure}
                     className={`glass-interactive rounded-xl border p-2.5 text-left ${
-                      scriptStructure === structure.id ? "glass-selected" : "glass-panel"
+                      scriptStructure === c.structure ? "glass-selected" : "glass-panel"
                     }`}
                   >
-                    <div className="mb-0.5 text-[15px] leading-none">{structure.label.split(' ')[0]}</div>
-                    {/* 原先写死 text-orange-500，深色下几乎看不见 */}
-                    <div className={`text-[11px] font-medium leading-snug ${
-                      scriptStructure === structure.id ? "text-primary" : "text-muted-foreground"
+                    <div className="text-[11px] text-muted-foreground">{c.head}</div>
+                    <div className={`text-[12.5px] font-medium leading-snug ${
+                      scriptStructure === c.structure ? "text-primary" : "text-foreground"
                     }`}>
-                      {structure.label.split(' ')[1]}
+                      {c.shape}
                     </div>
                   </button>
                 ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOtherStructures((v) => !v)}
+                aria-expanded={otherStructuresOpen}
+                className="mt-2 text-[12px] text-primary hover:underline"
+              >
+                {otherStructuresOpen ? "收起其他结构" : `更多结构（${OTHER_STRUCTURES.length} 种，不属于四大脚本）`}
+              </button>
+              {otherStructuresOpen && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {OTHER_STRUCTURES.map((structure) => (
+                    <button
+                      key={structure.id}
+                      type="button"
+                      onClick={() => setScriptStructure(structure.id)}
+                      aria-pressed={scriptStructure === structure.id}
+                      className={`glass-interactive rounded-xl border p-2.5 text-left ${
+                        scriptStructure === structure.id ? "glass-selected" : "glass-panel"
+                      }`}
+                    >
+                      <div className="mb-0.5 text-[15px] leading-none">{structure.label.split(' ')[0]}</div>
+                      <div className={`text-[11px] font-medium leading-snug ${
+                        scriptStructure === structure.id ? "text-primary" : "text-muted-foreground"
+                      }`}>
+                        {structure.label.split(' ')[1]}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Field>
+
+            <Field
+              label="36 计（起号打法）"
+              optional
+              stacked
+              hint={
+                tactic === AUTO_TACTIC
+                  ? `AI 按这条的目的（${effectiveRole}）挑一计叠在脚本结构上，挑不出合适的就不叠`
+                  : tactic
+                    ? GROWTH_TACTICS.find((t) => t.name === tactic)?.formula
+                    : "不叠起号打法，只按脚本结构写"
+              }
+            >
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => setTactic(AUTO_TACTIC)}
+                  aria-pressed={tactic === AUTO_TACTIC}
+                  className={chipCls(tactic === AUTO_TACTIC)}
+                >
+                  AI 按目的挑（推荐）
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTactic("")}
+                  aria-pressed={tactic === ""}
+                  className={chipCls(tactic === "")}
+                >
+                  不用 36 计
+                </button>
+                {GROWTH_TACTICS.map((t) => {
+                  const role = roleOfTactic(t.name);
+                  return (
+                    <button
+                      key={t.no}
+                      type="button"
+                      title={t.formula}
+                      onClick={() => setTactic(t.name)}
+                      aria-pressed={tactic === t.name}
+                      className={`${chipCls(tactic === t.name)} text-left`}
+                    >
+                      <span className="block leading-snug">{t.no}. {t.name}</span>
+                      {role && <span className="block text-[10.5px] text-muted-foreground">常用于{role}</span>}
+                    </button>
+                  );
+                })}
               </div>
             </Field>
 

@@ -4,6 +4,8 @@ import { OPENING_CARDS } from './opening-cards';
 import { SCRIPT_TYPES, SCRIPT_STRUCTURES, HOOK_TYPES } from '@/app/dashboard/script/constants';
 import { DEAL_REASONS } from './deal-reasons';
 import { dealReasonsForPurpose } from './content-roles';
+import { SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
+import { tacticInText } from './creative-routes';
 
 /** 一条创作链的设置。页面字段可以不同，但意图、人群和结构只有一份。 */
 export interface CreationSettings {
@@ -136,14 +138,51 @@ function looksLikeBatchTitle(t: string): boolean {
   return /^\d+\s*条：|\d+\s*(?:个|条)(?:爆款)?(?:选题|方向|方案|脚本)|分析与建议|创作简报|选题方案|帮我|给我/.test(t);
 }
 
+/** 四大脚本的脚本类型：名字头部的四个字（聊观点与旧名「聊话题」都归聊话题那一类） */
+const FOUR_SCRIPT_TYPE_BY_HEAD: Record<string, string> = { 教知识: 'teach', 晒过程: 'show', 讲故事: 'story', 聊观点: 'discuss', 聊话题: 'discuss' };
+
+/** 四大脚本的一种结构：name 是「晒过程·火车节」，structure 是结构表里的 id */
+export interface FourScriptChoice { name: string; head: string; shape: string; scriptType: string; structure: string }
+
+/** 四大脚本的 7 种结构（名字与 lib/tactic-mix 的 SCRIPT_STRUCTURE_NAMES 一致），映射到脚本类型和结构 id */
+export const FOUR_SCRIPT_CHOICES: FourScriptChoice[] = SCRIPT_STRUCTURE_NAMES.flatMap((name) => {
+  const [head, shape = ''] = name.split('·');
+  const scriptType = FOUR_SCRIPT_TYPE_BY_HEAD[head];
+  const structure = SCRIPT_STRUCTURES.find((s) => s.id !== 'auto' && s.label.replace(/^\S+\s*/, '') === shape)?.id;
+  return scriptType && structure ? [{ name, head, shape, scriptType, structure }] : [];
+});
+
+/** 一段文字里认出的四大脚本（先认完整的「晒过程·火车节」） */
+export function fourScriptIn(text: string): FourScriptChoice | undefined {
+  return FOUR_SCRIPT_CHOICES.find((c) => text.includes(c.name));
+}
+
+/** 结构 id 是不是四大脚本的某一种；是的话返回它，不是（或是 AI 推荐、旧结构）返回 undefined */
+export function fourScriptOfStructure(id: string | undefined): FourScriptChoice | undefined {
+  return FOUR_SCRIPT_CHOICES.find((c) => c.structure === id);
+}
+
+/** 结构 id 的显示名：四大脚本显示「晒过程·火车节」，其余用结构表里的名字；AI 推荐和空值返回空串 */
+export function structureName(id: string | undefined): string {
+  if (!id || id === 'auto') return '';
+  const four = fourScriptOfStructure(id);
+  if (four) return four.name;
+  return SCRIPT_STRUCTURES.find((s) => s.id === id)?.label.replace(/^\S+\s*/, '') ?? '';
+}
+
 /** 从旧稿的明确标签恢复设置。正文提到其他行业或人群不会覆盖原设置。 */
 export function settingsFromText(body: string): CreationSettings {
   const clean = body.replace(/\*\*/g, '');
   const heading = clean.split('\n').find(line => /^#{1,4}\s/.test(line)) || '';
   const typeLine = labelled(clean, ['脚本类型', '内容类型', '类型']) || heading;
   const structureLine = labelled(clean, ['脚本结构', '结构模型', '使用结构', '结构']) || typeLine;
-  const scriptType = Object.keys(SCRIPT_TYPE_LABELS).find(key => typeLine.includes(SCRIPT_TYPE_LABELS[key]));
-  const structure = SCRIPT_STRUCTURES.filter(s => s.id !== 'auto').find(s => structureLine.includes(s.label.replace(/^\S+\s*/, '')))?.id;
+  // 讲法（四大脚本）：内容类型写的是 36 计时，四大脚本的类型只能从讲法那一行认（「讲法：晒过程——…」）
+  const methodLine = labelled(clean, ['讲法']);
+  const four = fourScriptIn(structureLine) ?? fourScriptIn(typeLine) ?? fourScriptIn(methodLine);
+  const methodHead = Object.keys(FOUR_SCRIPT_TYPE_BY_HEAD).find(h => methodLine.startsWith(h));
+  const scriptType = Object.keys(SCRIPT_TYPE_LABELS).find(key => typeLine.includes(SCRIPT_TYPE_LABELS[key]))
+    ?? four?.scriptType ?? (methodHead ? FOUR_SCRIPT_TYPE_BY_HEAD[methodHead] : undefined);
+  const structure = four?.structure ?? SCRIPT_STRUCTURES.filter(s => s.id !== 'auto').find(s => structureLine.includes(s.label.replace(/^\S+\s*/, '')))?.id;
   const roleLine = labelled(clean, ['视频目的', '内容目的', '对应目的', '目的']);
   // 没有目的那一行时，标题里明写了「×型」才算；标题里的"到店""成交"这类字不拿来猜
   const role = roleLine || (['流量型', '人设型', '变现型'].find((r) => heading.includes(r)) ?? '');
@@ -164,7 +203,8 @@ export function settingsFromText(body: string): CreationSettings {
     style: labelled(clean, ['内容风格', '写作风格', '风格', '口吻']),
     openingLine: labelled(clean, ['确定的开头', '已选开头']),
     openingCards: labelled(clean, ['开篇卡']) ? labelled(clean, ['开篇卡']).split('、').filter(Boolean) : undefined,
-    tactic: labelled(clean, ['用的计', '使用打法', '拍法', '起号打法']).split(/[（(]/)[0].trim(),
+    // 内容类型写「36计·第1计 反向操作」时，计名从这一行认（起号打法的写法在前）
+    tactic: labelled(clean, ['用的计', '使用打法', '拍法', '起号打法']).split(/[（(]/)[0].trim() || tacticInText(labelled(clean, ['内容类型'])),
     scene: labelled(clean, ['场景', '拍摄场地']),
     // 内容规划的一个方向写着「本月条数：3 条」：带去选题页就出这么多条
     topicCount: Number(labelled(clean, ['本月条数']).match(/\d+/)?.[0]) || undefined,
