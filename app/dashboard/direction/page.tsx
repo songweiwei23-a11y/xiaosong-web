@@ -21,6 +21,7 @@ import { createHistoryId } from "@/lib/history-id";
 import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
 import { readDifyStream } from "@/lib/sse-stream";
+import { polishTitlesRemote } from "@/lib/title-polish";
 import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
 import { mergeCreationSettings, settingsFromInput, settingsForResult, creationSettingsBlock, purposeOf } from '@/lib/creation-settings';
 import { creationBridgeData, creationBridgePrompt } from '@/lib/creation-bridge';
@@ -181,7 +182,10 @@ export default function DirectionPage() {
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
       });
       if (full.trim()) {
-        await saveCreativeHistory({ id: historyId, taskType: DIRECTION_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
+        // 万能模板标题精准小改：只重写命中的那几条，其余一字不动（lib/title-polish）
+        const polished = await polishTitlesRemote(full);
+        if (isCurrent() && polished !== full) setResult(polished);
+        await saveCreativeHistory({ id: historyId, taskType: DIRECTION_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: polished });
       }
     } catch (e) {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "生成失败，请重试", "error");

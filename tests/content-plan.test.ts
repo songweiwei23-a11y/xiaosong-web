@@ -50,8 +50,10 @@ describe('当月内容规划', () => {
   });
   it('提示词：方向写满 15～20 个，流量型不许出现教知识', () => {
     const q = buildContentPlanPrompt({ lastMonth: '1-4', recordedLastMonth: 2, count: 16, focus: [], events: '', notes: '', resolved, today: new Date(2026, 9, 9) });
-    expect(q).toContain('15～20 个');
-    expect(q).toContain('少于 15 个不算完成');
+    // 方向数跟着总条数走：16 条 → 15～16 个；各方向条数加起来正好是总条数
+    expect(q).toContain('方向数 15～16 个');
+    expect(q).toContain('加起来正好是 16 条');
+    expect(q).toContain('少于下限不算完成');
     expect(q).toContain('三行各写这一类方向的出发点');
     expect(q).toContain('形式不决定目的：教知识、行业干货、避坑、观点，都可以是大流量');
     expect(q).not.toContain('3～6 个');
