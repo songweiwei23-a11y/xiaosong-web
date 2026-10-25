@@ -80,7 +80,16 @@ describe('阿里云 Lite 搜索请求和结果', () => {
       if (key !== 'file_upload') expect(draft.workflow.features[key]).toEqual(value);
     }
     for (const n of base.workflow.graph.nodes.filter((n: any) => ['llm', 'knowledge-retrieval', 'document-extractor'].includes(n.data.type))) {
-      expect(graph.nodes.find((x: any) => x.id === n.id)).toEqual(n);
+      const got = graph.nodes.find((x: any) => x.id === n.id);
+      if (n.data.type === 'llm') {
+        // 提示词正文由 docs/dify/system-prompt.md 单独维护，这里只比节点结构和模型配置
+        const { prompt_template: _baseText, ...baseData } = n.data;
+        const { prompt_template: _draftText, ...draftData } = got.data;
+        expect(got.id).toBe(n.id);
+        expect(draftData).toEqual(baseData);
+      } else {
+        expect(got).toEqual(n);
+      }
     }
   });
 });
