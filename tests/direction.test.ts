@@ -37,7 +37,8 @@ describe('提示词', () => {
   it('方向层只给范围：内容方向、切入角度、可展开的选题；没有开头示范', () => {
     expect(p).toMatch(/\*\*内容方向\*\*/);
     expect(p).toMatch(/\*\*切入角度\*\*/);
-    expect(p).toMatch(/\*\*可展开的选题\*\*/);
+    expect(p).toMatch(/\*\*题眼池\*\*/);
+    expect(p).toMatch(/\*\*核心目的\*\*/);
     expect(p).not.toMatch(/\*\*开头示范\*\*/);
     expect(p).not.toMatch(/\*\*可拍的选题示例\*\*/);
     const quick = buildDirectionPrompt({ ...base, depth: 'quick' });

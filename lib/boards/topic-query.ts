@@ -6,6 +6,7 @@ import { rolesGuide, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, type ResolvedMix } from '@/lib/content-mix';
 import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE } from '@/lib/sharp-rules';
 import { assignTopicSlots, audiencePool, topicSlotsBlock } from '@/lib/topic-slots';
+import { hooksOfSeed } from '@/lib/direction-seed';
 import { GROWTH_TACTICS } from '@/lib/growth-tactics';
 import { taboosPromptBlock } from '@/lib/taboos';
 import { ROUTES_GUIDE, tacticIndex, type CreativeRoute } from '@/lib/creative-routes';
@@ -512,6 +513,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
           elements: elementPool,
           tactics: tacticPool,
           firstTactic: topicPreferredTactic({ source: sourceReference, direction: personalRequirement, explicit: routeExplicit }),
+          // 方向种子的题眼池：每条选题取一个题眼展开（2026-10-26）
+          hooks: hooksOfSeed(sourceReference),
         });
         query += `${topicSlotsBlock(slots)}\n\n`;
       }

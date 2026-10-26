@@ -35,7 +35,8 @@ describe('创作方向只给范围（2026-10-26）：目的、人群、形式、
     expect(p).toContain('## 🧭 内容方向');
     expect(p).toContain('- **内容方向**：');
     expect(p).toContain('- **切入角度**：');
-    expect(p).toContain('- **可展开的选题**：');
+    expect(p).toContain('- **题眼池**：');
+    expect(p).toContain('- **核心目的**：');
     expect(p).toContain('## ⚠️ 这次先别做的');
     expect(p).toContain('### 方向1：');
   });

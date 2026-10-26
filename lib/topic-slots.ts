@@ -9,6 +9,8 @@ export interface TopicSlot {
   audience: string;
   element: string;
   tactic: string;
+  /** 从方向的题眼池里分到的题眼（没有方向种子时为空） */
+  hook: string;
 }
 
 export interface TopicProfileFields {
@@ -63,10 +65,13 @@ export function assignTopicSlots(p: {
   elements: string[];
   tactics: string[];
   firstTactic?: string;
+  /** 方向种子里的题眼池：每条选题取一个，题眼不同，选题才不同 */
+  hooks?: string[];
 }): TopicSlot[] {
   const audiences = p.audiences.length ? p.audiences : [];
   const elements = p.elements;
   const tactics = p.tactics;
+  const hooks = p.hooks ?? [];
   const stride = coprimeStride(tactics.length || 1);
   const slots: TopicSlot[] = [];
   for (let i = 0; i < p.count; i++) {
@@ -75,6 +80,7 @@ export function assignTopicSlots(p: {
       audience: audiences.length ? audiences[i % audiences.length] : '',
       element: elements.length ? elements[i % elements.length] : '',
       tactic: i === 0 && p.firstTactic ? p.firstTactic : tactics.length ? tactics[(i * stride) % tactics.length] : '',
+      hook: hooks.length ? hooks[i % hooks.length] : '',
     });
   }
   return slots;
@@ -87,7 +93,9 @@ export function topicSlotsBlock(slots: TopicSlot[]): string {
     const who = s.audience || '由选题层从档案里选一类，和其他条不同';
     const el = s.element || '由选题层挑一个，和其他条不同';
     const how = s.tactic || '由选题层挑一计，和其他条不同';
-    return `第${s.no}条：人群=${who}；爆款元素=${el}；拍法=${how}`;
+    const hook = s.hook ? `；题眼=${s.hook}` : '';
+    return `第${s.no}条：人群=${who}；爆款元素=${el}；拍法=${how}${hook}`;
   });
-  return `【本批每条的分配（代码定，每条必须照这三项写）】\n${rows.join('\n')}\n三项是每条选题的骨架：人群决定谁在看，元素决定看点，拍法决定事件怎么走。各条三项互不相同；标题和内容都围绕本条自己的三项写，不复用其他条的句子和写法。`;
+  const hookNote = slots.some((s) => s.hook) ? '题眼是这条选题的出发线索，要从它展开成一个具体的人和事，不照抄题眼原文。' : '';
+  return `【本批每条的分配（代码定，每条必须照这几项写）】\n${rows.join('\n')}\n各项是每条选题的骨架：人群决定谁在看，元素决定看点，拍法决定事件怎么走，题眼决定从哪个角度切进去。各条互不相同；标题和内容都围绕本条自己的分配写，不复用其他条的句子和写法。${hookNote}`;
 }

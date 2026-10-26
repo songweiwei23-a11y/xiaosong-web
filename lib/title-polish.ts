@@ -31,7 +31,23 @@ export function titleOfLine(line: string): string | null {
   if (star) return star[1].replace(/\*+$/, '').trim() || null;
   const heading = line.match(/^###\s*\d+\.\s*(.+?)\s*$/);
   if (heading) return heading[1].trim() || null;
+  // 选题的标题行：「## 选题3：标题」（2026-10-26 起也纳入模板检查和去重）
+  const topic = line.match(/^##\s*选题\s*\d+\s*[：:]\s*(.+?)\s*$/);
+  if (topic) return topic[1].replace(/\*\*/g, '').trim() || null;
   return null;
+}
+
+/** 全文里有没有重复的标题（第二次及以后出现的） */
+export function hasDuplicateTitle(text: string): boolean {
+  const seen = new Set<string>();
+  for (const line of text.split('\n')) {
+    const title = titleOfLine(line);
+    if (!title) continue;
+    const key = title.replace(/\s+/g, '');
+    if (seen.has(key)) return true;
+    seen.add(key);
+  }
+  return false;
 }
 
 /** 找出全文里命中万能模板的标题，去重 */
@@ -81,7 +97,7 @@ export function replaceTitle(text: string, from: string, to: string): string {
  * 绝不因为后处理出错而丢掉已经生成好的内容。
  */
 export async function polishTitlesRemote(text: string, context = ''): Promise<string> {
-  if (!findTemplateTitles(text).length && !findUnrealisticSentences(text).length) return text;
+  if (!findTemplateTitles(text).length && !findUnrealisticSentences(text).length && !hasDuplicateTitle(text)) return text;
   try {
     const res = await fetch('/api/polish-titles', {
       method: 'POST',

@@ -39,6 +39,7 @@ import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@
 
 import { useState, useEffect } from "react";
 import { readDifyStream } from '@/lib/sse-stream';
+import { polishTitlesRemote } from '@/lib/title-polish';
 import { CommentQuestions } from '@/components/topic/CommentQuestions';
 import { Lightbulb, Loader2, Users, Target, Sparkles, Zap, Heart, DollarSign, Eye, Flame, FileText } from "lucide-react";
 import ContinuousDialog from '@/components/ContinuousDialog';
@@ -527,6 +528,10 @@ export default function TopicPage() {
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
       });
 
+      // 撞题（标题重复）、模板标题、不符合现实的句子：精准小改后再显示和保存（lib/title-dedupe、lib/title-polish）
+      const polishedText = accumulatedText ? await polishTitlesRemote(accumulatedText) : accumulatedText;
+      if (isCurrent() && polishedText !== accumulatedText) setResult(polishedText);
+
       // 保存到历史记录
       if (accumulatedText) {
         const response = await postSafely("/api/topics", {
@@ -534,7 +539,7 @@ export default function TopicPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             input_data: requestData,
-            result: accumulatedText
+            result: polishedText
           })
         });
         if (response.ok) {

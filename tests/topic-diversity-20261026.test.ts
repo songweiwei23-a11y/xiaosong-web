@@ -18,6 +18,11 @@ const DIRECTION = [
   '- **标题**：★同一件外套换内搭差在哪',
   '- **内容方向**：围绕换季、上学、日常出门等场景，展示同一件外套与不同内搭、下装的组合。',
   '- **为什么**：这条把大码外套放进真实场景里，新号最需要这种一眼能看懂的内容。',
+  '- **切入角度**：',
+  '  - 对比切入 ｜ 同一件外套换搭配 ｜ 对比 ｜ 与其他角度不同的是看的维度',
+  '- **题眼池**：',
+  '  - 同一件外套的前后搭配（来源：客户常问「怎么搭」）',
+  '  - 上学和带娃穿同一件（来源：档案的目标职业）',
   '- **节奏**：第1周',
 ].join('\n');
 
@@ -30,8 +35,10 @@ describe('P1 方向只给种子：范围和切入角度，不给人群、讲法�
     const seed = directionSeedOf(DIRECTION) ?? '';
     expect(seed).toContain('方向：同一件外套，换搭配看差别');
     expect(seed).toContain('范围：围绕换季、上学、日常出门等场景');
-    expect(seed).toContain('切入角度：这条把大码外套放进真实场景里');
-    expect(seed).toContain('大致目的（可调整，选题层决定）：流量型');
+    expect(seed).toContain('角度：对比切入');
+    expect(seed).toContain('题眼：同一件外套的前后搭配');
+    expect(seed).toContain('题眼：上学和带娃穿同一件');
+    expect(seed).toContain('核心目的（不能改）：流量型');
     expect(seed).not.toContain('出镜者');
     expect(seed).not.toContain('讲法');
     expect(seed).not.toContain('第一秒');
@@ -117,7 +124,7 @@ describe('P4 槽位分配：代码保证人群、元素、拍法各自不重复'
     const block = topicSlotsBlock(assignTopicSlots({ count: 2, audiences: ['宝妈', '学生'], elements: ['反差', '人群'], tactics: ['反向操作', '换个视角'] }));
     expect(block).toContain('第1条：人群=宝妈；爆款元素=反差；拍法=反向操作');
     expect(block).toContain('第2条：人群=学生；爆款元素=人群；拍法=换个视角');
-    expect(block).toContain('各条三项互不相同');
+    expect(block).toContain('各条互不相同');
   });
 });
 

@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/api-guard';
 import { askDify } from '@/lib/dify-task';
 import { polishTitles } from '@/lib/title-polish';
 import { polishReality } from '@/lib/reality-check';
+import { dedupeTitles } from '@/lib/title-dedupe';
 
 /**
  * 标题后处理（2026-10-25）：生成完的正文里如果有「别只…」这类万能模板标题，
@@ -38,9 +39,11 @@ export async function POST(request: Request) {
   const titles = await polishTitles(text, ask, context);
   // 标题改完再查现实：「收腰就能换风格」这类说法，只改那一句
   const reality = await polishReality(titles.text, ask, context);
+  // 重复的标题（选题之间撞题）：第二次及以后出现的那一行只重写它，并避开已有标题
+  const dedupe = await dedupeTitles(reality.text, ask, context);
   return NextResponse.json({
-    text: reality.text,
-    tried: titles.tried + reality.tried,
-    accepted: titles.accepted + reality.accepted,
+    text: dedupe.text,
+    tried: titles.tried + reality.tried + dedupe.tried,
+    accepted: titles.accepted + reality.accepted + dedupe.accepted,
   });
 }
