@@ -34,10 +34,12 @@ describe('提示词', () => {
     expect(p).toMatch(/\*\*第一周怎么开始\*\*/);
   });
 
-  it('完整版有选题示例、怎么拍、开头示范、看什么数据；快速版只有几行', () => {
-    expect(p).toMatch(/\*\*可拍的选题示例\*\*/);
-    expect(p).toMatch(/\*\*开头示范\*\*/);
-    expect(p).toMatch(/\*\*看什么数据\*\*/);
+  it('方向层只给范围：内容方向、切入角度、可展开的选题；没有开头示范', () => {
+    expect(p).toMatch(/\*\*内容方向\*\*/);
+    expect(p).toMatch(/\*\*切入角度\*\*/);
+    expect(p).toMatch(/\*\*可展开的选题\*\*/);
+    expect(p).not.toMatch(/\*\*开头示范\*\*/);
+    expect(p).not.toMatch(/\*\*可拍的选题示例\*\*/);
     const quick = buildDirectionPrompt({ ...base, depth: 'quick' });
     expect(quick).not.toMatch(/开头示范/);
   });
@@ -49,16 +51,17 @@ describe('提示词', () => {
     expect(p).toMatch(/或 X，再选档案里最具体、能拍的那个版本/);
   });
 
-  it('每个方向都有爆点字段：第一秒、三个标题、停下的理由、反驳与回应、前三个镜头', () => {
-    expect(p).toMatch(/第一秒画面/);
-    expect(p).toMatch(/3 个能直接发出去的标题，用 ★ 标出最推荐的那一个/);
-    expect(p).toMatch(/停下的理由/);
-    expect(p).toMatch(/会有人反驳的一句/);
-    expect(p).toMatch(/第一条的前三个镜头/);
+  it('方向层不写爆点：第一秒、标题、停下的理由、反驳、镜头都留给选题层', () => {
+    expect(p).not.toMatch(/第一秒画面/);
+    expect(p).not.toMatch(/3 个能直接发出去的标题/);
+    expect(p).not.toMatch(/停下的理由/);
+    expect(p).not.toMatch(/会有人反驳的一句/);
+    expect(p).not.toMatch(/第一条的前三个镜头/);
   });
 
-  it('三有只写最强的一条，不要求三条都写', () => {
-    expect(p).toMatch(/只写最强的那一条并说清它为什么最强，别三条都写/);
+  it('方向层不谈三有和爆款元素（留给选题层）', () => {
+    expect(p).not.toMatch(/三有/);
+    expect(p).not.toMatch(/爆款元素/);
   });
 
   it('先多后选：心里拟一批候选、只输出得分最高的那几个，候选不输出', () => {
@@ -66,9 +69,8 @@ describe('提示词', () => {
     expect(p).toMatch(/淘汰最平的，只输出得分最高的/);
   });
 
-  it('标题有好坏对照，并禁止万能模板', () => {
-    expect(p).toMatch(/写法对照（只学写法，不照抄）/);
-    expect(p).toMatch(/不用「XX，怎么…」「别只…」/);
+  it('方向层不写标题写法（标题规则在选题和标题板块）', () => {
+    expect(p).not.toMatch(/写法对照（只学写法，不照抄）/);
   });
 
   it('分散人、货、场：同一单品最多两个方向，出镜的人和场各至少换三种', () => {

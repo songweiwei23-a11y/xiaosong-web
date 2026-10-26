@@ -54,8 +54,11 @@ describe('当月内容规划', () => {
     expect(q).toContain('方向数 15～16 个');
     expect(q).toContain('加起来正好是 16 条');
     expect(q).toContain('少于下限不算完成');
-    expect(q).toContain('三行各写这一类方向的出发点');
-    expect(q).toContain('形式不决定目的：教知识、行业干货、避坑、观点，都可以是大流量');
+    // 策划层只定类别、目的、条数和取材范围（2026-10-26）：人、货、场和形式留给选题层
+    expect(q).toContain('三行各写这一类方向的取材范围和条数');
+    expect(q).toContain('目的只决定条数，不决定形式');
+    expect(q).not.toContain('三行各写这一类方向的出发点');
+    expect(q).not.toContain('形式不决定目的：教知识、行业干货、避坑、观点，都可以是大流量');
     expect(q).not.toContain('3～6 个');
   });
   it('解析方向并核对配比', () => {

@@ -78,26 +78,23 @@ describe('提示词接入', () => {
     expect(buildDirectionPrompt(base)).not.toContain('写四大脚本的结构名')
   })
 
-  it('创作方向：传 50 时内容类型那一条带上搭配规则', () => {
+  it('创作方向：不带 36 计与四大脚本的搭配（形式留给选题层，2026-10-26）', () => {
     const p = buildDirectionPrompt({ ...base, scriptsShare: 50 })
-    expect(p).toContain('大约 50%')
-    expect(p).toContain('晒过程·火车节')
+    expect(p).not.toContain('大约 50%')
+    expect(p).not.toContain('晒过程·火车节')
   })
 
-  it('内容规划：不传或传 0，提示词逐字相同；传 100 时写「全部」', () => {
+  it('内容规划：搭配比例不再进策划提示词（形式留给选题层）', () => {
+    expect(buildContentPlanPrompt({ ...planBase, scriptsShare: 100 })).toBe(buildContentPlanPrompt(planBase))
     expect(buildContentPlanPrompt({ ...planBase, scriptsShare: 0 })).toBe(buildContentPlanPrompt(planBase))
-    expect(buildContentPlanPrompt({ ...planBase, scriptsShare: 100 })).toContain('全部')
   })
 })
 
 describe('页面接入', () => {
-  it('创作方向页和内容规划页都放了搭配条，并把比例传进提示词和历史记录', () => {
+  it('创作方向页和内容规划页都不再放搭配条（形式在选题层定）', () => {
     for (const page of ['app/dashboard/direction/page.tsx', 'app/dashboard/content-plan/page.tsx']) {
       const src = read(page)
-      expect(src, page).toMatch(/import \{ TacticMixBar \} from "@\/components\/workspace\/TacticMix"/)
-      expect(src, page).toMatch(/<TacticMixBar value=\{scriptsShare\} onChange=\{setScriptsShare\} \/>/)
-      expect(src, page).toMatch(/const \[scriptsShare, setScriptsShare\] = useState\(0\)/)
-      expect(src, page).toMatch(/scriptsShare/)
+      expect(src, page).not.toMatch(/<TacticMixBar/)
     }
     expect(read('app/dashboard/direction/page.tsx')).toMatch(/mixBlock: useMix \? mixPromptBlock\(resolvedMix, \{ count, unit: "个" \}\) : undefined,\n\s+scriptsShare,/)
     expect(read('app/dashboard/content-plan/page.tsx')).toMatch(/resolved: resolvedMix, scriptsShare,/)

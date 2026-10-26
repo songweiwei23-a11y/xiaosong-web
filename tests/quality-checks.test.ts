@@ -86,7 +86,8 @@ describe('每晚回归', () => {
     expect(cases.map((c) => c.task)).toEqual(['回归:创作方向', '回归:审稿优化', '回归:画布改写', '回归:美甲选题', '回归:家具开篇', '回归:无价格引流脚本', '回归:只换开头', '回归:通用口播脚本', '回归:跨行业二创', '回归:自由对话']);
     expect(cases[0].query).toContain('人设事实卡');
     expect(cases[0].query).toContain('刻意去掉的信息');
-    expect(cases[0].query).toMatch(/流量型 \d+ 个/);
+    // 方向层只给范围（2026-10-26）：配比条数在内容规划里定，方向不再带「流量型 N 个」
+    expect(cases[0].query).toContain('切入角度');
     expect(cases[1].query).toContain('全城最正宗');
     expect(cases[1].query).toContain('18 年');
     expect(cases[2].query).toContain('只换说法，不加事实');
@@ -169,7 +170,9 @@ describe('接线', () => {
     const panel = readCode('components/workspace/ResultPanel.tsx');
     expect(panel).toMatch(/generatingBefore\.current && !isGenerating && body/);
     expect(panel).toMatch(/reportQuality\(\{ taskType: CREATION_SOURCES\[seg\]/);
-    for (const f of ['app/dashboard/topic/page.tsx', 'app/dashboard/direction/page.tsx']) expect(readCode(f), f).toContain('qualityMix={mixUsed}');
+    expect(readCode('app/dashboard/topic/page.tsx')).toContain('qualityMix={mixUsed}');
+    // 方向页不再核对配比（方向输出没有「视频目的」这一行了）
+    expect(readCode('app/dashboard/direction/page.tsx')).not.toContain('qualityMix={mixUsed}');
     expect(readCode('app/dashboard/free-chat/page.tsx')).toMatch(/reportQuality\(\{ taskType: '自由对话'/);
   });
 

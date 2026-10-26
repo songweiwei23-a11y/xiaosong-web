@@ -45,11 +45,18 @@ export function topicReference(data: Pick<HandoffPayload, 'sourceContent' | 'ori
   const script = data.settings?.workingScript?.trim() || '';
   const current = script || data.sourceContent?.trim() || '';
   const origin = data.originContent?.trim() || '';
+  // 方向只给选题种子（范围、切入角度），人群、讲法、标题、镜头不带，否则每条选题都照抄它（lib/direction-seed）
+  if (!script) {
+    const seed = directionSeedOf(current || origin);
+    if (seed) return `${DIRECTION_SEED_HEAD}\n${seed}`;
+  }
   if (!current) return origin;
   const head = `【这次带来的内容（选题从这里出发）】\n${current}`;
   // 产品方（2026-10-05）：选题要基于原来的方向、思路、目的来设计——最初的方向是要守住的，不是可有可无的背景
   return origin && origin !== current && !current.includes(origin) ? `${head}\n\n【最初的方向（选题要守住它的方向、思路和目的）】\n${origin}` : head;
 }
+
+import { DIRECTION_SEED_HEAD, directionSeedOf } from './direction-seed';
 
 type Role = '流量型' | '人设型' | '变现型';
 const ROLES: Role[] = ['流量型', '人设型', '变现型'];

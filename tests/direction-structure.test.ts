@@ -20,7 +20,7 @@ describe('创作方向默认勾选', () => {
 
 const base = { purposes: ['fans'], formats: ['any'], count: 5 as const, depth: 'quick' as const };
 
-describe('创作方向沿用内容规划的结构', () => {
+describe('创作方向只给范围（2026-10-26）：目的、人群、形式、拍法都留给选题层', () => {
   it('方向数最少 10 个，默认 20，可自由填', () => {
     expect(clampDirectionCount(3)).toBe(10);
     expect(clampDirectionCount(13)).toBe(13);
@@ -29,45 +29,38 @@ describe('创作方向沿用内容规划的结构', () => {
     expect(DEFAULT_DIRECTION_COUNT).toBe(20);
   });
 
-  it('有思路、内容方向、内容类型、先别做的，并保留方向标题', () => {
+  it('有思路、内容方向、切入角度、可展开的选题，并保留方向标题', () => {
     const p = buildDirectionPrompt(base);
     expect(p).toContain('## 📌 这个方向的思路');
     expect(p).toContain('## 🧭 内容方向');
-    expect(p).toContain('- **内容类型**：从下面的 36 计清单里选一计');
     expect(p).toContain('- **内容方向**：');
+    expect(p).toContain('- **切入角度**：');
+    expect(p).toContain('- **可展开的选题**：');
     expect(p).toContain('## ⚠️ 这次先别做的');
     expect(p).toContain('### 方向1：');
   });
 
-  it('有配比时带配比一览，流量型不许写教知识', () => {
+  it('不出视频目的、对应目的，也不出配比一览（配比在内容规划里定）', () => {
     const p = buildDirectionPrompt({ ...base, mixBlock: '配比：流量型 3 条' });
-    expect(p).toContain('## 📊 配比一览');
-    expect(p).toContain('三行各写这一类方向的出发点');
-    expect(p).toContain('- **视频目的**：流量型 / 人设型 / 变现型，只写一个');
+    expect(p).not.toContain('## 📊 配比一览');
+    expect(p).not.toContain('- **视频目的**：');
+    expect(p).not.toContain('- **对应目的**：');
   });
 
-  it('带 36 计清单和结构公式', () => {
+  it('不带 36 计清单，也不让方向填形式（拍法留给选题层）', () => {
     const p = buildDirectionPrompt(base);
-    expect(p).toContain('#### 起号 36 计清单');
-    expect(p).toMatch(/第\d+计 \*\*反向操作\*\*/);
+    expect(p).not.toContain('#### 起号 36 计清单');
+    expect(p).not.toContain('- **内容类型**：从下面的 36 计清单里选一计');
   });
 
-  it('36 计为主，四大脚本作为辅助讲法', () => {
+  it('不带四大脚本讲法（形式留给选题层）', () => {
     const p = buildDirectionPrompt(base);
-    expect(p).toContain('## 四大脚本（薛老师）：另一种形式，管话怎么讲');
-    expect(p).toContain('- **讲法**：从四大脚本里挑一个结构');
-    expect(p.indexOf('#### 起号 36 计清单')).toBeLessThan(p.indexOf('## 四大脚本（薛老师）'));
+    expect(p).not.toContain('## 四大脚本（薛老师）');
+    expect(p).not.toContain('- **讲法**：');
   });
 
-  it('禁忌写了不揭秘时，清单里不出现内幕揭秘', () => {
+  it('禁忌写了不揭秘时，方向里也不出现内幕揭秘', () => {
     const p = buildDirectionPrompt({ ...base, contextBlock: '## 禁忌\n- 不揭秘行业内幕' });
     expect(p).not.toMatch(/\*\*内幕揭秘\*\*/);
-    expect(p).toMatch(/\*\*反向操作\*\*/);
-  });
-
-  it('没有配比时不出配比一览', () => {
-    const p = buildDirectionPrompt(base);
-    expect(p).not.toContain('## 📊 配比一览');
-    expect(p).toContain('- **对应目的**：');
   });
 });

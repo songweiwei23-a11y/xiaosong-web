@@ -35,11 +35,12 @@ describe('大流量标准', () => {
     expect(BIG_TRAFFIC_METHOD).toContain('不为爆款而爆款')
   })
 
-  it('创作方向：出发点字段和做法都带上', () => {
+  it('创作方向：不写大流量标准和做法（出发点留给选题层）', () => {
     const p = buildDirectionPrompt(base)
-    expect(p).toContain(`视频目的是流量型（大流量）的方向，必须满足大流量标准：${BIG_TRAFFIC_STANDARD}`)
-    expect(p).toContain('先看档案')
-    expect(p).toContain('落地检查')
+    expect(p).not.toContain('视频目的是流量型（大流量）的方向')
+    expect(p).not.toContain(BIG_TRAFFIC_STANDARD)
+    expect(p).not.toContain('先看档案')
+    expect(p).not.toContain('落地检查')
   })
 
   it('大流量不带成交理由：过滤函数只放行非流量；创作设置块里流量型不出现成交理由', () => {
@@ -51,9 +52,11 @@ describe('大流量标准', () => {
     expect(creationSettingsBlock({ purpose: '变现型', dealReasons: ['包邮'], topic: '选题' })).toContain('成交理由：包邮')
   })
 
-  it('内容规划：流量型要求里带上做法', () => {
+  it('内容规划：只定类别、目的、条数和取材范围，不写大流量做法（留给选题层）', () => {
     const p = buildContentPlanPrompt(planBase)
-    expect(p).toContain(`- 流量型方向还要满足大流量标准（不带成交理由）：${BIG_TRAFFIC_STANDARD}`)
-    expect(p).toContain('落地检查')
+    expect(p).not.toContain('流量型方向还要满足大流量标准')
+    expect(p).not.toContain('落地检查')
+    expect(p).toContain('- **视频目的**：流量型 / 人设型 / 变现型 选一个')
+    expect(p).toContain('- **本月条数**：N 条')
   })
 })

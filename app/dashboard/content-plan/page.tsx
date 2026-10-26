@@ -11,7 +11,6 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
 import { ContentMixBar } from "@/components/workspace/ContentMix";
-import { TacticMixBar } from "@/components/workspace/TacticMix";
 import { notify } from "@/components/ui/feedback";
 import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -210,9 +209,6 @@ export default function ContentPlanPage() {
             <p className="mt-1.5 text-[11.5px] text-muted-foreground">一周约 {Math.max(1, Math.round(count / 4))} 条。{!countTouched && lastMonth ? "按上个月的量推荐的，可以改" : "定一个能坚持下来的量，比定得多发不出来有用"}</p>
             <Field label="怎么配比" stacked hint="条数按配比分到流量型、人设型、变现型">
               <ContentMixBar className="mt-1" profile={profile} override={mixOverride} onOverride={setMixOverride} count={count} goal={goalText} />
-            </Field>
-            <Field label="36 计与四大脚本的搭配" stacked hint="内容类型按这个比例在 36 计和四大脚本之间分，不分目的">
-              <TacticMixBar value={scriptsShare} onChange={setScriptsShare} />
             </Field>
           </CollapsibleSection>
 

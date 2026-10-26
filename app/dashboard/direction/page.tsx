@@ -251,16 +251,6 @@ export default function DirectionPage() {
             <Field label="写多细" stacked>
               <ChoiceGrid items={DEPTHS} isOn={(id) => depth === id} onToggle={(id) => setDepth(id as "quick" | "full")} />
             </Field>
-            <Field label="按内容配比分方向" stacked hint={useMix ? "方向会按配比分到流量型、人设型、变现型，每个标明是哪种" : "不按配比，方向完全跟着你勾的目的走"}>
-              <div className="flex gap-1.5">
-                <button type="button" onClick={() => setUseMix(true)} aria-pressed={useMix} className={chipCls(useMix)}>按配比</button>
-                <button type="button" onClick={() => setUseMix(false)} aria-pressed={!useMix} className={chipCls(!useMix)}>只跟着目的走</button>
-              </div>
-              {useMix && <ContentMixBar className="mt-2" profile={profile} override={mixOverride} onOverride={setMixOverride} count={count} goal={goalText} />}
-            </Field>
-            <Field label="36 计与四大脚本的搭配" stacked hint="内容类型按这个比例在 36 计和四大脚本之间分，不分目的">
-              <TacticMixBar value={scriptsShare} onChange={setScriptsShare} />
-            </Field>
           </CollapsibleSection>
 
           <CollapsibleSection title="按哪个账号来" defaultOpen>
@@ -298,8 +288,6 @@ export default function DirectionPage() {
         emptyHint="勾一下你想达到的目的（也可以自己写），AI 按你的档案把能走的方向都铺开，再推荐一个最好的"
         emptyTips={["目的可以多选，比如「引流到店 + 立人设」", "已经有想法就写上，AI 会帮你判断靠不靠谱", "出来后勾选想做的方向，点「生成选题」「脚本生成」直接接着做"]}
         generatingHint="AI 正在按你的目的想方向…"
-        footer={mixUsed ? <MixCheckLine text={result} resolved={mixUsed.resolved} count={mixUsed.count} /> : undefined}
-        qualityMix={mixUsed}
         onCopy={(text) => { navigator.clipboard.writeText(text); notify("已复制到剪贴板"); }}
       />
     </WorkspaceLayout>

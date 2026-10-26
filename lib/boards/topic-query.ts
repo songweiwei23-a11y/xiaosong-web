@@ -5,6 +5,8 @@ import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
 import { rolesGuide, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, type ResolvedMix } from '@/lib/content-mix';
 import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE } from '@/lib/sharp-rules';
+import { assignTopicSlots, audiencePool, topicSlotsBlock } from '@/lib/topic-slots';
+import { GROWTH_TACTICS } from '@/lib/growth-tactics';
 import { taboosPromptBlock } from '@/lib/taboos';
 import { ROUTES_GUIDE, tacticIndex, type CreativeRoute } from '@/lib/creative-routes';
 import { topicSourceRules, topicDesignStandards, topicRoutePrompt, topicDesignFinalCheck, topicPreferredTactic } from '@/lib/topic-design';
@@ -475,9 +477,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
         // 没整批指定某一计：按用户选的路子分配，36 计连公式一起给，只给计名模型不知道怎么拍
         const preferred = topicPreferredTactic({ source: sourceReference, direction: personalRequirement, explicit: routeExplicit });
         query += `${topicRoutePrompt({ route, count: topicCount, sourced, explicit: routeExplicit })}\n\n`;
-        if (preferred) {
-          query += `【承接原拍法】本轮所有选题继续用${preferred}，差异来自问题与追问。四大脚本只用于组织真实回答，不另换节目。\n${tacticBrief(preferred)}\n\n`;
-        } else query += `${ROUTES_GUIDE}\n\n`;
+        // 不再整批锁同一计（2026-10-26）：拍法逐条分配，见下方「本批每条的分配」
+        query += `${ROUTES_GUIDE}\n\n`;
         if (!preferred && route !== '四大脚本') {
           const blocked = tacticsBlockedBy(
             [selectedProfile?.content_restrictions, selectedProfile?.avoid_content, selectedProfile ? taboosPromptBlock(selectedProfile) : ''].filter(Boolean).join('\n')
@@ -496,6 +497,24 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       // 一针见血：标题有具体的东西和一个反差，每条只押一个看点，人和事只写真的
       query += `【一针见血】\n${TITLE_CRAFT}\n${ONE_POINT_RULE}\n${REAL_PEOPLE_RULE}\n${REALITY_RULE}\n\n`;
 
+      // 槽位分配：代码给每条不同的人群、爆款元素、拍法，模型只负责写（lib/topic-slots）
+      if (topicCount > 1) {
+        const elementPool = selectedElements.length
+          ? selectedElements.map((id) => viralElementById(id)?.name.replace(/选题$/, '') ?? id)
+          : VIRAL_ELEMENTS.map((e) => e.name.replace(/选题$/, ''));
+        const blockedNow = tacticsBlockedBy(
+          [selectedProfile?.content_restrictions, selectedProfile?.avoid_content, selectedProfile ? taboosPromptBlock(selectedProfile) : ''].filter(Boolean).join('\n')
+        );
+        const tacticPool = route === '四大脚本' ? [] : GROWTH_TACTICS.map((t) => t.name).filter((n) => !blockedNow.includes(n));
+        const slots = assignTopicSlots({
+          count: topicCount,
+          audiences: audiencePool(selectedProfile as never),
+          elements: elementPool,
+          tactics: tacticPool,
+          firstTactic: topicPreferredTactic({ source: sourceReference, direction: personalRequirement, explicit: routeExplicit }),
+        });
+        query += `${topicSlotsBlock(slots)}\n\n`;
+      }
       query += `【选题三关】（小黄第17节）每条都要过：覆盖的人够不够多、给了什么明确价值、是不是比用户多一步认知\n\n`;
       query += `【输出格式要求】\n`;
       query += `每条选题必须包含以下部分：\n\n`;
@@ -567,5 +586,5 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       if (quickTopics && topicCount <= 3) query += `7. 用户选的是「快速 3 条」：每条只写视频目的、打法、开篇钩子、脚本结构（三四行）、结尾行动指令，每项一两句；爆款元素、执行要点、成交理由合成一句写在结构后面。每条 500 字以内\n`;
       query += `\n${topicDesignFinalCheck()}\n`;
 
-  return { query: query + creationSettingsBlock(currentSettings), mixUsed };
+  return { query: query + creationSettingsBlock(currentSettings, 'topic'), mixUsed };
 }

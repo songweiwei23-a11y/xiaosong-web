@@ -131,9 +131,9 @@ describe('写进提示词', () => {
     expect(buildPositioningPrompt({ profileSummary: '- 档案名称：x', mixBlock: block })).toMatch(/第一步、第二步（定作用配比）已经定好/);
     expect(buildBriefPrompt({ positioningFull: '定位', mixBlock: block })).toMatch(/三种视频的配比\*\*照这个数写/);
     const dir = buildDirectionPrompt({ purposes: ['store'], formats: ['any'], count: 5, depth: 'quick', mixBlock: mixPromptBlock(r, { count: 5, unit: '个' }) });
-    expect(dir).toContain('**视频目的**：流量型 / 人设型 / 变现型');
-    expect(dir).toContain('流量型 3 个');
-    // 没配比时不加「视频目的」这一行
+    // 方向层只给范围（2026-10-26）：配比不再进方向提示词，条数在内容规划里定
+    expect(dir).not.toContain('**视频目的**：流量型 / 人设型 / 变现型');
+    expect(dir).not.toContain('流量型 3 个');
     expect(buildDirectionPrompt({ purposes: ['store'], formats: ['any'], count: 5, depth: 'quick' })).not.toContain('**视频目的**');
   });
 
@@ -182,10 +182,9 @@ describe('页面接线', () => {
     expect(route.match(/await withoutMissingColumns\(/g)?.length).toBe(2); // 新建 + 更新都走它
   });
 
-  it('选题、方向、起号、账号定位、深挖定位、简报都有配比条，并把配比写进提示词', () => {
+  it('选题、起号、账号定位、深挖定位、简报都有配比条，并把配比写进提示词（方向不再有配比，配比在内容规划里定）', () => {
     const pages: [string, RegExp][] = [
       ['app/dashboard/topic/page.tsx', /mixPromptBlock\(resolvedMix, \{ count: topicCount \}\)/],
-      ['app/dashboard/direction/page.tsx', /mixBlock: useMix \? mixPromptBlock\(resolvedMix, \{ count, unit: "个" \}\)/],
       ['app/dashboard/growth/page.tsx', /mixBlock: mixPromptBlock\(resolveMix\(/],
       ['app/dashboard/positioning/page.tsx', /mixBlock: mixPromptBlock\(resolveMix\(/],
       ['components/positioning/DeepDivePage.tsx', /mixBlock: mixPromptBlock\(resolveMix\(/],
@@ -199,10 +198,9 @@ describe('页面接线', () => {
     }
   });
 
-  it('选题和方向生成完在结果下面核对条数', () => {
-    for (const f of ['app/dashboard/topic/page.tsx', 'app/dashboard/direction/page.tsx']) {
-      expect(readCode(f), f).toMatch(/footer=\{mixUsed \? <MixCheckLine/);
-    }
+  it('选题生成完在结果下面核对条数；方向页不再核对（方向输出没有视频目的）', () => {
+    expect(readCode('app/dashboard/topic/page.tsx'), 'topic').toMatch(/footer=\{mixUsed \? <MixCheckLine/);
+    expect(readCode('app/dashboard/direction/page.tsx')).not.toMatch(/footer=\{mixUsed/);
     // 选题页原来那句"按上面账号定位里定好的配比分配"不在了
     expect(readTopicBoardCode()).not.toContain('按上面账号定位里定好的配比分配');
   });
