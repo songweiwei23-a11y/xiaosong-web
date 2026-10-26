@@ -27,7 +27,7 @@ import { OPENING_CARDS } from './opening-cards';
 import { roleInferRule } from './content-roles';
 import { continuationRules } from './creation-continuation';
 import { creativeCraftRules } from './creative-craft';
-import { TITLE_CRAFT } from './sharp-rules';
+import { TITLE_CRAFT, REALITY_RULE } from './sharp-rules';
 
 /** 各平台的标题逻辑差异。同一个主题在不同平台该起不同的标题 */
 const PLATFORM_RULES: Record<string, string[]> = {
@@ -211,6 +211,7 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push('## ⚙️ 本次要求');
   parts.push('所有标题都承接同一具体主线、人群、立场与事实状态。尚未采访或观察时，用问题/计划式表达，不将假设写成已证实结论；不得为标题承诺的效果补编正文。');
   parts.push(TITLE_CRAFT);
+  parts.push(REALITY_RULE);
   parts.push('');
   parts.push(p.titleTypeLabel === 'AI推荐' ? '- 标题类型：按当前主线与材料自动选择，不默认套疑问、冲突或营销类型' : `- 标题类型（用户明确选择）：${p.titleTypeLabel}`);
   parts.push(p.titleFormulaValue === 'auto' ? '- 使用公式：按当前内容选择，可直接清楚表达，不默认套为什么或意外原因' : `- 使用公式（用户明确选择）：${p.titleFormulaLabel}`);

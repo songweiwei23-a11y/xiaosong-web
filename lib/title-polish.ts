@@ -4,6 +4,8 @@
  * 改完不符合标准就保留原样，绝不为了改而改坏别的。
  */
 
+import { findUnrealisticSentences } from './reality-check';
+
 /** 万能模板：命中任何一条就要改。与 lib/sharp-rules 的 TITLE_CRAFT 禁用列表保持一致 */
 export const TEMPLATE_TITLE_PATTERNS: RegExp[] = [/别只/, /你知道.{0,10}吗/, /，怎么/, /原来[，,]/, /\d+\s*个(?:技巧|方法|小tips)/i];
 
@@ -79,7 +81,7 @@ export function replaceTitle(text: string, from: string, to: string): string {
  * 绝不因为后处理出错而丢掉已经生成好的内容。
  */
 export async function polishTitlesRemote(text: string, context = ''): Promise<string> {
-  if (!findTemplateTitles(text).length) return text;
+  if (!findTemplateTitles(text).length && !findUnrealisticSentences(text).length) return text;
   try {
     const res = await fetch('/api/polish-titles', {
       method: 'POST',

@@ -13,6 +13,7 @@ import { tacticIndex, tacticsBlockedBy } from './creative-routes';
 import { SCRIPT_FAMILIES } from './viral-elements';
 import { tacticMixRule } from './tactic-mix';
 import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD, DEAL_REASON_METHOD, PERSONA_METHOD } from './content-roles';
+import { REALITY_RULE } from './sharp-rules';
 
 export const DIRECTION_TASK_TYPE = '创作方向';
 
@@ -230,6 +231,7 @@ ${differ}
 - **不要写占位**：上面的 36 计清单、四大脚本只是给你挑用的参考，不是要你在输出里复述的小节。不要写「（清单已按要求提供）」「（内容已按要求提供）」这类话；用到哪一计就直接写计名和讲法，没用到就不写
 - **真实边界（只在这里说一次，方向里不再重复）**：每个方向都是这个账号拍得出来的，用档案里的行业、在卖的品类、团队、设备、场地；档案里没有的经历、事件、人数、金额、播放量不编，写成「【待补：……】」或 X，再选档案里最具体、能拍的那个版本往下做。不说"揭秘"，不用绝对化用语，不诋毁同行
 - 方向要具体到这个账号：写这家店真的会发生的事、真的在卖的东西，不要写成放之四海皆准的套话
+- ${REALITY_RULE}
 - 大白话，不要"赋能""打造""矩阵"这类词
 ${creativeCraftRules({ intent: ex?.intent || i.customGoal, selected: ex?.content, source: i.ideas, context: i.contextBlock })}`;
 }

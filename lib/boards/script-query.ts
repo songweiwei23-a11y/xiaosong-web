@@ -251,6 +251,8 @@ export function scriptResultWithQuality(text: string): string {
   return `${text}\n\n---\n\n${formatQualityReport(evaluation)}`;
 }
 
+import { REALITY_RULE } from '@/lib/sharp-rules';
+
 export function buildScriptBoardQuery(input: ScriptBoardInput): string {
   const {
     topic, platform, scriptType, autoScriptType, effectiveRole, isAd,
@@ -622,6 +624,7 @@ ${additionalInfo}` : ""}
 4. 结尾只要一个明确的行动指令（到店、团购、加微信里选最贴这条的一个，说清楚怎么做）
 5. 全程植入产品信息，自然不生硬
 6. 价格、优惠和限时限量仅使用用户已确认信息；未提供就不用，不编福利或经营承诺
+7. ${REALITY_RULE}
 
 ${formatRequirements}
 

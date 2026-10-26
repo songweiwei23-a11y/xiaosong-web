@@ -14,6 +14,7 @@ import { BIG_TRAFFIC_METHOD, BIG_TRAFFIC_STANDARD, CONTENT_ROLE_LIST, DEAL_REASO
 import { formatMix, mixToCounts, type ResolvedMix } from './content-mix';
 import type { Work } from './works';
 import { tacticMixRule } from './tactic-mix';
+import { REALITY_RULE } from './sharp-rules';
 
 export const CONTENT_PLAN_TASK_TYPE = '内容规划';
 
@@ -140,6 +141,7 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 - **先多后选**：心里先拟比要求多一半的候选方向（候选不输出），用三把尺子过一遍：人货场是不是真的、拍不拍得出来、这个号是不是独一份。淘汰最平的，只输出 ${Math.min(15, p.count)}～${Math.min(20, p.count)} 个最好的
 - **分散人、货、场**：同一个单品或同一个场景最多出现在两个方向里，出镜的人和拍摄的场各至少换三种，不能所有方向都围着一件货、一个场景写
 - **内容方向要写到拍的时候看得见什么**：一个具体的场景、动作或东西，不写「分享穿搭知识」「讲行业干货」这种只有类别的话
+- ${REALITY_RULE}
 - 形式不决定目的：教知识、行业干货、避坑、观点，都可以是大流量，也都可以是人设或变现，要看它的人货场、三有和爆款元素
 - 流量型方向还要满足大流量标准（不带成交理由）：${BIG_TRAFFIC_STANDARD}
 - 流量型方向的做法（照这个顺序想）：

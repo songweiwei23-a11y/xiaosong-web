@@ -4,7 +4,7 @@ import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from '@/lib/vira
 import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
 import { rolesGuide, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, type ResolvedMix } from '@/lib/content-mix';
-import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE } from '@/lib/sharp-rules';
+import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE } from '@/lib/sharp-rules';
 import { taboosPromptBlock } from '@/lib/taboos';
 import { ROUTES_GUIDE, tacticIndex, type CreativeRoute } from '@/lib/creative-routes';
 import { topicSourceRules, topicDesignStandards, topicRoutePrompt, topicDesignFinalCheck, topicPreferredTactic } from '@/lib/topic-design';
@@ -494,7 +494,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       query += sourced ? `- 💡 新角度在带来的内容范围里找，不另外去追热点、时事\n` : `- 💡 结合当前热点、时事、流行文化\n`;
       query += `- 🔥 创造记忆点，让人眼前一亮\n\n`;
       // 一针见血：标题有具体的东西和一个反差，每条只押一个看点，人和事只写真的
-      query += `【一针见血】\n${TITLE_CRAFT}\n${ONE_POINT_RULE}\n${REAL_PEOPLE_RULE}\n\n`;
+      query += `【一针见血】\n${TITLE_CRAFT}\n${ONE_POINT_RULE}\n${REAL_PEOPLE_RULE}\n${REALITY_RULE}\n\n`;
 
       query += `【选题三关】（小黄第17节）每条都要过：覆盖的人够不够多、给了什么明确价值、是不是比用户多一步认知\n\n`;
       query += `【输出格式要求】\n`;

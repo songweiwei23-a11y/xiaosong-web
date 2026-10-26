@@ -335,6 +335,8 @@ export function spokenChars(line: string): number {
   return t.replace(/[\s\p{P}\p{S}]/gu, '').length;
 }
 
+import { REALITY_RULE } from './sharp-rules';
+
 export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   const script = p.scriptContent || '';
   const { seconds, min, max } = planShots(p.duration, script);
@@ -454,6 +456,7 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
     parts.push(`加不到 ${seconds} 就回去改表，不允许写一个对不上的数字。`);
   }
   parts.push('');
+  parts.push(REALITY_RULE);
   parts.push('每一栏的要求：');
   parts.push('- **景别**：中文 + emoji（远景📷 / 全景🎥 / 中景📹 / 近景📸 / 特写🔍）');
   parts.push('- **运镜**：固定 / 推镜 / 拉镜 / 摇镜 / 移镜 / 跟随');

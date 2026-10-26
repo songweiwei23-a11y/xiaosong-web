@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api-guard';
 import { askDify } from '@/lib/dify-task';
 import { polishTitles } from '@/lib/title-polish';
+import { polishReality } from '@/lib/reality-check';
 
 /**
  * 标题后处理（2026-10-25）：生成完的正文里如果有「别只…」这类万能模板标题，
@@ -34,6 +35,12 @@ export async function POST(request: Request) {
       return null;
     }
   };
-  const result = await polishTitles(text, ask, context);
-  return NextResponse.json({ text: result.text, tried: result.tried, accepted: result.accepted });
+  const titles = await polishTitles(text, ask, context);
+  // 标题改完再查现实：「收腰就能换风格」这类说法，只改那一句
+  const reality = await polishReality(titles.text, ask, context);
+  return NextResponse.json({
+    text: reality.text,
+    tried: titles.tried + reality.tried,
+    accepted: titles.accepted + reality.accepted,
+  });
 }
