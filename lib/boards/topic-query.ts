@@ -1,14 +1,14 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { carriesScript, carriedIntent, intentBlock, continuationRules } from '@/lib/creation-continuation';
-import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt } from '@/lib/viral-elements';
+import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt, industryKeysOf, elementsFitting, elementsPerTopic } from '@/lib/viral-elements';
 import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
 import { rolesGuide, roleBrief, type ContentRole } from '@/lib/content-roles';
-import { mixPromptBlock, type ResolvedMix } from '@/lib/content-mix';
-import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE } from '@/lib/sharp-rules';
-import { assignTopicSlots, audiencePool, topicSlotsBlock } from '@/lib/topic-slots';
-import { hooksOfSeed } from '@/lib/direction-seed';
+import { mixPromptBlock, mixToCounts, type ResolvedMix } from '@/lib/content-mix';
+import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE, BIG_OPENING_RULE } from '@/lib/sharp-rules';
+import { assignTopicSlots, audiencePool, roleSequence, topicSlotsBlock } from '@/lib/topic-slots';
 import { GROWTH_TACTICS } from '@/lib/growth-tactics';
 import { taboosPromptBlock } from '@/lib/taboos';
+import { businessLines } from '@/lib/profile-summary';
 import { ROUTES_GUIDE, tacticIndex, type CreativeRoute } from '@/lib/creative-routes';
 import { topicSourceRules, topicDesignStandards, topicRoutePrompt, topicDesignFinalCheck, topicPreferredTactic } from '@/lib/topic-design';
 import { buildContextBlock, describeExecutionConstraints, describeRestrictions, type CreatorContext, type CreatorProfile } from '@/lib/creator-context';
@@ -289,6 +289,14 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
     quickTopics,
   } = input;
 
+      // 爆款元素先按档案的行业筛一遍（2026-10-27）：八个不都适合所有行业，不适用的不给；
+      // 每条用几个由创意难度定（容易执行 1、中等创意 2、高创意 3）。没选档案时不筛
+      const industryKeys = industryKeysOf(selectedProfile);
+      const fit = elementsFitting(selectedElements.length ? selectedElements : VIRAL_ELEMENTS.map((e) => e.id), industryKeys);
+      const fitNames = fit.ids.map((id) => viralElementById(id)?.name.replace(/选题$/, '') ?? id);
+      const droppedNames = fit.dropped.map((id) => viralElementById(id)?.name ?? id);
+      const perTopic = Math.min(elementsPerTopic(difficulty), fit.ids.length);
+
       const topicContext = buildContextBlock(
         {
           profile: selectedProfile ?? null,
@@ -362,6 +370,12 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       if (avgViewsInput) query += `- 平均播放量：${avgViewsInput}\n`;
       if (selectedPlatforms.length > 0) query += `- 平台：${selectedPlatforms.join('、')}\n`;
       if (selectedTracks.length > 0) query += `- 赛道：${selectedTracks.join('、')}\n`;
+      // 自定义模式不带档案，表单里又没有「卖的是什么」一栏：从所选档案补上经营品类（2026-10-27）。
+      // 快速模式的档案上下文里已经有这一行，这里就不重复写
+      if (mode !== 'quick' && selectedProfile) {
+        const biz = businessLines(selectedProfile as never);
+        if (biz.length) query += `- 经营品类（档案里每一个都在卖，选题里都要体现）：${biz.join('、')}\n`;
+      }
       if (selectedContentTypes.length > 0) query += `- 内容类型：${selectedContentTypes.join('、')}\n`;
       // 脚本类型分配（如果选择了内容类型）
       if (selectedContentTypes.length > 0) {
@@ -401,9 +415,13 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
        * 固定句式——「贬值最快的X」「外行人绝对不知道的X」，
        * 模型套上去就能直接出选题。
        */
-      const elementBlock = viralElementPrompt(selectedElements);
+      const elementBlock = viralElementPrompt(fit.ids);
       if (elementBlock) {
         query += `${elementBlock}\n\n`;
+      }
+      if (industryKeys.length) {
+        query += `【本档案行业适用的爆款元素】${fitNames.join('、')}`;
+        query += droppedNames.length ? `。${droppedNames.join('、')}不适用于这个行业，不要用\n\n` : `\n\n`;
       }
       
       /*
@@ -423,19 +441,19 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
         mixUsed = { resolved: resolvedMix, count: topicCount };
       } else {
         mixUsed = null;
-        query += `\n【这批选题的目的】全部是${topicRole}\n\n${roleBrief(topicRole)}\n\n`;
+        query += `\n【这批选题的目的】全部是${topicRole}\n\n${roleBrief(topicRole, fitNames)}\n\n`;
       }
       if (topicRole === '流量型') {
         // 举例从同一份数据取，别再手写——上一版写的「反差」原文里根本没有（叫「对立选题」）
-        query += `- 大流量的出发点：先看这个档案的行业、人、货、场和团队条件，只从八大爆款元素（${VIRAL_ELEMENTS.map((e) => e.name).join('、')}）里挑普通人拍得出来的那几个；围绕它至少符合三有（有用、有趣、有共鸣）中的一条，做出看点和噱头、吸引眼球。每条流量选题必须用上至少一个爆款元素（必填，写明用哪个，设计进选题本身）；不为了爆款而爆款。元素定好之后，再推荐脚本结构（36 计或四大脚本）\n`;
+        query += `- 大流量的出发点：先看这个档案的行业、人、货、场和团队条件，只从本档案适用的爆款元素（${fitNames.join('、')}）里挑普通人拍得出来的；围绕它至少符合三有（有用、有趣、有共鸣）中的一条，做出看点和噱头、吸引眼球。每条流量选题必须用上分配给它的爆款元素（必填，写明用哪几个，设计进选题本身）；不为了爆款而爆款。元素定好之后，再推荐脚本结构（36 计或四大脚本）\n`;
         query += `- 覆盖要广，但人群要对——垂直是人群垂直：选这个号的目标人群也关心的话题，不是随便什么热闹都蹭\n\n`;
       }
       if (topicRole === '人设型') {
-        query += `- 人设型的逻辑：让人记住你、信你这个人（深度信任），也让消费者对你这个人产生兴趣、喜欢你。先看档案，定一两个要让人记住的性格、人品或举动，以及支撑它的真实经历（成长、职业、与客户家人员工的相处、价值边界）；用具体行为拍出来；故事、观点、过程都可以，不局限于某个脚本；不带成交理由，素材不编造\n\n`;
+        query += `- 人设型的逻辑：让人记住你、信你这个人（深度信任），也让消费者对你这个人产生兴趣、喜欢你。先看档案，定一两个要让人记住的性格、人品或举动，以及支撑它的真实经历（成长、职业、与客户家人员工的相处、价值边界）；用具体行为拍出来；故事、观点、过程都可以，不局限于某个脚本；不带成交理由，素材不编造。标题的主角是这个人（店主、主理人）本人：直接写她做了什么、决定了什么、在意什么，不写成顾客的故事；标题不用「我」「我想」开头；6 条各讲她的一个不同特质维度（专业判断、对顾客的耐心、对小事的认真、价值边界、处事分寸、对自己的要求这类，彼此不重复、不换个说法再讲一遍）；指代她的方式要变（「店主」「她」或直接写她的动作），不要 6 条都是「店主+动词」；0️⃣ 视频目的里要点明让人记住她的哪一点。结构名照抄「结构例子」里的名字（如「平凡英雄」），不改字\n\n`;
       }
       if (dealReasonsText && topicRole !== '流量型' && topicRole !== '人设型') {
         query += `- 成交理由（只给变现型选题用）：${dealReasonsText}\n`;
-        query += `⚠️ 变现型选题的逻辑：围绕人、货、场，突出一个成交理由（用户为什么选你），要在画面、过程或结果里看得见，不局限于某个脚本；标题可以体现它，但不能只写在标题里。流量型选题不带成交理由，人设型也不写成交理由\n\n`;
+        query += `⚠️ 变现型选题的逻辑：围绕人、货、场，突出一个成交理由（用户为什么选你），要在画面、过程或结果里看得见，不局限于某个脚本；标题可以体现它，但不能只写在标题里。每条只押一个成交理由，写在「7️⃣ 成交理由」里，并说清在哪个画面里看得见；行动指令要具体（到店试哪一件、问哪个价），不写加微信、私信要价格这类把人引到平台外的话。流量型选题不带成交理由，人设型也不写成交理由\n\n`;
       } else if (topicRole === '变现型') {
         query += `⚠️ 用户没选成交理由：从档案的核心卖点和客人常问里找出这个号的成交理由，每条变现型选题落在其中一个上\n\n`;
       }
@@ -458,6 +476,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       if (viralCases) query += `- 爆款案例：${viralCases}\n`;
       query += `- 生成数量：${topicCount}条\n`;
       query += `- 创意难度：${difficulty}\n`;
+      query += `- 每条流量选题用几个爆款元素：${perTopic} 个（容易执行 1 个、中等创意 2 个、高创意 3 个）\n`;
       query += `- 开头钩子：${withHook ? '✅ 需要生成3秒钩子' : '❌ 不需要'}\n\n`;
       
       // 明确输出格式要求
@@ -496,30 +515,36 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       query += sourced ? `- 💡 新角度在带来的内容范围里找，不另外去追热点、时事\n` : `- 💡 结合当前热点、时事、流行文化\n`;
       query += `- 🔥 创造记忆点，让人眼前一亮\n\n`;
       // 一针见血：标题有具体的东西和一个反差，每条只押一个看点，人和事只写真的
-      query += `【一针见血】\n${TITLE_CRAFT}\n${ONE_POINT_RULE}\n${REAL_PEOPLE_RULE}\n${REALITY_RULE}\n\n`;
+      query += `【一针见血】\n${BIG_OPENING_RULE}\n${TITLE_CRAFT}\n${ONE_POINT_RULE}\n${REAL_PEOPLE_RULE}\n${REALITY_RULE}\n\n`;
 
       // 槽位分配：代码给每条不同的人群、爆款元素、拍法，模型只负责写（lib/topic-slots）
       if (topicCount > 1) {
-        const elementPool = selectedElements.length
-          ? selectedElements.map((id) => viralElementById(id)?.name.replace(/选题$/, '') ?? id)
-          : VIRAL_ELEMENTS.map((e) => e.name.replace(/选题$/, ''));
         const blockedNow = tacticsBlockedBy(
           [selectedProfile?.content_restrictions, selectedProfile?.avoid_content, selectedProfile ? taboosPromptBlock(selectedProfile) : ''].filter(Boolean).join('\n')
         );
         const tacticPool = route === '四大脚本' ? [] : GROWTH_TACTICS.map((t) => t.name).filter((n) => !blockedNow.includes(n));
         const slots = assignTopicSlots({
           count: topicCount,
+          // 目标人群来自档案：流量选题也要锚在它上面（大开口只放宽切口，不放弃人群，2026-10-26）
           audiences: audiencePool(selectedProfile as never),
-          elements: elementPool,
+          elements: fitNames,
+          perTopic,
+          // 目的按配比的条数由代码排好（2026-10-27）：流量型才分爆款元素
+          roles: topicRole === '按配比'
+            ? roleSequence(mixToCounts(resolvedMix.mix, topicCount))
+            : Array.from({ length: topicCount }, () => topicRole),
+          // 选中的成交理由按变现型的条轮流分（2026-10-27）
+          reasons: dealReasonLabels,
+          // 带着方向来的：方向里的切入角度按条轮流分，每条切进一个不同的角度
+          angles: sourceReference.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.startsWith('角度：')).map((l) => l.slice(3).trim()),
           tactics: tacticPool,
           firstTactic: topicPreferredTactic({ source: sourceReference, direction: personalRequirement, explicit: routeExplicit }),
-          // 方向种子的题眼池：每条选题取一个题眼展开（2026-10-26）
-          hooks: hooksOfSeed(sourceReference),
         });
         query += `${topicSlotsBlock(slots)}\n\n`;
       }
       query += `【选题三关】（小黄第17节）每条都要过：覆盖的人够不够多、给了什么明确价值、是不是比用户多一步认知\n\n`;
       query += `【输出格式要求】\n`;
+      query += `⚠️ 必须写满 ${topicCount} 条，一条都不能少；每条的各个部分都要写完整，不能写到一半停下。\n\n`;
       query += `每条选题必须包含以下部分：\n\n`;
       query += `## 选题X：[标题]\n\n`;
       if (sourced) query += `**承接**：这条取自带来内容里的哪一处（引原文一句，或点名那个细节、那条思路）\n\n`;
@@ -531,15 +556,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       query += `- 36计·第N计 计名：把这一计的结构公式套到这条上，写成具体的事件（如「常规A → 反向B → 真实反应」写成这条里真正发生的事）\n`;
       query += `- 四大脚本·脚本类型（聊观点 / 晒过程 / 教知识 / 讲故事）：一句话说这条怎么讲\n\n`;
       query += `**1️⃣ 爆款元素**\n`;
-      if (selectedElements.length > 0) {
-        // 用全名（「最差选题」而不是「最差」），和上面那段句式对得上
-        const elementsText = selectedElements
-          .map((id) => viralElementById(id)?.name ?? id)
-          .join('、');
-        query += `注明用了哪个元素（限 ${elementsText}）以及套的是哪一条句式\n\n`;
-      } else {
-        query += `四大脚本的选题用2-3个元素及应用方式；36计的选题叠1个就够，不叠写"无"\n\n`;
-      }
+      query += `流量型的条写明用了哪 ${perTopic} 个元素（限 ${fitNames.join('、')}），以及每个套的是哪一条句式；几个元素要一起设计进这一条，不是各写一句。人设型、变现型的条写“无”，不硬套爆款元素\n\n`;
       query += `**2️⃣ 开篇钩子**\n`;
       query += withHook ? `结合知识库设计一句能实际说出口的开头，尽快进入这条的真实问题。尚未采访时写「今天去问/到底有没有变化」的提问型开头，不能写「我问过/发现/没想到」的结果型开头。只写文案，不拆成三个每秒一句的口号。\n\n` : `用户本次不需要开篇钩子，不生成开头文案。\n\n`;
       query += `**3️⃣ 内容方向及目的（重中之重！）**\n`;

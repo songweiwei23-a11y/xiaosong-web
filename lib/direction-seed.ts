@@ -50,7 +50,8 @@ export function directionSeedOf(text: string): string | null {
     purpose && `核心目的（不能改）：${purpose}`,
     scope && `范围：${scope}`,
     ...listUnder(text, '切入角度').map((a) => `角度：${a}`),
-    ...listUnder(text, '题眼池').map((h) => `题眼：${h}`),
+    // 思路提示只给方向性的想法，不是题眼（2026-10-26：题眼会误导选题，去掉了）
+    ...listUnder(text, '思路提示').map((h) => `思路：${h}`),
   ].filter(Boolean) as string[];
   return lines.length ? lines.join('\n') : null;
 }
@@ -66,4 +67,4 @@ export function hooksOfSeed(seed: string): string[] {
 }
 
 /** 选题页用的标题：种子的说明文字，告诉选题层哪些是它自己定的 */
-export const DIRECTION_SEED_HEAD = '【方向种子（核心目的不能改；每条选题从题眼池里取一个题眼展开，各条题眼不同）】';
+export const DIRECTION_SEED_HEAD = '【方向种子（核心目的不能改；赛道和目标人群是锚点，切口由选题层在思路里找，每条选题不同）】';

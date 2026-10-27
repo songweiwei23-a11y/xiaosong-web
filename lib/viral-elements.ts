@@ -29,6 +29,13 @@ export interface ViralElement {
   hook: string;
   /** 原文给的固定句式／词根，挑最有代表性的几个 */
   patterns: string[];
+  /**
+   * 只适用于这些行业（赛道或产品品类，用档案里的标准选项写）。不写 = 全行业都可以。
+   * 2026-10-27 加：八个元素不是都适合所有行业，比如「荷尔蒙」讲异性评价，放到母婴、数码上说不通。
+   */
+  only?: string[];
+  /** 不适用的行业（同上，用标准选项写）。 */
+  avoid?: string[];
 }
 
 /**
@@ -67,12 +74,14 @@ export const VIRAL_ELEMENTS: ViralElement[] = [
     name: '荷尔蒙',
     hook: '异性评价是最强的即时动机，看完就想改',
     patterns: ['异性会多看你两眼的X', '一秒下头的X', '自以为很好、实际对方眼里很差的X'],
+    only: ['时尚穿搭', '美妆护肤', '健身运动', '情感生活', '服装配饰'],
   },
   {
     id: 'curious',
     name: '奇葩',
     hook: '外行看不到的那一层，本身就是信息差',
     patterns: ['外行人绝对不知道的X', '内行人的神奇操作', '黑心内幕操作'],
+    avoid: ['母婴育儿'],
   },
   {
     id: 'people',
@@ -91,6 +100,74 @@ export const VIRAL_ELEMENTS: ViralElement[] = [
 /** 按 id 取元素，取不到返回 undefined */
 export function viralElementById(id: string): ViralElement | undefined {
   return VIRAL_ELEMENTS.find((e) => e.id === id);
+}
+
+/**
+ * 档案的行业关键词：赛道和产品品类两处都算（档案里两个字段都可能是数组，也可能是「、」分隔的字符串）。
+ * 自定义的赛道照样进来，只是不会命中 only / avoid 里的标准名。
+ */
+export function industryKeysOf(profile: { account_track?: unknown; product_category?: unknown } | null | undefined): string[] {
+  const keys: string[] = [];
+  for (const v of [profile?.account_track, profile?.product_category]) {
+    const raw = Array.isArray(v) ? v.map(String) : typeof v === 'string' ? v.split(/[、，,；;]+/) : [];
+    for (const x of raw) {
+      const t = x.trim();
+      if (t && !keys.includes(t)) keys.push(t);
+    }
+  }
+  return keys;
+}
+
+const fitsIndustry = (e: ViralElement, keys: string[]): boolean =>
+  (!e.only || e.only.some((k) => keys.includes(k))) && !(e.avoid ?? []).some((k) => keys.includes(k));
+
+export interface ElementFit {
+  /** 这批真正用的元素（id），顺序和传入的一致 */
+  ids: string[];
+  /** 传入的里面被行业挑掉的（id） */
+  dropped: string[];
+  /** 传入的全都不适用，退回了全行业通用的元素 */
+  fellBack: boolean;
+}
+
+/**
+ * 按行业筛爆款元素。没有行业信息（没选档案）时不筛，原样用。
+ * 所选的全都不适用时，退回全行业通用的元素，不让这批选题没有元素可用。
+ */
+export function elementsFitting(ids: string[], keys: string[]): ElementFit {
+  if (!keys.length) return { ids, dropped: [], fellBack: false };
+  const picked = ids.filter((id) => {
+    const e = viralElementById(id);
+    return !!e && fitsIndustry(e, keys);
+  });
+  const dropped = ids.filter((id) => !picked.includes(id));
+  if (picked.length) return { ids: picked, dropped, fellBack: false };
+  const general = VIRAL_ELEMENTS.filter((e) => fitsIndustry(e, keys)).map((e) => e.id);
+  return { ids: general, dropped, fellBack: true };
+}
+
+/**
+ * 创意难度 → 每条选题用几个爆款元素（2026-10-27）：容易执行 1 个、中等创意 2 个、高创意 3 个。
+ * 页面按钮是「容易执行 / 中等创意 / 高创意」，助理的说法（简单易上手、高难度）也认。认不出的按中等（2 个）。
+ */
+const PER_TOPIC: Record<string, number> = { 容易执行: 1, 简单易上手: 1, 中等创意: 2, 高创意: 3, 高难度: 3 };
+export function elementsPerTopic(difficulty: string): number {
+  return PER_TOPIC[difficulty.trim()] ?? 2;
+}
+
+/**
+ * 页面提示：所选的元素里，有哪些不适用于这个档案的行业。没有就返回空串。
+ * 静默丢掉元素会变成「选了却用不上」，所以要明说。
+ */
+export function elementFitNote(ids: string[], keys: string[]): string {
+  if (!keys.length || !ids.length) return '';
+  const { dropped, fellBack } = elementsFitting(ids, keys);
+  if (!dropped.length) return '';
+  const names = dropped.map((id) => viralElementById(id)?.name ?? id).join('、');
+  const where = `「${keys.join('、')}」`;
+  return fellBack
+    ? `所选的爆款元素（${names}）不适用于${where}，这批改用适合这个行业的元素`
+    : `${names}不适用于${where}，这批不会用它`;
 }
 
 /**
@@ -124,6 +201,7 @@ export function viralElementPrompt(ids: string[]): string {
     '要求：',
     '- 每条选题必须落在上面某一个句式上，把 X 换成本行业的具体东西',
     '- 句式是知识库给定的，不要自己另造一套',
+    '- 句式里的「最」「第一」这类绝对化词，换成具体的比较（如「价位较高的」「最常被问到的」）；改写只体现在选题本身，正文里不写「原句式含…」「本条按禁忌调整」这类说明',
     '- 每条选题后标注用的是哪个元素、套的哪个句式',
   ];
   return lines.join('\n');

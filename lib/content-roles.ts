@@ -75,7 +75,14 @@ export function dealReasonsForPurpose<T>(purpose: string | null | undefined, rea
   return purpose === '流量型' ? [] : reasons;
 }
 
-export const BIG_TRAFFIC_STANDARD = `出发点要对：围绕人、货、场设计，有用、有趣、有共鸣至少符合其中一条；必须用上至少一个八大爆款元素（必填，写明用哪个，${VIRAL_ELEMENT_NAMES.join('、')}），先把它设计进内容，由此做出看点、噱头、吸引眼球；并且普通人拍得出来，不偏离这个行业和这个号的实际条件。36 计、四大脚本等形式只负责把出发点拍出来，出发点没有，换再好的形式也不是大流量。大流量不带成交理由：不讲卖点、不引导成交，产品只作为画面里的货出现`;
+/**
+ * 大流量标准。元素名单可以传：选题页按档案的行业只给适用的几个（2026-10-27），不传就是全部八个。
+ */
+export function bigTrafficStandard(names: string[] = VIRAL_ELEMENT_NAMES): string {
+  return `出发点要对：围绕人、货、场设计，有用、有趣、有共鸣至少符合其中一条；必须用上至少一个八大爆款元素（必填，写明用哪个，${names.join('、')}），先把它设计进内容，由此做出看点、噱头、吸引眼球；并且普通人拍得出来，不偏离这个行业和这个号的实际条件。36 计、四大脚本等形式只负责把出发点拍出来，出发点没有，换再好的形式也不是大流量。大流量不带成交理由：不讲卖点、不引导成交，产品只作为画面里的货出现`;
+}
+
+export const BIG_TRAFFIC_STANDARD = bigTrafficStandard();
 
 /**
  * 大流量的做法：先看自己，再找爆款，最后选形式。给出发点（originField）和流量型的要求用。
@@ -261,9 +268,9 @@ ${CONTENT_ROLE_LIST.map(block).join('\n\n')}`;
 }
 
 /** 单条内容用的精简版：给脚本、标题、开篇、分镜、审稿 */
-export function roleBrief(role: ContentRole): string {
+export function roleBrief(role: ContentRole, elementNames: string[] = VIRAL_ELEMENT_NAMES): string {
   const s = ROLE_SPECS[role];
-  const std = role === '流量型' ? `\n- 大流量标准：${BIG_TRAFFIC_STANDARD}` : '';
+  const std = role === '流量型' ? `\n- 大流量标准：${bigTrafficStandard(elementNames)}` : '';
   return `### 这条是${role}视频：${s.job}
 - 方向：${s.directions}
 - 形式：${s.scriptTypes}

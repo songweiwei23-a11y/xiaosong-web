@@ -11,7 +11,7 @@ import { openCreationSafely } from "@/lib/creation-session";
 import { topicReference, carriesScript, carriedIntent, originForResult } from '@/lib/creation-continuation';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
-import { VIRAL_ELEMENTS, viralElementById } from "@/lib/viral-elements";
+import { VIRAL_ELEMENTS, viralElementById, industryKeysOf, elementFitNote, elementsPerTopic } from "@/lib/viral-elements";
 import { CONTENT_ROLE_LIST, ROLE_SPECS, type ContentRole } from "@/lib/content-roles";
 import { resolveMix, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
 import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
@@ -343,6 +343,8 @@ export default function TopicPage() {
 
   // 配比按哪个档案算：快速模式选的那个，没有就用侧边栏当前档案
   const mixProfile = (profiles.find((p) => p.id === selectedProfileId) ?? creatorContext.profile ?? null) as Record<string, unknown> | null;
+  // 所选的爆款元素里，有不适用于这个档案行业的，页面上明说，不然会变成「选了却用不上」（2026-10-27）
+  const elementNote = elementFitNote(selectedElements, industryKeysOf(profiles.find((p) => p.id === selectedProfileId) ?? null));
   const resolvedMix = resolveMix(mixProfile, mixOverride, personalRequirement);
 
   // 生成选题函数
@@ -768,8 +770,8 @@ export default function TopicPage() {
               stacked
               hint={
                 selectedElements.length > 0
-                  ? `已选 ${selectedElements.length} 个，每条选题会标注用到哪些`
-                  : "建议选 2–3 个，AI 会在选题里明确标注"
+                  ? `已选 ${selectedElements.length} 个，每条用 ${elementsPerTopic(difficulty)} 个，轮流用到各条上`
+                  : `不选就从八个里挑，每条用 ${elementsPerTopic(difficulty)} 个（由下面的创意难度定）`
               }
             >
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -799,6 +801,7 @@ export default function TopicPage() {
                   );
                 })}
               </div>
+              {elementNote && <p className="mt-1.5 text-[11.5px] text-amber-700 dark:text-amber-400">{elementNote}</p>}
             </Field>
 
             <Field
@@ -1009,7 +1012,7 @@ export default function TopicPage() {
         emptyHint="每条会给出标题、内容方向和拍摄思路"
         emptyTips={[
           "快速模式直接套用已存的档案与定位",
-          "爆款元素建议选 2–3 个，多了会散",
+          "爆款元素每条用几个由创意难度定，不适用于当前行业的会自动不用",
           "每条选题只担一个目的：流量、人设或变现",
         ]}
         generatingHint="正在策划选题…"

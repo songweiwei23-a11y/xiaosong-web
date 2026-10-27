@@ -48,7 +48,12 @@ export function topicReference(data: Pick<HandoffPayload, 'sourceContent' | 'ori
   // 方向只给选题种子（范围、切入角度），人群、讲法、标题、镜头不带，否则每条选题都照抄它（lib/direction-seed）
   if (!script) {
     const seed = directionSeedOf(current || origin);
-    if (seed) return `${DIRECTION_SEED_HEAD}\n${seed}`;
+    if (seed) {
+      // 用户最初的想法（他自己写的目的、想法、要求）必须接上，选题守的是它（2026-10-26 修复：之前只剩种子，原意丢了）
+      // origin 如果是方向原文本身，就不重复带（种子已经有它的范围和角度）
+      const intent = origin && origin !== current && !isDirectionBlock(origin) ? `\n\n【最初的想法（选题必须守住它的意图、人群面和大众方向）】\n${origin}` : '';
+      return `${DIRECTION_SEED_HEAD}\n${seed}${intent}`;
+    }
   }
   if (!current) return origin;
   const head = `【这次带来的内容（选题从这里出发）】\n${current}`;
@@ -56,7 +61,7 @@ export function topicReference(data: Pick<HandoffPayload, 'sourceContent' | 'ori
   return origin && origin !== current && !current.includes(origin) ? `${head}\n\n【最初的方向（选题要守住它的方向、思路和目的）】\n${origin}` : head;
 }
 
-import { DIRECTION_SEED_HEAD, directionSeedOf } from './direction-seed';
+import { DIRECTION_SEED_HEAD, directionSeedOf, isDirectionBlock } from './direction-seed';
 
 type Role = '流量型' | '人设型' | '变现型';
 const ROLES: Role[] = ['流量型', '人设型', '变现型'];

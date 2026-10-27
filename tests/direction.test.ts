@@ -37,7 +37,8 @@ describe('提示词', () => {
   it('方向层只给范围：内容方向、切入角度、可展开的选题；没有开头示范', () => {
     expect(p).toMatch(/\*\*内容方向\*\*/);
     expect(p).toMatch(/\*\*切入角度\*\*/);
-    expect(p).toMatch(/\*\*题眼池\*\*/);
+    expect(p).toMatch(/\*\*思路提示\*\*/);
+    expect(p).not.toMatch(/题眼池/);
     expect(p).toMatch(/\*\*核心目的\*\*/);
     expect(p).not.toMatch(/\*\*开头示范\*\*/);
     expect(p).not.toMatch(/\*\*可拍的选题示例\*\*/);
@@ -50,6 +51,12 @@ describe('提示词', () => {
     expect(p).toMatch(/每个方向都是这个账号拍得出来的/);
     expect(p).toMatch(/【待补：……】/);
     expect(p).toMatch(/或 X，再选档案里最具体、能拍的那个版本/);
+  });
+
+  it('内容方向按赛道、目标人群、大众切口的顺序写，不写商品场景；切入角度的核心问题是大众问题', () => {
+    expect(p).toMatch(/按这个顺序写三件事：① 赛道/);
+    expect(p).toMatch(/不写具体的商品场景/);
+    expect(p).toMatch(/核心问题要是大众问题/);
   });
 
   it('方向层不写爆点：第一秒、标题、停下的理由、反驳、镜头都留给选题层', () => {

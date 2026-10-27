@@ -36,8 +36,8 @@ describe('P1 方向只给种子：范围和切入角度，不给人群、讲法�
     expect(seed).toContain('方向：同一件外套，换搭配看差别');
     expect(seed).toContain('范围：围绕换季、上学、日常出门等场景');
     expect(seed).toContain('角度：对比切入');
-    expect(seed).toContain('题眼：同一件外套的前后搭配');
-    expect(seed).toContain('题眼：上学和带娃穿同一件');
+    // 题眼会误导模型，种子里不再带题眼（2026-10-26）
+    expect(seed).not.toContain('题眼：');
     expect(seed).toContain('核心目的（不能改）：流量型');
     expect(seed).not.toContain('出镜者');
     expect(seed).not.toContain('讲法');
@@ -81,7 +81,7 @@ describe('P3 不整批锁同一计', () => {
     expect(src).not.toContain('本轮所有选题继续用');
     const design = fs.readFileSync('lib/topic-design.ts', 'utf8');
     expect(design).not.toContain('保持同一核心对象和拍法');
-    expect(design).toContain('各自换一个人群、一种爆款元素和一种拍法');
+    expect(design).toContain('各自换一个人群、一组爆款元素和一种拍法');
   });
 });
 
@@ -111,7 +111,7 @@ describe('P4 槽位分配：代码保证人群、元素、拍法各自不重复'
       firstTactic: '街头采访',
     });
     expect(new Set(slots.map((s) => s.audience)).size).toBe(6);
-    expect(new Set(slots.map((s) => s.element)).size).toBe(6);
+    expect(new Set(slots.map((s) => s.elements[0])).size).toBe(6);
     expect(new Set(slots.map((s) => s.tactic)).size).toBe(6);
     expect(slots[0].tactic).toBe('街头采访');
   });
