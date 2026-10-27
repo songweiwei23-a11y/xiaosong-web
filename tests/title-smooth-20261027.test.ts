@@ -18,6 +18,7 @@ import {
   hasAnyTitle,
   allTitles,
   closestFlagged,
+  titleElementsOf,
 } from '@/lib/title-polish';
 
 const TEXT = [
@@ -56,7 +57,7 @@ describe('判断那一步：只问读不顺的，默认「无」', () => {
     expect(p).toContain('1. 压箱底的裤子，像怕被评价的人');
     expect(p).toContain('2. 换外套怎么选');
     expect(p).toContain('只找出「读不顺」');
-    expect(p).toContain('哪怕你觉得还能写得更好，都不算读不顺');
+    expect(p).toContain('哪怕你觉得还能写得更好，都不算读不顺。');
     expect(p).toContain('一条都没有就只输出：无');
   });
   it('解析编号：「2,5」「无」「数字超出范围」', () => {
@@ -208,6 +209,66 @@ describe('模型吐出的思考过程和写法偏差', () => {
   it('差得太远的原标题不认', () => {
     expect(closestFlagged('完全不相干的一句话', ['压箱底的裤子，像怕被评价的人'])).toBeNull();
     expect(closestFlagged('压箱底的裤子，像怕被评价的人', ['压箱底的裤子，像怕被评价的人'])).toBe('压箱底的裤子，像怕被评价的人');
+  });
+});
+
+describe('标题要看得出爆款元素：元素从正文取，判断和改写都带上', () => {
+  const WITH_EL = [
+    '## 选题1：秋天出门换了几身，还是不敢穿？',
+    '**0️⃣ 视频目的**',
+    '流量型。',
+    '',
+    '**1️⃣ 爆款元素**',
+    '- **怀旧**：套「当年最火的X」',
+    '- **荷尔蒙**：套「异性会多看你两眼的X」',
+    '',
+    '**2️⃣ 开篇钩子**',
+    '不生成。',
+    '',
+    '## 选题2：大码外套的衣架，不该替人决定尺码',
+    '**1️⃣ 爆款元素**',
+    '- **成本**：套「花小钱办大事」',
+    '',
+    '**2️⃣ 开篇钩子**',
+  ].join('\n');
+
+  it('按标题取出每条的元素（流量条有，没写元素的不记）', () => {
+    expect(titleElementsOf(WITH_EL)).toEqual({
+      '秋天出门换了几身，还是不敢穿？': ['怀旧', '荷尔蒙'],
+      '大码外套的衣架，不该替人决定尺码': ['成本'],
+    });
+    expect(titleElementsOf(TEXT)).toEqual({});
+    // 元素行不带粗体（模型常见写法）也要认得出
+    expect(titleElementsOf(WITH_EL.replace(/\*\*(头牌|怀旧|荷尔蒙|成本)\*\*/g, '$1'))).toEqual(titleElementsOf(WITH_EL));
+  });
+
+  it('判断提示词只看读不顺，不判元素（元素在生成时保证，判断会误伤通顺的标题）', () => {
+    const p = judgeTitlesPrompt(['秋天出门换了几身，还是不敢穿？', '甲标题']);
+    expect(p).toContain('1. 秋天出门换了几身，还是不敢穿？');
+    expect(p).not.toContain('[元素');
+    expect(p).not.toContain('认不出这个元素');
+    expect(p).toContain('只看下面三种');
+  });
+
+  it('改写提示词：标了元素的要求改后光看标题就认得出，别的标题不加标记', () => {
+    const p = rewriteTitlesPrompt(['秋天出门换了几身，还是不敢穿？'], '', { '秋天出门换了几身，还是不敢穿？': ['怀旧'] });
+    expect(p).toContain('[元素：怀旧，标题里要光看就认得出]');
+    expect(p).toContain('标了［元素：…］的，改后光看标题就要认得出这个元素');
+    expect(rewriteTitlesPrompt(['甲标题'], '', {})).not.toContain('[元素：');
+  });
+
+  it('判断说无需改时，标了元素的标题也不动（不因为元素被改坏）', async () => {
+    const ask = vi.fn(async () => '无');
+    const r = await polishSmooth(WITH_EL, ask);
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(r.text).toBe(WITH_EL);
+  });
+
+  it('要改的标题，改写时仍然带着元素要求', async () => {
+    const ask = vi.fn(async (p: string) => (p.includes('只看下面三种') ? '1' : '秋天出门换了几身，还是不敢穿？ => 秋天换了几身，还是不敢穿当年那件？'));
+    await polishSmooth(WITH_EL, ask);
+    const rewritePrompt = ask.mock.calls[1][0];
+    expect(rewritePrompt).toContain('[元素：怀旧、荷尔蒙，标题里要光看就认得出]');
   });
 });
 

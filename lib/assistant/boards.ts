@@ -11,6 +11,7 @@ import type { MemoryDefaults } from '@/lib/settings-memory';
 import { AI_DURATION } from '@/lib/review-standards';
 import { buildReviewBoardQuery, reviewCreationSettings } from '@/lib/boards/review-query';
 import { buildTopicBoardQuery, topicCreationSettings } from '@/lib/boards/topic-query';
+import { completeBatch } from '@/lib/topic-batch';
 import { buildScriptBoardQuery, SCRIPT_PAGE_DEFAULTS, scriptCreationSettings, scriptMemoryPatch, scriptResultWithQuality } from '@/lib/boards/script-query';
 
 /**
@@ -231,30 +232,40 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     quickTopics: false,
   });
 
-  const res = await doFetch(`${base}/api/dify/stream`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', cookie: ctx.cookie },
-    body: JSON.stringify({
-      taskType: '选题策划',
-      creationSettings: currentSettings,
-      query: built.query,
-      profileId: creatorContext.profile?.id ?? null,
-      inputs: {
-        profile_id: creatorContext.profile?.id ?? null,
-        mode: 'quick',
-        topicCount,
-        topicType,
-        topicRole: input.role,
-        personalRequirement: requirement,
-      },
-    }),
-    cache: 'no-store',
+  // 条数不够自动补写一次（lib/topic-batch）：补写也是一次生成，会扣一次额度
+  const generate = async (): Promise<{ ok: true; text: string } | { ok: false; error: string }> => {
+    const res = await doFetch(`${base}/api/dify/stream`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: ctx.cookie },
+      body: JSON.stringify({
+        taskType: '选题策划',
+        creationSettings: currentSettings,
+        query: built.query,
+        profileId: creatorContext.profile?.id ?? null,
+        inputs: {
+          profile_id: creatorContext.profile?.id ?? null,
+          mode: 'quick',
+          topicCount,
+          topicType,
+          topicRole: input.role,
+          personalRequirement: requirement,
+        },
+      }),
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, error: data?.error ?? '服务暂时不可用，请稍后再试' };
+    }
+    return { ok: true, text: await readDifyStream(res) };
+  };
+  const first = await generate();
+  if (!first.ok) return { ok: false, text: '', error: first.error };
+  const text = await completeBatch(first.text, topicCount, async () => {
+    const again = await generate();
+    if (!again.ok) throw new Error(again.error);
+    return again.text;
   });
-  if (!res.ok) {
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    return { ok: false, text: '', error: data?.error ?? '服务暂时不可用，请稍后再试' };
-  }
-  const text = await readDifyStream(res);
   const historySaved = await saveBoardHistory(ctx, {
     taskType: '选题策划',
     inputData: {

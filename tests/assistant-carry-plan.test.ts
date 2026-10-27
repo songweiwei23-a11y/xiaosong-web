@@ -23,7 +23,10 @@ const DIRECTION_RESULT = [
   `这个方向讲的是一个真实的夜班故事，老板每天凌晨三点还在腌肉。${'这里是这个方向的展开说明。'.repeat(10)}`,
 ].join('\n');
 
-const TOPIC_RESULT = `选题一：老板凌晨三点的夜班，${'这里是选题的展开说明，从这份内容里的具体场景出发。'.repeat(8)}`;
+/** 3 条选题（和 TOPIC_INPUT 的 count 一样），按真实输出的「## 选题N」写：条数够，就不触发自动补写 */
+const TOPIC_RESULT = [1, 2, 3]
+  .map((n) => `## 选题${n}：老板凌晨三点的夜班（第${n}条）\n${'这里是选题的展开说明，从这份内容里的具体场景出发。'.repeat(8)}`)
+  .join('\n\n');
 
 /** 按任务类型给回答；创作会话的保存原样回显内容（和服务端一样返回编号和内容） */
 function stub(bodies: Record<string, unknown>[], saved: { n: number }) {

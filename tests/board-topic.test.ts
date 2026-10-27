@@ -53,6 +53,21 @@ function baseInput(over: Partial<TopicBoardInput> = {}): TopicBoardInput {
   };
 }
 
+describe('人设型选题：标题用第一人称，口吻是出镜人本人（2026-10-27）', () => {
+  it('写明标题用第一人称「我」「我们」讲，不写成旁白，句子开头要错开', () => {
+    const { query } = buildTopicBoardQuery(baseInput({ topicRole: '人设型', topicCount: 6 }));
+    expect(query).toContain('说话的是出镜人本人');
+    expect(query).toContain('标题用第一人称');
+    expect(query).toContain('不都以「我」起头');
+  });
+
+  it('不再要求标题不用「我」开头，也不再要求换着用「店主」「她」指代', () => {
+    const { query } = buildTopicBoardQuery(baseInput({ topicRole: '人设型', topicCount: 6 }));
+    expect(query).not.toContain('标题不用「我」「我想」开头');
+    expect(query).not.toContain('指代她的方式要变');
+  });
+});
+
 describe('选题提示词的共用拼装', () => {
   it('开头是工作任务：条数和类型都带上', () => {
     const { query } = buildTopicBoardQuery(baseInput());

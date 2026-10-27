@@ -208,6 +208,7 @@ export function topicSlotsBlock(slots: TopicSlot[]): string {
   const multiNote = slots.some((s) => s.elements.length > 1) ? '带「+」的那条要把几个爆款元素一起设计进同一个选题，不是各写一句。' : '';
   const roleNote = slots.some((s) => s.role) ? '每条的目的按分配表写，不要自己换；目的决定这条怎么拍，不决定要不要有爆款元素。' : '';
   const reasonNote = slots.some((s) => s.reason) ? '带「成交理由=」的那条只押这一个理由，要在画面或过程里看得见，不能又套别的理由。' : '';
+  const elementNote = slots.some((s) => s.elements.length) ? '带爆款元素的那条，标题要光看就认得出用的是哪个元素（用它的句式），不能只在正文里；同一批里同一个句式关键词（如「当年最火」「最没面子」）只用一次。' : '';
   const angleNote = slots.some((s) => s.angle) ? '带「切入角度=」的那条，就从这个角度切进去（核心问题照它写），标题和内容都不要换到别的角度上。' : '';
-  return `【本批每条的分配（代码定，每条必须照这几项写）】\n${rows.join('\n')}\n各项是每条选题的骨架：目的决定这条要达到什么，人群决定谁在看，元素决定看点，拍法决定事件怎么走，题眼决定从哪个角度切进去。各条互不相同；核心问题也不能只是换件衣服、换个年代或换句话（比如两条都讲旧穿法），标题和内容都围绕本条自己的分配写，不复用其他条的句子和写法。${roleNote}${reasonNote}${angleNote}${multiNote}${hookNote}`;
+  return `【本批每条的分配（代码定，每条必须照这几项写）】\n${rows.join('\n')}\n各项是每条选题的骨架：目的决定这条要达到什么，人群决定谁在看，元素决定看点，拍法决定事件怎么走，题眼决定从哪个角度切进去。各条互不相同；核心问题也不能只是换件衣服、换个年代或换句话（比如两条都讲旧穿法），标题和内容都围绕本条自己的分配写，不复用其他条的句子和写法。${roleNote}${reasonNote}${angleNote}${elementNote}${multiNote}${hookNote}`;
 }

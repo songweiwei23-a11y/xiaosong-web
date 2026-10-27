@@ -54,6 +54,7 @@ import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { postSafely } from '@/lib/safe-post';
 import { buildTopicBoardQuery, topicCreationSettings } from '@/lib/boards/topic-query';
+import { completeBatch } from '@/lib/topic-batch';
 
 export default function TopicPage() {
   const beginProfileRequest = useProfileRequestGuard();
@@ -506,29 +507,33 @@ export default function TopicPage() {
       // 现在定位不再截断到 300 字、内容长了 6 倍，这颗雷只会更容易踩到，
       // 所以直接拆掉——该过滤的在源头过滤，不该拿整条提示词去冒险。
 
-      const response = await fetchGeneration("/api/dify/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // 见 script 页同处说明：taskType 决定检索提示词、会话隔离与用量归属。
-          // 后端检测到已有 query 时会沿用这里拼好的完整提示词，不再自行拼装。
-          taskType: "选题策划",
-          creationSettings: currentSettings,
-          // 记忆按档案隔离，避免代运营时多个账号的上下文互相串台。
-          profileId: selectedProfileId || null,
-          query,
-          inputs: requestData
-        })
-      });
+      // 条数不够自动补写一次（lib/topic-batch）：补写也是一次生成，会扣一次额度
+      const generateOnce = async () => {
+        const response = await fetchGeneration("/api/dify/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // 见 script 页同处说明：taskType 决定检索提示词、会话隔离与用量归属。
+            // 后端检测到已有 query 时会沿用这里拼好的完整提示词，不再自行拼装。
+            taskType: "选题策划",
+            creationSettings: currentSettings,
+            // 记忆按档案隔离，避免代运营时多个账号的上下文互相串台。
+            profileId: selectedProfileId || null,
+            query,
+            inputs: requestData
+          })
+        });
 
-      // 带出服务端文案，额度类错误才不会被显示成「生成失败」
-      if (!response.ok) await throwApiError(response);
+        // 带出服务端文案，额度类错误才不会被显示成「生成失败」
+        if (!response.ok) await throwApiError(response);
 
-      // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
-      // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
-      const accumulatedText = await readDifyStream(response, {
-        onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
-      });
+        // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
+        // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
+        return readDifyStream(response, {
+          onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
+        });
+      };
+      const accumulatedText = await completeBatch(await generateOnce(), topicCount, generateOnce);
 
       // 撞题（标题重复）、模板标题、不符合现实的句子：精准小改后再显示和保存（lib/title-dedupe、lib/title-polish）
       const polishedText = accumulatedText ? await polishTitlesRemote(accumulatedText) : accumulatedText;

@@ -146,6 +146,31 @@ export function titleFlaws(title: string): string[] {
  * 二次润色的提示词：一次把全部标题交给模型，只改读不顺、看不出在说什么、标签化的那几条。
  * 回答是「原标题 => 新标题」一行一条；都不用改就只回「无需修改」。
  */
+/** 爆款元素名（与 lib/viral-elements 一致） */
+const ELEMENT_NAMES = ['头牌', '怀旧', '反差', '最差', '荷尔蒙', '奇葩', '人群', '成本'];
+
+/**
+ * 每个标题分到的爆款元素（2026-10-27）：从正文「1️⃣ 爆款元素」那一栏取，按标题对上。
+ * 二次润色要靠它判断「光看标题认不认得出这个元素」。
+ */
+export function titleElementsOf(text: string): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const block of text.split(/\n(?=## 选题\d+)/)) {
+    if (!/^## 选题\d+/.test(block)) continue;
+    const title = (block.split('\n')[0] || '').replace(/^## 选题\d+[：:]\s*/, '').replace(/\*\*/g, '').trim();
+    const section = block.match(/爆款元素\*\*\s*\n([\s\S]*?)\n\s*\*\*2/);
+    if (!title || !section) continue;
+    // 元素行有的带粗体（- **头牌**：），有的不带（- 头牌：），两种都认
+    const names = [...section[1].matchAll(/^- (?:\*\*)?(头牌|怀旧|反差|最差|荷尔蒙|奇葩|人群|成本)(?:\*\*)?\s*[：:]/gm)].map((m) => m[1]);
+    if (names.length) out[title] = names;
+  }
+  return out;
+}
+
+/**
+ * 判断读不顺的标题。只看读不顺，不看元素：元素是否在标题里看得见，由选题的生成规则保证；
+ * 这里判断元素会误伤通顺的标题，把好的改坏（2026-10-27 实测）。
+ */
 export function judgeTitlesPrompt(titles: string[], context = ''): string {
   return `下面是一批短视频选题的标题。请只找出「读不顺」的标题，标准很严，只看下面三种：
 - 两个不相干的名词硬拼在一起，读起来不通（比如「压箱底的裤子，像怕被评价的人」）
@@ -187,15 +212,18 @@ export function parseJudgeAnswer(answer: string | null, count: number): number[]
  * 改顺的提示词：只给要改的那几条（读不顺的，或有机械毛病的），每条只改有毛病的那一小段。
  * 回答是「原标题 => 新标题」一行一条。
  */
-export function rewriteTitlesPrompt(titles: string[], context = ''): string {
+export function rewriteTitlesPrompt(titles: string[], context = '', elements: Record<string, string[]> = {}): string {
   const list = titles.map((t, i) => {
     const flaws = titleFlaws(t);
-    return `${i + 1}. ${t}${flaws.length ? `  [有毛病：${flaws.join('、')}]` : ''}`;
+    const el = elements[t];
+    const tags = [flaws.length ? `有毛病：${flaws.join('、')}` : '', el?.length ? `元素：${el.join('、')}，标题里要光看就认得出` : ''].filter(Boolean);
+    return `${i + 1}. ${t}${tags.length ? `  [${tags.join('；')}]` : ''}`;
   });
-  return `下面几条短视频标题需要改顺。每条只改读不顺或标了毛病的那一小段，其余保留。
+  return `下面几条短视频标题需要改顺。每条只改读不顺、标了毛病、或认不出元素的那一小段，其余保留。
 
 规则：
 - 原标题讲的事、人群和赛道词（比如大码、宝妈、学生、衣服、外套、裤子这类）必须保留，身份词不能删
+- 标了［元素：…］的，改后光看标题就要认得出这个元素（用它的句式写，比如「怀旧」就写旧的、当年的感觉），不能只在正文里出现
 - 年龄段标签（如「25—30岁宝妈」）去掉年龄，身份词留着，人群写进处境和事情里
 - 占位符（X、某某、几元、XX）换成具体的东西
 - 比喻或硬拼的毛病：把那个比喻去掉，改成具体的事和冲突，不是加一两个字。例：「压箱底的裤子，像怕被评价的人」→「压箱底的裤子，这次敢穿出门吗」
@@ -294,11 +322,12 @@ export async function polishSmooth(
   const titles = allTitles(text);
   if (!titles.length) return { text, tried: 0, accepted: 0 };
   // 第一步：读不顺的标题由模型点出来；机械毛病（占位符、年龄段、超字数、分号）由规则认
+  const elements = titleElementsOf(text);
   const judged = parseJudgeAnswer(await ask(judgeTitlesPrompt(titles, context)), titles.length).map((i) => titles[i - 1]);
   const flagged = titles.filter((t) => titleFlaws(t).length > 0 || judged.includes(t));
   if (!flagged.length) return { text, tried: 0, accepted: 0 };
   // 第二步：只把要改的那几条交给模型，改动越小越好
-  const answer = await ask(rewriteTitlesPrompt(flagged, context));
+  const answer = await ask(rewriteTitlesPrompt(flagged, context, elements));
   let pairs = parseSmoothAnswer(answer);
   // 模型没写「原标题 =>」，只给了新标题：要改的条数一样多，就按顺序一一对上
   if (!pairs.length && answer) {

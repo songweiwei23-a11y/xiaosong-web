@@ -34,7 +34,8 @@ describe('大开口不离开定位：赛道、目标人群、大众大事三处�
     expect(BIG_OPENING_RULE).toContain('标题里也要有一个赛道词');
     expect(BIG_OPENING_RULE).toContain('目标人群');
     expect(BIG_OPENING_RULE).toContain('大众大事');
-    expect(BIG_OPENING_RULE).toContain('爆款元素是包装手法，给这三处加看点，不是主体');
+    expect(BIG_OPENING_RULE).toContain('爆款元素是标题和第一秒的看点');
+    expect(BIG_OPENING_RULE).toContain('光看就认得出分给它的那个元素');
   });
   it('标题规则仍然要求具体的东西，但不限于商品细节', () => {
     expect(TITLE_CRAFT).toContain('不一定是商品细节');

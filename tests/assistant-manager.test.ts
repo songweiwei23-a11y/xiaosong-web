@@ -29,6 +29,13 @@ const sse = (answer: string) =>
 
 const LONG_TOPIC = `选题1：菜市场老板的真实一天\n开场钩子：凌晨四点的菜市场，老板第一句话就是……\n${'这是一条写得够具体的选题，有场景、有冲突、有结果。'.repeat(8)}`;
 
+/** 5 条选题（和请求的 count 一样），按真实输出的「## 选题N」写：条数够，就不触发自动补写。只有第 1 条的开场钩子里有「凌晨四点的菜市场」 */
+const FIVE_TOPICS = [1, 2, 3, 4, 5]
+  .map((n) => `## 选题${n}：${n === 1 ? '菜市场老板的真实一天' : `菜市场的第${n}个真实故事`}\n开场钩子：${n === 1 ? '凌晨四点的菜市场，老板第一句话就是……' : '清晨六点，摊位刚支起来……'}\n${'这是一条写得够具体的选题，有场景、有冲突、有结果。'.repeat(8)}`)
+  .join('\n\n');
+/** 5 条但每条都太短：条数够，所以不补写，只看验收 */
+const SHORT_FIVE = [1, 2, 3, 4, 5].map((n) => `## 选题${n}：太短`).join('\n');
+
 describe('验收：板块的产出合不合格', () => {
   it('产出太短：不合格，并写出字数', () => {
     const r = checkBoardOutput('topic', '太短', '');
@@ -169,12 +176,12 @@ describe('派活：先列出来，用户确认后才开跑', () => {
 
 describe('管理员执行：板块只跑一次，不合格由管理员直接修改', () => {
   it('第一版太短，管理员直接修改，改好后交付；板块只被调用一次，不整份重跑', async () => {
-    const streamAnswers = [LONG_TOPIC];
+    const streamAnswers = [FIVE_TOPICS];
     let boardCalls = 0;
     const fetchImpl = (async (url: string) => {
       if (String(url).includes('/api/dify/stream')) {
         boardCalls++;
-        return sse(streamAnswers.shift() ?? LONG_TOPIC);
+        return sse(streamAnswers.shift() ?? FIVE_TOPICS);
       }
       return json([]);
     }) as unknown as typeof fetch;
@@ -215,7 +222,7 @@ describe('管理员执行：板块只跑一次，不合格由管理员直接修�
     let boardCalls = 0;
     const fetchImpl = (async (url: string) => {
       if (String(url).includes('/api/dify/stream')) boardCalls++;
-      return String(url).includes('/api/dify/stream') ? sse('太短') : json([]);
+      return String(url).includes('/api/dify/stream') ? sse(SHORT_FIVE) : json([]);
     }) as unknown as typeof fetch;
     // 管理员模型修改不出来（出错）：保留原稿
     const llm = (async (_cfg: unknown, req: { system: string }) => {

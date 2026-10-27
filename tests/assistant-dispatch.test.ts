@@ -25,16 +25,18 @@ const sse = (answer: string) =>
   });
 
 const LONG = `这是一段足够长、足够具体的板块产出。${'内容包含场景、冲突和结果，可以直接拿去用。'.repeat(8)}`;
+/** 5 条选题，按真实输出的「## 选题N」写：条数和请求的 count 一样，就不触发自动补写 */
+const FIVE_TOPICS = [1, 2, 3, 4, 5].map((n) => `## 选题${n}：菜市场的第${n}个真实故事\n${LONG}`).join('\n\n');
 
-/** 假接口：板块请求记下来（按 taskType），其它接口返回空 */
-function fakeStream(answer = LONG) {
+/** 假接口：板块请求记下来（按 taskType），其它接口返回空。answer 可以按板块给不同的回答 */
+function fakeStream(answer: string | ((taskType: string) => string) = LONG) {
   const bodies: Record<string, Record<string, unknown>[]> = {};
   const fetchImpl = (async (url: string, init?: RequestInit) => {
     if (String(url).includes('/api/dify/stream')) {
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
       const type = String(body.taskType);
       (bodies[type] ??= []).push(body);
-      return sse(answer);
+      return sse(typeof answer === 'function' ? answer(type) : answer);
     }
     return json([]);
   }) as unknown as typeof fetch;
@@ -98,7 +100,7 @@ describe('七个板块都能跑，并且用各自的任务类型去生成', () =
 
 describe('多步计划：按顺序执行，前一步的产出交给后一步', () => {
   it('两步都跑完，答案按步骤列出；第二步的请求里带着第一步的产出', async () => {
-    const { fetchImpl, bodies } = fakeStream();
+    const { fetchImpl, bodies } = fakeStream((type) => (type === '选题策划' ? FIVE_TOPICS : LONG));
     const job = createJob('u-plan');
     await runPlanJob(job, {
       ctx: { ...CTX, fetchImpl },
