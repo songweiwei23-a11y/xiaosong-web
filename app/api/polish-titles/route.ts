@@ -37,8 +37,9 @@ export async function POST(request: Request) {
     }
   };
   const templated = await polishTitles(text, ask, context);
-  // 模板标题修完，再把全部标题读一遍，只改读不顺、看不出在说什么的那几条（2026-10-27 二次润色）
-  const smooth = await polishSmooth(templated.text, ask, context);
+  // 模板标题修完，只修真错了的标题（占位符、年龄段标签）。
+  // 2026-10-29 产品方：原来的二次润色让模型把每批标题都挑一遍「读不顺」再重写，改完变味；不用改的就不改
+  const smooth = await polishSmooth(templated.text, ask, context, { judge: false });
   // 标题改完再查现实：「收腰就能换风格」这类说法，只改那一句
   const reality = await polishReality(smooth.text, ask, context);
   // 重复的标题（选题之间撞题）：第二次及以后出现的那一行只重写它，并避开已有标题

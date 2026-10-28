@@ -143,6 +143,12 @@ export function titleFlaws(title: string): string[] {
 }
 
 /**
+ * 真错了、必须改的机械毛病（2026-10-29 产品方：「不用改的就不改，干嘛非得要求它改」）。
+ * 占位符是没写完，年龄段标签是产品明令不写的；超字数、分号只是写法偏好，不为它重写标题。
+ */
+export const MUST_FIX_FLAWS = ['占位符', '年龄段'];
+
+/**
  * 二次润色的提示词：一次把全部标题交给模型，只改读不顺、看不出在说什么、标签化的那几条。
  * 回答是「原标题 => 新标题」一行一条；都不用改就只回「无需修改」。
  */
@@ -318,13 +324,15 @@ export async function polishSmooth(
   text: string,
   ask: (prompt: string) => Promise<string | null>,
   context = '',
+  { judge = true }: { judge?: boolean } = {},
 ): Promise<TitlePolishResult> {
   const titles = allTitles(text);
   if (!titles.length) return { text, tried: 0, accepted: 0 };
-  // 第一步：读不顺的标题由模型点出来；机械毛病（占位符、年龄段、超字数、分号）由规则认
-  const elements = titleElementsOf(text);
-  const judged = parseJudgeAnswer(await ask(judgeTitlesPrompt(titles, context)), titles.length).map((i) => titles[i - 1]);
-  const flagged = titles.filter((t) => titleFlaws(t).length > 0 || judged.includes(t));
+  // 第一步：读不顺的标题由模型点出来；机械毛病（占位符、年龄段、超字数、分号）由规则认。
+  // judge=false（选题页，2026-10-29）：不让模型挑「读不顺」，也不为了认出元素去改，只修真错了的（MUST_FIX_FLAWS）
+  const elements = judge ? titleElementsOf(text) : {};
+  const judged = judge ? parseJudgeAnswer(await ask(judgeTitlesPrompt(titles, context)), titles.length).map((i) => titles[i - 1]) : [];
+  const flagged = titles.filter((t) => (judge ? titleFlaws(t).length > 0 : titleFlaws(t).some((f) => MUST_FIX_FLAWS.includes(f))) || judged.includes(t));
   if (!flagged.length) return { text, tried: 0, accepted: 0 };
   // 第二步：只把要改的那几条交给模型，改动越小越好
   const answer = await ask(rewriteTitlesPrompt(flagged, context, elements));

@@ -155,9 +155,11 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
     topicCase('大码女装', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }, { age: ['25-30岁'], occupation: ['学生', '白领'] }), '抖音'),
     topicCase('家具', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }, { age: ['25-30岁'], occupation: ['白领'] }), '视频号'),
     contentPlanCase(industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }, { age: ['25-30岁'], occupation: ['学生', '白领'] })),
-    scriptCase('大码穿法反转', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }, { age: ['25-30岁'], occupation: ['学生', '白领'] }),
-      '同一件大码外套，只改扣子和袖口，穿出来的人气质完全不同',
-      '学生穿大码外套来店里试。店主只把外套的扣子解开一颗、袖子卷到手肘。学生照镜子说：「原来差这一点。」',
+    // 2026-10-29：原来的题是「同一件外套只改扣子和袖口」——变的是穿法，证明不了衣服好（lib/sharp-rules 的 PRODUCT_HERO_RULE）。
+    // 改成同一个人换两件外套；仍然要求「反转、眼前一亮」，看会不会把这一次的反应夸成「所有人都这样」
+    scriptCase('大码换外套', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }, { age: ['25-30岁'], occupation: ['学生', '白领'] }),
+      '同一个学生，先穿自己的旧外套，再换上店里的大码外套，前后两种样子',
+      '学生穿自己的旧外套来店里，先照一次镜子。店主拿来店里一件肩线合身的大码外套让她换上，再照一次。学生说：「肩膀这里终于不垮了。」',
       '要有戏剧冲突和反转，结尾要让人眼前一亮，看完想转发。'),
     scriptCase('家具反转', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }, { age: ['25-30岁'], occupation: ['白领'] }),
       '沙发怎么挑才不踩坑：换一个靠垫，客厅就像换了一套',
