@@ -31,6 +31,8 @@ const PLAN_TONE: Record<string, "neutral" | "info" | "accent" | "warn"> = {
 
 interface User {
   user_id: string;
+  /** 来源代理（2026-10-28）：直接注册的为 null */
+  referrer: { agent_name: string; invitation_code: string } | null;
   email: string;
   full_name: string;
   membership_level: string;
@@ -46,6 +48,7 @@ interface Detail {
   user: { id: string; email: string | null; created_at: string; last_sign_in_at: string | null; status: string };
   profile: { profile_name: string | null; account_platform: string[] | null; updated_at: string | null } | null;
   subscription: { plan: string; status: string; start_date: string | null; end_date: string | null } | null;
+  referrer: { agent_name: string; invitation_code: string } | null;
   quota: { used: number; periodEnd: string | null } | null;
   orders: { id: string; plan_name: string; amount: number; status: string; created_at: string; reviewed_at: string | null; review_note: string | null }[];
   generations: { task_type: string; created_at: string }[];
@@ -217,6 +220,20 @@ export default function UsersPage() {
       ),
     },
     {
+      key: "referrer",
+      header: "来源代理",
+      render: (u) => (
+        u.referrer ? (
+          <div className="min-w-0">
+            <div className="truncate text-[13px] text-foreground">{u.referrer.agent_name}</div>
+            <div className="font-mono text-[11px] text-muted-foreground/70">码 {u.referrer.invitation_code}</div>
+          </div>
+        ) : (
+          <span className="text-[12px] text-muted-foreground">直接注册</span>
+        )
+      ),
+    },
+    {
       key: "plan",
       header: "会员",
       render: (u) => (
@@ -323,6 +340,10 @@ export default function UsersPage() {
               <div><div className={fieldLabel}>邮箱</div><div className="break-all">{detail.data.user.email ?? "—"}</div></div>
               <div><div className={fieldLabel}>名字</div><div>{detail.data.profile?.profile_name || "未设置"}</div></div>
               <div><div className={fieldLabel}>注册时间</div><div>{fmtDateTime(detail.data.user.created_at)}</div></div>
+              <div>
+                <div className={fieldLabel}>来源代理</div>
+                <div>{detail.data.referrer ? `${detail.data.referrer.agent_name}（邀请码 ${detail.data.referrer.invitation_code}）` : "直接注册（没有用代理的码）"}</div>
+              </div>
               <div><div className={fieldLabel}>最近登录</div><div>{fmtDateTime(detail.data.user.last_sign_in_at)}</div></div>
               <div>
                 <div className={fieldLabel}>会员</div>

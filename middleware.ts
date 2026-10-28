@@ -29,7 +29,7 @@ function isTemporaryQueryFailure(result: { error?: unknown; status?: number }): 
 }
 
 // 需要登录的路径：只有这些跑下面的会话逻辑。其余页面（首页、登录、注册…）只过首页拦截
-const SESSION_PATHS = ['/dashboard', '/admin', '/payment', '/history']
+const SESSION_PATHS = ['/dashboard', '/admin', '/payment', '/history', '/agent']
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname

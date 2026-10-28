@@ -67,6 +67,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: INVALID_CODE }, { status: 400 });
   }
 
+  // 代理归属：码是代理自己生成的，就记下是哪位代理（agent_id 列要迁移 20261028_agents.sql 才有；没有就不记，注册照常）
+  const { data: codeAgent, error: agentError } = await supabase
+    .from('invitation_codes')
+    .select('agent_id')
+    .ilike('code', code)
+    .maybeSingle();
+  const agentId = agentError ? null : ((codeAgent?.agent_id as string | null | undefined) ?? null);
+  if (agentError && !/agent_id/i.test(agentError.message)) {
+    console.error('[auth/register] 读取代理归属失败:', agentError.message);
+  }
+  // 代理停用后，它的码也不能再用（2026-10-28：停用代理时码一起停）。在建号之前拦住，码不会被占用
+  if (agentId) {
+    const { data: agent, error: statusError } = await supabase
+      .from('agents')
+      .select('status')
+      .eq('id', agentId)
+      .maybeSingle();
+    if (statusError) {
+      console.error('[auth/register] 读取代理状态失败:', statusError.message);
+      return NextResponse.json({ error: '注册服务暂时不可用，请稍后再试，还不行就刷新页面' }, { status: 503 });
+    }
+    if (!agent || agent.status !== 'active') {
+      return NextResponse.json({ error: INVALID_CODE }, { status: 400 });
+    }
+  }
+
   // 注册授权：auth.users 上的插入前触发器靠它放行建号，15 分钟内有效
   const { error: authError } = await supabase
     .from('registration_authorizations')
@@ -130,6 +156,15 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json({ error: INVALID_CODE }, { status: 400 });
+  }
+
+  // 代理归属：用户唯一，第一次绑定为准，之后不改、不追溯老用户。写失败不影响注册，但会记日志
+  if (agentId) {
+    const { error: referralError } = await supabase.from('agent_referrals').upsert(
+      { user_id: userId, agent_id: agentId, invitation_code: code, bound_at: new Date().toISOString() },
+      { onConflict: 'user_id', ignoreDuplicates: true }
+    );
+    if (referralError) console.error('[auth/register] 记录代理归属失败:', referralError.message);
   }
 
   const now = new Date();

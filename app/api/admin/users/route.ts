@@ -7,6 +7,7 @@ import { COUNTED_FEATURES, sumCountedUsage } from '@/lib/config/plans';
 import { accountStatus } from '@/lib/account-status';
 import { previewUserData, purgeUser } from '@/lib/admin-delete-user';
 import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
+import { referrersOf, type ReferrerInfo } from '@/lib/agent-data';
 import { parseEndDateInput } from '@/lib/admin-dates';
 import { hasPermission, type AdminPermission } from '@/lib/admin-permissions';
 
@@ -77,6 +78,13 @@ export async function GET(request: Request) {
     const profiles = ids.length ? ((await supabase.from('user_profiles').select('*').in('user_id', ids)).data ?? []) : [];
     const subscriptions = ids.length ? ((await supabase.from('subscriptions').select('*').in('user_id', ids)).data ?? []) : [];
     const quotas = ids.length ? ((await supabase.from('user_quotas').select('*').in('user_id', ids)).data ?? []) : [];
+    // 这些用户是哪位代理拉来的（2026-10-28）。读不到就不显示，不影响用户列表
+    let referrers = new Map<string, ReferrerInfo>();
+    try {
+      referrers = await referrersOf(supabase, ids);
+    } catch (e) {
+      console.error('[用户管理] 读取代理归属失败:', (e as Error).message);
+    }
 
     const users = rows.map((r) => {
       const profile = profiles.find((p) => p.user_id === r.id);
@@ -84,6 +92,7 @@ export async function GET(request: Request) {
       const quota = quotas.find((q) => q.user_id === r.id);
       return {
         user_id: r.id,
+        referrer: referrerView(referrers.get(r.id)),
         email: r.email || '未设置',
         full_name: profile?.profile_name || '未设置',
         avatar_url: profile?.avatar_url || null,
@@ -115,6 +124,11 @@ export async function GET(request: Request) {
     console.error('[用户管理] 查询失败:', (error as Error | undefined)?.message);
     return NextResponse.json({ error: '读取用户列表失败' }, { status: 500 });
   }
+}
+
+/** 来源代理给管理员看：代理名字和它的码（直接注册、没用代理码的，为 null） */
+function referrerView(info: ReferrerInfo | undefined): { agent_name: string; invitation_code: string } | null {
+  return info ? { agent_name: info.agent_name, invitation_code: info.invitation_code } : null;
 }
 
 async function loadUserDetail(userId: string) {
@@ -162,6 +176,13 @@ async function loadUserDetail(userId: string) {
       .slice(0, 10);
 
     const adminEmails = await emailsByIds(supabase, logRows.map((r) => r.admin_id));
+    // 这个用户是哪位代理拉来的（2026-10-28）：读不到就不显示，详情照常返回
+    let referrer: ReferrerInfo | undefined;
+    try {
+      referrer = (await referrersOf(supabase, [userId])).get(userId);
+    } catch (e) {
+      console.error('[用户管理] 读取代理归属失败:', (e as Error).message);
+    }
 
     return NextResponse.json({
       user: {
@@ -173,6 +194,7 @@ async function loadUserDetail(userId: string) {
       },
       profile: profileR.data ?? null,
       subscription: subR.data ?? null,
+      referrer: referrerView(referrer),
       quota: quotaR.data
         ? { used: sumCountedUsage(quotaR.data), periodEnd: quotaR.data.current_period_end ?? null }
         : null,

@@ -19,6 +19,8 @@ export type AdminPermission =
   | 'manage_membership'  // 改套餐、到期日、延期、重置订阅额度
   | 'review_orders'      // 通过或驳回订单
   | 'manage_invitations' // 生成、作废邀请码
+  | 'manage_agents'      // 开通代理、停用代理、设统一费率（2026-10-28）
+  | 'settle_commissions' // 结算月度分成（写快照，结算后不改）
   | 'manage_payments'    // 收款二维码的上传、启用、停用
   | 'manage_secrets'     // 联网搜索密钥
   | 'manage_quality'     // 启动一次完整的质量回归（会调用模型，有成本）
@@ -34,13 +36,15 @@ export type AdminPermission =
   | 'view_usage'         // 用量监控、额度对账记录
   | 'view_system'        // 健康检查、迁移状态
   | 'view_logs'          // 审计日志（谁在什么时候做了什么）
-  | 'view_admins';       // 管理员名单
+  | 'view_admins'        // 管理员名单
+  | 'view_agents';       // 代理列表与分成结算记录（2026-10-28）
 
 const ALL: readonly AdminPermission[] = [
   'manage_admins', 'delete_user', 'manage_users', 'manage_membership', 'review_orders',
   'manage_invitations', 'manage_payments', 'manage_secrets', 'manage_quality', 'export_data', 'view_content',
   'view_dashboard', 'view_users', 'view_orders', 'view_monitor', 'view_analytics', 'view_quality',
   'view_usage', 'view_system', 'view_logs', 'view_admins',
+  'manage_agents', 'settle_commissions', 'view_agents',
 ];
 
 export const ROLE_PERMISSIONS: Record<string, readonly AdminPermission[]> = {

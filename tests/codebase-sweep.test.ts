@@ -150,7 +150,8 @@ describe('全仓库缺陷模式扫描', () => {
       // 首页应急登录（/api/gate/admin-login）：邮箱 + 密码 + 验证器码，默认关，只认绑了验证器的管理员，两层限流（见 lib/gate-admin-login）
       // 退出时作废这台设备的首页通行（/api/gate/logout）：不读写账号数据，跨站的 POST 带不上 Cookie
       if (/\/api\/(public|auth\/register|funnel$|health$|gate\/claim$|gate\/admin-login$|gate\/logout$)/.test(name)) continue;
-      if (!/requireAdmin|requireUserWithQuota|requireUser\b|getUser\(\)/.test(code)) {
+      // requireAgent（2026-10-28）：代理身份，同样从会话取用户（lib/agent-auth）
+      if (!/requireAdmin|requireAgent|requireUserWithQuota|requireUser\b|getUser\(\)/.test(code)) {
         bad.push(name);
       }
     }
