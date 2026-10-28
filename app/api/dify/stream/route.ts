@@ -50,7 +50,8 @@ const PROFILE_OPTIONAL_TASKS = new Set(['知识库查询', '自由对话', '前�
 import { reconcileTitleCounts, hasObviousCutoff } from '@/lib/result-reconciliation';
 import { unsupportedFacts } from '@/lib/quality-checks';
 import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
-import { needsRealityRepair, realityRepairLimited, repairReality } from '@/lib/reality-repair';
+import { needsSentenceRepair, repairReality, sentenceRepairLimited } from '@/lib/reality-repair';
+import { repairYears } from '@/lib/years-repair';
 import { cleanRewriteOutput } from '@/lib/canvas';
 import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
 
@@ -127,6 +128,8 @@ export async function POST(req: NextRequest) {
     let query = '';
     // 事实核对的已知素材（档案全文、定位、简报）；没有档案时为空，回退到查询（见下面的 factKnown）
     let factMaterial = '';
+    // 档案的人设事实卡（年限修复用）：没有档案时为空
+    let personaFacts: unknown = null;
 
     // 原始用户输入必须在任何改写之前固定下来。
     // 之前只在“已有历史”分支里赋值，导致会话首轮的用户消息永远不入库，
@@ -218,6 +221,7 @@ export async function POST(req: NextRequest) {
         const active = pos.find((x) => x.is_active && x.positioning_type === '账号定位')?.full_content ?? '';
         const brief = pos.find((x) => x.positioning_type === '创作简报')?.full_content ?? '';
         factMaterial = [JSON.stringify(full ?? {}), active, brief].join('\n');
+        personaFacts = (full as { persona_facts?: unknown } | null)?.persona_facts ?? null;
       }
       query += profileFactsBlock(profileRow);
       const said = (v: unknown) => (typeof v === 'string' ? v.slice(0, 2000) : '');
@@ -622,17 +626,31 @@ export async function POST(req: NextRequest) {
             }
           }
           /*
-           * 现实修复（2026-10-28，lib/reality-repair）：放在事实修正之后，改的是交付前的最终稿。
+           * 年限修复（2026-10-28，lib/years-repair）：结果里的从业、本地、店龄年数对不上事实卡，只让模型改写那一句。
+           * 和现实修复同一个做法、同一个额度、同一个板块闸门；放在现实修复之前，现实修复看到的已是年限对齐后的稿子。
+           */
+          if (outcome.kind === 'done' && needsSentenceRepair(body.taskType) && fullResponse.trim()) {
+            const years = await repairYears(fullResponse, async (prompt) => {
+              const f = await askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+              if (!f || !f.ok) return null;
+              usageMetadata = combinedReviewUsage(usageMetadata, f.completion?.usage ?? {}, 'years_repair_steps');
+              return f.text;
+            }, personaFacts, `${body.taskType}；用户原意：${(creationSettings.userIntent ?? '').slice(0, 200)}`, () => !sentenceRepairLimited(userId));
+            console.log('[years-repair]', body.taskType, '尝试', years.tried, '采用', years.accepted);
+            if (years.accepted) fullResponse = years.text;
+          }
+          /*
+           * 现实修复（2026-10-28，lib/reality-repair）：放在年限修复和事实修正之后，改的是交付前的最终稿。
            * 一个小变量推大结论、一次反应推成普遍道理这类说法，只让模型改写那一句，别的一字不动；
            * 先由正则和模型审阅找出句子，只有真的要改时才计额度，改完不合格就保留原句。
            */
-          if (outcome.kind === 'done' && needsRealityRepair(body.taskType) && fullResponse.trim()) {
+          if (outcome.kind === 'done' && needsSentenceRepair(body.taskType) && fullResponse.trim()) {
             const reality = await repairReality(fullResponse, async (prompt) => {
               const f = await askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
               if (!f || !f.ok) return null;
               usageMetadata = combinedReviewUsage(usageMetadata, f.completion?.usage ?? {}, 'reality_repair_steps');
               return f.text;
-            }, `${body.taskType}；用户原意：${(creationSettings.userIntent ?? '').slice(0, 200)}`, () => !realityRepairLimited(userId));
+            }, `${body.taskType}；用户原意：${(creationSettings.userIntent ?? '').slice(0, 200)}`, () => !sentenceRepairLimited(userId));
             console.log('[reality-repair]', body.taskType, '尝试', reality.tried, '采用', reality.accepted);
             if (reality.accepted) fullResponse = reality.text;
           }

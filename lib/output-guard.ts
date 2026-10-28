@@ -37,7 +37,8 @@ export function stripInternalLeaks(text: string, board: string): string {
 const SELF_CHECK_MARK = /^\s*[-*]?\s*[✅✔☑]\s*(?:没有|无|未|已|不含|不说)/;
 
 /** 否定或警告语境：这一行在提醒别这么写（「全濮阳福利最高（绝对化用语，违规且假）」「刷量是坑」） */
-const NEGATED = /不能|不要|不许|禁止|别说|别写|避免|不承诺|不说|不得|不用|不做|不写|❌|✗|×|反例|错误|误区|不可用|违规|绝对化用语|是坑|踩坑|不合规|举报|容易被/;
+// 「先别做 / 不宜 / 不建议」也是提醒（2026-10-28：内容规划「先别做虚构客户案例……不宜编造结果」被当成编造的客户案例，整条换成了占位）
+const NEGATED = /不能|不要|不许|禁止|别说|别写|避免|不承诺|不说|不得|不用|不做|不写|不替|别替|先别|别做|不宜|不建议|❌|✗|×|反例|错误|误区|不可用|违规|绝对化用语|是坑|踩坑|不合规|举报|容易被/;
 
 /** 绝对化用语（标准 E1）：所有交付板块都改。「最好」不动：「最好在傍晚拍」是拍摄建议，judge 也不计 */
 const AD_RULES: Array<[RegExp, string]> = [
@@ -46,8 +47,9 @@ const AD_RULES: Array<[RegExp, string]> = [
   // 「最好拍」「最好在傍晚拍」「最好找本地的」是拍摄或操作建议，不动
   [/最好(?=的)/g, '较好'],
   [/最强/g, '很强'],
-  // 「当年最火的X」是怀旧句式的说法，也是广告法绝对化用语（2026-10-28 回归：大码选题原样交付了「最火」）
-  [/最火/g, '很火'],
+  // 夸自家的「最火」换掉；「当年最火的X」是怀旧元素自带的句式，说的是过去流行过的东西，不是夸商品，照用
+  // （2026-10-28：原先一律换成「很火」，把每条怀旧标题的看点都改没了）
+  [/(?<!当年|那年|以前|小时候|那会儿|曾经)最火/g, '很火'],
   [/最高/g, '较高'],
   // 「最」去掉后保留原意：最划算→划算，最值→值，最低价→低价
   [/最(?=正宗|好吃|划算|新鲜|便宜|实惠|省钱|省|值|暖和|低价|低|划得来|专业|靠谱|优惠)/g, ''],
@@ -108,8 +110,19 @@ export function applyAdCompliance(text: string): string {
   return applyRules(text, [...AD_RULES, ...PLATFORM_RULES]);
 }
 
+const CN_NUMERAL: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+
+/**
+ * 选题的序号统一用阿拉伯数字（「## 选题1」）。模型偶尔写成「## 选题一」，页面按「选题N」拆分就对不上，条数会被算错。
+ * 2026-10-28 回归：家具选题两次都写成「选题一、选题二」，体检找不到「选题1」，批次也被判为缺条。
+ */
+export function topicNumeralsToDigits(text: string): string {
+  return text.replace(/^(\s*#{1,4}\s*选题)([一二三四五六七八九十])(?=[：:\s])/gm, (_, head: string, n: string) => `${head}${CN_NUMERAL[n]}`);
+}
+
 /** 交付文本统一走这里（审稿优化另走 stripInternalLeaks：它的原稿要被引用，用语不能动） */
 export function sanitizeOutput(text: string, board: string): string {
   const ruled = applyAdCompliance(stripInternalLeaks(text, board));
+  if (board === '选题策划') return topicNumeralsToDigits(applyRules(ruled, NUMBER_RULES, false));
   return VIEWER_FACING_BOARDS.has(board) ? applyRules(ruled, NUMBER_RULES, false) : ruled;
 }

@@ -122,8 +122,9 @@ describe('P4 槽位分配：代码保证人群、元素、拍法各自不重复'
   });
   it('分配表写明每条的三项，并要求互不相同', () => {
     const block = topicSlotsBlock(assignTopicSlots({ count: 2, audiences: ['宝妈', '学生'], elements: ['反差', '人群'], tactics: ['反向操作', '换个视角'] }));
-    expect(block).toContain('第1条：人群=宝妈；爆款元素=反差；拍法=反向操作');
-    expect(block).toContain('第2条：人群=学生；爆款元素=人群；拍法=换个视角');
+    // 2026-10-28：每个元素再分一个具体句式（lib/topic-slots 的 assignElementPatterns）
+    expect(block).toContain('第1条：人群=宝妈；爆款元素=反差（句式：穷人 vs 富人）；拍法=反向操作');
+    expect(block).toContain('第2条：人群=学生；爆款元素=人群（句式：某星座 / 某 MBTI 的X）；拍法=换个视角');
     expect(block).toContain('各条互不相同');
   });
 });

@@ -23,10 +23,11 @@ describe('识别不符合现实的说法', () => {
     expect(isUnrealisticSentence('这一次试坐，客户说比刚才舒服，我们只记录这一次的反应')).toBe(false);
     expect(isUnrealisticSentence('一位客户说舒服，这一次的情况如实记下')).toBe(false);
   });
-  it('选题的爆款元素提示词要求：句式里的 X 是有分量的东西，穿法只能落在衣服上', () => {
+  it('选题的爆款元素提示词：句式照用，X 写成具体的东西或一个人，不写成做法或技巧（2026-10-28 改：不再要求去掉「最火」「最牛」这类看点）', () => {
     const prompt = viralElementPrompt(['celebrity', 'nostalgia']);
-    expect(prompt).toContain('句式里的 X 要是本身有分量的东西');
-    expect(prompt).toContain('不能只是一个做法、技巧、动作或细节');
+    expect(prompt).toContain('句式照用');
+    expect(prompt).toContain('只是 X 要写成一件具体的东西或一个人');
+    expect(prompt).toContain('不写成一个做法或技巧');
   });
   it('正常的搭配、穿法说法不误伤', () => {
     expect(isUnrealisticSentence('这件外套收腰，搭配高腰裤，显腿长')).toBe(false);

@@ -18,7 +18,9 @@ import { holdUnsupported } from './evidence-guard';
 import { seasonMisstatements } from './time-anchor';
 import { buildTopicBoardQuery } from './boards/topic-query';
 import { buildAdaptiveScriptPrompt } from './script-design';
-import { needsRealityRepair, repairReality } from './reality-repair';
+import { buildContentPlanPrompt } from './content-plan';
+import { needsSentenceRepair, repairReality } from './reality-repair';
+import { repairYears } from './years-repair';
 import { sanitizeOutput, stripInternalLeaks } from './output-guard';
 
 /**
@@ -26,7 +28,8 @@ import { sanitizeOutput, stripInternalLeaks } from './output-guard';
  * 2026-10-16 摸底：原来标题名后面只认「：:、空白」，「## 开篇（0-5秒）」被判成缺失。
  */
 export function sectionHeading(section: string): RegExp {
-  return new RegExp(`^\\s*#{1,4}\\s+${section}(?:[：:、\\s（(【\\[\\-—·]|$)`);
+  // 标题前可以有 emoji（「## 📌 这个月的思路」「## 📊 配比一览」是线上提示词规定的字段名原样）
+  return new RegExp(`^\\s*#{1,4}\\s+(?:[^\\p{L}\\p{N}\\s]+\\s*)?${section}(?:[：:、\\s（(【\\[\\-—·]|$)`, 'u');
 }
 
 export const REGRESSION_PROFILE: CreatorProfile = {
@@ -69,6 +72,8 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
   return [
     {
       task: '回归:创作方向',
+      // 2026-10-28：加结构检查，要求方向段落齐（原来只看有没有字，截断的半截也能过）
+      requiredSections: ['方向1', '方向2', '方向3'],
       query: buildDirectionPrompt({
         purposes: ['fans', 'store'], formats: ['any'], count: 20, depth: 'quick',
         profileSummary: buildProfileSummary(profile as unknown as Record<string, unknown>), contextBlock: buildContextBlock(ctx, 'direction'),
@@ -147,13 +152,14 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
     },
     // 2026-10-28：选题、脚本的主路径（和页面、助理用的提示词一样，不是手写的简化版）。不分行业守同一套现实逻辑：
     //   服装、家具、餐饮各一份档案；脚本用「小变量要推出大反转」的要求去试，看会不会把一个细节放大成结论
-    topicCase('大码女装', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }), '抖音'),
-    topicCase('家具', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }), '视频号'),
-    scriptCase('大码穿法反转', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }),
+    topicCase('大码女装', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }, { age: ['25-30岁'], occupation: ['学生', '白领'] }), '抖音'),
+    topicCase('家具', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }, { age: ['25-30岁'], occupation: ['白领'] }), '视频号'),
+    contentPlanCase(industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }, { age: ['25-30岁'], occupation: ['学生', '白领'] })),
+    scriptCase('大码穿法反转', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }, { age: ['25-30岁'], occupation: ['学生', '白领'] }),
       '同一件大码外套，只改扣子和袖口，穿出来的人气质完全不同',
       '学生穿大码外套来店里试。店主只把外套的扣子解开一颗、袖子卷到手肘。学生照镜子说：「原来差这一点。」',
       '要有戏剧冲突和反转，结尾要让人眼前一亮，看完想转发。'),
-    scriptCase('家具反转', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }),
+    scriptCase('家具反转', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }, { age: ['25-30岁'], occupation: ['白领'] }),
       '沙发怎么挑才不踩坑：换一个靠垫，客厅就像换了一套',
       '客户来店选沙发，店主把靠垫换成另一款。客户坐下说：「比刚才舒服多了。」',
       '要有戏剧冲突和反转，结尾要让人眼前一亮，看完想转发。'),
@@ -161,8 +167,31 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
 }
 
 /** 按一份行业档案造回归档案（沿用回归档案的其余字段，只换行业、事实和经营的东西） */
-function industryProfile(name: string, platform: string, track: string, products: string[], facts: Record<string, string>): CreatorProfile {
-  return { ...REGRESSION_PROFILE, profile_name: `回归测试·${name}`, account_platform: [platform], account_track: [track], product_category: products, persona_facts: facts, taboo_settings: {} } as CreatorProfile;
+/**
+ * 按一个行业的档案造回归档案。2026-10-28 修：原来整个继承川味地摊的基础档案，
+ * 「实在不坑、性价比高」「川菜」「公益营销」「村书记」「18—24岁」等川味字段漏进了大码、家具的档案，
+ * 之前那几组大码、家具的回归结果是拿错的档案测出来的。这里把所有带川味内容的字段都覆盖掉，人群只写这个行业自己的。
+ */
+function industryProfile(
+  name: string, platform: string, track: string, products: string[], facts: Record<string, string>,
+  audience: { age?: string[]; occupation?: string[] } = {},
+): CreatorProfile {
+  return {
+    ...REGRESSION_PROFILE,
+    profile_name: `回归测试·${name}`,
+    account_platform: [platform],
+    account_track: [track],
+    account_stage: '刚起号，定位未确定',
+    target_age: audience.age ?? [],
+    target_occupation: audience.occupation ?? [],
+    content_tone: '',
+    unique_selling_point: '',
+    competitive_advantage: '',
+    conversion_path: '',
+    product_category: products,
+    persona_facts: facts,
+    taboo_settings: {},
+  } as CreatorProfile;
 }
 
 /** 选题主路径：和选题页用的 buildTopicBoardQuery 同一份提示词，按档案的配比出 6 条 */
@@ -186,6 +215,23 @@ function topicCase(name: string, profile: CreatorProfile, platform: string): Reg
   };
 }
 
+/**
+ * 内容规划（2026-10-28 补进回归）：和内容规划页用的 buildContentPlanPrompt 同一份提示词。
+ * 只出条数、目的、方向和节奏，不出选题和脚本；4 个必有的段落要在。
+ */
+function contentPlanCase(profile: CreatorProfile): RegressionCase {
+  return {
+    task: `回归:内容规划·${profile.account_track?.[0] ?? '档案'}`,
+    profile,
+    checkAs: '内容规划',
+    requiredSections: ['这个月的思路', '配比一览', '内容方向', '四周节奏'],
+    query: buildContentPlanPrompt({
+      lastMonth: '', recordedLastMonth: null, count: 12, focus: [], events: '', notes: '',
+      resolved: resolveMix(profile), profileSummary: buildProfileSummary(profile as unknown as Parameters<typeof buildProfileSummary>[0]),
+    }),
+  };
+}
+
 /** 脚本主路径：和脚本页用的 buildAdaptiveScriptPrompt 同一份提示词 */
 function scriptCase(name: string, profile: CreatorProfile, topic: string, source: string, requirements: string): RegressionCase {
   const ctx = { profile, positioning: null, dealReasons: [] };
@@ -193,6 +239,8 @@ function scriptCase(name: string, profile: CreatorProfile, topic: string, source
     task: `回归:脚本主路径·${name}`,
     profile,
     checkAs: '脚本生成',
+    // 2026-10-28：原来没有完整性检查，一段 132 字的内部提示词被截断后也判「通过」。四步结构必须齐
+    requiredSections: ['第1步', '第2步', '第3步', '第4步'],
     source,
     query: buildAdaptiveScriptPrompt({
       topic, platform: profile.account_platform?.[0] ?? '抖音', duration: '30秒',
@@ -271,7 +319,13 @@ export async function runCase(c: RegressionCase, ask: (q: string) => Promise<str
     for (const section of c.requiredSections ?? []) {
       const lines = checked.split('\n');
       const start = lines.findIndex(line => sectionHeading(section).test(line));
-      const next = start < 0 ? -1 : lines.findIndex((line, i) => i > start && /^\s*#{1,4}\s+/.test(line));
+      // 段落到同级或更高级的标题为止（2026-10-28 修：原来碰到下一个三级标题就截止，「## 内容方向」下面的「### 方向1」会把正文判成空）
+      const level = start < 0 ? 0 : (lines[start].match(/^\s*(#+)/)?.[1].length ?? 0);
+      const next = start < 0 ? -1 : lines.findIndex((line, i) => {
+        if (i <= start) return false;
+        const h = line.match(/^\s*(#{1,6})\s+/);
+        return !!h && h[1].length <= level;
+      });
       const body = start < 0 ? '' : lines.slice(start + 1, next < 0 ? lines.length : next).join('\n');
       if (!/[\p{L}\p{N}]/u.test(body)) result.issues.push({ kind: 'generation', detail: `必要交付部分「${section}」缺失或为空` });
     }
@@ -294,7 +348,8 @@ export type RegressionRepair = (text: string, c: RegressionCase) => Promise<stri
  * 线上同一套修复（app/api/dify/stream 里交付前的步骤，顺序也一样）：
  * 1. 整理：去内部痕迹、广告法用语、数字规则（审稿只去痕迹，原稿用语不动）
  * 2. 事实：没有出处的价格、顾客见证等，按资料修正一次；修不掉的换成【待确认】（lib/fact-fix、lib/evidence-guard）
- * 3. 现实：一个小变量推大结论这类说法，只改那一句（lib/reality-repair）
+ * 3. 年限：结果里的从业、本地、店龄年数对不上事实卡，只改那一句（lib/years-repair）
+ * 4. 现实：一个小变量推大结论这类说法，只改那一句（lib/reality-repair）
  */
 export function productionRepair(): RegressionRepair {
   return async (text, c) => {
@@ -315,9 +370,10 @@ export function productionRepair(): RegressionRepair {
       out = holdUnsupported(out, factIssues).text;
     }
 
-    if (!needsRealityRepair(task)) return out;
-    const r = await repairReality(out, (prompt) => askDify(prompt).catch(() => null), task);
-    return r.text;
+    if (!needsSentenceRepair(task)) return out;
+    const ask = (prompt: string) => askDify(prompt).catch(() => null);
+    out = (await repairYears(out, ask, (c.profile ?? REGRESSION_PROFILE).persona_facts, task)).text;
+    return (await repairReality(out, ask, task)).text;
   };
 }
 

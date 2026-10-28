@@ -148,7 +148,7 @@ describe('切入角度：带着方向来的，每条切进一个不同的角度'
     const slots = assignTopicSlots({ count: 4, audiences: ['宝妈'], elements: ['头牌'], tactics: ['x'], perTopic: 1, angles });
     expect(slots.map((s) => s.angle)).toEqual([angles[0], angles[1], angles[2], angles[0]]);
     const block = topicSlotsBlock(slots);
-    expect(block).toContain(`第1条：人群=宝妈；切入角度=${angles[0]}；爆款元素=头牌；`);
+    expect(block).toContain(`第1条：人群=宝妈；切入角度=${angles[0]}；爆款元素=头牌（句式：世界上最贵的X到底有多贵）；`);
     expect(block).toContain('带「切入角度=」的那条，就从这个角度切进去');
     expect(topicSlotsBlock(assignTopicSlots({ count: 1, audiences: ['宝妈'], elements: ['头牌'], tactics: ['x'] }))).not.toContain('切入角度=');
   });
@@ -219,7 +219,7 @@ describe('目的按配比排好：只有流量型条分爆款元素', () => {
     const block = topicSlotsBlock(
       assignTopicSlots({ count: 2, audiences: ['宝妈'], elements: ['反差', '头牌'], tactics: ['反向操作'], perTopic: 1, roles: ['流量型', '人设型'] }),
     );
-    expect(block).toContain('第1条：目的=流量型；人群=宝妈；爆款元素=反差；');
+    expect(block).toContain('第1条：目的=流量型；人群=宝妈；爆款元素=反差（句式：穷人 vs 富人）；');
     expect(block).toContain('第2条：目的=人设型；人群=宝妈；爆款元素=无（人设型不套爆款元素）；');
     expect(block).toContain('每条的目的按分配表写，不要自己换');
   });
@@ -274,7 +274,7 @@ describe('选题提示词：按档案行业和创意难度拼出来', () => {
     expect(query).toContain('每条流量选题用几个爆款元素：1 个');
     expect(query).not.toContain('异性会多看你两眼');
     expect(query).toContain('（必填，写明用哪个，头牌）');
-    expect(query).toMatch(/爆款元素=头牌；/);
+    expect(query).toMatch(/爆款元素=头牌（句式：[^）]+）；/);
     expect(query).not.toMatch(/爆款元素=荷尔蒙/);
   });
 

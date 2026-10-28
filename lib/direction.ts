@@ -112,6 +112,36 @@ export function hasGoal(i: Pick<DirectionInput, 'purposes' | 'customGoal'>): boo
   return i.purposes.length > 0 || Boolean(i.customGoal?.trim());
 }
 
+/**
+ * 大众大事（各行业通用）：每个方向分到一件（2026-10-28）。
+ * 原来只在要求里写「方向要不一样、分散人货场」，但每个方向的必填项都是同一个赛道、同一个人群，
+ * 「大众切口」的例子又全是服装的，换到川味档案上 20 个方向有十几个都写成「下班吃什么、约饭」。
+ * 和选题的分配表（lib/topic-slots）同一个办法：代码先把每个方向的看点分开，模型照着写。
+ */
+// 15 件（2026-10-28 第二轮：10 件时 20 个方向每件都要用两次，第二次常写成同一件事，比如三个方向都在讲「舒服、别只看辣」）
+export const PUBLIC_CONCERNS = ['钱', '时间', '面子', '家人', '舒服', '买错', '被误解', '第一次', '换季', '朋友', '一个人', '节日', '上班', '长辈', '口碑'] as const;
+/** 切入维度（和「切入角度」里允许的维度一致） */
+export const ANGLE_DIMENSIONS = ['对比', '问题', '视角', '冲突', '时间线', '反常识', '地域', '季节'] as const;
+
+/** 第 n 个方向（从 0 开始）分到的大众大事和主切入维度：大众大事轮着分，同一件第二次出现时换一个维度 */
+export function directionSlot(n: number): { concern: string; dimension: string } {
+  const concern = PUBLIC_CONCERNS[n % PUBLIC_CONCERNS.length];
+  const round = Math.floor(n / PUBLIC_CONCERNS.length);
+  const dimension = ANGLE_DIMENSIONS[(n + round * 3) % ANGLE_DIMENSIONS.length];
+  return { concern, dimension };
+}
+
+export function directionSlotsBlock(count: number): string {
+  const rows = Array.from({ length: count }, (_, n) => {
+    const s = directionSlot(n);
+    return `方向${n + 1}：大众大事=${s.concern}｜主切入维度=${s.dimension}`;
+  });
+  return `## 本批每个方向的分配（代码定，每个方向照着写）
+${rows.join('\n')}
+每个方向的「内容方向」里，大众切口就写分到的那件大众大事落在这个赛道、这类人身上是什么事；方向名要让人一眼看出是这件事。切入角度里至少有一个用分到的主切入维度。
+同一件大众大事分到两个方向时，这两个方向的对象、场景或人群必须不同，不能只是换个说法。大众大事和这个赛道实在接不上的，换成最接近的一件，并在思路提示里说一句为什么换。`;
+}
+
 export function buildDirectionPrompt(i: DirectionInput): string {
   const goal = [labels(PURPOSES, i.purposes), i.customGoal?.trim()].filter(Boolean).join('；');
   const formats = i.formats.filter((f) => f !== 'any');
@@ -128,8 +158,8 @@ export function buildDirectionPrompt(i: DirectionInput): string {
   // 从内容规划带来的方向：核心目的就是它原来的目的（在带来的方向原文里），不能让它空着
   const corePurposeLine = goal || (i.expand?.intent?.trim() ? '按带来的方向原本的目的（见下面的方向原文）' : '按用户勾选的目的');
   const scopeFields = `- **核心目的**：${corePurposeLine}（这一类内容的目的，所有角度都围绕它展开，不能改成别的目的）。每个方向只写一句它怎么服务这个目的，几个方向之间各不相同，不能把同一句抄几遍
-- **内容方向**：一两句话，按这个顺序写三件事：① 赛道（档案里在卖的品类和穿搭，比如大码女装，观众一眼认出这是这个号）② 目标人群（档案里的目标人群，写范围）③ 大众切口（大多数人都会遇到的事：买回家不敢穿、出门时间不够、怕被人看见、家人的眼光、钱、面子、舒服）。范围不写具体的商品场景（不写「换季衣柜」「上衣和裤子怎么搭」这类），不写镜头、标题或形式
-- **切入角度**：3 到 5 个角度，每个角度一行，写成「角度名 ｜ 核心问题 ｜ 切入维度 ｜ 和其他角度的差异」。切入维度只从这些里选：问题、视角、冲突、对比、时间线、地域、季节、反常识。角度之间至少在两个维度上不同，不能只是换个说法。每个角度都落在赛道和目标人群上。核心问题要是大众问题（比如「为什么买回家不敢穿」），不是商品搭配问题（比如「上衣和裤子怎么搭」）
+- **内容方向**：一两句话，按这个顺序写三件事：① 赛道（档案里在卖的品类，比如大码女装、川味烧烤、沙发，观众一眼认出这是这个号）② 目标人群（档案里的目标人群，写范围）③ 大众切口（大多数人都会遇到的事，按分配表里这个方向分到的那件大众大事写，比如钱、时间、面子、家人、买错）。范围不写具体的商品场景（不写「换季衣柜」「这道菜怎么配」这类），不写镜头、标题或形式
+- **切入角度**：3 到 5 个角度，每个角度一行，写成「角度名 ｜ 核心问题 ｜ 切入维度 ｜ 和其他角度的差异」。切入维度只从这些里选：问题、视角、冲突、对比、时间线、地域、季节、反常识。角度之间至少在两个维度上不同，不能只是换个说法。每个角度都落在赛道和目标人群上。核心问题要是大众问题（比如「为什么花了钱还后悔」），不是商品操作问题（比如「这件怎么搭」「这道菜怎么配」）
 - **思路提示**：2 到 3 句，这一类内容可以往哪些大众大事上想（只给方向性的提示，不写成题眼、题目或具体场景，也不写具体搭配；大众大事要和赛道、目标人群连在一起）
 - **可拍性**：这一类需要的资源（团队、场地、设备、出镜条件），缺的标「待补」`;
   const fields = scopeFields + (full
@@ -191,6 +221,8 @@ ${fields}
 
 ## ⚠️ 这次先别做的
 两三条，说清为什么（结合档案里的禁忌、资源和目的）。
+
+${directionSlotsBlock(i.count)}
 
 ## 要求
 ${differ}

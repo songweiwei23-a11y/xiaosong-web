@@ -4,6 +4,7 @@
  * 人群来自档案的目标年龄、职业；元素是这个行业适用的八大爆款元素，每条用几个由创意难度定（2026-10-27）；
  * 拍法从可用的 36 计里挑。
  */
+import { VIRAL_ELEMENTS } from './viral-elements';
 
 export interface TopicSlot {
   no: number;
@@ -184,18 +185,35 @@ export function assignTopicSlots(p: {
   return slots;
 }
 
+/**
+ * 每条分到的元素再分一个具体句式（2026-10-28）：同一个元素在这一批里轮着用它的句式，句式用完才重复。
+ * 原来只在提示词里写「同一个句式关键词一批只用一次」，模型照样把「当年最火的校服外套」「反人类设计」各用两次，整批像一个模板。
+ */
+export function assignElementPatterns(slots: TopicSlot[]): string[][] {
+  const used = new Map<string, number>();
+  return slots.map((s) => s.elements.map((name) => {
+    const el = VIRAL_ELEMENTS.find((e) => e.name === name || e.id === name);
+    if (!el?.patterns.length) return '';
+    const n = used.get(el.name) ?? 0;
+    used.set(el.name, n + 1);
+    return el.patterns[n % el.patterns.length];
+  }));
+}
+
 /** 写进选题提示词的分配表。空的一项写成「由选题层定，但与其他条不同」 */
 export function topicSlotsBlock(slots: TopicSlot[]): string {
   if (!slots.length) return '';
-  const rows = slots.map((s) => {
+  const patterns = assignElementPatterns(slots);
+  const rows = slots.map((s, idx) => {
     const who = s.audience || '由选题层从档案里选一类，和其他条不同';
     const notFlow = !!s.role && s.role !== '流量型';
+    const named = s.elements.map((e, k) => (patterns[idx][k] ? `${e}（句式：${patterns[idx][k]}）` : e));
     const el = notFlow
       ? `无（${s.role}不套爆款元素）`
-      : s.elements.length
-        ? s.elements.length > 1
-          ? `${s.elements.join(' + ')}（这几个同时用，都要设计进这一条）`
-          : s.elements[0]
+      : named.length
+        ? named.length > 1
+          ? `${named.join(' + ')}（这几个同时用，都要设计进这一条）`
+          : named[0]
         : '由选题层挑一个，和其他条不同';
     const how = s.tactic || '由选题层挑一计，和其他条不同';
     const hook = s.hook ? `；题眼=${s.hook}` : '';
@@ -208,7 +226,7 @@ export function topicSlotsBlock(slots: TopicSlot[]): string {
   const multiNote = slots.some((s) => s.elements.length > 1) ? '带「+」的那条要把几个爆款元素一起设计进同一个选题，不是各写一句。' : '';
   const roleNote = slots.some((s) => s.role) ? '每条的目的按分配表写，不要自己换；目的决定这条怎么拍，不决定要不要有爆款元素。' : '';
   const reasonNote = slots.some((s) => s.reason) ? '带「成交理由=」的那条只押这一个理由，要在画面或过程里看得见，不能又套别的理由。' : '';
-  const elementNote = slots.some((s) => s.elements.length) ? '带爆款元素的那条，标题要光看就认得出用的是哪个元素（用它的句式），不能只在正文里；同一批里同一个句式关键词（如「当年最火」「最没面子」）只用一次。' : '';
+  const elementNote = slots.some((s) => s.elements.length) ? '带爆款元素的那条，标题要光看就认得出用的是哪个元素，用分配表里给它的那个句式写，不换成别的句式；同一批里同一个句式关键词（如「当年最火」「最没面子」）只用一次。' : '';
   const angleNote = slots.some((s) => s.angle) ? '带「切入角度=」的那条，就从这个角度切进去（核心问题照它写），标题和内容都不要换到别的角度上。' : '';
   return `【本批每条的分配（代码定，每条必须照这几项写）】\n${rows.join('\n')}\n各项是每条选题的骨架：目的决定这条要达到什么，人群决定谁在看，元素决定看点，拍法决定事件怎么走，题眼决定从哪个角度切进去。各条互不相同；核心问题也不能只是换件东西、换个年代或换句话（比如两条都讲同一个做法），标题和内容都围绕本条自己的分配写，不复用其他条的句子和写法。${roleNote}${reasonNote}${angleNote}${elementNote}${multiNote}${hookNote}`;
 }

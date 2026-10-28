@@ -16,6 +16,7 @@ import { readPersonaFacts } from './persona-facts';
 import { checkMix, type ResolvedMix } from './content-mix';
 import { seasonMisstatements } from './time-anchor';
 import { topicTagIssues } from './output-tags';
+import { elementTitleIssues } from './topic-element-check';
 import { findUnrealisticSentences } from './reality-check';
 
 export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'reality' | 'generation' | 'facts' | 'flaky' | 'error';
@@ -419,10 +420,16 @@ const OTHER_PERSON_RE = /碰到|遇到|遇见|认识|客人|顾客|朋友|姐姐
 const YEAR_RE = /(\d+(?:\.\d+)?|[一二两三四五六七八九十]{1,3}|半)\s*年(?!级|代|前|后|内|底|初|轻|纪|龄|度|份|货|会|终|中|头|夜|糕)/g;
 
 /**
+ * 年数前面的「分句」从这里断开：句号、逗号、分号、顿号、箭头、引号、括号、冒号。
+ * 不断开的话，前一个分句的词会借给这个年数（2026-10-28 回归：「在南乐开店3年、做大码女装6年」的 6 年被当成店龄，「→ 回到家具从业12年」被当成居住年限）。
+ */
+const CLAUSE_BREAK = /[，。！？；、→“”"「」（）()：:·\n]/;
+
+/**
  * 年限打架：结果里"在本地 / 来 / 扎根 / 干了 / 做了 N 年"的 N，事实卡里一个都对不上。
  * 只看这几种说法附近的年数——"2026 年""一年四季"这种不算。
  */
-export function yearConflicts(output: string, persona: unknown): string[] {
+function yearConflictHits(output: string, persona: unknown): Array<{ at: number; snippet: string }> {
   const f = readPersonaFacts(persona);
   const factText = [f.yearsInTrade, f.yearsLocal, f.story, f.others].filter(Boolean).join(' ');
   if (!factText) return [];
@@ -445,17 +452,17 @@ export function yearConflicts(output: string, persona: unknown): string[] {
   // 自由事实里的年数也按语义归类，不能把从业年数借给店龄或居住年限。
   for (const text of [f.story, f.others].filter((x): x is string => !!x)) for (const m of text.matchAll(YEAR_RE)) {
     const at = m.index ?? 0;
-    const before = text.slice(0, at).split(/[，。！？；\n]/).pop()!.slice(-20);
+    const before = text.slice(0, at).split(CLAUSE_BREAK).pop()!.slice(-20);
     const d = dimension(before, text.slice(at + m[0].length, at + m[0].length + 8));
     const n = toNumber(m[1]);
     if (d && n !== null && (d === 'store' || (d === 'trade' ? !f.yearsInTrade : !f.yearsLocal))) allowed[d].add(n);
   }
-  const out: string[] = [];
+  const out: Array<{ at: number; snippet: string }> = [];
   for (const m of output.matchAll(YEAR_RE)) {
     const n = toNumber(m[1]);
     if (n === null || n >= 1900) continue;
     const at = m.index ?? 0;
-    const before = output.slice(0, at).split(/[，。！？；\n]/).pop()!.slice(-20);
+    const before = output.slice(0, at).split(CLAUSE_BREAK).pop()!.slice(-20);
     const after = output.slice(at + m[0].length, at + m[0].length + 8);
     // 说的是别人（碰到的姐姐、客人、同行）的年数，不是这个号的，不比
     if (OTHER_PERSON_RE.test(before)) continue;
@@ -464,9 +471,26 @@ export function yearConflicts(output: string, persona: unknown): string[] {
     const aboutTenure = !!d || /在|变了/.test(before) || /^\s*(?:了|的老店|老店|的经验|经验|的手艺)/.test(after);
     if (!aboutTenure) continue;
     if (d ? allowed[d].has(n) : known.has(n)) continue;
-    out.push(output.slice(Math.max(0, at - 10), at + m[0].length + 3).replace(/\s+/g, ' ').trim());
+    out.push({ at, snippet: output.slice(Math.max(0, at - 10), at + m[0].length + 3).replace(/\s+/g, ' ').trim() });
   }
-  return Array.from(new Set(out)).slice(0, 5);
+  return out;
+}
+
+/** 年限打架的片段（去重，最多 5 处）：给体检的提示用 */
+export function yearConflicts(output: string, persona: unknown): string[] {
+  return Array.from(new Set(yearConflictHits(output, persona).map((h) => h.snippet))).slice(0, 5);
+}
+
+/** 年限打架所在的整句（去重，最多 5 句）：年限修复只改这几句（lib/years-repair） */
+export function yearConflictSentences(output: string, persona: unknown): string[] {
+  return Array.from(new Set(yearConflictHits(output, persona).map((h) => sentenceAt(output, h.at)))).slice(0, 5);
+}
+
+/** 位置 at 所在的整句：按句号、问号、感叹号和换行切，句首的标签（「- **店主**：」）也带上 */
+function sentenceAt(text: string, at: number): string {
+  const start = Math.max(...'。！？\n'.split('').map((c) => text.lastIndexOf(c, at - 1))) + 1;
+  const ends = '。！？\n'.split('').map((c) => text.indexOf(c, at)).filter((i) => i >= 0);
+  return text.slice(start, ends.length ? Math.min(...ends) + 1 : text.length).trim();
 }
 
 /** 审稿只检查明确交付的改写稿；诊断中引用的错误原文不是交付内容。 */
@@ -551,6 +575,8 @@ export function runQualityChecks(p: {
   // 选题的四个标签（lib/output-tags，2026-10-19）：缺了只进看板，不挡交付
   if (p.taskType === '选题策划') {
     for (const d of topicTagIssues(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
+    // 爆款元素（2026-10-28）：写了用哪个元素，标题就要认得出。认不出 = 选题没有看点，挡交付（上一版 16/16 都认得出）
+    for (const d of elementTitleIssues(output)) issues.push({ kind: 'generation', detail: d });
   }
   // 关键事实（2026-10-05 起没建档案也查：没档案时只拿这次的素材比对）；自由对话只查冒充事实的几类
   if (p.taskType && (FACT_CHECK_TASKS.has(p.taskType) || LIGHT_FACT_CHECK_TASKS.has(p.taskType))) {

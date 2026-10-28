@@ -19,13 +19,23 @@ export interface HoldResult {
 /**
  * issuesOf：判断一段文字有没有没有出处的说法（与路由里的事实检查用同一套）
  */
+/**
+ * 行首的编号和标签（「1. **先别做硬广**：」「- **核心问题**：」「- 预算：」）：替换句子时留着它，
+ * 不然整行换成占位，编号断了、读的人也不知道这一项原来在说什么（2026-10-28 内容规划「先别做」第 1 条）。
+ */
+const LINE_LABEL = /^\s*(?:(?:[-*]|\d+[.、．)）])\s*)?(?:\*\*[^*\n]{1,24}\*\*\s*[：:]?\s*|[^：:\n。！？]{1,12}[：:]\s*)?/;
+
 export function holdUnsupported(text: string, issuesOf: (t: string) => string[]): HoldResult {
   let held = 0;
   const lines = text.split('\n').map((line) => {
     if (!line.trim() || isNegatedLine(line) || ALREADY_MARKED.test(line)) return line;
     if (issuesOf(line).length === 0) return line;
+    // 先只看标签后面的正文；正文里找不到问题句（问题在标签本身），就按整行处理
+    let label = line.match(LINE_LABEL)?.[0] ?? '';
+    if (label && issuesOf(line.slice(label.length)).length === 0) label = '';
+    const body = line.slice(label.length);
     // 按句号、问号、感叹号切开，只替换有问题的句子；连续的占位合并成一个
-    const parts = line.split(/(?<=[。！？])/);
+    const parts = body.split(/(?<=[。！？])/);
     const out: string[] = [];
     for (const part of parts) {
       if (!part.trim()) { out.push(part); continue; }
@@ -33,7 +43,7 @@ export function holdUnsupported(text: string, issuesOf: (t: string) => string[])
       held++;
       if (out[out.length - 1] !== PENDING_MARK) out.push(PENDING_MARK);
     }
-    return out.join('');
+    return label + out.join('');
   });
   return { text: lines.join('\n'), held };
 }

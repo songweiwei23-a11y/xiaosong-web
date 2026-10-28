@@ -19,6 +19,8 @@ export const UNREALISTIC_PATTERNS: RegExp[] = [
   /一(件|套|个|种).{0,10}(穿出|变出|做出|演出)\s*(\d+|几|两|三|不同)\s*(种|个)(风格|人|性格|身份|气质|效果)/,
   // 判若两人、换了个人：一个变化不可能让人判若两人
   /判若两人|换了个人|变成另一个人|完全换了一个人/,
+  // 一个小改动推到人的气质、状态（2026-10-28 四板块评估：「细节一动，气质也会跟着变一点」）
+  /(细节|扣子|袖口|领口|靠垫|一处|小改动|改一下|一动)[^。！？\n]{0,10}(气质|整个人|精气神|人的状态)[^。！？\n]{0,6}(变|不一样|不同|跟着)/,
   // 一次现场的反应推成普遍的道理：一位客户说好，不等于所有人都会；结论的范围要和证据一样大
   /(一位|一个|一次|这位|这个|那位)[^。！？\n]{0,10}(说|觉得|反馈|反应)[^。！？\n]{0,12}(就说明|就证明|说明|证明)[^。！？\n]{0,8}(所有|每个人|每一个|任何|都要|都得|都该)/,
   // 一个穿法、技巧、动作或细节撑不起「有多牛」这种结论：牛不牛，要看东西本身（当年最火的穿搭有多牛可以，穿法有多牛不行）
@@ -42,9 +44,12 @@ export function isUnrealisticSentence(sentence: string): boolean {
   return UNREALISTIC_PATTERNS.some((re) => re.test(sentence));
 }
 
-/** 句子开头的标签（「- **出发点**：」这种）单独拿出来，只改标签后面的正文 */
+/**
+ * 句子开头的标签单独拿出来，只改标签后面的正文。冒号在粗体外（「- **出发点**：」）和粗体里（「- **结果收束：** 」）两种都认
+ * （2026-10-28：后一种原来认不出，改写后标签和粗体被吃掉了）。
+ */
 export function splitLabel(sentence: string): { label: string; body: string } {
-  const m = sentence.match(/^(\s*[-*]\s*\*\*[^*\n]{1,12}\*\*[：:])/);
+  const m = sentence.match(/^(\s*[-*]\s*\*\*[^*\n]{1,12}(?:\*\*[：:]|[：:]\*\*)\s*)/);
   if (!m) return { label: '', body: sentence };
   return { label: m[1], body: sentence.slice(m[1].length) };
 }
@@ -108,13 +113,25 @@ export async function polishSentences(
   ask: (prompt: string) => Promise<string | null>,
   context = '',
 ): Promise<RealityPolishResult> {
+  return replaceEachSentence(text, sentences, async (body) => acceptRealityRepair(body, await ask(repairRealityPrompt(body, context))));
+}
+
+/**
+ * 逐句替换：rewrite 拿到这一句的正文（句首的标签不给它），返回改后的正文；返回 null 就保留原句。
+ * 带标签的句子保留标签，别的句子一字不动。现实修复和年限修复共用。
+ */
+export async function replaceEachSentence(
+  text: string,
+  sentences: string[],
+  rewrite: (body: string) => Promise<string | null>,
+): Promise<RealityPolishResult> {
   let out = text;
   let tried = 0;
   let accepted = 0;
   for (const sentence of sentences) {
     tried++;
-    const { label } = splitLabel(sentence);
-    const next = acceptRealityRepair(sentence, await ask(repairRealityPrompt(sentence, context)));
+    const { label, body } = splitLabel(sentence);
+    const next = await rewrite(body);
     if (!next) continue;
     out = out.split(sentence).join(label + next);
     accepted++;
