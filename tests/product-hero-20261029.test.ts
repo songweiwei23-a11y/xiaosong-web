@@ -38,6 +38,52 @@ describe('主角是卖的东西', () => {
   });
 });
 
+/** lib 下所有 .ts（不含测试） */
+function libFiles(dir = 'lib'): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = `${dir}/${e.name}`;
+    return e.isDirectory() ? libFiles(p) : p.endsWith('.ts') ? [p] : [];
+  });
+}
+
+describe('全链路扫描（2026-10-29 代码层体检）', () => {
+  const files = libFiles().filter((f) => f !== 'lib/sharp-rules.ts');
+  const usesReality = files.filter((f) => /\$\{REALITY_RULE\}|push\(REALITY_RULE\)/.test(fs.readFileSync(f, 'utf8')));
+
+  it('扫描本身没有空转：至少扫到 9 个用现实规则的创作板块', () => {
+    expect(usesReality.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it('凡是用了现实规则的提示词，都同时带上「主角是卖的东西」，次数一样多', () => {
+    for (const f of usesReality) {
+      const src = fs.readFileSync(f, 'utf8');
+      const reality = (src.match(/\$\{REALITY_RULE\}|push\(REALITY_RULE\)/g) ?? []).length;
+      const hero = (src.match(/\$\{PRODUCT_HERO_RULE\}|push\(PRODUCT_HERO_RULE\)/g) ?? []).length;
+      expect(hero, f).toBeGreaterThanOrEqual(reality);
+    }
+  });
+
+  it('三种目的的共用定义：变现型写明好结果来自卖的东西，铁律里有「主角是卖的东西」', () => {
+    const src = fs.readFileSync('lib/content-roles.ts', 'utf8');
+    expect(src).toContain('看得见的好结果必须是这家卖的东西（或手艺）带来的');
+    expect(src).toContain('**主角是卖的东西**');
+    expect(src).toContain('前后对比换的是这家卖的东西');
+  });
+
+  it('脚本不再拿「一个具体的做法」当反差变量的示范', () => {
+    expect(fs.readFileSync('lib/script-design.ts', 'utf8')).not.toContain('比如一个具体的做法');
+  });
+
+  it('结尾动作：没有「需要时才设、不强加」这类说法；例外只有「用户明确说不要」', () => {
+    const SOFT = /不强加(关注|私信|到店|营销|CTA)|用户需要互动或转化时才|确需互动或转化时才|仅在用户需要时参考|仅在用户目的需要互动或转化时/;
+    const offenders = files.filter((f) => SOFT.test(fs.readFileSync(f, 'utf8')));
+    expect(offenders).toEqual([]);
+    for (const f of ['lib/boards/script-query.ts', 'lib/script-design.ts', 'lib/enhance-prompt.ts']) {
+      expect(fs.readFileSync(f, 'utf8'), f).toContain('用户明确说不要');
+    }
+  });
+});
+
 describe('选题标题：不用改的就不改', () => {
   const TEXT = '## 选题1：当年最火的大码外套，今天还能穿吗\n正文\n## 选题2：带娃出门的妈妈们，换季这件外套到底该怎么选才不后悔\n正文\n## 选题3：X元的裤子，穿出门有面子吗\n正文';
 

@@ -21,7 +21,7 @@
  */
 
 import { manifestOf, boardsUsingBriefField, BOARD_LABEL, type Board } from './context-manifest';
-import { REAL_PEOPLE_RULE, REALITY_RULE } from './sharp-rules';
+import { REAL_PEOPLE_RULE, REALITY_RULE, PRODUCT_HERO_RULE } from './sharp-rules';
 
 /** 简报的字段定义。顺序即生成和展示的顺序 */
 export interface BriefField {
@@ -188,6 +188,7 @@ ${fields}
 - **忠于定位**：结论必须来自上面那份定位，不要自己另起一套（事实性的年限、经历以账号档案为准）
 - ${REAL_PEOPLE_RULE}
 - ${REALITY_RULE}
+- ${PRODUCT_HERO_RULE}
 - **不编事实**：档案和定位里没有的数字、客单价、客群比例、案例、客户故事、效果承诺，一律不写；需要它的地方写【待确认】并注明缺哪一项
 - **全篇控制在 1500 字以内**：这是要塞进每一次生成的，长了就是给所有板块加负担
 - 不要写前言、不要复述定位、不要解释你在做什么，直接从"### 1. 一句话定位"开始`;

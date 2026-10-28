@@ -93,7 +93,7 @@ const AUDIENCE_CHANGE = `### 先立标尺：内容要让观众发生"变化"
  * 门店勘察要点、竞品研究方法。其中最关键的一条是
  * 「真正的差异化在哪里——顾客感受到的，不是老板以为的」。
  */
-import { REALITY_RULE } from './sharp-rules';
+import { REALITY_RULE, PRODUCT_HERO_RULE } from './sharp-rules';
 
 const AGENCY_STANCE = `## 🎯 你的立场：不是写报告，是要接手这个号
 
@@ -124,7 +124,9 @@ const AGENCY_STANCE = `## 🎯 你的立场：不是写报告，是要接手这�
 
 **人和事只写真的**：人设里要让人记住的那个人、那件事，只用档案写的或前采里说的，不替老板编性格、经历、顾客原话。没有的，写「待确认：缺哪一条」，并给出先要问的那个具体事件。
 
-**生活逻辑**：${REALITY_RULE}`;
+**生活逻辑**：${REALITY_RULE}
+
+**主角是卖的东西**：${PRODUCT_HERO_RULE}`;
 
 /**
  * 行业锚点。取自《实体店通用选题创作SOP手册》的 12 大类型和八大人群词根。

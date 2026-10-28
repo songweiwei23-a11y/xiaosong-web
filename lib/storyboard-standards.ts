@@ -335,7 +335,7 @@ export function spokenChars(line: string): number {
   return t.replace(/[\s\p{P}\p{S}]/gu, '').length;
 }
 
-import { REALITY_RULE } from './sharp-rules';
+import { REALITY_RULE, PRODUCT_HERO_RULE } from './sharp-rules';
 
 export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   const script = p.scriptContent || '';
@@ -457,6 +457,7 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   }
   parts.push('');
   parts.push(REALITY_RULE);
+  parts.push(PRODUCT_HERO_RULE);
   parts.push('每一栏的要求：');
   parts.push('- **景别**：中文 + emoji（远景📷 / 全景🎥 / 中景📹 / 近景📸 / 特写🔍）');
   parts.push('- **运镜**：固定 / 推镜 / 拉镜 / 摇镜 / 移镜 / 跟随');

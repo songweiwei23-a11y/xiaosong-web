@@ -4,7 +4,7 @@ import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt, industryKeysOf, e
 import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
 import { rolesGuide, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, mixToCounts, type ResolvedMix } from '@/lib/content-mix';
-import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE, BIG_OPENING_RULE } from '@/lib/sharp-rules';
+import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE, BIG_OPENING_RULE, PRODUCT_HERO_RULE } from '@/lib/sharp-rules';
 import { assignTopicSlots, audiencePool, roleSequence, topicSlotsBlock } from '@/lib/topic-slots';
 import { GROWTH_TACTICS } from '@/lib/growth-tactics';
 import { taboosPromptBlock } from '@/lib/taboos';
@@ -518,7 +518,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       query += sourced ? `- 💡 新角度在带来的内容范围里找，不另外去追热点、时事\n` : `- 💡 结合当前热点、时事、流行文化\n`;
       query += `- 🔥 创造记忆点，让人眼前一亮\n\n`;
       // 一针见血：标题有具体的东西和一个反差，每条只押一个看点，人和事只写真的
-      query += `【一针见血】\n${BIG_OPENING_RULE}\n${TITLE_CRAFT}\n${ONE_POINT_RULE}\n${REAL_PEOPLE_RULE}\n${REALITY_RULE}\n\n`;
+      query += `【一针见血】\n${BIG_OPENING_RULE}\n${TITLE_CRAFT}\n${ONE_POINT_RULE}\n${REAL_PEOPLE_RULE}\n${REALITY_RULE}\n${PRODUCT_HERO_RULE}\n\n`;
 
       // 槽位分配：代码给每条不同的人群、爆款元素、拍法，模型只负责写（lib/topic-slots）
       if (topicCount > 1) {

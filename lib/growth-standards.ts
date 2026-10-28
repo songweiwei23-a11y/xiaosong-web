@@ -22,7 +22,7 @@ import { THIRTY_DAY_PLAN, DIAGNOSIS_TREE } from './positioning-standards';
 import { roleInferRule, roleOfTactic, rolesGuide } from './content-roles';
 import { ROUTES_GUIDE, tacticsBlockedBy } from './creative-routes';
 import { creativeCraftRules } from './creative-craft';
-import { OPENING_CRAFT, REAL_PEOPLE_RULE, ONE_POINT_RULE, REALITY_RULE } from './sharp-rules';
+import { OPENING_CRAFT, REAL_PEOPLE_RULE, ONE_POINT_RULE, REALITY_RULE, PRODUCT_HERO_RULE } from './sharp-rules';
 
 /** 一计压缩成一行，用于「候选清单」那一段 */
 const brief = (name: string) => {
@@ -259,6 +259,7 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 - ${REAL_PEOPLE_RULE}
 - ${ONE_POINT_RULE}
 - ${REALITY_RULE}
+- ${PRODUCT_HERO_RULE}
 - **每一计都要说"为什么是你能拍的"**，说不出来就别推荐
 - 具体到能开机，不要写"可以尝试…"这类话
 - 不要把 37 计罗列一遍——只讲你选中的那几计
@@ -698,6 +699,7 @@ ${
 
 - ${OPENING_CRAFT}
 - ${REALITY_RULE}
+- ${PRODUCT_HERO_RULE}
 - **开头写成能直接念的口语**，不是文案腔
 - **说话人是出镜人本人**：第一人称对镜头说（「我」「我们」「你」），不写成旁白或新闻播报
 - 必须和这个号的口吻一致（看上面的人设与口吻那一段）
