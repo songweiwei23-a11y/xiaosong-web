@@ -36,7 +36,10 @@ function mockDify(...answers: string[]) {
   const queue = [...answers];
   const calls: any[] = [];
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
-    calls.push(JSON.parse(String(init?.body)));
+    const body = JSON.parse(String(init?.body));
+    // 现实审阅（2026-10-28，lib/reality-repair）是生成稿之后多出的一次调用：回「无」，不占这里的回复，也不算在这里的次数里
+    if (String(body.query).includes('找一种毛病')) return new Response(sse('无'));
+    calls.push(body);
     return new Response(sse(queue.shift() ?? ''));
   }));
   return calls;

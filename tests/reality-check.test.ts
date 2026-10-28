@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildDirectionPrompt } from '@/lib/direction';
 import { REALITY_RULE } from '@/lib/sharp-rules';
 import { acceptRealityRepair, findUnrealisticSentences, isUnrealisticSentence, polishReality, repairRealityPrompt, splitLabel } from '@/lib/reality-check';
+import { viralElementPrompt } from '@/lib/viral-elements';
 
 describe('识别不符合现实的说法', () => {
   it('用户举的例子都要抓到', () => {
@@ -10,6 +11,22 @@ describe('识别不符合现实的说法', () => {
     expect(isUnrealisticSentence('同一件衬衫，换个塞法就是两种身材')).toBe(true);
     expect(isUnrealisticSentence('一件白 T 穿出 5 种风格')).toBe(true);
     expect(isUnrealisticSentence('这条裤子穿上显高 10 厘米')).toBe(true);
+  });
+  it('小细节撑不起「有多牛」：穿法、动作有多牛要抓到；整套穿搭有多牛不误伤', () => {
+    expect(isUnrealisticSentence('当年最火的大码女装穿法有多牛')).toBe(true);
+    expect(isUnrealisticSentence('这个系扣子的动作有多厉害')).toBe(true);
+    expect(isUnrealisticSentence('当年最火的穿搭有多牛')).toBe(false);
+    expect(isUnrealisticSentence('当年最火的大码外套，穿搭有多牛，我们拆开看')).toBe(false);
+  });
+  it('一次现场的反应不推成普遍的道理：一位客户说好，就说明所有人都要……要抓到；只记录这一次不误伤', () => {
+    expect(isUnrealisticSentence('一位客户说舒服，就说明挑沙发所有人都要试靠垫')).toBe(true);
+    expect(isUnrealisticSentence('这一次试坐，客户说比刚才舒服，我们只记录这一次的反应')).toBe(false);
+    expect(isUnrealisticSentence('一位客户说舒服，这一次的情况如实记下')).toBe(false);
+  });
+  it('选题的爆款元素提示词要求：句式里的 X 是有分量的东西，穿法只能落在衣服上', () => {
+    const prompt = viralElementPrompt(['celebrity', 'nostalgia']);
+    expect(prompt).toContain('句式里的 X 要是本身有分量的东西');
+    expect(prompt).toContain('不能只是一个做法、技巧、动作或细节');
   });
   it('正常的搭配、穿法说法不误伤', () => {
     expect(isUnrealisticSentence('这件外套收腰，搭配高腰裤，显腿长')).toBe(false);
@@ -45,7 +62,7 @@ describe('采用标准：改写后要符合现实，过不了就保留原句', (
   it('改写提示词只改这一句，并写明只能改搭配、穿法和场景', () => {
     const p = repairRealityPrompt('- **讲法**：这件外套收腰就能换不同风格', '');
     expect(p).toContain('原句：这件外套收腰就能换不同风格');
-    expect(p).toContain('一件衣服改不了版型、身材比例和面料');
+    expect(p).toContain('一样东西的本质改不了');
   });
 });
 

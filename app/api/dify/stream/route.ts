@@ -50,6 +50,7 @@ const PROFILE_OPTIONAL_TASKS = new Set(['知识库查询', '自由对话', '前�
 import { reconcileTitleCounts, hasObviousCutoff } from '@/lib/result-reconciliation';
 import { unsupportedFacts } from '@/lib/quality-checks';
 import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
+import { needsRealityRepair, realityRepairLimited, repairReality } from '@/lib/reality-repair';
 import { cleanRewriteOutput } from '@/lib/canvas';
 import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
 
@@ -619,6 +620,21 @@ export async function POST(req: NextRequest) {
               console.log('[evidence] 占位', body.taskType, '句数', held.held);
               fullResponse = held.text;
             }
+          }
+          /*
+           * 现实修复（2026-10-28，lib/reality-repair）：放在事实修正之后，改的是交付前的最终稿。
+           * 一个小变量推大结论、一次反应推成普遍道理这类说法，只让模型改写那一句，别的一字不动；
+           * 先由正则和模型审阅找出句子，只有真的要改时才计额度，改完不合格就保留原句。
+           */
+          if (outcome.kind === 'done' && needsRealityRepair(body.taskType) && fullResponse.trim()) {
+            const reality = await repairReality(fullResponse, async (prompt) => {
+              const f = await askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+              if (!f || !f.ok) return null;
+              usageMetadata = combinedReviewUsage(usageMetadata, f.completion?.usage ?? {}, 'reality_repair_steps');
+              return f.text;
+            }, `${body.taskType}；用户原意：${(creationSettings.userIntent ?? '').slice(0, 200)}`, () => !realityRepairLimited(userId));
+            console.log('[reality-repair]', body.taskType, '尝试', reality.tried, '采用', reality.accepted);
+            if (reality.accepted) fullResponse = reality.text;
           }
           // 拆解的变现方向是 JSON：按行的整理改坏了就换回模型原文里的结构块（2026-10-15）
           if (outcome.kind === 'done' && body.taskType === '拆解爆款' && fullResponse.trim()) {

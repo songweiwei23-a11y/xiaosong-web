@@ -79,7 +79,10 @@ function mockDify(...responses: Response[]) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
-      difyCalls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null });
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      // 现实审阅（2026-10-28，lib/reality-repair）是生成稿之后多出的一次调用：回「无」，不占这里的回复，也不算在这里的次数里
+      if (String(body?.query ?? '').includes('找一种毛病')) return difyStream([msg('无'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]);
+      difyCalls.push({ url, body });
       return queue.shift()!;
     })
   );

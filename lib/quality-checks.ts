@@ -16,14 +16,16 @@ import { readPersonaFacts } from './persona-facts';
 import { checkMix, type ResolvedMix } from './content-mix';
 import { seasonMisstatements } from './time-anchor';
 import { topicTagIssues } from './output-tags';
+import { findUnrealisticSentences } from './reality-check';
 
-export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'generation' | 'facts' | 'flaky' | 'error';
+export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'reality' | 'generation' | 'facts' | 'flaky' | 'error';
 
 export const QUALITY_LABELS: Record<QualityKind, string> = {
   taboo: '踩禁忌',
   excluded: '用了排除的信息',
   mix: '配比对不上',
   years: '年限和人设事实卡不符',
+  reality: '写了不符合现实的说法（一个小变量推出大结论、一次反应推成普遍道理、太离谱或太简单）',
   generation: '生成未完成或内容缺失',
   facts: '关键事实没有出处（价格、百分比、顾客见证、经营承诺、资历、数据、地点）',
   // 只在回归里出现：第一次没过、重跑过了。说明模型输出有波动，不算失败
@@ -308,6 +310,11 @@ export function unsupportedFacts(raw: string, knownText: string, opts: FactCheck
     if (HYPOTHETICAL_BEFORE.test(output.slice(Math.max(0, (m.index ?? 0) - 8), m.index ?? 0))) continue;
     // 占位模板：「顾客见证「换成你接待的真实客户：…」」是要用户自己填的，不是编出来的话（2026-10-11 复测）
     if (/换成|待确认|【待/.test(output.slice(Math.max(0, (m.index ?? 0) - 8), (m.index ?? 0) + m[0].length + 4))) continue;
+    // 否定的说明：「顾客见证，不代替顾客说感受」「不替顾客说话」是在提醒别编，不是编出来的话（2026-10-28 大码选题误报）
+    const at = m.index ?? 0;
+    const lineStart = output.lastIndexOf('\n', at - 1) + 1;
+    const lineEnd = output.indexOf('\n', at) === -1 ? output.length : output.indexOf('\n', at);
+    if (/不代替|不替|不能替|不编|别替|别编|不写/.test(output.slice(lineStart, lineEnd))) continue;
     out.push(`顾客见证「${near(m.index ?? 0, m[0].length + 6)}」资料里没有这段经历`);
   }
   for (const m of output.matchAll(ROUTINE_RE)) {
@@ -426,12 +433,15 @@ export function yearConflicts(output: string, persona: unknown): string[] {
   const localPlace = (f.yearsLocal ?? '').match(/(?:来|在)([\p{L}]{2,6}?)(?=半|\d|[一二两三四五六七八九十]|定居|居住|扎根)/u)?.[1];
   const dimension = (before: string, after: string): Dimension | null => {
     if (/店龄|开店|开了|开[\p{L}\d]{0,8}店|卖了|经营.{0,8}(?:店|门店)|(?:店|门店).{0,5}(?:开|经营)/u.test(before) || /^\s*(?:的)?老店/.test(after)) return 'store';
-    if (/本地|当地|扎根|定居|居住|落户|搬来|住了|待了|呆了|来[^，。！？；\n]{1,8}$/.test(before)) return 'local';
+    // 「来自成都」说的是籍贯，不是来本地居住（2026-10-28：「王来自成都、做川菜 9 年」被误判成居住年限）
+    if (/本地|当地|扎根|定居|居住|落户|搬来|住了|待了|呆了|来(?!自)[^，。！？；\n]{1,8}$/.test(before)) return 'local';
     if (localPlace && before.includes(localPlace) && /在/.test(before) && !/经验|从业|这行|厨师|做菜|川菜|家具行业/.test(before)) return 'local';
     if (/从业|入行|这行|厨师|做菜|川菜|粤菜|手艺|经验|干了|做了|做.{0,6}(?:菜|餐饮|美甲|家具)/.test(before) || /^\s*(?:的)?(?:经验|手艺)/.test(after)) return 'trade';
     return null;
   };
-  const allowed: Record<Dimension, Set<number>> = { trade: numbers(f.yearsInTrade ?? ''), local: numbers(f.yearsLocal ?? ''), store: new Set() };
+  // 「在南乐开店 3 年」这种居住年限字段里也写了店龄：店龄要认它（2026-10-28：大码选题把开店 3 年误判成对不上）
+  const storeInLocal = /开店|开了|门店|店龄|开.{0,4}店/.test(f.yearsLocal ?? '');
+  const allowed: Record<Dimension, Set<number>> = { trade: numbers(f.yearsInTrade ?? ''), local: numbers(f.yearsLocal ?? ''), store: storeInLocal ? numbers(f.yearsLocal ?? '') : new Set() };
   // 自由事实里的年数也按语义归类，不能把从业年数借给店龄或居住年限。
   for (const text of [f.story, f.others].filter((x): x is string => !!x)) for (const m of text.matchAll(YEAR_RE)) {
     const at = m.index ?? 0;
@@ -533,6 +543,10 @@ export function runQualityChecks(p: {
   }
   for (const y of yearConflicts(stripSelfCheck(output), profile?.persona_facts)) {
     issues.push({ kind: 'years', detail: `「${y}」和事实卡对不上` });
+  }
+  // 现实检查（2026-10-28）：创作类板块都不许写不符合现实的说法，不分行业。拆解是在分析别人的视频，自由对话是闲聊，不查
+  if (p.taskType && !/拆解|自由对话/.test(p.taskType)) {
+    for (const s of findUnrealisticSentences(output).slice(0, 5)) issues.push({ kind: 'reality', detail: `「${s.slice(0, 60)}」` });
   }
   // 选题的四个标签（lib/output-tags，2026-10-19）：缺了只进看板，不挡交付
   if (p.taskType === '选题策划') {

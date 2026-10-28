@@ -96,8 +96,11 @@ describe('生成由服务端存档', () => {
     const req=new Request('https://local/api/dify/stream',{method:'POST',body:JSON.stringify({taskType:'跨行业二创',query:'二创一个方案',historyInput:{count:1}})}) as NextRequest;
     const stream=await (await POST(req)).text();
     expect(shownAfterStream(stream)).toContain('柜门演示');expect(shownAfterStream(stream)).not.toContain('不需要的方案');
-    expect(askDify).toHaveBeenCalledTimes(1);expect(recordCreationCompletion).toHaveBeenCalledTimes(1);
-    expect(recordCreationCompletion).toHaveBeenLastCalledWith(expect.anything(),expect.objectContaining({usage:expect.objectContaining({total_tokens:20,result_check_steps:expect.anything()})}),'跨行业二创');
+    // 1 次数量校对 + 1 次现实审阅（2026-10-28：生成稿之后每篇创作稿都过一次审阅）
+    expect(askDify).toHaveBeenCalledTimes(2);expect(recordCreationCompletion).toHaveBeenCalledTimes(1);
+    // 用量要把两次真实调用都算上：数量校对 20 + 现实审阅 20（审阅也花了钱，不能漏记）
+    // 用量按步骤嵌套记录（已有的记账方式，后面每个步骤都这样）：审阅这一步记在 reality_repair_steps 下
+    expect(recordCreationCompletion).toHaveBeenLastCalledWith(expect.anything(),expect.objectContaining({usage:expect.objectContaining({total_tokens:40,reality_repair_steps:expect.anything()})}),'跨行业二创');
   });
   it('手动粘贴审稿只带档案设置也隔离旧会话，已包含的设置不重复注入', async () => {
     vi.mocked(getDifyConversationId).mockClear(); vi.mocked(saveDifyConversationId).mockClear();

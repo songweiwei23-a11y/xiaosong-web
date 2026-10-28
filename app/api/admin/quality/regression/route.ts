@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth'
-import { runRegression } from '@/lib/quality-regression'
+import { productionRepair, runRegression } from '@/lib/quality-regression'
 import { getRunState, startRun } from '@/lib/quality-regression-run'
 import { manualRunBlock } from '@/lib/quality-run-guard'
 import { diffRuns, groupRuns, type QualityRow } from '@/lib/quality-checks'
@@ -40,7 +40,8 @@ async function alertNewFailures(db: ReturnType<typeof getServiceSupabase>) {
 
 /** 跑一遍回归并把结果写进 quality_checks。夜间和手动分开记（source 不同），看板上分开看 */
 async function runAndStore(source: 'nightly' | 'manual') {
-  const outcomes = await runRegression()
+  // 和线上一样：交付前先过生成后的现实修复，体检的是交付的稿子
+  const outcomes = await runRegression(undefined, undefined, productionRepair())
   const db = getServiceSupabase()
   const { error } = await db.from('quality_checks').insert(outcomes.map((o) => ({
     task_type: o.task,

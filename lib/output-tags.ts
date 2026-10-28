@@ -25,7 +25,23 @@ export function topicTagBlock(): string {
   ].join('\n');
 }
 
-const TAG_RE = (tag: string) => new RegExp(`【${tag}】|(^|\\n)\\s*(\\*\\*)?${tag}(\\*\\*)?\\s*[：:]`);
+/**
+ * 每个标签认哪几种写法。2026-10-28：选题提示词现在写的是「0️⃣ 视频目的」「5️⃣ 结尾行动指令」「核心内容方向」「7️⃣ 成交理由」，
+ * 原来只认「目的：」「结尾动作：」这种写法，线上每批都被误报成缺标签。这里按现行的写法认。
+ */
+const TAG_ALIASES: Record<(typeof TOPIC_TAGS)[number], string[]> = {
+  方向: ['方向', '核心内容方向', '系列'],
+  目的: ['目的', '视频目的'],
+  结尾动作: ['结尾动作', '结尾行动指令'],
+  成交步骤: ['成交步骤', '成交理由', '转化路径'],
+};
+
+/** 标签出现在一行的行首（前面可以有序号、表情、加粗），或者写成【标签】 */
+const hasTag = (block: string, tag: (typeof TOPIC_TAGS)[number]): boolean =>
+  TAG_ALIASES[tag].some((alias) => new RegExp(`【${alias}】|(^|\\n)[^\\n]{0,8}${alias}`).test(block));
+
+/** 成交步骤只有变现型的选题要写（流量、人设的选题没有成交理由，不算缺） */
+const needsTag = (block: string, tag: (typeof TOPIC_TAGS)[number]): boolean => tag !== '成交步骤' || block.includes('变现型');
 
 /**
  * 选题输出里缺标签的条目。按「## 选题N」分段，每段都要有四个标签。
@@ -35,7 +51,7 @@ export function topicTagIssues(output: string): string[] {
   const blocks = output.split(/^\s*#{1,4}\s*选题\s*\d+[^\n]*$/m).slice(1);
   const issues: string[] = [];
   blocks.forEach((block, i) => {
-    const missing = TOPIC_TAGS.filter((tag) => !TAG_RE(tag).test(block));
+    const missing = TOPIC_TAGS.filter((tag) => needsTag(block, tag) && !hasTag(block, tag));
     if (missing.length) issues.push(`第 ${i + 1} 条选题缺少标签「${missing.join('、')}」`);
   });
   return issues;

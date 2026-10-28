@@ -4,6 +4,7 @@ import { AI_SCRIPT_TARGET_TEXT, scriptLengthRule } from './ai-recommend';
 import { AI_DURATION } from './review-standards';
 import { outputRulesBlock } from './output-rules';
 import { creativeCraftRules } from './creative-craft';
+import { REALITY_RULE } from './sharp-rules';
 
 /** Build the automatic path without first assigning a teaching/ad formula or role. */
 export function buildAdaptiveScriptPrompt(p: {
@@ -35,7 +36,8 @@ ${p.craftFocus ? `## 本次表达重点\n${p.craftFocus}` : ''}
 - 先落实用户想拍的那条内容，不用“创新”另起节目。主问题要具体，段落之间有信息递进，关键细节来自材料或标为待核实。
 - 若是比较观察，说明比较谁、哪两个阶段、每个对象使用的共同问题，以及如何保留不同回答；没有数据时不预设变化或原因。
 - 若是尚未完成的采访，写主持人主问、至少两条可根据回答继续追问的问题、可拍证据、记录和剪辑顺序。受访者未知回答只写“按现场真实回答”，不编对白、采访结论、人数、经营变化或情绪。
-- 效果最佳优先：开头用一个清楚而有吸引力的切口，让人想看下去；中段要有信息递进或情绪起伏，结尾收在最精彩的一点上，不是流水账。不为凑波点、金句硬加反转，也不为补金句、波点、CTA改变原意。用户明确需要互动或转化时再设计一个相应动作。
+- 效果最佳优先：开头用一个清楚而有吸引力的切口，让人想看下去；中段要有信息递进或情绪起伏，结尾收在最精彩的一点上，不是流水账。起伏和反差只能来自材料里真实存在的变量（比如一个具体的做法、一句真实的回应），不能把一个小改动放大成整个人或整件事的转变。不为凑波点、金句硬加反转，也不为补金句、波点、CTA改变原意。用户明确需要互动或转化时再设计一个相应动作。
+- ${REALITY_RULE}
 - 数值标准（尺寸、坐深、厘米、区间、比例、时长标准）只能用原始材料或档案里有的；没有依据就写成【待测量】或改成问题，不许用「行业常识」「通用标准」「一般来说」来写具体数字。
 - 已确定的开头与用户锁定原句逐字保留；没有用户资料支持的事件不能写成“我已经问了/走访了”。不要预写老板回答。
 ## 输出格式（保留这些标题，便于复制和继续创作）

@@ -19,6 +19,10 @@ export const UNREALISTIC_PATTERNS: RegExp[] = [
   /一(件|套|个|种).{0,10}(穿出|变出|做出|演出)\s*(\d+|几|两|三|不同)\s*(种|个)(风格|人|性格|身份|气质|效果)/,
   // 判若两人、换了个人：一个变化不可能让人判若两人
   /判若两人|换了个人|变成另一个人|完全换了一个人/,
+  // 一次现场的反应推成普遍的道理：一位客户说好，不等于所有人都会；结论的范围要和证据一样大
+  /(一位|一个|一次|这位|这个|那位)[^。！？\n]{0,10}(说|觉得|反馈|反应)[^。！？\n]{0,12}(就说明|就证明|说明|证明)[^。！？\n]{0,8}(所有|每个人|每一个|任何|都要|都得|都该)/,
+  // 一个穿法、技巧、动作或细节撑不起「有多牛」这种结论：牛不牛，要看东西本身（当年最火的穿搭有多牛可以，穿法有多牛不行）
+  /(穿法|搭法|用法|技巧|做法|手法|窍门|小技巧|动作|细节)[^，。？！\n]{0,4}有多(牛|厉害|神|火|贵)/,
   // 几天就能见效的保证
   /(\d+|几)\s*(天|周|个月)(就能|就会|保证).{0,8}(涨粉|成交|出单|变瘦|月入|翻倍|破万|爆)/,
   /保证.{0,6}(涨粉|成交|出单|爆|月入|变瘦|涨粉丝|赚钱)/,
@@ -58,7 +62,7 @@ export function findUnrealisticSentences(text: string): string[] {
 /** 只让模型改写这一句；只输出改后的一句话，不要解释 */
 export function repairRealityPrompt(sentence: string, context: string): string {
   const { body } = splitLabel(sentence);
-  return `只改写下面这一句，去掉不符合现实的说法。一件衣服改不了版型、身材比例和面料，只能改搭配、穿法和场景。
+  return `只改写下面这一句，去掉不符合现实的说法。一样东西的本质改不了（服装的版型面料、食材的产地、家具的材质、人的经历），只能改它的做法、搭配、场景和说法。
 保留原来讲的事和画面，改成镜头里能拍出来的具体变化。只输出改后的这一句，一行，不要解释、不要序号。
 
 原句：${body}
@@ -91,10 +95,23 @@ export async function polishReality(
   ask: (prompt: string) => Promise<string | null>,
   context = '',
 ): Promise<RealityPolishResult> {
+  return polishSentences(text, findUnrealisticSentences(text), ask, context);
+}
+
+/**
+ * 只改指定的这几句（调用方已经判定它们有问题，可以是正则抓的，也可以是模型审出来的）。
+ * 每句单独改，改完只替换这一句，别的句子一字不动。
+ */
+export async function polishSentences(
+  text: string,
+  sentences: string[],
+  ask: (prompt: string) => Promise<string | null>,
+  context = '',
+): Promise<RealityPolishResult> {
   let out = text;
   let tried = 0;
   let accepted = 0;
-  for (const sentence of findUnrealisticSentences(text)) {
+  for (const sentence of sentences) {
     tried++;
     const { label } = splitLabel(sentence);
     const next = acceptRealityRepair(sentence, await ask(repairRealityPrompt(sentence, context)));

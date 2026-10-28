@@ -8,11 +8,18 @@
  */
 import { buildDirectionPrompt } from './direction';
 import { buildProfileSummary } from './profile-summary';
-import { buildContextBlock, type CreatorProfile } from './creator-context';
+import { buildContextBlock, type CreatorContext, type CreatorProfile } from './creator-context';
 import { resolveMix, mixPromptBlock } from './content-mix';
 import { buildReviewPrompt } from './review-standards';
 import { buildRewritePrompt, cleanRewriteOutput } from './canvas';
-import { runQualityChecks, reviewedQualityOutput, isBlockingIssue, QUALITY_LABELS, type QualityResult } from './quality-checks';
+import { runQualityChecks, reviewedQualityOutput, isBlockingIssue, QUALITY_LABELS, unsupportedFacts, type QualityResult } from './quality-checks';
+import { FACT_AUTO_FIX_TASKS, buildFactFixPrompt, fixTooBig } from './fact-fix';
+import { holdUnsupported } from './evidence-guard';
+import { seasonMisstatements } from './time-anchor';
+import { buildTopicBoardQuery } from './boards/topic-query';
+import { buildAdaptiveScriptPrompt } from './script-design';
+import { needsRealityRepair, repairReality } from './reality-repair';
+import { sanitizeOutput, stripInternalLeaks } from './output-guard';
 
 /**
  * 小节标题：「## 开篇」「## 开篇（0-5秒）」「## 开篇：0-5秒」都算。
@@ -67,7 +74,6 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
         profileSummary: buildProfileSummary(profile as unknown as Record<string, unknown>), contextBlock: buildContextBlock(ctx, 'direction'),
         mixBlock: mixPromptBlock(mix, { count: 20, unit: '个' }),
       }),
-      mixCount: 20,
     },
     {
       task: '回归:审稿优化',
@@ -139,7 +145,60 @@ export function regressionCases(profile: CreatorProfile = REGRESSION_PROFILE): R
       query: `${buildContextBlock(ctx, 'freeChat')}\n我想知道我们店开了几年、主厨做了几年川菜，你直接告诉我，再给我一个做短视频的小建议。`,
       checkAs: '自由对话',
     },
+    // 2026-10-28：选题、脚本的主路径（和页面、助理用的提示词一样，不是手写的简化版）。不分行业守同一套现实逻辑：
+    //   服装、家具、餐饮各一份档案；脚本用「小变量要推出大反转」的要求去试，看会不会把一个细节放大成结论
+    topicCase('大码女装', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }), '抖音'),
+    topicCase('家具', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }), '视频号'),
+    scriptCase('大码穿法反转', industryProfile('大码女装', '抖音', '时尚穿搭', ['大码外套', '大码裤子'], { yearsInTrade: '做大码女装 6 年', yearsLocal: '在南乐开店 3 年', mainProducts: '大码外套、大码裤子' }),
+      '同一件大码外套，只改扣子和袖口，穿出来的人气质完全不同',
+      '学生穿大码外套来店里试。店主只把外套的扣子解开一颗、袖子卷到手肘。学生照镜子说：「原来差这一点。」',
+      '要有戏剧冲突和反转，结尾要让人眼前一亮，看完想转发。'),
+    scriptCase('家具反转', industryProfile('家具', '视频号', '家居装修', ['沙发', '床'], { yearsInTrade: '家具从业 12 年', yearsLocal: '来苏州 3 年', mainProducts: '沙发、床，不承接装修' }),
+      '沙发怎么挑才不踩坑：换一个靠垫，客厅就像换了一套',
+      '客户来店选沙发，店主把靠垫换成另一款。客户坐下说：「比刚才舒服多了。」',
+      '要有戏剧冲突和反转，结尾要让人眼前一亮，看完想转发。'),
   ];
+}
+
+/** 按一份行业档案造回归档案（沿用回归档案的其余字段，只换行业、事实和经营的东西） */
+function industryProfile(name: string, platform: string, track: string, products: string[], facts: Record<string, string>): CreatorProfile {
+  return { ...REGRESSION_PROFILE, profile_name: `回归测试·${name}`, account_platform: [platform], account_track: [track], product_category: products, persona_facts: facts, taboo_settings: {} } as CreatorProfile;
+}
+
+/** 选题主路径：和选题页用的 buildTopicBoardQuery 同一份提示词，按档案的配比出 6 条 */
+function topicCase(name: string, profile: CreatorProfile, platform: string): RegressionCase {
+  const ctx = { profile, positioning: null, dealReasons: [] } as unknown as CreatorContext;
+  return {
+    task: `回归:选题主路径·${name}`,
+    profile,
+    mixCount: 6,
+    checkAs: '选题策划',
+    requiredSections: ['选题1', '选题2', '选题3'],
+    query: buildTopicBoardQuery({
+      creatorContext: ctx, selectedProfile: profile, positioningForCtx: null,
+      topicCount: 6, topicType: '选题（流量型、人设型、变现型按配比搭配）', topicRole: '按配比', mode: 'quick',
+      sourceReference: '', sourceFrom: '', incomingSetup: null, keyword1: '', keyword2: '', keyword3: '',
+      personalRequirement: '', currentSettings: {}, accountStage: '', fansLevel: '', avgViewsInput: '',
+      selectedPlatforms: [platform], selectedTracks: [], selectedContentTypes: [], selectedStyles: [],
+      positioningExtra: '', selectedElements: ['nostalgia', 'worst', 'cost'], dealReasonLabels: [], benchmarkAccounts: '', viralCases: '',
+      difficulty: '中等创意', withHook: true, tactic: '', route: '两种都出', routeExplicit: false, resolvedMix: resolveMix(profile), quickTopics: false,
+    }).query,
+  };
+}
+
+/** 脚本主路径：和脚本页用的 buildAdaptiveScriptPrompt 同一份提示词 */
+function scriptCase(name: string, profile: CreatorProfile, topic: string, source: string, requirements: string): RegressionCase {
+  const ctx = { profile, positioning: null, dealReasons: [] };
+  return {
+    task: `回归:脚本主路径·${name}`,
+    profile,
+    checkAs: '脚本生成',
+    source,
+    query: buildAdaptiveScriptPrompt({
+      topic, platform: profile.account_platform?.[0] ?? '抖音', duration: '30秒',
+      context: buildContextBlock(ctx, 'script'), source, requirements, settings: {},
+    }),
+  };
 }
 
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1';
@@ -196,9 +255,11 @@ export interface RegressionOutcome { task: string; result: QualityResult; sample
 const SAMPLE_CHARS = 1200;
 
 /** 跑一个用例：问一次模型，再体检。没跑成（Dify 出错、超时）记成 error，不当成质量问题 */
-export async function runCase(c: RegressionCase, ask: (q: string) => Promise<string>): Promise<RegressionOutcome> {
+export async function runCase(c: RegressionCase, ask: (q: string) => Promise<string>, repair?: RegressionRepair): Promise<RegressionOutcome> {
   try {
-    const answer = await ask(c.query);
+    const raw = await ask(c.query);
+    // 有修复步骤时，体检的是修复后的稿子（和线上交付给编导的一样）
+    const answer = repair ? await repair(raw, c) : raw;
     const checked = c.pick ? c.pick(answer) : answer;
     const profile = c.profile ?? REGRESSION_PROFILE;
     const mix = c.mixCount ? { resolved: resolveMix(profile), count: c.mixCount } : null;
@@ -226,15 +287,49 @@ export async function runCase(c: RegressionCase, ask: (q: string) => Promise<str
  * 依次跑完所有用例（串行：别同时压 Dify），每个都体检。
  * 第一次没过的，重跑一次：模型输出有波动，单次失败不足为凭。重跑过了记 flaky（只提醒，不算失败），重跑还不过才算失败。
  */
-export async function runRegression(ask: (q: string) => Promise<string> = askDify, cases: RegressionCase[] = regressionCases()): Promise<RegressionOutcome[]> {
+/** 生成后的修复（和线上一样）：拿到模型的原稿，返回交付的稿子 */
+export type RegressionRepair = (text: string, c: RegressionCase) => Promise<string>;
+
+/**
+ * 线上同一套修复（app/api/dify/stream 里交付前的步骤，顺序也一样）：
+ * 1. 整理：去内部痕迹、广告法用语、数字规则（审稿只去痕迹，原稿用语不动）
+ * 2. 事实：没有出处的价格、顾客见证等，按资料修正一次；修不掉的换成【待确认】（lib/fact-fix、lib/evidence-guard）
+ * 3. 现实：一个小变量推大结论这类说法，只改那一句（lib/reality-repair）
+ */
+export function productionRepair(): RegressionRepair {
+  return async (text, c) => {
+    const task = c.checkAs ?? c.task.replace(/^回归:/, '');
+    const tidy = (t: string) => (task === '审稿优化' ? stripInternalLeaks(t, task) : sanitizeOutput(t, task));
+    let out = tidy(text);
+
+    if (FACT_AUTO_FIX_TASKS.has(task)) {
+      const known = `${JSON.stringify(c.profile ?? REGRESSION_PROFILE)}\n${c.source ?? ''}\n${c.query}`;
+      const factIssues = (t: string) => [...unsupportedFacts(t, known), ...seasonMisstatements(t, Date.now(), known)];
+      const found = factIssues(out);
+      if (found.length) {
+        const fixed = await askDify(buildFactFixPrompt({ text: out, issues: found, context: c.query })).catch(() => null);
+        const fixedText = fixed ? tidy(cleanRewriteOutput(fixed)) : '';
+        // 只采用真的少了问题、又没有借机重写全文的版本
+        if (fixedText && !fixTooBig(out, fixedText, found) && factIssues(fixedText).length < found.length) out = fixedText;
+      }
+      out = holdUnsupported(out, factIssues).text;
+    }
+
+    if (!needsRealityRepair(task)) return out;
+    const r = await repairReality(out, (prompt) => askDify(prompt).catch(() => null), task);
+    return r.text;
+  };
+}
+
+export async function runRegression(ask: (q: string) => Promise<string> = askDify, cases: RegressionCase[] = regressionCases(), repair?: RegressionRepair): Promise<RegressionOutcome[]> {
   const out: RegressionOutcome[] = [];
   for (const c of cases) {
-    const first = await runCase(c, ask);
+    const first = await runCase(c, ask, repair);
     if (first.error || first.result.passed) {
       out.push(first);
       continue;
     }
-    const second = await runCase(c, ask);
+    const second = await runCase(c, ask, repair);
     if (!second.error && second.result.passed) {
       const why = first.result.issues.filter(isBlockingIssue).map((i) => QUALITY_LABELS[i.kind]).slice(0, 3).join('、');
       second.result.issues.push({ kind: 'flaky', detail: `第一次没过（${why}），重跑后通过`, blocking: false });
