@@ -242,7 +242,7 @@ export default function AdminAgentsPage() {
           </div>
         </div>
         <div className="mt-3">
-          <AdminPanelHint>对方要先自己注册账号，然后在这里填它的邮箱开通。开通后它登录就能进 /agent 看自己的客户和分成。</AdminPanelHint>
+          <AdminPanelHint>对方要先自己注册账号，然后在这里填它的邮箱开通。开通后对方登录，点右上角头像菜单里的「代理后台」，就能看到自己的邀请码、客户和分成。</AdminPanelHint>
         </div>
       </Panel>
 

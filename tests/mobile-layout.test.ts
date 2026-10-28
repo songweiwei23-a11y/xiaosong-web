@@ -106,10 +106,11 @@ describe('弹出层：手机上从底部升起、自己能滚', () => {
 });
 
 describe('顶栏与整体高度', () => {
-  it('顶栏：手机上只留图标（邮箱和"退出"两个字在手机上藏起来）', () => {
+  it('顶栏：手机上只留图标（邮箱在手机上藏起来；退出登录收进头像菜单，2026-10-28）', () => {
     const src = readCode('components/auth/UserProfile.tsx');
     expect(src).toMatch(/hidden max-w-\[14rem\] truncate text-foreground sm:inline">\{user\.email\}/);
-    expect(src).toMatch(/<span className="hidden sm:inline">退出<\/span>/);
+    expect(src).toContain('aria-haspopup="menu"');
+    expect(src).toContain('退出登录');
   });
 
   it('后台整体高度用 dvh：手机浏览器的 100vh 会被地址栏挡住一截', () => {

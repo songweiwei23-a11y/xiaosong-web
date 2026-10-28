@@ -132,6 +132,37 @@ describe('管理员接口：每个接口都声明自己要的权限', () => {
   });
 });
 
+describe('代理入口和招募提示（2026-10-28 第二版）', () => {
+  it('头像菜单：「代理后台」只对代理显示，指向工作台里的 /dashboard/agent', () => {
+    const src = read('components/auth/UserProfile.tsx');
+    expect(src).toMatch(/\{agent\?\.isAgent && \(\s*<Link[^>]*href="\/dashboard\/agent"/);
+    expect(src).toContain('href="/dashboard/account"');
+    expect(src).toContain('href="/dashboard/membership"');
+  });
+
+  it('/api/agent/me 只回答是不是代理和显示名，不带任何客户或金额', () => {
+    const src = read('app/api/agent/me/route.ts');
+    expect(src).toContain('await requireAgent()');
+    expect(src).toContain("{ isAgent: true, displayName: agent.displayName }");
+    expect(src).not.toMatch(/agent-data|referrals|commission/);
+  });
+
+  it('招募横幅：查询没出结果、已经是代理、或者关掉过，都不显示；联系方式用全站客服微信；不公开具体比例', () => {
+    const src = read('components/agent/AgentRecruitBanner.tsx');
+    expect(src).toContain('if (!agent || agent.isAgent || dismissed) return null;');
+    expect(src).toContain('SUPPORT_WECHAT');
+    expect(src).not.toMatch(/commission_rate|currentRate|\d+%/);
+    expect(read('app/dashboard/page.tsx')).toContain('<AgentRecruitBanner />');
+  });
+
+  it('代理后台在工作台里，旧地址 /agent 跳到新地址；不再用管理后台的组件', () => {
+    expect(read('app/agent/page.tsx')).toContain('redirect("/dashboard/agent")');
+    const page = read('app/dashboard/agent/page.tsx');
+    expect(page).not.toContain('@/components/admin/kit');
+    for (const api of ['/api/agent/summary', '/api/agent/codes', '/api/agent/customers', '/api/agent/bills']) expect(page).toContain(api);
+  });
+});
+
 describe('接线：中间件、后台导航、迁移登记', () => {
   it('中间件让 /agent 要求登录', () => {
     expect(read('middleware.ts')).toMatch(/SESSION_PATHS\s*=\s*\[[^\]]*'\/agent'/);

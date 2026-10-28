@@ -23,6 +23,7 @@ import { PlanThisWeek } from '@/components/dashboard/PlanThisWeek';
 import { GuideCard } from '@/components/guide/GuideCard';
 import { onProgressChanged } from '@/lib/progress-events';
 import { PendingMetrics } from '@/components/dashboard/PendingMetrics';
+import { AgentRecruitBanner } from '@/components/agent/AgentRecruitBanner';
 import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
@@ -804,6 +805,8 @@ export default function DashboardPage() {
             </section>
           </aside>
         </div>
+        {/* 成为代理人的小提示（2026-10-28）：只对还不是代理的用户显示，可关掉 */}
+        <AgentRecruitBanner />
       </div>
     </div>
   );

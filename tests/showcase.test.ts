@@ -163,7 +163,8 @@ describe('全站数字口径统一', () => {
     // 素材库是存收藏的地方，同上
     // 使用说明（help）是参考资料页，和账户页一样不产出内容
     // 月报（report）是汇总报告，不产出内容
-    const NON_CREATIVE = new Set(['membership', 'account', 'works', 'course', 'library', 'help', 'report', 'benchmark']);
+    // 代理后台是代理看邀请码和分成的地方，不是创作板块（2026-10-28）
+    const NON_CREATIVE = new Set(['membership', 'account', 'works', 'course', 'library', 'help', 'report', 'benchmark', 'agent']);
     const fs = await import('node:fs');
     const path = await import('node:path');
     const root = path.join(process.cwd(), 'app', 'dashboard');
