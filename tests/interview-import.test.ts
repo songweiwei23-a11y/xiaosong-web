@@ -640,7 +640,7 @@ describe('历史记录', () => {
 
   it('提取成功就存历史（在扣次数之后），浏览器切走了也照样存', () => {
     expect(extract.indexOf('recordImport(')).toBeGreaterThan(extract.indexOf('incrementUsageServer('));
-    expect(extract).toMatch(/return \{ event: 'result', extraction: result, source, importId \}/);
+    expect(extract).toMatch(/return \{ event: 'result', extraction: result, source, importId, removedSections: stripped\.removed \}/);
   });
 
   it('写入档案后标上写进了哪个档案；浏览器发回来的结果重新清洗再存', () => {

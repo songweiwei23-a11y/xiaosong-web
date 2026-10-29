@@ -6,6 +6,7 @@ import { appendNotes, mergeHighlights, sanitizeExtraction, scrubSensitive } from
 import { updateImport, UUID_RE } from '@/lib/interview-history';
 import { readJsonBody } from '@/lib/read-body';
 import { readTabooSettings } from '@/lib/taboos';
+import { splitStrategyBlock } from '@/lib/interview-strategy';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +43,8 @@ export async function POST(req: NextRequest) {
   }
 
   const profileName = typeof body.profileName === 'string' ? body.profileName.trim().slice(0, 30) : '';
-  const notes = typeof body.notes === 'string' ? scrubSensitive(body.notes.trim()) : '';
+  // 前采原文存进档案前再剔一次策划稿（lib/interview-strategy）：页面传来的原文即使没剔干净，也不存策划稿
+  const notes = typeof body.notes === 'string' ? splitStrategyBlock(scrubSensitive(body.notes.trim())).kept : '';
   const highlights = Array.isArray(body.highlights)
     ? body.highlights.filter((x: unknown): x is string => typeof x === 'string' && !!x.trim()).map((x: string) => scrubSensitive(x.trim()).slice(0, 150))
     : [];

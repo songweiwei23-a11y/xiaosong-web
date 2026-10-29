@@ -53,6 +53,7 @@ import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig 
 import { needsSentenceRepair, repairReality, sentenceRepairLimited } from '@/lib/reality-repair';
 import { repairYears } from '@/lib/years-repair';
 import { cleanRewriteOutput } from '@/lib/canvas';
+import { DETAIL_CHECK_TASKS, buildDetailCheckPrompt, parseDetailCheck } from '@/lib/detail-check';
 import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
 
 export const maxDuration = 60;
@@ -613,6 +614,27 @@ export async function POST(req: NextRequest) {
               // 只采用真的少了问题、又没有借机重写全文的版本
               if (fixed.ok && text && !fixTooBig(fullResponse, text, found) && factIssues(text).length < found.length) {
                 usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'fact_fix_steps');
+                fullResponse = text;
+              }
+            }
+          }
+          /*
+           * 编造的具体细节（2026-10-29，lib/detail-check）：道具、动作、时间场景这类素材里找不到出处的说法。
+           * 找到了就交给「按资料修正」只改这几处，改动超标就不采用。和事实修正共用每人每天 20 次的额度。
+           */
+          if (outcome.kind === 'done' && DETAIL_CHECK_TASKS.has(body.taskType) && fullResponse.trim()) {
+            const detail = await askDify(buildDetailCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+            if (detail && detail.ok) usageMetadata = combinedReviewUsage(usageMetadata, detail.completion?.usage ?? {}, 'detail_check_steps');
+            const found = detail && detail.ok ? parseDetailCheck(detail.text) : [];
+            const may = found.length > 0 && !autoFactFixLimited(userId);
+            if (may) {
+              const fixed = await askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+                .catch(() => ({ ok: false as const, message: '按资料修正未完成' }));
+              const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
+              const accepted = !!text && !fixTooBig(fullResponse, text, found);
+              console.log('[detail-check]', body.taskType, '找到', found.length, '采用', accepted);
+              if (accepted && fixed.ok) {
+                usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'detail_fix_steps');
                 fullResponse = text;
               }
             }

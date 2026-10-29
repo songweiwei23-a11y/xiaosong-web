@@ -67,6 +67,8 @@ export default function InterviewPage() {
 
   const [extraction, setExtraction] = useState<Extraction | null>(null);
   const [source, setSource] = useState("");
+  /** 这次剔掉的策划稿章节（只有刚提取完的那次有，从历史打开的不显示） */
+  const [removedSections, setRemovedSections] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Record<string, FieldDraft>>({});
   const [highlightOn, setHighlightOn] = useState<boolean[]>([]);
   const [profileName, setProfileName] = useState("");
@@ -87,6 +89,7 @@ export default function InterviewPage() {
     setTarget(ex0 ? targetId : NEW);
     setExtraction(ex);
     setSource(src);
+    setRemovedSections([]);
     setImportId(id);
     setDrafts(initialDrafts(ex, ex0));
     setHighlightOn(ex.highlights.map(() => true));
@@ -165,8 +168,9 @@ export default function InterviewPage() {
       }
       if (!res.ok) await throwApiError(res, "提取失败");
 
-      const result = await readSseResult<{ extraction: Extraction; source: string; importId?: string | null }>(res);
+      const result = await readSseResult<{ extraction: Extraction; source: string; importId?: string | null; removedSections?: string[] }>(res);
       openReview(result.extraction, result.source, target, result.importId ?? null);
+      setRemovedSections(result.removedSections ?? []);
       setHistoryKey((k) => k + 1);
       notifyGenerated();
     } catch (e) {
@@ -414,6 +418,14 @@ export default function InterviewPage() {
                 ? "有疑问的每一项都要你看一眼：按建议改、确认没问题，或者不填。看完才能写入档案。"
                 : "有疑问的都看过了。没问题的项也建议扫一眼。"}
             </div>
+            {removedSections.length > 0 && (
+              <div className="mt-3 rounded-xl bg-muted/50 px-3 py-2.5 text-[12.5px] text-muted-foreground">
+                <p>记录里有 {removedSections.length} 个策划稿章节，已剔掉：没当作客户原话提取，也没存进前采。</p>
+                <ul className="mt-1.5 space-y-0.5">
+                  {removedSections.map((s) => <li key={s}>{s}</li>)}
+                </ul>
+              </div>
+            )}
             {pending.length > 0 && (
               <button type="button" onClick={goNextPending} className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1.5 text-[12.5px] font-medium text-amber-700 dark:text-amber-400">
                 去看下一项需核对的 <ArrowRight className="h-3.5 w-3.5" />

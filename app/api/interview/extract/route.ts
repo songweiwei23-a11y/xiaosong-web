@@ -15,6 +15,7 @@ import {
   type Extraction,
 } from '@/lib/interview-import';
 import { readJsonBody, readFormBody } from '@/lib/read-body';
+import { splitStrategyBlock } from '@/lib/interview-strategy';
 
 export const runtime = 'nodejs';
 export const maxDuration = 180;
@@ -76,7 +77,10 @@ export async function POST(req: NextRequest) {
   }
 
   source = normalizeSource(source);
-  if (source.length < MIN_SOURCE_CHARS) return json({ error: '内容太少了，贴一段完整的前采记录再试' }, 400);
+  // 策划稿剔掉（lib/interview-strategy）：只留客户原话进提取、进历史、进前采。剔掉的章节告诉编导
+  const stripped = splitStrategyBlock(source);
+  source = stripped.kept;
+  if (source.length < MIN_SOURCE_CHARS) return json({ error: '内容太少了（剔掉策划稿后只剩客户原话的部分），贴一段完整的前采记录再试' }, 400);
   if (source.length > MAX_SOURCE_CHARS) {
     return json({ error: `内容太长（${source.length} 字，上限 ${MAX_SOURCE_CHARS} 字）：删掉寒暄和无关的部分再试` }, 400);
   }
@@ -137,7 +141,7 @@ export async function POST(req: NextRequest) {
     // 存进历史。浏览器那头就算已经切走了，这一步照样会跑完（sseTask 往外写失败不中断任务），
     // 回来在历史记录里点开就能接着核对——花了的次数不白花
     const importId = await recordImport({ userId, source, extraction: result, targetProfileId, profileName: result.profileName });
-    return { event: 'result', extraction: result, source, importId };
+    return { event: 'result', extraction: result, source, importId, removedSections: stripped.removed };
     } finally { if (!generationCompleted) await releaseCreation(reservation); }
   }, 'interview');
   response.headers.set('X-Generation-Id', reservation.requestId);
