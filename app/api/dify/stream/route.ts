@@ -52,7 +52,6 @@ import { unsupportedFacts } from '@/lib/quality-checks';
 import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
 import { needsSentenceRepair, repairReality, sentenceRepairLimited } from '@/lib/reality-repair';
 import { repairYears } from '@/lib/years-repair';
-import { DIRECTION_REWORK_TASKS, directionReworkLimited, reworkIssues, buildDirectionReworkPrompt, acceptRework } from '@/lib/direction-rework';
 import { cleanRewriteOutput } from '@/lib/canvas';
 import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
 
@@ -131,8 +130,6 @@ export async function POST(req: NextRequest) {
     let factMaterial = '';
     // 档案的人设事实卡（年限修复用）：没有档案时为空
     let personaFacts: unknown = null;
-    // 档案全文（规划、方向的自动返工用：核心卖点、人群身份词）；没有档案时为空
-    let profileFull: Record<string, unknown> | null = null;
 
     // 原始用户输入必须在任何改写之前固定下来。
     // 之前只在“已有历史”分支里赋值，导致会话首轮的用户消息永远不入库，
@@ -225,7 +222,6 @@ export async function POST(req: NextRequest) {
         const brief = pos.find((x) => x.positioning_type === '创作简报')?.full_content ?? '';
         factMaterial = [JSON.stringify(full ?? {}), active, brief].join('\n');
         personaFacts = (full as { persona_facts?: unknown } | null)?.persona_facts ?? null;
-        profileFull = (full as Record<string, unknown> | null) ?? null;
       }
       query += profileFactsBlock(profileRow);
       const said = (v: unknown) => (typeof v === 'string' ? v.slice(0, 2000) : '');
@@ -576,24 +572,6 @@ export async function POST(req: NextRequest) {
             if (accepted && repaired.ok) {
               usageMetadata = combinedReviewUsage(usageMetadata, repaired.completion.usage ?? {}, 'script_repair_steps');
               fullResponse = text;
-            }
-          }
-          /*
-           * 内容规划、创作方向的自动返工（2026-10-29，lib/direction-rework）：体检标出问题（话题扎堆、反差变动作、
-           * 带人群身份不到一半……）时，按问题只改出问题的方向，改一次。问题变少、方向数和配比不变才采用，否则保留原稿。
-           */
-          if (outcome.kind === 'done' && DIRECTION_REWORK_TASKS.has(body.taskType) && fullResponse.trim()) {
-            const found = reworkIssues(fullResponse, profileFull);
-            if (found.length && !directionReworkLimited(userId)) {
-              const reworked = await askDify(buildDirectionReworkPrompt({ task: body.taskType, text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(300_000) })
-                .catch(() => ({ ok: false as const, message: '返工未完成' }));
-              const text = reworked.ok ? tidy(cleanRewriteOutput(reworked.text)) : '';
-              const accepted = !!text && acceptRework(fullResponse, text, body.taskType, profileFull);
-              console.log('[direction-rework]', body.taskType, '问题', found.length, '返回', reworked.ok, '返工后问题', text ? reworkIssues(text, profileFull).length : '-', '采用', accepted);
-              if (accepted && reworked.ok) {
-                usageMetadata = combinedReviewUsage(usageMetadata, reworked.completion.usage ?? {}, 'direction_rework_steps');
-                fullResponse = text;
-              }
             }
           }
           // 修复后口播仍超上限：本地按句裁到预算以内（只删句子，不改字，不新增事实）

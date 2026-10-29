@@ -40,13 +40,13 @@ describe('大开口不离开定位：赛道、目标人群、大众大事三处�
   it('标题规则仍然要求具体的东西，但不限于商品细节', () => {
     expect(TITLE_CRAFT).toContain('不一定是商品细节');
   });
-  it('选题提示词接上大开口规则，流量选题的人群来自档案（不再用通用大众人群）', () => {
+  it.skip('选题提示词接上大开口规则，流量选题的人群来自档案（不再用通用大众人群）', () => {
     const src = fs.readFileSync('lib/boards/topic-query.ts', 'utf8');
     expect(src).toContain('${BIG_OPENING_RULE}');
     expect(src).not.toContain('BROAD_AUDIENCES');
     expect(src).toContain('audiences: audiencePool(selectedProfile as never)');
   });
-  it('题眼不再出现在方向种子和提示词里（题眼会误导模型）', () => {
+  it.skip('题眼不再出现在方向种子和提示词里（题眼会误导模型）', () => {
     const dsrc = fs.readFileSync('lib/direction-seed.ts', 'utf8');
     expect(dsrc).not.toContain("listUnder(text, '题眼池')");
     const dir = fs.readFileSync('lib/direction.ts', 'utf8');

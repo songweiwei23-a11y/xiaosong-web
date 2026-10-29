@@ -16,9 +16,6 @@ import { readPersonaFacts } from './persona-facts';
 import { checkMix, type ResolvedMix } from './content-mix';
 import { seasonMisstatements } from './time-anchor';
 import { topicTagIssues } from './output-tags';
-import { elementTitleIssues, topicDiversityIssues, promptExampleLeaks, elementPrefixTitles, categoryCrowdTitles } from './topic-element-check';
-import { directionShapeIssues, identityTermsOf } from './direction-shape-check';
-import { businessLines } from './profile-summary';
 import { findUnrealisticSentences } from './reality-check';
 
 export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'reality' | 'generation' | 'facts' | 'flaky' | 'error';
@@ -575,20 +572,9 @@ export function runQualityChecks(p: {
     for (const s of findUnrealisticSentences(output).slice(0, 5)) issues.push({ kind: 'reality', detail: `「${s.slice(0, 60)}」` });
   }
   // 选题的四个标签（lib/output-tags，2026-10-19）：缺了只进看板，不挡交付
+  // 2026-10-29 回到 10-21：选题只保留这一项体检，其余 10-28、10-29 加的元素、同质、方向形状体检全部关掉
   if (p.taskType === '选题策划') {
     for (const d of topicTagIssues(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
-    // 爆款元素（2026-10-28）：写了用哪个元素，标题就要认得出。2026-10-29 改成只提醒、不挡交付：
-    // 按「标题里有没有元素关键词」挡交付，等于奖励硬套句式（「世界上最贵的衣服，贵在闲置？」能过，通顺的好标题反而被挡）
-    for (const d of elementTitleIssues(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
-    for (const d of topicDiversityIssues(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
-    for (const d of promptExampleLeaks(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
-    for (const d of elementPrefixTitles(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
-    if (profile) for (const d of categoryCrowdTitles(output, businessLines(profile as never))) issues.push({ kind: 'generation', detail: d, blocking: false });
-  }
-  // 方向写成观点、选择题超量（2026-10-29）：只提醒，不挡交付
-  if (p.taskType === '创作方向' || p.taskType === '内容规划') {
-    const points = String(profile?.unique_selling_point ?? '').split(/[、，,；;]/).map((s) => s.trim()).filter(Boolean);
-    for (const d of directionShapeIssues(output, points, identityTermsOf(profile))) issues.push({ kind: 'generation', detail: d, blocking: false });
   }
   // 关键事实（2026-10-05 起没建档案也查：没档案时只拿这次的素材比对）；自由对话只查冒充事实的几类
   if (p.taskType && (FACT_CHECK_TASKS.has(p.taskType) || LIGHT_FACT_CHECK_TASKS.has(p.taskType))) {

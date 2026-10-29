@@ -7,7 +7,6 @@
 import { describe, expect, it } from 'vitest';
 import { holdUnsupported, PENDING_MARK } from '@/lib/evidence-guard';
 import { isNegatedLine } from '@/lib/output-guard';
-import { directionSlot, directionSlotsBlock, PUBLIC_CONCERNS, buildDirectionPrompt } from '@/lib/direction';
 import { isUnrealisticSentence } from '@/lib/reality-check';
 import { assignElementPatterns, topicSlotsBlock } from '@/lib/topic-slots';
 import { viralElementPrompt } from '@/lib/viral-elements';
@@ -39,33 +38,6 @@ describe('事实护栏：只换有问题的那一句，编号和标签留着', (
   it('问题在标签本身、正文没问题：按整行处理，不放过', () => {
     const r = holdUnsupported('- **上周来了一位客户**：拍店里的试衣过程。', flagged);
     expect(r.text).toBe(PENDING_MARK);
-  });
-});
-
-describe('创作方向：每个方向分一件大众大事', () => {
-  it('前 15 个方向各不相同；20 个方向里每件最多两次，第二次换一个切入维度', () => {
-    const slots = Array.from({ length: 20 }, (_, n) => directionSlot(n));
-    expect(PUBLIC_CONCERNS.length).toBe(15);
-    expect(new Set(slots.slice(0, 15).map((s) => s.concern)).size).toBe(15);
-    for (const c of PUBLIC_CONCERNS) {
-      const same = slots.filter((s) => s.concern === c);
-      expect(same.length).toBeLessThanOrEqual(2);
-      if (same.length === 2) expect(same[0].dimension).not.toBe(same[1].dimension);
-    }
-  });
-
-  it('大众大事是各行业通用的，不是服装专用的说法', () => {
-    for (const c of PUBLIC_CONCERNS) expect(c).not.toMatch(/穿|衣|裤/);
-  });
-
-  // 2026-10-29：从逐条分配改成参考池（模型照抄「分成十个大众入口」，切入点是轮换出来的）
-  it('参考池写进方向提示词，不再逐条分配；「大众切口」的例子不再只有服装', () => {
-    const p = buildDirectionPrompt({ purposes: ['fans'], formats: ['any'], count: 12, depth: 'quick', industry: '川味烧烤' });
-    expect(p).toContain(directionSlotsBlock(12));
-    // 2026-10-29 第二次改：池子从必填切口改成可选参考
-    expect(p).toContain('大众大事参考池（可选，想不到切口时参考）');
-    expect(p).not.toContain('方向12：大众大事=');
-    expect(p).not.toContain('买回家不敢穿');
   });
 });
 
