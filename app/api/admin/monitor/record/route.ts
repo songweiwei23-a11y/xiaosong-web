@@ -3,6 +3,7 @@ import { requireAdminPermission, getServiceSupabase } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import {
   buildDirectory,
+  generationRequestIdOf,
   inputFields,
   profileOf,
   whoIs,
@@ -12,6 +13,7 @@ import {
   type RawWork,
 } from '@/lib/monitor';
 import { FEATURE_NAMES } from '@/lib/config/plans';
+import { generationResults } from '@/lib/admin-monitor-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,6 +116,10 @@ export async function POST(request: Request) {
 
     const u = row as { feature?: string; task_type?: string; detail?: Record<string, unknown> | null };
     const answer = String(u.detail?.answer ?? '');
+    // 生成类的用量行：全文在完成记录里，按这次生成的编号去取（只取这个用户名下的）
+    const gid = generationRequestIdOf(u.detail);
+    const generated = !answer && gid ? (await generationResults(db, userId, [gid])).get(gid) ?? '' : '';
+    const text = answer || generated;
     return NextResponse.json({
       kind,
       id,
@@ -124,10 +130,10 @@ export async function POST(request: Request) {
       profile: profileOf(u.detail, null, dir),
       work: '',
       fields: inputFields({ question: u.detail?.question }),
-      result: answer.slice(0, RESULT_CAP),
-      truncated: answer.length > RESULT_CAP,
-      // 老记录（加记录内容之前的）只有"用了一次"，没有内容可看，要说清楚
-      note: u.detail ? '' : '这条是加记录内容之前的旧记录，只知道用了一次，没有对话内容',
+      result: text.slice(0, RESULT_CAP),
+      truncated: text.length > RESULT_CAP,
+      // 老记录（加记录内容之前的）只有"用了一次"，没有内容可看，要说清楚；有编号但没有结果的，说明这次没有完成
+      note: text ? '' : !u.detail ? '这条是加记录内容之前的旧记录，只知道用了一次，没有对话内容' : gid ? '这次生成没有留下完整结果（可能中途失败）' : '',
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);

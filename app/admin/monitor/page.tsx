@@ -43,6 +43,8 @@ type Snapshot = {
     assistantRunning: number;
     staleOnline: number;
     serverNow: string;
+    /** 用户动态流水读取失败的原因；为空表示读取正常 */
+    activityError?: string;
   };
 };
 
@@ -357,6 +359,14 @@ export default function MonitorPage() {
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2.5 text-[12.5px] text-rose-200">
             <WifiOff className="h-4 w-4 shrink-0" />
             拉不到数据：{err}
+          </div>
+        )}
+
+        {/* 动态流水读不出来时，「最近活跃」「实时动态」会是空的，不能让人误以为真的没人用 */}
+        {snap?.status?.activityError && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2.5 text-[12.5px] text-amber-200">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            用户动态流水读取失败：{snap.status.activityError}。「最近活跃用户」和「实时动态」可能不全。
           </div>
         )}
 

@@ -11,6 +11,7 @@ import {
   pruneContent,
   generationContent,
   usageDetailContent,
+  positioningContent,
   createTtlValue,
   lookupUsers,
 } from '@/lib/admin-monitor-data';
@@ -28,6 +29,7 @@ import {
   activityEvents,
   buildDirectory,
   type ActivityRow,
+  type ActivityContent,
   activeUsers,
   featureBreakdown,
   pulseByMinute,
@@ -113,7 +115,7 @@ export async function GET() {
     const since = new Date(Math.min(chinaDayStart(now), now - 24 * 60 * 60 * 1000)).toISOString();
 
     // 活跃窗口内的元数据分页取全（不带正文）。正文只补最近 EVENT_LIMIT 条。
-    const [recentGenerations, usageMeta, orders, users, pendingReview, pendingPay, oldestAt, totalCount, activityRows] = await Promise.all([
+    const [recentGenerations, usageMeta, orders, users, pendingReview, pendingPay, oldestAt, totalCount, activityRead] = await Promise.all([
       readAllRows<RawGeneration>((from, to) => supabase
         .from('script_history')
         .select('id, user_id, task_type, created_at, work_id')
@@ -137,13 +139,16 @@ export async function GET() {
       countOrders('pending'),
       oldestPendingAt(),
       totalGenerations(),
-      // 用户动态流水（登录、注册、生成、对话、保存定位、充值）：迁移还没执行时没有这张表，当作没有，不影响大屏其余部分
+      // 用户动态流水（登录、注册、生成、对话、保存定位、充值）。读失败不拖垮整屏，
+      // 但不能悄悄当作「没有动态」：错误随快照返回（status.activityError），页面上明示
       readAllRows<ActivityRow>((from, to) => supabase
         .from('user_activity')
         .select('id, user_id, kind, label, ref_kind, ref_id, created_at')
         .gte('created_at', since).lte('created_at', upper)
-        .order('created_at', { ascending: false }).order('id').range(from, to)).catch(() => [] as ActivityRow[]),
+        .order('created_at', { ascending: false }).order('id').range(from, to))
+        .then((rows) => ({ rows, error: '' }), (e: unknown) => ({ rows: [] as ActivityRow[], error: e instanceof Error ? e.message : String(e) })),
     ]);
+    const activityRows = activityRead.rows;
 
     // 实时动态要的最近 EVENT_LIMIT 条生成：补齐完整内容（缓存里有的不再读）
     const eventGens = recentGenerations.slice(0, EVENT_LIMIT);
@@ -170,6 +175,21 @@ export async function GET() {
       return (res.data ?? []) as { id: string; detail: unknown }[];
     }, (r) => String(r.id));
     pruneContent(usageDetailContent, chatRows.map((u) => String(u.id)));
+
+    // 保存定位的正文：流水只记了 id，最近 EVENT_LIMIT 条补齐正文（只读一次，之后每秒只补新的）
+    const eventPositioning = activityRows.filter((a) => a.kind === 'positioning' && a.ref_id).slice(0, EVENT_LIMIT);
+    const positioningIds = eventPositioning.map((a) => String(a.ref_id));
+    await fillContent(positioningContent, positioningIds, async (ids) => {
+      const res = await supabase.from('account_positioning').select('id, full_content').in('id', ids);
+      if (res.error) throw new Error(res.error.message);
+      return (res.data ?? []) as { id: string; full_content: unknown }[];
+    }, (p) => String(p.id));
+    pruneContent(positioningContent, positioningIds);
+    const positioningContents = new Map<string, ActivityContent>();
+    for (const id of positioningIds) {
+      const p = positioningContent.get(id);
+      if (p) positioningContents.set(`positioning:${id}`, { result: String(p.full_content ?? '') });
+    }
 
     // 同一条记录有完整内容就用它；没有的（超过 EVENT_LIMIT 条的）只有元数据
     const generations = recentGenerations.map((g) => generationContent.get(String(g.id)) ?? g);
@@ -219,6 +239,8 @@ export async function GET() {
         snapshotMs: Date.now() - now,
         staleOnline: active.filter((u) => u.online && u.build !== '' && u.build !== APP_BUILD).length,
         oldestPendingMinutes: oldestMs === null ? null : Math.max(0, Math.floor((now - oldestMs) / 60000)),
+        /** 用户动态流水读取失败的原因；读成功时为空串 */
+        activityError: activityRead.error,
       },
       today: {
         generations: todayGen.length,
@@ -246,7 +268,7 @@ export async function GET() {
           dir,
           now,
         }),
-        ...activityEvents(activityRows.filter((a) => a.kind === 'login' || a.kind === 'positioning'), { dir, now }),
+        ...activityEvents(activityRows.filter((a) => a.kind === 'login' || a.kind === 'positioning'), { dir, now, contents: positioningContents }),
       ]
         .sort((a, b) => (parseTime(b.at) ?? 0) - (parseTime(a.at) ?? 0))
         .slice(0, EVENT_LIMIT),

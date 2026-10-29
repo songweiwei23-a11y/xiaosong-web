@@ -3,9 +3,11 @@ import { getServiceSupabase, requireAdminPermission } from '@/lib/admin-auth';
 import { hasPermission } from '@/lib/admin-permissions';
 import { logAdminAction, AdminActions } from '@/lib/admin-logger';
 import { UUID_RE } from '@/lib/admin-users';
+import { generationResults } from '@/lib/admin-monitor-data';
 import {
   activityEvents,
   buildDirectory,
+  generationRequestIdOf,
   maskEmail,
   redactSnapshot,
   whoIs,
@@ -66,11 +68,34 @@ export async function GET(request: Request) {
       // detail 列是后加的：迁移没跑时只是没有对话内容，不影响时间线本身
       const res = await db.from('usage_events').select('id, detail').in('id', usageIds);
       if (!res.error) {
+        // 生成类的用量行：detail 里记着这次生成的编号，全文在完成记录里（creation_completion_evidence）
+        const genOf = new Map<string, string>();
         for (const u of res.data ?? []) {
           const d = (u.detail ?? {}) as { question?: string; answer?: string };
-          contents.set(`usage:${u.id}`, { question: d.question ?? null, answer: d.answer ?? null });
+          if (d.question || d.answer) contents.set(`usage:${u.id}`, { question: d.question ?? null, answer: d.answer ?? null });
+          const gid = generationRequestIdOf(u.detail);
+          if (gid) genOf.set(String(u.id), gid);
+        }
+        if (genOf.size) {
+          let results: Map<string, string>;
+          try {
+            results = await generationResults(db, userId, [...genOf.values()]);
+          } catch (e) {
+            return NextResponse.json({ error: '生成结果读取失败：' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
+          }
+          for (const [usageId, gid] of genOf) {
+            const text = results.get(gid);
+            if (text) contents.set(`usage:${usageId}`, { result: text.slice(0, 600) });
+          }
         }
       }
+    }
+    // 保存定位的正文：流水只记了 account_positioning 的 id，正文在那张表里
+    const positioningIds = rows.filter((r) => r.kind === 'positioning' && r.ref_id).map((r) => String(r.ref_id));
+    if (positioningIds.length) {
+      const res = await db.from('account_positioning').select('id, full_content').in('id', positioningIds);
+      if (res.error) return NextResponse.json({ error: '保存的定位读取失败：' + res.error.message }, { status: 500 });
+      for (const p of res.data ?? []) contents.set(`positioning:${p.id}`, { result: String(p.full_content ?? '') });
     }
   }
 

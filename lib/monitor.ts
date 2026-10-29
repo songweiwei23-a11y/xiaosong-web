@@ -287,6 +287,15 @@ export function oneLine(text: unknown, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s;
 }
 
+/**
+ * 用量行 detail 里记着的生成编号（kaiwu_settle_creation 写入）。据此能找到这次生成的完整结果（creation_completion_evidence）。
+ * 格式和 lib/creation-quota 里校验的一样；读不出来返回 null。
+ */
+export function generationRequestIdOf(detail: unknown): string | null {
+  const id = asObject(detail)?.generation_request_id;
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]{16,128}$/.test(id) ? id : null;
+}
+
 /** 这次输入了什么，一行说清 */
 export function inputSummary(input: unknown, max = 60): string {
   const obj = asObject(input);
@@ -739,6 +748,14 @@ export function activityAction(row: ActivityRow): string {
   return `用了「${label || '未知功能'}」`;
 }
 
+/** 流水没有名字时的兜底（老数据的 label 可能是空的） */
+const KIND_NAMES: Record<string, string> = {
+  login: '登录',
+  signup: '注册',
+  positioning: '账号定位',
+  order: '充值',
+};
+
 /** 点开流水时取到的原始内容（只有有权限的人才会取） */
 export interface ActivityContent {
   input?: unknown;
@@ -763,10 +780,11 @@ export function activityEvents(
     if (t === null || t > now + 60_000) continue;
     const at = r.created_at as string;
     const who = whoIs(r.user_id, dir);
-    const c = r.ref_kind && r.ref_id ? opts.contents?.get(`${r.ref_kind}:${r.ref_id}`) : undefined;
+    // 保存定位的正文在 account_positioning 里，流水只记了它的 id（见迁移里的 trg_activity_positioning），所以按 kind 去找
+    const refKind = r.ref_kind || (r.kind === 'positioning' ? 'positioning' : null);
+    const c = refKind && r.ref_id ? opts.contents?.get(`${refKind}:${r.ref_id}`) : undefined;
     const question = c?.question ? `提问：${oneLine(c.question, 60)}` : '';
     const summary = question || inputSummary(c?.input);
-    const isUse = r.kind === 'generation' || r.kind === 'usage';
     out.push({
       id: `act:${r.id ?? at}`,
       type: 'usage',
@@ -775,7 +793,8 @@ export function activityEvents(
       detail: summary,
       level: 'info',
       user: who,
-      feature: isUse ? (r.label || undefined) : undefined,
+      // 卡片标题取 feature：每种流水都要有名字，登录、保存定位以前是空标题
+      feature: (r.label || '').trim() || KIND_NAMES[r.kind ?? ''] || '未知功能',
       summary: summary || undefined,
       excerpt: oneLine(c?.result ?? c?.answer, 140) || undefined,
       ref: r.ref_kind === 'history' || r.ref_kind === 'usage' ? { kind: r.ref_kind, id: String(r.ref_id) } : undefined,

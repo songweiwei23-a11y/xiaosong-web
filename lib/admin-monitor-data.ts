@@ -10,6 +10,8 @@ import type { RawGeneration, RawProfile, RawSubscription } from '@/lib/monitor';
  */
 export const generationContent = new Map<string, RawGeneration>();
 export const usageDetailContent = new Map<string, { id: string; detail: unknown }>();
+/** 保存定位的正文（account_positioning.full_content）：流水只记了 id，正文同样只读一次 */
+export const positioningContent = new Map<string, { id: string; full_content: unknown }>();
 
 /** 缓存里没有的 id 才去读，每次最多 100 个（in 查询别太长）。读到的放进缓存。 */
 export async function fillContent<T>(
@@ -207,6 +209,24 @@ export async function readMonitorRevision(db: SupabaseClient): Promise<string | 
   const { data, error } = await db.from('admin_monitor_signal').select('revision,updated_at').eq('id', 1).maybeSingle();
   if (error || !data) return null;
   return `${data.revision}:${data.updated_at}`;
+}
+
+/**
+ * 按生成编号取这次生成的完整结果（creation_completion_evidence，每次生成完成时写一条）。
+ * 限定在这个用户名下：编号对不上、或者不是这个人的，都取不到。取不到的不在返回里。
+ */
+export async function generationResults(db: SupabaseClient, userId: string, requestIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const ids = [...new Set(requestIds)];
+  if (!ids.length) return out;
+  const { data, error } = await db
+    .from('creation_completion_evidence')
+    .select('request_id, result')
+    .eq('user_id', userId)
+    .in('request_id', ids);
+  if (error) throw new Error(error.message);
+  for (const row of (data ?? []) as { request_id: string; result: string | null }[]) out.set(String(row.request_id), String(row.result ?? ''));
+  return out;
 }
 
 /** 业务日统一为北京时间，不能随生产服务器的 UTC 时区改变。 */
