@@ -234,7 +234,8 @@ describe('6. 质检认得出同质批次和「对比动作」（用 10-29 真实
   it('整批只有一个元素、对比句式超过 2 条：都提醒', async () => {
     const { topicDiversityIssues } = await import('@/lib/topic-element-check');
     const issues = topicDiversityIssues(batch);
-    expect(issues.some((d) => d.includes('爆款元素少于 3 种'))).toBe(true);
+    // 下限按创意等级定，体检拿不到等级，只按最低一档（2 种）提醒
+    expect(issues.some((d) => d.includes('爆款元素少于 2 种'))).toBe(true);
     expect(issues.some((d) => d.includes('超过 2 条使用对比句式'))).toBe(true);
   });
 

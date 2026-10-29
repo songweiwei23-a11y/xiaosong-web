@@ -43,8 +43,8 @@ describe('大流量标准', () => {
     const p = buildDirectionPrompt(base)
     expect(p).not.toContain('视频目的是流量型（大流量）的方向')
     expect(p).toContain(BIG_TRAFFIC_STANDARD)
-    expect(p).toContain('先看档案')
-    expect(p).toContain('落地检查')
+    // 2026-10-29 瘦身：六步做法收进「好方向的标准」，落地检查成了「这个号凭什么拍得出」
+    expect(p).toContain('这个号凭什么拍得出')
   })
 
   it('大流量不带成交理由：过滤函数只放行非流量；创作设置块里流量型不出现成交理由', () => {
@@ -60,7 +60,7 @@ describe('大流量标准', () => {
   it('内容规划：定目的、条数和出发点，带上大流量做法', () => {
     const p = buildContentPlanPrompt(planBase)
     expect(p).not.toContain('流量型方向还要满足大流量标准')
-    expect(p).toContain('落地检查')
+    expect(p).toContain('这个号凭什么拍得出')
     expect(p).toContain(BIG_TRAFFIC_STANDARD)
     expect(p).toContain('- **视频目的**：流量型 / 人设型 / 变现型 选一个')
     expect(p).toContain('- **本月条数**：N 条')

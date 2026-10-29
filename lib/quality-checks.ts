@@ -16,7 +16,9 @@ import { readPersonaFacts } from './persona-facts';
 import { checkMix, type ResolvedMix } from './content-mix';
 import { seasonMisstatements } from './time-anchor';
 import { topicTagIssues } from './output-tags';
-import { elementTitleIssues, topicDiversityIssues, promptExampleLeaks } from './topic-element-check';
+import { elementTitleIssues, topicDiversityIssues, promptExampleLeaks, elementPrefixTitles, categoryCrowdTitles } from './topic-element-check';
+import { directionShapeIssues, identityTermsOf } from './direction-shape-check';
+import { businessLines } from './profile-summary';
 import { findUnrealisticSentences } from './reality-check';
 
 export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'reality' | 'generation' | 'facts' | 'flaky' | 'error';
@@ -580,6 +582,13 @@ export function runQualityChecks(p: {
     for (const d of elementTitleIssues(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
     for (const d of topicDiversityIssues(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
     for (const d of promptExampleLeaks(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
+    for (const d of elementPrefixTitles(output)) issues.push({ kind: 'generation', detail: d, blocking: false });
+    if (profile) for (const d of categoryCrowdTitles(output, businessLines(profile as never))) issues.push({ kind: 'generation', detail: d, blocking: false });
+  }
+  // 方向写成观点、选择题超量（2026-10-29）：只提醒，不挡交付
+  if (p.taskType === '创作方向' || p.taskType === '内容规划') {
+    const points = String(profile?.unique_selling_point ?? '').split(/[、，,；;]/).map((s) => s.trim()).filter(Boolean);
+    for (const d of directionShapeIssues(output, points, identityTermsOf(profile))) issues.push({ kind: 'generation', detail: d, blocking: false });
   }
   // 关键事实（2026-10-05 起没建档案也查：没档案时只拿这次的素材比对）；自由对话只查冒充事实的几类
   if (p.taskType && (FACT_CHECK_TASKS.has(p.taskType) || LIGHT_FACT_CHECK_TASKS.has(p.taskType))) {

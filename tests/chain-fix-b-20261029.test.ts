@@ -19,10 +19,12 @@ describe('「主角是卖的东西」只管变现型和对比类', () => {
 
   it('内容规划的「出发点」按目的分三种写法：流量写元素、三有、看点（形式不限），变现写成交理由和主角货，人设写人', () => {
     const p = buildContentPlanPrompt({ lastMonth: '', recordedLastMonth: null, count: 12, focus: [], events: '', notes: '', resolved: resolveMix(null), industry: '大码女装' });
-    expect(p).toContain('· 流量型写「围绕：人、货、场里的哪一个｜三有：符合哪一条（有用、有趣、有共鸣之一）｜爆款元素：哪一个，怎么设计进去｜看点');
+    expect(p).toContain('· 流量型写「围绕：人、货、场里的哪一个｜三有：有用、有趣、有共鸣写一个词，观众看完得到什么｜爆款元素：哪一个，让观众看到什么（选反差就写清两边是哪两样货、哪两类人或哪两个时代）｜看点');
     expect(p).toContain('任何脚本结构配上爆款元素都是大流量');
     expect(p).not.toContain('九类里的哪一类');
-    expect(p).toContain('不写成换衣、换款对比');
+    // 2026-10-29：原来写「不写成换衣、换款对比」，和「流量型做反差也换货」打架，统一成一个口径（瘦身后放在标准的红线里）
+    expect(p).not.toContain('不写成换衣、换款对比');
+    expect(p).toContain('做反差或对比时，变的是卖的东西，人、场、动作不变');
     expect(p).toContain('· 变现型写「成交理由：……｜主角：在卖的哪样东西');
     expect(p).toContain('· 人设型写「人：');
   });

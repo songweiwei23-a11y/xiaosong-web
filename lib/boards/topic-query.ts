@@ -1,6 +1,6 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { carriesScript, carriedIntent, intentBlock, continuationRules } from '@/lib/creation-continuation';
-import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt, industryKeysOf, elementsFitting, elementsPerTopic } from '@/lib/viral-elements';
+import { VIRAL_ELEMENTS, viralElementById, viralElementPrompt, industryKeysOf, elementsFitting, elementsPerTopic, elementTypesPerBatch } from '@/lib/viral-elements';
 import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
 import { rolesGuide, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, mixToCounts, type ResolvedMix } from '@/lib/content-mix';
@@ -378,7 +378,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       // 快速模式的档案上下文里已经有这一行，这里就不重复写
       if (mode !== 'quick' && selectedProfile) {
         const biz = businessLines(selectedProfile as never);
-        if (biz.length) query += `- 经营品类（档案里每一个都在卖，选题里都要体现）：${biz.join('、')}\n`;
+        if (biz.length) query += `- 经营品类（档案里每一个都在卖，这批选题里轮流出现；单条不用同框）：${biz.join('、')}\n`;
       }
       if (selectedContentTypes.length > 0) query += `- 内容类型：${selectedContentTypes.join('、')}\n`;
       // 脚本类型分配（如果选择了内容类型）
@@ -554,7 +554,11 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
         }
       }
       query += `【选题三关】（小黄第17节）每条都要过：覆盖的人够不够多、给了什么明确价值、是不是比用户多一步认知\n\n`;
-      query += `【批次多样性】流量选题达到 5 条且适用元素至少 3 种时，至少使用 3 种元素；同一句式最多 2 条。不同选题要有不同的核心问题和看点，不能只让同一件货换动作、姿势或穿法；数量或可用元素不足时按实际条件尽量拉开，不硬凑。\n\n`;
+      // 至少几种元素按创意等级定，适合的不足时按适合的来（2026-10-29 产品方定）：原来一律至少 3 种，逼出了平价店的「最贵的外套」
+      const batchTypes = Math.min(elementTypesPerBatch(difficulty), fit.ids.length, topicCount);
+      query += `【批次多样性】按创意等级（${difficulty}），这批流量选题至少用 ${batchTypes} 种爆款元素（容易执行 2 种、中等创意 3 种、高创意 4 种）；贴这个号、贴这批话题的元素不够时，按适合的来，不硬套（平价店不硬写「最贵」）。同一句式最多 2 条。不同选题要有不同的核心问题和看点，不能只让同一件货换动作、姿势或穿法；流量选题条数少时按实际条件尽量拉开，不硬凑。\n\n`;
+      // 2026-10-29 真实核验：「花小钱办大事：大码女装裤外套先买谁」——句式当前缀拼在同一道选择题前，内容只是摆出三件衣服、不给答案
+      query += `【标题和内容】句式要融进标题里说出看点，不写成「句式：问题」这种冒号前缀（不写「花小钱办大事：XX先买谁」）。内容推进要有结果：观众看完得到一条信息、一个判断、一个看得见的变化或意外；结尾可以问评论区，但不能整条只是摆出选项、什么都不给。\n\n`;
       query += `【输出格式要求】\n`;
       query += `⚠️ 必须写满 ${topicCount} 条，一条都不能少；每条的各个部分都要写完整，不能写到一半停下。\n\n`;
       query += `每条选题必须包含以下部分：\n\n`;

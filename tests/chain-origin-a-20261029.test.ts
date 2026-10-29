@@ -6,7 +6,8 @@
  * 这里不调用模型，只守住指令层：两个板块必须带知识库方法；方向写的出发点要进种子；选题沿用种子里的元素。
  */
 import { describe, expect, it } from 'vitest';
-import { originMethodsBlock, TRAFFIC_DIRECTION_TYPES } from '@/lib/content-roles';
+import { BIG_TRAFFIC_STANDARD, TRAFFIC_DIRECTION_TYPES } from '@/lib/content-roles';
+import { directionStandard } from '@/lib/direction-standard';
 import { buildContentPlanPrompt } from '@/lib/content-plan';
 import { buildDirectionPrompt } from '@/lib/direction';
 import { directionSeedOf, elementsOfSeed, DIRECTION_SEED_HEAD } from '@/lib/direction-seed';
@@ -38,16 +39,18 @@ describe('指令层：两个板块都带知识库找出发点的方法', () => {
   const plan = buildContentPlanPrompt({ lastMonth: '', recordedLastMonth: null, count: 12, focus: [], events: '', notes: '', resolved: resolveMix(null), industry: '大码女装' });
   const direction = buildDirectionPrompt({ purposes: ['fans'], formats: ['any'], count: 10, depth: 'quick', industry: '大码女装' });
 
-  it('内容规划、创作方向都带完整的方法块（大流量做法、切口参考、变现做法、人设做法）', () => {
-    for (const p of [plan, direction]) expect(p).toContain(originMethodsBlock());
+  // 2026-10-29 瘦身：方法块收进「好方向的标准」，三种目的、切口参考、元素都在里面
+  it('内容规划、创作方向都带好方向的标准（大流量定义、三种目的、切口参考、元素）', () => {
+    for (const p of [plan, direction]) expect(p).toContain(directionStandard().split('起号 36 计（计名）')[0]);
     expect(TRAFFIC_DIRECTION_TYPES).toHaveLength(9);
   });
 
   // 2026-10-25 产品方定、2026-10-29 再次强调：任何脚本结构配上爆款元素都是大流量，形式不定义大流量
   it('大流量由出发点定义：写明任何脚本结构配上爆款元素都是大流量；九类切口只是参考，不是必填', () => {
-    const block = originMethodsBlock();
-    expect(block).toContain('**任何脚本结构配上爆款元素，都是大流量**');
-    expect(block).toContain('不是必选项，也不是限制');
+    const block = directionStandard();
+    expect(block).toContain(BIG_TRAFFIC_STANDARD);
+    expect(BIG_TRAFFIC_STANDARD).toContain('任何脚本结构配上爆款元素都是大流量');
+    expect(block).toContain('常见切口也可以参考');
     for (const p of [plan, direction]) {
       expect(p).not.toContain('九类里的哪一类');
       expect(p).not.toContain('流量方向的类型');

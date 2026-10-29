@@ -288,7 +288,8 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
         line('平台', p.account_platform),
         line('赛道', p.account_track),
         // 卖的是什么（2026-10-27）：选题、方向只读这一组，原来经营品类（大码女装、裤子…）到不了选题，选题就只剩「时尚穿搭」这种泛赛道
-        line('经营品类（每一个都在卖，选题里都要体现）', businessLines(p as never)),
+        // 2026-10-29：原来写「选题里都要体现」，被读成每条三样同框，整批都是「X、Y、Z 先买谁」
+        line('经营品类（每一个都在卖，一批内容里轮流出现；单条不用同框）', businessLines(p as never)),
         line('账号阶段', [text(p.account_stage), text(p.fans_level)].filter(Boolean).join(' · ')),
         line('内容形式', p.content_format),
       ]), '');

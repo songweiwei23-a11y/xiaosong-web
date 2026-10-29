@@ -300,9 +300,10 @@ describe('选题提示词：按档案行业和创意难度拼出来', () => {
   it('经营品类：自定义模式（默认）补进基础信息；快速模式用档案上下文里的那一行，不重复写', () => {
     const profile = { profile_name: '大码测试号', account_track: ['时尚穿搭'], product_category: ['大码女装'], target_age: ['25-30岁'], target_occupation: ['宝妈'] };
     const custom = buildTopicBoardQuery(input({ topicRole: '按配比', selectedProfile: profile as never, mode: 'full' })).query;
-    expect(custom).toContain('- 经营品类（档案里每一个都在卖，选题里都要体现）：大码女装');
+    // 2026-10-29：「选题里都要体现」被读成每条三样同框，改成一批里轮流出现
+    expect(custom).toContain('- 经营品类（档案里每一个都在卖，这批选题里轮流出现；单条不用同框）：大码女装');
     const quick = buildTopicBoardQuery(input({ topicRole: '按配比', selectedProfile: profile as never, mode: 'quick' })).query;
-    expect(quick).toContain('**经营品类（每一个都在卖，选题里都要体现）**：大码女装');
+    expect(quick).toContain('**经营品类（每一个都在卖，一批内容里轮流出现；单条不用同框）**：大码女装');
     expect(quick).not.toContain('- 经营品类（档案里每一个都在卖');
   });
 

@@ -62,7 +62,8 @@ describe('创作方向：每个方向分一件大众大事', () => {
   it('参考池写进方向提示词，不再逐条分配；「大众切口」的例子不再只有服装', () => {
     const p = buildDirectionPrompt({ purposes: ['fans'], formats: ['any'], count: 12, depth: 'quick', industry: '川味烧烤' });
     expect(p).toContain(directionSlotsBlock(12));
-    expect(p).toContain('大众大事参考池（挑着用，不是逐条分配）');
+    // 2026-10-29 第二次改：池子从必填切口改成可选参考
+    expect(p).toContain('大众大事参考池（可选，想不到切口时参考）');
     expect(p).not.toContain('方向12：大众大事=');
     expect(p).not.toContain('买回家不敢穿');
   });

@@ -156,6 +156,15 @@ export function elementsPerTopic(difficulty: string): number {
 }
 
 /**
+ * 创意难度 → 一批流量选题至少用几种元素（2026-10-29 产品方定：按创意等级分配，适合的不足时按适合的来）。
+ * 容易执行 2 种、中等创意 3 种、高创意 4 种；认不出的按中等。原来不分档一律至少 3 种，逼出了平价店写「最贵的外套」。
+ */
+const BATCH_TYPES: Record<string, number> = { 容易执行: 2, 简单易上手: 2, 中等创意: 3, 高创意: 4, 高难度: 4 };
+export function elementTypesPerBatch(difficulty: string): number {
+  return BATCH_TYPES[difficulty.trim()] ?? 3;
+}
+
+/**
  * 页面提示：所选的元素里，有哪些不适用于这个档案的行业。没有就返回空串。
  * 静默丢掉元素会变成「选了却用不上」，所以要明说。
  */
@@ -212,6 +221,8 @@ export function viralElementPrompt(ids: string[]): string {
   ];
   return lines.join('\n');
 }
+
+/* 规划、方向用的八大元素说明 2026-10-29 瘦身后移到 lib/direction-standard（elementSeesBlock：每个元素一行，让观众看到什么 + 一条句式） */
 
 export interface ScriptFamily {
   /** 脚本类型名，必须与课程原文一字不差 */

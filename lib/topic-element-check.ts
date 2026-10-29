@@ -16,7 +16,8 @@ export type ElementName = (typeof ELEMENT_NAMES)[number];
 export const ELEMENT_TITLE_CUES: Record<ElementName, RegExp> = {
   头牌: /最贵|最牛|最顶|天花板|有多贵|有多牛|好在哪/,
   怀旧: /当年|那年|20年前|二十年前|十年前|小时候|以前|那会儿|古代人|老式|经典|年代|怀旧/,
-  反差: /vs|VS|对比|曾经|反差|南方人|北方人|穷人|富人/,
+  // 「以前…现在」也是曾经 vs 现在（10-29 第四轮真实核验：「以前只背包，现在出门先找哪件衣服？」被误报认不出）
+  反差: /vs|VS|对比|曾经|反差|南方人|北方人|穷人|富人|以前.{0,10}现在/,
   最差: /贬值最快|差评最多|没面子|反人类|最差|翻车|踩坑|最难|下头/,
   荷尔蒙: /异性|多看你|多看两眼|下头|心动|对方眼里/,
   奇葩: /外行|内行|不知道|内幕|神奇|冷知识/,
@@ -88,12 +89,50 @@ export function promptExampleLeaks(output: string): string[] {
   return PROMPT_EXAMPLE_PHRASES.filter((p) => output.includes(p)).map((p) => `「${p}」是提示词里示范写法的例子，被照抄进了结果，请换成这个号自己卖的或用户身边真有的东西`);
 }
 
-/** 仅对能识别的五条以上流量选题提醒，识别不全时不猜；不作为交付阻断。 */
+/**
+ * 几个品类挤在一个标题里（2026-10-29：「经营品类选题里都要体现」被读成每条三样同框，
+ * 第三轮 5 条标题全是「大码女装裤外套先买谁」）。一批里超过一半的标题点名了全部品类（最多看 3 个）就提醒。
+ * 「裤子」写成「裤」也认。只提醒，不挡交付。
+ */
+export function categoryCrowdTitles(output: string, lines: string[]): string[] {
+  if (lines.length < 2) return [];
+  const keys = lines.map((l) => l.replace(/子$/, ''));
+  const need = Math.min(keys.length, 3);
+  const titles = output
+    .split(/\n(?=##\s*选题\s*\d+)/)
+    .map((b) => b.trim())
+    .filter((b) => /^##\s*选题\s*\d+/.test(b))
+    .map(titleOfBlock)
+    .filter(Boolean);
+  if (titles.length < 4) return [];
+  const crowded = titles.filter((t) => keys.filter((k) => t.includes(k)).length >= need);
+  if (crowded.length * 2 <= titles.length) return [];
+  return [`有 ${crowded.length}/${titles.length} 条标题把${lines.slice(0, need).join('、')}挤在一起（如「${crowded[0].slice(0, 30)}」），品类在一批里轮流出现就行，单条不用同框`];
+}
+
+/**
+ * 句式当前缀用冒号拼在标题前（2026-10-29 真实核验：「花小钱办大事：大码女装裤外套先买谁」「曾经vs现在：…先补谁」）。
+ * 冒号前不超过 8 个字、又是元素句式的词根，就算前缀。只提醒，不挡交付。
+ */
+export function elementPrefixTitles(output: string): string[] {
+  const cues = Object.values(ELEMENT_TITLE_CUES);
+  return topicElementResults(output)
+    .filter((r) => {
+      const head = r.title.match(/^([^：:]{1,8})[：:]/)?.[1] ?? '';
+      return !!head && cues.some((re) => re.test(head));
+    })
+    .map((r) => `「${r.title.slice(0, 40)}」把句式当前缀拼在标题前，请把句式融进标题里`);
+}
+
+/**
+ * 仅对能识别的五条以上流量选题提醒，识别不全时不猜；不作为交付阻断。
+ * 元素种数的下限按创意等级定（容易执行 2、中等 3、高创意 4），体检拿不到这批的等级，只按最低一档（2 种）提醒。
+ */
 export function topicDiversityIssues(output: string): string[] {
   const results = topicElementResults(output);
   if (results.length < 5) return [];
   const issues: string[] = [];
-  if (new Set(results.flatMap((r) => r.elements)).size < 3) issues.push('这批选题识别出的爆款元素少于 3 种，请人工核对多样性');
+  if (new Set(results.flatMap((r) => r.elements)).size < 2) issues.push('这批选题识别出的爆款元素少于 2 种，请人工核对多样性');
   if (results.filter((r) => /\bvs\b|对比/i.test(r.title)).length > 2) issues.push('这批选题有超过 2 条使用对比句式，请人工核对是否同质');
   // 对比的两边是动作、姿势或「镜子里 vs 本人」：变的不是货（2026-10-29 产品方定：反差、对比要变货，流量型也一样）
   const ACTION = '站着|站立|坐下|坐着|蹲下|弯腰|走动|走几步|迈步|抬手|抬腿|转身|上台阶|动起来|镜子里|镜前|本人';
