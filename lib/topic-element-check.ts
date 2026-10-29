@@ -77,3 +77,29 @@ export function elementTitleIssues(output: string): string[] {
     .filter((r) => !r.visible)
     .map((r) => `「${r.title.slice(0, 40)}」标题里认不出爆款元素（${r.elements.join('、')}）`);
 }
+
+/**
+ * 提示词里举的例子被原样抄进了结果（2026-10-29 真实核验：大码女装号写出了「当年最火的校服外套」「反人类设计的老式裤腰」，
+ * 这两样都是 lib/viral-elements 里示范写法的例子，店里根本不卖）。只提醒，不挡交付。
+ */
+export const PROMPT_EXAMPLE_PHRASES = ['当年最火的校服外套', '反人类设计的老式裤腰'];
+
+export function promptExampleLeaks(output: string): string[] {
+  return PROMPT_EXAMPLE_PHRASES.filter((p) => output.includes(p)).map((p) => `「${p}」是提示词里示范写法的例子，被照抄进了结果，请换成这个号自己卖的或用户身边真有的东西`);
+}
+
+/** 仅对能识别的五条以上流量选题提醒，识别不全时不猜；不作为交付阻断。 */
+export function topicDiversityIssues(output: string): string[] {
+  const results = topicElementResults(output);
+  if (results.length < 5) return [];
+  const issues: string[] = [];
+  if (new Set(results.flatMap((r) => r.elements)).size < 3) issues.push('这批选题识别出的爆款元素少于 3 种，请人工核对多样性');
+  if (results.filter((r) => /\bvs\b|对比/i.test(r.title)).length > 2) issues.push('这批选题有超过 2 条使用对比句式，请人工核对是否同质');
+  // 对比的两边是动作、姿势或「镜子里 vs 本人」：变的不是货（2026-10-29 产品方定：反差、对比要变货，流量型也一样）
+  const ACTION = '站着|站立|坐下|坐着|蹲下|弯腰|走动|走几步|迈步|抬手|抬腿|转身|上台阶|动起来|镜子里|镜前|本人';
+  const actionVs = new RegExp(`(${ACTION}).{0,10}(?:vs|对比|和|与|还是|前后).{0,10}(${ACTION})|(${ACTION}).{0,4}前后`, 'i');
+  for (const r of results) {
+    if (actionVs.test(r.title)) issues.push(`「${r.title.slice(0, 40)}」可能在对比动作或姿势，请人工核对变量是不是货`);
+  }
+  return issues;
+}

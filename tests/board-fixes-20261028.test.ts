@@ -58,10 +58,12 @@ describe('创作方向：每个方向分一件大众大事', () => {
     for (const c of PUBLIC_CONCERNS) expect(c).not.toMatch(/穿|衣|裤/);
   });
 
-  it('分配表写进方向提示词；「大众切口」的例子不再只有服装', () => {
+  // 2026-10-29：从逐条分配改成参考池（模型照抄「分成十个大众入口」，切入点是轮换出来的）
+  it('参考池写进方向提示词，不再逐条分配；「大众切口」的例子不再只有服装', () => {
     const p = buildDirectionPrompt({ purposes: ['fans'], formats: ['any'], count: 12, depth: 'quick', industry: '川味烧烤' });
     expect(p).toContain(directionSlotsBlock(12));
-    expect(p).toContain('方向12：大众大事=');
+    expect(p).toContain('大众大事参考池（挑着用，不是逐条分配）');
+    expect(p).not.toContain('方向12：大众大事=');
     expect(p).not.toContain('买回家不敢穿');
   });
 });
@@ -72,7 +74,9 @@ describe('选题：同一批里句式不重复，负面句式不落在自家的�
     const p = assignElementPatterns(slots);
     expect(new Set(p.slice(0, 3).map((x) => x[0])).size).toBe(3);
     expect(new Set(p.map((x) => x[1])).size).toBe(4);
-    expect(topicSlotsBlock(slots)).toContain('怀旧（句式：20年前经典的X）');
+    // 2026-10-29：分配表只给候选元素，不再给每条指定句式（硬套句式出了「世界上最贵的衣服，贵在闲置？」）
+    expect(topicSlotsBlock(slots)).toContain('候选 怀旧、最差（挑最贴这条话题的用，不贴就换一个更贴的）');
+    expect(topicSlotsBlock(slots)).not.toContain('（句式：');
   });
 
   it('元素规则写明：负面句式说的是市面上常见的、旧式的东西，不是这家店在卖的货', () => {

@@ -8,7 +8,7 @@ import { mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, topicRea
 import { useRouter } from "next/navigation";
 import { takeHandoff, parseTopicOptions } from "@/lib/handoff";
 import { openCreationSafely } from "@/lib/creation-session";
-import { topicReference, carriesScript, carriedIntent, originForResult } from '@/lib/creation-continuation';
+import { topicReference, carriedIntent, originForResult } from '@/lib/creation-continuation';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { VIRAL_ELEMENTS, viralElementById, industryKeysOf, elementFitNote, elementsPerTopic } from "@/lib/viral-elements";
@@ -332,9 +332,10 @@ export default function TopicPage() {
     setSelectedElements(s.elements || []); if (s.tactic) setTactic(s.tactic);
     setSelectedDealReasons(topicReasonIds(s.dealReasons || []));
     setKeyword1(s.topic ?? '');
-    // 带来的是具体脚本时，最早那个大方向不再填进「个人要求」——那里写着「所有选题必须围绕」，
-    // 会把选题拉回大方向、另编和脚本无关的故事（2026-10-05 线上）。方向作为背景已经在参考内容里
-    setPersonalRequirement(carriesScript(incomingSetup) ? '' : s.direction ?? '');
+    // 带来的方向不再填进「个人要求」（2026-10-29）：那里写着「所有选题必须围绕」，方向的「范围」原话一填进去，
+    // 整批选题都被锁在同一个软话题上（线上 5 条全围着「花钱买衣服为什么买单」转）。
+    // 方向原文已经作为「方向种子」在参考内容里，核心目的照样守住；个人要求只留给编导自己写的话
+    setPersonalRequirement('');
   });
   // 和助理共用同一个算法（lib/boards/topic-query），同样的输入得到同样的创作设置
   const currentSettings = topicCreationSettings({

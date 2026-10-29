@@ -6,6 +6,8 @@ import { rolesGuide, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, mixToCounts, type ResolvedMix } from '@/lib/content-mix';
 import { TITLE_CRAFT, ONE_POINT_RULE, REAL_PEOPLE_RULE, REALITY_RULE, BIG_OPENING_RULE, PRODUCT_HERO_RULE } from '@/lib/sharp-rules';
 import { assignTopicSlots, audiencePool, roleSequence, topicSlotsBlock } from '@/lib/topic-slots';
+import { elementsOfSeed } from '@/lib/direction-seed';
+import { hasContentSeries } from '@/lib/content-series';
 import { GROWTH_TACTICS } from '@/lib/growth-tactics';
 import { taboosPromptBlock } from '@/lib/taboos';
 import { businessLines } from '@/lib/profile-summary';
@@ -296,6 +298,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       const fitNames = fit.ids.map((id) => viralElementById(id)?.name.replace(/选题$/, '') ?? id);
       const droppedNames = fit.dropped.map((id) => viralElementById(id)?.name ?? id);
       const perTopic = Math.min(elementsPerTopic(difficulty), fit.ids.length);
+      // 上游方向定了爆款元素（种子的「出发点」，2026-10-29）：沿用它，不再由代码另配；只认这个行业适用的
+      const upstreamElements = elementsOfSeed(sourceReference, fitNames);
 
       const topicContext = buildContextBlock(
         {
@@ -308,7 +312,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
           advice: creatorContext.advice,
           adviceAt: creatorContext.adviceAt,
           adviceStale: creatorContext.adviceStale,
-          // 内容定位的系列清单：选题只能从这里的系列里选（lib/context-manifest 的 deep=content）
+          // 内容定位的系列（只取系列相关的几节，lib/content-series）：只作参考，不限制选题（2026-10-29 产品方定：系列太限制创作）（lib/context-manifest 的 deep=content）
           contentPositioning: creatorContext.contentPositioning,
         },
         'topic'
@@ -448,7 +452,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       }
       if (topicRole === '流量型') {
         // 举例从同一份数据取，别再手写——上一版写的「反差」原文里根本没有（叫「对立选题」）
-        query += `- 大流量的出发点：先看这个档案的行业、人、货、场和团队条件，只从本档案适用的爆款元素（${fitNames.join('、')}）里挑普通人拍得出来的；围绕它至少符合三有（有用、有趣、有共鸣）中的一条，做出看点和噱头、吸引眼球。每条流量选题必须用上分配给它的爆款元素（必填，写明用哪几个，设计进选题本身）；标题要光看就认得出这个元素（用它的句式写），不能只在正文里出现；不为了爆款而爆款。元素定好之后，再推荐脚本结构（36 计或四大脚本）\n`;
+        query += `- 大流量的出发点（2026-10-29 产品方定义）：根据内容定位，站在这个号的用户群体，带着目的，围绕人、货、场其中一个（写清是哪一个），拍他们感兴趣的内容；符合三有（有用、有趣、有共鸣）之一；再用爆款元素（只从本档案适用的 ${fitNames.join('、')} 里挑普通人拍得出来的）设计选题和整个脚本结构。每条流量选题至少用上一个爆款元素（必填，写明用哪个，设计进选题本身）：从分配表给这条的候选里挑最贴这条话题、这个号拍得出来的；候选都不贴，就从本档案适用的元素里换一个更贴的，不硬套。元素要贴着这条的话题自然长出来，不为了套句式把话题扭成别的意思（比如把「最贵」硬解释成「闲置的代价」）；标题要光看就认得出用的那个元素，不能只在正文里出现；不为了爆款而爆款。元素定好之后，再推荐脚本结构（36 计或四大脚本）\n`;
         query += `- 覆盖要广，但人群要对——垂直是人群垂直：选这个号的目标人群也关心的话题，不是随便什么热闹都蹭\n\n`;
       }
       if (topicRole === '人设型') {
@@ -479,7 +483,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       if (viralCases) query += `- 爆款案例：${viralCases}\n`;
       query += `- 生成数量：${topicCount}条\n`;
       query += `- 创意难度：${difficulty}\n`;
-      query += `- 每条流量选题用几个爆款元素：${perTopic} 个（容易执行 1 个、中等创意 2 个、高创意 3 个）\n`;
+      // 2026-10-29：原来按创意档硬定个数，中等创意每条必须两个，线上出了「古人怎么选衣，南方北方学生怎么选」这类两个元素硬拼的标题。改成上限
+      query += `- 每条流量选题最多用 ${perTopic} 个爆款元素（容易执行 1 个、中等创意最多 2 个、高创意最多 3 个）：一个用好，比几个硬拼强；几个都贴着这条话题时才一起用\n`;
       query += `- 开头钩子：${withHook ? '✅ 需要生成3秒钩子' : '❌ 不需要'}\n\n`;
       
       // 明确输出格式要求
@@ -530,7 +535,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
           count: topicCount,
           // 目标人群来自档案：流量选题也要锚在它上面（大开口只放宽切口，不放弃人群，2026-10-26）
           audiences: audiencePool(selectedProfile as never),
-          elements: fitNames,
+          elements: [...upstreamElements, ...fitNames.filter((name) => !upstreamElements.includes(name))],
           perTopic,
           // 目的按配比的条数由代码排好（2026-10-27）：流量型才分爆款元素
           roles: topicRole === '按配比'
@@ -544,8 +549,12 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
           firstTactic: topicPreferredTactic({ source: sourceReference, direction: personalRequirement, explicit: routeExplicit }),
         });
         query += `${topicSlotsBlock(slots)}\n\n`;
+        if (upstreamElements.length) {
+          query += `【方向出发点参考】承接方向主题和用户关心的事；方向里的元素（${upstreamElements.join('、')}）是候选，不锁定整批。每条选择最贴切、适合本行业的元素，允许换元素和看点，不为套元素扭曲话题。\n\n`;
+        }
       }
       query += `【选题三关】（小黄第17节）每条都要过：覆盖的人够不够多、给了什么明确价值、是不是比用户多一步认知\n\n`;
+      query += `【批次多样性】流量选题达到 5 条且适用元素至少 3 种时，至少使用 3 种元素；同一句式最多 2 条。不同选题要有不同的核心问题和看点，不能只让同一件货换动作、姿势或穿法；数量或可用元素不足时按实际条件尽量拉开，不硬凑。\n\n`;
       query += `【输出格式要求】\n`;
       query += `⚠️ 必须写满 ${topicCount} 条，一条都不能少；每条的各个部分都要写完整，不能写到一半停下。\n\n`;
       query += `每条选题必须包含以下部分：\n\n`;
@@ -553,13 +562,18 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       if (sourced) query += `**承接**：这条取自带来内容里的哪一处（引原文一句，或点名那个细节、那条思路）\n\n`;
       query += `**0️⃣ 视频目的**\n`;
       query += `流量型 / 人设型 / 变现型，只写一个，后面一句话说为什么\n\n`;
+      // 2026-10-29：每条归到内容定位的一个系列（原来选题不知道自己属于哪个系列，系列形同虚设）
+      if (hasContentSeries(topicContext)) {
+        query += `**所属系列（只作标注）**\n`;
+        query += `能对上上面「内容定位（系列）」里的一个系列就写系列名；对不上写「系列外」并一句话说明为什么它更好。系列只是参考，不要为了对上系列而换掉更好的选题\n\n`;
+      }
       // 这一行的写法固定，页面要从它认出用的哪一计，带到脚本页
       query += `**🅰 打法**\n`;
       query += `二选一照这个格式写：\n`;
       query += `- 36计·第N计 计名：把这一计的结构公式套到这条上，写成具体的事件（如「常规A → 反向B → 真实反应」写成这条里真正发生的事）\n`;
       query += `- 四大脚本·脚本类型（聊观点 / 晒过程 / 教知识 / 讲故事）：一句话说这条怎么讲\n\n`;
       query += `**1️⃣ 爆款元素**\n`;
-      query += `流量型的条写明用了哪 ${perTopic} 个元素（限 ${fitNames.join('、')}），以及每个套的是哪一条句式；几个元素要一起设计进这一条，不是各写一句。人设型、变现型的条写“无”，不硬套爆款元素\n\n`;
+      query += `流量型的条写明用了哪个元素（最多 ${perTopic} 个，限 ${fitNames.join('、')}），以及套的是哪一条句式；用了几个就要一起设计进这一条，不是各写一句。人设型、变现型的条写“无”，不硬套爆款元素\n\n`;
       query += `**2️⃣ 开篇钩子**\n`;
       // 2026-10-28：带元素的条，钩子第一句就用元素的句式说出看点，并带一个看得见的具体东西（四板块评估：钩子偏弱、看点没落到第一句）
       query += withHook ? `结合知识库设计一句能实际说出口的开头，尽快进入这条的真实问题。带爆款元素的条，开头第一句就用这个元素的句式说出看点，并带一个镜头里看得见的具体东西（一件外套、一张沙发、一锅串），30 字以内。尚未采访时写「今天去问/到底有没有变化」的提问型开头，不能写「我问过/发现/没想到」的结果型开头。只写文案，不拆成三个每秒一句的口号。\n\n` : `用户本次不需要开篇钩子，不生成开头文案。\n\n`;

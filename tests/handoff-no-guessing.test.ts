@@ -126,10 +126,12 @@ describe('目的那一行怎么认', () => {
 });
 
 describe('页面：没写的保持默认，不填占位话', () => {
-  it('选题页：目的默认按配比，个人要求只填写明的方向', () => {
+  // 2026-10-29：带来的方向不再填进个人要求（那里是「所有选题必须围绕」，整批被锁在一个软话题上），方向原文在参考内容里
+  it('选题页：目的默认按配比，个人要求不填带来的方向', () => {
     const src = readCode('app/dashboard/topic/page.tsx');
     expect(src).toMatch(/setTopicRole\(roles\[0\] \?\? s\.purpose \?\? '按配比'\)/);
-    expect(src).toMatch(/setPersonalRequirement\(carriesScript\(incomingSetup\) \? '' : s\.direction \?\? ''\)/);
+    expect(src).toMatch(/setPersonalRequirement\(''\);/);
+    expect(src).not.toMatch(/setPersonalRequirement\([^)]*s\.direction/);
     expect(src).not.toMatch(/\|\| '聊观点型'\]\)/);
   });
 

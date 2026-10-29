@@ -458,6 +458,8 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('');
   parts.push(REALITY_RULE);
   parts.push(PRODUCT_HERO_RULE);
+  // 2026-10-29：镜头围绕脚本的出发点和元素（原来分镜不知道元素，第一秒画面和元素脱节）
+  parts.push('- **镜头围绕出发点和元素**：脚本里写明的爆款元素设计在哪一段，那一段的镜头就要把它拍出来（元素的具体画面，比如一件外套、一张沙发、一锅串，镜头里看得见）；第一秒画面用元素的句式对应的画面；人、货、场里说好的那一个要在镜头里出现。脚本没写元素的，镜头按脚本写的出发点来，不另加');
   parts.push('每一栏的要求：');
   parts.push('- **景别**：中文 + emoji（远景📷 / 全景🎥 / 中景📹 / 近景📸 / 特写🔍）');
   parts.push('- **运镜**：固定 / 推镜 / 拉镜 / 摇镜 / 移镜 / 跟随');

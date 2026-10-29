@@ -23,7 +23,7 @@ import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } fr
 import { readDifyStream } from "@/lib/sse-stream";
 import { polishTitlesRemote } from "@/lib/title-polish";
 import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
-import { mergeCreationSettings, settingsFromInput, settingsForResult, creationSettingsBlock, purposeOf } from '@/lib/creation-settings';
+import { mergeCreationSettings, settingsFromInput, settingsForResult, creationSettingsBlock, purposeOf, joinUniqueLines } from '@/lib/creation-settings';
 import { creationBridgeData, creationBridgePrompt } from '@/lib/creation-bridge';
 import { creationReference, carriedIntent, intentBlock, originForResult } from "@/lib/creation-continuation";
 import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summary";
@@ -88,7 +88,8 @@ export default function DirectionPage() {
   const currentSettings = mergeCreationSettings(bridge.creationSettings, {
     purpose: purposeOf(selectedGoals), purposeText: selectedGoals || undefined,
     userIntent: bridge.creationSettings.userIntent || [selectedGoals, customGoal, ideas].filter(Boolean).join('\n'),
-    notes: [bridge.creationSettings.notes, customGoal, ideas].filter(Boolean).join('\n'),
+    // 按行去重：带来的补充要求里已有的话不再叠一遍（lib/creation-settings 的 joinUniqueLines）
+    notes: joinUniqueLines(bridge.creationSettings.notes, customGoal, ideas),
   });
   // 内容配比：默认按档案（或系统推荐）把方向分到流量 / 人设 / 变现；只想跟着目的走的可以关掉
   const [useMix, setUseMix] = useState(false);

@@ -213,6 +213,8 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push(TITLE_CRAFT);
   parts.push(REALITY_RULE);
   parts.push(PRODUCT_HERO_RULE);
+  // 2026-10-29：标题围绕同一个出发点和元素（原来标题不知道这条用的是哪个元素，写成通用标题）
+  parts.push('- **标题围绕出发点和元素**：参考内容（选题或脚本）里写明的「爆款元素」就是这条标题要用的元素，用它的句式写，光看标题就认得出；标题也要落在人、货、场其中一个上（这条围绕的那个）。参考内容里没写元素的，标题就只按出发点写，不硬套句式');
   parts.push('');
   parts.push(p.titleTypeLabel === 'AI推荐' ? '- 标题类型：按当前主线与材料自动选择，不默认套疑问、冲突或营销类型' : `- 标题类型（用户明确选择）：${p.titleTypeLabel}`);
   parts.push(p.titleFormulaValue === 'auto' ? '- 使用公式：按当前内容选择，可直接清楚表达，不默认套为什么或意外原因' : `- 使用公式（用户明确选择）：${p.titleFormulaLabel}`);

@@ -82,7 +82,8 @@ describe('每个板块只拿自己需要的定位（清单 deep 字段）', () =
   it('选题、方向拿内容定位；脚本（方案 D）不拿任何深挖定位，也不拿简报和行业建议', () => {
     expect(manifestOf('topic')?.deep).toEqual(['content']);
     expect(manifestOf('direction')?.deep).toEqual(['content']);
-    expect(manifestOf('script')?.deep).toBeUndefined();
+    // 2026-10-29：脚本的结尾要对上商业定位的成交路径，所以脚本拿商业定位（只取成交路径一节）
+    expect(manifestOf('script')?.deep).toEqual(['business']);
     expect(manifestOf('script')?.advice).toBe(false);
     expect(manifestOf('script')?.positioning).toBe(false);
     expect(manifestOf('script')?.brief).toEqual([]);
@@ -92,19 +93,22 @@ describe('每个板块只拿自己需要的定位（清单 deep 字段）', () =
 
   it('选题有内容定位的系列清单，并带上四个标签说明', () => {
     const out = buildContextBlock(base({ contentPositioning: CONTENT }), 'topic');
-    expect(out).toContain('内容定位（参考系列）');
+    // 2026-10-29：系列要求归位（原来只是「参考」，系列也被截断）
+    expect(out).toContain('内容定位（系列）');
     expect(out).toContain('系列A：烧烤做法');
-    expect(out).toContain('每条选题的四个标签');
+    expect(out).toContain('系列是参考，不是框子');
+    expect(out).not.toContain('归位到系列');
+    expect(out).not.toContain('这是内容定位的参考系列，不是规定动作');
     expect(out).not.toContain('商业定位（成交路径）');
   });
 
-  it('脚本只给档案和写作底线：商业定位、内容定位、行业建议、账号定位都不带（方案 D）', () => {
+  it('脚本只给档案、写作底线和商业定位的成交路径；内容定位、行业建议、账号定位都不带（方案 D + 2026-10-29 成交路径）', () => {
     const out = buildContextBlock(base({
       businessPositioning: BUSINESS, contentPositioning: CONTENT,
       advice: '## 本阶段判断\n内容', positioning: { name: '账号定位', summary: '摘要', full: '账号定位原文' },
     }), 'script');
-    expect(out).not.toContain('商业定位（成交路径）');
-    expect(out).not.toContain('内容定位（参考系列）');
+    expect(out).toContain('商业定位（成交路径）');
+    expect(out).not.toContain('内容定位（系列）');
     expect(out).not.toContain('行业建议（药方）');
     expect(out).not.toContain('账号定位原文');
     expect(out).toContain('三有自检');

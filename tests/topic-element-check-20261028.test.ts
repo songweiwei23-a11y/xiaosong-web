@@ -3,6 +3,21 @@
  * 例子都来自真实产出：「赫本风旧外套，敞穿还是扣上？」是编导点名的反例——正文写了怀旧，标题却没有怀旧的看点。
  */
 import { describe, expect, it } from 'vitest';
+import { topicDiversityIssues } from '@/lib/topic-element-check';
+
+describe('批次多样性提示', () => {
+  it('识别同元素、重复对比句式及动作对比，只提醒人工核对', () => {
+    const output = Array.from({ length: 5 }, (_, i) => `## 选题${i + 1}：裤子站着 vs 坐下 ${i}\n**1️⃣ 爆款元素**\n反差：对比\n**开篇钩子**\n开场`).join('\n');
+    const issues = topicDiversityIssues(output);
+    expect(issues.some((s) => s.includes('少于 3 种'))).toBe(true);
+    expect(issues.some((s) => s.includes('超过 2 条'))).toBe(true);
+    expect(issues.some((s) => s.includes('对比动作'))).toBe(true);
+  });
+
+  it('识别不到足够选题时不猜测批次问题', () => {
+    expect(topicDiversityIssues('## 选题1：普通标题\n爆款元素：反差')).toEqual([]);
+  });
+});
 import { elementTitleIssues, topicElementResults } from '@/lib/topic-element-check';
 
 const batch = `## 选题1：当年最火的校服外套，穿错最没面子

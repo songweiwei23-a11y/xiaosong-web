@@ -9,6 +9,7 @@ import { saveFoundationRow } from '@/lib/foundation-save'
 import {
   createFoundation,
   getFoundation,
+  latestFoundation,
   missingKeys,
   quotaVerdict,
   runFoundation,
@@ -104,11 +105,21 @@ export async function POST(request: Request) {
   return NextResponse.json({ job: publicJob(job) }, { status: 202 })
 }
 
-/** 查进度：?jobId=。只能看自己的任务 */
+/**
+ * 查进度：?jobId= 查那一次；?profileId= 查这个档案最近的一次（没有返回 job: null）。只能看自己的任务。
+ * jobId 查不到（服务重启丢了、或者早就过期）返回 404，页面据此判断「上次被中断了」。
+ */
 export async function GET(request: Request) {
   const guard = await requireUser()
   if (!guard.ok) return guard.response!
-  const jobId = new URL(request.url).searchParams.get('jobId') ?? ''
+  const params = new URL(request.url).searchParams
+  const profileId = params.get('profileId')
+  if (profileId !== null) {
+    if (!PROFILE_UUID.test(profileId)) return NextResponse.json({ error: '档案编号不正确' }, { status: 400 })
+    const latest = latestFoundation(guard.userId!, profileId)
+    return NextResponse.json({ job: latest ? publicJob(latest) : null }, { headers: { 'Cache-Control': 'no-store' } })
+  }
+  const jobId = params.get('jobId') ?? ''
   const job = getFoundation(jobId, guard.userId!)
   if (!job) return NextResponse.json({ error: '没有找到这次的地基生成' }, { status: 404 })
   return NextResponse.json({ job: publicJob(job), labels: FOUNDATION_TYPES }, { headers: { 'Cache-Control': 'no-store' } })

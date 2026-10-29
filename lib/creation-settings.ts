@@ -77,6 +77,25 @@ export function mergeCreationSettings(...values: unknown[]): CreationSettings {
   return out;
 }
 
+/**
+ * 几段文字拼成一段，按行去重（2026-10-29）。
+ * 原来板块交接时把「带来的补充要求」和「这次的目的、想法」直接拼起来，同一句话每过一个板块就多一遍，
+ * 线上一条选题的设置里「第一条作品 就想要流量 曝光」叠了三遍。
+ */
+export function joinUniqueLines(...parts: Array<string | undefined | null>): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of parts) {
+    for (const line of (part ?? '').split('\n')) {
+      const key = line.trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(key);
+    }
+  }
+  return out.join('\n');
+}
+
 const text = (value: unknown): string => Array.isArray(value) ? value.filter(Boolean).join('、') : typeof value === 'string' ? value.trim() : '';
 function labelled(body: string, names: string[]): string {
   for (const name of names) {

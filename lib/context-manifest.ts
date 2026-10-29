@@ -56,7 +56,7 @@ export interface BoardManifest {
   dealReasons: boolean;
   /**
    * 要不要带深挖的定位（2026-10-19 分工方案）：
-   *   content  内容定位的系列清单 —— 选题、方向只能从这里的系列里选
+   *   content  内容定位的系列清单 —— 选题、方向拿它当参考（2026-10-29：系列不是限制，不能只从这里选）
    *   business 商业定位的成交路径 —— 脚本的结尾动作要对上这里的一步
    * 行业建议（药方）谁都带，它只在这两份的框架内选和排。
    */
@@ -95,6 +95,8 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     dealReasons: true,
     advice: false,
     positioning: false,
+    // 2026-10-29：脚本的结尾要对上商业定位的成交路径（只给成交路径一段，1200 字，见 creator-context）
+    deep: ['business'],
   },
   {
     board: 'storyboard',

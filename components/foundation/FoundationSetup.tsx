@@ -42,6 +42,20 @@ function writeFlag(key: string) {
   try { sessionStorage.setItem(key, "1"); } catch { /* 存不下就只在本页生效 */ }
 }
 
+/** 这一次的「地基已完成」提示过没有：提示过一次就不再弹 */
+const notifiedKey = (jobId: string) => `kaiwu:foundation-notified:${jobId}`;
+/** 这个档案的生成被中断后，本次打开已经自动接着跑过一次了（只自动续一次，免得反复扣额度） */
+const resumedKey = (pid: string) => `kaiwu:foundation-resumed:${pid}`;
+function readLocal(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function writeLocal(key: string, value: string) {
+  try { localStorage.setItem(key, value); } catch { /* 存不下：刷新后由服务端按档案再查一次 */ }
+}
+function removeLocal(key: string) {
+  try { localStorage.removeItem(key); } catch { /* 忽略 */ }
+}
+
 export function FoundationSetup() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [types, setTypes] = useState<string[] | null>(null);
@@ -52,6 +66,9 @@ export function FoundationSetup() {
   const [purpose, setPurpose] = useState("staged");
   const [stage, setStage] = useState("start");
   const [error, setError] = useState("");
+  // 上次的生成找不到了（服务器更新重启、或过期）：等档案进度读到后决定是提示完成，还是自动接着补缺的
+  const [interrupted, setInterrupted] = useState(false);
+  const [notice, setNotice] = useState("");
 
   /** 读当前档案和它已有的定位类型。取不到就不弹，不猜 */
   const reload = useCallback(async () => {
@@ -80,24 +97,69 @@ export function FoundationSetup() {
 
   const missing = !!profile && !!types && CORE.some((t) => !types.includes(t));
 
-  // 换了档案：读这个档案当前的会话状态；还在跑的一次，重新挂上进度
+  /*
+   * 换了档案、刷新、关掉页面再回来：把这个档案的那一次生成接上（2026-10-29）。
+   * - 还在跑：接着显示进度。
+   * - 已经跑完、还没提示过：弹出「地基已完成」。原来这里只是悄悄删掉记录，用户不知道已经好了。
+   * - 本机记的那一次找不到了（服务器更新重启、或过期）：交给下面的「中断」处理。
+   * 本机没记（换了浏览器、换了设备）就按档案问服务端最近的一次。
+   */
   useEffect(() => {
     if (!profile) return;
-    setDismissed(readFlag(dismissKey(profile.id)));
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(jobKey(profile.id)); } catch { saved = null; }
-    if (!saved) return;
+    const pid = profile.id;
+    setDismissed(readFlag(dismissKey(pid)));
+    const saved = readLocal(jobKey(pid));
+    const url = saved ? `/api/foundation?jobId=${encodeURIComponent(saved)}` : `/api/foundation?profileId=${encodeURIComponent(pid)}`;
     let alive = true;
-    void fetch(`/api/foundation?jobId=${encodeURIComponent(saved)}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { job?: PublicJob } | null) => {
-        if (!alive || !d?.job) return;
-        if (d.job.status === "running") { setJob(d.job); setPhase("running"); }
-        else { try { localStorage.removeItem(jobKey(profile.id)); } catch { /* 忽略 */ } }
+    void fetch(url, { cache: "no-store" })
+      .then(async (r) => {
+        if (!alive) return;
+        if (r.status === 404 && saved) { removeLocal(jobKey(pid)); setInterrupted(true); return; }
+        if (!r.ok) return;
+        const d = (await r.json().catch(() => null)) as { job?: PublicJob | null } | null;
+        const found = d?.job;
+        if (!alive || !found) return;
+        if (found.status === "running") { writeLocal(jobKey(pid), found.id); setJob(found); setPhase("running"); return; }
+        removeLocal(jobKey(pid));
+        if (!readLocal(notifiedKey(found.id))) { writeLocal(notifiedKey(found.id), "1"); setJob(found); setPhase("done"); }
       })
       .catch(() => undefined);
     return () => { alive = false; };
   }, [profile]);
+
+  /*
+   * 上次的生成被中断了：等这个档案的进度读到后再定。
+   * 定位和简报都已经有了 → 直接提示地基已完成（中断前已经写进库的结果都在）；
+   * 还缺 → 自动接着生成缺的那几项（只补缺的，已有的不重复扣额度），一次打开只自动续一次。
+   */
+  useEffect(() => {
+    if (!interrupted || !profile || types === null) return;
+    setInterrupted(false);
+    const pid = profile.id;
+    if (!missing) {
+      const id = `restored-${pid}`;
+      if (readLocal(notifiedKey(id))) return;
+      writeLocal(notifiedKey(id), "1");
+      const steps: PublicStep[] = [
+        { key: "positioning", label: "账号定位" },
+        { key: "brief", label: "创作简报" },
+        { key: "advice", label: "行业建议" },
+      ].map((s) => ({ ...s, status: types.includes(s.label) ? "done" : "error", error: types.includes(s.label) ? null : "没有生成，可以重新生成" }));
+      setJob({ id, profileId: pid, status: steps.every((s) => s.status === "done") ? "done" : "partial", steps });
+      setPhase("done");
+      return;
+    }
+    if (readFlag(resumedKey(pid))) {
+      setNotice("上次的生成被中断了，点「一键生成」接着补缺的那几项");
+      setPhase("prepare");
+      return;
+    }
+    writeFlag(resumedKey(pid));
+    setNotice("上次的生成被中断了（服务器刚更新），已自动接着生成缺的那几项");
+    void start();
+    // start 每次渲染都是新的，这里只在「中断」被发现的那一次执行
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interrupted, profile, types, missing]);
 
   // 软强制：没有打好地基、又没有被关掉，就自动打开准备页
   useEffect(() => {
@@ -110,13 +172,27 @@ export function FoundationSetup() {
     if (phase !== "running" || !jobId || !profile) return;
     const timer = window.setInterval(() => {
       void fetch(`/api/foundation?jobId=${encodeURIComponent(jobId)}`, { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d: { job?: PublicJob } | null) => {
+        .then(async (r) => {
+          // 任务没了（生成中服务器更新重启）：原来这里一直转圈。改成按「中断」处理：先读最新进度，再提示完成或自动接着补
+          if (r.status === 404) {
+            window.clearInterval(timer);
+            removeLocal(jobKey(profile.id));
+            setPhase("idle");
+            await reload();
+            setInterrupted(true);
+            return null;
+          }
+          return r.ok ? ((await r.json()) as { job?: PublicJob }) : null;
+        })
+        .then((d) => {
           if (!d?.job) return;
           setJob(d.job);
           if (d.job.status !== "running") {
             window.clearInterval(timer);
-            try { localStorage.removeItem(jobKey(profile.id)); } catch { /* 忽略 */ }
+            removeLocal(jobKey(profile.id));
+            // 跑完就弹出「地基已完成」：最小化了、去了别的页面，也会弹出来
+            writeLocal(notifiedKey(d.job.id), "1");
+            setMinimized(false);
             setPhase("done");
             void reload();
           }
@@ -147,7 +223,8 @@ export function FoundationSetup() {
         setPhase("idle");
         return;
       }
-      try { localStorage.setItem(jobKey(profile.id), data.job.id); } catch { /* 刷新后就取不回进度，但生成照常进行 */ }
+      // 记下这一次：刷新、关掉页面再回来能接上进度和完成提示（记不下也没关系，回来时按档案再问服务端）
+      writeLocal(jobKey(profile.id), data.job.id);
       setJob(data.job);
     } catch {
       setError("网络断开了，没有开始。恢复后再点一次");
@@ -168,6 +245,7 @@ export function FoundationSetup() {
     setPhase("idle");
     setJob(null);
     setMinimized(false);
+    setNotice("");
   };
 
   if (!profile) return null;
@@ -188,7 +266,7 @@ export function FoundationSetup() {
         onClick={() => setMinimized(false)}
         className="fixed bottom-4 left-4 z-40 rounded-full border border-border bg-background/95 px-4 py-2 text-[12.5px] text-foreground shadow-lg backdrop-blur"
       >
-        地基生成中 {doneCount}/{totalCount}
+        地基生成中 {doneCount}/{totalCount} · 后台进行中，完成后会提示你
       </button>
     );
   }
@@ -252,7 +330,8 @@ export function FoundationSetup() {
         {phase === "running" && job && (
           <>
             <h2 className="text-[17px] font-semibold text-foreground">正在生成地基</h2>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">定位和简报是先后的两步，行业建议同时在做。关掉页面，生成也会继续，结果会保存下来。</p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">定位和简报是先后的两步，行业建议同时在做。关掉这个窗口、关掉页面都没关系，生成在后台一直跑到完成，结果会保存下来；完成后会提示你。</p>
+            {notice && <p className="mt-2 text-[12.5px] text-amber-600 dark:text-amber-300">{notice}</p>}
             <ul className="mt-4 space-y-2 text-[13px]">
               {job.steps.map((s) => (
                 <li key={s.key} className="flex items-center justify-between rounded-xl border border-border px-3 py-2">
@@ -262,16 +341,16 @@ export function FoundationSetup() {
               ))}
             </ul>
             <div className="mt-5 flex justify-end">
-              <button type="button" onClick={() => setMinimized(true)} className="rounded-lg border border-border px-3 py-2 text-[13px] text-foreground">最小化，先去做别的</button>
+              <button type="button" onClick={() => setMinimized(true)} className="rounded-lg border border-border px-3 py-2 text-[13px] text-foreground">关掉窗口，后台继续生成</button>
             </div>
           </>
         )}
 
         {phase === "done" && job && (
           <>
-            <h2 className="text-[17px] font-semibold text-foreground">{job.status === "done" ? "✓ 地基已完成" : "地基有一部分没完成"}</h2>
+            <h2 className="text-[17px] font-semibold text-foreground">{job.status === "done" ? "✓ 地基已完成，可以继续创作了" : "地基有一部分没完成"}</h2>
             <p className="mt-1 text-[12.5px] text-muted-foreground">
-              {job.status === "done" ? "这些结果已经保存，之后生成内容会自动用上它们。" : "已完成的结果已经保存。没完成的可以重新生成，只会补缺的。"}
+              {job.status === "done" ? "账号定位、创作简报都已保存，之后的选题、脚本会自动用上它们。" : "已完成的结果已经保存。没完成的可以重新生成，只会补缺的。"}
             </p>
             <ul className="mt-4 space-y-2 text-[13px]">
               {job.steps.map((s) => (

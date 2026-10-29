@@ -38,6 +38,7 @@ import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
 import { factInventoryBlock } from './fact-inventory';
 import { adviceContextBlock, threeHavesBlock } from './industry-advice';
 import { topicTagBlock } from './output-tags';
+import { contentSeriesOf, businessRouteOf, CONTENT_SERIES_HEADING, SERIES_ASSIGNMENT_RULE } from './content-series';
 
 /** 三有自检只给产出选题、脚本、方向的板块（见 lib/industry-advice 的 threeHavesBlock） */
 const THREE_HAVE_BOARDS = new Set<ContextModule>(['topic', 'script', 'direction']);
@@ -366,13 +367,21 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
 
   // 深挖的定位（2026-10-19 分工方案）：选题、方向拿内容定位的系列清单，脚本拿商业定位的成交路径。只给清单里声明的板块
   const deep = manifestOf(module)?.deep ?? [];
+  // 2026-10-29：原来只截前 2500 字，系列、选题来源、节奏全看不到，下游只能自己编。现在取系列相关的几节，并要求归位
   if (deep.includes('content') && ctx.contentPositioning) {
-    parts.push('', '## 🧭 内容定位（参考系列）', '', text(ctx.contentPositioning, 2500), '',
-      '⚠️ 这是内容定位的参考系列，不是规定动作。用户选定的方向优先：方向不在这里的，照用户的来，标【自定义】，不硬套进系列。');
+    const series = contentSeriesOf(ctx.contentPositioning);
+    if (series) {
+      parts.push('', CONTENT_SERIES_HEADING, '', series, '',
+        '⚠️ 这是这个号的内容系列（内容定位想好的一套路子），下面的内容规划、创作方向、选题可以参考它；系列不是限制，写得比它更好的内容直接写：', SERIES_ASSIGNMENT_RULE);
+    }
   }
+  // 2026-10-29：成交路径按节取（原来前 1200 字截断，成交路径可能根本不在里面）
   if (deep.includes('business') && ctx.businessPositioning) {
-    parts.push('', '## 💰 商业定位（成交路径）', '', text(ctx.businessPositioning, 1200), '',
-      '⚠️ 脚本的结尾动作要对上这里的一步，不另起成交方式。');
+    const route = businessRouteOf(ctx.businessPositioning);
+    if (route) {
+      parts.push('', '## 💰 商业定位（成交路径）', '', route, '',
+        '⚠️ 脚本的结尾动作要对上这里的一步，不另起成交方式。');
+    }
   }
 
   // 行业建议（药方）：这个号当前阶段的打法，所有板块都照它执行；它只在内容定位的框架内选和排

@@ -45,9 +45,15 @@ export function directionSeedOf(text: string): string | null {
   const name = text.match(/^###\s*方向\s*\d+[：:]\s*(.+?)\s*$/m)?.[1]?.replace(/\*\*/g, '').trim() ?? '';
   const purpose = fieldOf(text, '核心目的') || fieldOf(text, '视频目的') || fieldOf(text, '对应目的');
   const scope = fieldOf(text, '内容方向');
+  // 出发点（2026-10-29）：方向定好的流量方向、爆款元素或成交理由，选题沿用，不再另配。原来种子不带，选题只能让代码重新分元素
+  const origin = listUnder(text, '出发点').join('；');
+  // 所属系列（2026-10-29）：方向归到内容定位的哪个系列，选题沿用，不另起
+  const series = fieldOf(text, '所属系列');
   const lines = [
     name && `方向：${name}`,
+    series && `所属系列（参考，不限制）：${series}`,
     purpose && `核心目的（不能改）：${purpose}`,
+    origin && `出发点：${origin}`,
     scope && `范围：${scope}`,
     ...listUnder(text, '切入角度').map((a) => `角度：${a}`),
     // 思路提示只给方向性的想法，不是题眼（2026-10-26：题眼会误导选题，去掉了）
@@ -66,5 +72,16 @@ export function hooksOfSeed(seed: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * 种子里「出发点」写到的爆款元素（只认 names 里给的，也就是这个档案行业适用的）。
+ * 方向定了元素，选题就沿用它；没写或写的不适用，返回空，由选题层自己从适用的元素里挑。
+ */
+export function elementsOfSeed(seed: string, names: string[]): string[] {
+  const origin = seed.split('\n').find((l) => l.trim().startsWith('出发点：')) ?? '';
+  if (!origin) return [];
+  const part = origin.match(/爆款元素[：:]\s*([^｜|；;\n]+)/)?.[1] ?? origin;
+  return names.filter((n) => part.includes(n));
+}
+
 /** 选题页用的标题：种子的说明文字，告诉选题层哪些是它自己定的 */
-export const DIRECTION_SEED_HEAD = '【方向种子（核心目的不能改；赛道和目标人群是锚点，切口由选题层在思路里找，每条选题不同）】';
+export const DIRECTION_SEED_HEAD = '【方向种子（核心目的不能改；出发点写了的照它来；赛道和目标人群是锚点，切口由选题层在思路里找，每条选题不同）】';

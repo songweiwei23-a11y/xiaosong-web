@@ -120,24 +120,26 @@ describe('槽位分配：每条用 k 个元素', () => {
     expect(capped.every((s) => s.elements.length === 2)).toBe(true);
   });
 
-  it('分配表：多个元素写成「+」连着，并提醒要设计进同一条', () => {
+  // 2026-10-29：多个元素是候选，挑最贴的用好；都贴才一起用（原来要求同时用，出了两个元素硬拼的标题）
+  it('分配表：多个元素写成候选，挑最贴的；都贴才一起用', () => {
     const block = topicSlotsBlock(assignTopicSlots({ count: 2, audiences: ['宝妈'], elements: ['反差', '荷尔蒙', '头牌'], tactics: ['反向操作'], perTopic: 2 }));
-    expect(block).toMatch(/爆款元素=[^；]+ \+ [^；]+（这几个同时用，都要设计进这一条）/);
-    expect(block).toContain('带「+」的那条要把几个爆款元素一起设计进同一个选题');
+    expect(block).toMatch(/爆款元素=候选 [^；、]+、[^；（]+（挑最贴这条话题的用，不贴就换一个更贴的）/);
+    expect(block).toContain('候选不止一个的，挑最贴的那个用好；几个都贴这条话题时才一起用');
+    expect(block).not.toContain('这几个同时用');
   });
 });
 
 describe('大流量标准：元素名单跟着行业走', () => {
   it('默认仍是全部八个（旧的脚本、内容规划不受影响）', () => {
-    expect(bigTrafficStandard()).toContain(`写明用哪个，${VIRAL_ELEMENT_NAMES.join('、')}`);
+    expect(bigTrafficStandard()).toContain(`写明用哪个，可选：${VIRAL_ELEMENT_NAMES.join('、')}`);
   });
   it('传了名单就只列名单里的', () => {
     const s = bigTrafficStandard(['头牌', '成本']);
-    expect(s).toContain('写明用哪个，头牌、成本）');
+    expect(s).toContain('写明用哪个，可选：头牌、成本）');
     expect(s).not.toContain('荷尔蒙');
   });
   it('流量型的单条说明用的是传入的名单，别的目的不带大流量标准', () => {
-    expect(roleBrief('流量型', ['头牌'])).toContain('写明用哪个，头牌）');
+    expect(roleBrief('流量型', ['头牌'])).toContain('写明用哪个，可选：头牌）');
     expect(roleBrief('人设型', ['头牌'])).not.toContain('大流量标准');
   });
 });
@@ -148,7 +150,7 @@ describe('切入角度：带着方向来的，每条切进一个不同的角度'
     const slots = assignTopicSlots({ count: 4, audiences: ['宝妈'], elements: ['头牌'], tactics: ['x'], perTopic: 1, angles });
     expect(slots.map((s) => s.angle)).toEqual([angles[0], angles[1], angles[2], angles[0]]);
     const block = topicSlotsBlock(slots);
-    expect(block).toContain(`第1条：人群=宝妈；切入角度=${angles[0]}；爆款元素=头牌（句式：世界上最贵的X到底有多贵）；`);
+    expect(block).toContain(`第1条：人群=宝妈；切入角度=${angles[0]}；爆款元素=候选 头牌（挑最贴这条话题的用，不贴就换一个更贴的）；`);
     expect(block).toContain('带「切入角度=」的那条，就从这个角度切进去');
     expect(topicSlotsBlock(assignTopicSlots({ count: 1, audiences: ['宝妈'], elements: ['头牌'], tactics: ['x'] }))).not.toContain('切入角度=');
   });
@@ -219,7 +221,7 @@ describe('目的按配比排好：只有流量型条分爆款元素', () => {
     const block = topicSlotsBlock(
       assignTopicSlots({ count: 2, audiences: ['宝妈'], elements: ['反差', '头牌'], tactics: ['反向操作'], perTopic: 1, roles: ['流量型', '人设型'] }),
     );
-    expect(block).toContain('第1条：目的=流量型；人群=宝妈；爆款元素=反差（句式：穷人 vs 富人）；');
+    expect(block).toContain('第1条：目的=流量型；人群=宝妈；爆款元素=候选 反差（挑最贴这条话题的用，不贴就换一个更贴的）；');
     expect(block).toContain('第2条：目的=人设型；人群=宝妈；爆款元素=无（人设型不套爆款元素）；');
     expect(block).toContain('每条的目的按分配表写，不要自己换');
   });
@@ -271,18 +273,18 @@ describe('选题提示词：按档案行业和创意难度拼出来', () => {
     const profile = { profile_name: '数码测试号', account_track: ['数码科技'], product_category: ['数码家电'], target_age: ['25-30岁'], target_occupation: ['白领'] };
     const { query } = buildTopicBoardQuery(input({ selectedProfile: profile as never, selectedElements: ['hormone', 'celebrity'] }));
     expect(query).toContain('【本档案行业适用的爆款元素】头牌。荷尔蒙不适用于这个行业，不要用');
-    expect(query).toContain('每条流量选题用几个爆款元素：1 个');
+    expect(query).toContain('每条流量选题最多用 1 个爆款元素');
     expect(query).not.toContain('异性会多看你两眼');
-    expect(query).toContain('（必填，写明用哪个，头牌）');
-    expect(query).toMatch(/爆款元素=头牌（句式：[^）]+）；/);
+    expect(query).toContain('（必填，至少一个，写明用哪个，可选：头牌）');
+    expect(query).toMatch(/爆款元素=候选 头牌（/);
     expect(query).not.toMatch(/爆款元素=荷尔蒙/);
   });
 
-  it('时尚档案、高创意、不选元素：八个里挑，每条 3 个，分配表里是三个用「+」连起来', () => {
+  it('时尚档案、高创意、不选元素：八个里挑，每条最多 3 个，分配表里给 3 个候选', () => {
     const profile = { profile_name: '穿搭测试号', account_track: ['时尚穿搭'], product_category: ['服装配饰'], target_age: ['25-30岁'], target_occupation: ['宝妈'] };
     const { query } = buildTopicBoardQuery(input({ selectedProfile: profile as never, difficulty: '高创意' }));
-    expect(query).toContain('每条流量选题用几个爆款元素：3 个');
-    expect(query).toMatch(/爆款元素=[^；]+ \+ [^；]+ \+ [^；]+（这几个同时用/);
+    expect(query).toContain('每条流量选题最多用 3 个爆款元素');
+    expect(query).toMatch(/爆款元素=候选 [^；、]+、[^；、]+、[^；（]+（挑最贴/);
     expect(query).toContain('【本档案行业适用的爆款元素】');
     expect(query).not.toContain('不适用于这个行业');
   });
@@ -307,6 +309,6 @@ describe('选题提示词：按档案行业和创意难度拼出来', () => {
   it('没选档案：不出行业适用行，按创意难度给个数', () => {
     const { query } = buildTopicBoardQuery(input({ difficulty: '容易执行' }));
     expect(query).not.toContain('【本档案行业适用的爆款元素】');
-    expect(query).toContain('每条流量选题用几个爆款元素：1 个');
+    expect(query).toContain('每条流量选题最多用 1 个爆款元素');
   });
 });

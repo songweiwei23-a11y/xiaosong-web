@@ -125,7 +125,8 @@ export async function runFoundation(job: FoundationJob, deps: FoundationDeps, ad
 
 /* ───────── 任务存储（内存里，服务重启会丢；结果已经写进库的不受影响） ───────── */
 
-const JOB_TTL_MS = 60 * 60_000;
+// 跑完的任务留 24 小时：用户关掉页面、隔天再来，还能看到「地基已完成」（2026-10-29，原来 1 小时）
+const JOB_TTL_MS = 24 * 60 * 60_000;
 const jobs = new Map<string, FoundationJob>();
 
 function sweep(now: number) {
@@ -161,6 +162,22 @@ export function createFoundation(userId: string, profileId: string, keys: Founda
   };
   jobs.set(job.id, job);
   return job;
+}
+
+/**
+ * 这个档案最近的一次：正在跑的优先，否则取最近跑完的（2026-10-29）。
+ * 页面不靠本机记下的任务编号也能接上——换了浏览器、换了设备、清了缓存，都能看到进度或完成提示。
+ */
+export function latestFoundation(userId: string, profileId: string, now = Date.now()): FoundationJob | null {
+  sweep(now);
+  const running = runningFoundation(userId, profileId);
+  if (running) return running;
+  let latest: FoundationJob | null = null;
+  for (const job of jobs.values()) {
+    if (job.userId !== userId || job.profileId !== profileId) continue;
+    if (!latest || (job.finishedAt ?? 0) > (latest.finishedAt ?? 0)) latest = job;
+  }
+  return latest;
 }
 
 /** 只能取自己的任务 */

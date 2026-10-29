@@ -55,11 +55,13 @@ describe('当月内容规划', () => {
     expect(q).toContain('加起来正好是 16 条');
     expect(q).toContain('少于下限不算完成');
     // 策划层只定类别、目的、条数和职能（2026-10-26）：角度、人群、形式、取材留给方向和选题层
-    expect(q).toContain('三行各写这一类的职能和条数');
+    // 2026-10-29：接回出发点和内容方向（10-26 分层时删掉了）；拍法仍在选题层定
+    expect(q).toContain('三行各写这一类方向的出发点和条数');
     expect(q).toContain('- **职能**：拉新、立人设、转化、留存里选一个');
-    expect(q).not.toContain('- **内容方向**：');
+    expect(q).toContain('- **出发点**：');
+    expect(q).toContain('- **内容方向**：');
     expect(q).toContain('目的只决定条数，不决定形式');
-    expect(q).not.toContain('三行各写这一类方向的出发点');
+    expect(q).not.toContain('- **内容类型**：');
     expect(q).not.toContain('形式不决定目的：教知识、行业干货、避坑、观点，都可以是大流量');
     expect(q).not.toContain('3～6 个');
   });

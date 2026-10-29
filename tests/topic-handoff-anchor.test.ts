@@ -113,8 +113,10 @@ describe('选题页接线', () => {
     expect(page).toMatch(/setSourceReference\(topicReference\(handed\)\)/);
   });
 
-  it('带着脚本来时，大方向不再填进「个人要求」', () => {
-    expect(page).toMatch(/setPersonalRequirement\(carriesScript\(incomingSetup\) \? '' : s\.direction \?\? ''\)/);
+  // 2026-10-29：带方向来、带脚本来都不再把方向填进「个人要求」（那里是「所有选题必须围绕」），方向原文在参考内容里
+  it('带来的方向不填进「个人要求」', () => {
+    expect(page).toMatch(/setPersonalRequirement\(''\);/);
+    expect(page).not.toMatch(/setPersonalRequirement\([^)]*s\.direction/);
   });
 
   it('原方向的方向、目的、思路放进提示词；带方向和带脚本说法不同', () => {

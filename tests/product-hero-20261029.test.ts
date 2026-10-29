@@ -22,10 +22,12 @@ describe('主角是卖的东西', () => {
     expect(PRODUCT_HERO_RULE).toContain('手艺本身就是货');
   });
 
-  it('内容规划和创作方向都带上这条规则，每个方向都有「主角」一栏', () => {
+  // 2026-10-29（方案 A）：「主角」并进「出发点」一栏，变现型的出发点里写主角货
+  it('内容规划和创作方向都带上这条规则，每个方向的「出发点」里变现型写主角货', () => {
     for (const p of [plan, direction]) {
       expect(p).toContain(PRODUCT_HERO_RULE);
-      expect(p).toContain('- **主角**：');
+      expect(p).toContain('- **出发点**：');
+      expect(p).toMatch(/成交理由：……｜主角：在卖的哪样东西/);
     }
   });
 
