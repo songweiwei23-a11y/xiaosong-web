@@ -60,7 +60,7 @@ export function parseSpeakerCheck(raw: string): string[] {
     .map((s) => s.replace(/[「」]/g, '').trim())
     .filter((s) => s.length >= 2)
     .slice(0, MAX_ITEMS);
-  return [...new Set(items)].map((s) => `「${s}」：出镜人本人的台词不用这个称呼指自己，改成「我」「我们」或直接说事`);
+  return [...new Set(items)].map((s) => `「${s}」：出镜人本人的台词不用这个称呼指自己，改成「我」「我们」，保留主语`);
 }
 
 /** 只改标出的几句。其余内容原样保留；拿到的改稿由调用方用 fixTooBig 判断是不是超标 */
@@ -71,7 +71,7 @@ export function buildSpeakerFixPrompt(p: { text: string; issues: string[] }): st
 ${p.issues.map((i, n) => `${n + 1}. ${i}`).join('\n')}
 
 【怎么改】
-- 指自己的称呼改成「我」「我们」，或直接说事。例如「师傅说这道菜最不能省的」改成「我说，这道菜最不能省的」或「这道菜最不能省的」
+- 指自己的称呼改成「我」「我们」，主语保留。例如「师傅说这道菜最不能省的」改成「我说，这道菜最不能省的」。不要删掉主语，不要改成没有主语的句子
 - 不改画面、拍摄要点里的第三人称，不改顾客、受访者说的话
 - 不加新的事实，不删未被标出的句子
 

@@ -29,7 +29,11 @@ export function creativeCraftRules(p: { intent?: string; selected?: string; sour
   // The root brief is authoritative. A draft may already contain the mistake we are fixing.
   const root = p.intent?.trim() || p.context?.match(/^- 原始用户想法：([^\n]+)/m)?.[1]?.trim();
   const material = [root || p.source, p.selected].filter(Boolean).join('\n');
-  const interview = !/不(?:要)?(?:做)?(?:采访|街采|街访)/.test(material)
+  // 采访模板只在采访是这条内容的主要做法时启用。只是顺带提一句（「顺便采访两位老顾客」「另外问问老板」）不启用：
+  // 否则观点稿会被整个改写成采访稿，出镜人开始用「你」问自己（2026-10-30 实测）。
+  const incidental = /(?:顺便|顺带|附带|顺手|另外|也可以|可以|还想|还会)[^，。；;\n]{0,6}(?:采访|访谈|街访|问)/.test(material);
+  const interview = !incidental
+    && !/不(?:要)?(?:做)?(?:采访|街采|街访)/.test(material)
     && /采访|访谈|街访|问.{0,8}(?:老板|店主|商家)|(?:老板|店主).{0,8}(?:真实感受|真实反应)/.test(material);
   const comparison = /前后|前.{0,12}后|对比|比较/.test(material);
   const rules = [
@@ -44,6 +48,10 @@ export function creativeCraftRules(p: { intent?: string; selected?: string; sour
     '- 不预设答案不同、有反转或老板沉默：如果不同，比较各自依据；如果一致，深入共同原因与例子；不知道也如实保留。店主的感受不能包装成营收统计或整座县城趋势。',
     '- 无采访实录或用户明确尚未采访时，全部候选标题、开头、正文、封面及建议都按事前方案写，只说准备问什么或待验证的问题。禁止“我问了一圈/问过几家/每家答案不一样/他的话让我意外”等已完成报道语气，禁止预填老板台词、答复比例、经营结果。参考稿出现这些句子也必须改正。已有真实实录时才可据实保留。',
     '- 纯文字文案只放已知主持人/旁白台词和实际提问，不放未知回答占位，也不写未经采访验证的总结；受访者的“按现场真实回答”只放采访执行稿或分镜中。',
+    '- 角色分清：出镜人是主持人，说「我」；受访者是顾客或店主，只说他/她自己的话，不由出镜人替他说，也不让出镜人用「你」去问自己。主持人问受访者时，「你」指受访者本人。',
+  );
+  if (incidental) rules.push(
+    '【顺带提到的采访】原始想法里只是顺带提了采访（如「顺便采访两位老顾客」），这条不按采访来写：脚本正文不写采访段、主问、追问、受访者回答占位，也不编受访者的话；脚本只写出镜人的观点、依据和邀请。采访的想法只在第4步执行建议里记一笔，供编导以后决定，不进脚本。',
   );
   if (comparison) rules.push(
     '【比较口径锁定】先从原始用户想法确定两端是什么，在所有主问、追问、标题、正文与分镜里保持同一口径。前后对比不能偷偷变成同比、和往年比、与平时比；用户明确要这些比较时才使用。',
