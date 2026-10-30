@@ -185,10 +185,9 @@ const join = (lines: (string | null)[]) => lines.filter(Boolean).join('\n');
  */
 export function describeShootingSetup(p: CreatorProfile | null): string {
   if (!p) return '';
+  // 拍摄场地、设备不从档案带进来（2026-10-31）：场地决定不了内容的产出，设备（灯光、稳定器）也没用，用户在需求里写了才用
   const rows = join([
-    line('可用设备', p.equipment),
     line('团队规模', p.team_structure),
-    line('常用场地', p.shooting_location),
     line('剪辑能力', p.editing_capability),
     line('单条预算', p.budget_per_video),
     line('惯用时长', p.video_duration),
@@ -199,9 +198,8 @@ export function describeShootingSetup(p: CreatorProfile | null): string {
 
 ${rows}
 
-**按这些条件设计分镜**：有稳定器才安排运动镜头，有灯光才设计光位，
-团队只有一个人就不要出现需要第二机位同时拍的镜头。
-条件没写到的按最保守的情况处理（手机、单人、自然光）。`;
+**按这些条件设计分镜**：团队只有一个人就不要出现需要第二机位同时拍的镜头。
+条件没写到的按单人处理。`;
 }
 
 /** 目标人群。脚本、审稿、标题都要，但详略不同 */
@@ -231,10 +229,9 @@ function describeAudience(p: CreatorProfile, detail: 'brief' | 'full'): string {
  * 填了条件就按真的来，没填才退回保守假设。
  */
 export function describeExecutionConstraints(p: CreatorProfile | null): string {
-  const gear = text(p?.equipment, 200);
+  // 拍摄场地、设备不从档案带进创作板块（2026-10-31）：场地决定不了内容的产出，设备（灯光、稳定器）也没用；只看团队
   const team = text(p?.team_structure, 100);
-  const place = text(p?.shooting_location, 150);
-  if (!gear && !team) {
+  if (!team) {
     return `- 拍摄成本要低：手机即可，不需要专业设备
 - 简单易上手：一个人就能拍，不需要团队或演员
 - 场景要求：日常场景（店内/家里），避免凌晨拍摄、多场景切换
@@ -242,10 +239,7 @@ export function describeExecutionConstraints(p: CreatorProfile | null): string {
   }
   return join([
     '- 选题必须落在这个账号的真实拍摄能力之内：',
-    line('  可用设备', gear),
     line('  团队规模', team),
-    line('  可用场地', place),
-    '- 器材清单里没有的东西不要假设它存在；场地没写到的不要设计成外拍',
     team && !/1人|单人|一个人|个人/.test(team)
       ? '- 有团队就可以出镜+掌机分工，需要两个人配合的选题是可以做的'
       : '- 只有一个人，需要他人配合出镜的选题不要出',

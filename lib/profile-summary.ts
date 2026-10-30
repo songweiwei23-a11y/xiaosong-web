@@ -51,8 +51,6 @@ export const PROFILE_SUMMARY_FIELDS: [string, string][] = [
   ['content_format', '内容形式'],
   ['video_duration', '视频时长'],
   ['team_structure', '团队'],
-  ['equipment', '设备'],
-  ['shooting_location', '场地'],
   ['editing_capability', '后期能力'],
   ['budget_per_video', '单条预算'],
   ['monetization_model', '变现方式'],
@@ -74,6 +72,10 @@ export const PROFILE_SUMMARY_FIELDS: [string, string][] = [
 export const PROFILE_SUMMARY_EXCLUDED: Record<string, string> = {
   profile_name: '摘要第一行单独写',
   content_restrictions: '作为硬性禁忌单独传给提示词（restrictions），不混在档案里',
+  // 2026-10-31：拍摄场地、设备不进创作板块的摘要。场地决定不了内容的产出，设备（灯光、稳定器）也没用，
+  // 方向、内容规划、创作简报都拿这份摘要，档案里的「棚子」会被每次带进方向。用户在需求里写了才用（见 lib/creation-settings）
+  shooting_location: '拍摄场地不进创作摘要：场地决定不了内容的产出，档案里的场地不带进任何创作板块',
+  equipment: '设备不进创作摘要：灯光、稳定器这类设备信息对内容没用，档案里的设备不带进任何创作板块',
 };
 
 /**

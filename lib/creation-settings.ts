@@ -327,7 +327,7 @@ export function resolveCreationSettings(data: HandoffPayload, context?: CreatorC
     openingCards,
     elements: explicit.elements,
     dealReasons: dealReasonsForPurpose(explicit.purpose, normalizeCreationReasons(explicit.dealReasons?.length ? explicit.dealReasons : context?.dealReasons || [])),
-    scene: text(p?.shooting_location) || undefined, device: text(p?.equipment) || undefined,
+    // 拍摄场地、设备不从档案默认进来（2026-10-31）：场地和设备对内容没用，用户在需求里写了才有（见 settingsFromText）
     personnel: text(p?.team_structure) || undefined, budget: text(p?.budget_per_video) || undefined,
     // 这几样由脚本类型推出来：类型是写明的才推
     contentType: type ? ({ show: 'process', teach: 'knowledge', story: 'story', discuss: 'talking' } as Record<string, string>)[type] : undefined,

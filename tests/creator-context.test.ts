@@ -63,9 +63,10 @@ describe('按模块切片，各取所需', () => {
   it('分镜拿到的是拍摄条件', () => {
     const b = buildContextBlock(ctx(FULL), 'storyboard');
     expect(b).toContain('真实拍摄条件');
-    expect(b).toContain('专业摄像机');
     expect(b).toContain('2-3人小团队');
-    expect(b).toContain('稳定器');
+    // 设备（灯光、稳定器）对分镜没用，不从档案带进来（2026-10-31）
+    expect(b).not.toContain('专业摄像机');
+    expect(b).not.toContain('稳定器');
   });
 
   it('分镜不需要知道变现路径和成交障碍', () => {
@@ -154,7 +155,7 @@ describe('没有档案时不产出噪音', () => {
 });
 
 describe('接进各板块的提示词', () => {
-  it('分镜：有真实设备时不再按「一个人手机没有灯」设计', () => {
+  it('分镜：有团队时不再按「一个人手机没有灯」设计，设备不进分镜', () => {
     const withCtx = buildStoryboardPrompt({
       scriptContent: '测试脚本内容，足够长以便解析。',
       platform: '抖音', duration: '60秒', contentType: 'food',
@@ -163,7 +164,8 @@ describe('接进各板块的提示词', () => {
     });
     expect(withCtx).toContain('按它给的条件来');
     expect(withCtx).not.toContain('可能只有一部手机、一个人、没有灯');
-    expect(withCtx).toContain('专业摄像机');
+    expect(withCtx).toContain('2-3人小团队');
+    expect(withCtx).not.toContain('专业摄像机');
   });
 
   it('分镜：没有档案时保留原来的保守假设', () => {
@@ -212,12 +214,13 @@ describe('写死的拍摄假设不能盖过真实条件', () => {
     expect(c).toContain('一个人就能拍');
   });
 
-  it('填了专业设备就不再说「手机即可，不需要专业设备」', () => {
+  it('有团队时不再说「手机即可，不需要专业设备」；设备不进约束', () => {
     const c = describeExecutionConstraints(FULL);
     expect(c).not.toContain('手机即可');
     expect(c).not.toContain('不需要专业设备');
-    expect(c).toContain('专业摄像机');
-    expect(c).toContain('稳定器');
+    expect(c).toContain('2-3人小团队');
+    expect(c).not.toContain('专业摄像机');
+    expect(c).not.toContain('稳定器');
   });
 
   it('有团队就允许需要两个人配合的方案', () => {
