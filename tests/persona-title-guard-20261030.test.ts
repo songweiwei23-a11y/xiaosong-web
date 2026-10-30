@@ -14,7 +14,10 @@ import { BRIEF_FIELDS } from '@/lib/creative-brief';
 const ROOT = process.cwd();
 
 /** 不是提示词、只是拿来识别「师傅」的代码（例如第三人称检测的正则） */
-const ALLOWED = new Set(['lib/quality-checks.ts']);
+const ALLOWED = new Set([
+  'lib/quality-checks.ts', // 第三人称检测的正则
+  'lib/speaker-check.ts', // 说话人检查：门槛正则，以及检查提示词里「要标出的例子」（检测用，不是生成的提示词）
+]);
 
 function tsFiles(dir: string): string[] {
   const out: string[] = [];

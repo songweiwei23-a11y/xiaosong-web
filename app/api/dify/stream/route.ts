@@ -54,6 +54,7 @@ import { needsSentenceRepair, repairReality, sentenceRepairLimited } from '@/lib
 import { repairYears } from '@/lib/years-repair';
 import { cleanRewriteOutput } from '@/lib/canvas';
 import { DETAIL_CHECK_TASKS, buildDetailCheckPrompt, parseDetailCheck } from '@/lib/detail-check';
+import { SPEAKER_CHECK_TASKS, needsSpeakerCheck, buildSpeakerCheckPrompt, parseSpeakerCheck, buildSpeakerFixPrompt } from '@/lib/speaker-check';
 import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
 
 export const maxDuration = 60;
@@ -635,6 +636,27 @@ export async function POST(req: NextRequest) {
               console.log('[detail-check]', body.taskType, '找到', found.length, '采用', accepted);
               if (accepted && fixed.ok) {
                 usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'detail_fix_steps');
+                fullResponse = text;
+              }
+            }
+          }
+          /*
+           * 出镜人本人的台词里用身份称呼指自己（2026-10-30，lib/speaker-check）：「师傅说这道菜……」。
+           * 找到了就交给修正只改这几句，改动超标就不采用。和上面的修正共用每人每天 20 次的额度。
+           */
+          if (outcome.kind === 'done' && SPEAKER_CHECK_TASKS.has(body.taskType) && needsSpeakerCheck(fullResponse)) {
+            const speaker = await askDify(buildSpeakerCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+            if (speaker && speaker.ok) usageMetadata = combinedReviewUsage(usageMetadata, speaker.completion?.usage ?? {}, 'speaker_check_steps');
+            const found = speaker && speaker.ok ? parseSpeakerCheck(speaker.text) : [];
+            const may = found.length > 0 && !autoFactFixLimited(userId);
+            if (may) {
+              const fixed = await askDify(buildSpeakerFixPrompt({ text: fullResponse, issues: found }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+                .catch(() => ({ ok: false as const, message: '说话人修正未完成' }));
+              const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
+              const accepted = !!text && !fixTooBig(fullResponse, text, found);
+              console.log('[speaker-check]', body.taskType, '找到', found.length, '采用', accepted);
+              if (accepted && fixed.ok) {
+                usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'speaker_fix_steps');
                 fullResponse = text;
               }
             }

@@ -39,6 +39,8 @@ function mockDify(...answers: string[]) {
     const body = JSON.parse(String(init?.body));
     // 现实审阅（2026-10-28，lib/reality-repair）是生成稿之后多出的一次调用：回「无」，不占这里的回复，也不算在这里的次数里
     if (String(body.query).includes('找一种毛病')) return new Response(sse('无'));
+    // 说话人检查（2026-10-30，lib/speaker-check）同样是额外一次调用：回「没有问题」，不占这里的回复，也不算在这里的次数里
+    if (String(body.query).includes('出镜人本人对着镜头说的台词')) return new Response(sse('{"self":[]}'));
     calls.push(body);
     return new Response(sse(queue.shift() ?? ''));
   }));
