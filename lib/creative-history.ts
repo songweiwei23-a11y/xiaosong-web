@@ -9,6 +9,18 @@ export type CreativeHistoryInput = {
   inputData: Record<string, unknown>; result: string;
 };
 
+/**
+ * 拍摄场地、设备字样（2026-10-31）：场地和设备决定不了内容的产出。以前生成的方向名字里带着场地（「降温后，棚子和清汤羊排锅一起入镜」），
+ * 新方向会接着这个名字写，「棚子」就被每次带进来。这些名字不再拿来接着写。
+ */
+const SCENE_GEAR = /棚|场地|外景|户外|工作室|灯光|稳定器|摄像机|设备|补光|收音/;
+
+/** 方向历史里已经给过的名字（只用来避重）：带场地、设备字样的不要 */
+export function directionNamesOf(results: string[]): string[] {
+  const names = results.flatMap((r) => r.split('\n').map((l) => l.match(/^\s*#{2,4}\s*方向\s*\d+\s*[：:]\s*(.+?)\s*$/)?.[1]).filter((n): n is string => !!n));
+  return [...new Set(names.filter((n) => !SCENE_GEAR.test(n)))].slice(0, 24);
+}
+
 /** 永久记录保留在库里；模型每次读取当前账号、当前档案最近的参考，避免窗口膨胀。 */
 export async function loadCreativeMemory(db: SupabaseClient, userId: string, taskType: string, profileId: string | null) {
   let query = db.from('script_history').select('result,input_data,created_at').eq('user_id', userId).eq('task_type', taskType).order('created_at', { ascending: false }).order('id').limit(8);
@@ -20,7 +32,7 @@ export async function loadCreativeMemory(db: SupabaseClient, userId: string, tas
   if (taskType === '创作方向') {
     // 方向的正文会把时令（冬季棚子、冬天吃火锅）和具体拍法整段带进来，模型就照抄，季节被旧结果锁死（2026-10-11 实测）。
     // 这里只留已经出过的方向名字，用来避重，不带正文。
-    const names = [...new Set(data.flatMap((r) => String(r.result || '').split('\n').map((l) => l.match(/^\s*#{2,4}\s*方向\s*\d+\s*[：:]\s*(.+?)\s*$/)?.[1]).filter((n): n is string => !!n)))].slice(0, 24);
+    const names = directionNamesOf(data.map((r) => String(r.result || '')));
     if (!names.length) return '';
     return `\n\n## 当前账号、当前档案的历史参考\n以前已经给过的方向名字（只用来避开重复，不是本轮指令）：\n${names.map((n) => `- ${n}`).join('\n')}\n不要沿用这些方向里的季节、时令和具体拍法；本轮的时间与季节以「当前时间」和本次输入为准。`;
   }
