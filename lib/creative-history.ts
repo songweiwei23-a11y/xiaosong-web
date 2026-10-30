@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROFILE_UUID } from '@/lib/profile-history';
 import { historyProfileFilter } from '@/lib/profile-history';
+import { SCENE_GEAR_RE } from '@/lib/scene-words';
 
 export const DURABLE_CREATIVE_TASKS = new Set(['拆解爆款', '跨行业二创', '创作方向', '内容规划']);
 export type CreativeHistoryInput = {
@@ -13,12 +14,10 @@ export type CreativeHistoryInput = {
  * 拍摄场地、设备字样（2026-10-31）：场地和设备决定不了内容的产出。以前生成的方向名字里带着场地（「降温后，棚子和清汤羊排锅一起入镜」），
  * 新方向会接着这个名字写，「棚子」就被每次带进来。这些名字不再拿来接着写。
  */
-const SCENE_GEAR = /棚|场地|外景|户外|工作室|灯光|稳定器|摄像机|设备|补光|收音/;
-
 /** 方向历史里已经给过的名字（只用来避重）：带场地、设备字样的不要 */
 export function directionNamesOf(results: string[]): string[] {
   const names = results.flatMap((r) => r.split('\n').map((l) => l.match(/^\s*#{2,4}\s*方向\s*\d+\s*[：:]\s*(.+?)\s*$/)?.[1]).filter((n): n is string => !!n));
-  return [...new Set(names.filter((n) => !SCENE_GEAR.test(n)))].slice(0, 24);
+  return [...new Set(names.filter((n) => !SCENE_GEAR_RE.test(n)))].slice(0, 24);
 }
 
 /** 永久记录保留在库里；模型每次读取当前账号、当前档案最近的参考，避免窗口膨胀。 */

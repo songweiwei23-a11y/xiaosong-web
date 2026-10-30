@@ -117,8 +117,7 @@ export default function DirectionPage() {
     setIncomingSetup({ from: typeof d.expandFrom === 'string' ? d.expandFrom : '创作方向', sourceContent: typeof d.expandContent === 'string' ? d.expandContent : '', originContent: typeof d.originContent === 'string' ? d.originContent : '', settings: settingsFromInput(d) });
     setResult(item.result);
     if (Array.isArray(d.purposes)) setPurposes(d.purposes.map(String));
-    if (typeof d.customGoal === "string") setCustomGoal(d.customGoal);
-    if (typeof d.ideas === "string") setIdeas(d.ideas);
+    // 「也可以自己写」「已经有的想法」不从历史回填（2026-10-31）：上一条记录里的旧想法会被自动带进下一次生成
     if (Array.isArray(d.formats)) setFormats(d.formats.map(String));
     if (typeof d.onCamera === "string") setOnCamera(d.onCamera);
     if (typeof d.capacity === "string") setCapacity(d.capacity);

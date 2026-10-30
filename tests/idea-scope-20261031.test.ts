@@ -14,6 +14,11 @@ describe('创作方向页：想法只用本次输入', () => {
     expect(src).not.toContain('bridge.originContent ||');
   });
 
+  it('从历史回填时，不把旧的「也可以自己写」「已经有的想法」填回输入框', () => {
+    expect(src).not.toContain('if (typeof d.ideas === "string") setIdeas(d.ideas);');
+    expect(src).not.toContain('if (typeof d.customGoal === "string") setCustomGoal(d.customGoal);');
+  });
+
   it('带过来的想法和补充要求不进本次设置', () => {
     expect(src).toContain('const carriedSettings = { ...bridge.creationSettings, userIntent: undefined, notes: undefined }');
   });

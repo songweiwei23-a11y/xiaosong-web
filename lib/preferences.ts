@@ -14,6 +14,7 @@
  * 学习过程在 lib/preference-learner（服务端），接口 app/api/preferences。
  */
 import type { Board } from './context-manifest';
+import { SCENE_GEAR_RE } from './scene-words';
 
 export const PREFERENCE_NAME = '我的创作偏好';
 
@@ -345,7 +346,8 @@ export function readStoredItems(raw: unknown): PreferenceItem[] {
 
 /** 拼进提示词的一段：只带生效的，总长不超过 600 字 */
 export function preferencePromptBlock(items: PreferenceItem[] | null | undefined): string {
-  const active = (items ?? []).filter((i) => i.status === 'active');
+  // 带拍摄场地、设备字样的偏好不拼进提示词（2026-10-31）：「新加了棚子」这类具体场景会被模型当成要写的内容
+  const active = (items ?? []).filter((i) => i.status === 'active' && !SCENE_GEAR_RE.test(i.text ?? ''));
   if (!active.length) return '';
   const lines: string[] = [];
   let len = 0;
