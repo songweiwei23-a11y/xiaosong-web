@@ -93,7 +93,7 @@ export function routeFields(key: string): { tactic: string; structure: string } 
 export function topicRouteOf(body: string): string {
   const tactic = tacticInText(body);
   if (tactic) return `tactic:${tactic}`;
-  // 四大脚本：写全名「晒过程·火车节」或只写类型「聊观点」（只写类型时结构取这一类的第一种），见 scriptFormOfTopic
+  // 四大脚本：写全名「晒过程·火车节」；只写类型「聊观点」时结构留空，不替编导选（脚本页会提示手选），见 scriptFormOfTopic
   const four = scriptFormOfTopic(body);
   return four.structure ? `four:${four.structure}` : '';
 }

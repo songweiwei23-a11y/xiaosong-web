@@ -7,25 +7,39 @@
  * 审稿优化只做第 1 条：它的原稿要被引用、比对，用语不能动。
  */
 import { stripSelfCheck } from './quality-checks';
+import { contractLineFlags } from './creation-tree';
 
 /** 整行是内部痕迹：出现就整行去掉 */
 const LEAK_LINE = /【本轮|本轮目的说明|校对编辑|本轮校对|待校对结果|校对指令|审稿结果里没有材料依据|本轮内容落实规则|本条创作的连续设置|高阶自由对话|交稿前核对|交稿前最后一查|价值点应用自检|创作自检|节奏自检|发布前自检|交稿前自检|自检通过|自检结果|核对清单|数字来源核查|禁忌核查|三有自检|系统指令|未编造|没有编造|无编造|无虚构/;
 /** 标题命中的整段去掉（一级标题：到下一个任意标题为止；其余：到同级或更高级标题为止） */
 const LEAK_HEADING = /【本轮|本轮内容落实规则|本条创作的连续设置|本轮校对|校对指令|价值点应用自检|交稿前最后一查|高阶自由对话|自检|核对清单|数字来源核查|禁忌核查|三有自检/;
 
+/**
+ * 段首标记：这一行是内部规则的标题（「【本轮内容落实规则】」这类）。它后面紧跟的条目是规则的复述，
+ * 要整段去掉，直到空行或下一个标题为止（2026-10-31：只删标题行时，下面的条目照样交付，规则就露出来了）。
+ */
+const LEAK_BLOCK = /^\s*[*_]*【(?:本轮|交稿前|交付前|采访落地|本条创作的连续设置|顺带提到的采访|比较口径锁定|自动目的的执行原则)[^】]*】/;
+
 export function stripInternalLeaks(text: string, board: string): string {
   // 审稿的「核对」标题可能是正文的一部分，只去掉明确的内部痕迹，不走通用自检剥离
   const base = board === '审稿优化' ? text : stripSelfCheck(text);
   const keep: string[] = [];
   let skipLevel = 0;
+  let inBlock = false;
   for (const line of base.split('\n')) {
     const h = line.match(/^\s*(#{1,6})\s+(.*)$/);
     if (h) {
+      inBlock = false;
       // 一级标题下面的内容不是它的子项（模型常把内部规则放在一级标题下，正文从二级标题开始）
       if (skipLevel && (skipLevel === 1 || h[1].length <= skipLevel)) skipLevel = 0;
       if (!skipLevel && LEAK_HEADING.test(h[2])) { skipLevel = h[1].length; continue; }
     }
     if (skipLevel) continue;
+    if (inBlock) {
+      if (!line.trim()) inBlock = false;
+      continue;
+    }
+    if (LEAK_BLOCK.test(line)) { inBlock = true; continue; }
     if (LEAK_LINE.test(line)) continue;
     // 模型自己打的勾：「✅ 没有绝对化承诺」「✅ 无编造」是自检结论，不交付
     if (SELF_CHECK_MARK.test(line)) continue;
@@ -107,7 +121,10 @@ function applyRules(text: string, rules: Array<[RegExp, string]>, honourNegation
 }
 
 export function applyAdCompliance(text: string): string {
-  return applyRules(text, [...AD_RULES, ...PLATFORM_RULES]);
+  // 打法小节里的计名、结构名是契约字段，不改字：「内幕揭秘」「教知识·揭秘型」就是计名和结构名，改了下游就认不出
+  const lines = text.split('\n');
+  const contract = contractLineFlags(lines);
+  return lines.map((line, i) => (contract[i] ? line : applyRules(line, [...AD_RULES, ...PLATFORM_RULES]))).join('\n');
 }
 
 const CN_NUMERAL: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };

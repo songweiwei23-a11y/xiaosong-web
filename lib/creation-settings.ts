@@ -205,9 +205,9 @@ export function scriptFormOfTopic(body: string): { scriptType?: string; structur
   if (four) return { scriptType: four.scriptType, structure: four.structure, ...(purpose ? { purpose } : {}) };
   const head = line.match(/四大脚本\s*[·:：]\s*(教知识|晒过程|讲故事|聊观点|聊话题)/)?.[1];
   if (!head) return purpose ? { purpose } : {};
+  // 只写了类型没写结构：不替他选第一种（2026-10-31）。结构留空，脚本页提示手选
   const scriptType = FOUR_SCRIPT_TYPE_BY_HEAD[head];
-  const structure = FOUR_SCRIPT_CHOICES.find(c => c.scriptType === scriptType)?.structure;
-  return { scriptType, structure, ...(purpose ? { purpose } : {}) };
+  return { scriptType, ...(purpose ? { purpose } : {}) };
 }
 
 /** 从旧稿的明确标签恢复设置。正文提到其他行业或人群不会覆盖原设置。 */

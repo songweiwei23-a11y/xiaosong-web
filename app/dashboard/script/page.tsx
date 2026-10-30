@@ -5,6 +5,8 @@ import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice'
 import { cleanTitle, settingsForResult, durationSeconds, scriptReasonIds, FOUR_SCRIPT_CHOICES, fourScriptOfStructure } from '@/lib/creation-settings';
 import { routeKeyOf, routeFields } from '@/lib/script-route';
 import { ScriptRoutePicker } from '@/components/workspace/ScriptRoutePicker';
+import { ContractNotice } from '@/components/workspace/ContractNotice';
+import { readContract, readStrategyContract } from '@/lib/creation-tree';
 
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { useRouter } from "next/navigation";
@@ -14,7 +16,7 @@ import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile"
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream } from '@/lib/sse-stream';
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
 import { Sparkles, Loader2, Settings, Target, Lightbulb, Film, FileText, BookOpen, Clapperboard, MessageSquare, Feather, UserPlus, Ticket, Store, Package, CheckCircle, Tag, Copy } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
@@ -210,6 +212,19 @@ export default function ScriptPage() {
   const [tactic, setTactic] = useState(AUTO_TACTIC);
   /** 选题页"两种都出"时每条各自的派别（标题 → 选项 key）：挑中哪条就按哪条的派别 */
   const [handoffTopicRoutes, setHandoffTopicRoutes] = useState<Record<string, string>>({});
+  // 选题带来的契约认不出（结构没认出、标题对不上、打法写乱了）要明示，不能静默回退（2026-10-31）
+  const topicContract = useMemo(
+    () => (handoffFrom.includes("选题") && originContent && topic ? readContract(originContent, topic) : null),
+    [handoffFrom, originContent, topic]
+  );
+  // 编导已经手选了结构，认不出的提示就不再挡着；只剩缺项的提醒照常显示
+  const topicContractNotice = topicContract && (topicContract.node || scriptStructure === "auto") ? topicContract : null;
+  // 生成出来的策略卡认不出结构：只在认不出时提示
+  const resultContractNotice = useMemo(() => {
+    if (!result.trim()) return null;
+    const reading = readStrategyContract(result);
+    return reading.node ? null : reading;
+  }, [result]);
   /**
    * 开篇页选定的那句开头，以及它用的卡。
    * 有它时脚本的第一句被锁死——用户已经在开篇页横向比过一轮挑出来了，
@@ -818,6 +833,7 @@ export default function ScriptPage() {
                 rows={3}
               />
             </Field>
+            <ContractNotice reading={topicContractNotice} what="这条选题" />
 
             <Field label="发布平台" required>
               <select
@@ -1339,6 +1355,13 @@ export default function ScriptPage() {
 
       {/* 结果区在上、历史在下：原先历史卡片占着顶部，每次进页面先看到的
           是旧记录而不是刚生成的内容 */}
+      {/* 策略卡认不出结构：分镜、标题、审稿会缺契约，要在这里明示（2026-10-31） */}
+      <ContractNotice
+        reading={resultContractNotice}
+        what="这版脚本"
+        hint="策略卡没写清用的是哪个结构（「实际采用形式」），分镜、标题、审稿会缺这一层约束。请重新生成，或在策略卡里写明结构全名。"
+      />
+
       <ResultPanel
         flowContext={scriptFlow}
         result={result}

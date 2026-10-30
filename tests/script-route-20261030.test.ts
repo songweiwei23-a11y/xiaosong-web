@@ -76,7 +76,8 @@ describe('选题标了哪一派，跳到脚本就用哪一派', () => {
     ].join('\n');
     const got = topicRoutesOf(md);
     expect(got['装修里最贵的错误']).toBe('tactic:反向操作');
-    expect(got['聊聊我的边界']).toMatch(/^four:/);
+    // 只写了类型「聊观点」没写结构：不替编导选第一种，派别留空，脚本页提示手选（2026-10-31）
+    expect(got['聊聊我的边界']).toBeUndefined();
   });
 });
 

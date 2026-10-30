@@ -362,7 +362,8 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('');
 
   // 内容树：脚本已经定了结构和目的，分镜按它拆镜，不另选结构（2026-10-30，lib/creation-tree）
-  const contract = contractBlockFromText(script);
+  // 脚本正文里没有策略卡时，契约在参考资料（additionalInfo 里的「相关方案参考」）里（2026-10-31）
+  const contract = contractBlockFromText(script) || contractBlockFromText(p.additionalInfo || '');
   if (contract) {
     parts.push(contract);
     parts.push('');

@@ -16,10 +16,10 @@ describe('选题的打法行：四大脚本的类型和结构认得出来', () =
     expect(scriptFormOfTopic('**🅰 打法**\n- 四大脚本·聊观点·论证型：先讲判断，再用亲身经历说明依据')).toEqual({ scriptType: 'discuss', structure: 'argue' });
   });
 
-  it('只写类型「四大脚本·聊观点：…」：类型带过去，结构取这一类的第一种', () => {
+  it('只写类型「四大脚本·聊观点：…」：类型带过去，结构留空让用户手选（不替他选第一种）', () => {
     const got = scriptFormOfTopic('**🅰 打法**\n- 四大脚本·聊观点：先讲判断，再用亲身经历说明依据');
     expect(got.scriptType).toBe('discuss');
-    expect(got.structure).toBe('argue');
+    expect(got.structure).toBeUndefined();
   });
 
   it('写「晒过程·火车节」：类型 show、结构 train', () => {

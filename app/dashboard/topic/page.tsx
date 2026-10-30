@@ -38,7 +38,8 @@ import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@
 
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { readTopicContract } from "@/lib/creation-tree";
 import { readDifyStream } from '@/lib/sse-stream';
 import { polishTitlesRemote } from '@/lib/title-polish';
 import { CommentQuestions } from '@/components/topic/CommentQuestions';
@@ -185,6 +186,11 @@ export default function TopicPage() {
   // 生成状态
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
+  // 打法认不出结构的选题：带去脚本页会要手选，这里先明示（2026-10-31）
+  const unreadTopics = useMemo(
+    () => parseTopicOptions(result).map((title) => ({ title, reading: readTopicContract(result, title) })).filter((x) => !x.reading.node),
+    [result]
+  );
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult, resultScope);
@@ -1009,6 +1015,19 @@ export default function TopicPage() {
         </>
       }
     >
+      {unreadTopics.length > 0 && (
+        <div className="mb-3 rounded-xl border border-amber-400/60 bg-amber-500/10 px-3.5 py-2.5 text-[12px] leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="font-medium">{unreadTopics.length} 条选题的打法没认出结构，带去脚本页时要手选</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {unreadTopics.map(({ title, reading }) => (
+              <li key={title}>
+                「{title}」：{reading.problems[0]?.text ?? "认不出结构"}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1">把打法改成标准写法：36计·第N计 计名，或 四大脚本·结构全名。</p>
+        </div>
+      )}
       <ResultPanel
         result={result}
         isGenerating={isGenerating}

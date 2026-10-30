@@ -500,7 +500,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
           const blocked = tacticsBlockedBy(
             [selectedProfile?.content_restrictions, selectedProfile?.avoid_content, selectedProfile ? taboosPromptBlock(selectedProfile) : ''].filter(Boolean).join('\n')
           );
-          query += `${tacticIndex({ roles: topicRole === '按配比' ? undefined : [topicRole], exclude: blocked })}\n\n`;
+          // 37 计全部给：目的只是排序提示（【最适合的目的】），不按目的筛掉任何一计（2026-10-31）
+          query += `${tacticIndex({ exclude: blocked })}\n\n`;
           if (blocked.length) query += `⛔ 这几计和账号禁忌冲突，已从清单拿掉，不要用：${blocked.join('、')}\n\n`;
         }
       }

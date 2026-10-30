@@ -192,15 +192,12 @@ export function viralElementPrompt1021(ids: string[]): string {
   return lines.join('\n');
 }
 
-/** 36 计清单（10-21 原文：按目的筛，标【最适合的目的】） */
-export function tacticIndex1021(opts: { roles?: ContentRole[]; exclude?: string[] } = {}): string {
-  const roles = opts.roles?.length ? opts.roles : CONTENT_ROLE_LIST;
+/**
+ * 36 计清单（10-21 原文，标【最适合的目的】）。只按禁忌（exclude）拿掉，不再按目的筛：37 计全部保留（2026-10-31）。
+ */
+export function tacticIndex1021(opts: { exclude?: string[] } = {}): string {
   const exclude = new Set(opts.exclude ?? []);
   const lines = GROWTH_TACTICS.filter((t) => !exclude.has(t.name))
-    .filter((t) => {
-      const r = roleOfTactic(t.name);
-      return r ? roles.includes(r) : true;
-    })
     .map((t) => `- 第${t.no}计 **${t.name}**【${roleOfTactic(t.name) ?? '流量型'}】：${t.formula}（适合：${t.fit}）`);
   return `#### 起号 36 计清单（计名【最适合的目的】：结构公式）\n\n${lines.join('\n')}`;
 }
