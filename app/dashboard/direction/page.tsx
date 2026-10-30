@@ -86,11 +86,12 @@ export default function DirectionPage() {
   const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
   const bridge = creationBridgeData(incomingSetup);
   const selectedGoals = purposes.map(id => PURPOSES.find(p => p.id === id)?.label).filter(Boolean).join('、');
-  const currentSettings = mergeCreationSettings(bridge.creationSettings, {
+  // 「已经有的想法」「补充要求」只用本次输入（2026-10-31）：带过来的旧想法不再接着用，否则一条想法会一直跟着每次方向走
+  const carriedSettings = { ...bridge.creationSettings, userIntent: undefined, notes: undefined };
+  const currentSettings = mergeCreationSettings(carriedSettings, {
     purpose: purposeOf(selectedGoals), purposeText: selectedGoals || undefined,
-    userIntent: bridge.creationSettings.userIntent || [selectedGoals, customGoal, ideas].filter(Boolean).join('\n'),
-    // 按行去重：带来的补充要求里已有的话不再叠一遍（lib/creation-settings 的 joinUniqueLines）
-    notes: joinUniqueLines(bridge.creationSettings.notes, customGoal, ideas),
+    userIntent: [selectedGoals, customGoal, ideas].filter(Boolean).join('\n') || undefined,
+    notes: joinUniqueLines(customGoal, ideas) || undefined,
   });
   // 内容配比：默认按档案（或系统推荐）把方向分到流量 / 人设 / 变现；只想跟着目的走的可以关掉
   const [useMix, setUseMix] = useState(false);
@@ -162,7 +163,7 @@ export default function DirectionPage() {
     if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) { openUpgrade("direction"); setRunning(false); return; }
     setResult("");
-    const historyInput = { purposes, customGoal, ideas, expandFrom: expandContent.trim() ? handoffFrom : "", expandContent, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null, scriptsShare, creationSettings: currentSettings, originContent: bridge.originContent || [customGoal, ideas, selectedGoals].filter(Boolean).join('\n') };
+    const historyInput = { purposes, customGoal, ideas, expandFrom: expandContent.trim() ? handoffFrom : "", expandContent, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null, scriptsShare, creationSettings: currentSettings, originContent: [customGoal, ideas, selectedGoals].filter(Boolean).join('\n') };
     try {
       const historyId = createHistoryId();
       const query = buildDirectionPrompt({
@@ -290,7 +291,7 @@ export default function DirectionPage() {
         result={result}
         isGenerating={running}
         title="创作方向与思路"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, bridge.originContent || [customGoal, ideas, selectedGoals].filter(Boolean).join('\n')) }}
+        flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, [customGoal, ideas, selectedGoals].filter(Boolean).join('\n')) }}
         showStats={false}
         emptyIcon={Compass}
         emptyTitle="带着目的去拍，而不是为了拍而拍"
