@@ -129,7 +129,7 @@ describe('经营品类单列一行，定位里当硬约束', () => {
     expect(tail.length).toBeLessThan(600); // 真的在最后
     expect(tail).toContain('「川味烧烤」「川味串串火锅」「川菜」');
     expect(tail).toMatch(/原样出现、一字不差/);
-    expect(tail).toMatch(/"××师傅""××厨子"不算写了"××"这个品类/);
+    expect(tail).toContain('人设叫法（"××本人""××那位"这类）不算写了"××"这个品类');
     expect(buildPositioningPrompt({ profileSummary: buildProfileSummary({ profile_name: 'x' }) })).not.toContain('交稿前最后检查：经营品类');
     // 商业定位、内容定位用的是同一个函数
     for (const focus of ['business', 'content'] as const) {
