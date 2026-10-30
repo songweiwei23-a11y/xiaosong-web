@@ -14,12 +14,16 @@ import { CONTENT_ROLE_LIST, type ContentRole } from './content-roles';
 import { formatMix, mixToCounts, type ResolvedMix } from './content-mix';
 import type { Work } from './works';
 import { KEPT_RULES_1021 } from './tool-first-1021';
+import { planRouteRule } from './script-route';
+import { SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
 
 export const CONTENT_PLAN_TASK_TYPE = '内容规划';
 
 /** 内容类型怎么选：内容规划和创作方向共用，流量里不许出现教知识 */
 // 2026-10-29 回到 10-21 原文，只把「教知识不是流量，只放变现型」换成产品方后来定的「任何脚本结构配上爆款元素都是大流量」
-export const CONTENT_TYPE_RULE = '按小黄的脚本结构选一个。流量型用反向操作、冷知识、借势、地域差异、街头采访这类公式；人设型用个人成就、贵人相助、世俗偏见（观点类归人设型）；变现型用案例引入、痛点型、推荐型、晒过程。任何脚本结构配上爆款元素都是大流量';
+/** 36 计按目的怎么挑（内容规划和创作方向共用） */
+export const CONTENT_TYPE_PURPOSE_RULE = '流量型用反向操作、冷知识、借势、地域差异、街头采访这类公式；人设型用个人成就、贵人相助、世俗偏见（观点类归人设型）；变现型用案例引入、痛点型、推荐型、晒过程。任何脚本结构配上爆款元素都是大流量';
+export const CONTENT_TYPE_RULE = `按小黄的脚本结构选一个。${CONTENT_TYPE_PURPOSE_RULE}`;
 
 /** 上个月发了多少条（勾一个区间；代表值用来推荐这个月的条数） */
 export const LAST_MONTH_OPTIONS = [
@@ -81,8 +85,10 @@ export interface ContentPlanInput {
   contextBlock?: string;
   industry?: string;
   today?: Date;
-  /** 页面还在传（2026-10-29 回到 10-21 后提示词不再用它，只保留类型，避免页面报错） */
+  /** 36 计与四大脚本的比例（0 = 全用 36 计，100 = 全用四大脚本），见 lib/tactic-mix；手选了打法时不用它 */
   scriptsShare?: number;
+  /** 自己手选的打法（选项 key，见 lib/script-route）：有它就只用选中的，不按比例 */
+  pickedRoutes?: string[];
 }
 
 export function buildContentPlanPrompt(p: ContentPlanInput): string {
@@ -121,7 +127,7 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 
 ### 方向1：[方向名，10 个字左右，说的是一类内容，不是一条选题]
 - **视频目的**：流量型 / 人设型 / 变现型 选一个
-- **内容类型**：${CONTENT_TYPE_RULE}
+- **内容类型**：${planRouteRule({ share: p.scriptsShare, picked: p.pickedRoutes })} 36 计按目的挑：${CONTENT_TYPE_PURPOSE_RULE}。四大脚本的结构名只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}
 - **内容方向**：一两句话说清这一类拍什么范围、从哪类素材取材（不写具体哪一期、不写标题）
 - **本月条数**：N 条
 - **为什么**：一两句，和这个号的档案、数据或这个月的节点挂上

@@ -70,9 +70,9 @@ describe('全部内容板块一键承接设置', () => {
     expect(creationReference(shots)).toContain('X串');
   });
   it('粘贴的旧稿能恢复明确标注的意图，不用默认值覆盖', () => {
-    const body = '【视频目的】人设型\n脚本类型：讲故事型\n脚本结构：故事型\n目标人群：年轻创业者\n创作方向：真实创业经历\n视频时长：45秒\n发布平台：小红书\n内容风格：朴实\n正文：那年第一次开店，遇到了困难。';
+    const body = '【视频目的】人设型\n脚本类型：讲故事型\n脚本结构：小有成就型\n目标人群：年轻创业者\n创作方向：真实创业经历\n视频时长：45秒\n发布平台：小红书\n内容风格：朴实\n正文：那年第一次开店，遇到了困难。';
     const result = resolveCreationSettings({from:'审稿',sourceContent:body},ctx);
-    expect(result).toMatchObject({purpose:'人设型',scriptType:'story',structure:'story',audience:'年轻创业者',direction:'真实创业经历',duration:'45秒',platform:'小红书',style:'朴实'});
+    expect(result).toMatchObject({purpose:'人设型',scriptType:'story',structure:'achieve',audience:'年轻创业者',direction:'真实创业经历',duration:'45秒',platform:'小红书',style:'朴实'});
     // 没写开篇卡就不替他选（2026-10-03：跳转时不猜）
     expect(result.openingCards).toEqual([]);
   });

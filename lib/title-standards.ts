@@ -27,6 +27,7 @@ import { OPENING_CARDS } from './opening-cards';
 import { roleInferRule } from './content-roles';
 import { continuationRules } from './creation-continuation';
 import { creativeCraftRules } from './creative-craft';
+import { contractBlockFromText } from './creation-tree';
 import { TITLE_CRAFT, REALITY_RULE, PRODUCT_HERO_RULE } from './sharp-rules';
 
 /** 各平台的标题逻辑差异。同一个主题在不同平台该起不同的标题 */
@@ -318,6 +319,9 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push('⚠️ 直接输出标题，不要写「以下是我为你准备的」这类开场白。');
 
   if (p.sourceContent?.trim()) parts.push(continuationRules('title'));
+  // 内容树：标题守住选题定的结构和目的（2026-10-30）
+  const contract = contractBlockFromText(p.sourceContent || p.topic);
+  if (contract) parts.push(contract, '');
   parts.push(creativeCraftRules({ source: p.sourceContent || p.topic, context: p.contextBlock }));
   return parts.join('\n');
 }

@@ -47,7 +47,7 @@ describe('搭配规则文字', () => {
   it('50 时写「大约 50%」，并列出人设、变现两类能用的四大脚本结构名', () => {
     const r = tacticMixRule(50)
     expect(r).toContain('大约 50%')
-    expect(r).toContain('讲故事·故事型')
+    expect(r).toContain('讲故事·小有成就型')
     expect(r).toContain('晒过程·火车节')
     expect(r).toContain('这个比例不分目的')
   })
@@ -60,8 +60,10 @@ describe('搭配规则文字', () => {
 
   it('每个四大脚本结构名都能被下一页的 settingsFromText 认回结构', () => {
     const expected: Record<string, string> = {
-      '晒过程·火车节': 'train', '晒过程·观察型': 'observe', '教知识·解题型': 'problem',
-      '教知识·推荐型': 'recommend', '教知识·案例型': 'case', '讲故事·故事型': 'story', '聊观点·论证型': 'argue',
+      '晒过程·火车节': 'train', '晒过程·过程展示': 'observe', '教知识·解题型': 'problem',
+      '教知识·推荐型': 'recommend', '教知识·案例型': 'case', '聊观点·论证型': 'argue',
+      '教知识·揭秘型': 'expose', '晒过程·挑战型': 'challenge', '晒过程·测评型': 'review', '晒过程·事件体验': 'event',
+      '讲故事·小有成就型': 'achieve', '讲故事·成功案例型': 'success_case', '讲故事·平凡英雄型': 'hero', '讲故事·苦难经历型': 'hardship',
     }
     for (const names of [SCRIPT_STRUCTURE_NAMES]) {
       for (const name of names) {
@@ -78,26 +80,28 @@ describe('提示词接入', () => {
     expect(buildDirectionPrompt(base)).not.toContain('写四大脚本的结构名')
   })
 
-  it('创作方向：不带 36 计与四大脚本的搭配（形式留给选题层，2026-10-26）', () => {
+  it('创作方向：搭配比例进提示词（2026-10-30 产品方要求：规划、方向可自由选 36 计与四大脚本的比例）', () => {
     const p = buildDirectionPrompt({ ...base, scriptsShare: 50 })
-    expect(p).not.toContain('大约 50%')
-    expect(p).not.toContain('晒过程·火车节')
+    expect(p).toContain('大约 50%')
+    expect(p).toContain('两派只选一派，不叠加')
   })
 
-  it('内容规划：搭配比例不再进策划提示词（形式留给选题层）', () => {
-    expect(buildContentPlanPrompt({ ...planBase, scriptsShare: 100 })).toBe(buildContentPlanPrompt(planBase))
+  it('内容规划：搭配比例进提示词；100 = 全用四大脚本', () => {
+    expect(buildContentPlanPrompt({ ...planBase, scriptsShare: 100 })).not.toBe(buildContentPlanPrompt(planBase))
+    expect(buildContentPlanPrompt({ ...planBase, scriptsShare: 100 })).toContain('全部的内容类型写四大脚本的结构名')
     expect(buildContentPlanPrompt({ ...planBase, scriptsShare: 0 })).toBe(buildContentPlanPrompt(planBase))
   })
 })
 
 describe('页面接入', () => {
-  it('创作方向页和内容规划页都不再放搭配条（形式在选题层定）', () => {
+  it('创作方向页和内容规划页都放「脚本打法」区（开关 + 比例或手选），并把两个字段传给提示词', () => {
     for (const page of ['app/dashboard/direction/page.tsx', 'app/dashboard/content-plan/page.tsx']) {
       const src = read(page)
-      expect(src, page).not.toMatch(/<TacticMixBar/)
+      expect(src, page).toMatch(/<ScriptRouteSection/)
+      expect(src, page).toMatch(/routeManual/)
     }
-    expect(read('app/dashboard/direction/page.tsx')).toMatch(/mixBlock: useMix \? mixPromptBlock\(resolvedMix, \{ count, unit: "个" \}\) : undefined,\n\s+scriptsShare,/)
-    expect(read('app/dashboard/content-plan/page.tsx')).toMatch(/resolved: resolvedMix, scriptsShare,/)
+    expect(read('app/dashboard/direction/page.tsx')).toMatch(/scriptsShare: routeManual \? 0 : scriptsShare,\n\s+pickedRoutes: routeManual \? pickedRoutes : \[\],/)
+    expect(read('app/dashboard/content-plan/page.tsx')).toMatch(/resolved: resolvedMix, scriptsShare: routeManual \? 0 : scriptsShare, pickedRoutes: routeManual \? pickedRoutes : \[\],/)
   })
 
   it('搭配条组件只在人设、变现上生效，流量型写明不动', () => {

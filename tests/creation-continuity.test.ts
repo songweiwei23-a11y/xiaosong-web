@@ -8,10 +8,10 @@ const ID = '00000000-0000-4000-8000-000000000001';
 const WORK = '00000000-0000-4000-8000-0000000000aa';
 
 describe('快照白名单', () => {
-  it('一批选题里每条各自的打法跟着存（原来漏了，脚本页挑中一条后打法丢失）', async () => {
+  it('一批选题里每条各自的派别跟着存（原来漏了，脚本页挑中一条后派别丢失）', async () => {
     const { readCreationSnapshot } = await import('@/lib/creation-snapshot');
-    const s = readCreationSnapshot({ from: '选题策划', target: '/dashboard/script', sourceContent: 'x', topicTactics: { '选题A': '反向操作', bad: 3 } });
-    expect(s?.topicTactics).toEqual({ '选题A': '反向操作' });
+    const s = readCreationSnapshot({ from: '选题策划', target: '/dashboard/script', sourceContent: 'x', topicRoutes: { '选题A': 'tactic:反向操作', '选题B': 'four:show-fire', bad: 3, '选题C': '随便写的' } });
+    expect(s?.topicRoutes).toEqual({ '选题A': 'tactic:反向操作', '选题B': 'four:show-fire' });
   });
 });
 

@@ -30,6 +30,7 @@ import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summar
 import { buildContextBlock } from "@/lib/creator-context";
 import { resolveMix, mixPromptBlock, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
 import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
+import { ScriptRouteSection } from "@/components/workspace/ScriptRouteSection";
 import { TacticMixBar } from "@/components/workspace/TacticMix";
 import {
   CAPACITY, DEFAULT_DIRECTION_COUNT, DIRECTION_COUNT_MAX, DIRECTION_COUNT_MIN, DEPTHS, DIRECTION_TASK_TYPE, FORMATS, HORIZON, ON_CAMERA, PURPOSES,
@@ -97,6 +98,9 @@ export default function DirectionPage() {
   const [mixUsed, setMixUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
   // 36 计与四大脚本的搭配比例（lib/tactic-mix）：0 = 全用 36 计，和以前一样
   const [scriptsShare, setScriptsShare] = useState(0);
+  // 自己选脚本结构（开关）：打开就只用手选的打法，不按比例（两派只选一派，见 lib/script-route）
+  const [routeManual, setRouteManual] = useState(false);
+  const [pickedRoutes, setPickedRoutes] = useState<string[]>([]);
   const goalText = [customGoal, ideas, expandContent].filter(Boolean).join("；");
   const resolvedMix = resolveMix(profile, mixOverride, goalText);
 
@@ -168,7 +172,8 @@ export default function DirectionPage() {
         contextBlock: buildContextBlock(context, "direction"),
         industry: profile ? undefined : industry,
         mixBlock: useMix ? mixPromptBlock(resolvedMix, { count, unit: "个" }) : undefined,
-        scriptsShare,
+        scriptsShare: routeManual ? 0 : scriptsShare,
+        pickedRoutes: routeManual ? pickedRoutes : [],
         expand: expandContent.trim() ? { from: handoffFrom || "其他板块", content: expandContent, intent: intentBlock(carriedIntent({ sourceContent: expandContent, originContent: "" })) } : undefined,
       }) + creationBridgePrompt(incomingSetup) + creationSettingsBlock(currentSettings);
       setMixUsed(useMix ? { resolved: resolvedMix, count } : null);
@@ -251,6 +256,9 @@ export default function DirectionPage() {
             </Field>
             <Field label="写多细" stacked>
               <ChoiceGrid items={DEPTHS} isOn={(id) => depth === id} onToggle={(id) => setDepth(id as "quick" | "full")} />
+            </Field>
+            <Field label="脚本打法（两派只选一派）" stacked hint="36 计管怎么拍，四大脚本管怎么讲；一个方向只用一派">
+              <ScriptRouteSection manual={routeManual} onManual={setRouteManual} share={scriptsShare} onShare={setScriptsShare} picked={pickedRoutes} onPicked={setPickedRoutes} />
             </Field>
           </CollapsibleSection>
 

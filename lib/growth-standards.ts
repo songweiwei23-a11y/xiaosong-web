@@ -22,6 +22,8 @@ import { THIRTY_DAY_PLAN, DIAGNOSIS_TREE } from './positioning-standards';
 import { roleInferRule, roleOfTactic, rolesGuide } from './content-roles';
 import { ROUTES_GUIDE, tacticsBlockedBy } from './creative-routes';
 import { creativeCraftRules } from './creative-craft';
+import { contractBlockFromText } from './creation-tree';
+import { SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
 import { OPENING_CRAFT, REAL_PEOPLE_RULE, ONE_POINT_RULE, REALITY_RULE, PRODUCT_HERO_RULE } from './sharp-rules';
 
 /** 一计压缩成一行，用于「候选清单」那一段 */
@@ -261,6 +263,7 @@ export function buildGrowthPlanPrompt(p: GrowthPlanParams): string {
 - ${REALITY_RULE}
 - ${PRODUCT_HERO_RULE}
 - **每一计都要说"为什么是你能拍的"**，说不出来就别推荐
+- 配的四大脚本结构只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}。写不进去的写「未归入注册表」
 - 具体到能开机，不要写"可以尝试…"这类话
 - 不要把 37 计罗列一遍——只讲你选中的那几计
 - 档案里的禁忌同样管你举的例子和示范标题；例子里的老板、客户、同行也不能写成反面角色（赖账、坑人、难缠）
@@ -706,6 +709,9 @@ ${
 - 不要用账号禁忌里写明不能说的话
 - **多样性服务于适配性**：允许同一机制的不同成熟表达，不强凑六种卡；用户手选的每张卡要回应，不适用时说明理由并给同主线替代，不能编素材去适配
 - 承诺要兑现：写不出正文怎么接的，这条就不要给`);
+  // 内容树：开篇守住选题定的结构和目的（2026-10-30）
+  const contract = contractBlockFromText(p.topic);
+  if (contract) parts.push(contract, '');
   parts.push(creativeCraftRules({ source: p.topic, context: p.contextBlock }));
   return parts.join('\n');
 }

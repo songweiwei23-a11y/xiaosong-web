@@ -13,6 +13,8 @@ import { tacticsBlockedBy } from './creative-routes';
 // 2026-10-29 回到 10-21 的「工具 + 直接创作」：36 计清单用冻结的 10-21 原文（标【最适合的目的】）
 import { tacticIndex1021 as tacticIndex, KEPT_RULES_1021 } from './tool-first-1021';
 import { SCRIPT_FAMILIES } from './viral-elements';
+import { planRouteRule } from './script-route';
+import { SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
 
 export const DIRECTION_TASK_TYPE = '创作方向';
 
@@ -99,6 +101,8 @@ export interface DirectionInput {
   mixBlock?: string;
   /** 页面还在传（2026-10-29 回到 10-21 后提示词不再用它，只保留类型，避免页面报错） */
   scriptsShare?: number;
+  /** 自己手选的打法（选项 key，见 lib/script-route）：有它就只用选中的，不按比例 */
+  pickedRoutes?: string[];
   /**
    * 别的板块带过来、要在它上面继续拓展的方向（2026-10-06）。
    * 线上：自由对话里勾了「国庆后的县城消费观察」带过来拓展，原来只当「已有的想法」一并参考，
@@ -130,8 +134,10 @@ export function buildDirectionPrompt(i: DirectionInput): string {
   const purposeField = i.mixBlock?.trim()
     ? `- **视频目的**：流量型 / 人设型 / 变现型，只写一个\n`
     : `- **对应目的**：这个方向主要服务上面哪个目的\n`;
-  const contentTypeField = `- **内容类型**：从下面的 36 计清单里选一计，写计名（一字不差）。按这个方向的目的优先挑【】里对应的计；任何脚本结构配上爆款元素都是大流量；用户选了形式的，优先挑形式最接近的计\n- **讲法**：从四大脚本里挑一个结构（聊观点 / 晒过程 / 教知识 / 讲故事），写清话怎么讲；36 计定事件怎么走，四大脚本定话怎么讲\n`;
-  const fields = purposeField + contentTypeField + (full
+  const contentTypeField = `- **内容类型**：${planRouteRule({ share: i.scriptsShare, picked: i.pickedRoutes })} 36 计按这个方向的目的优先挑【】里对应的计；任何脚本结构配上爆款元素都是大流量；用户选了形式的，优先挑形式最接近的计。写成「36计·第N计 计名」或「四大脚本·结构名」（四大脚本的结构名只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}），二者只选一派\n`;
+  // 视频任务：这张方向卡要让观众做到什么，选题和脚本都照它走（内容树的 task 字段，2026-10-30）
+  const taskField = `- **视频任务**：一句话，写清这条视频要让观众做到什么（停下来、信你、关注、来店等），和上面的视频目的一致\n`;
+  const fields = purposeField + contentTypeField + taskField + (full
     ? `- **内容方向**：一两句话说清这一类拍什么范围、从哪类素材取材（不写具体哪一条）
 - **为什么能达到目的**：说清楚因果，结合这个账号的实际情况
 - **核心思路**：一两句话，别人一听就懂

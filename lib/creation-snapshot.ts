@@ -21,10 +21,11 @@ export function readCreationSnapshot(value: unknown): HandoffPayload | null {
   if (v.tab === 'opening') out.tab = 'opening';
   if (Array.isArray(v.topicOptions)) out.topicOptions = v.topicOptions.filter((x): x is string => typeof x === 'string');
   if (Array.isArray(v.openingCards)) out.openingCards = v.openingCards.filter((x): x is string => typeof x === 'string');
-  // 一批选题里每条各自的打法（标题 → 计名）：原来白名单漏了，存进作品需求再取出来就没了，脚本页挑中一条后打法丢失
-  if (v.topicTactics && typeof v.topicTactics === 'object' && !Array.isArray(v.topicTactics)) {
-    const tactics = Object.entries(v.topicTactics as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === 'string' && e[0].length <= 200 && e[1].length <= 60).slice(0, 50);
-    if (tactics.length) out.topicTactics = Object.fromEntries(tactics);
+  // 一批选题里每条各自的派别（标题 → 选项 key，'tactic:计名' 或 'four:结构 id'，见 lib/script-route）：
+  // 原来白名单漏了，存进作品需求再取出来就没了，脚本页挑中一条后派别丢失
+  if (v.topicRoutes && typeof v.topicRoutes === 'object' && !Array.isArray(v.topicRoutes)) {
+    const routes = Object.entries(v.topicRoutes as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === 'string' && e[0].length <= 200 && /^(tactic|four):.{1,60}$/.test(e[1])).slice(0, 50);
+    if (routes.length) out.topicRoutes = Object.fromEntries(routes);
   }
   if (v.remixSource && typeof v.remixSource === 'object') {
     const s = v.remixSource as Record<string, unknown>;

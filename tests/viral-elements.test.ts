@@ -188,7 +188,7 @@ describe('选题页用的是同一份数据，没有第二份手写清单', () =
 });
 
 describe('方法总数把八大元素算进来了', () => {
-  it('100 = 起号 37 + 开篇 36 + 脚本结构 19 + 爆款元素 8', () => {
+  it('104 = 起号 37 + 开篇 36 + 脚本结构 23 + 爆款元素 8', () => {
     expect(FACTS.methods).toBe(
       FACTS.tactics + FACTS.cards + FACTS.structures + FACTS.elements
     );

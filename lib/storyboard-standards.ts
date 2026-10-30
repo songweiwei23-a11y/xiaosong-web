@@ -20,6 +20,7 @@
 
 import { continuationRules } from './creation-continuation';
 import { creativeCraftRules } from './creative-craft';
+import { contractBlockFromText } from './creation-tree';
 
 /** 五种景别各自的任务。这是整套方法论的地基 */
 const SHOT_SIZE_LANGUAGE = `### 景别不是随便选的，每一种都有它的活儿
@@ -359,6 +360,13 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
     parts.push('你给的每一个镜头都必须是他真的拍得出来的。');
   }
   parts.push('');
+
+  // 内容树：脚本已经定了结构和目的，分镜按它拆镜，不另选结构（2026-10-30，lib/creation-tree）
+  const contract = contractBlockFromText(script);
+  if (contract) {
+    parts.push(contract);
+    parts.push('');
+  }
 
   // 账号背景放在脚本之前：先知道这是谁的号、能拍成什么样，再看稿子
   if (p.contextBlock) {

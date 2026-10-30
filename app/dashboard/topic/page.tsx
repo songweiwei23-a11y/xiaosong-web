@@ -2,7 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
-import { mergeCreationSettings, settingsForResult, REVIEW_SCRIPT_TYPES, topicReasonIds } from '@/lib/creation-settings';
+import { mergeCreationSettings, settingsForResult, scriptFormOfTopic, REVIEW_SCRIPT_TYPES, topicReasonIds } from '@/lib/creation-settings';
 
 
 import { useRouter } from "next/navigation";
@@ -15,7 +15,8 @@ import { VIRAL_ELEMENTS, viralElementById, industryKeysOf, elementFitNote, eleme
 import { CONTENT_ROLE_LIST, ROLE_SPECS, type ContentRole } from "@/lib/content-roles";
 import { resolveMix, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
 import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
-import { ROUTE_LIST, ROUTE_HINTS, tacticInText, topicTacticsOf, type CreativeRoute } from "@/lib/creative-routes";
+import { ROUTE_LIST, ROUTE_HINTS, type CreativeRoute } from "@/lib/creative-routes";
+import { topicRouteOf, topicRoutesOf, tacticOfRoute } from "@/lib/script-route";
 import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { notifyGenerated } from "@/lib/upgrade";
 import { createWork, listWorks, type Work } from "@/lib/works";
@@ -161,17 +162,18 @@ export default function TopicPage() {
     const workId = await createWork(title, selectedProfileId || null);
     // 持久保存后再跳（lib/creation-session）：刷新、换设备都能接着这一条
     await openCreationSafely({
-      ...buildCreationHandoff('topic', stage === '脚本生成' ? 'script' : stage === '标题封面' ? 'title' : 'growth', body || title, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title }), originContent: originForResult(result, history, originContent || sourceReference) }),
+      ...buildCreationHandoff('topic', stage === '脚本生成' ? 'script' : stage === '标题封面' ? 'title' : 'growth', body || title, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title, ...scriptFormOfTopic(body ?? '') }), originContent: originForResult(result, history, originContent || sourceReference) }),
       from: "选题策划",
       topic: title,
       workId: workId ?? undefined,
       tab: stage === "开篇钩子" ? "opening" : undefined,
       // 打法跟着选题一路走，脚本才能按这一计的结构公式排。
       // 没整批指定时，看这一条自己标的是哪一计
-      tactic: tactic || tacticInText(body ?? "") || undefined,
+      // 一条选题只归一派（见 lib/script-route）：标了 36 计就带那一计，标了四大脚本就不带计
+      tactic: tactic || tacticOfRoute(topicRouteOf(body ?? "")) || undefined,
       note:
         stage === "脚本生成" && body
-          ? buildCreationHandoff('topic', 'script', body, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title }), originContent: originForResult(result, history, originContent || sourceReference) }).note
+          ? buildCreationHandoff('topic', 'script', body, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title, ...scriptFormOfTopic(body ?? '') }), originContent: originForResult(result, history, originContent || sourceReference) }).note
           : undefined,
     }, (u) => router.push(u), (m) => notify(m, 'error'));
   };
@@ -1051,9 +1053,10 @@ export default function TopicPage() {
                 topic: options.length === 1 ? options[0] : undefined,
                 workId,
                 // 打法跟着选题一路走到脚本，脚本才能按这一计的结构公式排
-                tactic: tactic || (options.length === 1 ? tacticInText(body) : undefined),
-                // 每条各自标的是哪一计：到脚本页挑中哪条，就自动带上那一条的计
-                topicTactics: tactic ? undefined : topicTacticsOf(body),
+                // 一条选题只归一派（36 计或四大脚本）：单条时按它标的派别带过去
+                tactic: tactic || (options.length === 1 ? tacticOfRoute(topicRouteOf(body)) : undefined),
+                // 每条各自标的派别：到脚本页挑中哪条，就按那一条的派别来
+                topicRoutes: tactic ? undefined : topicRoutesOf(body),
               }, (u) => router.push(u), (m) => notify(m, 'error'));
             },
           },

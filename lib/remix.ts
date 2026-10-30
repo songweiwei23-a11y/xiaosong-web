@@ -16,6 +16,7 @@
 
 import { AI_LENGTH_RULE, durationRule } from './ai-recommend';
 import { buildFissionBlock, type FissionMode, type FissionSelections } from './fission';
+import { allStructureNames } from './creation-tree';
 
 export const REMIX_TASK_TYPE = '跨行业二创';
 
@@ -237,6 +238,7 @@ export function buildRemixPrompt(source: RemixSource, o: RemixOptions): string {
   原片的台词、画面、人物经历、数字一律不搬。"帮粉丝买车"→"帮粉丝做账号"是二创；把原片台词换两个词念一遍是搬运，平台会判搬运、不给流量
 - 开篇：保留句式结构，替换行业关键词（"信不信15秒让你放弃摆摊"换任何行业都能用）
 - 结构：困境→转机、结果前置→补原因这类骨架跨行业通用，每段的事要换成这个账号真实会发生的事
+- 脚本结构的名字只能从注册表里选，一字不差：${allStructureNames().join('、')}。写不进去的写「未归入注册表」
 - 呈现形式有五个可变维度：拍摄角度、出镜人物、出场方式、道具、剪辑方式
 - **借出发点，换成自己的人货场**（2026-10-29）：先看原片的出发点——它围绕人、货、场哪一个、符合三有哪一条、用了哪个爆款元素、元素设计在钩子还是结构里。然后换成这个账号的：原片的人换成这个账号的出镜人，原片的货换成这个账号在卖的，原片的场换成这个账号能拍的场；三有照原片符合的那一条保留，元素照原片用的那个保留（句式照用，内容换成这个账号的事）。换完要能回答：这个号的观众为什么会停下来
 

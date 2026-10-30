@@ -163,7 +163,7 @@ const FOUR_SCRIPT_TYPE_BY_HEAD: Record<string, string> = { 教知识: 'teach', �
 /** 四大脚本的一种结构：name 是「晒过程·火车节」，structure 是结构表里的 id */
 export interface FourScriptChoice { name: string; head: string; shape: string; scriptType: string; structure: string }
 
-/** 四大脚本的 7 种结构（名字与 lib/tactic-mix 的 SCRIPT_STRUCTURE_NAMES 一致），映射到脚本类型和结构 id */
+/** 四大脚本的结构（名字与 lib/tactic-mix 的 SCRIPT_STRUCTURE_NAMES 一致），映射到脚本类型和结构 id */
 export const FOUR_SCRIPT_CHOICES: FourScriptChoice[] = SCRIPT_STRUCTURE_NAMES.flatMap((name) => {
   const [head, shape = ''] = name.split('·');
   const scriptType = FOUR_SCRIPT_TYPE_BY_HEAD[head];
@@ -187,6 +187,27 @@ export function structureName(id: string | undefined): string {
   const four = fourScriptOfStructure(id);
   if (four) return four.name;
   return SCRIPT_STRUCTURES.find((s) => s.id === id)?.label.replace(/^\S+\s*/, '') ?? '';
+}
+
+/**
+ * 选题的打法行认出四大脚本的类型和结构：「- 四大脚本·聊观点·论证型：…」（写全名）或「- 四大脚本·聊观点：…」（只写类型）。
+ * 只看这一条选题自己的正文，不读整批结果。只写类型、没写结构的，结构取这一类的第一种。
+ * 2026-10-30：原来只认「讲法」标签，选题的打法行带不到脚本页，脚本页变成自动决策，结构指导整段丢掉。
+ */
+export function scriptFormOfTopic(body: string): { scriptType?: string; structure?: string; purpose?: string } {
+  const clean = body.replace(/\*\*/g, '');
+  // 视频目的（流量型 / 人设型 / 变现型）：选题写明的那一行，跳到脚本页时带过去（内容树的目的字段）
+  const purpose = clean.match(/^\s*[-*]?\s*(?:视频目的|内容目的|目的)[：:]\s*(流量型|人设型|变现型)/m)?.[1];
+  // 只认行首的条目（「- 四大脚本·…」），正文里顺带提到的不算
+  const line = clean.split('\n').find(l => /^\s*(?:[-*]\s*)?四大脚本\s*[·:：]/.test(l));
+  if (!line) return purpose ? { purpose } : {};
+  const four = fourScriptIn(line);
+  if (four) return { scriptType: four.scriptType, structure: four.structure, ...(purpose ? { purpose } : {}) };
+  const head = line.match(/四大脚本\s*[·:：]\s*(教知识|晒过程|讲故事|聊观点|聊话题)/)?.[1];
+  if (!head) return purpose ? { purpose } : {};
+  const scriptType = FOUR_SCRIPT_TYPE_BY_HEAD[head];
+  const structure = FOUR_SCRIPT_CHOICES.find(c => c.scriptType === scriptType)?.structure;
+  return { scriptType, structure, ...(purpose ? { purpose } : {}) };
 }
 
 /** 从旧稿的明确标签恢复设置。正文提到其他行业或人群不会覆盖原设置。 */

@@ -112,11 +112,11 @@ export const SHOWCASE_STRUCTURES: ShowcaseStructure[] = [
     emotionCurve: '疑惑 → 震惊 → 恍然大悟',
   },
   {
-    id: 'story',
-    name: '故事型',
-    formula: '现状铺垫 → 困境冲突 → 转折高潮 → 成就结局',
-    coreLogic: '用故事情节吸引完播',
-    emotionCurve: '代入 → 焦虑 → 惊喜 → 满足',
+    id: 'achieve',
+    name: '小有成就型',
+    formula: '已经达成的成就 → 过程中的困境 → 过程中的转机 → 目标带来的感悟（困境、转机各两轮）',
+    coreLogic: '用自己做成过的事建立靠谱、有能力的人设',
+    emotionCurve: '期待 → 共鸣 → 敬佩 → 信任',
   },
 ];
 
@@ -143,7 +143,7 @@ export const FACTS = {
    * 脚本结构种数 —— 脚本页选得到、且有完整方法数据的，不含「AI推荐」。
    * AI推荐不是一种结构，是"让 AI 替你挑"，算进去就是凑数。
    */
-  structures: 19,
+  structures: 23,
   /** 八大爆款元素 —— lib/viral-elements.ts，每条都带可直接套用的句式 */
   elements: 8,
   /** 四大脚本：教知识 / 聊观点 / 晒过程 / 讲故事，各对应一个生意目的 */
@@ -157,7 +157,7 @@ export const FACTS = {
    *
    * 四大脚本不计入这个数——它是给那 19 种结构分的类，算进去就是重复计数。
    */
-  methods: 100,
+  methods: 104,
   /**
    * 创作板块数。原来写 15，是把会员中心也算成了创作板块；
    * 如实是 14，与侧边栏里的板块数一致。2026-09-29 加了前采建档，15；09-30 加了拆解爆款，16；又加了跨行业二创，17；

@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
 import { ContentMixBar } from "@/components/workspace/ContentMix";
+import { ScriptRouteSection } from "@/components/workspace/ScriptRouteSection";
 import { notify } from "@/components/ui/feedback";
 import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -70,6 +71,9 @@ export default function ContentPlanPage() {
   const [planUsed, setPlanUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
   // 36 计与四大脚本的搭配比例（lib/tactic-mix）：0 = 全用 36 计，和以前一样
   const [scriptsShare, setScriptsShare] = useState(0);
+  // 自己选脚本结构（开关）：打开就只用手选的打法，不按比例（两派只选一派，见 lib/script-route）
+  const [routeManual, setRouteManual] = useState(false);
+  const [pickedRoutes, setPickedRoutes] = useState<string[]>([]);
   const goalText = [focus.map((id) => PLAN_FOCUS.find((f) => f.id === id)?.label).join("、"), events, notes].filter(Boolean).join("；");
   const resolvedMix = resolveMix(profile, mixOverride, goalText);
 
@@ -142,7 +146,7 @@ export default function ContentPlanPage() {
     try {
       const historyId = createHistoryId();
       const query = buildContentPlanPrompt({
-        lastMonth, recordedLastMonth: recorded, count, focus, events, notes, resolved: resolvedMix, scriptsShare,
+        lastMonth, recordedLastMonth: recorded, count, focus, events, notes, resolved: resolvedMix, scriptsShare: routeManual ? 0 : scriptsShare, pickedRoutes: routeManual ? pickedRoutes : [],
         profileSummary: profile ? buildProfileSummary(profile) : undefined,
         // 和创作方向读同一份账号记忆：简报、成交理由、禁忌、发布后的数据
         contextBlock: buildContextBlock(context, "direction"),
@@ -209,6 +213,9 @@ export default function ContentPlanPage() {
             <p className="mt-1.5 text-[11.5px] text-muted-foreground">一周约 {Math.max(1, Math.round(count / 4))} 条。{!countTouched && lastMonth ? "按上个月的量推荐的，可以改" : "定一个能坚持下来的量，比定得多发不出来有用"}</p>
             <Field label="怎么配比" stacked hint="条数按配比分到流量型、人设型、变现型">
               <ContentMixBar className="mt-1" profile={profile} override={mixOverride} onOverride={setMixOverride} count={count} goal={goalText} />
+            </Field>
+            <Field label="脚本打法（两派只选一派）" stacked hint="36 计管怎么拍，四大脚本管怎么讲；一条内容只用一派">
+              <ScriptRouteSection manual={routeManual} onManual={setRouteManual} share={scriptsShare} onShare={setScriptsShare} picked={pickedRoutes} onPicked={setPickedRoutes} />
             </Field>
           </CollapsibleSection>
 

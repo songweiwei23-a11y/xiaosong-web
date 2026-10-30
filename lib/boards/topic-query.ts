@@ -8,6 +8,7 @@ import { type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, type ResolvedMix } from '@/lib/content-mix';
 import { taboosPromptBlock } from '@/lib/taboos';
 import { type CreativeRoute } from '@/lib/creative-routes';
+import { SCRIPT_STRUCTURE_NAMES } from '@/lib/tactic-mix';
 // 2026-10-29 回到 10-21 的「工具 + 直接创作」：三种视频说明、两套打法、36 计清单用冻结的 10-21 原文（只换进产品方后来定的三句）
 import { rolesGuide1021 as rolesGuide, roleBrief1021 as roleBrief, ROUTES_GUIDE_1021 as ROUTES_GUIDE, tacticIndex1021 as tacticIndex } from '@/lib/tool-first-1021';
 import { topicSourceRules, topicDesignStandards, topicRoutePrompt, topicDesignFinalCheck, topicPreferredTactic } from '@/lib/topic-design';
@@ -518,11 +519,14 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       if (sourced) query += `**承接**：这条取自带来内容里的哪一处（引原文一句，或点名那个细节、那条思路）\n\n`;
       query += `**0️⃣ 视频目的**\n`;
       query += `流量型 / 人设型 / 变现型，只写一个，后面一句话说为什么\n\n`;
+      // 视频任务：这条脚本要完成的事，脚本页按它写（内容树的 task 字段，2026-10-30）
+      query += `**视频任务**\n`;
+      query += `一句话，写清这条视频要让观众做到什么（停下来、信你、点关注、来店等），要和上面的视频目的一致\n\n`;
       // 这一行的写法固定，页面要从它认出用的哪一计，带到脚本页
       query += `**🅰 打法**\n`;
       query += `二选一照这个格式写：\n`;
       query += `- 36计·第N计 计名：把这一计的结构公式套到这条上，写成具体的事件（如「常规A → 反向B → 真实反应」写成这条里真正发生的事）\n`;
-      query += `- 四大脚本·脚本类型（聊观点 / 晒过程 / 教知识 / 讲故事）：一句话说这条怎么讲\n\n`;
+      query += `- 四大脚本·结构（${SCRIPT_STRUCTURE_NAMES.join(' / ')}，写全名）：一句话说这条怎么讲\n\n`;
       query += `**1️⃣ 爆款元素**\n`;
       if (selectedElements.length > 0) {
         // 用全名（「最差选题」而不是「最差」），和上面那段句式对得上

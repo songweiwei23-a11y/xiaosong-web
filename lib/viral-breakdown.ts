@@ -15,6 +15,7 @@ import { GROWTH_TACTICS } from './growth-tactics';
 import { CONTENT_ROLE_LIST } from './content-roles';
 import { fmtTime, type Shot, type KeyFrame } from './video-frames';
 import { TEMPLATE_SPEC } from './breakdown-templates';
+import { allStructureNames } from './creation-tree';
 
 export const BREAKDOWN_TASK_TYPE = '拆解爆款';
 
@@ -201,6 +202,7 @@ ${TEMPLATE_SPEC}
 - 钩子在后面**兑现了没有**，在第几秒兑现
 
 ### 四、结构骨架和情绪曲线
+脚本结构归类只能从注册表里选，一字不差：${allStructureNames().join('、')}。写不进去的写「未归入注册表」。
 - 脚本类型：四大脚本里哪一种；如果是按起号 36 计的打法拍的，写出是哪一计
 - 分段表：| 时间 | 这一段干什么（抓人/铺垫/冲突/证据/高潮/兑现/行动指令） | 具体内容 |
 - 情绪曲线：四种里哪种；情绪起伏点在第几秒、靠什么；按时长看起伏点够不够（15 秒 1 个、1 分钟 2～3 个、3 分钟 3～5 个）

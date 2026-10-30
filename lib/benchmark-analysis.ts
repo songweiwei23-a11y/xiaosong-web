@@ -109,10 +109,14 @@ export interface BenchmarkQueryInput {
   contextBlock: string;
 }
 
+import { allStructureNames } from './creation-tree';
+
 /** 拆解提示词：对标方的材料 + 我们的账号背景（只用于「对我们的参考」）+ 固定框架和依据规则 */
 export function buildBenchmarkQuery(input: BenchmarkQueryInput): string {
   return [
     '你是编导的对标分析助手。下面是编导提供的「对标账号」资料，请按固定框架拆解这个账号，并说明每条结论依据来自哪份材料。',
+    // 对标账号的结构归类只能用注册表里的名字，和选题、脚本接得上（2026-10-30，lib/creation-tree）
+    `对标账号的脚本结构归类只能从注册表里选，一字不差：${allStructureNames().join('、')}。写不进去的写「未归入注册表」。`,
     '',
     `【对标账号】${input.accountName}（${input.platform || '平台未填'}）`,
     '【材料清单】',

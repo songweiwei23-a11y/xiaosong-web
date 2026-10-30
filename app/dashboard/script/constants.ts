@@ -114,7 +114,6 @@ export const SCRIPT_STRUCTURES = [
   { id: "case", label: "📖 案例型", desc: "案例→拆解→复制" },
   { id: "train", label: "🚂 火车节", desc: "目标→过程→结果" },
   { id: "argue", label: "💬 论证型", desc: "观点→论据→升华" },
-  { id: "story", label: "📚 故事型", desc: "现状→困境→转折→成就" },
   { id: "compare", label: "⚖️ 对比型", desc: "A vs B对比" },
   { id: "list", label: "📝 清单型", desc: "N个方法/技巧" },
   { id: "timeline", label: "⏰ 时间线型", desc: "前后变化" },
@@ -126,7 +125,12 @@ export const SCRIPT_STRUCTURES = [
   { id: "reverse", label: "🔄 反转型", desc: "预期A→实际B" },
   { id: "summary", label: "📊 盘点型", desc: "年度盘点" },
   { id: "interview", label: "🎤 采访型", desc: "人物访谈" },
-  { id: "observe", label: "🔬 观察型", desc: "观察→分析" },
+  { id: "observe", label: "🔬 过程展示", desc: "进货→成交→技术→售后，挑一段拍透" },
+  { id: "achieve", label: "🏆 小有成就型", desc: "成就→困境→转机→感悟" },
+  { id: "success_case", label: "🌟 成功案例型", desc: "他人成就→困境转机→感悟" },
+  { id: "hero", label: "🦸 平凡英雄型", desc: "冲突→英雄时刻→总结" },
+  { id: "hardship", label: "🌧️ 苦难经历型", desc: "缺点→原因→困苦→释怀" },
+  { id: "event", label: "🎪 事件体验", desc: "起因→经过→结果" },
 ];
 
 // 编导思路

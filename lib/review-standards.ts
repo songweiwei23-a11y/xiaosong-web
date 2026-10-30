@@ -19,6 +19,7 @@ import { roleInferRule } from './content-roles';
 import { continuationRules } from './creation-continuation';
 import { reviewDraftStats } from './script-result-utils';
 import { creativeCraftRules } from './creative-craft';
+import { contractBlockFromText } from './creation-tree';
 import { AI_LENGTH_RULE } from './ai-recommend';
 import { reviewScopeBlock } from './review-scope';
 import { factEvidenceBlock } from './review-facts';
@@ -319,6 +320,9 @@ export function buildReviewPrompt(p: ReviewPromptParams): string {
   parts.push('⚠️ 不要输出「希望对你有帮助」这类结尾寒暄，也不要复述上面的标准。');
 
   parts.push(continuationRules('review'));
+  // 内容树：审稿要查稿子有没有守住选题定的结构和目的（2026-10-30）
+  const contract = contractBlockFromText(p.draftContent);
+  if (contract) parts.push(contract, '');
   parts.push(creativeCraftRules({ source: p.draftContent, context: p.contextBlock }));
   return parts.join('\n');
 }

@@ -3,29 +3,37 @@ import { FOUR_SCRIPT_CHOICES, fourScriptOfStructure, resolveCreationSettings, se
 import { SCRIPT_STRUCTURE_NAMES } from '@/lib/tactic-mix';
 import { GROWTH_TACTICS } from '@/lib/growth-tactics';
 
-describe('四大脚本的 7 种结构', () => {
+describe('四大脚本的 14 种结构（2026-10-30 按知识库补齐；故事型并入 36 计，不在四大脚本下）', () => {
   it('每个名字都映射到脚本类型和结构 id，脚本页的卡片才能点', () => {
     expect(FOUR_SCRIPT_CHOICES.map(c => [c.name, c.scriptType, c.structure])).toEqual([
       ['晒过程·火车节', 'show', 'train'],
-      ['晒过程·观察型', 'show', 'observe'],
+      ['晒过程·过程展示', 'show', 'observe'],
       ['教知识·解题型', 'teach', 'problem'],
       ['教知识·推荐型', 'teach', 'recommend'],
       ['教知识·案例型', 'teach', 'case'],
-      ['讲故事·故事型', 'story', 'story'],
       ['聊观点·论证型', 'discuss', 'argue'],
+      ['教知识·揭秘型', 'teach', 'expose'],
+      ['晒过程·挑战型', 'show', 'challenge'],
+      ['晒过程·测评型', 'show', 'review'],
+      ['晒过程·事件体验', 'show', 'event'],
+      ['讲故事·小有成就型', 'story', 'achieve'],
+      ['讲故事·成功案例型', 'story', 'success_case'],
+      ['讲故事·平凡英雄型', 'story', 'hero'],
+      ['讲故事·苦难经历型', 'story', 'hardship'],
     ]);
     expect(FOUR_SCRIPT_CHOICES).toHaveLength(SCRIPT_STRUCTURE_NAMES.length);
   });
 
   it('结构 id 能认回四大脚本；旧结构和 AI 推荐不算', () => {
     expect(fourScriptOfStructure('argue')?.name).toBe('聊观点·论证型');
-    expect(fourScriptOfStructure('expose')).toBeUndefined();
+    expect(fourScriptOfStructure('expose')?.name).toBe('教知识·揭秘型');
+    expect(fourScriptOfStructure('compare')).toBeUndefined();
     expect(fourScriptOfStructure('auto')).toBeUndefined();
   });
 
   it('显示名：四大脚本带类型前缀，AI 推荐为空', () => {
     expect(structureName('train')).toBe('晒过程·火车节');
-    expect(structureName('expose')).toBe('揭秘型');
+    expect(structureName('expose')).toBe('教知识·揭秘型');
     expect(structureName('auto')).toBe('');
     expect(structureName(undefined)).toBe('');
   });

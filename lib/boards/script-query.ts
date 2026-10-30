@@ -12,7 +12,9 @@ import { getRelevantExample } from '@/lib/quality-checker';
 import { AI_SCRIPT_LENGTH_RULE, AI_SCRIPT_TARGET_TEXT, EXAMPLE_LENGTH_NOTE, scriptLengthRule } from '@/lib/ai-recommend';
 import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
 import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex } from '@/lib/creative-routes';
+import { fourScriptOfStructure } from '@/lib/creation-settings';
 import { dealReasonsForPurpose, roleBrief, type ContentRole } from '@/lib/content-roles';
+import { formatTreeBlock, purposeOf, structureIdOfFourName, treeNodeOfScriptInputs, treeNodeOfTopicBody } from '@/lib/creation-tree';
 import {
   creationSettingsBlock,
   durationSeconds,
@@ -258,13 +260,26 @@ export function buildScriptBoardQuery(input: ScriptBoardInput): string {
     topic, platform, scriptType, autoScriptType, effectiveRole, isAd,
     industry, customIndustry, targetGroup, customTargetGroup, style, customStyle,
     durationMode, duration, customDuration, profile, positioningContent,
-    scriptStructure, hookType, boomElements, directorThoughts, tactic,
+    scriptStructure: rawScriptStructure, hookType, boomElements, directorThoughts, tactic: tacticIn,
     openingLine, openingCard, productInfo, priceInfo, scene, device, budget,
     personnel, accountPositioning, additionalInfo, originContent,
     focusContent, currentSettings,
   } = input;
+  // 选题写了这一条用什么结构，就以它为准（2026-10-30）：正文里有这一条的契约，结构、目的、任务、元素都从它来
+  const topicNode = treeNodeOfTopicBody(originContent ?? '', topic);
+  const tactic = topicNode?.bigType === '36计' ? topicNode.structure.replace(/^36计·第\d+计\s*/, '') : tacticIn;
+  const topicFourId = topicNode?.bigType === '四大脚本' ? structureIdOfFourName(topicNode.structure) : undefined;
+  // 两派只选一派（2026-10-30，见 lib/script-route）：选了 36 计，就不再带四大脚本结构
+  const scriptStructure = tactic && tactic !== AUTO_TACTIC ? 'auto' : (topicFourId ?? rawScriptStructure);
   // 大流量视频不带成交理由（2026-10-25）：流量型的脚本一律不带成交理由，下面的提示词只看这里过滤后的
   const dealReasons = dealReasonsForPurpose(effectiveRole, input.dealReasons);
+  // 内容树的契约块（2026-10-30，lib/creation-tree）：大类、类型、具体结构、目的写明白，模型不自选结构
+  const boomLabels = (boomElements ?? []).map((id) => BOOM_ELEMENTS.find((e) => e.id === id)?.label ?? '').filter(Boolean);
+  const treeNode = topicNode
+    // 选题正文里有这一条的契约：结构、任务、元素以它为准；目的没写就用跳转带来的
+    ? { ...topicNode, purpose: topicNode.purpose || purposeOf(effectiveRole), elements: topicNode.elements.length ? topicNode.elements : boomLabels }
+    : treeNodeOfScriptInputs({ tactic, scriptStructure, purpose: effectiveRole, elements: boomLabels });
+  const treeBlock = treeNode ? formatTreeBlock(treeNode) : '';
 
       // 构建结构化的query给Dify
       const dealReasonsText = dealReasons.length > 0 
@@ -383,39 +398,40 @@ ${getRelevantExample(scriptType, durationForCalc, scriptStructure)}
       // ========== 公式蓝图结束 ==========
 
       // ========== 拍法（起号 36+1 计）==========
-      // 从起号页选题页一路带过来的那一计。
-      // 它和上面的"脚本结构"不是一回事，容易混，所以这里把分工写明：
-      //   脚本结构 = 时间怎么分（0-3秒钩子、3-15秒铺垫…）
-      //   拍法公式 = 事件怎么走（常规A → 反向B → 真实反应）
-      // 两者叠加，不是二选一。不说清楚的话模型会拿其中一个覆盖另一个。
+      // 两派只选一派（2026-10-30）：36 计（怎么拍）和四大脚本（讲怎么讲）不叠加。
+      // 选了 36 计，上面已经把脚本结构强制为 auto；选了四大脚本，这里不再挑 36 计；都没选，让 AI 在两派里挑一派。
       const tacticText = tactic && tactic !== AUTO_TACTIC ? tacticBrief(tactic) : '';
       const blockedTactics = tacticsBlockedBy(
         [profile?.content_restrictions, profile?.avoid_content].filter(Boolean).join('\n')
       );
+      const fourPick = fourScriptOfStructure(scriptStructure);
       const tacticSection = tactic === AUTO_TACTIC
-        ? `
-## 🎬 拍法：给这条叠一计起号打法（小黄 36 计）
+        ? (fourPick
+          ? `
+## 🎬 本条用四大脚本「${fourPick.name}」，不叠 36 计
+
+拍法不另叠 36 计。策略卡第一条写：**用的脚本：四大脚本·${fourPick.name}**
+`
+          : `
+## 🎬 打法：两派只选一派（36 计或四大脚本，不叠加）
 
 ${ROUTES_GUIDE}
 
 ${tacticIndex({ exclude: blockedTactics })}
 
 **硬要求**：
-1. 从上面清单挑**一计**，优先标了【${effectiveRole}】的；挑他拍得出来的
-2. 在脚本策略卡第一条写：**用的计：36计·第N计 计名**，再用一句话说这一计的公式套到这条上是什么事件
-3. 片子的事件走向落在那一计的公式上，话怎么讲仍按上面的脚本结构——两者叠加，不要只在开头提一句
-4. 实在没有合适的（比如讲自己真实经历的人设型，硬套会显得假），策略卡第一条写"用的计：不叠计"并说明为什么，按四大脚本写
-`
+1. 先看这条的目的和主题，只挑**一派**：事件走向就能拍出效果的，挑 36 计；要靠话讲清观点、知识或故事的，挑四大脚本
+2. 挑了 36 计：从上面清单挑**一计**，优先标了【${effectiveRole}】的，挑他拍得出来的；策略卡第一条写：**用的计：36计·第N计 计名**，再用一句话说这一计的公式套到这条上是什么事件。话怎么讲由这一计定，不另套四大脚本结构
+3. 挑了四大脚本：策略卡第一条写：**用的脚本：四大脚本·具体结构名**，不再挑 36 计
+4. 两派都不合适（比如讲自己真实经历的人设型，硬套会显得假）：策略卡第一条写"用的计：不用 36 计"，并说明为什么，按四大脚本写
+`)
         : tacticText
         ? `
 ## 🎬 本条用的拍法：${tactic}
 
 ${tacticText}
 
-**怎么和上面的脚本结构配合**：
-- 脚本结构决定**时间怎么分**（哪一秒放什么）
-- 这一计的结构公式决定**事件怎么走**（片子里发生了什么）
-- 两者同时成立，不要用其中一个替掉另一个
+**只用这一计，不另套四大脚本结构**：这一计的结构公式决定**事件怎么走**（片子里发生了什么），话怎么讲跟着这一计的事件走。策略卡第一条写：**用的计：${tactic}**
 
 **硬要求**：
 1. 片子的事件走向必须落在这一计的结构公式上，不能只在开头提一句就没了
@@ -546,8 +562,10 @@ ${isDetailedRequirement
         settings: currentSettings,
         structureGuide: scriptStructure !== 'auto' ? structureGuide : undefined,
         hookGuide: openingLine.trim() ? undefined : hookType !== 'auto' ? hookGuide : undefined,
-        tacticGuide: tactic && tactic !== AUTO_TACTIC ? tacticSection : undefined,
+        // 两派只选一派：自动模式也要把「只挑一派」的说明传过去（tacticSection 在三种情况下都有内容）
+        tacticGuide: tacticSection || undefined,
         scriptTypeGuide: !autoScriptType ? formulaSection : undefined,
+        treeBlock: treeBlock || undefined,
         craftFocus: [
           boomElements.length ? `用户勾选元素：${boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label ?? id).join('、')}` : '',
           directorThoughts.length ? `表达重点：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label ?? id).join('、')}` : '',
@@ -605,6 +623,7 @@ ${priceInfo ? `**价格策略**：${priceInfo}` : ""}
 ## 创意要求
 - **开场方式**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（3秒内抓住目标用户）
 - **脚本结构**：${SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "推荐型"}
+${treeBlock}
 - **爆款元素**：${boomElements.length > 0 ? boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label).join("、") : "根据行业推荐"}
 
 ## 拍摄执行
@@ -663,6 +682,7 @@ ${effectiveHookGuide}
 ## 创意设计
 - **开场钩子**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（吸引目标受众停留）
 - **脚本结构**：${SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "AI推荐"}
+${treeBlock}
 - **爆款元素**：${boomElements.length > 0 ? boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label).join("、") : "未勾选：沿用带来的选题「1️⃣ 爆款元素」；没有就从八大元素里挑一个能落到这个人货场上的（见生成要求第 8 条）"}
 
 ## 价值主张

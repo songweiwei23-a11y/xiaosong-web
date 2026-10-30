@@ -146,14 +146,14 @@ describe('页面', () => {
     expect(src).toContain('🅰 打法');
     expect(src).toMatch(/topicRoutePrompt\(\{ route, count: topicCount, sourced, explicit: routeExplicit \}\)/);
     expect(src).toMatch(/tacticIndex\(/);
-    expect(src).toMatch(/topicTactics: /);
+    expect(src).toMatch(/topicRoutes: /);
   });
 
-  it('脚本页：默认让 AI 按目的挑一计，挑中的计记进历史而不是占位值', () => {
+  it('脚本页：两派只选一派。默认 AI 挑一派；挑中的计记进历史而不是占位值；选题里每条按它自己的派别走', () => {
     const src = readCode('app/dashboard/script/page.tsx');
     expect(src).toMatch(/useState\(AUTO_TACTIC\)/);
     expect(src).toMatch(/tactic === AUTO_TACTIC \? tacticInText\(fullResult\)/);
-    expect(src).toMatch(/handoffTopicTactics\[t\]/);
+    expect(src).toMatch(/handoffTopicRoutes\[t\]\) pickRoute\(handoffTopicRoutes\[t\]\)/);
     expect(AUTO_TACTIC).not.toBe('');
     expect(GROWTH_TACTICS.some((t) => t.name === AUTO_TACTIC)).toBe(false);
   });
