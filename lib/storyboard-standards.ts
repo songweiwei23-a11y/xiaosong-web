@@ -476,7 +476,7 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('  且必须提供台词之外的信息（见上文「画面不要复述台词」）');
   parts.push('- **台词/旁白**：从原脚本里摘的原句，不要改写；没有台词写「无」');
   parts.push('- **时长**：数字 + s，如 3s');
-  parts.push('- **拍摄要点**：这一个镜头拍的时候最容易失败的地方，一句话说清；只写拍的动作、景别、收音或安全上的事，不写「不念什么」「不说什么」「不提什么」这类台词规则（说话人、禁用称呼只管台词，不进拍摄要点）');
+  parts.push('- **拍摄要点**：这一个镜头拍的时候最容易失败的地方，一句话说清');
   parts.push('');
 
   parts.push('### 2. 📊 节奏自检');
