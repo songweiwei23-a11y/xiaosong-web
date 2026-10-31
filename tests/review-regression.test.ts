@@ -48,9 +48,9 @@ describe('真实审稿回归：纯文字素材、完整要求与当前会话', (
     expect(reviewDimensionLabels(['逻辑是否清晰', '过渡是否自然'], options)).toBe('逻辑是否清晰、过渡是否自然');
     expect(reviewDimensionLabels(['logic', 'transition'], options)).toBe('逻辑是否清晰、过渡是否自然');
   });
-  it('检索短句带当前选题与要求，排除长原稿', () => {
+  it('创作类检索只用主题词：用户写的审稿要求、原稿都不进检索词（2026-10-31）', () => {
     const q = buildSearchQuery('审稿优化', { platform: '抖音', reviewFocus: '凌晨4点的南乐，观察记录，口语化，拍起来简单。' + '补充要求'.repeat(20), draftContent: draft.repeat(30) }, '完整指令');
-    expect(q).toContain('凌晨4点的南乐');
+    expect(q).not.toContain('凌晨4点');
     expect(q).not.toContain('扫帚');
     expect(q.length).toBeLessThanOrEqual(200);
   });

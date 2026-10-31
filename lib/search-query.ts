@@ -84,6 +84,14 @@ const squash = (s: unknown, n: number) =>
  * script/storyboard/title 页传前端拼好的完整 query），因此这里按
  * "短字符串即用户选择项" 的启发式收集，并对纯 query 型页面回退到取其开头。
  */
+/**
+ * 创作类任务的检索只用任务的主题词（2026-10-31）。档案名、行业、选题、用户写的想法都不进检索词：
+ * 它们一进来，知识库就会把同行业的具体示例（「开店日常 凌晨四点」）召回到生成里，模型照抄。
+ * 知识库查询、自由对话本身就是拿用户的问题去查，仍走下面的老逻辑。
+ */
+const NON_CREATIVE_SEARCH = new Set(['知识库查询', '自由对话']);
+export const CREATIVE_SEARCH_FALLBACK = '短视频创作方法';
+
 export function buildSearchQuery(
   taskType: string,
   body: Record<string, unknown>,
@@ -92,6 +100,13 @@ export function buildSearchQuery(
   const parts: string[] = [];
 
   const hint = SEARCH_TOPIC_HINT[taskType];
+  if (hint !== undefined && !NON_CREATIVE_SEARCH.has(taskType)) {
+    // 例外：账号的赛道、地域（profileSearchHints）是联网搜索要的事实，保留；其余字段一律不进
+    const facts = [body.track, body.region]
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_FIELD_LEN)
+      .map((v) => v.trim());
+    return squash([hint || CREATIVE_SEARCH_FALLBACK, ...facts].join(' '), MAX_QUERY_LEN);
+  }
   if (hint) parts.push(hint);
 
   const collect = (obj: unknown) => {

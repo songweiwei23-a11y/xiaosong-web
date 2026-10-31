@@ -51,15 +51,13 @@ describe('持久化与隔离', () => {
     state.allowed = false;
     expect((await send(input)).status).toBe(401);
   });
-  it('AI 记忆仅引用当前账号、当前档案、当前功能，不把其他记录放进提示词', async () => {
-    const { db, calls } = dbWith([
+  it('历史产出不回灌进生成：任何账号、任何档案的历史都不进提示词（2026-10-31）', async () => {
+    const { db } = dbWith([
       { id: '1', user_id: 'owner', task_type: '跨行业二创', input_data: { profileId: A }, result: 'A 的内容', created_at: '2026-09-30' },
       { id: '2', user_id: 'owner', task_type: '跨行业二创', input_data: { profileId: B }, result: 'B 的内容' },
       { id: '3', user_id: 'other', task_type: '跨行业二创', input_data: { profileId: A }, result: '其他账号内容' },
     ]);
-    const memory = await loadCreativeMemory(db, 'owner', '跨行业二创', A);
-    expect(memory).toContain('A 的内容'); expect(memory).not.toContain('B 的内容'); expect(memory).not.toContain('其他账号内容');
-    expect(calls).toContainEqual(['eq', 'task_type', '跨行业二创']);
+    expect(await loadCreativeMemory(db, 'owner', '跨行业二创', A)).toBe('');
   });
 });
 describe('恢复二创设置', () => {

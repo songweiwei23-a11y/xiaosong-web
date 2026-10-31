@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROFILE_UUID } from '@/lib/profile-history';
 import { historyProfileFilter } from '@/lib/profile-history';
-import { SCENE_GEAR_RE } from '@/lib/scene-words';
+import { hasConcreteScene } from '@/lib/scene-words';
 
 export const DURABLE_CREATIVE_TASKS = new Set(['拆解爆款', '跨行业二创', '创作方向', '内容规划']);
 export type CreativeHistoryInput = {
@@ -17,11 +17,18 @@ export type CreativeHistoryInput = {
 /** 方向历史里已经给过的名字（只用来避重）：带场地、设备字样的不要 */
 export function directionNamesOf(results: string[]): string[] {
   const names = results.flatMap((r) => r.split('\n').map((l) => l.match(/^\s*#{2,4}\s*方向\s*\d+\s*[：:]\s*(.+?)\s*$/)?.[1]).filter((n): n is string => !!n));
-  return [...new Set(names.filter((n) => !SCENE_GEAR_RE.test(n)))].slice(0, 24);
+  return [...new Set(names.filter((n) => !hasConcreteScene(n)))].slice(0, 24);
 }
+
+/**
+ * 历史产出不再回灌进新的生成（2026-10-31）。以前的方向名字、正文会把别的季节、别的场景、别的档案的细节带进新结果，
+ * 模型分不清「参考」和「本条素材」，就照抄。避重由编导自己在「已有的想法」里写，不从历史自动带。
+ */
+export const HISTORY_IN_GENERATION = false;
 
 /** 永久记录保留在库里；模型每次读取当前账号、当前档案最近的参考，避免窗口膨胀。 */
 export async function loadCreativeMemory(db: SupabaseClient, userId: string, taskType: string, profileId: string | null) {
+  if (!HISTORY_IN_GENERATION) return '';
   let query = db.from('script_history').select('result,input_data,created_at').eq('user_id', userId).eq('task_type', taskType).order('created_at', { ascending: false }).order('id').limit(8);
   const filter = historyProfileFilter(profileId || 'default');
   if (filter) query = query.or(filter);

@@ -10,10 +10,10 @@ describe('buildSearchQuery', () => {
       longPrompt
     );
     expect(q.length).toBeLessThanOrEqual(200);
-    expect(q).toContain('账号定位');
-    expect(q).toContain('0-1万粉');
-    expect(q).toContain('本地探店');
-    // profileInfo 是长正文，必须被跳过
+    // 创作类任务只用主题词（2026-10-31）：档案字段和长正文都不进检索词
+    expect(q).toBe('账号定位 IP定位 赛道选择 人群画像');
+    expect(q).not.toContain('0-1万粉');
+    expect(q).not.toContain('本地探店');
     expect(q).not.toContain('输出要求');
   });
 
@@ -29,9 +29,10 @@ describe('buildSearchQuery', () => {
       },
       '我需要策划短视频选题'
     );
-    expect(q).toContain('八大爆款元素');
-    expect(q).toContain('美食');
-    expect(q).toContain('探店');
+    expect(q).toBe('选题策划 爆款选题方法 八大爆款元素');
+    // 用户的选择项不进检索词：它们会把同行业的具体示例召回到生成里（2026-10-31）
+    expect(q).not.toContain('美食');
+    expect(q).not.toContain('探店');
     expect(q).not.toContain('账号定位补充说明');
   });
 
@@ -48,14 +49,15 @@ describe('buildSearchQuery', () => {
     expect(q).toContain('如何设计开头3秒的强冲突');
   });
 
-  it('展开嵌套的 inputs（topic 页的传参结构）', () => {
+  it('嵌套的 inputs（topic 页的传参结构）也不进创作类检索词', () => {
     const q = buildSearchQuery(
       '选题策划',
       { taskType: '选题策划', inputs: { platforms: '抖音', styles: '幽默' } },
       '选题'
     );
-    expect(q).toContain('抖音');
-    expect(q).toContain('幽默');
+    expect(q).not.toContain('抖音');
+    expect(q).not.toContain('幽默');
+    expect(q).toContain('选题策划');
   });
 
   it('空输入也不会产生空查询（否则检索节点会拿到空串）', () => {

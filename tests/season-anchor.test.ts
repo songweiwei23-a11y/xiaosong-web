@@ -54,23 +54,17 @@ function fakeDb(rows: Array<{ result: string; input_data: unknown; created_at: s
   return { from: () => q } as any;
 }
 
-describe('历史记忆：创作方向只带方向名字，不带正文', () => {
+describe('历史记忆：不回灌进生成（2026-10-31）', () => {
   const rows = [
     { result: '### 方向1：秋天的串串摊\n冬天吃火锅正好，棚子搭好了，冬季新品…\n### 方向2：摊位上的一天\n正文很长…', input_data: {}, created_at: '2026-10-09T00:00:00Z' },
   ];
 
-  it('方向的历史只列名字，正文里的时令不进提示词', async () => {
-    const memory = await loadCreativeMemory(fakeDb(rows), 'owner', '创作方向', null);
-    expect(memory).toContain('- 秋天的串串摊');
-    expect(memory).toContain('- 摊位上的一天');
-    expect(memory).not.toContain('冬天吃火锅');
-    expect(memory).not.toContain('<creative_history>');
+  it('创作方向的历史（名字和正文）都不进提示词', async () => {
+    expect(await loadCreativeMemory(fakeDb(rows), 'owner', '创作方向', null)).toBe('');
   });
 
-  it('其他板块的历史参考保持原样（带正文节选）', async () => {
-    const memory = await loadCreativeMemory(fakeDb(rows), 'owner', '脚本生成', null);
-    expect(memory).toContain('<creative_history>');
-    expect(memory).toContain('冬天吃火锅');
+  it('其他板块的历史（带正文节选）也不进提示词', async () => {
+    expect(await loadCreativeMemory(fakeDb(rows), 'owner', '脚本生成', null)).toBe('');
   });
 });
 
