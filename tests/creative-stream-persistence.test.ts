@@ -100,6 +100,20 @@ describe('生成由服务端存档', () => {
     expect(askDify).toHaveBeenCalledTimes(1);expect(recordCreationCompletion).toHaveBeenCalledTimes(1);
     expect(recordCreationCompletion).toHaveBeenLastCalledWith(expect.anything(),expect.objectContaining({usage:expect.objectContaining({total_tokens:20})}),'跨行业二创');
   });
+  it('每一步的调用和耗时写进用量（整改方案阶段 0.3）：生成 1 次、数量校对 1 次，后检改了输出', async () => {
+    vi.mocked(askDify).mockClear();vi.mocked(recordCreationCompletion).mockClear();
+    vi.mocked(askDify).mockResolvedValueOnce({ok:true,text:'### 方案 1：柜门演示',completion:{terminal:'message_end',usage:{total_tokens:20}}});
+    const answer='### 方案 1：柜门演示\n### 方案 2：不需要的方案';
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response(`data: {"event":"message","answer":${JSON.stringify(answer)}}\n\ndata: {"event":"message_end"}\n\n`)));
+    const req=new Request('https://local/api/dify/stream',{method:'POST',body:JSON.stringify({taskType:'跨行业二创',query:'二创一个方案',historyInput:{count:1}})}) as NextRequest;
+    await (await POST(req)).text();
+    const usage = (vi.mocked(recordCreationCompletion).mock.lastCall![1] as unknown as { usage: { stages: { stage: string; ok: boolean; ms: number }[]; main_calls: number; extra_calls: number; post_changed: boolean } }).usage;
+    expect(usage.stages.map((s) => s.stage)).toEqual(['generate', 'result_check']);
+    expect(usage.stages.every((s) => s.ok && s.ms >= 0)).toBe(true);
+    expect(usage.main_calls).toBe(1);
+    expect(usage.extra_calls).toBe(1);
+    expect(usage.post_changed).toBe(true);
+  });
   it('手动粘贴审稿只带档案设置也隔离旧会话，已包含的设置不重复注入', async () => {
     vi.mocked(getDifyConversationId).mockClear(); vi.mocked(saveDifyConversationId).mockClear();
     const settings = { platform: '抖音', personnel: '一人全包' };

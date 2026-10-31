@@ -84,3 +84,6 @@ tsconfig.tsbuildinfo
 docs/历史归档备份_*.json
 docs/*密钥*
 
+# 真实调用模型的评测产物（evals/chain-eval 的输出，体积大、每次不同）
+/evals/runs/
+

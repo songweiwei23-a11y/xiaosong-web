@@ -277,8 +277,22 @@ export async function POST(req: NextRequest) {
       console.log('🔗 延续已有会话:', existingConversationId);
     }
 
+    /*
+     * 每一步的调用和耗时（2026-11-01，整改方案阶段 0.3）：只记录，不改变生成。
+     * 跟着用量写进 creation_completion_evidence.usage_metadata 的 stages 字段，用来统计一次生成到底调了几次模型、各花多久。
+     */
+    const stages: { stage: string; ms: number; ok: boolean }[] = [];
+    let mainCalls = 0;
+    const traced = async <T>(stage: string, run: () => Promise<T>): Promise<T> => {
+      const t0 = Date.now();
+      const r = await run();
+      stages.push({ stage, ms: Date.now() - t0, ok: !!(r && (r as { ok?: unknown }).ok) });
+      return r;
+    };
+
     let webSession: Awaited<ReturnType<typeof prepareWebSearch>>;
     const callDify = async () => {
+      mainCalls += 1;
       /*
        * 这里的 originalQuery 是各板块拼好的整段提示词，不是用户的一句话。
        * 拿它做「按需联网」判断，提示词里出现「热点」「最新」就会触发付费搜索、扣联网额度。
@@ -312,6 +326,7 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json', 'Retry-After': '30' },
       });
     }
+    const generateStart = Date.now();
     let response = await callDify();
 
     // 会话可能因过期、被删或应用重建而失效。若不处理，本地存着的旧 id
@@ -511,14 +526,15 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          stages.push({ stage: 'generate', ms: Date.now() - generateStart, ok: outcome.kind === 'done' });
           // 模型原始输出：后面的整理可能把结构块改坏，拆解要拿它来还原（见 keepStructureBlock）
           const rawResponse = fullResponse;
           if (outcome.kind === 'done' && sourceForReview && fullResponse.trim()) {
             const requirements = typeof body.personalRequirements === 'string' ? body.personalRequirements : '';
             // 本轮材料（档案、相关方案参考）是事实依据；原稿不是（2026-10-19）
             const material = typeof body.reviewMaterial === 'string' ? body.reviewMaterial : '';
-            const verified = await askDify(reviewVerificationPrompt(sourceForReview, requirements, fullResponse, material), userId, '审稿 原稿事实校对', { signal: AbortSignal.timeout(180_000) })
-              .catch(() => ({ ok: false as const, message: '审稿校对未完成' }));
+            const verified = await traced('review_verify', () => askDify(reviewVerificationPrompt(sourceForReview, requirements, fullResponse, material), userId, '审稿 原稿事实校对', { signal: AbortSignal.timeout(180_000) })
+              .catch(() => ({ ok: false as const, message: '审稿校对未完成' })));
             if (!verified.ok) {
               outcome = { kind: 'error', message: '审稿校对未完成，请重试' };
             } else {
@@ -533,8 +549,8 @@ export async function POST(req: NextRequest) {
           if (outcome.kind === 'done' && boundedTask && fullResponse.trim()) {
             const issues = boundedResultIssues(fullResponse, body.taskType, expectedCount, boundedIntent);
             if (issues.length) {
-              const corrected = await askDify(boundedRepairPrompt(query, fullResponse, issues, boundedIntent), userId, searchQuery, {signal:AbortSignal.timeout(180_000)})
-                .catch(() => ({ok:false as const,message:'交付校对未完成'}));
+              const corrected = await traced('result_check', () => askDify(boundedRepairPrompt(query, fullResponse, issues, boundedIntent), userId, searchQuery, {signal:AbortSignal.timeout(180_000)})
+                .catch(() => ({ok:false as const,message:'交付校对未完成'})));
               if (!corrected.ok || boundedResultIssues(corrected.text, body.taskType, expectedCount, boundedIntent).length) {
                 outcome = {kind:'error',message:'结果未满足本轮数量或事实状态要求，请重试'};
               } else {
@@ -566,8 +582,8 @@ export async function POST(req: NextRequest) {
           const repairReason = body.taskType === '脚本生成' && outcome.kind === 'done' && fullResponse.trim() ? scriptRepairReason(fullResponse, creationSettings.duration) : null;
           if (repairReason && !scriptRepairLimited(userId)) {
             console.log('[script-repair] 触发:', repairReason, '口播字数:', spokenStep(fullResponse), '时长:', creationSettings.duration || '（未设）');
-            const repaired = await askDify(buildScriptRepairPrompt({ text: fullResponse, reason: repairReason, spoken: spokenStep(fullResponse), duration: creationSettings.duration }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-              .catch(() => ({ ok: false as const, message: '脚本修复未完成' }));
+            const repaired = await traced('script_repair', () => askDify(buildScriptRepairPrompt({ text: fullResponse, reason: repairReason, spoken: spokenStep(fullResponse), duration: creationSettings.duration }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+              .catch(() => ({ ok: false as const, message: '脚本修复未完成' })));
             const text = repaired.ok ? tidy(cleanRewriteOutput(repaired.text)) : '';
             const accepted = !!text && acceptScriptRepair(text, creationSettings.duration);
             console.log('[script-repair] 结果:', repaired.ok ? '返回' : `失败（${repaired.message}）`, '口播字数:', text ? spokenStep(text) : null, '采用:', accepted);
@@ -597,7 +613,7 @@ export async function POST(req: NextRequest) {
             if (may && fullResponse.length > CHUNK_TRIGGER_CHARS) {
               let chunkUsage: Record<string, unknown> = {};
               const r = await fixInChunks(fullResponse, factIssues, async (prompt) => {
-                const f = await askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+                const f = await traced('fact_fix_chunk', () => askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
                 if (!f || !f.ok) return null;
                 chunkUsage = mergeUsage(chunkUsage, f.completion.usage ?? {});
                 return tidy(cleanRewriteOutput(f.text));
@@ -608,8 +624,8 @@ export async function POST(req: NextRequest) {
                 fullResponse = tidy(r.text);
               }
             } else if (may) {
-              const fixed = await askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-                .catch(() => ({ ok: false as const, message: '按资料修正未完成' }));
+              const fixed = await traced('fact_fix', () => askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+                .catch(() => ({ ok: false as const, message: '按资料修正未完成' })));
               const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
               console.log('[fact-fix]', body.taskType, '问题', found.length, '返回', fixed.ok, '修正后问题', text ? factIssues(text).length : '-', '过度改写', text ? fixTooBig(fullResponse, text, found) : '-');
               // 只采用真的少了问题、又没有借机重写全文的版本
@@ -624,13 +640,13 @@ export async function POST(req: NextRequest) {
            * 找到了就交给「按资料修正」只改这几处，改动超标就不采用。和事实修正共用每人每天 20 次的额度。
            */
           if (outcome.kind === 'done' && DETAIL_CHECK_TASKS.has(body.taskType) && fullResponse.trim()) {
-            const detail = await askDify(buildDetailCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+            const detail = await traced('detail_check', () => askDify(buildDetailCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
             if (detail && detail.ok) usageMetadata = combinedReviewUsage(usageMetadata, detail.completion?.usage ?? {}, 'detail_check_steps');
             const found = detail && detail.ok ? parseDetailCheck(detail.text) : [];
             const may = found.length > 0 && !autoFactFixLimited(userId);
             if (may) {
-              const fixed = await askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-                .catch(() => ({ ok: false as const, message: '按资料修正未完成' }));
+              const fixed = await traced('detail_fix', () => askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+                .catch(() => ({ ok: false as const, message: '按资料修正未完成' })));
               const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
               const accepted = !!text && !fixTooBig(fullResponse, text, found);
               console.log('[detail-check]', body.taskType, '找到', found.length, '采用', accepted);
@@ -645,13 +661,13 @@ export async function POST(req: NextRequest) {
            * 找到了就交给修正只改这几句，改动超标就不采用。和上面的修正共用每人每天 20 次的额度。
            */
           if (outcome.kind === 'done' && SPEAKER_CHECK_TASKS.has(body.taskType) && needsSpeakerCheck(fullResponse)) {
-            const speaker = await askDify(buildSpeakerCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+            const speaker = await traced('speaker_check', () => askDify(buildSpeakerCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
             if (speaker && speaker.ok) usageMetadata = combinedReviewUsage(usageMetadata, speaker.completion?.usage ?? {}, 'speaker_check_steps');
             const found = speaker && speaker.ok ? parseSpeakerCheck(speaker.text) : [];
             const may = found.length > 0 && !autoFactFixLimited(userId);
             if (may) {
-              const fixed = await askDify(buildSpeakerFixPrompt({ text: fullResponse, issues: found }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-                .catch(() => ({ ok: false as const, message: '说话人修正未完成' }));
+              const fixed = await traced('speaker_fix', () => askDify(buildSpeakerFixPrompt({ text: fullResponse, issues: found }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
+                .catch(() => ({ ok: false as const, message: '说话人修正未完成' })));
               const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
               const accepted = !!text && !fixTooBig(fullResponse, text, found);
               console.log('[speaker-check]', body.taskType, '找到', found.length, '采用', accepted);
@@ -675,7 +691,7 @@ export async function POST(req: NextRequest) {
            */
           if (outcome.kind === 'done' && needsSentenceRepair(body.taskType) && fullResponse.trim()) {
             const years = await repairYears(fullResponse, async (prompt) => {
-              const f = await askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+              const f = await traced('years_repair', () => askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
               if (!f || !f.ok) return null;
               usageMetadata = combinedReviewUsage(usageMetadata, f.completion?.usage ?? {}, 'years_repair_steps');
               return f.text;
@@ -690,7 +706,7 @@ export async function POST(req: NextRequest) {
            */
           if (outcome.kind === 'done' && needsSentenceRepair(body.taskType) && fullResponse.trim()) {
             const reality = await repairReality(fullResponse, async (prompt) => {
-              const f = await askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null);
+              const f = await traced('reality_repair', () => askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
               if (!f || !f.ok) return null;
               usageMetadata = combinedReviewUsage(usageMetadata, f.completion?.usage ?? {}, 'reality_repair_steps');
               return f.text;
@@ -742,7 +758,8 @@ export async function POST(req: NextRequest) {
             // Commit before completion: ambiguous commit failure must not release a successful generation.
             generationCompleted = true;
             try {
-              await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: usageMetadata }, body.taskType);
+              const telemetry = { stages, main_calls: mainCalls, extra_calls: stages.filter((s) => s.stage !== 'generate').length, post_changed: rawResponse !== fullResponse };
+              await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: { ...usageMetadata, ...telemetry } }, body.taskType);
               await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation);
               // 学习信号：这次生成是不是对照组、结果开头的指纹（尽力而为，不影响结果）
               void recordGenerationSignal({ userId: userId!, profileId: profileId ?? null, board: getFeatureFromTaskType(body.taskType), result: fullResponse }); }
