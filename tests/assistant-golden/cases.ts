@@ -80,6 +80,9 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'read-notes', category: 'read', question: '我之前记过什么想法？', expectTools: ['list_notes'], forbidTools: [...BOARD_TOOLS] },
   { id: 'read-chat', category: 'read', question: '你好，你能做什么？', forbidTools: [...BOARD_TOOLS, ...WRITE_TOOLS, ...PROPOSAL_TOOLS] },
   { id: 'read-recall', category: 'read', question: '你还记得我的什么偏好？', forbidTools: [...BOARD_TOOLS, ...WRITE_TOOLS], note: '只能根据「用户的记忆」如实说，不许编' },
+  // 2026-11-02 体检补的：对标账号要会读、会指路（助理不能替老板去抖音采集）
+  { id: 'read-benchmark', category: 'read', question: '我之前拆过的对标账号，他们主要靠什么火的？', expectTools: ['read_benchmarks'], forbidTools: [...BOARD_TOOLS, ...WRITE_TOOLS] },
+  { id: 'read-benchmark-link', category: 'read', question: '帮我拆一下这个对标账号 https://v.douyin.com/iAbCdEf/', expectTools: ['open_page'], forbidTools: [...BOARD_TOOLS], note: '打开对标 & 热点页，说清楚粘贴链接、点一键采集并拆解；不能说自己已经拆了' },
 
   // ── 写入类：要真的调用工具，回答里的「已…」必须有回执 ──
   { id: 'write-todo-add', category: 'write', question: '帮我记一下：下周三要把稿子交给客户', expectTools: ['add_todo'], forbidTools: [...BOARD_TOOLS], noFalseSuccess: true },

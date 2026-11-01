@@ -21,6 +21,28 @@ export const OPEN_PAGES: Record<string, { path: string; label: string }> = {
   profiles: { path: '/dashboard/profiles', label: '账号档案' },
   works: { path: '/dashboard/works', label: '作品' },
   knowledge: { path: '/dashboard/knowledge', label: '编导知识库' },
+  // 2026-11-02 体检：原来只有上面 7 个，老板说「去对标页」「打开自由对话」助理只能说去不了。补齐侧边栏的主要页面
+  'free-chat': { path: '/dashboard/free-chat', label: '自由对话' },
+  benchmark: { path: '/dashboard/benchmark', label: '对标 & 热点' },
+  library: { path: '/dashboard/library', label: '素材库' },
+  'content-plan': { path: '/dashboard/content-plan', label: '内容规划' },
+  direction: { path: '/dashboard/direction', label: '创作方向' },
+  breakdown: { path: '/dashboard/breakdown', label: '拆解爆款' },
+  remix: { path: '/dashboard/remix', label: '跨行业二创' },
+  storyboard: { path: '/dashboard/storyboard', label: '分镜脚本' },
+  title: { path: '/dashboard/title', label: '标题封面' },
+  interview: { path: '/dashboard/interview', label: '前采建档' },
+  positioning: { path: '/dashboard/positioning', label: '账号定位' },
+  'business-positioning': { path: '/dashboard/business-positioning', label: '商业定位' },
+  'content-positioning': { path: '/dashboard/content-positioning', label: '内容定位' },
+  brief: { path: '/dashboard/creative-brief', label: '创作简报' },
+  'industry-advice': { path: '/dashboard/industry-advice', label: '行业建议' },
+  growth: { path: '/dashboard/growth', label: '起号' },
+  'deal-reason': { path: '/dashboard/deal-reason', label: '成交理由' },
+  report: { path: '/dashboard/report', label: '月报' },
+  course: { path: '/dashboard/course', label: '新手课堂' },
+  membership: { path: '/dashboard/membership', label: '会员中心' },
+  help: { path: '/dashboard/help', label: '使用说明' },
 };
 
 export interface ClientAction {

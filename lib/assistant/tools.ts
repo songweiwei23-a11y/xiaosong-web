@@ -9,6 +9,7 @@ import { MEMORY_MAX_COUNT } from '@/lib/assistant/memory';
 import { clampMinutes, OPEN_PAGES, resolveSound, soundChoices } from '@/lib/assistant/client-action-spec';
 import type { ActionReceipt } from '@/lib/assistant/receipts';
 import { internalBase, readInternal, type BoardHistoryRow } from './boards';
+import { benchmarkDigest } from './benchmark-read';
 import { BOARD_LABEL, BOARD_TASK_TYPE, missingFields, revisionCapOf, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
 import { foundationGate, foundationNeedOf } from '@/lib/foundation-gate';
 import { isDepth } from '@/lib/research';
@@ -344,6 +345,18 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         if (q.tightest) parts.push(`最紧张的功能「${q.tightest.featureName}」剩余 ${q.tightest.remaining} 次`);
         if (typeof q.packCredits === 'number') parts.push(`次数包余额 ${q.packCredits} 次`);
         return clip(parts.join('；'));
+      },
+    },
+    {
+      // 2026-11-02 体检：对标拆解存下来的东西助理原来读不到，老板说「参考我拆过的那个号」只能让他自己复制
+      name: 'read_benchmarks',
+      label: '正在看你的对标账号',
+      description:
+        '读取老板在「对标 & 热点」页存的对标账号、录的作品数据、最近一次拆解报告的要点和热点线索。老板提到对标账号、同行、「参考某某的打法」，或者派选题、脚本、创作方向时想借鉴对标账号，先用它。只读，不扣额度。',
+      input_schema: { type: 'object', properties: {}, required: [] },
+      maxResultChars: 9000,
+      async run() {
+        return benchmarkDigest((await readInternal(ctx, '/api/benchmark')) as Parameters<typeof benchmarkDigest>[0]);
       },
     },
     {
