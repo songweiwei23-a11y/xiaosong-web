@@ -18,7 +18,7 @@ import { seasonMisstatements } from './time-anchor';
 import { topicTagIssues } from './output-tags';
 import { findUnrealisticSentences } from './reality-check';
 
-export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'reality' | 'generation' | 'facts' | 'flaky' | 'error';
+export type QualityKind = 'taboo' | 'excluded' | 'mix' | 'years' | 'reality' | 'generation' | 'facts' | 'flaky' | 'error' | 'metrics';
 
 export const QUALITY_LABELS: Record<QualityKind, string> = {
   taboo: '踩禁忌',
@@ -32,6 +32,8 @@ export const QUALITY_LABELS: Record<QualityKind, string> = {
   flaky: '首次未通过、重跑后通过（模型输出波动）',
   // 回归没跑成（Dify 出错、超时）。不是质量问题，不计入通过率
   error: '没跑成（运行出错，不是质量问题）',
+  // 只在回归里出现（2026-11-01 整改阶段 6）：这一条用例的字数、新冒出来的具体细节、占位、调用次数、耗时。是记录，不是问题
+  metrics: '本次指标（记录，不算问题）',
 };
 
 /**
@@ -389,6 +391,8 @@ export interface QualityIssue {
    * 只命中一个切碎的排除片段（多半是误报）。
    */
   blocking?: boolean;
+  /** kind = metrics 时的原始数字，给看板和以后的趋势用 */
+  metrics?: Record<string, number>;
 }
 
 /** 有问题且判不通过的才算不通过；只提醒的不影响 passed */
@@ -625,6 +629,8 @@ export interface RunCase {
   error: boolean;
   blocking: string[];
   advisory: string[];
+  /** 这一条用例的本次指标（字数、新细节、占位、调用次数、耗时）；旧记录没有，是空串 */
+  metrics: string;
   sample: string;
 }
 
@@ -659,8 +665,10 @@ export function groupRuns(rows: QualityRow[], source: string): QualityRun[] {
           task: r.task_type,
           passed: r.passed && !error,
           error,
-          blocking: r.issues.filter((i) => i.kind !== 'error' && isBlockingIssue(i)).map(label),
-          advisory: r.issues.filter((i) => i.kind !== 'error' && (!isBlockingIssue(i) || i.kind === 'flaky')).map(label),
+          blocking: r.issues.filter((i) => i.kind !== 'error' && i.kind !== 'metrics' && isBlockingIssue(i)).map(label),
+          advisory: r.issues.filter((i) => i.kind !== 'error' && i.kind !== 'metrics' && (!isBlockingIssue(i) || i.kind === 'flaky')).map(label),
+          // 本次指标单独一行，不混进提醒
+          metrics: r.issues.find((i) => i.kind === 'metrics')?.detail ?? '',
           sample: r.sample ?? '',
         };
       }),
@@ -732,7 +740,7 @@ export function summarizeQuality(rows: QualityRow[], opts: { source?: string; ta
   for (const r of failed) for (const k of new Set(r.issues.filter(isBlockingIssue).map((i) => i.kind))) byKind.set(k, (byKind.get(k) ?? 0) + 1);
 
   const advisory = new Map<QualityKind, number>();
-  for (const r of checked) for (const k of new Set(r.issues.filter((i) => !isBlockingIssue(i)).map((i) => i.kind))) advisory.set(k, (advisory.get(k) ?? 0) + 1);
+  for (const r of checked) for (const k of new Set(r.issues.filter((i) => !isBlockingIssue(i) && i.kind !== 'metrics').map((i) => i.kind))) advisory.set(k, (advisory.get(k) ?? 0) + 1);
 
   const runs = { nightly: groupRuns(rows, 'nightly').slice(0, 10), manual: groupRuns(rows, 'manual').slice(0, 10) };
 

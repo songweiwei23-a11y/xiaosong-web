@@ -12,7 +12,8 @@ import { buildContextBlock, type CreatorContext, type CreatorProfile } from './c
 import { resolveMix, mixPromptBlock } from './content-mix';
 import { buildReviewPrompt } from './review-standards';
 import { buildRewritePrompt, cleanRewriteOutput } from './canvas';
-import { runQualityChecks, reviewedQualityOutput, isBlockingIssue, QUALITY_LABELS, unsupportedFacts, type QualityResult } from './quality-checks';
+import { runQualityChecks, reviewedQualityOutput, isBlockingIssue, QUALITY_LABELS, unsupportedFacts, type QualityIssue, type QualityResult } from './quality-checks';
+import { noiseReport } from './noise-check';
 import { FACT_AUTO_FIX_TASKS, buildFactFixPrompt, fixTooBig } from './fact-fix';
 import { holdUnsupported } from './evidence-guard';
 import { seasonMisstatements } from './time-anchor';
@@ -304,12 +305,33 @@ export interface RegressionOutcome { task: string; result: QualityResult; sample
 /** 回归样例保存的字数：比原来的 300 字多，管理员能看到大部分内容再判断 */
 const SAMPLE_CHARS = 1200;
 
+/**
+ * 这一条用例的本次指标（2026-11-01，整改阶段 6）：字数、新冒出来的具体细节（lib/noise-check，以档案、提问、材料为输入）、
+ * 占位、模型调用次数（含修复步骤）、耗时。只记录，不判通过与否；看板单独显示一行，不混进提醒。
+ */
+export function caseMetrics(text: string, c: RegressionCase, calls: number, ms: number): QualityIssue {
+  const profile = c.profile ?? REGRESSION_PROFILE;
+  const novel = noiseReport(text, [JSON.stringify(profile), c.query, c.source ?? '']).novel;
+  const placeholders = (text.match(/【(?:待确认|待测量|示例|换成)/g) ?? []).length;
+  const chars = text.replace(/\s/g, '').length;
+  const seconds = Math.round(ms / 1000);
+  return {
+    kind: 'metrics',
+    blocking: false,
+    detail: `字数 ${chars}｜新冒出来的具体细节 ${novel.length}${novel.length ? `（${novel.slice(0, 4).map((s) => s.text).join('、')}）` : ''}｜占位 ${placeholders}｜模型调用 ${calls} 次｜耗时 ${seconds} 秒`,
+    metrics: { chars, novel: novel.length, placeholders, calls, seconds },
+  };
+}
+
 /** 跑一个用例：问一次模型，再体检。没跑成（Dify 出错、超时）记成 error，不当成质量问题 */
 export async function runCase(c: RegressionCase, ask: (q: string) => Promise<string>, repair?: RegressionRepair): Promise<RegressionOutcome> {
   try {
-    const raw = await ask(c.query);
-    // 有修复步骤时，体检的是修复后的稿子（和线上交付给编导的一样）
-    const answer = repair ? await repair(raw, c) : raw;
+    const t0 = Date.now();
+    let calls = 0;
+    const counted = (q: string) => { calls++; return ask(q); };
+    const raw = await counted(c.query);
+    // 有修复步骤时，体检的是修复后的稿子（和线上交付给编导的一样）；修复里的模型调用也计数
+    const answer = repair ? await repair(raw, c, counted) : raw;
     const checked = c.pick ? c.pick(answer) : answer;
     const profile = c.profile ?? REGRESSION_PROFILE;
     const mix = c.mixCount ? { resolved: resolveMix(profile), count: c.mixCount } : null;
@@ -332,6 +354,7 @@ export async function runCase(c: RegressionCase, ask: (q: string) => Promise<str
       if (!/[\p{L}\p{N}]/u.test(body)) result.issues.push({ kind: 'generation', detail: `必要交付部分「${section}」缺失或为空` });
     }
     result.passed = !result.issues.some(isBlockingIssue);
+    result.issues.push(caseMetrics(checked, c, calls, Date.now() - t0));
     return { task: c.task, result, sample: checked.slice(0, SAMPLE_CHARS) };
   } catch (e) {
     const error = (e as Error).message;
@@ -344,7 +367,7 @@ export async function runCase(c: RegressionCase, ask: (q: string) => Promise<str
  * 第一次没过的，重跑一次：模型输出有波动，单次失败不足为凭。重跑过了记 flaky（只提醒，不算失败），重跑还不过才算失败。
  */
 /** 生成后的修复（和线上一样）：拿到模型的原稿，返回交付的稿子 */
-export type RegressionRepair = (text: string, c: RegressionCase) => Promise<string>;
+export type RegressionRepair = (text: string, c: RegressionCase, ask?: (q: string) => Promise<string>) => Promise<string>;
 
 /**
  * 线上同一套修复（app/api/dify/stream 里交付前的步骤，顺序也一样）：
@@ -354,7 +377,7 @@ export type RegressionRepair = (text: string, c: RegressionCase) => Promise<stri
  * 4. 现实：一个小变量推大结论这类说法，只改那一句（lib/reality-repair）
  */
 export function productionRepair(): RegressionRepair {
-  return async (text, c) => {
+  return async (text, c, call = askDify) => {
     const task = c.checkAs ?? c.task.replace(/^回归:/, '');
     const tidy = (t: string) => (task === '审稿优化' ? stripInternalLeaks(t, task) : sanitizeOutput(t, task));
     let out = tidy(text);
@@ -364,7 +387,7 @@ export function productionRepair(): RegressionRepair {
       const factIssues = (t: string) => [...unsupportedFacts(t, known), ...seasonMisstatements(t, Date.now(), known)];
       const found = factIssues(out);
       if (found.length) {
-        const fixed = await askDify(buildFactFixPrompt({ text: out, issues: found, context: c.query })).catch(() => null);
+        const fixed = await call(buildFactFixPrompt({ text: out, issues: found, context: c.query })).catch(() => null);
         const fixedText = fixed ? tidy(cleanRewriteOutput(fixed)) : '';
         // 只采用真的少了问题、又没有借机重写全文的版本
         if (fixedText && !fixTooBig(out, fixedText, found) && factIssues(fixedText).length < found.length) out = fixedText;
@@ -373,7 +396,7 @@ export function productionRepair(): RegressionRepair {
     }
 
     if (!needsSentenceRepair(task)) return out;
-    const ask = (prompt: string) => askDify(prompt).catch(() => null);
+    const ask = (prompt: string) => call(prompt).catch(() => null);
     out = (await repairYears(out, ask, (c.profile ?? REGRESSION_PROFILE).persona_facts, task)).text;
     return (await repairReality(out, ask, task)).text;
   };

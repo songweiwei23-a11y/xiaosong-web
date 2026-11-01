@@ -16,7 +16,7 @@ import { ruleKeyOf } from "@/lib/quality-feedback";
 
 interface Issue { kind: string; detail: string; blocking?: boolean }
 interface Row { id?: string; task_type: string; source: string; passed: boolean; issues: Issue[]; sample?: string | null; created_at: string }
-interface RunCase { task: string; passed: boolean; error: boolean; blocking: string[]; advisory: string[]; sample: string }
+interface RunCase { task: string; passed: boolean; error: boolean; blocking: string[]; advisory: string[]; metrics?: string; sample: string }
 interface Run { at: string; source: string; total: number; passed: number; errors: number; cases: RunCase[] }
 interface Diff { newFailures: string[]; stillFailing: string[]; fixed: string[] }
 interface Resp {
@@ -62,6 +62,9 @@ function RunBlock({ run, title }: { run: Run; title: string }) {
               <div className="mt-0.5 pl-4 text-[12px] text-muted-foreground">
                 {c.error ? c.sample : [...c.blocking, ...c.advisory.map((a) => `（提醒）${a}`)].join("；")}
               </div>
+            )}
+            {c.metrics && !c.error && (
+              <div className="mt-0.5 pl-4 text-[12px] text-muted-foreground/80">{c.metrics}</div>
             )}
             {c.sample && !c.error && (
               <details className="mt-1 pl-4 text-[12px]">
