@@ -96,6 +96,108 @@ describe('脚本提示词里的规则只出现一次', () => {
   });
 });
 
+describe('选题自己的目的带去脚本', () => {
+  it('「0️⃣ 视频目的」换行「变现型——……」也认得出（选题板块就是这么写的）', async () => {
+    const { scriptFormOfTopic } = await import('@/lib/creation-settings');
+    const body = '## 选题1：下午4点出摊前先做哪一步\n\n**0️⃣ 视频目的**\n变现型——让本地白领产生到店期待。\n\n**🅰 打法**\n36计·第10计 情境还原：备串';
+    expect(scriptFormOfTopic(body).purpose).toBe('变现型');
+  });
+
+  it('同一行的写法照样认', async () => {
+    const { scriptFormOfTopic } = await import('@/lib/creation-settings');
+    expect(scriptFormOfTopic('- 视频目的：人设型\n- 四大脚本·讲故事·小有成就型：……').purpose).toBe('人设型');
+  });
+
+  it('没写目的就不填', async () => {
+    const { scriptFormOfTopic } = await import('@/lib/creation-settings');
+    expect(scriptFormOfTopic('## 选题1：随便一个题目\n正文').purpose).toBeUndefined();
+  });
+});
+
+describe('标题只带脚本的策略卡和口播', () => {
+  const SCRIPT = `## 第1步：脚本策略卡\n**核心问题**：拿图照剪适不适合\n\n---\n\n## 第2步：纯文字文案\n\n今天又有人拿图来。\n\n先别急着剪。\n\n---\n\n## 第3步：完整分镜脚本\n**【镜头1】** 顺便采访两位老顾客\n\n## 第4步：执行与优化建议\n发布后和前后几条对比`;
+
+  it('四步脚本只留策略卡和口播，分镜、执行建议不带', async () => {
+    const { titleReference } = await import('@/lib/title-standards');
+    const ref = titleReference(SCRIPT);
+    expect(ref).toContain('拿图照剪适不适合');
+    expect(ref).toContain('先别急着剪');
+    expect(ref).not.toContain('镜头1');
+    expect(ref).not.toContain('执行与优化建议');
+  });
+
+  it('认不出四步格式就原样带', async () => {
+    const { titleReference } = await import('@/lib/title-standards');
+    expect(titleReference('一段随手写的想法')).toBe('一段随手写的想法');
+  });
+
+  it('分镜和执行建议里的「采访」「前后」不再误触发和标题无关的规则', async () => {
+    const { buildTitlePrompt } = await import('@/lib/title-standards');
+    const q = buildTitlePrompt({ topic: '拿着图来剪', titleTypeLabel: '痛点式', titleFormulaValue: 'auto', titleFormulaLabel: '', keywordStrategyLabel: '综合', keywordStrategyDesc: '', platform: '抖音', count: 6, sourceContent: SCRIPT } as never);
+    expect(q).not.toContain('镜头1');
+    expect(q).not.toContain('【顺带提到的采访】');
+  });
+
+  it('风险词的「改用」不替出镜人编经历', async () => {
+    const { buildTitlePrompt } = await import('@/lib/title-standards');
+    const q = buildTitlePrompt({ topic: 't', titleTypeLabel: 'AI推荐', titleFormulaValue: 'auto', titleFormulaLabel: '', keywordStrategyLabel: '综合', keywordStrategyDesc: '', platform: '抖音', count: 6 } as never);
+    expect(q).not.toMatch(/我这几次都有效|我个人最推荐/);
+  });
+});
+
+describe('分镜只按要念的话算时长，只带脚本前三步', () => {
+  const SCRIPT = `## 第1步：脚本策略卡\n**核心问题**：拿图照剪适不适合\n\n## 第2步：纯文字文案\n\n今天又有人拿图来，我还是那句话：先别急着剪。\n\n## 第3步：完整分镜脚本\n**【镜头1】0-8秒** 台词：今天又有人拿图来\n\n## 第4步：执行与优化建议\n${'发布后和你自己前几条的数据比，顺便采访两位老顾客。\n'.repeat(80)}`;
+
+  it('预检的口播秒数只算纯文字文案，不报假的「超出目标」', async () => {
+    const { buildStoryboardPrompt } = await import('@/lib/storyboard-standards');
+    const q = buildStoryboardPrompt({ scriptContent: SCRIPT, platform: '抖音', duration: '60秒', contentType: 'auto', visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '' } as never);
+    expect(q).not.toMatch(/口播时长超出目标/);
+    expect(q).toMatch(/按口播 5 字\/秒约 \*\*\d{1,2} 秒\*\*/);
+  });
+
+  it('第 4 步执行建议不带进分镜，也不误触发采访规则', async () => {
+    const { buildStoryboardPrompt, storyboardScript } = await import('@/lib/storyboard-standards');
+    expect(storyboardScript(SCRIPT)).not.toContain('执行与优化建议');
+    expect(storyboardScript(SCRIPT)).toContain('【镜头1】');
+    expect(storyboardScript('一段没有分步的稿子')).toBe('一段没有分步的稿子');
+    const q = buildStoryboardPrompt({ scriptContent: SCRIPT, platform: '抖音', duration: '60秒', contentType: 'auto', visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '' } as never);
+    expect(q).not.toContain('【顺带提到的采访】');
+  });
+
+  it('方法论示范不带具体时段（「五点去市场」「凌晨的市场」）', async () => {
+    const { buildStoryboardPrompt } = await import('@/lib/storyboard-standards');
+    const q = buildStoryboardPrompt({ scriptContent: '一段稿子', platform: '抖音', duration: '60秒', contentType: 'auto', visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '' } as never);
+    expect(q).not.toMatch(/五点去市场|凌晨的市场/);
+  });
+});
+
+describe('「顺带提到的采访」只在真提到采访时才触发', () => {
+  it('「主人可以看，随时有问题」这类普通句子不触发', async () => {
+    const { creativeCraftRules } = await import('@/lib/creative-craft');
+    expect(creativeCraftRules({ source: '洗护全程主人可以看，随时有问题我们也能调整' })).not.toContain('【顺带提到的采访】');
+    expect(creativeCraftRules({ source: '想预约可以私信问我' })).not.toContain('【顺带提到的采访】');
+  });
+
+  it('「顺便采访两位老顾客」「另外问问老板」照样触发', async () => {
+    const { creativeCraftRules } = await import('@/lib/creative-craft');
+    expect(creativeCraftRules({ intent: '聊观点。顺便采访两位老顾客' })).toContain('【顺带提到的采访】');
+    expect(creativeCraftRules({ intent: '讲讲火候，另外问问老板的意见' })).toContain('【顺带提到的采访】');
+  });
+});
+
+describe('二创不把同一份档案贴两遍', () => {
+  it('账号背景里已经有这份档案时，「这个账号的档案」只留指引', async () => {
+    const { buildRemixPrompt, DEFAULT_LAYERS, DEFAULT_OUTPUTS } = await import('@/lib/remix');
+    const summary = '- 档案名称：阿杰剪发\n\n### 🪪 人设事实卡（最硬的事实，以它为准）\n- **出镜人是谁**：店主阿杰';
+    const opts = { layers: DEFAULT_LAYERS, count: 3, differentiate: 'auto', depth: 'quick', role: 'same', duration: '跟原片', outputs: DEFAULT_OUTPUTS, profileSummary: summary, store: { name: '阿杰剪发', lines: ['男士剪发'] } };
+    const q = buildRemixPrompt({ kind: 'paste', text: '别人的爆款', title: 't', industry: '餐饮' } as never, { ...opts, contextBlock: `## 账号背景\n${summary}\n禁忌…` } as never);
+    expect(q.split('人设事实卡').length - 1).toBe(1);
+    // 没有账号背景时照样贴档案
+    const alone = buildRemixPrompt({ kind: 'paste', text: '别人的爆款', title: 't', industry: '餐饮' } as never, opts as never);
+    expect(alone).toContain('人设事实卡');
+  });
+});
+
 describe('全局禁忌的「换成」不教编、不带别的行业的数字', () => {
   it('没有「300 串」「大多数客人反馈」', () => {
     const insteads = PLATFORM_TABOOS.map((t) => t.instead ?? '').join('\n');

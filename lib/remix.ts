@@ -224,10 +224,13 @@ export function buildRemixPrompt(source: RemixSource, o: RemixOptions): string {
   }
   sections.push('', `#### 注意`, `原片学不来的部分（靠身份、高成本、偶然）这个方案怎么绕开；以及"这条不是搬运"：台词、画面、事件都是自己的`);
 
-  const target = o.profileSummary?.trim()
-    ? [storeSection(o.store), `## 这个账号的档案（二创要落到它身上）\n${o.profileSummary.trim()}`].filter(Boolean).join('\n\n')
-    : `## 这个账号\n${o.targetIndustry?.trim() ? `做的是：${o.targetIndustry.trim()}。所有方案都换成这个行业` : '用户没说自己是做什么的：按原片最容易迁移的实体店行业举例，并提醒他选好档案再做一次'}`;
   const context = o.contextBlock?.trim();
+  const summary = o.profileSummary?.trim();
+  // 二创页面同时传档案摘要和账号背景，账号背景里本来就有这份档案：原样一字不差贴了两遍（2026-11-01 整改阶段 3 去重）
+  const summaryInContext = !!summary && !!context?.includes(summary);
+  const target = summary
+    ? [storeSection(o.store), `## 这个账号的档案（二创要落到它身上）\n${summaryInContext ? '见下面的账号背景（出镜人、品类、人群都以它为准）。' : summary}`].filter(Boolean).join('\n\n')
+    : `## 这个账号\n${o.targetIndustry?.trim() ? `做的是：${o.targetIndustry.trim()}。所有方案都换成这个行业` : '用户没说自己是做什么的：按原片最容易迁移的实体店行业举例，并提醒他选好档案再做一次'}`;
 
   return `【任务：跨行业二创】你是带过上百个实体店起号的编导。下面是别的行业一条爆款的拆解（或文案），
 帮这个账号把它**二创**成自己能拍的内容。目的不是照抄，是借走它火的"机制"，换上自己的血肉。

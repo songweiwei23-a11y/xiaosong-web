@@ -39,7 +39,7 @@ import { noiseReport } from '@/lib/noise-check';
 import { buildSearchQuery } from '@/lib/search-query';
 import { timeAnchor } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
-import { buildCreationHandoff } from '@/lib/creation-flow';
+import { buildCreationHandoff, creationScript } from '@/lib/creation-flow';
 import { mergeCreationSettings, scriptFormOfTopic } from '@/lib/creation-settings';
 /** 页面在提示词后面再补的几段：和 app/dashboard/script/page.tsx 调同一个函数 */
 const withPageTail = (q: string, opts: Parameters<typeof scriptPageTail>[1]) => q + scriptPageTail(q, opts);
@@ -229,10 +229,13 @@ async function chain(ind: EvalIndustry) {
       ...scriptBase, scriptType: form.scriptType ?? 'show', autoScriptType, effectiveRole: form.purpose ?? '流量型', tactic, additionalInfo: handoff.note ?? '', originContent: DR ?? '',
     } as never)), { hasOrigin: !!DR, autoPurpose: !form.purpose, autoScriptType }),
   DIRECT_TYPE ? { ...base, topicLine, C, P } : { ...base, T, DR, topicLine, topicBody, C, P });
-  S && await step(ind, '11-分镜', () => buildStoryboardPrompt({ scriptContent: S, platform: '抖音', duration: '60秒', contentType: ind.storyboardType, visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '', contextBlock: summary }), { ...base, S });
+  // 带去分镜、审稿时线上只带脚本里抽出来的那一节（lib/creation-flow 的 buildCreationHandoff：review、storyboard 用 creationScript），
+  // 标题带的是整份；2026-11-01 之前评测给分镜、审稿也传整份，和线上不一样
+  const SD = S ? creationScript('script', S) : S;
+  S && await step(ind, '11-分镜', () => buildStoryboardPrompt({ scriptContent: SD!, platform: '抖音', duration: '60秒', contentType: ind.storyboardType, visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '', contextBlock: summary }), { ...base, S });
   await step(ind, '12-标题封面', () => buildTitlePrompt({ topic: topicLine, titleTypeLabel: '痛点式', titleFormulaValue: 'number-action', titleFormulaLabel: '数字+动作', keywordStrategyLabel: '综合', keywordStrategyDesc: '标题和正文都自然带关键词', platform: '抖音', targetAudience: ind.name, count: 6, contextBlock: summary, sourceContent: S ?? topicLine } as never), { ...base, topicLine, S });
   await step(ind, '13-开篇钩子', () => buildOpeningPrompt({ contextBlock: summary, topic: topicLine, count: 3, intent: { purpose: '流量型', direction: '本地同城', userIntent: '' } } as never), { ...base, topicLine });
-  S && await step(ind, '14-审稿', () => buildReviewBoardQuery({ creatorContext, currentSettings: {}, sourceReference: '', draftContent: S, platform: '抖音', effectiveDuration: '60秒', scriptType: 'show', personalRequirements: '', reviewDimensions: '', optimizationGoals: '', benchmarkScript: '', compareMode: false, severityLabels: true } as never).query, { ...base, S });
+  S && await step(ind, '14-审稿', () => buildReviewBoardQuery({ creatorContext, currentSettings: {}, sourceReference: '', draftContent: SD!, platform: '抖音', effectiveDuration: '60秒', scriptType: 'show', personalRequirements: '', reviewDimensions: '', optimizationGoals: '', benchmarkScript: '', compareMode: false, severityLabels: true } as never).query, { ...base, S });
   await step(ind, '15-跨行业二创', () => buildRemixPrompt({ kind: 'paste', text: ind.viralSample, title: '外行的一条爆款（虚构）', industry: '其他行业' }, { layers: DEFAULT_LAYERS, count: 3, differentiate: 'auto', depth: 'quick', role: 'same', duration: '跟原片', outputs: DEFAULT_OUTPUTS, profileSummary: summary, store: { name: ind.store.name, lines: [ind.store.features], track: Array.isArray(ind.profile.account_track) ? String((ind.profile.account_track as string[])[0]) : undefined }, contextBlock: summary } as never), base);
   await step(ind, '16-拆解爆款', () => buildTextBreakdownPrompt(ind.viralSample, summary, {} as never), base);
   await step(ind, '17-成交理由', () => buildDealReasonPrompt({ accountContext: summary, storeName: ind.store.name, storeType: ind.store.type, storeFeatures: ind.store.features, targetCustomer: ind.store.customer }), base);

@@ -21,6 +21,7 @@
 import { continuationRules } from './creation-continuation';
 import { creativeCraftRules } from './creative-craft';
 import { contractBlockFromText } from './creation-tree';
+import { extractPlainCopy } from './script-copy';
 
 /** 五种景别各自的任务。这是整套方法论的地基 */
 const SHOT_SIZE_LANGUAGE = `### 景别不是随便选的，每一种都有它的活儿
@@ -97,7 +98,7 @@ const VISUAL_VS_NARRATION = `### 画面不要复述台词
 等于有一半带宽被浪费了。
 
 画面应该做三件事之一：
-1. **佐证**——台词说"老板每天五点去市场"，画面拍凌晨的市场和挂着水珠的箱子
+1. **佐证**——台词说"这一步最容易省"，画面拍手上放慢、把这一步做完（时间、地点照脚本，脚本没写的不加）
 2. **补充**——台词讲道理，画面给具体场景，让抽象的话落地
 3. **反差**——台词说"看起来很简单"，画面拍手忙脚乱的失败现场，制造张力
 
@@ -158,8 +159,24 @@ export interface StoryboardPromptParams {
  */
 export const FOLLOW_SCRIPT = '按脚本长度';
 export const followsScript = (duration: string | undefined) => !duration || duration === FOLLOW_SCRIPT || duration === 'AI推荐';
+/**
+ * 脚本里要念出来的话：有「纯文字文案」这一节就只算它，没有就算全文（2026-11-01，整改阶段 3）。
+ * 原来按全文算：一份四步脚本 4000 多字（策略卡、分镜、执行建议都算进去），预检报「口播约 817 秒、超出目标 757 秒，
+ * 标出哪几句建议删减」，其实要念的只有两百来字——模型拿着假警报去砍台词
+ */
+const spokenText = (script: string) => extractPlainCopy(script) || script;
 /** 脚本按口播 5 字/秒要念多久（和下面的预检同一口径） */
-const scriptSeconds = (script: string) => Math.max(10, Math.round(script.replace(/\s/g, '').length / 5));
+const scriptSeconds = (script: string) => Math.max(10, Math.round(spokenText(script).replace(/\s/g, '').length / 5));
+
+/**
+ * 分镜要拆的脚本：一份四步脚本只带前三步（策略卡、口播、脚本自带的分镜），第 4 步执行与优化建议、交稿核对不带——
+ * 分镜自己会出拍摄顺序和清单；那一段里的「采访」「前后对比」还会误触发和这条无关的规则。认不出四步格式就原样带
+ */
+export function storyboardScript(script: string): string {
+  const lines = script.split('\n');
+  const step4 = lines.findIndex((l) => /^\s*#{1,4}\s*第\s*4\s*步/.test(l));
+  return step4 > 0 ? lines.slice(0, step4).join('\n').replace(/\n\s*---\s*$/, '').trim() : script;
+}
 
 /** 把目标时长解析成秒数，顺带给出建议镜头数 */
 function planShots(duration: string, script = ''): { seconds: number; min: number; max: number } {
@@ -184,13 +201,15 @@ function planShots(duration: string, script = ''): { seconds: number; min: numbe
  * 和审稿那边同一个思路：数得清的交给代码，判断力的交给模型。
  */
 function scriptFacts(script: string, targetSeconds: number): string {
-  const words = script.replace(/\s/g, '').length;
+  // 字数、句数只算要念出来的话（spokenText）；秒数标注和镜头编号看全文
+  const spoken = spokenText(script);
+  const words = spoken.replace(/\s/g, '').length;
   // 口播按 5 字/秒，与脚本页和审稿的统计口径一致
   const spokenSeconds = Math.round(words / 5);
   const hasTiming = /\d+\s*-\s*\d+\s*秒/.test(script);
   const existingShots = (script.match(/【?镜头\s*\d+】?/g) || []).length;
   // 中文句读切分，用来估算能拆出多少个信息单元
-  const sentences = script.split(/[。！？\n]/).filter((s) => s.trim().length > 4).length;
+  const sentences = spoken.split(/[。！？\n]/).filter((s) => s.trim().length > 4).length;
 
   const lines = [
     '## 🔍 系统预检（客观数据，请以此为准，不要另行估算）',
@@ -339,7 +358,7 @@ export function spokenChars(line: string): number {
 import { REALITY_RULE, PRODUCT_HERO_RULE } from './sharp-rules';
 
 export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
-  const script = p.scriptContent || '';
+  const script = storyboardScript(p.scriptContent || '');
   const { seconds, min, max } = planShots(p.duration, script);
   const parts: string[] = [];
 
@@ -528,6 +547,6 @@ export function buildStoryboardPrompt(p: StoryboardPromptParams): string {
   parts.push('反问用户要更多信息——信息不足的地方按最常见的情况假设，并在拍摄要点里注明。');
 
   parts.push(continuationRules('storyboard'));
-  parts.push(creativeCraftRules({ source: p.scriptContent, context: p.contextBlock }));
+  parts.push(creativeCraftRules({ source: script, context: p.contextBlock }));
   return parts.join('\n');
 }

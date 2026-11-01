@@ -196,8 +196,10 @@ export function structureName(id: string | undefined): string {
  */
 export function scriptFormOfTopic(body: string): { scriptType?: string; structure?: string; purpose?: string } {
   const clean = body.replace(/\*\*/g, '');
-  // 视频目的（流量型 / 人设型 / 变现型）：选题写明的那一行，跳到脚本页时带过去（内容树的目的字段）
-  const purpose = clean.match(/^\s*[-*]?\s*(?:视频目的|内容目的|目的)[：:]\s*(流量型|人设型|变现型)/m)?.[1];
+  // 视频目的（流量型 / 人设型 / 变现型）：选题写明的那一行，跳到脚本页时带过去（内容树的目的字段）。
+  // 2026-11-01：原来只认「视频目的：变现型」写在同一行，选题板块的输出是「0️⃣ 视频目的」换行「变现型——……」，读不到；
+  // 评测因此按默认的流量型写了内容树，和选题卡、创作设置里的变现型打架。现在和 settingsFromText 一样认下一行
+  const purpose = purposeOf(labelled(clean, ['视频目的', '内容目的', '目的']));
   // 只认行首的条目（「- 四大脚本·…」），正文里顺带提到的不算
   const line = clean.split('\n').find(l => /^\s*(?:[-*]\s*)?四大脚本\s*[·:：]/.test(l));
   if (!line) return purpose ? { purpose } : {};
