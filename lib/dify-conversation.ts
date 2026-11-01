@@ -119,6 +119,24 @@ export async function clearDifyConversationId(
 }
 
 /**
+ * 自由对话的线程接进了主工作窗口：把主窗口认领走（2026-11-01，一个线程一个 Dify 会话）。
+ * 只在主窗口还是它接进去的那个会话时才清：这期间脚本等板块写了新的主窗口，不能误删。
+ */
+export async function claimSharedWindow(userId: string, profileId: string | null | undefined, conversationId: string): Promise<void> {
+  try {
+    const supabase = getServiceSupabase();
+    await supabase
+      .from('dify_conversations')
+      .delete()
+      .eq('user_id', userId)
+      .eq('scope_key', buildScopeKey(profileId))
+      .eq('conversation_id', conversationId);
+  } catch (e: any) {
+    console.error('[dify-conversation] 认领主窗口异常:', e?.message);
+  }
+}
+
+/**
  * 主动开一个干净的工作窗口。
  *
  * 所有板块共用一个会话之后，上下文只会越来越长：成本、延迟都会涨，

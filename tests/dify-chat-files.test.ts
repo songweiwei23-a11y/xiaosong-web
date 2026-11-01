@@ -2,7 +2,7 @@ vi.mock('@/lib/creation-quota', () => ({ reserveCreation: vi.fn(async () => ({ o
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({ fetch: vi.fn(), usage: vi.fn(), guard: vi.fn() }));
 vi.mock('@/lib/api-guard', () => ({ requireUserWithQuota: () => state.guard(), incrementUsageServer: state.usage }));
-vi.mock('@/lib/dify-conversation', () => ({ getDifyConversationId: vi.fn(async () => null), saveDifyConversationId: vi.fn(), clearDifyConversationId: vi.fn(), startNewWindow: vi.fn(), isInvalidConversationError: () => false }));
+vi.mock('@/lib/dify-conversation', () => ({ getDifyConversationId: vi.fn(async () => null), saveDifyConversationId: vi.fn(), clearDifyConversationId: vi.fn(), claimSharedWindow: vi.fn(), startNewWindow: vi.fn(), isInvalidConversationError: () => false }));
 vi.mock('@/lib/topic-library-server', () => ({ loadPriorTopicTitles: vi.fn(async () => []), saveFollowUpTopics: vi.fn() }));
 import { signAttachment } from '@/lib/chat-attachments-server';
 import { releaseCreation } from '@/lib/creation-quota';
@@ -38,6 +38,25 @@ describe('自由对话将附件与联网状态传给页面', () => {
     expect(saveDifyConversationId).not.toHaveBeenCalled();
     expect(JSON.parse(state.fetch.mock.calls[0][1].body).conversation_id).toBe('own-focus-thread');
     expect(JSON.parse(state.fetch.mock.calls[0][1].body).query).toContain('国庆后县城消费观察');
+  });
+  // 整改方案 1.4（2026-11-01）：一个线程一个 Dify 会话
+  it('自由对话线程接进主窗口：用主窗口的会话，回答完把它认领走，不把自己写回主窗口', async () => {
+    const { getDifyConversationId, saveDifyConversationId, claimSharedWindow } = await import('@/lib/dify-conversation');
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce('main-window');
+    state.fetch.mockResolvedValue(new Response('data: {"event":"message","answer":"接着上次聊","conversation_id":"main-window"}\n\ndata: {"event":"message_end","conversation_id":"main-window"}\n\n'));
+    await (await call(undefined)).text();
+    expect(JSON.parse(state.fetch.mock.calls[0][1].body).conversation_id).toBe('main-window');
+    expect(saveDifyConversationId).not.toHaveBeenCalled();
+    expect(claimSharedWindow).toHaveBeenCalledWith(userId, null, 'main-window');
+  });
+  it('自由对话线程有自己的会话：不读、不写、不认领主窗口', async () => {
+    const { getDifyConversationId, saveDifyConversationId, claimSharedWindow } = await import('@/lib/dify-conversation');
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce('main-window');
+    state.fetch.mockResolvedValue(new Response('data: {"event":"message","answer":"好","conversation_id":"thread-b"}\n\ndata: {"event":"message_end","conversation_id":"thread-b"}\n\n'));
+    await (await POST(new Request('http://localhost/api/dify/chat', { method: 'POST', body: JSON.stringify({ query: '继续', freeChat: true, conversationId: 'thread-b' }) }) as any)).text();
+    expect(JSON.parse(state.fetch.mock.calls[0][1].body).conversation_id).toBe('thread-b');
+    expect(saveDifyConversationId).not.toHaveBeenCalled();
+    expect(claimSharedWindow).not.toHaveBeenCalled();
   });
   it('浏览器关页后继续读取完整上游并确认次数，不误释放', async () => {
     let upstream!: ReadableStreamDefaultController<Uint8Array>;

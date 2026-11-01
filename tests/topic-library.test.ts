@@ -215,7 +215,8 @@ describe('接线：生成和追问都用上', () => {
     expect(chat).toMatch(/const isolated = ISOLATED_TASKS\.has\(taskType\)/);
     expect(chat).toMatch(/freshWindow \|\| isolated\s*\?\s*null/);
     expect(chat).toMatch(/const limit = isolated \? \d{4,} : 1500/);
-    expect(chat).toMatch(/if \(conversationIdFromResponse && !isolated\)/);
+    // 2026-11-01 起自由对话线程也不写回共用窗口（一个线程一个 Dify 会话）
+    expect(chat).toMatch(/if \(conversationIdFromResponse && !isolated && !freeChatThread\)/);
   });
 
   it('追问要新选题时附清单，出的新一批存进选题库', () => {

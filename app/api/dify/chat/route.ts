@@ -8,6 +8,7 @@ import {
   getDifyConversationId,
   saveDifyConversationId,
   clearDifyConversationId,
+  claimSharedWindow,
   startNewWindow,
   isInvalidConversationError,
 } from '@/lib/dify-conversation'
@@ -113,6 +114,14 @@ export async function POST(request: NextRequest) {
       ? null
       : await getDifyConversationId(guard.userId!, profileId)
     const useConversationId = conversationId || sharedConversationId || ''
+    /*
+     * 自由对话：一个线程一个 Dify 会话（2026-11-01，整改方案 1.4）。
+     * 原来每条线程回答完都把自己写成档案的主工作窗口，系统自动开的下一条线程接进主窗口时拿到的就是上一条线程的会话，
+     * 两条线程从此往同一个 Dify 会话里写，互相看得到。现在：自由对话线程不写回主窗口（主窗口只由脚本这类成稿板块写，
+     * 「刚才那条脚本怎么改」照样接得上）；接进主窗口的线程把它认领走，下一条线程不会再接同一个会话。
+     */
+    const freeChatThread = body.freeChat === true
+    const claimsSharedWindow = freeChatThread && !conversationId && !!sharedConversationId
 
     console.log('📞 持续对话请求:', {
       queryLength: query?.length,
@@ -357,7 +366,7 @@ export async function POST(request: NextRequest) {
                 // 会接着它——这是「所有板块同一个窗口」的另一半：
                 // 不只是读，聊出来的上下文也要能被生成板块继承。
                 // 选题的独立会话不写回去（见上面 isolated）。
-                if (conversationIdFromResponse && !isolated) {
+                if (conversationIdFromResponse && !isolated && !freeChatThread) {
                   await saveDifyConversationId(
                     guard.userId,
                     conversationIdFromResponse,
@@ -365,6 +374,7 @@ export async function POST(request: NextRequest) {
                     '自由对话'
                   )
                 }
+                if (claimsSharedWindow) await claimSharedWindow(guard.userId, profileId, sharedConversationId!)
               }
               if (!generationCompleted) await releaseCreation(reservation)
               if (!clientGone) { try { controller.close() } catch { clientGone = true } }
