@@ -31,6 +31,8 @@ const navGroups: {
     label: null, // 总览不需要组标题，单独一项顶在最上面
     items: [
       { name: "工作台", href: "/dashboard", icon: Home },
+      // 2026-11-02 产品方：自由对话挪到工作台正下方，让用户优先用上（原来在「助手与资料」组里）
+      { name: "自由对话", href: "/dashboard/free-chat", icon: MessagesSquare, hint: "什么都能问：联网查资料、读图片和文档、出方案、深度研究" },
       // 给压根不了解抖音的新手：6 关学会抖音怎么推荐、怎么拍、怎么发。放最上面，新人一眼能看到
       { name: "新手课堂", href: "/dashboard/course", icon: GraduationCap },
       /*
@@ -88,8 +90,6 @@ const navGroups: {
     id: "assist",
     label: "助手与资料",
     items: [
-      // 原名「高阶自由」看不出是干什么的，改成直说的名字
-      { name: "自由对话", href: "/dashboard/free-chat", icon: MessagesSquare, hint: "什么都能问：联网查资料、读图片和文档、出方案、深度研究" },
       { name: "知识库", href: "/dashboard/knowledge", icon: BookOpen },
     ],
   },

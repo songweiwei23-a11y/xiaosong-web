@@ -17,7 +17,7 @@ import { ProfileQuickSwitch } from '@/components/dashboard/ProfileQuickSwitch';
 import { LibraryCard } from '@/components/dashboard/LibraryCard';
 import { QuickStart } from '@/components/dashboard/QuickStart';
 import { PreferenceNews } from '@/components/preferences/PreferenceHint';
-import { AssistantHomeBar } from '@/components/assistant/AssistantHomeBar';
+import { HomeChatBox } from '@/components/dashboard/HomeChatBox';
 import { LearningCard } from '@/components/preferences/LearningCard';
 import { PlanThisWeek } from '@/components/dashboard/PlanThisWeek';
 import { GuideCard } from '@/components/guide/GuideCard';
@@ -27,7 +27,7 @@ import { AgentRecruitBanner } from '@/components/agent/AgentRecruitBanner';
 import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
-  MessagesSquare, ChevronRight, ChevronDown, Clock, Crown, User, History,
+  ChevronRight, ChevronDown, Clock, Crown, User, History,
   ClipboardList, Stethoscope, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass, CalendarRange,
   type LucideIcon,
 } from "lucide-react";
@@ -161,7 +161,6 @@ const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }
   { name: "商业定位", icon: Wallet, href: "/dashboard/business-positioning", tip: "靠什么赚钱" },
   { name: "内容定位", icon: LayoutList, href: "/dashboard/content-positioning", tip: "长期发什么" },
   { name: "成交理由", icon: Award, href: "/dashboard/deal-reason" },
-  { name: "自由对话", icon: MessagesSquare, href: "/dashboard/free-chat", tip: "什么都能问，能联网查资料" },
   { name: "知识库", icon: BookOpen, href: "/dashboard/knowledge" },
   // 各板块收藏的好内容（2026-10-02）
   { name: "素材库", icon: Bookmark, href: "/dashboard/library", tip: "收藏的好内容，随时接着用" },
@@ -442,8 +441,9 @@ export default function DashboardPage() {
           <ProfileQuickSwitch loading={loading} hasProfile={!!profile} />
         </header>
 
-        {/* 顶部的一句话条：说一句，助理就去干（和右下角的助理是同一个）。放在问候语下面，首屏第一眼就能看到 */}
-        <AssistantHomeBar />
+        {/* 首页大对话框（2026-11-02 产品方定稿）：默认自由对话，发出去跳到自由对话页；可切到「让助理去做」，
+            交给右下角的助理（替掉原来那条一句话条）。放在问候语下面，首屏第一眼就能看到 */}
+        <HomeChatBox />
 
         {/* 新手引导（新老用户都有）：现在处于什么阶段、下一步做什么、几条建议。随数据实时变，见 lib/guide */}
         <GuideCard />

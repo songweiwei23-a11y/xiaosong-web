@@ -8,6 +8,7 @@ import { Markdown } from "@/components/markdown";
 import { resolveCreationSettings, settingsFromText, mergeCreationSettings, creationSettingsBlock, type CreationSettings } from '@/lib/creation-settings';
 import { CreationLinks } from '@/components/workspace/CreationLinks';
 import { takeHandoff } from '@/lib/handoff';
+import { takeHomeChat } from '@/lib/home-chat-handoff';
 import { creationReference, continuationRules } from '@/lib/creation-continuation';
 import { AttachmentComposer, AttachmentList, ATTACHMENT_HINT, type AttachmentComposerHandle } from '@/components/chat/ChatAttachments';
 import { conversationAttachments, MAX_CHAT_FILES, type ChatAttachment } from '@/lib/chat-attachments';
@@ -350,10 +351,31 @@ export default function FreeChatPage() {
     return conv;
   }, []);
 
+  /**
+   * 首页带来的这一轮：等新对话真的成了当前对话再动手（附件框按对话重建，早传会被取消）。
+   * upload：把附件交给附件框上传 → wait：等上传结束 → 发送（深度研究只传附件不发送，等编导在研究卡片里开始）
+   */
+  const [homeJob, setHomeJob] = useState<{ convId: string; text: string; files: File[]; send: boolean; stage: 'upload' | 'wait' | 'send' } | null>(null);
+  const homeUploadSeen = useRef(false);
+  const [researchTopic, setResearchTopic] = useState('');
   const handoffApplied = useRef(false);
   useEffect(() => {
     if (handoffApplied.current || !loaded || contextLoading) return;
     handoffApplied.current = true;
+    // 工作台首页大对话框发过来的：开一个新对话，按首页选的联网方式发出去；点了深度研究就打开研究卡片、把问题填好
+    const home = takeHomeChat();
+    if (home) {
+      const conv = createConversation(true);
+      if (!conv) return;
+      setWebSearchMode(home.webMode);
+      if (home.research) {
+        setResearchTopic(home.text);
+        setShowPlanner(false);
+        setShowResearch(true);
+      }
+      setHomeJob({ convId: conv.id, text: home.text, files: home.files, send: !home.research, stage: home.files.length ? 'upload' : 'send' });
+      return;
+    }
     const data = takeHandoff();
     if (!data?.sourceContent) return;
     const conv = createConversation(true);
@@ -653,6 +675,32 @@ export default function FreeChatPage() {
   const continuePlan = (m: PlanMeta, missing: string[]) => {
     void handleSend(`📋 出方案（补写缺的 ${missing.length} 章：${missing.join('、')}）`, { plan: m, prompt: buildContinuePrompt(m, missing), files: [] });
   };
+  useEffect(() => {
+    if (!homeJob || activeId !== homeJob.convId || !activeConv) return;
+    if (homeJob.stage === 'upload') {
+      if (!attachRef.current) return;
+      homeUploadSeen.current = false;
+      attachRef.current.upload(homeJob.files);
+      setHomeJob({ ...homeJob, stage: 'wait' });
+      return;
+    }
+    if (homeJob.stage === 'wait') {
+      if (uploadingFiles) { homeUploadSeen.current = true; return; }
+      if (!homeUploadSeen.current) return;
+      setHomeJob(null);
+      if (!homeJob.send) return;
+      if (!attachments.length) {
+        setInput(homeJob.text);
+        notify('附件没传上，可以重新上传后再发送');
+        return;
+      }
+      void handleSend(homeJob.text || undefined, { files: [...attachments] });
+      return;
+    }
+    setHomeJob(null);
+    if (homeJob.send && homeJob.text) void handleSend(homeJob.text);
+  }, [homeJob, activeId, activeConv, uploadingFiles, attachments, handleSend]);
+
   /*
    * 深度研究（2026-10-04 产品方：和出方案一样留在对话页，别弹全屏）。输入框上方一张小卡片开始，
    * 计划、进度、报告都作为这一轮回答出现在对话里（components/chat/ResearchCard）；研究在服务端跑，关掉页面也会继续
@@ -1095,7 +1143,7 @@ export default function FreeChatPage() {
                 onPickFiles={() => attachRef.current?.open()} />
             )}
             {showResearch && !showLegacy && (
-              <ResearchStarter key={profile?.id || 'default'} profileId={profile?.id || null} profileContext={buildProfileContext()}
+              <ResearchStarter key={`${profile?.id || 'default'}:${researchTopic}`} defaultTopic={researchTopic} profileId={profile?.id || null} profileContext={buildProfileContext()}
                 files={attachments} uploading={uploadingFiles} canUpload={!isStreaming && !contextLoading && loaded && attachments.length < MAX_CHAT_FILES}
                 onPickFiles={() => attachRef.current?.open()}
                 onCreated={(r) => { addResearchTurn(r, 'planning'); setAttachments([]); }}

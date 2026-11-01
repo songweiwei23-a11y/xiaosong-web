@@ -12,8 +12,10 @@ import { postSafely } from "@/lib/safe-post";
  * 深度研究 · 开始（2026-10-04 产品方：和「出方案」一样，点开还在对话页，就是输入框上面一张小卡片，别太正式）。
  * 写主题、挑深度，点「拟研究计划」；计划、进度、报告都出现在对话里（components/chat/ResearchCard）。
  */
-export function ResearchStarter({ profileId, profileContext, files, uploading, canUpload, onPickFiles, onCreated, onOpen, onClose }: {
+export function ResearchStarter({ profileId, profileContext, files, uploading, canUpload, onPickFiles, onCreated, onOpen, onClose, defaultTopic = "" }: {
   profileId: string | null;
+  /** 从工作台首页对话框点了深度研究带过来的问题，填好等编导选深度 */
+  defaultTopic?: string;
   profileContext: string;
   /** 输入框那套上传：传好的资料一起带进研究 */
   files: ChatAttachment[];
@@ -25,7 +27,7 @@ export function ResearchStarter({ profileId, profileContext, files, uploading, c
   onOpen: (r: { jobId: string; topic: string; depth: ResearchDepth }) => void;
   onClose: () => void;
 }) {
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(defaultTopic);
   const [depth, setDepth] = useState<ResearchDepth>("standard");
   const [material, setMaterial] = useState("");
   const [showMaterial, setShowMaterial] = useState(false);
