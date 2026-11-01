@@ -4,7 +4,8 @@
 //   2. 这里把 A、B 的提示词按 A1、B1、A2、B2…交替发出去，输出写回各自目录（文件名和 chain-eval 一样，下游节点、评估器直接能用）。
 //
 // 环境变量：AB=1、AB_A、AB_B（两个目录）、AB_NODE（节点名，如 09-选题）、AB_PROFILES（可选，逗号分隔；默认 A 里有提示词的全部）、
-//          AB_CONCURRENCY（默认 4）
+//          AB_CONCURRENCY（默认 4）、AB_B_APP=test（B 版发到 Dify 测试应用：改的是工作流、系统提示词、知识库检索时用，
+//          两边提示词一样，A 走线上应用、B 走改过的测试应用）
 // 用法：npx vitest run --config vitest.eval.config.ts evals/ab-replay.eval.ts
 import fs from 'node:fs';
 import { it } from 'vitest';
@@ -24,6 +25,10 @@ it('新旧对照重发', { timeout: 14_400_000 }, async () => {
     : fs.readdirSync(A).filter((c) => fs.existsSync(`${A}/${c}/${node}.prompt.txt`));
   const jobs = codes.flatMap((code) => [A, B].map((dir) => ({ dir, code })));
   const concurrency = Math.max(1, Number(process.env.AB_CONCURRENCY ?? 4));
+  const PROD_KEY = process.env.DIFY_API_KEY!;
+  const TEST_KEY = process.env.DIFY_TEST_API_KEY ?? '';
+  if (process.env.AB_B_APP === 'test' && !TEST_KEY) throw new Error('AB_B_APP=test 要 .env.local 里有 DIFY_TEST_API_KEY');
+  const keyOf = (dir: string) => (process.env.AB_B_APP === 'test' && dir === B ? TEST_KEY : PROD_KEY);
   let failures = 0;
   let halted = false;
 
@@ -34,6 +39,8 @@ it('新旧对照重发', { timeout: 14_400_000 }, async () => {
     const search = fs.readFileSync(`${dir}/${code}/${node}.search.txt`, 'utf8');
     for (let attempt = 1; attempt <= 3; attempt++) {
       const t0 = Date.now();
+      // askDify 在第一个 await 之前就把钥匙读进请求头，这里同一刻换钥匙，并发也不会串
+      process.env.DIFY_API_KEY = keyOf(dir);
       const res = await askDify(prompt, `ab-${code}`, search);
       if (res.ok) {
         failures = 0;
