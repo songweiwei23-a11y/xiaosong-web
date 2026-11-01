@@ -10,6 +10,8 @@
 //   EVAL_UPSTREAM      上一轮输出目录（第二次采样时只重跑关键节点，上游沿用第一次）；可以写几个，逗号分隔，按顺序找
 //                      （新旧对照时：前面放这一版自己的上游，后面放基线）
 //   EVAL_CONCURRENCY   同时跑几条链路，默认 3
+//   EVAL_SCRIPT_TYPE   脚本按「直接在脚本页输入主题、手选脚本类型」写（teach / show / discuss / story），
+//                      不带选题正文和创作方向；不设就是从选题带过去（线上最常见的那条路）
 // 用法：npx vitest run --config vitest.eval.config.ts evals/chain-eval.eval.ts
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -42,6 +44,7 @@ import { mergeCreationSettings, scriptFormOfTopic } from '@/lib/creation-setting
 import { continuationRules } from '@/lib/creation-continuation';
 import { tacticOfRoute, topicRouteOf } from '@/lib/script-route';
 import { AUTO_TACTIC } from '@/lib/creative-routes';
+import { defaultRoleOfScriptType } from '@/lib/content-roles';
 import { decoyHits, pickIndustries, type EvalIndustry } from './fixtures/profiles';
 import { nodeMaterials, topicSections, type MaterialContext } from './materials';
 
@@ -75,6 +78,7 @@ const UPSTREAM = UPSTREAMS.join(',');
 const CONCURRENCY = Math.max(1, Number(process.env.EVAL_CONCURRENCY ?? 3));
 /** 续跑：本次输出目录里已经成功的节点直接沿用，不再调用（补跑失败的那部分用） */
 const RESUME = !!process.env.EVAL_RESUME;
+const DIRECT_TYPE = process.env.EVAL_SCRIPT_TYPE ?? '';
 /**
  * 熔断（2026-11-01）：连续失败这么多次就不再发新请求。
  * 评测和线上共用同一个模型账户，余额用完时每次都会失败；不停下来只会白跑，还看不出原因。
@@ -210,17 +214,24 @@ async function chain(ind: EvalIndustry) {
   const tactic = tacticOfRoute(topicRouteOf(topicBody)) || AUTO_TACTIC;
   const autoScriptType = !form.scriptType || tactic !== AUTO_TACTIC;
   const handoff = buildCreationHandoff('topic', 'script', topicBody || topicLine, { topic: topicLine, settings: mergeCreationSettings({}, { topic: topicLine, ...form }), originContent: DR ?? '' });
-  const S = await step(ind, '10-脚本', () => String(buildScriptBoardQuery({
-    topic: topicLine, platform: '抖音', scriptType: form.scriptType ?? 'show', autoScriptType, effectiveRole: form.purpose ?? '流量型', isAd: false, industry: ind.name, customIndustry: '', targetGroup: '', customTargetGroup: '',
+  // 脚本页的默认值：表达重点默认勾着「emotion」「picture」（app/dashboard/script/page.tsx）；2026-11-01 之前评测传的是空
+  const scriptBase = {
+    topic: topicLine, platform: '抖音', isAd: false, industry: ind.name, customIndustry: '', targetGroup: '', customTargetGroup: '',
     style: '', customStyle: '', durationMode: 'ai', duration: '60秒', customDuration: '', profile, positioningContent: C ?? P ?? null, scriptStructure: 'auto', hookType: 'auto',
-    boomElements: [], directorThoughts: [], tactic, openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: '', device: '',
-    budget: '', personnel: '', accountPositioning: P ?? '', additionalInfo: handoff.note ?? '', dealReasons: [], originContent: DR ?? '', focusContent: '', currentSettings: {},
-  } as never))
+    boomElements: [], directorThoughts: ['emotion', 'picture'], openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: '', device: '',
+    budget: '', personnel: '', accountPositioning: P ?? '', dealReasons: [], focusContent: '', currentSettings: {},
+  };
+  const S = await step(ind, '10-脚本', () => DIRECT_TYPE
+    // 直接在脚本页输入主题、手选类型：不带选题正文和创作方向，目的按类型的默认值（页面「自动」时），页面不补尾巴
+    ? String(buildScriptBoardQuery({ ...scriptBase, scriptType: DIRECT_TYPE, autoScriptType: false, effectiveRole: defaultRoleOfScriptType(DIRECT_TYPE), tactic: AUTO_TACTIC, additionalInfo: '', originContent: '' } as never))
+    : String(buildScriptBoardQuery({
+      ...scriptBase, scriptType: form.scriptType ?? 'show', autoScriptType, effectiveRole: form.purpose ?? '流量型', tactic, additionalInfo: handoff.note ?? '', originContent: DR ?? '',
+    } as never))
     // 页面在提示词后面再补的几段（同 app/dashboard/script/page.tsx 生成时的 query 拼接）
     + (DR ? continuationRules('script') : '')
     + (form.purpose ? '' : '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。')
     + (autoScriptType ? '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。' : ''),
-  { ...base, T, DR, topicLine, topicBody, C, P });
+  DIRECT_TYPE ? { ...base, topicLine, C, P } : { ...base, T, DR, topicLine, topicBody, C, P });
   S && await step(ind, '11-分镜', () => buildStoryboardPrompt({ scriptContent: S, platform: '抖音', duration: '60秒', contentType: ind.storyboardType, visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '', contextBlock: summary }), { ...base, S });
   await step(ind, '12-标题封面', () => buildTitlePrompt({ topic: topicLine, titleTypeLabel: '痛点式', titleFormulaValue: 'number-action', titleFormulaLabel: '数字+动作', keywordStrategyLabel: '综合', keywordStrategyDesc: '标题和正文都自然带关键词', platform: '抖音', targetAudience: ind.name, count: 6, contextBlock: summary, sourceContent: S ?? topicLine } as never), { ...base, topicLine, S });
   await step(ind, '13-开篇钩子', () => buildOpeningPrompt({ contextBlock: summary, topic: topicLine, count: 3, intent: { purpose: '流量型', direction: '本地同城', userIntent: '' } } as never), { ...base, topicLine });

@@ -3,7 +3,8 @@
 //
 // 用法：
 //   node evals/ab-judge.mjs topics  <A目录> <B目录> <条目.json> [取第几条，默认 0,3]   选题：每份选题稿取几条
-//   node evals/ab-judge.mjs scripts <A目录> <B目录> <条目.json> [选题目录]            脚本：每个档案一条；选题目录是写脚本用的 09
+//   node evals/ab-judge.mjs scripts <A目录> <B目录> <条目.json> [选题目录] [title]    脚本：每个档案一条；选题目录是写脚本用的 09；
+//                                                                                     title = 直接在脚本页输入主题的，只给评估器标题
 //   node evals/ab-judge.mjs report  <条目.json> <评估输出目录> [报告.md]
 // 目录写 evals/runs 下的名字（如 ab-topic-old）。
 import fs from 'node:fs';
@@ -33,13 +34,15 @@ function topics([A, B, out, picks = '0,3']) {
   console.log(`选题条目 ${items.length}（A ${items.filter((x) => x.side === 'A').length}，B ${items.filter((x) => x.side === 'B').length}）`);
 }
 
-function scripts([A, B, out, topicDir]) {
+function scripts([A, B, out, topicDir, mode]) {
   const items = [];
   for (const code of codesOf(A, '10-脚本').filter((c) => codesOf(B, '10-脚本').includes(c))) {
     // 这条脚本写的是哪条选题：给了选题目录就取那里 09 的第一条（和评测带去写脚本的是同一条），
-    // 不给就让评估器按 run 去找；找不到它会退回基线的选题，那就对不上了
+    // 不给就让评估器按 run 去找；找不到它会退回基线的选题，那就对不上了。
+    // mode = title：直接在脚本页手选类型的那种，用户只输入了标题，评估器也只给标题
     const topicFile = topicDir && `${RUNS}/${topicDir}/${code}/09-选题.out.md`;
-    const topic = topicFile && fs.existsSync(topicFile) ? topicSections(fs.readFileSync(topicFile, 'utf8'))[0] : undefined;
+    const section = topicFile && fs.existsSync(topicFile) ? topicSections(fs.readFileSync(topicFile, 'utf8'))[0] : undefined;
+    const topic = section && mode === 'title' ? `用户直接输入的主题（没有选题正文）：${section.split('\n')[0].replace(/^#+\s*(?:✅\s*)?选题\s*[\d一二三四五六七八九十]+\s*[：:]?\s*/, '')}` : section;
     for (const [side, dir] of [['A', A], ['B', B]]) {
       items.push({ no: items.length + 1, board: '脚本', code, side, run: dir, file: `${dir}/${code}/10-脚本.out.md`, ...(topic ? { topic } : {}) });
     }

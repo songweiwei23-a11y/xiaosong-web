@@ -15,6 +15,7 @@ import { AUTO_TACTIC, ROUTES_GUIDE, tacticIndex } from '@/lib/creative-routes';
 import { fourScriptOfStructure } from '@/lib/creation-settings';
 import { dealReasonsForPurpose, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { formatTreeBlock, purposeOf, structureIdOfFourName, treeNodeOfScriptInputs, treeNodeOfTopicBody } from '@/lib/creation-tree';
+import { SCRIPT_STRUCTURE_NAMES } from '@/lib/tactic-mix';
 import {
   creationSettingsBlock,
   durationSeconds,
@@ -397,6 +398,19 @@ ${getRelevantExample(scriptType, durationForCalc, scriptStructure)}
 `;
       // ========== 公式蓝图结束 ==========
 
+      /*
+       * 手选脚本类型（或选题标了四大脚本）时给自适应模板的说明（2026-11-01）。
+       * 原来给的是上面的 formulaSection：不管选哪种，recommendFormula 几乎都落到「对比型」（A 方案错误 → B 方案正确 →
+       * 「这就是为什么……」金句总结），范例几乎总是同一篇抖音涨粉的讲课稿——正是产品方判的「A方案/B方案的讲解」「收尾道理金句」。
+       * 现在只说用的是四大脚本的哪一类、从知识库这一类的结构里挑；话怎么讲按 script-design 的内容质量要求和输出格式。
+       * 广告模板仍用 formulaSection。
+       */
+      const fourKind = ({ teach: '教知识', show: '晒过程', discuss: '聊观点', story: '讲故事' } as Record<string, string>)[scriptType] ?? '';
+      const kindStructures = SCRIPT_STRUCTURE_NAMES.filter((n) => n.startsWith(`${fourKind}·`));
+      const scriptTypeGuide = fourKind
+        ? `用户选的是四大脚本·${fourKind}：从知识库这一类的结构里挑一个最合适的（${kindStructures.join('、')}），策略卡第一条写「用的脚本：四大脚本·具体结构名」。`
+        : formulaSection;
+
       // ========== 拍法（起号 36+1 计）==========
       // 两派只选一派（2026-10-30）：36 计（怎么拍）和四大脚本（讲怎么讲）不叠加。
       // 选了 36 计，上面已经把脚本结构强制为 auto；选了四大脚本，这里不再挑 36 计；都没选，让 AI 在两派里挑一派。
@@ -564,7 +578,7 @@ ${isDetailedRequirement
         hookGuide: openingLine.trim() ? undefined : hookType !== 'auto' ? hookGuide : undefined,
         // 两派只选一派：自动模式也要把「只挑一派」的说明传过去（tacticSection 在三种情况下都有内容）
         tacticGuide: tacticSection || undefined,
-        scriptTypeGuide: !autoScriptType ? formulaSection : undefined,
+        scriptTypeGuide: !autoScriptType ? scriptTypeGuide : undefined,
         treeBlock: treeBlock || undefined,
         craftFocus: [
           boomElements.length ? `用户勾选元素：${boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label ?? id).join('、')}` : '',
