@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "开物 · 截屏带入",
+  "version": "0.2.0",
+  "description": "看对标账号的抖音主页时，右下角的开物小面板一步步告诉你截哪一屏；点一下截当前画面，截够了一键带进开物拆解。只截你点按钮那一刻看到的画面，不自动翻页、不读网页数据。",
+  "permissions": ["activeTab", "storage", "unlimitedStorage"],
+  "host_permissions": ["https://www.douyin.com/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "开物 · 截屏带入",
+    "default_popup": "popup.html"
+  },
+  "commands": {
+    "capture-screen": {
+      "suggested_key": { "default": "Alt+Shift+K" },
+      "description": "截下当前屏幕，带进开物"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.douyin.com/*"],
+      "js": ["guide.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.biandao.icu/dashboard/benchmark*", "https://biandao.icu/dashboard/benchmark*", "http://localhost:3000/dashboard/benchmark*"],
+      "js": ["bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

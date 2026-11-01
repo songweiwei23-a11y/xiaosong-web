@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { throwApiError } from "@/lib/api-error";
 import { BenchmarkAnalyzer } from "@/components/benchmark/BenchmarkAnalyzer";
+import { CaptureBridge } from "@/components/benchmark/CaptureBridge";
 import { postSafely } from "@/lib/safe-post";
 
 /**
@@ -32,6 +33,23 @@ export default function BenchmarkPage() {
   const [hot, setHot] = useState<Hot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // 插件带来的截图：放进哪个对标账号的拆解区（nonce 让同一批只加一次）
+  const [incoming, setIncoming] = useState<Record<string, { files: File[]; nonce: number }>>({});
+  const assignCaptures = useCallback((accountId: string, files: File[]) => {
+    setIncoming((prev) => ({ ...prev, [accountId]: { files, nonce: Date.now() } }));
+    window.setTimeout(() => document.getElementById(`benchmark-${accountId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+  }, []);
+  const createAccount = useCallback(async (name: string, link: string) => {
+    try {
+      const data = await call({ action: "addAccount", name, platform: "抖音", link, note: "开物截屏插件带进来时自动建的" });
+      await load();
+      return typeof data.id === "string" ? data.id : null;
+    } catch (e) {
+      notify((e as Error).message, "error");
+      return null;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -71,6 +89,8 @@ export default function BenchmarkPage() {
         </p>
       </header>
 
+      <CaptureBridge accounts={accounts} accountsReady={!loading} onAssign={assignCaptures} onCreate={createAccount} />
+
       {error && <p className="text-[13px] text-destructive">{error}</p>}
       {loading && !error && <p className="text-[13px] text-muted-foreground">正在读取…</p>}
 
@@ -82,7 +102,7 @@ export default function BenchmarkPage() {
         {accounts.length === 0 && !loading && <p className="text-[13px] text-muted-foreground">还没有对标账号。加一个，再把它的作品数据录进来。</p>}
 
         {accounts.map((a) => (
-          <div key={a.id} className="rounded-xl border border-border/60 p-4">
+          <div key={a.id} id={`benchmark-${a.id}`} className="rounded-xl border border-border/60 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-medium text-foreground">
@@ -128,6 +148,7 @@ export default function BenchmarkPage() {
                 accountName={a.name}
                 platform={a.platform}
                 onSaved={() => void load()}
+                incoming={incoming[a.id]}
               />
             </div>
 

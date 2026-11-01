@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Wand2, X } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
@@ -44,15 +44,20 @@ async function readDocument(file: File): Promise<DocRead> {
   return { name: String(data.name ?? file.name), text: String(data.text ?? "") };
 }
 
-export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved }: {
+export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, incoming }: {
   accountId: string;
   accountName: string;
   platform: string | null;
   onSaved: () => void;
+  /** 「开物 · 截屏带入」插件带来的截图（components/benchmark/CaptureBridge）；nonce 变了才加，同一批不重复加 */
+  incoming?: { files: File[]; nonce: number };
 }) {
   const { context } = useCreatorContext();
   const [pasted, setPasted] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  useEffect(() => {
+    if (incoming?.files.length) setFiles((prev) => [...prev, ...incoming.files]);
+  }, [incoming?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
   const [consent, setConsent] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
