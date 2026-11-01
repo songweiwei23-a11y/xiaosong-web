@@ -65,7 +65,7 @@ describe('二创各方案继续创作', () => {
     expect(prompt).toContain('店里每天上午现切牛肉');
     expect(prompt).toContain('不夸大或编造事实');
     expect(prompt).toContain('没有已确认数字时');
-    expect(prompt).toContain('X串、XX元');
+    expect(prompt).toContain('X 个、XX 元');
   });
   it('方案经过标题、脚本、审稿再分镜仍保留原始方案和当前版本，分镜只用最新优化稿', () => {
     const original = '### 方案1：备菜\n#### 口播全文\n店里今天切了X串牛肉，数量待核实。\n#### 创意\n一串串数清楚';
@@ -91,7 +91,7 @@ describe('二创各方案继续创作', () => {
   });
   it('各板块按具体任务承接原文，待核实占位不能变成真实数字', () => {
     for (const task of ['review', 'storyboard', 'topic', 'script', 'title', 'growth', 'free-chat'] as const) {
-      expect(continuationRules(task)).toContain('X串、XX元');
+      expect(continuationRules(task)).toContain('X 个、XX 元');
       expect(continuationRules(task)).toContain('不是已核实事实');
     }
     expect(continuationRules('storyboard')).toContain('台词不要改写');

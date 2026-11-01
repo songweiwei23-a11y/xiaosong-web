@@ -15,6 +15,7 @@ import { fourScriptOfStructure } from '@/lib/creation-settings';
 import { dealReasonsForPurpose, roleBrief, type ContentRole } from '@/lib/content-roles';
 import { formatTreeBlock, purposeOf, structureIdOfFourName, treeNodeOfScriptInputs, treeNodeOfTopicBody } from '@/lib/creation-tree';
 import { SCRIPT_STRUCTURE_NAMES } from '@/lib/tactic-mix';
+import { continuationRules, selectedFromBatch } from '@/lib/creation-continuation';
 import {
   creationSettingsBlock,
   durationSeconds,
@@ -561,7 +562,8 @@ ${isDetailedRequirement
       const query = (autoScriptType || !isAd) ? buildAdaptiveScriptPrompt({
         topic, platform, duration: isAiDuration ? 'AI推荐' : finalDuration,
         context: profileInfo,
-        source: [originContent, focusContent].filter(Boolean).join('\n\n'),
+        // 根稿是一整批时只带这一条取自的那个；补充要求（选题带过来的参考内容）里已经有的不再发第二遍（2026-11-01，整改阶段 3）
+        source: [selectedFromBatch(originContent || '', additionalInfo || ''), focusContent].filter((t) => t && !(additionalInfo || '').includes(t)).join('\n\n'),
         requirements: additionalInfo,
         settings: currentSettings,
         structureGuide: scriptStructure !== 'auto' ? structureGuide : undefined,
@@ -655,4 +657,20 @@ ${formatRequirements}
 
 请生成完整的广告引流脚本。`;
   return query + creationSettingsBlock(currentSettings);
+}
+
+/**
+ * 脚本页在构造好的提示词后面补的几段（app/dashboard/script/page.tsx 生成时；评测 evals/chain-eval 也用它，两边不走样）。
+ * 2026-11-01 整改阶段 3：
+ * - 选题带过来的参考内容里已经有【承接已有内容的要求】，原来页面又补一遍，现在有了就不补；
+ * - 内容树已经定了结构（「结构已定，不另选」）时，不再发「本轮脚本类型自动决策」：它要模型从观点、过程、故事、教学里另选一种，和内容树打架。
+ */
+export const AUTO_PURPOSE_NOTE = '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。';
+export const AUTO_SCRIPT_TYPE_NOTE = '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。';
+export const TREE_FIXED_HEAD = '## 本条的内容树（结构已定，不另选）';
+
+export function scriptPageTail(query: string, opts: { hasOrigin: boolean; autoPurpose: boolean; autoScriptType: boolean }): string {
+  return (opts.hasOrigin && !query.includes('【承接已有内容的要求】') ? continuationRules('script') : '')
+    + (opts.autoPurpose ? AUTO_PURPOSE_NOTE : '')
+    + (opts.autoScriptType && !query.includes(TREE_FIXED_HEAD) ? AUTO_SCRIPT_TYPE_NOTE : '');
 }

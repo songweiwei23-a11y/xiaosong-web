@@ -127,9 +127,21 @@ describe('页面已经改为调用共用模块', () => {
     expect(page).not.toContain('const formulaSection');
   });
 
-  it('请求体里的 query 直接用拼好的提示词，续写和自动目的的后缀仍由页面追加', () => {
-    expect(page).toMatch(/taskType: "脚本生成",[\s\S]*?query: query \+ \(originContent/);
+  it('请求体里的 query 直接用拼好的提示词，续写和自动目的的后缀由页面用共用的 scriptPageTail 追加', () => {
+    expect(page).toMatch(/taskType: "脚本生成",[\s\S]*?query: query \+ scriptPageTail\(query, \{ hasOrigin: !!originContent/);
     expect(page).not.toMatch(/query: query \+ creationSettingsBlock/);
+  });
+
+  // 2026-11-01 整改阶段 3：承接要求只发一遍；内容树定了结构时不再发「脚本类型自动决策」（要模型另选一种，和内容树打架）
+  it('页面补的后缀：已有承接要求不再补，内容树定了结构就不发自动决策', async () => {
+    const { scriptPageTail, TREE_FIXED_HEAD } = await import('@/lib/boards/script-query');
+    const { continuationRules } = await import('@/lib/creation-continuation');
+    const once = scriptPageTail('稿子' + continuationRules('script'), { hasOrigin: true, autoPurpose: false, autoScriptType: false });
+    expect(once).not.toContain('【承接已有内容的要求】');
+    expect(scriptPageTail('稿子', { hasOrigin: true, autoPurpose: false, autoScriptType: false })).toContain('【承接已有内容的要求】');
+    expect(scriptPageTail(`${TREE_FIXED_HEAD}\n…`, { hasOrigin: false, autoPurpose: false, autoScriptType: true })).not.toContain('本轮脚本类型自动决策');
+    expect(scriptPageTail('稿子', { hasOrigin: false, autoPurpose: false, autoScriptType: true })).toContain('本轮脚本类型自动决策');
+    expect(scriptPageTail('稿子', { hasOrigin: false, autoPurpose: true, autoScriptType: false })).toContain('【自动目的的执行原则】');
   });
 
   it('共用模块返回的提示词已经带上创作设置', () => {

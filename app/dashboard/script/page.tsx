@@ -48,7 +48,7 @@ import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { takeHandoff, extractOpening } from "@/lib/handoff";
 import { openCreationSafely } from "@/lib/creation-session";
 import { buildCreationHandoff } from "@/lib/creation-flow";
-import { originForResult, continuationRules } from '@/lib/creation-continuation';
+import { originForResult } from '@/lib/creation-continuation';
 import { extractPlainCopy } from "@/lib/script-copy";
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { AUTO_TACTIC, tacticInText } from "@/lib/creative-routes";
@@ -62,7 +62,7 @@ import { useWorkResume } from "@/hooks/useWorkResume";
 import { latestOf, workIdFromUrl } from "@/lib/resume";
 import { Field, OptionCard } from "@/components/form/Field";
 import { postSafely } from '@/lib/safe-post';
-import { buildScriptBoardQuery, scriptCreationSettings, scriptMemoryPatch, scriptResultWithQuality } from '@/lib/boards/script-query';
+import { buildScriptBoardQuery, scriptCreationSettings, scriptMemoryPatch, scriptPageTail, scriptResultWithQuality } from '@/lib/boards/script-query';
 
 /*
  * 表单控件的共用样式。抽成常量而不是每处写一遍长串类名：
@@ -556,7 +556,7 @@ export default function ScriptPage() {
           taskType: "脚本生成",
           creationSettings: currentSettings,
           profileId: selectedProfileId || null,
-          query: query + (originContent ? continuationRules('script') : '') + (incomingSetup && scriptRole === '自动' ? '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。' : '') + (autoScriptType ? '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。' : ''),
+          query: query + scriptPageTail(query, { hasOrigin: !!originContent, autoPurpose: !!incomingSetup && scriptRole === '自动', autoScriptType }),
         }),
       });
 

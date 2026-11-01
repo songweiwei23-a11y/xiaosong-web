@@ -26,7 +26,7 @@ import { buildContentPlanPrompt } from '@/lib/content-plan';
 import { mixPromptBlock, resolveMix } from '@/lib/content-mix';
 import { buildDirectionPrompt } from '@/lib/direction';
 import { buildTopicBoardQuery } from '@/lib/boards/topic-query';
-import { buildScriptBoardQuery } from '@/lib/boards/script-query';
+import { buildScriptBoardQuery, scriptPageTail } from '@/lib/boards/script-query';
 import { buildStoryboardPrompt } from '@/lib/storyboard-standards';
 import { buildTitlePrompt } from '@/lib/title-standards';
 import { buildReviewBoardQuery } from '@/lib/boards/review-query';
@@ -41,7 +41,8 @@ import { timeAnchor } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { mergeCreationSettings, scriptFormOfTopic } from '@/lib/creation-settings';
-import { continuationRules } from '@/lib/creation-continuation';
+/** 页面在提示词后面再补的几段：和 app/dashboard/script/page.tsx 调同一个函数 */
+const withPageTail = (q: string, opts: Parameters<typeof scriptPageTail>[1]) => q + scriptPageTail(q, opts);
 import { tacticOfRoute, topicRouteOf } from '@/lib/script-route';
 import { AUTO_TACTIC } from '@/lib/creative-routes';
 import { defaultRoleOfScriptType } from '@/lib/content-roles';
@@ -224,13 +225,9 @@ async function chain(ind: EvalIndustry) {
   const S = await step(ind, '10-脚本', () => DIRECT_TYPE
     // 直接在脚本页输入主题、手选类型：不带选题正文和创作方向，目的按类型的默认值（页面「自动」时），页面不补尾巴
     ? String(buildScriptBoardQuery({ ...scriptBase, scriptType: DIRECT_TYPE, autoScriptType: false, effectiveRole: defaultRoleOfScriptType(DIRECT_TYPE), tactic: AUTO_TACTIC, additionalInfo: '', originContent: '' } as never))
-    : String(buildScriptBoardQuery({
+    : withPageTail(String(buildScriptBoardQuery({
       ...scriptBase, scriptType: form.scriptType ?? 'show', autoScriptType, effectiveRole: form.purpose ?? '流量型', tactic, additionalInfo: handoff.note ?? '', originContent: DR ?? '',
-    } as never))
-    // 页面在提示词后面再补的几段（同 app/dashboard/script/page.tsx 生成时的 query 拼接）
-    + (DR ? continuationRules('script') : '')
-    + (form.purpose ? '' : '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。')
-    + (autoScriptType ? '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。' : ''),
+    } as never)), { hasOrigin: !!DR, autoPurpose: !form.purpose, autoScriptType }),
   DIRECT_TYPE ? { ...base, topicLine, C, P } : { ...base, T, DR, topicLine, topicBody, C, P });
   S && await step(ind, '11-分镜', () => buildStoryboardPrompt({ scriptContent: S, platform: '抖音', duration: '60秒', contentType: ind.storyboardType, visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '', contextBlock: summary }), { ...base, S });
   await step(ind, '12-标题封面', () => buildTitlePrompt({ topic: topicLine, titleTypeLabel: '痛点式', titleFormulaValue: 'number-action', titleFormulaLabel: '数字+动作', keywordStrategyLabel: '综合', keywordStrategyDesc: '标题和正文都自然带关键词', platform: '抖音', targetAudience: ind.name, count: 6, contextBlock: summary, sourceContent: S ?? topicLine } as never), { ...base, topicLine, S });

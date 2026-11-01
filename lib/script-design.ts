@@ -15,8 +15,10 @@ export function buildAdaptiveScriptPrompt(p: {
   /** 内容树的契约块（lib/creation-tree 的 formatTreeBlock）：大类、类型、具体结构、目的写明白 */
   treeBlock?: string;
 }): string {
+  // 账号背景（lib/creator-context）已经带了写作底线时不再发第二遍（2026-11-01，整改阶段 3）
+  const rules = outputRulesBlock();
   return `【任务：脚本生成】你是短视频编导，把用户当前选定的内容落实成可以拍摄的完整脚本。
-${outputRulesBlock()}
+${p.context.includes(rules) ? '' : rules}
 ${creationSettingsBlock(p.settings)}
 ## 当前任务
 - 主题：${p.topic}
@@ -28,7 +30,7 @@ ${p.settings.userIntent?.trim() ? `\n## 用户原始处境（成稿必须体现�
 ${p.context ? `\n## 账号背景与可用资源\n${p.context}\n账号长期规划只用于辅助本条执行，不能替代当前目的、议题与人群。` : ''}
 ## 先确定适合本条的编导方法
 从原始用户要求和当前选中主线确定核心问题、受众为什么关心、需要什么材料来回答它。明确的目的、结构、开头、立场和限制照用；缺失项按内容选，不从页面默认的教知识类型反推变现目的，不强行归成单一目的。写出实际采用的形式及原因。
-采访、街访、真实记录用真实问题和材料递进；观点讨论用论点和依据；演示教学用步骤与可观察结果；故事只用已提供的真实经历。36计、四大脚本及知识库案例是可选方法，只用能帮助完成这个目的的部分。
+采访、街访、真实记录用真实问题和材料递进；观点讨论用论点和依据；演示教学用步骤与可观察结果；故事只用已提供的真实经历。${p.treeBlock ? '' : '36计、四大脚本及知识库案例是可选方法，只用能帮助完成这个目的的部分。'}
 ${p.structureGuide || ''}
 ${p.hookGuide || ''}
 ${p.tacticGuide || ''}
