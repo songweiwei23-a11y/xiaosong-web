@@ -6,10 +6,13 @@
 // 环境变量：AB=1、AB_A、AB_B（两个目录）、AB_NODE（节点名，如 09-选题）、AB_PROFILES（可选，逗号分隔；默认 A 里有提示词的全部）、
 //          AB_CONCURRENCY（默认 4）、AB_B_APP=test（B 版发到 Dify 测试应用：改的是工作流、系统提示词、知识库检索时用，
 //          两边提示词一样，A 走线上应用、B 走改过的测试应用）
+//          AB_POLISH=1（B 版出稿后走脚本打磨 lib/script-polish，和线上 app/api/dify/stream 同一个函数；
+//          初稿存 .raw.md，体检和每一轮的记录存 .polish.json）
 // 用法：npx vitest run --config vitest.eval.config.ts evals/ab-replay.eval.ts
 import fs from 'node:fs';
 import { it } from 'vitest';
 import { askDify } from '@/lib/dify-task';
+import { polishScript } from '@/lib/script-polish';
 
 const ROOT = 'E:/小宋/腾讯云生产版同步_20260918';
 for (const line of fs.readFileSync(`${ROOT}/.env.local`, 'utf8').split(/\r?\n/)) {
@@ -34,6 +37,23 @@ it('新旧对照重发', { timeout: 14_400_000 }, async () => {
 
   const runOne = async ({ dir, code }: { dir: string; code: string }) => {
     const out = `${dir}/${code}/${node}.out.md`;
+    // AB_REPOLISH=1：B 版已经有初稿（.raw.md）的，不重新生成，只在初稿上重跑打磨（改了打磨逻辑之后用）
+    const raw = `${dir}/${code}/${node}.raw.md`;
+    if (process.env.AB_REPOLISH && dir === B && fs.existsSync(raw)) {
+      if (halted) return;
+      const key = keyOf(dir);
+      const prompt = fs.readFileSync(`${dir}/${code}/${node}.prompt.txt`, 'utf8');
+      const t0 = Date.now();
+      const polish = await polishScript({
+        draft: fs.readFileSync(raw, 'utf8'), query: prompt, known: prompt, retryDelayMs: 8000,
+        // 3 分钟超时（和线上一样）：没有超时的话一次请求挂住，整批就卡在这里
+        ask: async (q) => { process.env.DIFY_API_KEY = key; const r = await askDify(q, `ab-${code}-polish`, '', { signal: AbortSignal.timeout(180_000) }).catch(() => null); return r?.ok ? r.text : null; },
+      });
+      fs.writeFileSync(`${dir}/${code}/${node}.polish.json`, JSON.stringify({ calls: polish.calls, changed: polish.changed, reviewFailed: polish.reviewFailed, rounds: polish.rounds, firstIssues: polish.firstIssues }, null, 2), 'utf8');
+      fs.writeFileSync(out, polish.text, 'utf8');
+      console.log(`${dir.split('/').pop()} ${code} ${node} 重新打磨 ${Math.round((Date.now() - t0) / 1000)}s 调用 ${polish.calls} 次 ${polish.changed ? '有改动' : '没改'}`);
+      return;
+    }
     if (fs.existsSync(out) || halted) return;
     const prompt = fs.readFileSync(`${dir}/${code}/${node}.prompt.txt`, 'utf8');
     const search = fs.readFileSync(`${dir}/${code}/${node}.search.txt`, 'utf8');
@@ -44,8 +64,19 @@ it('新旧对照重发', { timeout: 14_400_000 }, async () => {
       const res = await askDify(prompt, `ab-${code}`, search);
       if (res.ok) {
         failures = 0;
-        fs.writeFileSync(out, res.text, 'utf8');
-        console.log(`${dir.split('/').pop()} ${code} ${node} ok ${Math.round((Date.now() - t0) / 1000)}s ${res.text.length}字`);
+        let text = res.text;
+        if (process.env.AB_POLISH && dir === B) {
+          fs.writeFileSync(`${dir}/${code}/${node}.raw.md`, text, 'utf8');
+          const key = keyOf(dir);
+          const polish = await polishScript({
+            draft: text, query: prompt, known: prompt, retryDelayMs: 8000,
+            ask: async (q) => { process.env.DIFY_API_KEY = key; const r = await askDify(q, `ab-${code}-polish`, '', { signal: AbortSignal.timeout(180_000) }).catch(() => null); return r?.ok ? r.text : null; },
+          });
+          fs.writeFileSync(`${dir}/${code}/${node}.polish.json`, JSON.stringify({ calls: polish.calls, changed: polish.changed, reviewFailed: polish.reviewFailed, rounds: polish.rounds, firstIssues: polish.firstIssues }, null, 2), 'utf8');
+          text = polish.text;
+        }
+        fs.writeFileSync(out, text, 'utf8');
+        console.log(`${dir.split('/').pop()} ${code} ${node} ok ${Math.round((Date.now() - t0) / 1000)}s ${text.length}字`);
         return;
       }
       console.log(`${dir.split('/').pop()} ${code} 第 ${attempt} 次失败：${res.message}`);

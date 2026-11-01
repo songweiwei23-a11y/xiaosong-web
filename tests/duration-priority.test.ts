@@ -33,18 +33,18 @@ describe('时长规则', () => {
   });
 });
 
-describe('脚本生成的时长：AI 推荐默认 1 分 30 秒～1 分 40 秒，设了就按设定写', () => {
-  it('AI 推荐（或没选）：默认 90～100 秒、口播约 450～500 字，内容优先', () => {
+// 2026-11-01 产品方：质量比时长重要，AI 推荐按内容讲完为止，不凑也不砍（原来 10-17 默认 1 分 30 秒～1 分 40 秒）
+describe('脚本生成的时长：AI 推荐按内容讲完为止，设了就按设定写', () => {
+  it('AI 推荐（或没选）：讲完为止，不给秒数和字数区间', () => {
     for (const d of [undefined, '', 'AI推荐', 'AI自行推断的最佳时长']) {
       const rule = scriptLengthRule(d);
       expect(rule).toBe(AI_SCRIPT_LENGTH_RULE);
-      expect(rule).toContain('默认写到1分30秒～1分40秒');
-      expect(rule).toContain('约 90～100 秒');
-      expect(rule).toContain('450～500 字');
-      expect(rule).toContain('内容精彩优先');
+      expect(rule).toContain('按内容讲完为止');
+      expect(rule).toContain('不凑也不砍');
+      expect(rule).not.toMatch(/\d+\s*[～~-]\s*\d+\s*(?:秒|字)/);
       expect(rule).not.toContain('严格按');
     }
-    expect(AI_SCRIPT_TARGET_TEXT).toBe('1分30秒～1分40秒');
+    expect(AI_SCRIPT_TARGET_TEXT).toBe('按内容讲完为止');
   });
 
   it('编导设了时长：严格按设定，口播在设定的 90%～100% 之间（30 秒 → 135～150 字）', () => {
@@ -61,11 +61,11 @@ describe('脚本生成的时长：AI 推荐默认 1 分 30 秒～1 分 40 秒，
     expect(rule).not.toContain(AI_SCRIPT_TARGET_TEXT);
   });
 
-  it('脚本提示词：AI 推荐写出默认区间；设了 60 秒就写 60 秒，不写默认区间', () => {
+  it('脚本提示词：AI 推荐写「讲完为止」；设了 60 秒就写 60 秒，不写讲完为止', () => {
     const base = { topic: '一元火锅怎么点', platform: '抖音', context: '', source: '', requirements: '', settings: {} };
     const ai = buildAdaptiveScriptPrompt({ ...base, duration: 'AI推荐' });
-    expect(ai).toContain(`AI 推荐，默认${AI_SCRIPT_TARGET_TEXT}`);
-    expect(ai).toContain('约 90～100 秒');
+    expect(ai).toContain(`AI 推荐，${AI_SCRIPT_LENGTH_RULE}`);
+    expect(ai).not.toContain('约 90～100 秒');
     const fixed = buildAdaptiveScriptPrompt({ ...base, duration: '60秒' });
     expect(fixed).toContain('严格按 60秒 写');
     expect(fixed).not.toContain(AI_SCRIPT_TARGET_TEXT);
@@ -86,9 +86,9 @@ describe('脚本提示词：时长口径跟着设置走', () => {
     expect(prompt).toContain('不写刷评论、小号预埋评论、买赞买粉');
   });
 
-  it('AI 推荐：内容优先，且效果最佳的要求写在前面的内容质量里', () => {
+  it('AI 推荐：按内容讲完为止，且效果最佳的要求写在前面的内容质量里', () => {
     const prompt = buildAdaptiveScriptPrompt({ ...base, duration: 'AI推荐' });
-    expect(prompt).toContain('内容精彩优先');
+    expect(prompt).toContain('按内容讲完为止');
     expect(prompt).toContain('效果最佳优先');
     expect(prompt).not.toContain('严格按');
   });

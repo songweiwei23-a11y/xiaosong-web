@@ -35,9 +35,9 @@ describe('各板块页面', () => {
     expect(page).toMatch(/useState<"preset" \| "custom" \| "ai">\("ai"\)/);
     expect(page).toMatch(/if \(!s\.duration\) setDurationMode\('ai'\)/);
     expect(page).not.toMatch(/setDurationMode\("preset"\); setDuration\("60秒"\)/);
-    // AI 推荐时：默认写到 1 分 30 秒～1 分 40 秒；不压缩；不拿 60 秒范例
+    // AI 推荐时：按内容讲完为止（2026-11-01）；不压缩；不拿 60 秒范例
     expect(page).toMatch(/时长：AI 推荐，\$\{AI_SCRIPT_LENGTH_RULE\}/);
-    expect(AI_SCRIPT_LENGTH_RULE).toMatch(/1分30秒～1分40秒/);
+    expect(AI_SCRIPT_LENGTH_RULE).toMatch(/按内容讲完为止/);
     expect(page).toMatch(/const durationForCalc = isAiDuration \? "" : finalDuration/);
   });
 

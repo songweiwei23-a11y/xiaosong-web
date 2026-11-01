@@ -155,6 +155,8 @@ export default function ScriptPage() {
   const [priceInfo, setPriceInfo] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false);
+  // 初稿写完后服务端还在打磨（体检、第几轮打磨，lib/script-polish）：按钮上显示这一句
+  const [polishStatus, setPolishStatus] = useState("");
 
   const [result, setResult] = useState("");
 
@@ -568,6 +570,7 @@ export default function ScriptPage() {
       // 且没有行缓冲，被截断的半行 JSON 会被整行丢弃，表现为内容偶发缺失。
       const accumulated = await readDifyStream(response, {
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
+        onStatus: (message) => { if (isCurrent()) setPolishStatus(message); },
       });
       fullResult += accumulated;
 
@@ -580,7 +583,8 @@ export default function ScriptPage() {
       notify(error.message || "生成失败");
     } finally {
       setIsGenerating(false);
-      
+      setPolishStatus("");
+
       // 保存生成历史记录
       // 只要有内容就存。原来的门槛是 50 字，模型返回得短一点
       // （比如只给了几个标题、或者一句拒答）就什么都不留——
@@ -1317,7 +1321,7 @@ export default function ScriptPage() {
               {isGenerating ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  生成中...
+                  {polishStatus ? `初稿已出，${polishStatus}…` : "生成中..."}
                 </>
               ) : (
                 <>

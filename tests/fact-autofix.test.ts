@@ -1,3 +1,5 @@
+// 这里测的是事实修正、时长压缩，打磨（lib/script-polish）关掉，模型调用次数才对得上
+vi.mock('@/lib/script-polish', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/script-polish')>()), SCRIPT_POLISH_ENABLED: false }));
 // 地基门槛（2026-10-23）有专门的测试（tests/foundation-gate*.test.ts）。这里只测本文件的功能，地基一律放行。
 vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),

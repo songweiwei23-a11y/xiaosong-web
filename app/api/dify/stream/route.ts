@@ -51,6 +51,7 @@ import { reconcileTitleCounts, hasObviousCutoff } from '@/lib/result-reconciliat
 import { unsupportedFacts } from '@/lib/quality-checks';
 import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
 import { needsSentenceRepair, repairReality, sentenceRepairLimited } from '@/lib/reality-repair';
+import { polishScript, scriptPolishLimited, SCRIPT_POLISH_ENABLED } from '@/lib/script-polish';
 import { repairYears } from '@/lib/years-repair';
 import { cleanRewriteOutput } from '@/lib/canvas';
 import { DETAIL_CHECK_TASKS, buildDetailCheckPrompt, parseDetailCheck } from '@/lib/detail-check';
@@ -606,6 +607,28 @@ export async function POST(req: NextRequest) {
           // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）
           const factIssues = (t: string) => [...unsupportedFacts(t, factKnown), ...seasonMisstatements(t, Date.now(), factKnown)]
             .filter((i) => pendingInterview(boundedIntent) || !/^采访(?:经历|结果)/.test(i));
+          /*
+           * 脚本打磨（2026-11-01 产品方，lib/script-polish）：体检（确定性 + 一次按 9 条逐条点名的审稿）→ 只改被点名的句子 → 复检，
+           * 最多两轮，只升不降。放在事实修正之前：润色要是带进了新说法，后面的事实、细节、年限、现实几道照样兜住。
+           * 检索词传空：体检和润色不查知识库（省时间，也不被知识库示例带偏）。
+           */
+          if (outcome.kind === 'done' && body.taskType === '脚本生成' && SCRIPT_POLISH_ENABLED && fullResponse.trim() && !scriptPolishLimited(userId)) {
+            const polish = await polishScript({
+              draft: fullResponse,
+              query,
+              known: factKnown,
+              ask: async (prompt) => {
+                const r = await traced('script_polish', () => askDify(prompt, userId, '', { signal: AbortSignal.timeout(180_000) })).catch(() => null);
+                if (!r || !r.ok) return null;
+                usageMetadata = combinedReviewUsage(usageMetadata, r.completion.usage ?? {}, 'script_polish_steps');
+                return r.text;
+              },
+              onStatus: (message) => send({ event: 'status', message }),
+              retryDelayMs: 8000,
+            });
+            console.log('[script-polish]', '调用', polish.calls, '次；', polish.reviewFailed ? '体检没出结果；' : `体检问题 ${polish.firstIssues.length} 条；`, polish.rounds.map((r) => `第${r.round}轮 ${r.applied}/${r.replacements} 处 ${r.scoreBefore}→${r.scoreAfter ?? '-'} ${r.accepted ? '采用' : '未采用'}（${r.reason}）`).join('；'));
+            if (polish.changed) fullResponse = tidy(polish.text);
+          }
           if (outcome.kind === 'done' && FACT_AUTO_FIX_TASKS.has(body.taskType) && fullResponse.trim()) {
             const found = factIssues(fullResponse);
             // 限额只计一次：长文分段修正（lib/fact-fix-chunks），短稿整篇修正（原来的做法）

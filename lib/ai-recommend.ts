@@ -28,15 +28,16 @@ export function durationCeilingSeconds(duration: string): number | null {
  * - 没设（空、「AI推荐」「AI自行推断」）：内容精彩优先，时长只是次要参考。
  */
 /**
- * 脚本生成的默认时长（2026-10-17 产品方）：选「AI 推荐」或没选，默认写到 1分30秒～1分40秒。
+ * 脚本生成选「AI 推荐」或没选时的时长（2026-11-01 产品方：质量比时长重要，按内容讲完为止，不凑也不砍；
+ * 1 分钟、3 分钟、6 分钟都可以）。原来（10-17）默认写到 1分30秒～1分40秒、口播约 450～500 字。
  * 只给脚本生成用；审稿、二创还是 AI_LENGTH_RULE 的口径。
  */
-export const AI_SCRIPT_TARGET_TEXT = '1分30秒～1分40秒';
-export const AI_SCRIPT_LENGTH_RULE = `默认写到${AI_SCRIPT_TARGET_TEXT}（约 90～100 秒），口播约 450～500 字。内容精彩优先：该有的情节、细节、对话、情绪转折写足，内容讲到这个长度；不为了凑时长注水，也不在结尾硬加废话`;
+export const AI_SCRIPT_TARGET_TEXT = '按内容讲完为止';
+export const AI_SCRIPT_LENGTH_RULE = '按内容讲完为止，不凑也不砍：选题设计的每个节点、关键画面都讲到、拍到，该有的情节、细节、对话、情绪转折写足；讲完就收，不为凑时长注水，也不为了短删掉该有的内容';
 
 /**
  * 脚本生成的时长规则：
- * - 选「AI 推荐」或没选：按 AI_SCRIPT_LENGTH_RULE，默认 1分30秒～1分40秒；
+ * - 选「AI 推荐」或没选：按 AI_SCRIPT_LENGTH_RULE，按内容讲完为止；
  * - 编导设了时长：严格按设定写（durationRule 的口径），口播字数在设定时长的 90%～100% 之间，
  *   不明显短于设定，也不超出。
  */

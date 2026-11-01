@@ -93,7 +93,7 @@ ${hookDetail.requirements.map((r: string) => `- ${r}`).join('\n')}
 - 开场（0-X秒）：清楚而有吸引力的切口；钩子与情绪提示按内容需要标注
 - 中段展开：按${structureDetail.name}公式展开
 - 信息递进：按材料和内容形式推进，不预设情绪高潮
-- 结尾收口（X-${duration}）：兑现当前问题；有适合的金句才用，行动指令按用户目的决定
+- 结尾收口${/\d/.test(duration) ? `（X-${duration}）` : ''}：兑现当前问题；有适合的金句才用，行动指令按用户目的决定
 
 **每个镜头必须包含**：
 - **镜头X**（X-X秒）
@@ -108,7 +108,7 @@ ${hookDetail.requirements.map((r: string) => `- ${r}`).join('\n')}
 - [ ] 每句台词都是大白话吗？
 - [ ] ${elementsWithNames}这些爆款元素都用上了吗？
 - [ ] 结尾是否符合原意，没有多余金句或营销动作？
-- [ ] 总时长控制在${duration}吗？
+- [ ] ${/\d/.test(duration) ? `总时长控制在${duration}吗？` : '内容讲完了吗？没有为凑时长注水、也没有为了短删掉该有的内容吗？'}
 
 **${role}检查重点**：
 ${craft.checks.map((c) => `✓ ${c}`).join('\n')}

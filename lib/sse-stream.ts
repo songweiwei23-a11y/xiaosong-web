@@ -22,6 +22,8 @@ export interface ReadDifyStreamOptions {
   onConversationId?: (id: string) => void;
   /** 断线后开始取回全文时调用，页面可以据此提示一句 */
   onRecovering?: () => void;
+  /** 生成完以后服务端还在处理（比如脚本打磨：体检、第几轮打磨）时调用，message 是给用户看的一句话 */
+  onStatus?: (message: string) => void;
 }
 
 /**
@@ -124,6 +126,10 @@ export async function readDifyStream(
         }
         if (data.event === 'message_end') {
           ended = true;
+          continue;
+        }
+        if (data.event === 'status') {
+          if (typeof data.message === 'string') options.onStatus?.(data.message);
           continue;
         }
         if (data.event === 'message_replace' && typeof data.answer === 'string') {
