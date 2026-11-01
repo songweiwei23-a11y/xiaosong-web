@@ -165,10 +165,11 @@ describe('选题和脚本真的用上了打法', () => {
     expect(inputDataBlock).toContain('tactic');
   });
 
-  it('两个分支（广告/内容）都注入了拍法，不是只改了一个', () => {
+  // 2026-11-01 删掉走不到的「内容创作」模板后：广告模板在文本里注入，自适应模板经 tacticGuide 参数注入
+  it('两个分支（广告/自适应）都注入了拍法，不是只改了一个', () => {
     const src = readScriptBoardRaw();
-    const hits = src.match(/\$\{tacticSection\}/g) ?? [];
-    expect(hits.length, '广告脚本和内容脚本是两套提示词，都要注入').toBe(2);
+    expect((src.match(/\$\{tacticSection\}/g) ?? []).length, '广告模板').toBe(1);
+    expect(src, '自适应模板').toMatch(/tacticGuide:\s*tacticSection/);
   });
 });
 
@@ -385,8 +386,9 @@ describe('选定的开头会锁死脚本第一句', () => {
   it('锁死时不再发"开场钩子要求"，避免两条指令打架', () => {
     expect(src).toContain('effectiveHookGuide');
     expect(src).toMatch(/openingLine\.trim\(\)\s*\?\s*''\s*:\s*hookGuide/);
-    // 两个分支都要换成 effectiveHookGuide，不能只改一个
-    expect((src.match(/\$\{effectiveHookGuide\}/g) ?? []).length).toBe(2);
+    // 广告模板用 effectiveHookGuide；自适应模板在开头锁死时不传 hookGuide（2026-11-01 删掉了走不到的内容创作模板）
+    expect((src.match(/\$\{effectiveHookGuide\}/g) ?? []).length).toBe(1);
+    expect(src).toMatch(/hookGuide:\s*openingLine\.trim\(\)\s*\?\s*undefined/);
     expect(src).not.toMatch(/\$\{hookGuide\}/);
   });
 });

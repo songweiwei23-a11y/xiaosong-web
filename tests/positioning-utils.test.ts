@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractStrategySummary, extractScriptContext } from '@/lib/positioning-utils';
+import { extractStrategySummary } from '@/lib/positioning-utils';
 
 describe('extractStrategySummary', () => {
   it('returns empty string for empty input', () => {
@@ -31,32 +31,5 @@ describe('extractStrategySummary', () => {
     const out = extractStrategySummary(input);
     expect(out.endsWith('...')).toBe(true);
     expect(out.length).toBeLessThanOrEqual(803);
-  });
-});
-
-describe('extractScriptContext', () => {
-  it('returns empty string for empty input', () => {
-    expect(extractScriptContext('')).toBe('');
-  });
-
-  it('keeps whitelisted persona/visual sections and drops ops sections', () => {
-    const input = [
-      '核心人设标签：真实、专业',
-      '话术风格：口语化',
-      '口头禅：记得点赞',
-      '内容配比：流量型 40%',
-      '发布节奏：每周三更',
-    ].join('\n');
-    const out = extractScriptContext(input);
-    expect(out).toContain('核心人设标签');
-    expect(out).toContain('话术风格');
-    expect(out).toContain('口头禅');
-    expect(out).not.toContain('内容配比');
-    expect(out).not.toContain('发布节奏');
-  });
-
-  it('returns empty string when nothing relevant is found', () => {
-    const input = ['内容配比：流量型 40%', '发布节奏：每周三更'].join('\n');
-    expect(extractScriptContext(input)).toBe('');
   });
 });

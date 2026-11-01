@@ -74,7 +74,7 @@ describe('脚本以选题写的结构为准', () => {
   const base = {
     topic: '川菜最不能省的是炒前准备', platform: '抖音', scriptType: 'teach', autoScriptType: false,
     effectiveRole: '变现型', isAd: false, industry: '川味餐饮', customIndustry: '', targetGroup: '', customTargetGroup: '',
-    style: '专业', customStyle: '', durationMode: 'preset', duration: '60秒', customDuration: '', profile: null, positioningContent: null,
+    style: '专业', customStyle: '', durationMode: 'preset', duration: '60秒', customDuration: '', profile: null,
     scriptStructure: 'problem', hookType: 'auto', boomElements: [], directorThoughts: [], tactic: '', openingLine: '', openingCard: '',
     productInfo: '', priceInfo: '', scene: '室内', device: '手机', budget: '低成本(0-500)', personnel: '一人',
     accountPositioning: '', additionalInfo: '', dealReasons: [], focusContent: '', currentSettings: {},

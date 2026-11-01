@@ -85,7 +85,7 @@ describe('脚本提示词：36 计和四大脚本不叠加', () => {
   const input = {
     topic: '装修里最贵的错误', platform: '抖音', scriptType: 'discuss', autoScriptType: false, effectiveRole: '人设型' as const, isAd: false,
     industry: '装修', customIndustry: '', targetGroup: '', customTargetGroup: '', style: '专业', customStyle: '', durationMode: 'preset' as const,
-    duration: '60秒', customDuration: '', profile: null, positioningContent: null, scriptStructure: 'argue', hookType: 'auto', boomElements: [],
+    duration: '60秒', customDuration: '', profile: null, scriptStructure: 'argue', hookType: 'auto', boomElements: [],
     directorThoughts: [], tactic: '反向操作', openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: '室内', device: '手机',
     budget: '低成本(0-500)', personnel: '一人', accountPositioning: '', additionalInfo: '', dealReasons: [], originContent: '', focusContent: '',
     currentSettings: {},

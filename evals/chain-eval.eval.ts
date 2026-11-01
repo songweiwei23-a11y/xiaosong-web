@@ -217,7 +217,7 @@ async function chain(ind: EvalIndustry) {
   // 脚本页的默认值：表达重点默认勾着「emotion」「picture」（app/dashboard/script/page.tsx）；2026-11-01 之前评测传的是空
   const scriptBase = {
     topic: topicLine, platform: '抖音', isAd: false, industry: ind.name, customIndustry: '', targetGroup: '', customTargetGroup: '',
-    style: '', customStyle: '', durationMode: 'ai', duration: '60秒', customDuration: '', profile, positioningContent: C ?? P ?? null, scriptStructure: 'auto', hookType: 'auto',
+    style: '', customStyle: '', durationMode: 'ai', duration: '60秒', customDuration: '', profile, scriptStructure: 'auto', hookType: 'auto',
     boomElements: [], directorThoughts: ['emotion', 'picture'], openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: '', device: '',
     budget: '', personnel: '', accountPositioning: P ?? '', dealReasons: [], focusContent: '', currentSettings: {},
   };

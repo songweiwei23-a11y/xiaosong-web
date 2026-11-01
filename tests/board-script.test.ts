@@ -30,7 +30,6 @@ function baseInput(over: Partial<ScriptBoardInput> = {}): ScriptBoardInput {
     duration: '60秒',
     customDuration: '',
     profile: null,
-    positioningContent: null,
     scriptStructure: 'auto',
     hookType: 'auto',
     boomElements: [],
@@ -80,9 +79,13 @@ describe('脚本提示词的共用拼装', () => {
     expect(q).not.toContain('【账号定位-脚本创作参考】');
   });
 
-  it('选了定位：定位的脚本参考进入提示词', () => {
-    const q = buildScriptBoardQuery(baseInput({ positioningContent: '## 目标人群\n本地实体店老板，想知道节假日生意变化。' }));
-    expect(q).toContain('【账号定位-脚本创作参考】');
+  // 2026-11-01：脚本不带定位（10-19 方案 D）。原来的截取按「道具」「拍摄场景」这类词收段，会把整段无关分析带进来
+  it('脚本不带定位：没有定位参考段，也没有拍摄场景、道具这类截段', () => {
+    const q = buildScriptBoardQuery(baseInput({ isAd: true, scriptType: 'ad_lead', effectiveRole: '变现型' }));
+    for (const p of [buildScriptBoardQuery(baseInput()), q]) {
+      expect(p).not.toContain('【账号定位-脚本创作参考】');
+      expect(p).not.toMatch(/拍摄场景[：:]|穿搭设计|妆容设计/);
+    }
   });
 
   it('补充要求和原文都进入提示词，焦点内容作为源材料', () => {

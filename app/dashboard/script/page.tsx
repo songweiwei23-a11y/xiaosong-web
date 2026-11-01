@@ -328,20 +328,17 @@ export default function ScriptPage() {
     autoSettings: autoSetup.settings, fromHandoff: incomingSetup !== null, creatorContext,
   });
 
-  // 档案和定位关联
+  // 档案关联（脚本不带定位：lib/boards/script-query 里 10-19 方案 D）
   const [profiles, setProfiles] = useState<any[]>([]);
-  const [positionings, setPositionings] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState("");
-  const [selectedPositioningId] = useState("");
 
   // 额度快用完 / 用完的提醒改由全站统一的付费引导负责（lib/upgrade + 工作台框架里的 UpgradePrompt）。
   // 这一页原来单独有一套：进页面就查、"任何一个功能用完"都说成"脚本额度用完了"。
 
 
-  // 加载档案和定位
+  // 加载档案
   useEffect(() => {
     loadProfiles();
-    loadPositionings();
     // 侧边栏切档案时跟着换，不用刷新页面
     return onActiveProfileChange(() => {
       const id = getActiveProfileId();
@@ -407,19 +404,6 @@ export default function ScriptPage() {
       }
     } catch (error) {
       console.error("加载档案失败:", error);
-    }
-  };
-
-  const loadPositionings = async () => {
-    console.log("🔍 开始加载定位...");
-    try {
-      const res = await fetch("/api/positioning");
-      if (res.ok) {
-        const data = await res.json();
-        console.log("✅ 定位加载成功:", data.length, "条"); setPositionings(data);
-      }
-    } catch (error) {
-      console.error("加载定位失败:", error);
     }
   };
 
@@ -522,7 +506,6 @@ export default function ScriptPage() {
     try {
       // 脚本的提示词拼装在 lib/boards/script-query.ts（开物助理也用它），这里只收集页面状态
       const selectedProfile = selectedProfileId ? profiles.find((p) => p.id === selectedProfileId) ?? null : null;
-      const selectedPositioning = selectedPositioningId ? positionings.find((p) => p.id === selectedPositioningId) : undefined;
       const query = buildScriptBoardQuery({
         topic,
         platform,
@@ -540,7 +523,6 @@ export default function ScriptPage() {
         duration,
         customDuration,
         profile: selectedProfile,
-        positioningContent: selectedPositioning ? selectedPositioning.full_content || "" : null,
         scriptStructure,
         hookType,
         boomElements,
@@ -652,7 +634,7 @@ export default function ScriptPage() {
             try {
               const scriptData = {
                 profile_id: selectedProfileId || null,
-                positioning_id: selectedPositioningId || null,
+                positioning_id: null,
                 script_type: scriptType,
                 duration: durationMode === "custom" && customDuration
                   ? parseInt(customDuration) || 60

@@ -339,7 +339,6 @@ export async function runScriptBoard(ctx: BoardContext, input: ScriptInput): Pro
     industry: '', customIndustry: '', targetGroup: d.targetGroup, customTargetGroup: '', style: input.style || d.style, customStyle: '',
     durationMode: state.durationMode, duration: state.duration, customDuration: state.customDuration,
     profile: creatorContext.profile ?? null,
-    positioningContent: null,
     scriptStructure: state.scriptStructure, hookType: d.hookType, boomElements: [], directorThoughts: d.directorThoughts,
     tactic: carriedTactic, openingLine: carriedOpening, openingCard: carriedCard, productInfo: '', priceInfo: '', scene: input.scene || d.scene, device: d.device,
     budget: d.budget, personnel: d.personnel, accountPositioning: '', additionalInfo: carriedNote, dealReasons: [],

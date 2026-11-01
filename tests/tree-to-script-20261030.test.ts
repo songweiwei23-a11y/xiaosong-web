@@ -11,7 +11,7 @@ import { treeNodeOfScriptInputs } from '@/lib/creation-tree';
 const base = {
   topic: '川菜最不能省的是炒前准备', platform: '抖音', scriptType: 'discuss', autoScriptType: false,
   effectiveRole: '人设型', isAd: false, industry: '川味餐饮', customIndustry: '', targetGroup: '', customTargetGroup: '',
-  style: '专业', customStyle: '', durationMode: 'preset', duration: '60秒', customDuration: '', profile: null, positioningContent: null,
+  style: '专业', customStyle: '', durationMode: 'preset', duration: '60秒', customDuration: '', profile: null,
   scriptStructure: 'argue', hookType: 'auto', boomElements: [], directorThoughts: [], tactic: '', openingLine: '', openingCard: '',
   productInfo: '', priceInfo: '', scene: '室内', device: '手机', budget: '低成本(0-500)', personnel: '一人',
   accountPositioning: '', additionalInfo: '', dealReasons: [], originContent: '', focusContent: '', currentSettings: {},

@@ -21,7 +21,7 @@ export function actualAutomaticScriptQuery(requirements = goal) {
     topic: '门店节前节后对比', platform: '抖音', scriptType: 'teach', autoScriptType: true,
     effectiveRole: '流量型', isAd: false,
     industry: '', customIndustry: '', targetGroup: '', customTargetGroup: '', style: '', customStyle: '',
-    durationMode: 'ai', duration: '', customDuration: '', profile: null, positioningContent: null,
+    durationMode: 'ai', duration: '', customDuration: '', profile: null,
     scriptStructure: 'auto', hookType: 'auto', boomElements: [], directorThoughts: [], tactic: 'AI推荐',
     openingLine: settings.openingLine, openingCard: '', productInfo: '', priceInfo: '', scene: '', device: '',
     budget: '', personnel: '', accountPositioning: '', additionalInfo: requirements, dealReasons: [],

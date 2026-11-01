@@ -1,7 +1,6 @@
 import { buildContextBlock, type CreatorContext, type CreatorProfile } from '@/lib/creator-context';
 import type { MemoryDefaults, MemoryField } from '@/lib/settings-memory';
 import { evaluateScriptQualityStrict, formatQualityReport } from '@/lib/quality-checker';
-import { extractScriptContext } from '@/lib/positioning-utils';
 import { getScriptDetails, getHookDetails } from '@/lib/script-details';
 import { buildAdaptiveScriptPrompt } from '@/lib/script-design';
 import { enhancePromptWithMCNStandards } from '@/lib/enhance-prompt';
@@ -75,8 +74,6 @@ export interface ScriptBoardInput {
   customDuration: string;
   /** 选中的账号档案（没选时为 null） */
   profile: CreatorProfile | null;
-  /** 选中的账号定位全文（没选时为 null） */
-  positioningContent: string | null;
   scriptStructure: string;
   hookType: string;
   boomElements: string[];
@@ -260,7 +257,7 @@ export function buildScriptBoardQuery(input: ScriptBoardInput): string {
   const {
     topic, platform, scriptType, autoScriptType, effectiveRole, isAd,
     industry, customIndustry, targetGroup, customTargetGroup, style, customStyle,
-    durationMode, duration, customDuration, profile, positioningContent,
+    durationMode, duration, customDuration, profile,
     scriptStructure: rawScriptStructure, hookType, boomElements, directorThoughts, tactic: tacticIn,
     openingLine, openingCard, productInfo, priceInfo, scene, device, budget,
     personnel, accountPositioning, additionalInfo, originContent,
@@ -299,9 +296,9 @@ export function buildScriptBoardQuery(input: ScriptBoardInput): string {
             ? `${customDuration}秒`
             : duration;
         
-      // 提取档案和定位信息
+      // 提取档案信息（定位不带：见下面 10-19 方案 D；2026-11-01 把一直传 null 的定位参数和 extractScriptContext 一起删了——
+      // 那个白名单按「道具」「拍摄场景」这类词截段，撞上「流量道具」就把七八千字同行分析整段带进来）
       let profileInfo = "";
-      let positioningInfo = "";
 
       // 这里原本只传 6 个字段：名称、平台、赛道、阶段、粉丝量级、风格。
       // 写脚本真正要的东西一个都没在里面——说话语气、核心卖点、用户痛点、
@@ -319,14 +316,6 @@ export function buildScriptBoardQuery(input: ScriptBoardInput): string {
         );
       }
 
-      if (positioningContent !== null) {
-        const scriptContext = extractScriptContext(positioningContent);
-        positioningInfo = `
-
-【账号定位-脚本创作参考】
-${scriptContext}
-`;
-      }
 
 
       // ========== MCN级提示词增强 ==========
@@ -568,9 +557,10 @@ ${isDetailedRequirement
 2. **其次**：补充要求没说到的部分，按MCN标准的脚本结构、钩子要求、爆款元素补全`}
 `;
       // ========== 智能判断结束 ==========
+      // 选了类型的广告引流走广告模板，其余走自适应模板（2026-11-01 删掉走不到的「内容创作」模板：原来的第三支要同时 isAd 和 !isAd）
       const query = (autoScriptType || !isAd) ? buildAdaptiveScriptPrompt({
         topic, platform, duration: isAiDuration ? 'AI推荐' : finalDuration,
-        context: profileInfo + positioningInfo,
+        context: profileInfo,
         source: [originContent, focusContent].filter(Boolean).join('\n\n'),
         requirements: additionalInfo,
         settings: currentSettings,
@@ -584,7 +574,7 @@ ${isDetailedRequirement
           boomElements.length ? `用户勾选元素：${boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label ?? id).join('、')}` : '',
           directorThoughts.length ? `表达重点：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label ?? id).join('、')}` : '',
         ].filter(Boolean).join('\n'),
-      }) : isAd ? `# 广告引流短视频脚本生成
+      }) : `# 广告引流短视频脚本生成
 
 ${promptStrategy}
 
@@ -601,7 +591,7 @@ ${executionContext}
 - **时长**：${isAiDuration ? "不限，以效果最好为准" : finalDuration}
 - **主题/活动**：${topic}
 
-${profileInfo}${positioningInfo}
+${profileInfo}
 
 ${structureGuide}
 ${formulaSection}
@@ -663,83 +653,6 @@ ${additionalInfo}` : ""}
 
 ${formatRequirements}
 
-请生成完整的广告引流脚本。` : `# 内容创作短视频脚本生成
-
-${promptStrategy}
-
-${priorityNote}
-${fourStepWorkflow}
-${executionContext}
-
-⚠️ **重要提示**：这是一个内容创作类脚本，请使用编导技巧和脚本公式知识库，重点突出价值输出和情感共鸣。
-
-## 基础信息
-- **内容类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
-- **行业领域**：${selectedIndustry}
-- **平台**：${platform}
-- **时长**：${isAiDuration ? "不限，以效果最好为准" : finalDuration}
-- **主题**：${topic}
-
-${profileInfo}${positioningInfo}
-
-${structureGuide}
-${formulaSection}
-${roleSection}
-${tacticSection}
-${openingSection}
-${effectiveHookGuide}
-
-## 目标定位
-- **目标受众**：${selectedTargetGroup}
-- **内容风格**：${selectedStyle}
-
-## 创意设计
-- **开场钩子**：${HOOK_TYPES.find(h => h.id === hookType)?.label || "AI推荐"}（吸引目标受众停留）
-- **脚本结构**：${SCRIPT_STRUCTURES.find(s => s.id === scriptStructure)?.label || "AI推荐"}
-${treeBlock}
-- **爆款元素**：${boomElements.length > 0 ? boomElements.map(id => BOOM_ELEMENTS.find(e => e.id === id)?.label).join("、") : "未勾选：沿用带来的选题「1️⃣ 爆款元素」；没有就从八大元素里挑一个能落到这个人货场上的（见生成要求第 8 条）"}
-
-## 价值主张
-${dealReasons.length > 0 && effectiveRole !== '变现型' ? `**这个号的卖点（背景）**：${dealReasonsText}
-
-这条是${effectiveRole}视频，卖点只作背景，**不要在片子里讲卖点、不要引导成交**——那是变现型视频的活。` : dealReasons.length > 0 ? `**核心价值点**：${dealReasonsText}
-
-⚠️ **必须严格执行**：
-1. 脚本必须围绕这些价值点设计，每个价值点至少体现1次
-2. 不能只是提及，要有具体的实用技巧或方法
-3. 在脚本最后增加【价值点应用自检】：
-   - 列出每个价值点在脚本中的具体体现
-   - 确认内容真正帮助用户解决了问题
-
-示例格式：
-【价值点应用自检】
-✅ 性价比：推荐了3款50元以内的平价好物
-✅ 节省时间：提供了5分钟快速上妆的具体步骤` : "**核心价值**：提供实用价值，建立信任关系"}
-
-## 拍摄执行
-- **场景**：${scene} | **设备**：${device} | **预算**：${budget} | **人员**：${personnel}
-- **编导思路**：${directorThoughts.map(id => DIRECTOR_THOUGHTS.find(d => d.id === id)?.label).join("、")}
-
-${accountPositioning ? `## 账号定位信息
-${accountPositioning}
-
-` : ""}${additionalInfo ? `## 补充要求
-${additionalInfo}` : ""}
-
----
-**生成要求**：
-1. 使用【编导技巧知识库】和【脚本公式知识库】
-2. 开场清楚点出当前议题或现场切口，正文能够兑现；不为制造冲突改变主题
-3. 中段沿用户目的与材料逐层展开；采访写主问、追问与证据，不编未知回答
-4. 结尾按目的给一个行动指令（流量型：关注或评论；人设型：关注或看主页；变现型：私信、到店、留资选一个）；只有用户明确说不要结尾指令时才自然收束。上面若有「商业定位（成交路径）」，变现型的结尾要对上其中一步
-5. ${PRODUCT_HERO_RULE}
-6. 全程注重情感连接，建立信任
-7. 避免硬广，自然输出价值
-8. **用爆款元素设计整个脚本结构**（2026-10-29，流量视频的核心）：先定出发点（站在哪类用户、围绕人货场其中一个、符合三有之一，带来的选题会写明），再用爆款元素设计：开场第一句用元素的句式说出看点；中段推进落在元素的具体事上（不是只在标题里提一句）；结尾的行动回到这条的目的。元素用上面勾选的；没勾选就沿用带来的选题「1️⃣ 爆款元素」，没有就从八大元素里挑一个能落到这个人货场上的，并写明它设计在哪一段
-9. 脚本结构（四大脚本、36 计）只是把这个出发点拍出来的形式，选哪种都行，但必须配上爆款元素
-
-${formatRequirements}
-
-请生成完整的内容创作脚本。`;
+请生成完整的广告引流脚本。`;
   return query + creationSettingsBlock(currentSettings);
 }

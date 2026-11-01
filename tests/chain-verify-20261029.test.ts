@@ -199,10 +199,10 @@ describe('4. 脚本、标题、分镜、审稿、二创、拆解：都带上出�
   const src = (f: string) => fs.readFileSync(f, 'utf8');
 
   it('脚本：用爆款元素设计整个结构，没勾选就沿用选题的元素或从八大里挑', () => {
-    const q = src('lib/boards/script-query.ts');
-    expect(q).toContain('8. **用爆款元素设计整个脚本结构**');
-    expect(q).toContain('沿用带来的选题「1️⃣ 爆款元素」');
-    expect(src('lib/script-design.ts')).toContain('流量脚本先定出发点再设计结构');
+    // 线上走的自适应模板（lib/script-design）；script-query 里原来写这条的「内容创作」模板走不到，2026-11-01 已删
+    const d = src('lib/script-design.ts');
+    expect(d).toContain('流量脚本先定出发点再设计结构');
+    expect(d).toContain('选题或方向里写明的那个，没有就从八大元素里挑一个');
   });
 
   it('标题：围绕同一个出发点和元素，光看标题认得出元素', () => {
