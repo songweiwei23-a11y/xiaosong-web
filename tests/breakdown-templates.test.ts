@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitBreakdownResult, parseBreakdownTemplates, renderCanonical, renderAllCanonical, directionSettings, keepStructureBlock, TEMPLATE_SPEC } from '@/lib/breakdown-templates';
+import { splitBreakdownResult, parseBreakdownTemplates, renderCanonical, renderAllCanonical, directionSettings, keepStructureBlock, TEMPLATE_SPEC, TEXT_TEMPLATE_SPEC } from '@/lib/breakdown-templates';
 import { buildTextBreakdownPrompt } from '@/lib/text-breakdown';
 
 const tpl = (n: number, goal: string, purpose: string) => ({
@@ -216,12 +216,27 @@ describe('提示词：变现方向要求 JSON，文字拆解也一样', () => {
     expect(TEMPLATE_SPEC).not.toContain('### 九');
   });
 
-  it('文字拆解：5 个变现方向，没有档案时不写第 6 点，不再给 2～3 个延伸方向', () => {
+  it('文字拆解：5 个变现方向，没有档案时提醒选档案，不再给 2～3 个延伸方向', () => {
     const p = buildTextBreakdownPrompt('今天教你挑牛肉', '', {} as any);
-    expect(p).toContain(TEMPLATE_SPEC);
+    expect(p).toContain(TEXT_TEMPLATE_SPEC);
     expect(p).toContain('八大爆款元素');
-    expect(p).toContain('没有档案就不写第 6 点');
+    expect(p).toContain('选好档案就能生成按你账号来的变现方向');
     expect(p).not.toContain('下一步可以延伸的方向');
     expect(p).not.toContain('### 九');
+  });
+
+  // 2026-11-01 整改阶段 5.1：文字拆解没有镜头，不要 shots；开篇只要钩子和兑现点；JSON 紧凑写
+  it('文字拆解的模板不要镜头和前 2 秒、前 5 秒，JSON 一个方向一行；视频拆解的模板不变', () => {
+    expect(TEXT_TEMPLATE_SPEC).not.toMatch(/"shots"|first_2s|first_5s/);
+    expect(TEXT_TEMPLATE_SPEC).toContain('一个方向占一行');
+    expect(TEMPLATE_SPEC).toMatch(/"shots"/);
+    expect(TEMPLATE_SPEC).toMatch(/first_2s/);
+  });
+
+  it('文字拆解的方向没有前 2 秒、前 5 秒时，二创结构里不写「未写」', () => {
+    const [t] = parseBreakdownTemplates('### 变现方向\n```json\n[{"no":1,"goal":"卖服务","name":"先问再剪","purpose":"变现型","direction":"d","segments":[{"time":"0–3 秒","function":"抓人","knowledge":"开篇 36 计：盲盒","do":"x","lines":"y"}],"opening":{"hook":"盲盒","payoff_at":"第 3 秒"},"emotion":{"curve":"反转型","peaks":"第 5 秒反转"},"first_line":"f","boards":["脚本"]}]\n```');
+    const text = renderCanonical(t);
+    expect(text).toContain('开篇：钩子 盲盒；兑现在 第 3 秒');
+    expect(text).not.toMatch(/前 [25] 秒 未写/);
   });
 });
