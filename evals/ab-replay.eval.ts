@@ -1,0 +1,57 @@
+// 新旧对照重发（2026-11-01，整改方案原则 1「先测后改」）：模型表现随时段变，存档的基线不能当对照组，
+// 新旧两版要在同一时段交替跑。做法：
+//   1. 旧代码下用 chain-eval 的 EVAL_DRY=1 构造提示词到目录 A，改完代码再构造到目录 B（提示词、检索词都存下来）；
+//   2. 这里把 A、B 的提示词按 A1、B1、A2、B2…交替发出去，输出写回各自目录（文件名和 chain-eval 一样，下游节点、评估器直接能用）。
+//
+// 环境变量：AB=1、AB_A、AB_B（两个目录）、AB_NODE（节点名，如 09-选题）、AB_PROFILES（可选，逗号分隔；默认 A 里有提示词的全部）、
+//          AB_CONCURRENCY（默认 4）
+// 用法：npx vitest run --config vitest.eval.config.ts evals/ab-replay.eval.ts
+import fs from 'node:fs';
+import { it } from 'vitest';
+import { askDify } from '@/lib/dify-task';
+
+const ROOT = 'E:/小宋/腾讯云生产版同步_20260918';
+for (const line of fs.readFileSync(`${ROOT}/.env.local`, 'utf8').split(/\r?\n/)) {
+  const m = line.match(/^([A-Z_]+)=(.*)$/);
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
+}
+
+it('新旧对照重发', { timeout: 14_400_000 }, async () => {
+  if (!process.env.AB) return;
+  const [A, B, node] = [process.env.AB_A!, process.env.AB_B!, process.env.AB_NODE!];
+  const codes = process.env.AB_PROFILES
+    ? process.env.AB_PROFILES.split(',').map((s) => s.trim())
+    : fs.readdirSync(A).filter((c) => fs.existsSync(`${A}/${c}/${node}.prompt.txt`));
+  const jobs = codes.flatMap((code) => [A, B].map((dir) => ({ dir, code })));
+  const concurrency = Math.max(1, Number(process.env.AB_CONCURRENCY ?? 4));
+  let failures = 0;
+  let halted = false;
+
+  const runOne = async ({ dir, code }: { dir: string; code: string }) => {
+    const out = `${dir}/${code}/${node}.out.md`;
+    if (fs.existsSync(out) || halted) return;
+    const prompt = fs.readFileSync(`${dir}/${code}/${node}.prompt.txt`, 'utf8');
+    const search = fs.readFileSync(`${dir}/${code}/${node}.search.txt`, 'utf8');
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const t0 = Date.now();
+      const res = await askDify(prompt, `ab-${code}`, search);
+      if (res.ok) {
+        failures = 0;
+        fs.writeFileSync(out, res.text, 'utf8');
+        console.log(`${dir.split('/').pop()} ${code} ${node} ok ${Math.round((Date.now() - t0) / 1000)}s ${res.text.length}字`);
+        return;
+      }
+      console.log(`${dir.split('/').pop()} ${code} 第 ${attempt} 次失败：${res.message}`);
+      await new Promise((r) => setTimeout(r, 8000 * attempt));
+    }
+    failures += 1;
+    if (failures >= 3) halted = true; // 连续失败多半是余额或服务问题，停下来看原因
+  };
+
+  const queue = [...jobs];
+  await Promise.all(Array.from({ length: concurrency }, async () => {
+    while (queue.length && !halted) await runOne(queue.shift()!);
+  }));
+  const done = jobs.filter((j) => fs.existsSync(`${j.dir}/${j.code}/${node}.out.md`)).length;
+  console.log(halted ? `连续失败，已停止（${done} / ${jobs.length}）` : `done ${done} / ${jobs.length}`);
+});

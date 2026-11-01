@@ -7,7 +7,8 @@
 //   EVAL_OUT           输出目录（必填）
 //   EVAL_PROFILES      档案编号，逗号分隔（如 A,B-s,C-a）；不设就是全部 36 个
 //   EVAL_NODES         要真跑的节点，逗号分隔；不在名单里的节点读 EVAL_UPSTREAM 里上一轮的输出，没有就跳过
-//   EVAL_UPSTREAM      上一轮输出目录（第二次采样时只重跑关键节点，上游沿用第一次）
+//   EVAL_UPSTREAM      上一轮输出目录（第二次采样时只重跑关键节点，上游沿用第一次）；可以写几个，逗号分隔，按顺序找
+//                      （新旧对照时：前面放这一版自己的上游，后面放基线）
 //   EVAL_CONCURRENCY   同时跑几条链路，默认 3
 // 用法：npx vitest run --config vitest.eval.config.ts evals/chain-eval.eval.ts
 import fs from 'node:fs';
@@ -69,7 +70,8 @@ const DRY = !!process.env.EVAL_DRY;
 const ROOT = 'E:/小宋/腾讯云生产版同步_20260918';
 const OUT = process.env.EVAL_OUT ?? '';
 const NODES = process.env.EVAL_NODES ? new Set(process.env.EVAL_NODES.split(',').map((s) => s.trim())) : null;
-const UPSTREAM = process.env.EVAL_UPSTREAM ?? '';
+const UPSTREAMS = (process.env.EVAL_UPSTREAM ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+const UPSTREAM = UPSTREAMS.join(',');
 const CONCURRENCY = Math.max(1, Number(process.env.EVAL_CONCURRENCY ?? 3));
 /** 续跑：本次输出目录里已经成功的节点直接沿用，不再调用（补跑失败的那部分用） */
 const RESUME = !!process.env.EVAL_RESUME;
@@ -115,6 +117,8 @@ async function runNode(ind: EvalIndustry, node: string, query: string, searchQue
   const started = Date.now();
   const sha = createHash('sha256').update(query).digest('hex');
   fs.writeFileSync(`${dir}/${node}.prompt.txt`, query, 'utf8');
+  // 检索词也存下来：新旧对照重发时（evals/ab-replay.eval.ts）要和线上一样的知识库召回
+  fs.writeFileSync(`${dir}/${node}.search.txt`, searchQuery, 'utf8');
   if (DRY) {
     metas.push({ industry: ind.code, shape: ind.shape, node, ok: true, promptSha256: sha, promptChars: query.length, outChars: 0, ms: 0 });
     return 'DRY';
@@ -154,8 +158,8 @@ async function runNode(ind: EvalIndustry, node: string, query: string, searchQue
 /** 不在 EVAL_NODES 里的节点：读上一轮的输出；没有就跳过（返回 null） */
 async function step(ind: EvalIndustry, node: string, query: () => string, ctx: MaterialContext): Promise<string | null> {
   if (NODES && !NODES.has(node)) {
-    const p = `${UPSTREAM}/${ind.code}/${node}.out.md`;
-    return UPSTREAM && fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+    const p = UPSTREAMS.map((d) => `${d}/${ind.code}/${node}.out.md`).find((f) => fs.existsSync(f));
+    return p ? fs.readFileSync(p, 'utf8') : null;
   }
   if (RESUME) {
     const done = `${OUT}/${ind.code}/${node}.out.md`;
@@ -186,7 +190,9 @@ async function chain(ind: EvalIndustry) {
   const CP = await step(ind, '07-内容规划', () => buildContentPlanPrompt({ lastMonth: '', recordedLastMonth: null, count: 12, focus: [], events: '', notes: '', resolved: mix, profileSummary: summary, industry: ind.name } as never), base);
   const DR = await step(ind, '08-创作方向', () => buildDirectionPrompt({ purposes: DIRECTION_INPUT.purposes, formats: DIRECTION_INPUT.formats, mixBlock: mixBlockCount, count: 6, depth: 'quick', profileSummary: summary, contextBlock: [C, CP].filter(Boolean).join('\n\n'), industry: ind.name } as never), { ...base, C, CP });
   const T = DR && await step(ind, '09-选题', () => buildTopicBoardQuery({
-    creatorContext, selectedProfile: profile, positioningForCtx: null, topicCount: 6, topicType: '流量型', topicRole: '按配比', mode: 'quick',
+    // topicType 和线上选题页一样按 topicRole 算（app/dashboard/topic/page.tsx）；2026-11-01 之前写死成「流量型」，
+    // 提示词第一行变成「生成6条流量型」，和配比、创作方向互相打架，模型偶尔直接反问不出稿
+    creatorContext, selectedProfile: profile, positioningForCtx: null, topicCount: 6, topicType: '选题（流量型、人设型、变现型按配比搭配）', topicRole: '按配比', mode: 'quick',
     sourceReference: DR.slice(0, 4000), sourceFrom: '创作方向', incomingSetup: null, keyword1: '', keyword2: '', keyword3: '', personalRequirement: '',
     currentSettings: {}, accountStage: '起号期', fansLevel: '0-1000', avgViewsInput: '', selectedPlatforms: ['抖音'], selectedTracks: [], selectedContentTypes: [],
     selectedStyles: [], positioningExtra: '', selectedElements: [], dealReasonLabels: [], benchmarkAccounts: '', viralCases: '', difficulty: '中等创意',

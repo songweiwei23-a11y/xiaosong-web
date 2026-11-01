@@ -63,12 +63,13 @@ export function topicLineOf(T: string | null | undefined, preset: string): strin
   return (T?.match(/《([^》]{4,60})》/)?.[1]) ?? preset;
 }
 
-const TOPIC_HEAD = /^#{2,3}\s*(?:✅\s*)?选题\s*[\d一二三四五六七八九十]+/;
+// 标题级别认 1–4 级，和线上切选题的 lib/topic-library 一样（模型有时写「# 选题 1：」）
+const TOPIC_HEAD = /^#{1,4}\s*(?:✅\s*)?选题\s*[\d一二三四五六七八九十]+/;
 
 /** 选题输出按「## 选题N：标题」切成一条一条（标题里的序号、「选题N：」去掉） */
 export function topicSections(T: string | null | undefined): { title: string; body: string }[] {
   if (!T) return [];
-  return T.split(/(?=^#{2,3}\s*(?:✅\s*)?选题\s*[\d一二三四五六七八九十]+)/m)
+  return T.split(/(?=^#{1,4}\s*(?:✅\s*)?选题\s*[\d一二三四五六七八九十]+)/m)
     .filter((p) => TOPIC_HEAD.test(p))
     .map((p) => {
       const body = p.trim();
