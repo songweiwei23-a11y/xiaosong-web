@@ -75,9 +75,16 @@ describe('3 年限照档案原词', () => {
 });
 
 describe('4 占位代替内容', () => {
-  it('方向提示词：不许写「已按要求提供」这类占位', () => {
+  // 2026-11-01 基线：清单原来夹在「输出格式（标题原样保留）」里，模型把整张 36 计连同「适合：理发、汽修」抄进结果，
+  // 另加的「不要复述清单」也没拦住。改成放在输出格式前面当参考，那条补丁规则随之删掉
+  it('方向提示词：36 计清单、四大脚本放在输出格式前面当参考，输出格式里没有它们', () => {
     const p = buildDirectionPrompt({ purposes: ['store'], customGoal: INTENT, formats: ['any'], count: 5, depth: 'quick' });
-    expect(p).toContain('不要写占位');
+    const format = p.indexOf('## 输出格式');
+    expect(format).toBeGreaterThan(-1);
+    expect(p.slice(0, format)).toMatch(/第1计 \*\*反向操作\*\*/);
+    expect(p.slice(0, format)).toContain('## 四大脚本（薛老师）');
+    expect(p.slice(format)).not.toMatch(/第\d+计 \*\*/);
+    expect(p.slice(format)).not.toContain('## 起号 36 计');
   });
   it('输出里有「（清单已按要求提供）」，判为内容缺失', () => {
     const r = runQualityChecks({ output: '## 起号 36 计\n*(清单已按要求提供)*', taskType: '创作方向', profile: null, source: '' });

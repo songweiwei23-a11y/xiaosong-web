@@ -36,7 +36,13 @@ import { noiseReport } from '@/lib/noise-check';
 import { buildSearchQuery } from '@/lib/search-query';
 import { timeAnchor } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
+import { buildCreationHandoff } from '@/lib/creation-flow';
+import { mergeCreationSettings, scriptFormOfTopic } from '@/lib/creation-settings';
+import { continuationRules } from '@/lib/creation-continuation';
+import { tacticOfRoute, topicRouteOf } from '@/lib/script-route';
+import { AUTO_TACTIC } from '@/lib/creative-routes';
 import { decoyHits, pickIndustries, type EvalIndustry } from './fixtures/profiles';
+import { nodeMaterials, topicSections, type MaterialContext } from './materials';
 
 /** 节点对应线上的任务类型：检索词用线上同一个函数算（lib/search-query），知识库召回才和线上一致 */
 const TASK_TYPE: Record<string, string> = {
@@ -65,6 +71,15 @@ const OUT = process.env.EVAL_OUT ?? '';
 const NODES = process.env.EVAL_NODES ? new Set(process.env.EVAL_NODES.split(',').map((s) => s.trim())) : null;
 const UPSTREAM = process.env.EVAL_UPSTREAM ?? '';
 const CONCURRENCY = Math.max(1, Number(process.env.EVAL_CONCURRENCY ?? 3));
+/** 续跑：本次输出目录里已经成功的节点直接沿用，不再调用（补跑失败的那部分用） */
+const RESUME = !!process.env.EVAL_RESUME;
+/**
+ * 熔断（2026-11-01）：连续失败这么多次就不再发新请求。
+ * 评测和线上共用同一个模型账户，余额用完时每次都会失败；不停下来只会白跑，还看不出原因。
+ */
+const HALT_AFTER = 3;
+let consecutiveFailures = 0;
+let halted = false;
 
 const env = fs.readFileSync(`${ROOT}/.env.local`, 'utf8');
 for (const line of env.split(/\r?\n/)) {
@@ -104,6 +119,7 @@ async function runNode(ind: EvalIndustry, node: string, query: string, searchQue
     metas.push({ industry: ind.code, shape: ind.shape, node, ok: true, promptSha256: sha, promptChars: query.length, outChars: 0, ms: 0 });
     return 'DRY';
   }
+  if (halted) return null;
   let text: string | null = null;
   let error = '';
   for (let attempt = 1; attempt <= 3 && text === null; attempt++) {
@@ -120,8 +136,14 @@ async function runNode(ind: EvalIndustry, node: string, query: string, searchQue
   if (text === null) {
     metas.push({ industry: ind.code, shape: ind.shape, node, ok: false, promptSha256: sha, promptChars: query.length, outChars: 0, ms, error });
     fs.appendFileSync(`${OUT}/meta.jsonl`, JSON.stringify(metas[metas.length - 1]) + '\n', 'utf8');
+    consecutiveFailures += 1;
+    if (consecutiveFailures >= HALT_AFTER && !halted) {
+      halted = true;
+      console.log(`[熔断] 连续失败 ${consecutiveFailures} 次（最近一次：${error}），不再发新请求`);
+    }
     return null;
   }
+  consecutiveFailures = 0;
   fs.writeFileSync(`${dir}/${node}.out.md`, text, 'utf8');
   metas.push({ industry: ind.code, shape: ind.shape, node, ok: true, promptSha256: sha, promptChars: query.length, outChars: text.length, ms });
   fs.appendFileSync(`${OUT}/meta.jsonl`, JSON.stringify(metas[metas.length - 1]) + '\n', 'utf8');
@@ -130,15 +152,19 @@ async function runNode(ind: EvalIndustry, node: string, query: string, searchQue
 }
 
 /** 不在 EVAL_NODES 里的节点：读上一轮的输出；没有就跳过（返回 null） */
-async function step(ind: EvalIndustry, node: string, query: () => string, _label: string, materials: string[]): Promise<string | null> {
+async function step(ind: EvalIndustry, node: string, query: () => string, ctx: MaterialContext): Promise<string | null> {
   if (NODES && !NODES.has(node)) {
     const p = `${UPSTREAM}/${ind.code}/${node}.out.md`;
     return UPSTREAM && fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
   }
+  if (RESUME) {
+    const done = `${OUT}/${ind.code}/${node}.out.md`;
+    if (fs.existsSync(done)) return fs.readFileSync(done, 'utf8');
+  }
   const taskType = TASK_TYPE[node];
   const built = query();
   const searchQuery = buildSearchQuery(taskType, { taskType }, built);
-  return runNode(ind, node, withServerTail(ind, node, built), searchQuery, materials);
+  return runNode(ind, node, withServerTail(ind, node, built), searchQuery, nodeMaterials(node, ctx));
 }
 
 async function chain(ind: EvalIndustry) {
@@ -149,38 +175,55 @@ async function chain(ind: EvalIndustry) {
   const mixBlockCount = mixPromptBlock(mix, { count: 6 });
   const creatorContext = { profile, positioning: null, dealReasons: [] } as never;
   const storeText = `${ind.store.name} ${ind.store.type} ${ind.store.features} ${ind.store.customer}`;
+  const base: MaterialContext = { summary, mixBlock, mixBlockCount, storeText, viralSample: ind.viralSample, benchmarkSample: ind.benchmarkSample, interviewNotes: ind.interviewNotes, adviceInput: '刚开始发，还没有数据 先让同城的人看到' };
 
-  const P = await step(ind, '01-账号定位', () => buildPositioningPrompt({ profileSummary: summary, platform: '抖音', mixBlock }), '账号定位', [summary]);
-  const B = P && await step(ind, '02-商业定位', () => buildPositioningPrompt({ profileSummary: summary, platform: '抖音', focus: 'business', baseline: P }), '商业定位', [summary, P]);
-  const C = P && await step(ind, '03-内容定位', () => buildPositioningPrompt({ profileSummary: summary, platform: '抖音', focus: 'content', baseline: P, mixBlock }), '内容定位', [summary, P]);
-  P && await step(ind, '04-创作简报', () => buildBriefPrompt({ positioningFull: P, profileSummary: summary, notes: '', businessPositioning: B ?? undefined, contentPositioning: C ?? undefined, mixBlock } as never), '创作简报', [summary, P, B ?? '', C ?? '']);
-  await step(ind, '05-行业建议', () => buildIndustryAdvicePrompt({ profileSummary: summary, baseline: P ?? undefined, businessBaseline: B ?? undefined, contentBaseline: C ?? undefined, input: { purpose: 'traffic', stage: 'start', situation: '刚开始发，还没有数据', goal: '先让同城的人看到' } as never }), '行业建议', [summary, P ?? '', B ?? '', C ?? '', '刚开始发，还没有数据 先让同城的人看到']);
-  await step(ind, '06-起号方案', () => buildGrowthPlanPrompt({ contextBlock: summary, contentPlan: C ?? undefined, notes: '', mixBlock } as never), '起号方案', [summary, C ?? '']);
-  const CP = await step(ind, '07-内容规划', () => buildContentPlanPrompt({ lastMonth: '', recordedLastMonth: null, count: 12, focus: [], events: '', notes: '', resolved: mix, profileSummary: summary, industry: ind.name } as never), '内容规划', [summary]);
-  const DR = await step(ind, '08-创作方向', () => buildDirectionPrompt({ purposes: DIRECTION_INPUT.purposes, formats: DIRECTION_INPUT.formats, mixBlock: mixBlockCount, count: 6, depth: 'quick', profileSummary: summary, contextBlock: [C, CP].filter(Boolean).join('\n\n'), industry: ind.name } as never), '创作方向', [summary, C ?? '', CP ?? '']);
+  const P = await step(ind, '01-账号定位', () => buildPositioningPrompt({ profileSummary: summary, platform: '抖音', mixBlock }), base);
+  const B = P && await step(ind, '02-商业定位', () => buildPositioningPrompt({ profileSummary: summary, platform: '抖音', focus: 'business', baseline: P }), { ...base, P });
+  const C = P && await step(ind, '03-内容定位', () => buildPositioningPrompt({ profileSummary: summary, platform: '抖音', focus: 'content', baseline: P, mixBlock }), { ...base, P });
+  P && await step(ind, '04-创作简报', () => buildBriefPrompt({ positioningFull: P, profileSummary: summary, notes: '', businessPositioning: B ?? undefined, contentPositioning: C ?? undefined, mixBlock } as never), { ...base, P, B, C });
+  await step(ind, '05-行业建议', () => buildIndustryAdvicePrompt({ profileSummary: summary, baseline: P ?? undefined, businessBaseline: B ?? undefined, contentBaseline: C ?? undefined, input: { purpose: 'traffic', stage: 'start', situation: '刚开始发，还没有数据', goal: '先让同城的人看到' } as never }), { ...base, P, B, C });
+  await step(ind, '06-起号方案', () => buildGrowthPlanPrompt({ contextBlock: summary, contentPlan: C ?? undefined, notes: '', mixBlock } as never), { ...base, C });
+  const CP = await step(ind, '07-内容规划', () => buildContentPlanPrompt({ lastMonth: '', recordedLastMonth: null, count: 12, focus: [], events: '', notes: '', resolved: mix, profileSummary: summary, industry: ind.name } as never), base);
+  const DR = await step(ind, '08-创作方向', () => buildDirectionPrompt({ purposes: DIRECTION_INPUT.purposes, formats: DIRECTION_INPUT.formats, mixBlock: mixBlockCount, count: 6, depth: 'quick', profileSummary: summary, contextBlock: [C, CP].filter(Boolean).join('\n\n'), industry: ind.name } as never), { ...base, C, CP });
   const T = DR && await step(ind, '09-选题', () => buildTopicBoardQuery({
     creatorContext, selectedProfile: profile, positioningForCtx: null, topicCount: 6, topicType: '流量型', topicRole: '按配比', mode: 'quick',
     sourceReference: DR.slice(0, 4000), sourceFrom: '创作方向', incomingSetup: null, keyword1: '', keyword2: '', keyword3: '', personalRequirement: '',
     currentSettings: {}, accountStage: '起号期', fansLevel: '0-1000', avgViewsInput: '', selectedPlatforms: ['抖音'], selectedTracks: [], selectedContentTypes: [],
     selectedStyles: [], positioningExtra: '', selectedElements: [], dealReasonLabels: [], benchmarkAccounts: '', viralCases: '', difficulty: '中等创意',
     withHook: true, tactic: '', route: '两种都出', routeExplicit: false, resolvedMix: mix, quickTopics: true,
-  } as never).query, '选题', [summary, DR]);
-  const topicLine = (T?.match(/《([^》]{4,60})》/)?.[1]) ?? ind.topicPreset;
+  } as never).query, { ...base, DR });
+  /*
+   * 选题 → 脚本按线上的交接来（app/dashboard/topic/page.tsx 的 sendTopic、app/dashboard/script/page.tsx 的生成）：
+   * 只带第一条选题（标题、正文、它标的那一计），脚本类型、目的从这条选题读，没写就自动判断；时长 AI 推荐。
+   * 2026-11-01 之前的评测主题落到了档案的预设题目、带的是整份选题、脚本类型写死成晒过程，三者互相冲突。
+   */
+  const pick = topicSections(T)[0];
+  const topicLine = pick?.title || ind.topicPreset;
+  const topicBody = pick?.body ?? '';
+  const form = scriptFormOfTopic(topicBody);
+  const tactic = tacticOfRoute(topicRouteOf(topicBody)) || AUTO_TACTIC;
+  const autoScriptType = !form.scriptType || tactic !== AUTO_TACTIC;
+  const handoff = buildCreationHandoff('topic', 'script', topicBody || topicLine, { topic: topicLine, settings: mergeCreationSettings({}, { topic: topicLine, ...form }), originContent: DR ?? '' });
   const S = await step(ind, '10-脚本', () => String(buildScriptBoardQuery({
-    topic: topicLine, platform: '抖音', scriptType: 'show', autoScriptType: false, effectiveRole: '流量型', isAd: false, industry: ind.name, customIndustry: '', targetGroup: '', customTargetGroup: '',
-    style: '专业', customStyle: '', durationMode: 'preset', duration: '60秒', customDuration: '', profile, positioningContent: C ?? P ?? null, scriptStructure: 'auto', hookType: 'auto',
-    boomElements: [], directorThoughts: ['emotion', 'picture'], tactic: 'auto', openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: '室内', device: '手机',
-    budget: '低成本(0-500)', personnel: '一人', accountPositioning: P ?? '', additionalInfo: '', dealReasons: [], originContent: T ?? '', focusContent: '', currentSettings: {},
-  } as never)), '脚本', [summary, T ?? '', topicLine, C ?? P ?? '']);
-  S && await step(ind, '11-分镜', () => buildStoryboardPrompt({ scriptContent: S, platform: '抖音', duration: '60秒', contentType: ind.storyboardType, visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '', contextBlock: summary }), '分镜', [summary, S]);
-  await step(ind, '12-标题封面', () => buildTitlePrompt({ topic: topicLine, titleTypeLabel: '痛点式', titleFormulaValue: 'number-action', titleFormulaLabel: '数字+动作', keywordStrategyLabel: '综合', keywordStrategyDesc: '标题和正文都自然带关键词', platform: '抖音', targetAudience: ind.name, count: 6, contextBlock: summary, sourceContent: S ?? topicLine } as never), '标题', [summary, topicLine, S ?? '']);
-  await step(ind, '13-开篇钩子', () => buildOpeningPrompt({ contextBlock: summary, topic: topicLine, count: 3, intent: { purpose: '流量型', direction: '本地同城', userIntent: '' } } as never), '开篇', [summary, topicLine]);
-  S && await step(ind, '14-审稿', () => buildReviewBoardQuery({ creatorContext, currentSettings: {}, sourceReference: '', draftContent: S, platform: '抖音', effectiveDuration: '60秒', scriptType: 'show', personalRequirements: '', reviewDimensions: '', optimizationGoals: '', benchmarkScript: '', compareMode: false, severityLabels: true } as never).query, '审稿', [summary, S]);
-  await step(ind, '15-跨行业二创', () => buildRemixPrompt({ kind: 'paste', text: ind.viralSample, title: '外行的一条爆款（虚构）', industry: '其他行业' }, { layers: DEFAULT_LAYERS, count: 3, differentiate: 'auto', depth: 'quick', role: 'same', duration: '跟原片', outputs: DEFAULT_OUTPUTS, profileSummary: summary, store: { name: ind.store.name, lines: [ind.store.features], track: Array.isArray(ind.profile.account_track) ? String((ind.profile.account_track as string[])[0]) : undefined }, contextBlock: summary } as never), '二创', [summary, ind.viralSample, storeText]);
-  await step(ind, '16-拆解爆款', () => buildTextBreakdownPrompt(ind.viralSample, summary, {} as never), '拆解', [summary, ind.viralSample]);
-  await step(ind, '17-成交理由', () => buildDealReasonPrompt({ accountContext: summary, storeName: ind.store.name, storeType: ind.store.type, storeFeatures: ind.store.features, targetCustomer: ind.store.customer }), '成交理由', [summary, storeText]);
-  await step(ind, '18-对标分析', () => buildBenchmarkQuery({ accountName: '同城同类账号（虚构样本）', platform: '抖音', materialLines: [ind.benchmarkSample], materialText: ind.benchmarkSample, contextBlock: summary }), '对标', [summary, ind.benchmarkSample]);
-  if (ind.interviewNotes) await step(ind, '19-前采提取', () => buildExtractionPrompt(ind.interviewNotes), '前采', [ind.interviewNotes]);
+    topic: topicLine, platform: '抖音', scriptType: form.scriptType ?? 'show', autoScriptType, effectiveRole: form.purpose ?? '流量型', isAd: false, industry: ind.name, customIndustry: '', targetGroup: '', customTargetGroup: '',
+    style: '', customStyle: '', durationMode: 'ai', duration: '60秒', customDuration: '', profile, positioningContent: C ?? P ?? null, scriptStructure: 'auto', hookType: 'auto',
+    boomElements: [], directorThoughts: [], tactic, openingLine: '', openingCard: '', productInfo: '', priceInfo: '', scene: '', device: '',
+    budget: '', personnel: '', accountPositioning: P ?? '', additionalInfo: handoff.note ?? '', dealReasons: [], originContent: DR ?? '', focusContent: '', currentSettings: {},
+  } as never))
+    // 页面在提示词后面再补的几段（同 app/dashboard/script/page.tsx 生成时的 query 拼接）
+    + (DR ? continuationRules('script') : '')
+    + (form.purpose ? '' : '\n【自动目的的执行原则】前文按脚本类型推荐的目的、结构、结尾只是候选，不能据此修改原始用户想法。先从完整原意确定本条目的与行动指令；混合目的完整保留，不强行归成单一类型。不因页面默认、商业档案或广告模板把大众流量/人设内容改成获客促销。')
+    + (autoScriptType ? '\n【本轮脚本类型自动决策（覆盖前文候选模板）】用户没有选择脚本类型，页面教知识模板及其教学步骤、示例只供参考，不是用户指令。先判断这次带来的内容究竟是观点讨论、过程展示、真实故事还是知识教学，选最贴合原意的一种并标注实际类型。讨论类选聊话题，不能硬写成教知识教程、创业指南或广告。根据原意确定结构、结尾与开篇，不强行套前文的教知识公式。' : ''),
+  { ...base, T, DR, topicLine, topicBody, C, P });
+  S && await step(ind, '11-分镜', () => buildStoryboardPrompt({ scriptContent: S, platform: '抖音', duration: '60秒', contentType: ind.storyboardType, visualStyle: 'bright', visualStyleLabel: '明亮', additionalInfo: '', contextBlock: summary }), { ...base, S });
+  await step(ind, '12-标题封面', () => buildTitlePrompt({ topic: topicLine, titleTypeLabel: '痛点式', titleFormulaValue: 'number-action', titleFormulaLabel: '数字+动作', keywordStrategyLabel: '综合', keywordStrategyDesc: '标题和正文都自然带关键词', platform: '抖音', targetAudience: ind.name, count: 6, contextBlock: summary, sourceContent: S ?? topicLine } as never), { ...base, topicLine, S });
+  await step(ind, '13-开篇钩子', () => buildOpeningPrompt({ contextBlock: summary, topic: topicLine, count: 3, intent: { purpose: '流量型', direction: '本地同城', userIntent: '' } } as never), { ...base, topicLine });
+  S && await step(ind, '14-审稿', () => buildReviewBoardQuery({ creatorContext, currentSettings: {}, sourceReference: '', draftContent: S, platform: '抖音', effectiveDuration: '60秒', scriptType: 'show', personalRequirements: '', reviewDimensions: '', optimizationGoals: '', benchmarkScript: '', compareMode: false, severityLabels: true } as never).query, { ...base, S });
+  await step(ind, '15-跨行业二创', () => buildRemixPrompt({ kind: 'paste', text: ind.viralSample, title: '外行的一条爆款（虚构）', industry: '其他行业' }, { layers: DEFAULT_LAYERS, count: 3, differentiate: 'auto', depth: 'quick', role: 'same', duration: '跟原片', outputs: DEFAULT_OUTPUTS, profileSummary: summary, store: { name: ind.store.name, lines: [ind.store.features], track: Array.isArray(ind.profile.account_track) ? String((ind.profile.account_track as string[])[0]) : undefined }, contextBlock: summary } as never), base);
+  await step(ind, '16-拆解爆款', () => buildTextBreakdownPrompt(ind.viralSample, summary, {} as never), base);
+  await step(ind, '17-成交理由', () => buildDealReasonPrompt({ accountContext: summary, storeName: ind.store.name, storeType: ind.store.type, storeFeatures: ind.store.features, targetCustomer: ind.store.customer }), base);
+  await step(ind, '18-对标分析', () => buildBenchmarkQuery({ accountName: '同城同类账号（虚构样本）', platform: '抖音', materialLines: [ind.benchmarkSample], materialText: ind.benchmarkSample, contextBlock: summary }), base);
+  if (ind.interviewNotes) await step(ind, '19-前采提取', () => buildExtractionPrompt(ind.interviewNotes), base);
 }
 
 /** 限制并发：同时跑 CONCURRENCY 条链路，行业内部按顺序 */
@@ -199,6 +242,6 @@ it('链路评测：测评档案 × 节点', { timeout: 14_400_000 }, async () =>
   fs.writeFileSync(`${OUT}/run.json`, JSON.stringify({ at: now.toISOString(), profiles: picked.map((p) => p.code), nodes: NODES ? [...NODES] : 'all', upstream: UPSTREAM || null, concurrency: CONCURRENCY }, null, 2), 'utf8');
   await pool(picked, CONCURRENCY, chain);
   const failed = metas.filter((m) => !m.ok);
-  fs.writeFileSync(`${OUT}/summary.json`, JSON.stringify({ total: metas.length, ok: metas.length - failed.length, failed }, null, 2), 'utf8');
-  console.log(`done total=${metas.length} failed=${failed.length}`);
+  fs.writeFileSync(`${OUT}/summary.json`, JSON.stringify({ total: metas.length, ok: metas.length - failed.length, failed, halted }, null, 2), 'utf8');
+  console.log(`done total=${metas.length} failed=${failed.length}${halted ? '（已熔断）' : ''}`);
 });
