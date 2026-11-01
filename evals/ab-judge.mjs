@@ -48,12 +48,13 @@ function scripts([A, B, out, topicDir]) {
   console.log(`脚本条目 ${items.length}`);
 }
 
+/** 评估输出目录可以写几个（逗号分隔）：同一批判了几遍，合起来数（分母 = 条数 × 遍数），单份的格子里每遍各占一段 */
 function report([itemsFile, judgeDir, md]) {
   const items = JSON.parse(fs.readFileSync(itemsFile, 'utf8'));
-  const res = items.map((it) => {
-    const p = `${RUNS}/${judgeDir}/${it.no}.json`;
-    return fs.existsSync(p) ? { it, j: JSON.parse(fs.readFileSync(p, 'utf8')) } : null;
-  }).filter(Boolean);
+  const res = judgeDir.split(',').flatMap((dir, pass) => items.map((it) => {
+    const p = `${RUNS}/${dir}/${it.no}.json`;
+    return fs.existsSync(p) ? { it: { ...it, pass }, j: JSON.parse(fs.readFileSync(p, 'utf8')) } : null;
+  })).filter(Boolean);
   const ids = [...new Set(res.flatMap((r) => r.j.criteria.map((c) => c.id)))].sort();
   const count = (side, f) => res.filter((r) => r.it.side === side && f(r.j)).length;
   const total = (side) => res.filter((r) => r.it.side === side).length;
@@ -67,8 +68,8 @@ function report([itemsFile, judgeDir, md]) {
   const key = (r) => `${r.it.code}|${r.it.idx ?? ''}`;
   for (const k of [...new Set(res.map(key))]) {
     const cell = (side) => {
-      const r = res.find((x) => key(x) === k && x.it.side === side);
-      return r ? `${r.j.overall} ${r.j.criteria.map((c) => `${c.id}${c.verdict === '合格' ? '✓' : c.verdict === '不合格' ? '✗' : '?'}`).join('')}` : '—';
+      const rs = res.filter((x) => key(x) === k && x.it.side === side);
+      return rs.length ? rs.map((r) => `${r.j.overall} ${r.j.criteria.map((c) => `${c.id}${c.verdict === '合格' ? '✓' : c.verdict === '不合格' ? '✗' : '?'}`).join('')}`).join('；') : '—';
     };
     const [code, idx] = k.split('|');
     lines.push(`| ${code} | ${idx === '' ? '' : Number(idx) + 1} | ${cell('A')} | ${cell('B')} |`);
