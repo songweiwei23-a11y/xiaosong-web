@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Wand2, X } from "lucide-react";
 import { notify } from "@/components/ui/feedback";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
@@ -17,6 +17,7 @@ import {
   classifyMaterial,
   summarizeMaterials,
 } from "@/lib/benchmark-analysis";
+import { collectionSummary, COVER_PREFIX, formatCollection, type Collection } from "@/lib/benchmark-collection";
 
 /**
  * 对标拆解（整改 C · 对标拆解）：编导放进来的截图、文档、文字、视频，统一拆成同一套框架。
@@ -49,19 +50,31 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
   accountName: string;
   platform: string | null;
   onSaved: () => void;
-  /** 「开物 · 截屏带入」插件带来的截图（components/benchmark/CaptureBridge）；nonce 变了才加，同一批不重复加 */
-  incoming?: { files: File[]; nonce: number };
+  /**
+   * 「开物 · 截屏带入」插件带来的截图和一键采集的数据（components/benchmark/CaptureBridge）；nonce 变了才加，同一批不重复加。
+   * 带了采集数据就直接开始拆：编导在插件里点「一键采集」时已经确认过材料可以使用（插件面板上写明了）
+   */
+  incoming?: { files: File[]; collected?: Collection | null; nonce: number };
 }) {
   const { context } = useCreatorContext();
   const [pasted, setPasted] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  useEffect(() => {
-    if (incoming?.files.length) setFiles((prev) => [...prev, ...incoming.files]);
-  }, [incoming?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [collected, setCollected] = useState<Collection | null>(null);
   const [consent, setConsent] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
   const [report, setReport] = useState("");
+  const handled = useRef(0); // 同一批只处理一次（开发模式下 effect 会跑两遍，不能拆两次）
+  useEffect(() => {
+    if (!incoming || handled.current === incoming.nonce) return;
+    handled.current = incoming.nonce;
+    const nextFiles = [...files, ...incoming.files];
+    setFiles(nextFiles);
+    if (!incoming.collected) return;
+    setCollected(incoming.collected);
+    setConsent(true);
+    void run({ files: nextFiles, pasted, collected: incoming.collected, consent: true });
+  }, [incoming?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -69,10 +82,12 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
   };
   const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
 
-  const run = async () => {
+  // 插件带来的数据要在同一轮里直接开拆，那时状态还没更新，所以材料从参数传进来；手动点按钮用当前状态
+  const run = async (input: { files: File[]; pasted: string; collected: Collection | null; consent: boolean } = { files, pasted, collected, consent }) => {
+    const { files, pasted, collected, consent } = input;
     if (running) return;
     if (!consent) return notify("先勾选确认：这些材料是你可以合法查看和使用的", "error");
-    if (!files.length && !pasted.trim()) return notify("至少放一份材料，或者写几句对标的情况", "error");
+    if (!files.length && !pasted.trim() && !collected) return notify("至少放一份材料，或者写几句对标的情况", "error");
     const problem = checkMaterials(files.map((f) => ({ name: f.name, type: f.type, size: f.size })));
     if (problem) return notify(problem, "error");
 
@@ -111,12 +126,19 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
         }
       }
 
-      const materialLines = summarizeMaterials({
-        images,
-        texts: [...(pasted.trim() ? [{ name: "编导粘贴的文字", chars: pasted.trim().length }] : []), ...docs.map((d) => ({ name: d.name, chars: d.text.length }))],
-        videos: videos.map((v) => ({ name: v.name, frames: v.frames, speechChars: v.speechChars, truncated: v.truncated })),
-      });
+      const collectedText = collected ? formatCollection(collected) : "";
+      const covers = files.filter((f) => f.name.startsWith(COVER_PREFIX)).length;
+      const materialLines = [
+        ...(collected ? [collectionSummary(collected)] : []),
+        ...summarizeMaterials({
+          images,
+          texts: [...(pasted.trim() ? [{ name: "编导粘贴的文字", chars: pasted.trim().length }] : []), ...docs.map((d) => ({ name: d.name, chars: d.text.length }))],
+          videos: videos.map((v) => ({ name: v.name, frames: v.frames, speechChars: v.speechChars, truncated: v.truncated })),
+        }).filter((l) => !(collected && l === "没有提供材料")),
+        ...(covers ? [`其中 ${covers} 张是点赞最高的几条作品的封面（文件名带「${COVER_PREFIX}」）`] : []),
+      ];
       const materialText = [
+        collectedText,
         pasted.trim() ? `【编导粘贴的文字】\n${pasted.trim()}` : "",
         ...docs.map((d) => `【文档「${d.name}」】\n${d.text}`),
         ...videos.filter((v) => v.text).map((v) => `【视频「${v.name}」的口播】\n${v.text}`),
@@ -188,6 +210,15 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
         />
       </label>
 
+      {collected && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/30 px-3 py-2 text-[12.5px] text-foreground">
+          <span className="min-w-0 truncate">{collectionSummary(collected)}{collected.profile.name && `（${collected.profile.name}）`}</span>
+          <button type="button" onClick={() => setCollected(null)} aria-label="移除插件采集的数据" className="shrink-0 text-muted-foreground hover:text-destructive">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {files.length > 0 && (
         <ul className="space-y-1">
           {files.map((f, i) => (
@@ -208,7 +239,7 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
 
       <button
         type="button"
-        onClick={() => void run()}
+        onClick={() => void run({ files, pasted, collected, consent })}
         disabled={running}
         className="brand-gradient inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[12.5px] font-medium text-white disabled:opacity-60"
       >

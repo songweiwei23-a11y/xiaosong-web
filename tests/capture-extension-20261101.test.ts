@@ -1,14 +1,18 @@
-// 「开物 · 截屏带入」插件（2026-11-01）：编导看对标账号主页时点一下截当前画面，带进开物对标拆解。
-// 守两件事：1. 带进来的截图自动对上对标账号（对不上就按主页名字新建），少让用户操作；
-// 2. 插件只截屏、不爬：不自动滚动、不读网页内容、不发网络请求、只在编导点按钮或按快捷键时截。
+// 「开物 · 截屏带入」插件（2026-11-01；11-02 产品方定：可以自动化采集）。
+// 守三件事：
+// 1. 带进来的数据自动对上对标账号（对不上就按主页名字新建），开物里粘贴链接就能一路跑完，少让用户操作；
+// 2. 自动化守底线：只在编导发起后跑、节奏像人、遇到验证码就停不代解、有条数上限、不碰 Cookie 和抖音接口、
+//    评论只留文字和点赞数（不收评论人昵称）；
+// 3. 开物这边对网页来的数据先校验、限量，再排成拆解材料。
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { douyinUserKey, nameFromTitle, pickAccount } from '@/components/benchmark/CaptureBridge';
+import { douyinLinkFromText, douyinUserKey, nameFromTitle, pickAccount, pluginOutdated, PLUGIN_VERSION } from '@/components/benchmark/CaptureBridge';
+import { COLLECTION_LIMITS, formatCollection, parseCount, sanitizeCollection } from '@/lib/benchmark-collection';
 
 const DIR = 'browser-extension/kaiwu-capture';
 const read = (f: string) => fs.readFileSync(`${DIR}/${f}`, 'utf8');
 
-describe('带进来的截图对上哪个对标账号', () => {
+describe('带进来的数据对上哪个对标账号', () => {
   const home = { dataUrl: 'data:image/jpeg;base64,x', url: 'https://www.douyin.com/user/MS4wLjABAAAAabc?from_tab_name=main', title: '阿杰剪发的抖音 - 抖音' };
 
   it('主页链接认得出账号标识，标题取出名字', () => {
@@ -30,41 +34,171 @@ describe('带进来的截图对上哪个对标账号', () => {
     expect(pickAccount([video, home], [])).toEqual({ create: { name: '阿杰剪发', link: 'https://www.douyin.com/user/MS4wLjABAAAAabc' } });
   });
 
+  it('一键采集的主页链接和名字优先：只有封面（作品链接）也能对上', () => {
+    const cover = { dataUrl: 'data:image/jpeg;base64,z', url: 'https://www.douyin.com/video/9', kind: 'cover' };
+    const collection = { url: 'https://www.douyin.com/user/MS4wLjABAAAAxyz', profile: { name: '小林烘焙', header: '', follows: '', fans: '', likes: '', worksTotal: '' } };
+    expect(pickAccount([cover], [], collection)).toEqual({ create: { name: '小林烘焙', link: 'https://www.douyin.com/user/MS4wLjABAAAAxyz' } });
+    expect(pickAccount([cover], [{ id: 'b2', link: 'https://www.douyin.com/user/MS4wLjABAAAAxyz?x=1' }], collection)).toEqual({ match: 'b2' });
+  });
+
   it('一张主页截图都没有：认不出，交给用户手动选', () => {
     expect(pickAccount([{ dataUrl: 'data:image/jpeg;base64,y', url: 'https://www.douyin.com/video/123' }], [])).toBeNull();
   });
 });
 
-describe('插件只截屏、不爬', () => {
-  const scripts = ['background.js', 'guide.js', 'popup.js', 'bridge.js'].map((f) => [f, read(f)] as const);
-
-  it('不自动滚动、不读抖音页面内容、不发网络请求', () => {
-    for (const [f, src] of scripts) {
-      expect(src, f).not.toMatch(/scrollTo|scrollBy|scrollIntoView|window\.scroll\b/);
-      expect(src, f).not.toMatch(/\bfetch\(|XMLHttpRequest|chrome\.cookies|innerText|textContent\s*\)|querySelectorAll\(/);
-    }
-    // 引导面板只读自己面板里的元素（data-k），不读抖音页面
-    expect(read('guide.js')).not.toMatch(/document\.querySelector(?:All)?\(/);
+describe('开物里粘贴主页链接', () => {
+  it('地址栏链接、App 分享的整段文字都能取出链接；别的网站不认', () => {
+    expect(douyinLinkFromText(' https://www.douyin.com/user/MS4wLjABAAAAabc?from_tab_name=main ')).toBe('https://www.douyin.com/user/MS4wLjABAAAAabc?from_tab_name=main');
+    expect(douyinLinkFromText('长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/iAbCdEf/ 1@2.com :8pm')).toBe('https://v.douyin.com/iAbCdEf/');
+    expect(douyinLinkFromText('https://www.example.com/user/1')).toBe('');
+    expect(douyinLinkFromText('https://douyin.com.evil.cn/user/1')).toBe('');
   });
 
-  it('截图只在点按钮（消息）或按快捷键时发生，截的是当前看得见的画面', () => {
+  it('装的是旧版插件（不会一键采集）要提示更新；版本号和插件清单一致', () => {
+    expect(PLUGIN_VERSION).toBe(JSON.parse(read('manifest.json')).version);
+    expect(pluginOutdated('0.2.0')).toBe(true);
+    expect(pluginOutdated(PLUGIN_VERSION)).toBe(false);
+    expect(pluginOutdated('0.10.0')).toBe(false);
+  });
+
+  it('链路接通：页面发 collect → 桥转给后台 → 后台只开抖音链接、标记自动开始 → 采完切回开物标签页', () => {
+    expect(fs.readFileSync('components/benchmark/CaptureBridge.tsx', 'utf8')).toContain('type: "collect", url');
+    expect(read('bridge.js')).toContain("type: 'collect-url'");
     const bg = read('background.js');
-    expect(bg.match(/captureVisibleTab/g)?.length).toBe(1);
-    expect(bg).toContain("msg?.type === 'capture'");
-    expect(bg).toContain("command !== 'capture-screen'");
-    expect(bg).not.toMatch(/chrome\.alarms|setInterval|chrome\.tabs\.update|chrome\.scripting/);
+    expect(bg).toContain("msg?.type === 'collect-url'");
+    expect(bg).toMatch(/\(www\\\.\|v\\\.\)\?\(douyin\|iesdouyin\)\\\.com/);
+    expect(bg).toContain('autostart');
+    expect(read('collector.js')).toContain("type: 'open-kaiwu', tabId: job.kaiwuTabId");
+    // 采集结果出来，开物那一页不用刷新就能收到
+    expect(read('bridge.js')).toContain('changes.collection?.newValue');
+  });
+});
+
+describe('自动采集守底线', () => {
+  const collector = read('collector.js');
+  const bg = read('background.js');
+  const all = ['background.js', 'collector.js', 'popup.js', 'bridge.js'].map((f) => [f, read(f)] as const);
+
+  it('只在编导发起后开始：面板按钮、插件窗口按钮、开物里粘贴链接', () => {
+    const starts = collector.match(/startCollect\(/g)?.length ?? 0;
+    // 定义 1 处 + 面板按钮、插件窗口消息、粘贴链接自动开始、从头再来各 1 处
+    expect(starts).toBe(5);
+    expect(collector).toContain("$('start').addEventListener('click'");
+    expect(collector).toContain("msg?.type === 'start-collect'");
+    expect(collector).toContain('autostart.tabId === (await myTabId())');
+    expect(collector).not.toMatch(/setInterval|chrome\.alarms/);
+    expect(bg).not.toMatch(/chrome\.alarms|setInterval|chrome\.scripting/);
   });
 
-  it('权限只要截屏、本机存储和抖音页面（放引导面板），最多 9 张和开物一致', async () => {
-    const m = JSON.parse(read('manifest.json'));
-    expect(m.permissions.sort()).toEqual(['activeTab', 'storage', 'unlimitedStorage']);
-    expect(m.host_permissions).toEqual(['https://www.douyin.com/*']);
+  it('节奏像人：翻页和换作品之间都随机等一会儿', () => {
+    expect(collector).toContain('Math.random()');
+    expect(collector.match(/await pause\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  });
+
+  it('遇到验证码就停下交给编导，不代解；翻页和读评论的每一轮都查', () => {
+    expect(collector.match(/if \(captchaShown\(\)\)/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+    expect(collector).toContain('手动完成验证');
+    expect(collector).not.toMatch(/captcha[^\n]*\.(click|dispatchEvent)|slider|drag/i);
+  });
+
+  it('有上限：作品 60 条、热门作品 3 条、每条评论 20 条，截图加封面 9 张；和开物这边一致', async () => {
+    expect(collector).toContain(`const MAX_WORKS = ${COLLECTION_LIMITS.works}`);
+    expect(collector).toContain(`const MAX_DETAILS = ${COLLECTION_LIMITS.details}`);
+    expect(collector).toContain(`const MAX_COMMENTS = ${COLLECTION_LIMITS.comments}`);
     const { BENCHMARK_LIMITS } = await import('@/lib/benchmark-analysis');
-    expect(read('background.js')).toContain(`const MAX = ${BENCHMARK_LIMITS.images}`);
+    expect(bg).toContain(`const MAX = ${BENCHMARK_LIMITS.images}`);
+    expect(collector).toContain(`const MAX_SHOTS = ${BENCHMARK_LIMITS.images}`);
+  });
+
+  it('不碰 Cookie、不调抖音接口：只有后台取封面图会联网，而且只取抖音图片域名', () => {
+    for (const [f, src] of all) {
+      expect(src, f).not.toMatch(/chrome\.cookies|document\.cookie|XMLHttpRequest|\/aweme\/|webcast/);
+      if (f !== 'background.js') expect(src, f).not.toMatch(/\bfetch\(/);
+    }
+    expect(bg.match(/\bfetch\(/g)?.length).toBe(1);
+    expect(bg).toContain("credentials: 'omit'");
+    expect(bg).toMatch(/douyinpic\\\.com/);
+  });
+
+  it('评论只读正文和点赞数：读评论的那段不碰昵称链接、头像、地区', () => {
+    const fn = collector.slice(collector.indexOf('function readComments'), collector.indexOf('async function waitFor'));
+    expect(fn.length).toBeGreaterThan(100);
+    expect(fn).not.toMatch(/\/user\/|avatar|VAQA49VP|·/);
+    expect(fn).toContain('comment-item-info-wrap');
+  });
+
+  it('截图只截发起的那个标签页，而且它得在前台：切走了不截，免得截到别的网站', () => {
+    expect(bg).toContain('if (!fresh?.active)');
+    expect(collector).toContain("document.visibilityState !== 'visible'");
+    expect(bg.match(/captureVisibleTab/g)?.length).toBe(1);
+  });
+
+  it('权限只多了抖音图片域名（取封面），没有全部网站、标签页、Cookie 这类权限', () => {
+    const m = JSON.parse(read('manifest.json'));
+    expect([...m.permissions].sort()).toEqual(['activeTab', 'storage', 'unlimitedStorage']);
+    expect(m.host_permissions).toEqual(['https://www.douyin.com/*', 'https://*.douyinpic.com/*']);
+    expect(m.content_scripts[0]).toMatchObject({ matches: ['https://www.douyin.com/*'], js: ['collector.js'] });
   });
 
   it('网站上能下载到插件包，安装提示指向它', () => {
     expect(fs.existsSync('public/kaiwu-capture.zip')).toBe(true);
     expect(fs.readFileSync('components/benchmark/CaptureBridge.tsx', 'utf8')).toContain('/kaiwu-capture.zip');
+  });
+});
+
+describe('开物这边：网页来的数据先校验、限量，再排成拆解材料', () => {
+  const raw = {
+    url: 'https://www.douyin.com/user/MS4wLjABAAAAabc?from=x',
+    profile: { name: '阿杰剪发', header: '阿杰剪发 / 粉丝 / 3.2万 / 县城剪发十年', fans: '3.2万', likes: '41.5万', worksTotal: '212', follows: '12' },
+    works: [
+      { id: '111', link: 'https://www.douyin.com/video/111', desc: '剪坏了怎么救', likes: '12.3万', pinned: true },
+      { id: '222', link: 'https://www.douyin.com/video/222', desc: '学徒第一天', likes: '2300', pinned: false },
+      { id: '333', link: 'https://www.douyin.com/video/333', desc: '老顾客十年', likes: '1.1万', pinned: false },
+      { id: 'abc', link: 'javascript:alert(1)', desc: '坏数据', likes: '1' },
+    ],
+    details: [{
+      id: '111', link: 'https://www.douyin.com/video/111', desc: '剪坏了怎么救', likes: '12.3万', comments: '890', collects: '3000', shares: '400', publishedAt: '发布时间：2026-10-20 18:00',
+      topComments: [{ text: '我也被剪坏过', likes: '520', nickname: '张三', ip: '河南' }, { text: '', likes: '1' }],
+    }],
+    collectedAt: '2026-11-02T10:00:00.000Z',
+    note: '没登录抖音，只读到主页前面的作品',
+  };
+
+  it('抖音的数字读得懂', () => {
+    expect(parseCount('17.4万')).toBe(174000);
+    expect(parseCount('1.3亿')).toBe(130000000);
+    expect(parseCount('2,296')).toBe(2296);
+    expect(parseCount('')).toBeNull();
+  });
+
+  it('只留白名单字段：评论人昵称、地区这类多出来的字段进不来；坏链接、坏编号丢掉', () => {
+    const c = sanitizeCollection(raw)!;
+    expect(c.url).toBe('https://www.douyin.com/user/MS4wLjABAAAAabc');
+    expect(c.works.map((w) => w.id)).toEqual(['111', '222', '333']);
+    expect(c.details[0].topComments).toEqual([{ text: '我也被剪坏过', likes: '520' }]);
+    expect(JSON.stringify(c)).not.toMatch(/张三|河南|javascript/);
+    expect(c.details[0].publishedAt).toBe('2026-10-20 18:00');
+    expect(sanitizeCollection({ foo: 1 })).toBeNull();
+    expect(sanitizeCollection('x')).toBeNull();
+  });
+
+  it('超量的截断：作品最多 60 条，每条评论最多 20 条', () => {
+    const many = { ...raw, works: Array.from({ length: 90 }, (_, i) => ({ id: String(i + 1), link: '', desc: 'x', likes: '1' })), details: [{ ...raw.details[0], topComments: Array.from({ length: 50 }, () => ({ text: '好', likes: '1' })) }] };
+    const c = sanitizeCollection(many)!;
+    expect(c.works).toHaveLength(COLLECTION_LIMITS.works);
+    expect(c.details[0].topComments).toHaveLength(COLLECTION_LIMITS.comments);
+  });
+
+  it('排成材料：主页信息、点赞概况、带编号的作品清单、热门作品的数据和评论，说明不记评论人', () => {
+    const text = formatCollection(sanitizeCollection(raw)!);
+    expect(text).toContain('【插件自动采集的账号数据】');
+    expect(text).toContain('说明：没登录抖音');
+    expect(text).toContain('县城剪发十年');
+    expect(text).toContain('中位数 1.1万 赞');
+    expect(text).toContain('1. ［置顶］12.3万 赞｜剪坏了怎么救');
+    expect(text).toContain('3. 1.1万 赞｜老顾客十年');
+    expect(text).toContain('点赞 12.3万，评论 890，收藏 3000，分享 400，发布于 2026-10-20 18:00');
+    expect(text).toContain('- 我也被剪坏过（520 赞）');
+    expect(text).toContain('不记评论人');
   });
 });

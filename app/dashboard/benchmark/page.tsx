@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/feedback";
 import { throwApiError } from "@/lib/api-error";
 import { BenchmarkAnalyzer } from "@/components/benchmark/BenchmarkAnalyzer";
 import { CaptureBridge } from "@/components/benchmark/CaptureBridge";
+import type { Collection } from "@/lib/benchmark-collection";
 import { postSafely } from "@/lib/safe-post";
 
 /**
@@ -33,15 +34,15 @@ export default function BenchmarkPage() {
   const [hot, setHot] = useState<Hot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // 插件带来的截图：放进哪个对标账号的拆解区（nonce 让同一批只加一次）
-  const [incoming, setIncoming] = useState<Record<string, { files: File[]; nonce: number }>>({});
-  const assignCaptures = useCallback((accountId: string, files: File[]) => {
-    setIncoming((prev) => ({ ...prev, [accountId]: { files, nonce: Date.now() } }));
+  // 插件带来的截图和一键采集的数据：放进哪个对标账号的拆解区（nonce 让同一批只加一次）
+  const [incoming, setIncoming] = useState<Record<string, { files: File[]; collected?: Collection | null; nonce: number }>>({});
+  const assignCaptures = useCallback((accountId: string, files: File[], collected?: Collection | null) => {
+    setIncoming((prev) => ({ ...prev, [accountId]: { files, collected, nonce: Date.now() } }));
     window.setTimeout(() => document.getElementById(`benchmark-${accountId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
   }, []);
   const createAccount = useCallback(async (name: string, link: string) => {
     try {
-      const data = await call({ action: "addAccount", name, platform: "抖音", link, note: "开物截屏插件带进来时自动建的" });
+      const data = await call({ action: "addAccount", name, platform: "抖音", link, note: "开物插件采集时自动建的" });
       await load();
       return typeof data.id === "string" ? data.id : null;
     } catch (e) {
@@ -85,7 +86,7 @@ export default function BenchmarkPage() {
       <header>
         <h1 className="text-2xl font-bold text-foreground">对标 & 热点</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          你看到的对标账号作品数据、热点线索，自己记下来。开物不去抓取任何平台的数据；记得多了，选题和方向会参考这些数字。
+          粘贴对标账号的主页链接，开物插件会在你自己的浏览器里读这个账号公开显示的作品、点赞和评论，带回来按做账号定位的维度倒着拆。热点线索和作品数据也可以自己记下来，选题和方向会参考这些数字。
         </p>
       </header>
 

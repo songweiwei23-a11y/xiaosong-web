@@ -98,15 +98,34 @@ describe('对标拆解：提示词的框架和依据规则', () => {
     contextBlock: '## 📇 账号背景：我的号',
   });
 
-  it('固定框架按顺序出现：材料清单、账号定位、内容拆解、对我们的参考、待核实', () => {
-    const order = ['### 一、材料清单', '### 二、账号定位拆解', '### 三、内容拆解', '### 四、对我们的参考', '### 五、待核实'];
+  // 2026-11-02 产品方：「像做定位那样详细，只不过是拆定位，换个角度」——按账号定位方案的维度倒着拆
+  it('固定框架按顺序出现：材料清单 → 核心结论 → 一句话定位 → 六维 → 数据 → 记忆点 → 差异化 → 五件套 → 自洽 → 软肋 → 对我们的参考 → 待核实', () => {
+    const order = [
+      '### 一、材料清单', '### 二、核心结论', '### 三、一句话定位', '### 四、六维拆解',
+      '#### 1. 人设定位', '#### 2. 用户定位', '#### 3. 内容定位', '#### 4. 呈现定位', '#### 5. 风格调性', '#### 6. 变现定位',
+      '### 五、数据表现', '### 六、记忆点', '### 七、差异化', '### 八、账号五件套', '### 九、自洽检验', '### 十、他的软肋',
+      '### 十一、对我们的参考', '### 十二、待核实',
+    ];
     let last = -1;
     for (const h of order) {
       const at = query.indexOf(h);
       expect(at, h).toBeGreaterThan(last);
       last = at;
     }
-    expect(BENCHMARK_FRAMEWORK).toContain('### 二、账号定位拆解');
+  });
+
+  it('六维和账号定位方案用的是同一套维度名', async () => {
+    const { SECTIONS } = await import('@/lib/positioning-sections');
+    for (const key of ['persona', 'audience', 'content', 'presentation', 'tone', 'monetize']) {
+      const label = SECTIONS.find((s) => s.key === key)!.label;
+      expect(BENCHMARK_FRAMEWORK, label).toContain(label);
+    }
+  });
+
+  it('评论区要按类归纳，作品要逐条归到流量 / 人设 / 变现，依据能写到作品编号', () => {
+    expect(BENCHMARK_FRAMEWORK).toContain('提问 / 共鸣 / 求购求地址 / 质疑 / 玩梗');
+    expect(BENCHMARK_FRAMEWORK).toContain('流量型 / 人设型 / 变现型');
+    expect(query).toContain('作品清单第 3、7、12 条');
   });
 
   it('带上对标账号、材料清单、文字资料，和我们的背景', () => {

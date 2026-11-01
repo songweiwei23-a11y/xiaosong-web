@@ -1,14 +1,19 @@
-// 插件窗口：和抖音页面上的引导面板做同一件事（截图、带进开物、清空），截图都交给后台（background.js）。
+// 插件窗口：一键采集（交给抖音页面上的 collector.js 跑）、截当前屏幕、带进开物、清空。
 const MAX = 9;
 const $ = (id) => document.getElementById(id);
 const say = (t) => { $('msg').textContent = t || ''; };
 
+async function activeTab() {
+  return (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+}
+
 async function render() {
-  const { captures = [] } = await chrome.storage.local.get('captures');
+  const { captures = [], collection, job } = await chrome.storage.local.get(['captures', 'collection', 'job']);
   $('count').textContent = String(captures.length);
+  $('state').textContent = job?.status === 'running' ? '正在采集，看抖音页面右下角的进度' : job?.status === 'paused' ? (job.why || '采集停了') : collection ? `采集好了：作品 ${collection.works?.length ?? 0} 条，等带进开物` : '';
   $('capture').disabled = captures.length >= MAX;
-  $('send').disabled = captures.length === 0;
-  $('clear').disabled = captures.length === 0;
+  $('send').disabled = captures.length === 0 && !collection;
+  $('clear').disabled = captures.length === 0 && !collection && !job;
   $('thumbs').replaceChildren(...captures.map((c) => {
     const img = document.createElement('img');
     img.src = c.dataUrl;
@@ -17,6 +22,13 @@ async function render() {
   }));
 }
 
+$('collect').addEventListener('click', async () => {
+  say('');
+  const tab = await activeTab();
+  if (!/^https:\/\/www\.douyin\.com\/user\/[\w-]+/.test(tab?.url || '')) return say('先打开对标账号的抖音主页（网页版），再点一键采集');
+  await chrome.tabs.sendMessage(tab.id, { type: 'start-collect' }).catch(() => say('抖音页面还没准备好，刷新一下页面再点'));
+  window.close();
+});
 $('capture').addEventListener('click', async () => {
   say('');
   const res = await chrome.runtime.sendMessage({ type: 'capture' }).catch((e) => ({ ok: false, message: String(e) }));

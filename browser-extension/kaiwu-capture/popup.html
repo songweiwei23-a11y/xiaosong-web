@@ -8,30 +8,27 @@
     h1 { margin: 0 0 4px; font-size: 15px; }
     p { margin: 0 0 10px; color: #59636e; font-size: 12px; }
     button { display: block; width: 100%; margin-top: 8px; padding: 8px 10px; border: 0; border-radius: 8px; font-size: 13px; cursor: pointer; }
-    #capture { background: #e8590c; color: #fff; }
+    #collect { background: #e8590c; color: #fff; font-weight: 600; }
+    #capture { background: #57606a; color: #fff; }
     #send { background: #1f6feb; color: #fff; }
     #clear { background: #f6f8fa; color: #59636e; }
     button:disabled { opacity: .45; cursor: not-allowed; }
     #count { font-weight: 600; color: #1f2328; }
+    #state { color: #e8590c; font-weight: 600; }
     #thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 10px; }
     #thumbs img { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 4px; border: 1px solid #d0d7de; }
     #msg { margin-top: 8px; min-height: 18px; color: #cf222e; font-size: 12px; }
   </style>
 </head>
 <body>
-  <h1>开物 · 截屏带入</h1>
-  <ol style="margin:0 0 10px;padding-left:18px;color:#59636e;font-size:12px">
-    <li>打开对标账号的抖音主页（网页版）</li>
-    <li>第一屏：头像、简介、粉丝数都在画面里，点「截下当前屏幕」</li>
-    <li>往下翻，作品列表每一屏截一张（能看到标题和点赞）</li>
-    <li>打开点赞最高的一两条，把评论区截一屏</li>
-    <li>点「带进开物拆解」，选这个对标账号，开始拆</li>
-  </ol>
-  <p>只截你点按钮那一刻看到的画面，不会自动翻页、不读网页数据。爆款视频想拆得更细，可以在开物里再传视频。</p>
-  <p>已截 <span id="count">0</span> / 9 张</p>
+  <h1>开物 · 拆对标账号</h1>
+  <p>打开对标账号的抖音主页（网页版），点「一键采集」：自动往下翻作品、读点赞，再打开最火的 3 条读评论，大约 1 分钟，读完自动带进开物开始拆解。登录抖音能读得更全。点开始即表示你确认这些是公开可见、可以合法使用的内容。</p>
+  <p id="state"></p>
+  <button id="collect">一键采集这个账号</button>
+  <p style="margin-top:12px">也可以只截当前屏幕：已截 <span id="count">0</span> / 9 张</p>
   <button id="capture">截下当前屏幕</button>
   <button id="send">带进开物拆解</button>
-  <button id="clear">清空已截的</button>
+  <button id="clear">清空</button>
   <div id="thumbs"></div>
   <div id="msg"></div>
   <script src="popup.js"></script>

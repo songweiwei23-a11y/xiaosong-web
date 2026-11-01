@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
   "name": "开物 · 截屏带入",
-  "version": "0.2.0",
-  "description": "看对标账号的抖音主页时，右下角的开物小面板一步步告诉你截哪一屏；点一下截当前画面，截够了一键带进开物拆解。只截你点按钮那一刻看到的画面，不自动翻页、不读网页数据。",
+  "version": "0.3.0",
+  "description": "打开对标账号的抖音主页，点一下「一键采集」：自动读作品、点赞和热门作品的评论，带进开物拆解整个账号。也可以只截当前屏幕。",
   "permissions": ["activeTab", "storage", "unlimitedStorage"],
-  "host_permissions": ["https://www.douyin.com/*"],
+  "host_permissions": ["https://www.douyin.com/*", "https://*.douyinpic.com/*"],
   "background": { "service_worker": "background.js" },
   "action": {
-    "default_title": "开物 · 截屏带入",
+    "default_title": "开物 · 拆对标账号",
     "default_popup": "popup.html"
   },
   "commands": {
@@ -19,7 +19,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.douyin.com/*"],
-      "js": ["guide.js"],
+      "js": ["collector.js"],
       "run_at": "document_idle"
     },
     {
