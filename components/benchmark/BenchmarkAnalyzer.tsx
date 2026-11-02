@@ -18,6 +18,7 @@ import {
   summarizeMaterials,
 } from "@/lib/benchmark-analysis";
 import { collectionSummary, COVER_PREFIX, formatCollection, type Collection } from "@/lib/benchmark-collection";
+import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
 
 /**
  * 对标拆解（整改 C · 对标拆解）：编导放进来的截图、文档、文字、视频，统一拆成同一套框架。
@@ -247,11 +248,7 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
         {running ? (progress || "拆解中…") : "开始拆解"}
       </button>
 
-      {report && (
-        <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-          <pre className="whitespace-pre-wrap break-words font-sans text-[12.5px] leading-relaxed text-foreground">{report}</pre>
-        </div>
-      )}
+      {report && <BenchmarkReport report={report} streaming={running} />}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/feedback";
 import { throwApiError } from "@/lib/api-error";
 import { BenchmarkAnalyzer } from "@/components/benchmark/BenchmarkAnalyzer";
 import { CaptureBridge } from "@/components/benchmark/CaptureBridge";
+import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
 import type { Collection } from "@/lib/benchmark-collection";
 import { postSafely } from "@/lib/safe-post";
 
@@ -161,7 +162,7 @@ export default function BenchmarkPage() {
                     <summary className="cursor-pointer text-foreground">
                       {new Date(x.created_at).toLocaleDateString("zh-CN")} 的拆解 · 读到 {x.materials.length} 项材料
                     </summary>
-                    <pre className="mt-2 whitespace-pre-wrap break-words font-sans leading-relaxed text-foreground">{x.report}</pre>
+                    <div className="mt-2"><BenchmarkReport report={x.report} /></div>
                     <button
                       type="button"
                       onClick={() => void run({ action: "deleteAnalysis", id: x.id }, "已删除这份拆解")}
