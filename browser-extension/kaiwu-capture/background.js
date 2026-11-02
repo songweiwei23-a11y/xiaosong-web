@@ -64,10 +64,14 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     } else if (msg?.type === 'count') {
       reply({ count: (await getCaptures()).length });
     } else if (msg?.type === 'open-kaiwu') {
-      // 从开物粘贴链接发起的：切回原来那个开物标签页（它会自己收数据）；切不回去就新开一个
+      // 从开物粘贴链接发起的：切回原来那个开物标签页，让它转到对标页收数据（编导等的时候可能点去了开物的别的页面）。
+      // 那个标签页关了，或者上面没有插件的桥（不在开物网站上了、插件装好以前就开着的），就在那里打开对标页；再不行新开一个
       const back = msg.tabId != null ? await chrome.tabs.update(msg.tabId, { active: true }).catch(() => null) : null;
-      if (back) await chrome.windows.update(back.windowId, { focused: true }).catch(() => {});
-      else await chrome.tabs.create({ url: KAIWU });
+      if (back) {
+        await chrome.windows.update(back.windowId, { focused: true }).catch(() => {});
+        const heard = await chrome.tabs.sendMessage(back.id, { type: 'kaiwu-arrive' }).catch(() => null);
+        if (!heard?.ok) await chrome.tabs.update(back.id, { url: KAIWU }).catch(() => chrome.tabs.create({ url: KAIWU }));
+      } else await chrome.tabs.create({ url: KAIWU });
       reply({ ok: true });
     } else if (msg?.type === 'collect-url') {
       // 开物页面上粘贴的主页链接：只认抖音的链接，新开一个标签页打开，打开后那一页自动开始采集

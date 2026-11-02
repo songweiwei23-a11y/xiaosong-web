@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, ImagePlus, X } from "lucide-react";
 import { COVER_PREFIX, sanitizeCollection, type Collection } from "@/lib/benchmark-collection";
 
@@ -33,12 +33,20 @@ async function toFiles(captures: Capture[]): Promise<File[]> {
 }
 
 /** 插件最新版本（browser-extension/kaiwu-capture/manifest.json）；装的比它旧就提示下载新版 */
-export const PLUGIN_VERSION = "0.3.0";
-export function pluginOutdated(installed: string): boolean {
+export const PLUGIN_VERSION = "0.3.1";
+/** 从这个版本起会一键采集；比它旧的粘贴链接没用，要先更新 */
+export const COLLECT_SINCE = "0.3.0";
+export function versionBelow(installed: string, target: string): boolean {
   const a = installed.split(".").map(Number);
-  const b = PLUGIN_VERSION.split(".").map(Number);
-  for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i];
+  const b = target.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) < (b[i] || 0);
   return false;
+}
+export const pluginOutdated = (installed: string) => versionBelow(installed, PLUGIN_VERSION);
+
+/** 同一批数据的记号：插件可能把同一批交两次（页面刚打开时，插件主动交一次、页面说 ready 又交一次），按它去重，免得建两个账号、拆两遍 */
+export function batchKey(captures: Capture[], collection: Collection | null): string {
+  return `${collection?.collectedAt ?? ""}|${collection?.url ?? ""}|${captures.map((c) => `${c.at ?? ""}:${c.dataUrl?.length ?? 0}`).join(",")}`;
 }
 
 /** 抖音主页链接里的账号标识（/user/ 后面那一段）；不是主页链接返回空 */
@@ -101,6 +109,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
   const [version, setVersion] = useState("");
   const [link, setLink] = useState("");
   const [linkMsg, setLinkMsg] = useState("");
+  const lastBatch = useRef("");
 
   // 截图或采集数据到了、对标账号也读完了：自动放进对得上的账号，没有就新建一个
   useEffect(() => {
@@ -132,6 +141,9 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
       const got = captures.length ? await toFiles(captures) : [];
       const col = sanitizeCollection(data.collection);
       if (got.length || col) {
+        const key = batchKey(captures, col);
+        if (key === lastBatch.current) return;
+        lastBatch.current = key;
         setFiles(got);
         setCollected(col);
         setFrom(col?.url || captures[0]?.url || "");
@@ -162,7 +174,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
       setDismissed(false);
       return setLinkMsg("要先装「开物 · 截屏带入」插件（看下面的步骤），装好刷新这一页再点");
     }
-    if (version && pluginOutdated(version)) return setLinkMsg("插件是旧版本，还不会一键采集：先按下面的提示更新插件");
+    if (version && versionBelow(version, COLLECT_SINCE)) return setLinkMsg("插件是旧版本，还不会一键采集：先按下面的提示更新插件");
     window.postMessage({ source: "kaiwu-page", type: "collect", url }, window.location.origin);
     setLinkMsg("插件已经去打开这个主页、自动采集了：大约 1 分钟，抖音页面会自己往下翻、打开热门作品，采完自动回到这里开始拆解。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
     setLink("");
@@ -247,7 +259,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
   if (installed && version && pluginOutdated(version)) {
     return (
       <p className="rounded-xl border border-primary/40 px-4 py-2.5 text-[12.5px] text-foreground">
-        插件有新版本，能一键采集整个账号了：<a href={EXTENSION_ZIP} download className="text-primary hover:underline">下载新版</a>，解压后覆盖原来的文件夹，再到扩展程序页点插件上的「重新加载」。
+        {versionBelow(version, COLLECT_SINCE) ? "插件有新版本，能一键采集整个账号了" : "插件有新版本：采完一定会回到这里接着拆，抖音中途要求验证也会先把读到的带回来"}：<a href={EXTENSION_ZIP} download className="text-primary hover:underline">下载新版</a>，解压后覆盖原来的文件夹，再到扩展程序页点插件上的「重新加载」，然后刷新这一页。
       </p>
     );
   }

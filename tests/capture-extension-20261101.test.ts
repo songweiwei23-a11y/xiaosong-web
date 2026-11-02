@@ -6,7 +6,7 @@
 // 3. 开物这边对网页来的数据先校验、限量，再排成拆解材料。
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { douyinLinkFromText, douyinUserKey, nameFromTitle, pickAccount, pluginOutdated, PLUGIN_VERSION } from '@/components/benchmark/CaptureBridge';
+import { batchKey, COLLECT_SINCE, douyinLinkFromText, douyinUserKey, nameFromTitle, pickAccount, pluginOutdated, PLUGIN_VERSION, versionBelow } from '@/components/benchmark/CaptureBridge';
 import { COLLECTION_LIMITS, formatCollection, parseCount, sanitizeCollection } from '@/lib/benchmark-collection';
 
 const DIR = 'browser-extension/kaiwu-capture';
@@ -54,11 +54,23 @@ describe('开物里粘贴主页链接', () => {
     expect(douyinLinkFromText('https://douyin.com.evil.cn/user/1')).toBe('');
   });
 
-  it('装的是旧版插件（不会一键采集）要提示更新；版本号和插件清单一致', () => {
+  it('装的是旧版插件要提示更新；版本号和插件清单一致；0.3.0 已经会采集，不拦粘贴', () => {
     expect(PLUGIN_VERSION).toBe(JSON.parse(read('manifest.json')).version);
     expect(pluginOutdated('0.2.0')).toBe(true);
+    expect(pluginOutdated('0.3.0')).toBe(true);
     expect(pluginOutdated(PLUGIN_VERSION)).toBe(false);
     expect(pluginOutdated('0.10.0')).toBe(false);
+    expect(versionBelow('0.2.9', COLLECT_SINCE)).toBe(true);
+    expect(versionBelow('0.3.0', COLLECT_SINCE)).toBe(false);
+  });
+
+  it('同一批数据交两次只收一次（免得建两个账号、拆两遍）；不同批次分得开', () => {
+    const shot = { dataUrl: 'data:image/jpeg;base64,abc', at: '2026-11-02T10:00:00Z' };
+    const col = sanitizeCollection({ url: 'https://www.douyin.com/user/MS4wLjABAAAAabc', works: [{ id: '1' }], collectedAt: '2026-11-02T10:01:00Z' });
+    expect(batchKey([shot], col)).toBe(batchKey([{ ...shot }], sanitizeCollection({ url: 'https://www.douyin.com/user/MS4wLjABAAAAabc', works: [{ id: '1' }], collectedAt: '2026-11-02T10:01:00Z' })));
+    expect(batchKey([shot], col)).not.toBe(batchKey([shot], { ...col!, collectedAt: '2026-11-02T11:00:00Z' }));
+    const bridge = fs.readFileSync('components/benchmark/CaptureBridge.tsx', 'utf8');
+    expect(bridge).toContain('if (key === lastBatch.current) return;');
   });
 
   it('链路接通：页面发 collect → 桥转给后台 → 后台只开抖音链接、标记自动开始 → 采完切回开物标签页', () => {
@@ -71,6 +83,46 @@ describe('开物里粘贴主页链接', () => {
     expect(read('collector.js')).toContain("type: 'open-kaiwu', tabId: job.kaiwuTabId");
     // 采集结果出来，开物那一页不用刷新就能收到
     expect(read('bridge.js')).toContain('changes.collection?.newValue');
+  });
+
+  // 2026-11-02 产品方反馈：采完没回到开物、没开始拆。下面几条守住「采完一定回得来」
+  it('桥挂在开物每一页：从侧边栏点进对标页（单页应用不重新加载）也认得出插件、收得到数据', () => {
+    const m = JSON.parse(read('manifest.json'));
+    const bridge = m.content_scripts.find((c: { js: string[] }) => c.js.includes('bridge.js'));
+    expect(bridge.matches).toEqual(['https://www.biandao.icu/*', 'https://biandao.icu/*', 'http://localhost:3000/*']);
+    // 只在对标页交数据，别的页面不交（数据留着等对标页说 ready）
+    expect(read('bridge.js')).toContain("if (changes.collection?.newValue && onBenchmark())");
+    expect(read('bridge.js')).toContain('if (onBenchmark()) await sendCaptures();');
+  });
+
+  it('切回开物标签页：不在对标页就转过去；那个标签页上没有桥，就在那里打开对标页', () => {
+    expect(read('bridge.js')).toContain("msg?.type !== 'kaiwu-arrive'");
+    expect(read('bridge.js')).toContain("location.assign('/dashboard/benchmark?from=capture')");
+    const bg = read('background.js');
+    expect(bg).toContain("chrome.tabs.sendMessage(back.id, { type: 'kaiwu-arrive' })");
+    expect(bg).toContain('if (!heard?.ok) await chrome.tabs.update(back.id, { url: KAIWU })');
+  });
+
+  it('半路停下不卡死：要求验证时已读到作品就先带回开物拆（说明里写清楚），一条没读到才停在抖音页上', () => {
+    const c = read('collector.js');
+    const stop = c.slice(c.indexOf('async function stop('), c.indexOf('async function finish('));
+    expect(stop).toContain('if (!job.works.length) return halt(job, why);');
+    expect(stop).toContain('return finish(job);');
+    // 验证码不再直接 halt，统一走 stop
+    expect(c).not.toMatch(/if \(captchaShown\(\)\) return halt\(/);
+    expect(c.match(/return stop\(job, CAPTCHA/g)?.length).toBe(3);
+  });
+
+  it('打开的作品页对不上（抖音转成 modal_id 弹层、或页面被点走）：认 modal_id，再开一次，还不对就跳过这条接着读', () => {
+    const c = read('collector.js');
+    expect(c).toContain("new URLSearchParams(location.search).get('modal_id') === id");
+    expect(c).toContain('if (!job.retried)');
+    expect(c).toContain("job.notes.push('有一条热门作品没打开，跳过了')");
+    expect(c).not.toContain('采集中的页面被换走了');
+  });
+
+  it('截图等面板藏好最多 300 毫秒：标签页被切走时不会卡住整个采集', () => {
+    expect(read('collector.js')).toContain('requestAnimationFrame(r))), sleep(300)])');
   });
 });
 

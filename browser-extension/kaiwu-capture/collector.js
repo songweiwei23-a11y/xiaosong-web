@@ -22,6 +22,7 @@
 
   /* ---------- 抖音要求验证、要求登录：停下来交给编导 ---------- */
   const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 40; };
+  const CAPTCHA = '抖音要求验证，采集先停了。请你手动完成验证，再点「继续采集」';
   const captchaShown = () => [...document.querySelectorAll('[id*="captcha" i], [class*="captcha" i], iframe[src*="verify"], iframe[src*="captcha"]')].some(visible);
 
   /* ---------- 截图：交给后台，面板先藏起来；截不了（权限、切走了标签页）就算了，数据照读 ---------- */
@@ -30,7 +31,8 @@
     const { captures = [] } = await chrome.storage.local.get('captures');
     if (captures.length >= MAX_SHOTS) return false;
     box.style.visibility = 'hidden';
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // 等面板藏好再截；标签页刚好被切走时浏览器不再画新的一帧，最多等 300 毫秒，不能卡住整个采集
+    await Promise.race([new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))), sleep(300)]);
     const res = await chrome.runtime.sendMessage({ type: 'capture' }).catch(() => null);
     box.style.visibility = 'visible';
     return !!res?.ok;
@@ -102,8 +104,11 @@
   const stillRunning = async () => (await getJob())?.status === 'running';
   // 采集认准开始的那个标签页：编导同时开着别的抖音页面，那些页面不接手、也不打断
   const myTabId = () => chrome.runtime.sendMessage({ type: 'tab-id' }).catch(() => null);
-  // 按作品编号比，不按整条网址：抖音打开作品时可能在网址后面加参数、或者图文和视频互相跳
-  const atQueued = (job) => !!job.queue[0] && workKey(location.pathname)?.[2] === workKey(job.queue[0])?.[2];
+  // 按作品编号比，不按整条网址：抖音打开作品时可能在网址后面加参数、图文和视频互相跳，或者转成「某页?modal_id=编号」的弹层
+  const atQueued = (job) => {
+    const id = workKey(job.queue[0])?.[2];
+    return !!id && (workKey(location.pathname)?.[2] === id || new URLSearchParams(location.search).get('modal_id') === id);
+  };
 
   /** kaiwuTabId：从开物页面粘贴链接发起的，采完切回那个开物标签页 */
   async function startCollect({ kaiwuTabId = null } = {}) {
@@ -123,7 +128,10 @@
     let idle = 0;
     for (let round = 0; found.size < MAX_WORKS && idle < 3 && round < 30; round++) {
       if (!(await stillRunning())) return; // 编导点了停止
-      if (captchaShown()) return halt(job, '抖音要求验证，采集先停了。请你手动完成验证，再点「继续采集」');
+      if (captchaShown()) {
+        job.works = [...found.values()].slice(0, MAX_WORKS).map(({ cover, ...w }) => w);
+        return stop(job, CAPTCHA, `抖音要求验证，采集提前停了：主页只读到 ${found.size} 条作品，热门作品的评论没读`);
+      }
       const before = found.size;
       readWorks(found);
       idle = found.size === before ? idle + 1 : 0;
@@ -161,11 +169,12 @@
   async function readWorkPage(job) {
     const link = job.queue[0];
     progress(`读热门作品 ${job.details.length + 1} / ${job.details.length + job.queue.length} 的数据和评论`);
+    const partly = () => `抖音要求验证，采集提前停了：热门作品只读了 ${job.details.length} 条的评论`;
     await waitFor(() => e2e('detail-video-info') || captchaShown(), 15000);
-    if (captchaShown()) return halt(job, '抖音要求验证，采集先停了。请你手动完成验证，再点「继续采集」');
+    if (captchaShown()) return stop(job, CAPTCHA, partly());
     await waitFor(() => document.querySelector('[data-e2e="comment-item"]'), 10000);
     for (let i = 0; i < 4 && readComments().length < MAX_COMMENTS; i++) {
-      if (captchaShown()) return halt(job, '抖音要求验证，采集先停了。请你手动完成验证，再点「继续采集」');
+      if (captchaShown()) return stop(job, CAPTCHA, partly());
       scrollDown(e2e('comment-list') ?? document.body);
       await pause(1200, 2600);
     }
@@ -185,8 +194,17 @@
       topComments: readComments(),
     });
     job.queue.shift();
+    job.retried = false;
     await setJob(job);
     await nextWork(job);
+  }
+
+  // 采集半路停下（抖音要求验证）：已经读到作品，就把读到的先带进开物开始拆，说明里写清楚停在哪，
+  // 不让编导卡在抖音页面上；一条作品都没读到，才停在这里等编导处理
+  async function stop(job, why, note) {
+    if (!job.works.length) return halt(job, why);
+    job.notes.push(note);
+    return finish(job);
   }
 
   async function finish(job) {
@@ -311,9 +329,22 @@
 
     // 换到下一条作品后接着跑；不是开始采集的那个标签页就不管
     const job = await getJob();
-    if (!job || (job.tabId != null && job.tabId !== (await myTabId()))) return;
-    if (job.status === 'running' && atQueued(job)) await readWorkPage(job);
-    else if (job?.status === 'running' && job.works.length) await halt(job, '采集停了：采集中的页面被换走了。点「继续采集」接着读');
-    else if (job?.status === 'running') await halt(job, '采集停了：主页读到一半页面被换走了。点「继续采集」从头再来');
+    if (!job || job.status !== 'running' || (job.tabId != null && job.tabId !== (await myTabId()))) return;
+    if (atQueued(job)) return readWorkPage(job);
+    if (!job.works.length) return halt(job, '采集停了：主页读到一半页面被换走了。点「继续采集」从头再来');
+    if (!job.queue.length) return finish(job);
+    // 打开的不是排着的那条作品（抖音跳去了别的页面，或者页面被点走了）：再打开一次；还不对就跳过这条接着读，
+    // 不停在半路等编导
+    if (!job.retried) {
+      job.retried = true;
+      await setJob(job);
+      location.href = job.queue[0];
+      return;
+    }
+    job.retried = false;
+    job.notes.push('有一条热门作品没打开，跳过了');
+    job.queue.shift();
+    await setJob(job);
+    await nextWork(job);
   })();
 })();

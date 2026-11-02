@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "开物 · 截屏带入",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "打开对标账号的抖音主页，点一下「一键采集」：自动读作品、点赞和热门作品的评论，带进开物拆解整个账号。也可以只截当前屏幕。",
   "permissions": ["activeTab", "storage", "unlimitedStorage"],
   "host_permissions": ["https://www.douyin.com/*", "https://*.douyinpic.com/*"],
@@ -23,7 +23,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.biandao.icu/dashboard/benchmark*", "https://biandao.icu/dashboard/benchmark*", "http://localhost:3000/dashboard/benchmark*"],
+      "matches": ["https://www.biandao.icu/*", "https://biandao.icu/*", "http://localhost:3000/*"],
       "js": ["bridge.js"],
       "run_at": "document_idle"
     }
