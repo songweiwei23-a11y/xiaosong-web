@@ -13,7 +13,7 @@ import {
   type BoardAny,
   type PlanSpec,
 } from '@/lib/assistant/board-dispatch';
-import { checkBoardOutput, judgeBoardOutput, managerAnswer, MAX_REVISIONS, reviseBoardOutput, type BoardCheck } from '@/lib/assistant/manager';
+import { checkBoardOutput, isHardProblem, judgeBoardOutput, managerAnswer, MAX_REVISIONS, nextStepNote, reviseBoardOutput, type BoardCheck } from '@/lib/assistant/manager';
 import type { AssistantConfig } from '@/lib/assistant/config';
 import type { callAssistantLlm } from '@/lib/assistant/llm';
 import { knowledgeConfigured, knowledgeResultText, searchKnowledge } from '@/lib/assistant/knowledge';
@@ -81,13 +81,16 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
 
   let check = await verify(full);
   let revisions = 0;
-  // 验收不过：管理员直接改有问题的地方，改完复核；改不动就停，保留原稿交给老板判断
-  while (!check.ok && revisions < revisionCap && opts.cfg && !job.stopRequested) {
+  // 验收不过：只有编造、碰禁忌这类硬问题，管理员才直接改（改完复核，改不动就停，保留原稿交给老板判断）；
+  // 别的问题不动板块的稿子，交付时提醒老板（2026-11-02 产品方：板块已经打磨好，助理管协调）
+  const hard = (c: BoardCheck) => c.problems.filter(isHardProblem);
+  while (hard(check).length && revisions < revisionCap && opts.cfg && !job.stopRequested) {
     revisions++;
-    pushEvent(job, { type: 'step', text: `${tag}管理员：验收发现 ${check.problems.length} 处问题，我直接改（第 ${revisions} 次）` });
+    const fix = hard(check);
+    pushEvent(job, { type: 'step', text: `${tag}管理员：验收发现 ${fix.length} 处硬问题（编造或碰禁忌），我直接改（第 ${revisions} 次）` });
     // 修改参考知识库里的方法论（检索失败就不带资料，照样改）
-    const knowledge = await knowledgeFor(kind, check.problems);
-    const revised = await reviseBoardOutput(opts.cfg, kind, full, check.problems, { llm: opts.llm, requirement, knowledge });
+    const knowledge = await knowledgeFor(kind, fix);
+    const revised = await reviseBoardOutput(opts.cfg, kind, full, fix, { llm: opts.llm, requirement, knowledge });
     if (!revised) {
       pushEvent(job, { type: 'step', text: `${tag}管理员：这几处改动太大或对不上原文，保留原稿，交给你判断` });
       revisions--;
@@ -103,12 +106,15 @@ export async function runBoardWithReview(job: AssistantJob, opts: BoardRunOption
 
   if (check.ok) {
     pushEvent(job, { type: 'step', text: `${tag}管理员：验收通过${revisions ? `（已直接修改 ${revisions} 次）` : ''}` });
+  } else if (!hard(check).length) {
+    pushEvent(job, { type: 'step', text: `${tag}管理员：有 ${check.problems.length} 处提醒，板块的稿子不改，交付时写给你` });
   } else {
     pushEvent(job, { type: 'step', text: `${tag}管理员：仍有 ${check.problems.length} 处问题，交给你判断` });
   }
 
   const saved = await keepResult(opts.ctx, opts.board, full);
-  // 账号定位要写进账号定位表，地基门槛和之后的板块才读得到（2026-10-24）。只写通过验收的；没通过的交给老板判断，不直接变成当前生效的定位
+  // 账号定位要写进账号定位表，地基门槛和之后的板块才读得到（2026-10-24）。只写通过验收的；有问题的（哪怕只是提醒）交给老板判断，
+  // 不直接变成当前生效的定位——定位是后面所有板块的地基，宁可让老板确认一下
   let positioningSaved: boolean | undefined;
   if (opts.board.kind === 'positioning' && opts.ctx.persistPositioning) {
     if (check.ok) {
@@ -178,7 +184,7 @@ export interface BoardJobInput {
 export async function runBoardJob(job: AssistantJob, input: BoardJobInput): Promise<void> {
   const r = await runBoardWithReview(job, { ctx: input.ctx, board: input.board, maxRuns: input.maxRuns ?? MAX_REVISIONS, cfg: input.cfg, llm: input.llm });
   if (r.error) pushEvent(job, { type: 'error', text: `「${BOARD_LABEL[input.board.kind].label}」没有完成：${r.error}` });
-  finishJob(job, r.text ? 'done' : 'error', r.text ? managerAnswer(r.text, r.attempts, r.problems) + unstoredNote(r.stored) + positioningNote(r.positioningSaved) : '');
+  finishJob(job, r.text ? 'done' : 'error', r.text ? managerAnswer(r.text, r.attempts, r.problems) + unstoredNote(r.stored) + positioningNote(r.positioningSaved) + nextStepNote(input.board.kind) : '');
 }
 
 export interface PlanJobInput {
@@ -217,5 +223,7 @@ export async function runPlanJob(job: AssistantJob, input: PlanJobInput): Promis
     previousText = r.carry ? null : r.text;
     sections.push(`## ${i + 1}. ${BOARD_LABEL[original.kind].label}\n\n${managerAnswer(r.text, r.attempts, r.problems)}${unstoredNote(r.stored)}${positioningNote(r.positioningSaved)}`);
   }
-  finishJob(job, sections.length ? 'done' : 'error', sections.join('\n\n'));
+  // 整套计划做完才给下一步（按最后一步的板块）；中途停下的不给，先处理没完成的那步
+  const last = sections.length === total ? input.plan.steps[total - 1] : null;
+  finishJob(job, sections.length ? 'done' : 'error', sections.join('\n\n') + (last ? nextStepNote(last.kind) : ''));
 }

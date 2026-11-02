@@ -13,7 +13,7 @@ vi.mock('@/lib/api-guard', () => ({
   requireUser: async () => ({ ok: true, userId: 'u-route' }),
 }));
 
-import { applyRevisionEdits, checkBoardOutput, managerAnswer, parseRevisionEdits, reviseBoardOutput, MAX_REVISIONS } from '@/lib/assistant/manager';
+import { applyRevisionEdits, checkBoardOutput, isHardProblem, managerAnswer, parseRevisionEdits, reviseBoardOutput, MAX_REVISIONS } from '@/lib/assistant/manager';
 import { createPendingRun, takePendingRun } from '@/lib/assistant/pending-runs';
 import { createAssistantTools } from '@/lib/assistant/tools';
 import { runBoardJob } from '@/lib/assistant/board-job';
@@ -174,8 +174,37 @@ describe('派活：先列出来，用户确认后才开跑', () => {
   });
 });
 
-describe('管理员执行：板块只跑一次，不合格由管理员直接修改', () => {
-  it('第一版太短，管理员直接修改，改好后交付；板块只被调用一次，不整份重跑', async () => {
+// 2026-11-02 产品方：板块是打磨好的流水线，助理管协调。管理员只为编造、碰禁忌这类硬问题改稿，别的问题只提醒
+describe('管理员执行：板块只跑一次，只为硬问题直接修改', () => {
+  it('分得清硬问题：编造、没依据、碰禁忌、广告法；口吻、条数、长短不算', () => {
+    for (const p of ['有资料里没有依据的说法：开业十年', '第 3 条编造了客户对话', '碰了档案禁忌：不说竞品', '用了广告法违禁词「最好」']) expect(isHardProblem(p), p).toBe(true);
+    for (const p of ['产出太短（120 字）', '第 2 条没有回应派活要求', '口吻偏书面', '只有 4 条，要求 5 条']) expect(isHardProblem(p), p).toBe(false);
+  });
+
+  it('只是提醒（没回应要求、太短这类）：板块的稿子一个字不改，交付时写给老板判断，也不调修改', async () => {
+    let reviseCalls = 0;
+    const fetchImpl = (async (url: string) => (String(url).includes('/api/dify/stream') ? sse(FIVE_TOPICS) : json([]))) as unknown as typeof fetch;
+    const llm = (async (_cfg: unknown, req: { system: string }) => {
+      if (req.system.includes('管理员')) { reviseCalls++; return { content: [{ type: 'text', text: '{"edits":[]}' }], stopReason: 'end_turn' }; }
+      return { content: [{ type: 'text', text: JSON.stringify({ pass: false, problems: ['第 2 条没有回应派活要求'] }) }], stopReason: 'end_turn' };
+    }) as never;
+    const job = createJob('u-job-soft');
+    await runBoardJob(job, {
+      ctx: { userId: 'u-job-soft', cookie: 'c=1', internalBase: 'http://x', fetchImpl },
+      board: { kind: 'topic', input: { request: '拍菜市场的真实故事', count: 5, role: '按配比' } },
+      maxRuns: MAX_REVISIONS,
+      cfg: { apiKey: 'k' } as never,
+      llm,
+    });
+    expect(reviseCalls).toBe(0);
+    expect(job.answer).toContain('凌晨四点的菜市场');
+    expect(job.answer).toContain('板块原稿没有改动，下面几点请你判断是否采用');
+    expect(job.answer).toContain('- 第 2 条没有回应派活要求');
+    // 交付时给下一步
+    expect(job.answer).toContain('——下一步可以：挑一条写成脚本');
+  });
+
+  it('有编造：管理员直接修改，改好后交付；板块只被调用一次，不整份重跑', async () => {
     const streamAnswers = [FIVE_TOPICS];
     let boardCalls = 0;
     const fetchImpl = (async (url: string) => {
@@ -193,7 +222,7 @@ describe('管理员执行：板块只跑一次，不合格由管理员直接修�
         return { content: [{ type: 'text', text: JSON.stringify(edits) }], stopReason: 'end_turn' };
       }
       judgeCalls++;
-      const verdict = judgeCalls === 1 ? { pass: false, problems: ['第 2 条没有回应派活要求'] } : { pass: true, problems: [] };
+      const verdict = judgeCalls === 1 ? { pass: false, problems: ['第 2 条编造了时间'] } : { pass: true, problems: [] };
       return { content: [{ type: 'text', text: JSON.stringify(verdict) }], stopReason: 'end_turn' };
     }) as never;
 
@@ -213,7 +242,7 @@ describe('管理员执行：板块只跑一次，不合格由管理员直接修�
     expect(job.answer).not.toContain('凌晨四点的菜市场');
     expect(boardCalls).toBe(1);
     const steps = job.events.filter((e) => e.type === 'step').map((e) => (e as { text: string }).text);
-    expect(steps.some((s) => s.includes('我直接改（第 1 次）'))).toBe(true);
+    expect(steps.some((s) => s.includes('处硬问题（编造或碰禁忌），我直接改（第 1 次）'))).toBe(true);
     expect(steps.some((s) => s.includes('验收通过'))).toBe(true);
     expect(steps.some((s) => s.includes('返工'))).toBe(false);
   });
@@ -222,12 +251,12 @@ describe('管理员执行：板块只跑一次，不合格由管理员直接修�
     let boardCalls = 0;
     const fetchImpl = (async (url: string) => {
       if (String(url).includes('/api/dify/stream')) boardCalls++;
-      return String(url).includes('/api/dify/stream') ? sse(SHORT_FIVE) : json([]);
+      return String(url).includes('/api/dify/stream') ? sse(FIVE_TOPICS) : json([]);
     }) as unknown as typeof fetch;
-    // 管理员模型修改不出来（出错）：保留原稿
+    // 验收发现编造；管理员模型修改不出来（出错）：保留原稿
     const llm = (async (_cfg: unknown, req: { system: string }) => {
       if (req.system.includes('管理员')) throw new Error('模型暂时不可用');
-      return { content: [{ type: 'text', text: '{"pass": true, "problems": []}' }], stopReason: 'end_turn' };
+      return { content: [{ type: 'text', text: '{"pass": false, "problems": ["第 1 条编造了开店年限"]}' }], stopReason: 'end_turn' };
     }) as never;
     const job = createJob('u-job-2');
     await runBoardJob(job, {

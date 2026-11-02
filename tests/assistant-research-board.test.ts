@@ -246,7 +246,7 @@ describe('验收不过也不返工：深度研究只跑一次，报告和问题�
     expect(calls.filter((c) => c.method === 'POST')).toHaveLength(1);
     expect(job.status).toBe('done');
     expect(job.answer).toContain('很短的报告');
-    expect(job.answer).toContain('直接修改 0 次后仍有问题');
+    expect(job.answer).toContain('板块原稿没有改动，下面几点请你判断是否采用');
     expect(job.answer).toContain('产出太短');
   });
 

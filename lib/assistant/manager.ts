@@ -40,6 +40,39 @@ export interface BoardCheck {
   problems: string[];
 }
 
+/**
+ * 管理员只为硬问题动手改稿：编造（资料里没有依据）、碰禁忌、广告法违禁词。
+ * 2026-11-02 产品方：板块是流水线，已经打磨到极致，助理的价值在协调；口吻、结构、条数、长短这类问题不改板块的稿子，
+ * 只在交付时提醒老板（同类的「生成后润色」11-01 盲评没过，管理员改稿也不该在这些地方动手）。
+ */
+export function isHardProblem(problem: string): boolean {
+  return /没有依据|编造|捏造|虚构|杜撰|禁忌|违禁|广告法|极限词/.test(problem);
+}
+
+/** 交付时给老板的下一步建议：板块之间怎么接（老板回一句，助理就用 list_results + propose_continue 带着内容接着派） */
+export const NEXT_STEPS: Record<BoardKind, string> = {
+  topic: '挑一条写成脚本（回我「第 X 条写脚本」）；或者先给这几条起标题',
+  script: '拿去做分镜；或者先审一稿；或者起几个标题',
+  review: '按审稿意见改好后拿去分镜；要再审一次也行（会再扣一次审稿额度）',
+  title: '用选中的标题写脚本（回我「用第 X 个标题写脚本」）',
+  storyboard: '照着拍；拍完告诉我，我记进作品进度',
+  direction: '按这个方向出选题',
+  'content-plan': '从第一周的第一条开始出选题',
+  'deal-reason': '用其中一条成交理由写脚本（回我「用第 X 条写脚本」）',
+  positioning: '做创作简报；或者按定位出创作方向',
+  brief: '按简报出创作方向，或者直接出选题',
+  advice: '按这些建议做起号方案',
+  growth: '按方案的第一步出选题',
+  opening: '用这个开头写脚本',
+  remix: '挑一个二创点子写成脚本',
+  breakdown: '借拆出来的结构，给我们自己写一条选题或脚本',
+  research: '按报告的结论出选题；或者存进笔记',
+};
+
+export function nextStepNote(kind: BoardKind): string {
+  return `\n\n——下一步可以：${NEXT_STEPS[kind]}。回我一句就接着派，这份内容会自动带过去。`;
+}
+
 /** 规则验收：长度、脚本质量、脚本的事实依据 */
 export function checkBoardOutput(kind: BoardKind, text: string, context: string): BoardCheck {
   const problems: string[] = [];
@@ -70,12 +103,18 @@ export async function judgeBoardOutput(
 ): Promise<BoardCheck | null> {
   const call = opts.llm ?? callAssistantLlm;
   const system = '你是开物的验收员。只判断板块的产出是否满足这次派活的要求，不改写内容。只输出一个 JSON 对象：{"pass": true 或 false, "problems": ["问题"]}，不要输出别的文字。能用就算通过，只为真正不合格的写问题。';
+  // 长产出（账号定位、深度研究……）原来只给验收员看前 6000 字，后半截没人看，还会被当成「缺内容」误判。
+  // 现在给开头和结尾，中间省略处明说，不拿省略的部分判缺不缺
+  const LIMIT = 9000;
+  const shown = output.length <= LIMIT
+    ? output
+    : `${output.slice(0, 6000)}\n\n……（中间约 ${output.length - 9000} 字省略，不要因为看不到这部分就判缺内容）……\n\n${output.slice(-3000)}`;
   const user = [
     `板块：${BOARD_LABEL[kind].label}`,
     `派活要求：${requirement}`,
     '',
     '产出：',
-    output.slice(0, 6000),
+    shown,
     '',
     '判断：有没有回应派活要求；要求写了条数的，数量够不够；有没有空泛、重复、跑题或明显编造的内容。',
   ].join('\n');
@@ -239,5 +278,8 @@ export function managerAnswer(text: string, attempts: number, problems: string[]
   if (problems.length === 0) {
     return `${text}\n\n——管理员验收：通过${revisions ? `（已直接修改 ${revisions} 次）` : ''}。`;
   }
-  return `${text}\n\n——管理员验收：直接修改 ${revisions} 次后仍有问题，请你判断是否采用：\n${problems.map((p) => `- ${p}`).join('\n')}`;
+  const head = revisions
+    ? `直接修改 ${revisions} 次后仍有问题，请你判断是否采用`
+    : '板块原稿没有改动，下面几点请你判断是否采用';
+  return `${text}\n\n——管理员验收：${head}：\n${problems.map((p) => `- ${p}`).join('\n')}`;
 }

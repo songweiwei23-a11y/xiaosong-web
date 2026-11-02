@@ -10,15 +10,29 @@ interface Account { id?: string; name?: string; platform?: string | null; link?:
 interface Hot { title?: string; source_url?: string | null; seen_on?: string | null; note?: string | null }
 
 const MAX_ACCOUNTS = 5;
-const REPORT_CHARS = 1200;
+const REPORT_CHARS = 1800;
 
 /**
- * 从拆解报告里取最有用的两段：新框架（11-02 起）是「核心结论」和「一句话定位」，
- * 旧框架是「账号定位拆解」和「内容拆解」。都找不到就取开头一段。
+ * 从拆解报告里取最有用的几段：
+ * - 带「我们学什么」的新框架（11-02 晚）：一句话定位 + 可借鉴打法的每招标题 + 能直接做的选题标题——
+ *   老板说「照我拆的那个号出选题」，派活单里要写的就是借哪一招、做哪个选题；
+ * - 11-02 的框架：「核心结论」和「一句话定位」；
+ * - 更早的旧框架：「账号定位拆解」和「内容拆解」。都找不到就取开头一段。
  */
 export function reportGist(report: string): string {
   const sections = report.split(/\n(?=###\s)/);
   const pick = (re: RegExp) => sections.find((s) => re.test(s.split('\n')[0]))?.trim() ?? '';
+  const moves = pick(/可借鉴的打法/);
+  if (moves) {
+    const titles = [...moves.matchAll(/^####\s*(第\s*\S+?\s*招.*)$/gm)].map((m) => `- ${m[1].trim()}`);
+    const topics = [...pick(/可以直接做的/).matchAll(/^\d+\.\s*\*\*(.+?)\*\*/gm)].map((m) => `- ${m[1].trim()}`);
+    const gist = [
+      pick(/一句话定位/),
+      titles.length ? `可借鉴的打法（报告第十二节，每招都写了「我们怎么改了用」）：\n${titles.join('\n')}` : '',
+      topics.length ? `能直接做的选题（报告第十三节）：\n${topics.join('\n')}` : '',
+    ].filter(Boolean).join('\n\n');
+    return gist.length > REPORT_CHARS ? `${gist.slice(0, REPORT_CHARS)}…（只摘了一部分，全文在对标 & 热点页）` : gist;
+  }
   const parts = [pick(/核心结论/), pick(/一句话定位/)].filter(Boolean);
   const old = parts.length ? [] : [pick(/账号定位拆解/), pick(/内容拆解/)].filter(Boolean);
   const gist = (parts.length ? parts : old).join('\n\n') || report.trim();

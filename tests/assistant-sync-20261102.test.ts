@@ -89,10 +89,62 @@ describe('助理对老板说的派活规则和代码一致', () => {
   it('板块只跑一次、最多改两次；不再说「跑三次」', async () => {
     const { MAX_REVISIONS } = await import('@/lib/assistant/manager');
     expect(MAX_REVISIONS).toBe(2);
-    expect(ASSISTANT_SYSTEM).toContain('板块只跑一次、扣一次额度；我验收不过会直接改有问题的地方，最多改两次');
+    expect(ASSISTANT_SYSTEM).toContain('板块只跑一次、扣一次额度；只有编造、碰禁忌这类硬问题我才直接改，最多改两次');
     expect(ASSISTANT_SYSTEM).not.toMatch(/跑三次|整份重跑板块。|重跑一次/);
     const job = fs.readFileSync('lib/assistant/board-job.ts', 'utf8');
     const fn = job.slice(job.indexOf('export async function runBoardWithReview'), job.indexOf('export async function runBoardJob'));
     expect(fn.match(/runAnyBoard\(/g)).toHaveLength(1);
+  });
+});
+
+// 11-02 产品方：「重点是协调能力，是智能体的聪明；板块就是流水线，已经打磨到极致」
+describe('助理的协调', () => {
+  it('读对标：带「我们学什么」的新报告，取一句话定位 + 每招标题 + 能直接做的选题', () => {
+    const report = [
+      '## 第一部分　拆他', '### 一、材料清单', '- 作品 42 条', '### 三、一句话定位（倒推）', '> 县城剪发十年的老师傅',
+      '## 第二部分　我们学什么', '### 十二、可借鉴的打法（逐招拆）',
+      '#### 第 1 招：救场题材做反转', '- **他怎么做的**：……', '#### 第 2 招：评论区回地址', '- **我们怎么改了用**：……',
+      '### 十三、可以直接做的 5 个选题', '1. **我把剪坏的刘海救回来了**', '   - 借的是第 1 招', '2. **来店里的第一句话**',
+      '### 十四、不要学的', '- 不要学他的价格战',
+    ].join('\n');
+    const g = reportGist(report);
+    expect(g).toContain('县城剪发十年的老师傅');
+    expect(g).toContain('- 第 1 招：救场题材做反转');
+    expect(g).toContain('- 第 2 招：评论区回地址');
+    expect(g).toContain('- 我把剪坏的刘海救回来了');
+    expect(g).toContain('- 来店里的第一句话');
+    expect(g).not.toContain('不要学他的价格战');
+  });
+
+  it('提示词：派活单自己补全并说明来源、借对标点名第几招、交付先说结论再给下一步、大事一次列完', () => {
+    expect(ASSISTANT_SYSTEM).toContain('6.2 协调是你的本事');
+    expect(ASSISTANT_SYSTEM).toContain('在回复里用一句话说明补了什么、来自哪');
+    expect(ASSISTANT_SYSTEM).toContain('点名借哪一招或哪个选题');
+    expect(ASSISTANT_SYSTEM).toContain('用 propose_continue 带过去，不让老板复制粘贴');
+    expect(ASSISTANT_SYSTEM).toContain('你不改写它的稿子');
+  });
+
+  it('每个板块交付时都有下一步建议；多步计划做完才给（按最后一步）', async () => {
+    const { NEXT_STEPS, nextStepNote } = await import('@/lib/assistant/manager');
+    const { BOARD_LABEL } = await import('@/lib/assistant/board-dispatch');
+    for (const kind of Object.keys(BOARD_LABEL)) expect(NEXT_STEPS[kind as keyof typeof NEXT_STEPS], kind).toBeTruthy();
+    expect(nextStepNote('script')).toContain('——下一步可以：拿去做分镜');
+    const job = fs.readFileSync('lib/assistant/board-job.ts', 'utf8');
+    expect(job).toContain('nextStepNote(input.board.kind)');
+    expect(job).toContain('sections.length === total ? input.plan.steps[total - 1] : null');
+  });
+
+  it('长产出验收：看开头和结尾，中间省略处说明，不再只看前 6000 字', async () => {
+    const { judgeBoardOutput } = await import('@/lib/assistant/manager');
+    let seen = '';
+    const llm = (async (_cfg: unknown, req: { messages: { content: string }[] }) => {
+      seen = req.messages[0].content;
+      return { content: [{ type: 'text', text: '{"pass": true, "problems": []}' }], stopReason: 'end_turn' };
+    }) as never;
+    const long = `开头${'中'.repeat(12000)}结尾的待核实清单`;
+    expect(await judgeBoardOutput({ apiKey: 'k' } as never, 'positioning', '做账号定位', long, { llm })).toEqual({ ok: true, problems: [] });
+    expect(seen).toContain('开头');
+    expect(seen).toContain('结尾的待核实清单');
+    expect(seen).toContain('不要因为看不到这部分就判缺内容');
   });
 });
