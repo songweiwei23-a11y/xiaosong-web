@@ -38,6 +38,7 @@ async function preferenceBlock(cookie: string, profileId: string | null): Promis
 import { checkClaims, checkKnowledgeUse, knowledgeDocs, SILENT_RECEIPT_KINDS, type ActionReceipt } from '@/lib/assistant/receipts';
 import { pickModel } from '@/lib/assistant/routing';
 import { recordJobFinish, type JobStats } from '@/lib/assistant/job-store';
+import { loadSituation, situationBlock } from '@/lib/assistant/situation';
 
 /**
  * 助理一次对话的完整运行：跑对话循环，核对回答，然后按结果结算额度。
@@ -67,7 +68,14 @@ export const ASSISTANT_SYSTEM = `你是「开物」网站内置的助理，服�
 - 借对标：拆解报告里有「可借鉴的打法（第几招）」和「能直接做的选题」，派选题、脚本时点名借哪一招或哪个选题，写进 request，说明来自哪份拆解。
 - 交付：先一句话说结论（交了什么、验收结果、有没有要老板判断的提醒），再原样给板块产出。产出末尾有「下一步可以」，老板回一句（比如「第 3 条写脚本」）就用 list_results 找到这份结果、用 propose_continue 带过去，不让老板复制粘贴。
 - 一件大事拆成几步时，用 propose_plan 一次列完，不要做一步问一步。
-6.3 自由对话：老板想就一个问题连续追问、让你读图片或文档、或者只是闲聊和查资料，「自由对话」页更顺手（能传附件、按需联网、深度研究），可以用 open_page 打开 free-chat。派板块、记待办、改档案这些还是你来做。
+6.3 站在老板的角度办事（你能调动整个开物）：
+- 系统提示词里的【老板现状】每轮自动更新：档案、地基、最近的创作、作品进度、对标、待办、额度，以及「看出来的事」。用它理解老板的处境，不用再为这些去问他。
+- 老板问「我该做什么」「帮我看看我的号」「最近干点啥」：按「看出来的事」挑最要紧的 1–3 件，每件说清对他的生意有什么用，然后直接用 propose_plan 或对应的工具列出来，不只给建议。
+- 老板说的是想要的结果（「这周想多来点客」「想涨点粉」「下个月推新品」），你把它拆成开物里能做的几步（定位、内容规划、选题、脚本、分镜、标题、待办），一次列完让他确认。
+- 每次派活用一句话说清这件事对他的生意有什么用（引流到店、成交、涨粉、立人设），用档案里的行业和卖什么来说，不说空话。
+- 老板没问的事：只有和这轮话题相关，或者很要紧（地基没打完、待办过期、拍了没发、额度快没了）时，才在回答最后用一句话提一件；不每轮都提，上一轮提过的不再提。
+- 能直接办的就办（查询、记待办、记笔记、打开页面）；要扣额度、改数据的列出来等确认。
+6.5 自由对话：老板想就一个问题连续追问、让你读图片或文档、或者只是闲聊和查资料，「自由对话」页更顺手（能传附件、按需联网、深度研究），可以用 open_page 打开 free-chat。派板块、记待办、改档案这些还是你来做。
 7.用户在开物里要你做的事，要真的替他做，不要只说「你可以去做」。待办：记新的用 add_todo，查用 list_todos，改内容或日期用 update_todo，标记完成用 complete_todo，删除用 propose_delete_todo。笔记：存用 save_note，查用 list_notes。声音：播放白噪音（就是「专注」）、雨声、咖啡馆这类用 play_ambient，停止用 stop_ambient。要去某个页面用 open_page。用户问今天的安排用 daily_brief。改档案名称或行业用 propose_profile_update，改作品拍没拍、发没发用 propose_work_status。做完要告诉用户做了什么、结果是什么。
 8. 用户说了日期的计划要记进待办。提醒用户时，只能说「打开工作台时会提示你」，不能说「会主动提醒你」「到期会提醒你」，因为现在没有主动推送。用户问「我有什么要做的」或者要提醒时，先用 list_todos，把已经到期的明确指出来。
 9. 不越界：付款、删除数据（比如脚本历史、作品）、把内容发布或发送给别人、修改账号和密码，这些你都不做，要告诉用户自己去哪里做；涉及花钱或不可撤销的事，先问清楚再说。删除待办、改档案、改作品状态，只能用上面的提议工具，由用户在页面上确认后才生效。
@@ -154,6 +162,10 @@ export async function runAssistantJob(
   // 简单意图用便宜模型（只有配置了 ASSISTANT_CHEAP_MODEL 才会分流）
   const picked = pickModel(input.cfg, readCheapModel(), input.message);
   const prefs = await preferenceBlock(input.cookie, input.profileId ?? null);
+  // 老板现状：每轮开始前把整个开物里和他有关的情况看一遍（只读、不调模型），助理不用等老板问就知道他卡在哪
+  const situation = await loadSituation({ userId: job.userId, cookie: input.cookie }, input.profileId ?? null)
+    .then(situationBlock)
+    .catch(() => '');
   const receipts: ActionReceipt[] = [];
   const usage: LlmUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   let calls = 0;
@@ -176,7 +188,7 @@ export async function runAssistantJob(
   try {
     const raw = await runAssistantAgent({
       cfg: picked.cfg,
-      system: ASSISTANT_SYSTEM + assistantDateLine() + memoryPromptBlock(memories) + prefs + summaryPromptBlock(input.summary ?? '') + (knowledgeConfigured() ? '' : KNOWLEDGE_OFF_NOTE),
+      system: ASSISTANT_SYSTEM + assistantDateLine() + situation + memoryPromptBlock(memories) + prefs + summaryPromptBlock(input.summary ?? '') + (knowledgeConfigured() ? '' : KNOWLEDGE_OFF_NOTE),
       userText: input.message,
       history: input.history,
       tools,
