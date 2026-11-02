@@ -7,13 +7,17 @@
  *
  * 2026-11-02 产品方：所有产出内容都能下载 Word，「排版要干净整洁、简约大气」。版式：
  *   A4、页边距 2 厘米；顶部大标题 + 一行「板块 · 开物生成 · 日期」+ 细分隔线；
- *   正文微软雅黑 11 号、1.5 倍行距；二级标题深蓝、下面一条浅灰细线；表格浅灰细边框、表头浅底；
+ *   正文微软雅黑、1.5 倍行距；二级标题深蓝、下面一条浅灰细线；表格浅灰细边框、表头浅底；
  *   引用左边一道深蓝竖线、浅底；页眉右上角小字「开物」，页脚居中页码。只用两种颜色（深灰正文 + 深蓝强调）。
+ * 同日产品方：字再小一点、像飞书文档那样——正文 10.5 磅（五号，约等于飞书正文 14px），标题跟着收：
+ *   大标题 16 磅、一级 14、二级 13、三级 12、四级 11，表格 9.5。
  */
 import { docTitle, docToPrintHtml, parseMarkdownDoc, type DocBlock, type InlineRun } from './doc-markdown';
 
 const FONT = 'Microsoft YaHei';
-const C = { text: '1F2328', muted: '6B7280', accent: '1F3A68', line: 'D9DEE5', headFill: 'F3F5F8', quoteFill: 'F6F8FB', quoteText: '374151' };
+/** 字号，单位半磅（docx 的写法：21 = 10.5 磅） */
+const SIZE = { body: 21, title: 32, meta: 18, table: 19, code: 18, small: 16 };
+const C = { text:'1F2328', muted: '6B7280', accent: '1F3A68', line: 'D9DEE5', headFill: 'F3F5F8', quoteFill: 'F6F8FB', quoteText: '374151' };
 
 export interface DocMeta {
   /** 哪个板块产出的（选题策划、脚本生成……），写在标题下面那一行 */
@@ -57,21 +61,21 @@ export async function buildDocx(markdown: string, title = docTitle(markdown), me
 
   // 抬头：标题 + 「板块 · 开物生成 · 日期」+ 细分隔线
   const { cn } = dateParts(meta.date ?? new Date());
-  children.push(new d.Paragraph({ spacing: { after: 100 }, children: [new d.TextRun({ text: title, bold: true, size: 40, color: C.text, font: FONT })] }));
+  children.push(new d.Paragraph({ spacing: { after: 100 }, children: [new d.TextRun({ text: title, bold: true, size: SIZE.title, color: C.text, font: FONT })] }));
   children.push(new d.Paragraph({
     spacing: { after: 320 },
     border: { bottom: { ...line(C.accent, 8), space: 8 } },
-    children: [new d.TextRun({ text: [meta.board, '开物生成', cn].filter(Boolean).join('  ·  '), size: 18, color: C.muted, font: FONT })],
+    children: [new d.TextRun({ text: [meta.board, '开物生成', cn].filter(Boolean).join('  ·  '), size: SIZE.meta, color: C.muted, font: FONT })],
   }));
 
   const HEADING = {
-    1: { size: 32, color: C.text, before: 400, after: 160 },
-    2: { size: 28, color: C.accent, before: 360, after: 140 },
-    3: { size: 24, color: C.text, before: 260, after: 100 },
-    4: { size: 22, color: C.quoteText, before: 200, after: 80 },
+    1: { size: 28, color: C.text, before: 360, after: 140 },
+    2: { size: 26, color: C.accent, before: 320, after: 120 },
+    3: { size: 24, color: C.text, before: 240, after: 100 },
+    4: { size: 22, color: C.quoteText, before: 180, after: 80 },
   } as const;
   const cell = (rs: InlineRun[], head = false) => new d.TableCell({
-    children: [new d.Paragraph({ spacing: { line: 300 }, children: runs(rs, { bold: head, size: 20, color: C.text }) })],
+    children: [new d.Paragraph({ spacing: { line: 300 }, children: runs(rs, { bold: head, size: SIZE.table, color: C.text }) })],
     shading: head ? { type: d.ShadingType.CLEAR, color: 'auto', fill: C.headFill } : undefined,
     margins: { top: 80, bottom: 80, left: 120, right: 120 },
   });
@@ -103,7 +107,7 @@ export async function buildDocx(markdown: string, title = docTitle(markdown), me
         }));
         break;
       case 'code':
-        for (const l of b.text.split('\n')) children.push(new d.Paragraph({ shading: { type: d.ShadingType.CLEAR, color: 'auto', fill: C.headFill }, children: [new d.TextRun({ text: l || ' ', font: 'Consolas', size: 19, color: C.text })] }));
+        for (const l of b.text.split('\n')) children.push(new d.Paragraph({ shading: { type: d.ShadingType.CLEAR, color: 'auto', fill: C.headFill }, children: [new d.TextRun({ text: l || ' ', font: 'Consolas', size: SIZE.code, color: C.text })] }));
         children.push(new d.Paragraph({ spacing: { after: 120 }, children: [] }));
         break;
       case 'hr': children.push(new d.Paragraph({ spacing: { before: 120, after: 240 }, border: { bottom: { ...line(), space: 1 } }, children: [] })); break;
@@ -130,15 +134,15 @@ export async function buildDocx(markdown: string, title = docTitle(markdown), me
   };
   blocks.forEach(pushBlock);
 
-  const small = (text: string) => new d.TextRun({ text, size: 16, color: C.muted, font: FONT });
+  const small = (text: string) => new d.TextRun({ text, size: SIZE.small, color: C.muted, font: FONT });
   return new d.Document({
     creator: '开物',
     title,
-    styles: { default: { document: { run: { font: FONT, size: 22, color: C.text }, paragraph: { spacing: { line: 360 } } } } },
+    styles: { default: { document: { run: { font: FONT, size: SIZE.body, color: C.text }, paragraph: { spacing: { line: 360 } } } } },
     sections: [{
       properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1300, bottom: 1200, left: 1134, right: 1134, header: 600, footer: 600 } } },
       headers: { default: new d.Header({ children: [new d.Paragraph({ alignment: d.AlignmentType.RIGHT, children: [small('开物 · AI 短视频创作')] })] }) },
-      footers: { default: new d.Footer({ children: [new d.Paragraph({ alignment: d.AlignmentType.CENTER, children: [small('第 '), new d.TextRun({ children: [d.PageNumber.CURRENT], size: 16, color: C.muted, font: FONT }), small(' 页')] })] }) },
+      footers: { default: new d.Footer({ children: [new d.Paragraph({ alignment: d.AlignmentType.CENTER, children: [small('第 '), new d.TextRun({ children: [d.PageNumber.CURRENT], size: SIZE.small, color: C.muted, font: FONT }), small(' 页')] })] }) },
       children,
     }],
   });

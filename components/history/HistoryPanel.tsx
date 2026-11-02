@@ -208,6 +208,7 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                           content={selectedRecord.result}
                           board={selectedRecord.task_type || taskType}
                           date={new Date(selectedRecord.created_at)}
+                          plainScript={(selectedRecord.task_type || taskType) === '脚本生成'}
                           className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-foreground/[0.06] transition-colors text-sm flex items-center gap-2 disabled:opacity-60"
                         />
                       </div>

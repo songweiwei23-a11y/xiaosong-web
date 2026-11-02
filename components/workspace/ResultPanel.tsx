@@ -284,8 +284,9 @@ export function ResultPanel({
             {/* 2026-11-02 产品方：所有产出都能下载 Word（版式见 lib/doc-export）；原来的文本下载留着，改叫「下载 TXT」 */}
             <WordDownloadButton
               content={view}
-              title={/^\s*#{1,2}\s+\S/m.test(view) ? undefined : boardLabel}
+              title={segment === 'script' || /^\s*#{1,2}\s+\S/m.test(view) ? undefined : boardLabel}
               board={boardLabel}
+              plainScript={segment === 'script'}
               className="glass-panel glass-interactive flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-medium disabled:opacity-60"
             />
             {onDownload && <ActionButton icon={Download} label="下载 TXT" onClick={() => onDownload(view)} />}

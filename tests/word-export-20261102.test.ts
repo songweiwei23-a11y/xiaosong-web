@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { Packer } from 'docx';
 import { buildDocx, docFileName } from '@/lib/doc-export';
+import { scriptWordDoc } from '@/lib/script-copy';
 import { readCode } from './helpers/source';
 
 const SAMPLE = `# 川菜馆选题方案
@@ -58,10 +59,56 @@ describe('Word 版式', () => {
     for (const c of colors) expect(['1F2328', '1F3A68', '6B7280', '374151']).toContain(c);
   });
 
+  it('字号像飞书文档：正文 10.5 磅（五号），大标题 16 磅，比正文大的只有标题', async () => {
+    const { doc } = await unzip(SAMPLE);
+    const styles = (await JSZip.loadAsync(await Packer.toBuffer(await buildDocx(SAMPLE)))).file('word/styles.xml')!;
+    expect(await styles.async('string')).toMatch(/<w:sz w:val="21"\/>/);
+    const sizes = [...doc.matchAll(/<w:sz w:val="(\d+)"\/>/g)].map((m) => Number(m[1]));
+    expect(Math.max(...sizes)).toBe(32);
+    expect(sizes).not.toContain(40);
+  });
+
   it('文件名：去掉文件名里不能用的字符，接北京时间日期', () => {
     expect(docFileName('选题/方案:第1版?', new Date('2026-11-01T17:00:00Z'))).toBe('选题 方案 第1版-2026-11-02.docx');
     expect(docFileName('   ', new Date('2026-11-02T04:00:00Z'))).toBe('开物文档-2026-11-02.docx');
     expect(docFileName('长'.repeat(80)).length).toBeLessThanOrEqual(40 + '-2026-11-02.docx'.length);
+  });
+});
+
+describe('脚本的 Word 只有纯文字版（同日产品方）', () => {
+  const SCRIPT = `### 第1步：脚本策略卡
+- 目的：引流到店
+
+## 老板娘凌晨四点熬底料
+
+### 第2步：纯文字文案
+凌晨四点，后厨的灯就亮了。
+这锅底料，我熬了十二年。
+**今天带你看看**怎么熬的。
+
+### 第3步：完整分镜脚本
+| 镜头 | 画面 |
+| --- | --- |
+| 1 | 灶台特写 |`;
+
+  it('只留纯文字文案，一句一段，标题用脚本标题', async () => {
+    const w = scriptWordDoc(SCRIPT)!;
+    expect(w.title).toBe('老板娘凌晨四点熬底料');
+    expect(w.content).toBe('凌晨四点，后厨的灯就亮了。\n\n这锅底料，我熬了十二年。\n\n今天带你看看怎么熬的。');
+    const t = texts((await unzip(w.content, w.title, { board: '脚本生成' })).doc);
+    expect(t).toContain('这锅底料，我熬了十二年。');
+    expect(t.join('')).not.toMatch(/策略卡|分镜|灶台特写|第2步/);
+  });
+
+  it('旧结果没有纯文字文案：返回 null，按钮整份下载', () => {
+    expect(scriptWordDoc('## 某脚本\n随便写的')).toBeNull();
+  });
+
+  it('脚本板块、历史记录、产出库里的脚本都走纯文字版；其他板块不受影响', () => {
+    expect(readCode('components/workspace/ResultPanel.tsx')).toMatch(/plainScript=\{segment === 'script'\}/);
+    expect(readCode('components/history/HistoryPanel.tsx')).toMatch(/plainScript=\{[^}]*'脚本生成'/);
+    expect(readCode('components/library/OutputsPanel.tsx')).toMatch(/plainScript=\{[^}]*"脚本生成"/);
+    expect(readCode('components/ui/WordDownloadButton.tsx')).toMatch(/plainScript \? scriptWordDoc\(content\) : null/);
   });
 });
 

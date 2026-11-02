@@ -197,7 +197,7 @@ export function OutputsPanel({ profileId, q, from = "", to = "", onCounts }: { p
 
               {open === it.id && bodies[it.id] && (
                 <div className="mt-3 border-t border-border/60 pt-3">
-                  <div className="mb-1 flex justify-end"><WordDownloadButton content={bodies[it.id]} title={it.title} board={it.taskType} date={new Date(it.createdAt)} /></div>
+                  <div className="mb-1 flex justify-end"><WordDownloadButton content={bodies[it.id]} title={it.title} board={it.taskType} date={new Date(it.createdAt)} plainScript={it.taskType === "脚本生成"} /></div>
                   <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-[14px] prose-p:text-[13.5px] prose-li:text-[13.5px]">
                     <Markdown>{bodies[it.id]}</Markdown>
                   </div>

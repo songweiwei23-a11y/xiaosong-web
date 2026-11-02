@@ -1,3 +1,20 @@
+import { extractTitle } from "./script-result-utils";
+
+/**
+ * 脚本下载 Word 只要纯文字版（2026-11-02 产品方）：正文只有「纯文字文案」，一句一段，标题用脚本标题。
+ * 取不到纯文字文案（旧结果）返回 null，调用方整份下载。
+ */
+export function scriptWordDoc(markdown: string): { content: string; title: string } | null {
+  const plain = extractPlainCopy(markdown);
+  if (!plain) return null;
+  const t = extractTitle(markdown);
+  return {
+    // 纯文字文案里换行就是换一句；Markdown 会把单个换行并成一段，所以每行单独成段
+    content: plain.split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n"),
+    title: t === "未命名脚本" ? "口播文案" : t,
+  };
+}
+
 /**
  * 从脚本生成结果里取出「第2步：纯文字文案」——只有要念出来的话，方便复制去提词器、配音。
  *
