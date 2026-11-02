@@ -82,3 +82,17 @@ describe('系统提示词同步了近期更新', () => {
     expect(ASSISTANT_SYSTEM).toContain('讲完为止');
   });
 });
+
+// 2026-11-02 产品方问「助理是否遵循之前的分工」：派活 → 老板确认 → 板块只跑一次 → 管理员验收、直接小改最多两次 → 交老板判断。
+// 提示词里原来还写着「最多跑三次」（10-23 整份返工时期的说法），会让老板以为要扣三次额度，和代码对不上
+describe('助理对老板说的派活规则和代码一致', () => {
+  it('板块只跑一次、最多改两次；不再说「跑三次」', async () => {
+    const { MAX_REVISIONS } = await import('@/lib/assistant/manager');
+    expect(MAX_REVISIONS).toBe(2);
+    expect(ASSISTANT_SYSTEM).toContain('板块只跑一次、扣一次额度；我验收不过会直接改有问题的地方，最多改两次');
+    expect(ASSISTANT_SYSTEM).not.toMatch(/跑三次|整份重跑板块。|重跑一次/);
+    const job = fs.readFileSync('lib/assistant/board-job.ts', 'utf8');
+    const fn = job.slice(job.indexOf('export async function runBoardWithReview'), job.indexOf('export async function runBoardJob'));
+    expect(fn.match(/runAnyBoard\(/g)).toHaveLength(1);
+  });
+});
