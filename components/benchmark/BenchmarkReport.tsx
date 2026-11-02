@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Copy } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { notify } from "@/components/ui/feedback";
+import { WordDownloadButton } from "@/components/ui/WordDownloadButton";
 
 /**
  * 对标拆解报告的排版（2026-11-02 产品方：原来整段原文直接显示，### 和 ** 都露在外面，太丑）。
@@ -35,9 +36,12 @@ export function BenchmarkReport({ report, streaming = false, title = "拆解报�
       <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-2.5">
         <p className="text-[13px] font-semibold text-foreground">{streaming ? `${title} · 正在写…` : title}</p>
         {!streaming && (
-          <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground">
-            <Copy className="h-3.5 w-3.5" />复制
-          </button>
+          <div className="flex items-center gap-1">
+            <WordDownloadButton content={report} board={title === "拆解报告" ? "对标拆解" : title.replace(/报告$/, "")} />
+            <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground">
+              <Copy className="h-3.5 w-3.5" />复制
+            </button>
+          </div>
         )}
       </div>
 

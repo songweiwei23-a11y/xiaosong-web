@@ -11,6 +11,7 @@ import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { buildPositioningPrompt, type PositioningFocus } from '@/lib/positioning-standards'
 import { diagnosisPromptBlock } from '@/lib/account-diagnosis'
 import { fetchDiagnosis } from '@/lib/diagnosis-client'
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton'
 import { Markdown } from '@/components/markdown'
 import { asText, buildProfileSummary, profileSearchHints } from '@/lib/profile-summary'
 import ContinuousDialog from '@/components/ContinuousDialog'
@@ -368,6 +369,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
                   >
                     复制
                   </button>
+                  <WordDownloadButton content={result} board={title} className="glass-panel inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[12px] text-foreground disabled:opacity-60" />
                   <button
                     onClick={() => setShowDialog(true)}
                     className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"

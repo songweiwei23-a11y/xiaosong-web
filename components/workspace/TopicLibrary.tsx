@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Library, Search, ChevronDown, Trash2, ArrowRight, Loader2 } from "lucide-react";
 import { Markdown } from "@/components/markdown";
+import { WordDownloadButton } from "@/components/ui/WordDownloadButton";
 import { collectTopics, topicKey } from "@/lib/topic-library";
 import { nextStage, workStageUrl } from "@/lib/resume";
 import type { Work } from "@/lib/works";
@@ -196,6 +197,11 @@ export function TopicLibrary({
                   <div className="prose prose-slate dark:prose-invert mt-2 max-w-none rounded-xl bg-foreground/[0.03] px-4 py-3 prose-p:text-[13px] prose-li:text-[13px] prose-strong:text-foreground">
                     {/* AI 常把"标题：……""拍法：……"写成相邻两行，Markdown 会并成一段，按原样换行 */}
                     <Markdown>{t.body ? t.body.replace(/([^\n])\n(?!\n)/g, "$1  \n") : "（这条没有详细方案）"}</Markdown>
+                    {t.body && (
+                      <div className="not-prose mt-2 flex justify-end">
+                        <WordDownloadButton content={t.body.replace(/([^\n])\n(?!\n)/g, "$1  \n")} title={t.title} board="选题库" />
+                      </div>
+                    )}
                   </div>
                 )}
               </li>

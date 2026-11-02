@@ -14,6 +14,7 @@ import { taboosPromptBlock } from '@/lib/taboos'
 import { performancePromptBlock, type PerformanceSummary } from '@/lib/performance'
 import { diagnosisPromptBlock } from '@/lib/account-diagnosis'
 import { fetchDiagnosis } from '@/lib/diagnosis-client'
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import { Markdown } from '@/components/markdown'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
@@ -366,15 +367,18 @@ export default function IndustryAdvicePage() {
                     )}
                   </h2>
                   {result && !isGenerating && (
-                    <button
-                      onClick={() => {
-                        navigator.clipboard?.writeText(result)
-                        notify('已复制')
-                      }}
-                      className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"
-                    >
-                      复制
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(result)
+                          notify('已复制')
+                        }}
+                        className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"
+                      >
+                        复制
+                      </button>
+                      <WordDownloadButton content={result} board="行业建议" className="glass-panel inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[12px] text-foreground disabled:opacity-60" />
+                    </div>
                   )}
                 </div>
                 <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:tracking-tight prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px]">

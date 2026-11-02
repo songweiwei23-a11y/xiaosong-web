@@ -5,6 +5,7 @@ import { X, Copy, Check, Loader2, Wand2, Eye, Pencil, GitCompare, Save } from 'l
 import { Markdown } from '@/components/markdown'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
 import { notify } from '@/components/ui/feedback'
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton'
 import { fetchGeneration, throwApiError } from '@/lib/api-error'
 import { applyChatAnswer } from '@/lib/chat-stream-answer'
 import { notifyGenerated } from '@/lib/upgrade'
@@ -261,6 +262,7 @@ export function ResultCanvas({
             <GitCompare className="h-3.5 w-3.5" />比较版本
           </button>
           <button type="button" onClick={copy} className={btn(false)}>{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? '已复制' : '复制'}</button>
+          <WordDownloadButton content={draft} board="自由对话" className={`${btn(false)} disabled:opacity-60`} label="Word" />
           <button type="button" onClick={close} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label="关闭画布"><X className="h-4 w-4" /></button>
         </div>
       </div>

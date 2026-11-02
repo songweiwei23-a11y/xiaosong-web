@@ -5,6 +5,7 @@ import { History, X, Trash2, Clock, Copy, RefreshCw } from "lucide-react";
 import { generationHistoryService } from "@/lib/supabase";
 import { Markdown } from "@/components/markdown";
 import { notify, confirmDialog } from '@/components/ui/feedback';
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton';
 
 interface HistoryRecord {
   id: string;
@@ -203,6 +204,12 @@ export function HistoryPanel({ userId, taskType, onReuse }: HistoryPanelProps) {
                           <Copy className="w-4 h-4" />
                           复制
                         </button>
+                        <WordDownloadButton
+                          content={selectedRecord.result}
+                          board={selectedRecord.task_type || taskType}
+                          date={new Date(selectedRecord.created_at)}
+                          className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-foreground/[0.06] transition-colors text-sm flex items-center gap-2 disabled:opacity-60"
+                        />
                       </div>
                     </div>
                     {/* dark:prose-invert 不能少：prose 会把正文写死成深灰，

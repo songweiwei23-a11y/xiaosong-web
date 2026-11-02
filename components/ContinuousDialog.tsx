@@ -4,6 +4,7 @@ import { fetchGeneration } from "@/lib/api-error";
 import { useState, useEffect, useRef } from 'react'
 import { X, Send, Loader2, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
 import { Markdown } from '@/components/markdown'
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton'
 import { readDifyStream } from '@/lib/sse-stream'
 import { getActiveProfileId } from '@/lib/active-profile'
 import { takeDialogDraft } from '@/lib/dialog-draft'
@@ -384,10 +385,13 @@ export default function ContinuousDialog({
                     ) : (
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     )}
-                    <div className={`text-xs mt-2 ${
+                    <div className={`text-xs mt-2 flex items-center justify-between gap-2 ${
                       msg.role === 'user' ? 'text-accent' : 'text-muted-foreground'
                     }`}>
                       {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                      {msg.role === 'assistant' && !(isLoading && idx === messages.length - 1) && (
+                        <WordDownloadButton content={msg.content} board={taskType} date={msg.timestamp} label="Word" />
+                      )}
                     </div>
                   </div>
                 </div>

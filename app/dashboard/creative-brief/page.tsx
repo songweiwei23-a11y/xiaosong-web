@@ -28,6 +28,7 @@ import { buildProfileSummary } from '@/lib/profile-summary'
 import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
 import { taboosPromptBlock } from '@/lib/taboos'
 import { ContentMixBar } from '@/components/workspace/ContentMix'
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton'
 
 /**
  * 创作简报。
@@ -376,7 +377,17 @@ export default function CreativeBriefPage() {
                       每一段都可以直接改。账号在变，简报就该跟着变——改完点保存，所有板块立刻生效。
                     </p>
                   </div>
-                  <span className="shrink-0 text-[12px] text-muted-foreground" title="仅表示八个栏目是否填写，不代表事实已确认或内容质量">栏目填写 {pct}%</span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-[12px] text-muted-foreground" title="仅表示八个栏目是否填写，不代表事实已确认或内容质量">栏目填写 {pct}%</span>
+                    {/* 下载的是页面上当前这份（含没保存的改动），每个栏目一节 */}
+                    <WordDownloadButton
+                      content={BRIEF_FIELDS.filter((f) => values[f.key]?.trim())
+                        .map((f) => `## ${f.label}\n\n${values[f.key].trim()}`)
+                        .join('\n\n')}
+                      title="创作简报"
+                      board="创作简报"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-5">

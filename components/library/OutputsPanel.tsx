@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Copy, ExternalLink, Loader2, Wand2 } from "lucide-react";
 import { Markdown } from "@/components/markdown";
+import { WordDownloadButton } from "@/components/ui/WordDownloadButton";
 import { CreationLinks } from "@/components/workspace/CreationLinks";
 import { notify } from "@/components/ui/feedback";
 import { historyOpenUrl } from "@/lib/resume";
@@ -195,8 +196,11 @@ export function OutputsPanel({ profileId, q, from = "", to = "", onCounts }: { p
               </div>
 
               {open === it.id && bodies[it.id] && (
-                <div className="prose prose-slate dark:prose-invert mt-3 max-w-none border-t border-border/60 pt-3 prose-headings:text-[14px] prose-p:text-[13.5px] prose-li:text-[13.5px]">
-                  <Markdown>{bodies[it.id]}</Markdown>
+                <div className="mt-3 border-t border-border/60 pt-3">
+                  <div className="mb-1 flex justify-end"><WordDownloadButton content={bodies[it.id]} title={it.title} board={it.taskType} date={new Date(it.createdAt)} /></div>
+                  <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-[14px] prose-p:text-[13.5px] prose-li:text-[13.5px]">
+                    <Markdown>{bodies[it.id]}</Markdown>
+                  </div>
                 </div>
               )}
 

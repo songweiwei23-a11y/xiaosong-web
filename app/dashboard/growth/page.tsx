@@ -2,6 +2,7 @@
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton';
 import { resolveCreationSettings, mergeCreationSettings, creationSettingsBlock } from '@/lib/creation-settings';
 
 
@@ -825,15 +826,18 @@ export default function GrowthPage() {
                 {tab === 'plan' ? '起号方案' : '开篇钩子'}
               </h2>
               {result && !busy && (
-                <button
-                  onClick={() => {
-                    navigator.clipboard?.writeText(result)
-                    notify('已复制')
-                  }}
-                  className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"
-                >
-                  复制
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(result)
+                      notify('已复制')
+                    }}
+                    className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"
+                  >
+                    复制
+                  </button>
+                  <WordDownloadButton content={result} board={tab === 'plan' ? '起号方案' : '开篇钩子'} className="glass-panel inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[12px] text-foreground disabled:opacity-60" />
+                </div>
               )}
             </div>
             <div

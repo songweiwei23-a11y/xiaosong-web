@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bookmark, Check, Copy, Download, Loader2, NotebookPen, Pencil, Search, Star, Trash2, Wand2, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
+import { WordDownloadButton } from "@/components/ui/WordDownloadButton";
 import { CreationLinks } from "@/components/workspace/CreationLinks";
 import { OutputsPanel } from "@/components/library/OutputsPanel";
 import { RealMaterialForm } from "@/components/library/RealMaterialForm";
@@ -364,8 +365,11 @@ export default function LibraryPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="prose prose-slate dark:prose-invert mt-3 max-w-none break-words border-t border-border/60 pt-3 prose-headings:text-[14px] prose-p:text-[13.5px] prose-li:text-[13.5px]">
-                    <Markdown>{full.content}</Markdown>
+                  <div className="mt-3 border-t border-border/60 pt-3">
+                    <div className="mb-1 flex justify-end"><WordDownloadButton content={full.content} title={it.title} board="素材库" /></div>
+                    <div className="prose prose-slate dark:prose-invert max-w-none break-words prose-headings:text-[14px] prose-p:text-[13.5px] prose-li:text-[13.5px]">
+                      <Markdown>{full.content}</Markdown>
+                    </div>
                   </div>
                 )
               )}

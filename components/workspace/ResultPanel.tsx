@@ -32,6 +32,7 @@ import { stripSelfCert } from '@/lib/self-cert';
 import { previewCut } from '@/lib/text-preview';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { PreferenceHint } from '@/components/preferences/PreferenceHint';
+import { WordDownloadButton } from '@/components/ui/WordDownloadButton';
 import { reportQuality } from '@/lib/quality-report';
 import { buildFactFixContext, factCheckCreationSource } from '@/lib/fact-fix';
 import type { ResolvedMix } from '@/lib/content-mix';
@@ -129,6 +130,8 @@ export function ResultPanel({
   const pathname = usePathname();
   const { context: qualityCtx } = useCreatorContext();
   const supportsCreationLinks = Boolean(CREATION_SOURCES[pathname?.split('/')[2] || '']);
+  /** 下载 Word 时写在抬头的板块名：页面的板块名，认不出就用结果区的标题 */
+  const boardLabel = CREATION_SOURCES[pathname?.split('/')[2] || ''] || (title !== "生成结果" ? title : "开物");
   const { body, report, stats, quality } = useMemo(() => {
     const split = splitQualityReport(result);
     // 模型自称「自检通过 / 无虚构」一律删掉再展示、复制、带去下一步（lib/self-cert）：它不可信，真假以程序核对为准
@@ -278,7 +281,14 @@ export function ResultPanel({
             {/* 复制与下载只取正文，不含质量报告；在画布里改过的取最新一版 */}
             {plainCopy && <ActionButton icon={FileText} label="复制纯文案" onClick={() => { navigator.clipboard?.writeText(plainCopy); notify("纯文案已复制：只有要念的话，可以直接贴进提词器"); }} />}
             {onCopy && <ActionButton icon={Copy} label="复制" onClick={() => onCopy(view)} />}
-            {onDownload && <ActionButton icon={Download} label="下载" onClick={() => onDownload(view)} />}
+            {/* 2026-11-02 产品方：所有产出都能下载 Word（版式见 lib/doc-export）；原来的文本下载留着，改叫「下载 TXT」 */}
+            <WordDownloadButton
+              content={view}
+              title={/^\s*#{1,2}\s+\S/m.test(view) ? undefined : boardLabel}
+              board={boardLabel}
+              className="glass-panel glass-interactive flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-medium disabled:opacity-60"
+            />
+            {onDownload && <ActionButton icon={Download} label="下载 TXT" onClick={() => onDownload(view)} />}
           </div>
         )}
       </div>
