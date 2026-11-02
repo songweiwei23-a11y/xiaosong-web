@@ -36,7 +36,7 @@ describe('带进来的数据对上哪个对标账号', () => {
 
   it('一键采集的主页链接和名字优先：只有封面（作品链接）也能对上', () => {
     const cover = { dataUrl: 'data:image/jpeg;base64,z', url: 'https://www.douyin.com/video/9', kind: 'cover' };
-    const collection = { url: 'https://www.douyin.com/user/MS4wLjABAAAAxyz', profile: { name: '小林烘焙', header: '', follows: '', fans: '', likes: '', worksTotal: '' } };
+    const collection = { url: 'https://www.douyin.com/user/MS4wLjABAAAAxyz', profile: { name: '小林烘焙', header: '', follows: '', fans: '', likes: '', worksTotal: '', tabs: '' } };
     expect(pickAccount([cover], [], collection)).toEqual({ create: { name: '小林烘焙', link: 'https://www.douyin.com/user/MS4wLjABAAAAxyz' } });
     expect(pickAccount([cover], [{ id: 'b2', link: 'https://www.douyin.com/user/MS4wLjABAAAAxyz?x=1' }], collection)).toEqual({ match: 'b2' });
   });
@@ -260,7 +260,7 @@ describe('开物这边：网页来的数据先校验、限量，再排成拆解�
     const c = sanitizeCollection(raw)!;
     expect(c.url).toBe('https://www.douyin.com/user/MS4wLjABAAAAabc');
     expect(c.works.map((w) => w.id)).toEqual(['111', '222', '333']);
-    expect(c.details[0].topComments).toEqual([{ text: '我也被剪坏过', likes: '520' }]);
+    expect(c.details[0].topComments).toEqual([{ text: '我也被剪坏过', likes: '520', authorReplied: false, authorLiked: false }]);
     expect(JSON.stringify(c)).not.toMatch(/张三|河南|javascript/);
     expect(c.details[0].publishedAt).toBe('2026-10-20 18:00');
     expect(sanitizeCollection({ foo: 1 })).toBeNull();
@@ -272,6 +272,57 @@ describe('开物这边：网页来的数据先校验、限量，再排成拆解�
     const c = sanitizeCollection(many)!;
     expect(c.works).toHaveLength(COLLECTION_LIMITS.works);
     expect(c.details[0].topComments).toHaveLength(COLLECTION_LIMITS.comments);
+  });
+
+  // 11-02 加深：细看 8 条（最火 5 + 点赞最低 2 + 最新 1），多读完整文案、话题、时长，评论 40 条并标作者回过的
+  it('插件挑细看的作品：最火 5 条、点赞最低 2 条（对照）、最新 1 条（不算置顶），带上为什么挑中', () => {
+    const c = read('collector.js');
+    expect(c).toContain('const DETAIL_PICK = { hot: 5, low: 2, new: 1 };');
+    expect(c).toContain("pick.set(w.link, 'low')");
+    expect(c).toContain('!x.pinned && !pick.has(x.link)');
+    expect(c).toContain("role: job.roles?.[link] ?? 'hot'");
+    // 新读的只是页面上显示的东西：文案、话题、视频时长、评论上「作者回复过 / 赞过」的标记
+    expect(c).toMatch(/authorReplied: \/作者回复过\//);
+    expect(c).toContain("document.querySelector('video')");
+  });
+
+  it('新字段也按白名单收：角色只认三种、话题去掉 #、时长只收数字、作者标记只收 true', () => {
+    const c = sanitizeCollection({
+      ...raw,
+      profile: { ...raw.profile, tabs: '作品 212 合集 3 橱窗' },
+      details: [
+        { ...raw.details[0], role: 'evil', caption: '剪坏了别慌 三招救回来', tags: ['#剪发', '救场'], duration: '47', topComments: [{ text: '求地址', likes: '3', authorReplied: true, authorLiked: 'yes' }] },
+        { ...raw.details[0], id: '222', role: 'low', duration: '1分钟' },
+      ],
+    })!;
+    expect(c.profile.tabs).toBe('作品 212 合集 3 橱窗');
+    expect(c.details[0]).toMatchObject({ role: 'hot', caption: '剪坏了别慌 三招救回来', tags: ['剪发', '救场'], duration: '47' });
+    expect(c.details[0].topComments[0]).toEqual({ text: '求地址', likes: '3', authorReplied: true, authorLiked: false });
+    expect(c.details[1]).toMatchObject({ role: 'low', duration: '' });
+  });
+
+  it('材料里细看的作品按热门 → 对照 → 最新排，各自编号，写出文案、话题、时长和作者回过的评论', () => {
+    const c = sanitizeCollection({
+      ...raw,
+      details: [
+        { ...raw.details[0], id: '9', role: 'new', desc: '最新这条' },
+        { ...raw.details[0], id: '8', role: 'low', desc: '没火的', likes: '12' },
+        { ...raw.details[0], role: 'hot', caption: '剪坏了别慌', tags: ['剪发'], duration: '75', topComments: [{ text: '在哪', likes: '9', authorReplied: true }] },
+      ],
+    })!;
+    const text = formatCollection(c);
+    const hot = text.indexOf('【热门作品｜热门 1】');
+    const low = text.indexOf('【点赞偏低的作品（对照）｜对照 1】没火的');
+    const fresh = text.indexOf('【最新作品｜最新 1】最新这条');
+    expect(hot).toBeGreaterThan(-1);
+    expect(low).toBeGreaterThan(hot);
+    expect(fresh).toBeGreaterThan(low);
+    expect(text).toContain('时长 1 分 15 秒');
+    expect(text).toContain('完整文案：剪坏了别慌');
+    expect(text).toContain('话题：#剪发');
+    expect(text).toContain('- 在哪（9 赞）［作者回复过］');
+    expect(text).toContain('作者回复过的 1 条已标出');
+    expect(text).not.toMatch(/\n\n\n/);
   });
 
   it('排成材料：主页信息、点赞概况、带编号的作品清单、热门作品的数据和评论，说明不记评论人', () => {

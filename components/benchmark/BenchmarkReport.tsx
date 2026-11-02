@@ -55,7 +55,7 @@ export function BenchmarkReport({ report, streaming = false }: { report: string;
         ref={body}
         className="prose prose-slate dark:prose-invert max-w-none break-words px-4 py-4
                    prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground
-                   prose-h2:text-[16px] prose-h3:mb-3 prose-h3:mt-8 prose-h3:scroll-mt-20 prose-h3:border-l-[3px] prose-h3:border-primary prose-h3:pl-2.5 prose-h3:text-[15.5px]
+                   prose-h2:mb-4 prose-h2:mt-12 prose-h2:border-b prose-h2:border-border/70 prose-h2:pb-2 prose-h2:text-[17px] prose-h3:mb-3 prose-h3:mt-8 prose-h3:scroll-mt-20 prose-h3:border-l-[3px] prose-h3:border-primary prose-h3:pl-2.5 prose-h3:text-[15.5px]
                    prose-h4:mb-1.5 prose-h4:mt-5 prose-h4:text-[14px] prose-h4:text-primary
                    prose-p:my-2 prose-p:text-[13.5px] prose-p:leading-[1.85]
                    prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-li:text-[13.5px] prose-li:leading-[1.8] prose-li:marker:text-primary/70

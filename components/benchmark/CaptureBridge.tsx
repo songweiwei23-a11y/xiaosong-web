@@ -50,7 +50,7 @@ function toFiles(captures: Capture[]): File[] {
 }
 
 /** 插件最新版本（browser-extension/kaiwu-capture/manifest.json）；装的比它旧就提示下载新版 */
-export const PLUGIN_VERSION = "0.3.1";
+export const PLUGIN_VERSION = "0.4.0";
 /** 从这个版本起会一键采集；比它旧的粘贴链接没用，要先更新 */
 export const COLLECT_SINCE = "0.3.0";
 export function versionBelow(installed: string, target: string): boolean {
@@ -193,7 +193,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
     }
     if (version && versionBelow(version, COLLECT_SINCE)) return setLinkMsg("插件是旧版本，还不会一键采集：先按下面的提示更新插件");
     window.postMessage({ source: "kaiwu-page", type: "collect", url }, window.location.origin);
-    setLinkMsg("插件已经去打开这个主页、自动采集了：大约 1 分钟，抖音页面会自己往下翻、打开热门作品，采完自动回到这里开始拆解。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
+    setLinkMsg("插件已经去打开这个主页、自动采集了：大约 3 分钟，抖音页面会自己往下翻、打开 8 条作品，采完自动回到这里开始拆解。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
     setLink("");
   };
   const linkForm = (
@@ -210,7 +210,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
         />
         <button type="button" onClick={collectByLink} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white">一键采集并拆解</button>
       </div>
-      <p className="text-[12px] text-muted-foreground">插件会读主页信息、作品和点赞、最火 3 条作品的评论，按做账号定位的维度把对方的定位倒着拆一遍。在电脑上登录抖音网页版能读得更全。</p>
+      <p className="text-[12px] text-muted-foreground">插件会读主页信息、作品和点赞，再细看 8 条作品（最火的、点赞偏低的、最新的）的文案、话题和评论。报告先按做账号定位的维度把对方倒着拆一遍，再结合你的档案，写出你能借鉴的打法、能直接做的选题和 7 天行动清单。在电脑上登录抖音网页版能读得更全。</p>
       {linkMsg && <p className="text-[12.5px] text-foreground">{linkMsg}</p>}
     </section>
   );
@@ -257,7 +257,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
           <div>
             <p className="text-[14px] font-medium text-foreground">装一个「开物 · 截屏带入」插件，一键采集对标账号</p>
             <p className="mt-1 text-[12.5px] text-muted-foreground">
-              打开对标账号的抖音主页，点一下「一键采集」：插件自动读作品、点赞和热门作品的评论，大约 1 分钟，读完自动带进这里开始拆解。
+              打开对标账号的抖音主页，点一下「一键采集」：插件自动读作品、点赞，再细看 8 条作品的文案和评论，大约 3 分钟，读完自动带进这里开始拆解。
             </p>
           </div>
           <button type="button" onClick={dismiss} aria-label="暂不安装" className="shrink-0 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -276,7 +276,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
   if (installed && version && pluginOutdated(version)) {
     return (
       <p className="rounded-xl border border-primary/40 px-4 py-2.5 text-[12.5px] text-foreground">
-        {versionBelow(version, COLLECT_SINCE) ? "插件有新版本，能一键采集整个账号了" : "插件有新版本：采完一定会回到这里接着拆，抖音中途要求验证也会先把读到的带回来"}：<a href={EXTENSION_ZIP} download className="text-primary hover:underline">下载新版</a>，解压后覆盖原来的文件夹，再到扩展程序页点插件上的「重新加载」，然后刷新这一页。
+        {versionBelow(version, COLLECT_SINCE) ? "插件有新版本，能一键采集整个账号了" : "插件有新版本：多细看 8 条作品（最火的、点赞偏低的、最新的）的文案、话题和评论，拆得更深；采完一定会回到这里接着拆"}：<a href={EXTENSION_ZIP} download className="text-primary hover:underline">下载新版</a>，解压后覆盖原来的文件夹，再到扩展程序页点插件上的「重新加载」，然后刷新这一页。
       </p>
     );
   }

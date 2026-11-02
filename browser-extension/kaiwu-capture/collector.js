@@ -1,5 +1,5 @@
 // 抖音页面上的开物面板 + 一键采集（2026-11-02 产品方定：可以自动化采集，用户越省事越好）。
-// 编导在对标账号的主页上点「一键采集」：自动往下翻、读作品和点赞，再依次打开最火的几条读评论，读完自动带进开物开始拆解。
+// 编导在对标账号的主页上点「一键采集」：自动往下翻、读作品和点赞，再依次打开 8 条作品（最火、点赞偏低、最新）读文案和评论，读完自动带进开物开始拆解。
 // 守住的底线：
 //   - 只在编导自己打开的主页、自己点了按钮后跑，一次一个账号，读到上限就停；
 //   - 节奏像人：每翻一次、每换一条作品都随机等一会儿；
@@ -11,8 +11,10 @@
 
   const MAX_SHOTS = 9; // 和开物对标拆解的截图上限一致
   const MAX_WORKS = 60;
-  const MAX_DETAILS = 3;
-  const MAX_COMMENTS = 20;
+  // 细看 8 条：最火 5 条 + 点赞最低 2 条（爆款和扑街对照）+ 最新 1 条（看他现在往哪走）（2026-11-02 产品方：信息量要更多）
+  const MAX_DETAILS = 8;
+  const DETAIL_PICK = { hot: 5, low: 2, new: 1 };
+  const MAX_COMMENTS = 40;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const pause = (min, max) => sleep(min + Math.random() * (max - min)); // 像人一样，每次等的时间不一样
   const text = (el) => (el?.innerText ?? '').trim();
@@ -59,7 +61,18 @@
       fans: num('user-info-fans', '粉丝'),
       likes: num('user-info-like', '获赞'),
       worksTotal: text(e2e('user-tab-count')),
+      tabs: readTabs(),
     };
+  }
+
+  /** 主页上「作品 / 合集 / 橱窗 / 喜欢」这一排的文字：看内容怎么分栏、有没有橱窗团购。找不到就空着 */
+  function readTabs() {
+    let el = e2e('user-tab-count');
+    for (let i = 0; el && i < 5; i++, el = el.parentElement) {
+      const t = text(el).replace(/\s+/g, ' ');
+      if (/作品/.test(t) && /(喜欢|合集|橱窗|商品|收藏|团购|短剧)/.test(t)) return t.slice(0, 160);
+    }
+    return '';
   }
 
   function readWorks(found) {
@@ -87,7 +100,9 @@
       const body = item.querySelector('.comment-item-info-wrap')?.nextElementSibling;
       const t = text(body).replace(/\s+/g, ' ').slice(0, 100);
       if (!t) continue;
-      out.push({ text: t, likes: text(item.querySelector('.comment-item-stats-container p span')) });
+      // 抖音在评论上标的「作者回复过」「作者赞过」：看他怎么维护评论区（只记有没有，不记回复内容和评论人）
+      const mark = text(item);
+      out.push({ text: t, likes: text(item.querySelector('.comment-item-stats-container p span')), authorReplied: /作者回复过/.test(mark), authorLiked: /作者赞过/.test(mark) });
       if (out.length >= MAX_COMMENTS) break;
     }
     return out;
@@ -153,7 +168,13 @@
     progress('取热门作品的封面');
     await chrome.runtime.sendMessage({ type: 'covers', items: ranked.slice(0, 6).map((w) => ({ src: w.cover, link: w.link, desc: w.desc })) }).catch(() => null);
     job.works = job.works.map(({ cover, ...w }) => w);
-    job.queue = ranked.slice(0, MAX_DETAILS).map((w) => w.link);
+    // 挑要细看的：最火的、点赞最低的（读得出点赞的里面挑，做对照）、最新的（主页按时间排，置顶的除外）
+    const pick = new Map();
+    for (const w of ranked.slice(0, DETAIL_PICK.hot)) pick.set(w.link, 'hot');
+    for (const w of ranked.filter((x) => n(x.likes) > 0 && !pick.has(x.link)).slice(-DETAIL_PICK.low).reverse()) pick.set(w.link, 'low');
+    for (const w of job.works.filter((x) => !x.pinned && !pick.has(x.link)).slice(0, DETAIL_PICK.new)) pick.set(w.link, 'new');
+    job.queue = [...pick.keys()].slice(0, MAX_DETAILS);
+    job.roles = Object.fromEntries(pick);
     await setJob(job);
     await nextWork(job);
   }
@@ -173,7 +194,7 @@
     await waitFor(() => e2e('detail-video-info') || captchaShown(), 15000);
     if (captchaShown()) return stop(job, CAPTCHA, partly());
     await waitFor(() => document.querySelector('[data-e2e="comment-item"]'), 10000);
-    for (let i = 0; i < 4 && readComments().length < MAX_COMMENTS; i++) {
+    for (let i = 0; i < 7 && readComments().length < MAX_COMMENTS; i++) {
       if (captchaShown()) return stop(job, CAPTCHA, partly());
       scrollDown(e2e('comment-list') ?? document.body);
       await pause(1200, 2600);
@@ -182,10 +203,19 @@
     await shoot();
     const m = workKey(link);
     const work = job.works.find((w) => w.link === link);
+    // 完整文案：作品信息区的标题那一块（读不到标题元素就取信息区第一行），话题单独拎出来
+    const info = e2e('detail-video-info');
+    const full = text(info?.querySelector('h1') ?? null) || text(info).split('\n')[0] || '';
+    const tags = [...new Set([...full.matchAll(/#([^\s#]+)/g)].map((x) => x[1]))].slice(0, 10);
+    const video = document.querySelector('video');
     job.details.push({
       id: m?.[2] ?? '',
       link,
-      desc: work?.desc || text(e2e('detail-video-info')).split('\n')[0].slice(0, 80),
+      role: job.roles?.[link] ?? 'hot',
+      caption: full.replace(/#[^\s#]+/g, '').replace(/\s+/g, ' ').trim().slice(0, 300),
+      tags,
+      duration: video && Number.isFinite(video.duration) && video.duration > 0 ? String(Math.round(video.duration)) : '',
+      desc: work?.desc || text(info).split('\n')[0].slice(0, 80),
       likes: text(e2e('video-player-digg')),
       comments: text(e2e('feed-comment-icon')),
       collects: text(e2e('video-player-collect')),
@@ -271,12 +301,12 @@
     const running = job?.status === 'running';
     const paused = job?.status === 'paused';
     if (running) {
-      $('tip').textContent = '采集中，页面会自己往下翻、打开作品，请先别动这个标签页。大约 1 分钟。';
+      $('tip').textContent = '采集中，页面会自己往下翻、打开作品，请先别动这个标签页。大约 3 分钟。';
     } else if (paused) {
       $('tip').textContent = job.why || '采集停了';
       progress('');
     } else if (isProfile()) {
-      $('tip').textContent = '自动往下翻作品、读点赞，再打开最火的 3 条读评论，读完自动带进开物开始拆解。点开始即表示你确认这些是公开可见、可以合法使用的内容。';
+      $('tip').textContent = '自动往下翻作品、读点赞，再打开 8 条作品（最火的、点赞偏低的、最新的）读文案和评论，大约 3 分钟，读完自动带进开物开始拆解。点开始即表示你确认这些是公开可见、可以合法使用的内容。';
       progress(collection ? '上一次采集的还没带进开物' : '');
     } else {
       $('tip').textContent = '打开对标账号的主页，可以一键采集整个账号；在这里也可以只截当前屏幕。';
