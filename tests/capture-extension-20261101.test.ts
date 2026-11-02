@@ -7,7 +7,8 @@
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { batchKey, COLLECT_SINCE, dataUrlToFile, douyinLinkFromText, douyinUserKey, nameFromTitle, pickAccount, pluginOutdated, PLUGIN_VERSION, versionBelow } from '@/components/benchmark/CaptureBridge';
-import { COLLECTION_LIMITS, formatCollection, parseCount, sanitizeCollection } from '@/lib/benchmark-collection';
+import { COLLECTION_LIMITS, coverageEstimate, formatCollection, parseCount, sanitizeCollection } from '@/lib/benchmark-collection';
+import { BENCHMARK_FRAMEWORK } from '@/lib/benchmark-analysis';
 
 const DIR = 'browser-extension/kaiwu-capture';
 const read = (f: string) => fs.readFileSync(`${DIR}/${f}`, 'utf8');
@@ -275,9 +276,12 @@ describe('开物这边：网页来的数据先校验、限量，再排成拆解�
   });
 
   // 11-02 加深：细看 8 条（最火 5 + 点赞最低 2 + 最新 1），多读完整文案、话题、时长，评论 40 条并标作者回过的
-  it('插件挑细看的作品：最火 5 条、点赞最低 2 条（对照）、最新 1 条（不算置顶），带上为什么挑中', () => {
+  it('插件挑细看的作品：置顶的先看（最多 2 条）、最火的补足 5 条、点赞最低 2 条（对照）、最新 1 条（不算置顶），带上为什么挑中；列表读到 90 条', () => {
     const c = read('collector.js');
-    expect(c).toContain('const DETAIL_PICK = { hot: 5, low: 2, new: 1 };');
+    expect(c).toContain('const DETAIL_PICK = { pinned: 2, hot: 5, low: 2, new: 1 };');
+    expect(c).toContain("job.works.filter((x) => x.pinned).slice(0, DETAIL_PICK.pinned)) pick.set(w.link, 'pinned')");
+    expect(c).toContain('DETAIL_PICK.hot - pick.size');
+    expect(c).toContain('const MAX_WORKS = 90;');
     expect(c).toContain("pick.set(w.link, 'low')");
     expect(c).toContain('!x.pinned && !pick.has(x.link)');
     expect(c).toContain("role: job.roles?.[link] ?? 'hot'");
@@ -323,6 +327,32 @@ describe('开物这边：网页来的数据先校验、限量，再排成拆解�
     expect(text).toContain('- 在哪（9 赞）［作者回复过］');
     expect(text).toContain('作者回复过的 1 条已标出');
     expect(text).not.toMatch(/\n\n\n/);
+  });
+
+  it('置顶作品排在最前、编号「置顶 N」；角色白名单认置顶', () => {
+    const c = sanitizeCollection({ ...raw, details: [{ ...raw.details[0], role: 'hot' }, { ...raw.details[0], id: '9', role: 'pinned', desc: '我的店' }] })!;
+    expect(c.details.map((d) => d.role)).toEqual(['hot', 'pinned']);
+    const text = formatCollection(c);
+    expect(text.indexOf('【置顶作品｜置顶 1】我的店')).toBeLessThan(text.indexOf('【热门作品｜热门 1】'));
+  });
+
+  it('时间跨度：用细看作品（不算置顶）的发布时间和它们在列表里的位置推算覆盖多久；读不出就说读不出', () => {
+    const works = Array.from({ length: 60 }, (_, i) => ({ id: String(i + 1), link: '', desc: 'x', likes: '1', pinned: i === 0 }));
+    const detail = (id: string, publishedAt: string, role = 'hot') => ({ ...raw.details[0], id, publishedAt, role });
+    // 第 2 条 10-30 发，第 31 条 10-01 发：隔 29 条、29 天 → 约每 1 天一条；不算置顶 59 条 → 约 59 天
+    const c = sanitizeCollection({ ...raw, works, details: [detail('2', '发布时间：2026-10-30 18:00'), detail('31', '2026-10-01 09:00', 'low'), detail('1', '2025-01-01', 'pinned')] })!;
+    expect(coverageEstimate(c)).toEqual({ days: 59, perPost: 1, newest: '2026-10-30' });
+    expect(formatCollection(c)).toContain('时间跨度（粗估）：读到的作品大约覆盖最近 59 天，约每 1 天更新一条');
+    expect(formatCollection(c)).toContain('不到 3 个月，长期规律要谨慎');
+    // 只有一条能用（置顶的不算、相对时间不猜）
+    const one = sanitizeCollection({ ...raw, works, details: [detail('2', '3天前'), detail('5', '2026-10-30'), detail('1', '2025-01-01', 'pinned')] })!;
+    expect(coverageEstimate(one)).toBeNull();
+    expect(formatCollection(one)).toContain('时间跨度：读不出');
+  });
+
+  it('报告点名建议上传哪 2 条视频；开物页面开拆时也提醒', () => {
+    expect(BENCHMARK_FRAMEWORK).toContain('点名建议编导上传哪 2 条视频');
+    expect(fs.readFileSync('components/benchmark/CaptureBridge.tsx', 'utf8')).toContain('把他最火的 2 条视频下载下来，拖进这个账号的拆解区再拆一次');
   });
 
   it('排成材料：主页信息、点赞概况、带编号的作品清单、热门作品的数据和评论，说明不记评论人', () => {

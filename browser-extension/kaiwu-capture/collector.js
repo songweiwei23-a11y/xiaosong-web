@@ -10,10 +10,11 @@
   if (window.top !== window || document.getElementById('kaiwu-guide')) return;
 
   const MAX_SHOTS = 9; // 和开物对标拆解的截图上限一致
-  const MAX_WORKS = 60;
-  // 细看 8 条：最火 5 条 + 点赞最低 2 条（爆款和扑街对照）+ 最新 1 条（看他现在往哪走）（2026-11-02 产品方：信息量要更多）
+  // 主页列表上没有发布日期，按条数读：90 条够覆盖日更号近 3 个月；实际覆盖多久，开物用细看作品的发布时间推算
+  const MAX_WORKS = 90;
+  // 细看 8 条：置顶的先看（最多 2 条，他最想让新访客先看到的）+ 最火的补足 5 条 + 点赞最低 2 条（爆款和扑街对照）+ 最新 1 条（看他现在往哪走）
   const MAX_DETAILS = 8;
-  const DETAIL_PICK = { hot: 5, low: 2, new: 1 };
+  const DETAIL_PICK = { pinned: 2, hot: 5, low: 2, new: 1 };
   const MAX_COMMENTS = 40;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const pause = (min, max) => sleep(min + Math.random() * (max - min)); // 像人一样，每次等的时间不一样
@@ -168,9 +169,10 @@
     progress('取热门作品的封面');
     await chrome.runtime.sendMessage({ type: 'covers', items: ranked.slice(0, 6).map((w) => ({ src: w.cover, link: w.link, desc: w.desc })) }).catch(() => null);
     job.works = job.works.map(({ cover, ...w }) => w);
-    // 挑要细看的：最火的、点赞最低的（读得出点赞的里面挑，做对照）、最新的（主页按时间排，置顶的除外）
+    // 挑要细看的：置顶的、最火的（和置顶合起来 5 条）、点赞最低的（读得出点赞的里面挑，做对照）、最新的（主页按时间排，置顶的除外）
     const pick = new Map();
-    for (const w of ranked.slice(0, DETAIL_PICK.hot)) pick.set(w.link, 'hot');
+    for (const w of job.works.filter((x) => x.pinned).slice(0, DETAIL_PICK.pinned)) pick.set(w.link, 'pinned');
+    for (const w of ranked.filter((x) => !pick.has(x.link)).slice(0, Math.max(0, DETAIL_PICK.hot - pick.size))) pick.set(w.link, 'hot');
     for (const w of ranked.filter((x) => n(x.likes) > 0 && !pick.has(x.link)).slice(-DETAIL_PICK.low).reverse()) pick.set(w.link, 'low');
     for (const w of job.works.filter((x) => !x.pinned && !pick.has(x.link)).slice(0, DETAIL_PICK.new)) pick.set(w.link, 'new');
     job.queue = [...pick.keys()].slice(0, MAX_DETAILS);
@@ -306,7 +308,7 @@
       $('tip').textContent = job.why || '采集停了';
       progress('');
     } else if (isProfile()) {
-      $('tip').textContent = '自动往下翻作品、读点赞，再打开 8 条作品（最火的、点赞偏低的、最新的）读文案和评论，大约 3 分钟，读完自动带进开物开始拆解。点开始即表示你确认这些是公开可见、可以合法使用的内容。';
+      $('tip').textContent = '自动往下翻作品、读点赞，再打开 8 条作品（置顶的、最火的、点赞偏低的、最新的）读文案和评论，大约 3 分钟，读完自动带进开物开始拆解。点开始即表示你确认这些是公开可见、可以合法使用的内容。';
       progress(collection ? '上一次采集的还没带进开物' : '');
     } else {
       $('tip').textContent = '打开对标账号的主页，可以一键采集整个账号；在这里也可以只截当前屏幕。';

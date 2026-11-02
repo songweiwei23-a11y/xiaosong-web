@@ -8,8 +8,9 @@
 // 2026-11-02 产品方：「信息量更多一些……重点是让用户根据对标拿到自己可以借鉴、可以学习的部分」。
 // 细看的作品从最火 3 条加到 8 条：最火 5 条 + 点赞最低 2 条（爆款和扑街对照）+ 最新 1 条（看他现在往哪走）；
 // 每条多读完整文案、话题、时长，评论 40 条并标出作者回过、赞过的（看他怎么维护评论区）。
+// 11-02 晚：作品列表 60 → 90 条（列表上没有日期，按条数读，覆盖多久用细看作品的发布时间推算，见 coverageEstimate）；置顶作品必看
 export const COLLECTION_LIMITS = {
-  works: 60,
+  works: 90,
   details: 8,
   comments: 40,
   descChars: 80,
@@ -23,9 +24,9 @@ export const COLLECTION_LIMITS = {
 /** 插件顺手带来的作品封面，文件名用这个开头，拆解时告诉模型哪几张是封面 */
 export const COVER_PREFIX = '封面';
 
-/** 细看的作品为什么被挑中：最火的、点赞偏低的（对照）、最新的 */
-export type DetailRole = 'hot' | 'low' | 'new';
-export const DETAIL_ROLE_LABEL: Record<DetailRole, string> = { hot: '热门作品', low: '点赞偏低的作品（对照）', new: '最新作品' };
+/** 细看的作品为什么被挑中：置顶的、最火的、点赞偏低的（对照）、最新的 */
+export type DetailRole = 'pinned' | 'hot' | 'low' | 'new';
+export const DETAIL_ROLE_LABEL: Record<DetailRole, string> = { pinned: '置顶作品', hot: '热门作品', low: '点赞偏低的作品（对照）', new: '最新作品' };
 
 export interface CollectedWork { id: string; link: string; desc: string; likes: string; pinned: boolean }
 /** authorReplied / authorLiked：页面上标了「作者回复过」「作者赞过」 */
@@ -93,7 +94,7 @@ export function sanitizeCollection(raw: unknown): Collection | null {
       return {
         id: str(x.id, 30),
         link: douyinLink(x.link),
-        role: (x.role === 'low' || x.role === 'new' ? x.role : 'hot') as DetailRole,
+        role: (x.role === 'low' || x.role === 'new' || x.role === 'pinned' ? x.role : 'hot') as DetailRole,
         desc: str(x.desc, L.descChars),
         caption: str(x.caption, L.captionChars),
         tags: (Array.isArray(x.tags) ? x.tags : []).map((t) => str(t, 30).replace(/^#/, '')).filter(Boolean).slice(0, L.tags),
@@ -148,6 +149,34 @@ export function collectionSummary(c: Collection): string {
   return `插件采集：作品 ${c.works.length} 条${c.details.length ? `，细看 ${c.details.length} 条（数据、文案、评论 ${comments} 条）` : ''}`;
 }
 
+/** 「2026-10-20 18:00」这类发布时间 → 当天 0 点的时间戳；读不出返回 null（「3 天前」这类相对时间不猜） */
+function publishedDay(text: string): number | null {
+  const m = text.match(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+
+/**
+ * 读到的作品大约覆盖多久：主页列表上没有日期，用细看的那几条（不算置顶，置顶不按时间排）的发布时间
+ * 和它们在列表里的位置推算更新节奏，再推整份列表覆盖的天数。能用的不到两条、或者算不出来就返回 null。
+ */
+export function coverageEstimate(c: Pick<Collection, 'works' | 'details'>): { days: number; perPost: number; newest: string } | null {
+  const order = new Map(c.works.map((w, i) => [w.id, i]));
+  const dated = c.details
+    .filter((d) => d.role !== 'pinned' && order.has(d.id) && !c.works[order.get(d.id)!]?.pinned)
+    .map((d) => ({ i: order.get(d.id)!, t: publishedDay(d.publishedAt) }))
+    .filter((x): x is { i: number; t: number } => x.t !== null)
+    .sort((a, b) => a.i - b.i);
+  if (dated.length < 2) return null;
+  const first = dated[0];
+  const last = dated[dated.length - 1];
+  const days = (first.t - last.t) / 86_400_000;
+  const gap = last.i - first.i;
+  if (gap <= 0 || days <= 0) return null;
+  const perPost = days / gap;
+  const unpinned = c.works.filter((w) => !w.pinned).length;
+  return { days: Math.round(perPost * unpinned), perPost: Math.round(perPost * 10) / 10, newest: new Date(first.t).toISOString().slice(0, 10) };
+}
+
 const durationText = (s: string) => {
   const n = Number(s);
   return n >= 60 ? `${Math.floor(n / 60)} 分 ${n % 60} 秒` : `${n} 秒`;
@@ -174,14 +203,19 @@ export function formatCollection(c: Collection): string {
     '',
     `作品点赞概况（读到 ${c.works.length} 条，按主页从新到旧）：中位数 ${fmt(med)} 赞，最高 ${fmt(ranked[0]?.n ?? null)}，最低 ${fmt(ranked.at(-1)?.n ?? null)}。`,
     med != null ? `明显高于中位数 3 倍的有 ${likes.filter((n) => n >= med * 3).length} 条。` : '',
+    (() => {
+      const cov = coverageEstimate(c);
+      if (!cov) return '时间跨度：读不出（主页列表上没有日期，细看的作品里能用的发布时间不到两条），更新频率写【待核实】。';
+      return `时间跨度（粗估）：读到的作品大约覆盖最近 ${cov.days} 天，约每 ${cov.perPost} 天更新一条（按细看作品的发布时间和它们在主页上的位置推算，最近一条细看作品发布于 ${cov.newest}）${cov.days < 90 ? '；不到 3 个月，长期规律要谨慎' : ''}。`;
+    })(),
     '',
     '作品清单：',
     ...c.works.map((w, i) => `${i + 1}. ${line(w)}`),
   ];
   // 细看的作品按「热门 → 点赞偏低（对照）→ 最新」排，同一类编上号，报告里好引用（热门 2、对照 1、最新 1）
-  const seq: Record<DetailRole, number> = { hot: 0, low: 0, new: 0 };
-  const short: Record<DetailRole, string> = { hot: '热门', low: '对照', new: '最新' };
-  const order: DetailRole[] = ['hot', 'low', 'new'];
+  const seq: Record<DetailRole, number> = { pinned: 0, hot: 0, low: 0, new: 0 };
+  const short: Record<DetailRole, string> = { pinned: '置顶', hot: '热门', low: '对照', new: '最新' };
+  const order: DetailRole[] = ['pinned', 'hot', 'low', 'new'];
   for (const d of [...c.details].sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role))) {
     seq[d.role] += 1;
     const replied = d.topComments.filter((x) => x.authorReplied).length;
