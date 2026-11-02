@@ -26,6 +26,16 @@ describe('联网授权与真实工具计次', () => {
   // 2026-10-17 实测：这些明显要查实时信息的，原来都不自动搜（等于没联网）
   it.each(['特斯拉最近股价','最新的 iPhone 发布会是什么时候','郑州地铁现在票价是多少','2026年国庆节放假安排','知乎热榜今天有什么','最近抖音本地生活有什么新规则'])('实时事实对象：按需联网自动搜 %s', q => expect(wantsWebSearch(q)).toBe(true));
   it.each(['今天我该拍什么','最近拍什么内容好','最新的选题方向怎么定'])('创作问题即使带时间词也不自动搜 %s', q => expect(wantsWebSearch(q)).toBe(false));
+  // 2026-11-02 线上：「南乐今日都发生了啥」按需联网没搜，模型只能说「没有联网授权」
+  it.each(['南乐今日都发生了啥','濮阳今天出啥事了','最近郑州啥情况','我们县这几天有啥新鲜事','南乐最近有啥大事'])('口语问新闻、问事实：按需联网自动搜 %s', q => expect(wantsWebSearch(q)).toBe(true));
+  it.each(['今天拍啥好','今天写啥脚本'])('口语的创作问题照样不搜 %s', q => expect(wantsWebSearch(q)).toBe(false));
+  it('口语问新闻：搜索词换成「地名 新闻 头条」，时效 2 天', async () => {
+    const { buildWebQuery } = await import('@/lib/web-query');
+    const w = buildWebQuery('南乐今日都发生了啥', Date.parse('2026-11-02T04:00:00Z'));
+    expect(w.query).toBe('南乐 新闻 头条');
+    expect(w.recencyDays).toBe(2);
+    expect(buildWebQuery('濮阳今天出啥事了').query).toBe('濮阳 新闻 头条');
+  });
   it('用户关闭联网优先于关键词，主动联网才申请额度', async () => {
     expect(wantsWebSearch('联网查新闻', 'off')).toBe(false);
     const off = await prepareWebSearch('u','联网查新闻','off');

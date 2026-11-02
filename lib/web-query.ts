@@ -70,7 +70,9 @@ const TIME_RULES: [RegExp, (now: number) => [string, number]][] = [
  * 天气问题照旧：天气本来就要日期。
  */
 export function isNewsQuestion(question: string): boolean {
-  return /新闻|热点|头条|资讯|报道|动态|消息|大事|发生了什么|通知|公告/.test(question) && !/天气|气温|降雨|空气质量|穿衣/.test(question);
+  // 口语说法（2026-11-02 线上：「南乐今日都发生了啥」不认，按需联网没搜，模型只能说查不到）
+  return /新闻|热点|头条|资讯|报道|动态|消息|大事|发生了?(?:什么|啥)|出(?:了)?(?:什么|啥)事|有啥(?:事|新鲜事|大事)|啥情况|什么情况|怎么回事|通知|公告/.test(question)
+    && !/天气|气温|降雨|空气质量|穿衣/.test(question);
 }
 
 /**
@@ -91,7 +93,7 @@ function newsTimeWord(days: number): string {
 function newsWording(q: string): string {
   // 「有什么新闻 / 有什么大事」是口语，搜索引擎拿它去搜会把天气页和旧活动排前面（2026-10-17 实测：「南乐有什么新闻」0 条新闻）
   return q
-    .replace(/(?:有什么|有哪些|有啥)(?:新闻|大事|消息|热点|动态)|发生了什么(?:大事|事)?/g, ' 新闻 头条 ')
+    .replace(/(?:有什么|有哪些|有啥)(?:新闻|大事|消息|热点|动态|新鲜事)|(?:都)?发生了?(?:什么|啥)(?:大事|事)?|出(?:了)?(?:什么|啥)事了?|有啥事|啥情况|什么情况/g, ' 新闻 头条 ')
     .replace(/热点新闻/g, ' 新闻 头条 ')
     .replace(/热点/g, '新闻');
 }

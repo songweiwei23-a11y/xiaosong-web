@@ -51,7 +51,9 @@ describe('自由对话详细回答策略接入真实请求路径', () => {
 
   it('用户请求联网但额度未获准时，不能声称本轮已搜索', async () => {
     const payload = await send({ freeChat: true, query: '查一下当前规则', webSearchMode: 'on' });
-    expect(payload.query).toContain('本轮没有获得联网授权');
+    // 2026-11-02：原来写「本轮没有获得联网授权」，模型照抄给用户，像权限出了问题；改成说人话并告诉用户怎么联网
+    expect(payload.query).toContain('本轮没有联网');
+    expect(payload.query).toContain('选成「本轮联网」再问一次');
     expect(payload.query).not.toContain('系统已允许本轮联网');
     expect(payload.inputs.web_search_enabled).toBe('0');
   });
