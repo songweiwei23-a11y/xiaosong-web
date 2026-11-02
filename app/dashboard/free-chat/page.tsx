@@ -493,6 +493,8 @@ export default function FreeChatPage() {
         body: JSON.stringify({
           query,
           question: content,
+          // 联网前读懂需求要用：最近两轮（追问「那客单价呢」时补全指代），每条只取开头，整段不超过 1200 字
+          searchContext: keep.slice(-2).map((m) => `${m.role === "user" ? "用户" : "回答"}：${String(m.content ?? "").replace(/\s+/g, " ").slice(0, 500)}`).join("\n").slice(0, 1200),
           freeChat: true,
           webSearchMode,
           creationSettings,

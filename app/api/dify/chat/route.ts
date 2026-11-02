@@ -36,6 +36,8 @@ import { FREE_CHAT_FACT_LINE } from '@/lib/output-rules'
 import { KB_ROUTING_ENABLED, NO_KB_TASKS, freeChatNeedsKnowledge } from '@/lib/kb-routing'
 import { freeChatAnswerRules } from '@/lib/free-chat-answer'
 import { searchFreeChatWeb, type FreeChatWebResult } from '@/lib/free-chat-web'
+import { planSearch } from '@/lib/search-plan'
+import { searchProfileHint } from '@/lib/search-profile-hint'
 
 /*
  * 自由对话与所有「追问」都走这个路由。
@@ -238,7 +240,14 @@ export async function POST(request: NextRequest) {
       if (!serverWeb) {
         webSession = await prepareWebSearch(guard.userId!, question, body.webSearchMode);
         if (body.freeChat === true && webSession.enabled) {
-          serverWeb = await searchFreeChatWeb(question, { onStarted: () => webSession.markStarted() });
+          // 先读懂需求（lib/search-plan）：结合最近两轮和档案的行业、地区，写出 1～2 个角度的搜索词；读不出就按原来的规则搜
+          const plan = await planSearch({
+            question,
+            recent: typeof body.searchContext === 'string' ? body.searchContext.slice(0, 1200) : '',
+            profileHint: await searchProfileHint(guard.userId!, profileId),
+            today: todayCN(),
+          });
+          serverWeb = await searchFreeChatWeb(question, { onStarted: () => webSession.markStarted(), plan });
         }
       }
       Object.assign(difyPayload.inputs, webSession.inputs);

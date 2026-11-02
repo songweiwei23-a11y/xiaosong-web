@@ -1,5 +1,8 @@
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { searchFreeChatWeb } from '@/lib/free-chat-web';
+import { planSearch } from '@/lib/search-plan';
+import { searchProfileHint } from '@/lib/search-profile-hint';
+import { todayCN } from '@/lib/web-query';
 import { freeChatAnswerRules } from '@/lib/free-chat-answer';
 import { releaseCreation, reserveCreation, settleCreation } from '@/lib/creation-quota';
 import { knowledgeConfigured, knowledgeResultText, searchKnowledge } from '@/lib/assistant/knowledge';
@@ -229,8 +232,10 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         ctx.onWeb?.({ status: exhausted ? 'quota_exhausted' : 'unavailable', message: note, sources: [] });
         return `${note}${freeChatAnswerRules(false, { evidenceOnly: true })}`;
       }
+      // 先读懂需求（lib/search-plan）：助理给的搜索问题已经带了上文，这里按档案补行业、地区，拆 1～2 个角度；读不出就按原来的规则搜
+      const plan = await planSearch({ question, profileHint: await searchProfileHint(ctx.userId, ctx.profileId), today: todayCN() });
       // 真正发起付费搜索前才确认扣费（没有可用的搜索服务时不会调用，也就不扣）
-      const result = await searchFreeChatWeb(question, { onStarted: () => web.markStarted() });
+      const result = await searchFreeChatWeb(question, { onStarted: () => web.markStarted(), plan });
       if (!result) {
         ctx.onWeb?.({ status: 'unavailable', message: '联网搜索暂时不可用', sources: [] });
         return '联网搜索暂时不可用，请如实告诉用户没有查到最新信息，不要编造来源。';

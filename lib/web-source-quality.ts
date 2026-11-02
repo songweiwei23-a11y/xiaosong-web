@@ -23,7 +23,11 @@ export function freeChatWebQuery(question: string, now = Date.now()) {
     : douyinGuide && !/site:/i.test(w.query) ? `site:life.douyin.com 抖音生活服务 创作指南 ${w.query}` : w.query };
 }
 
-export function pickFreeChatSources(hits: SearchHit[], question: string, recencyDays = 0, now = Date.now(), maxSources = 6): SearchHit[] {
+/**
+ * focus：读懂需求后的关键对象（lib/search-plan 的 entities：地名、行业、产品、平台……）。
+ * 标题和正文开头对得上的加分（最多 +3）；给了两个以上、一个都对不上的减 3——多半是搜索词沾边、内容不相干的页面。
+ */
+export function pickFreeChatSources(hits: SearchHit[], question: string, recencyDays = 0, now = Date.now(), maxSources = 6, focus: string[] = []): SearchHit[] {
   const place = newsPlace(question);
   const seen = new Set<string>();
   const seenContent = new Set<string>();
@@ -83,6 +87,11 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     const terms = question.match(/[a-z][a-z0-9_-]{2,}/gi) || [];
     const text = `${hit.title} ${hit.content.slice(0, 1500)}`.toLowerCase();
     score += Math.min(3, new Set(terms.filter(term => text.includes(term.toLowerCase()))).size);
+    if (focus.length) {
+      const matched = focus.filter(f => text.includes(f.toLowerCase())).length;
+      score += Math.min(3, matched);
+      if (focus.length >= 2 && matched === 0) score -= 3;
+    }
     ranked.push({ hit: { ...hit, url: u.href }, score, host, index, hub });
   });
   const substantive = ranked.filter(x => !x.hub && x.hit.content.trim().length >= 150);
