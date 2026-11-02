@@ -37,6 +37,7 @@ import { KB_ROUTING_ENABLED, NO_KB_TASKS, freeChatNeedsKnowledge } from '@/lib/k
 import { freeChatAnswerRules } from '@/lib/free-chat-answer'
 import { searchFreeChatWeb, type FreeChatWebResult } from '@/lib/free-chat-web'
 import { planSearch } from '@/lib/search-plan'
+import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsDouyinHot } from '@/lib/douyin-hot'
 import { searchProfileHint } from '@/lib/search-profile-hint'
 
 /*
@@ -235,10 +236,18 @@ export async function POST(request: NextRequest) {
 
     let webSession: Awaited<ReturnType<typeof prepareWebSearch>>;
     let serverWeb: FreeChatWebResult | null = null;
+    // 抖音今日热榜（lib/douyin-hot）：问抖音热点时由开物服务器直接读抖音网页热榜（全站 10 分钟缓存）。
+    // 只问抖音热榜的不再联网搜索，也不扣联网额度；用户关了联网就不读
+    const hotWanted = body.freeChat === true && wantsDouyinHot(question) && body.webSearchMode !== 'off';
+    const hotList = hotWanted ? await getDouyinHot() : null;
+    const hotBlock = hotWanted
+      ? `\n\n${hotList ? `${douyinHotContext(hotList)}\n这份榜单是开物服务器从抖音读到的实时数据，可以当作已核实的抖音热榜引用（来源：[抖音热榜](https://www.douyin.com/hot)），不受上面「未联网」的限制。` : DOUYIN_HOT_MISSING}`
+      : '';
+    const hotOnly = !!hotList && douyinHotOnly(question);
     const callDify = async () => {
       // 失效会话重试复用已搜资料，不重复调用付费搜索。
       if (!serverWeb) {
-        webSession = await prepareWebSearch(guard.userId!, question, body.webSearchMode);
+        webSession = await prepareWebSearch(guard.userId!, question, hotOnly ? 'off' : body.webSearchMode);
         if (body.freeChat === true && webSession.enabled) {
           // 先读懂需求（lib/search-plan）：结合最近两轮和档案的行业、地区，写出 1～2 个角度的搜索词；读不出就按原来的规则搜
           const plan = await planSearch({
@@ -253,7 +262,7 @@ export async function POST(request: NextRequest) {
       Object.assign(difyPayload.inputs, webSession.inputs);
       // 每轮重新构建，重试不叠加规则；由服务端真实联网授权决定资料边界。
       const roundQuery = body.freeChat === true
-        ? fullQuery + (serverWeb ? `\n\n${serverWeb.context}` : '') + freeChatAnswerRules(webSession.enabled)
+        ? fullQuery + (serverWeb ? `\n\n${serverWeb.context}` : '') + freeChatAnswerRules(webSession.enabled) + hotBlock
           + `\n\n【本轮用户原话与输出约束，请逐项回应】\n${question}`
         : fullQuery;
       difyPayload.query = roundQuery;

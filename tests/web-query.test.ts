@@ -117,6 +117,7 @@ describe('接线', () => {
   });
 
   it('自由对话用用户原话判断和生成搜索词，不用拼好的长提示词', () => {
-    expect(readCode('app/api/dify/chat/route.ts')).toMatch(/prepareWebSearch\(guard\.userId!, question, body\.webSearchMode\)/);
+    // 2026-11-02：只问抖音热榜的由服务器直接读榜单（lib/douyin-hot），这一轮不联网（'off'），其余照旧按用户原话判断
+    expect(readCode('app/api/dify/chat/route.ts')).toMatch(/prepareWebSearch\(guard\.userId!, question, hotOnly \? 'off' : body\.webSearchMode\)/);
   });
 });

@@ -19,8 +19,9 @@ const PLATFORMS: { words: RegExp; label: string; site: string; keyword: string }
   { words: /知乎/, label: '知乎', site: 'zhihu.com', keyword: '热榜' },
   { words: /微博/, label: '微博', site: 's.weibo.com', keyword: '热搜' },
   { words: /头条/, label: '今日头条', site: 'toutiao.com', keyword: '热榜' },
-  // 2026-10-18 实测：site:www.douyin.com 热点榜 回来的是抖音自己的 /hot/ 话题页。没有正式的抖音热榜数据源，
-  // 所以只能给搜到的平台页面；搜不到当天的就说没有（见 free-chat-web.ts 的平台热榜分支）。
+  // 2026-10-18 实测：site:www.douyin.com 热点榜 回来的是抖音自己的 /hot/ 话题页。
+  // 2026-11-02 起抖音热榜由开物服务器直接读（lib/douyin-hot）：只问抖音热榜的不再走这里；问了别的平台或细节时这一路照搜
+  // （见 free-chat-web.ts 的平台热榜分支）。
   { words: /抖音/, label: '抖音', site: 'www.douyin.com', keyword: '热点榜' },
 ];
 

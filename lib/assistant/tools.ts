@@ -1,6 +1,7 @@
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { searchFreeChatWeb } from '@/lib/free-chat-web';
 import { planSearch } from '@/lib/search-plan';
+import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsDouyinHot } from '@/lib/douyin-hot';
 import { searchProfileHint } from '@/lib/search-profile-hint';
 import { todayCN } from '@/lib/web-query';
 import { freeChatAnswerRules } from '@/lib/free-chat-answer';
@@ -224,6 +225,23 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
   };
 
   const runWebSearch = async (question: string): Promise<string> => {
+    // 抖音今日热榜（lib/douyin-hot）：开物服务器直接读抖音网页热榜。只问热榜的不再联网搜索、不扣联网额度
+    if (wantsDouyinHot(question)) {
+      const hot = await getDouyinHot().catch(() => null);
+      if (hot && douyinHotOnly(question)) {
+        ctx.onWeb?.({ status: 'done', message: '读了抖音热榜', sources: [{ title: '抖音热榜', url: 'https://www.douyin.com/hot' }] });
+        return douyinHotContext(hot);
+      }
+      if (!hot && douyinHotOnly(question)) {
+        ctx.onWeb?.({ status: 'unavailable', message: '这次没读到抖音热榜', sources: [] });
+        return DOUYIN_HOT_MISSING;
+      }
+      if (hot) return `${douyinHotContext(hot)}\n\n${await runPlainWebSearch(question)}`;
+    }
+    return runPlainWebSearch(question);
+  };
+
+  const runPlainWebSearch = async (question: string): Promise<string> => {
     try {
       const web = await prepareWebSearch(ctx.userId, question, 'on');
       if (!web.enabled) {
