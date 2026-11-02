@@ -6,7 +6,7 @@
 // 3. 开物这边对网页来的数据先校验、限量，再排成拆解材料。
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { batchKey, COLLECT_SINCE, douyinLinkFromText, douyinUserKey, nameFromTitle, pickAccount, pluginOutdated, PLUGIN_VERSION, versionBelow } from '@/components/benchmark/CaptureBridge';
+import { batchKey, COLLECT_SINCE, dataUrlToFile, douyinLinkFromText, douyinUserKey, nameFromTitle, pickAccount, pluginOutdated, PLUGIN_VERSION, versionBelow } from '@/components/benchmark/CaptureBridge';
 import { COLLECTION_LIMITS, formatCollection, parseCount, sanitizeCollection } from '@/lib/benchmark-collection';
 
 const DIR = 'browser-extension/kaiwu-capture';
@@ -119,6 +119,39 @@ describe('开物里粘贴主页链接', () => {
     expect(c).toContain('if (!job.retried)');
     expect(c).toContain("job.notes.push('有一条热门作品没打开，跳过了')");
     expect(c).not.toContain('采集中的页面被换走了');
+  });
+
+  // 根因（线上实测）：网站安全策略 connect-src 不许 fetch 读 data: 地址，fetch(dataUrl) 一抛错整批数据都丢、页面也不提示
+  it('插件交来的图片自己解码成文件，不走 fetch；坏的一张跳过', () => {
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const f = dataUrlToFile(png, '封面-1')!;
+    expect(f.name).toBe('封面-1.png');
+    expect(f.type).toBe('image/png');
+    expect(f.size).toBe(68);
+    expect(dataUrlToFile('data:image/jpeg;base64,/9j/', '插件截图-2')?.name).toBe('插件截图-2.jpg');
+    expect(dataUrlToFile('data:text/html;base64,PGI+', 'x')).toBeNull();
+    expect(dataUrlToFile('data:image/png;base64,%%%', 'x')).toBeNull();
+    expect(dataUrlToFile('https://example.com/a.png', 'x')).toBeNull();
+  });
+
+  it('扫描：页面代码里不许 fetch 读 data: 地址（安全策略会挡，静默失败）', () => {
+    const csp = fs.readFileSync('next.config.js', 'utf8').match(/connect-src[^`"]*/)?.[0] ?? '';
+    expect(csp).toContain("connect-src 'self'");
+    expect(csp).not.toMatch(/\bdata:/); // 策略没放开 data:，所以下面这条扫描有意义
+    const files: string[] = [];
+    const walk = (d: string) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = `${d}/${e.name}`;
+        if (e.isDirectory()) walk(p);
+        else if (/\.(tsx?|jsx?)$/.test(e.name)) files.push(p);
+      }
+    };
+    for (const d of ['app', 'components', 'lib', 'hooks']) walk(d);
+    expect(files.length).toBeGreaterThan(200); // 扫描真的扫到了文件
+    const bad = files.filter((p) => /fetch\(\s*[\w.?]*data[Uu]rl\b|fetch\(\s*["'`]data:/.test(fs.readFileSync(p, 'utf8')));
+    expect(bad).toEqual([]);
+    // 改坏测试：原来那行写法能被扫描抓到
+    expect(/fetch\(\s*[\w.?]*data[Uu]rl\b/.test('await (await fetch(c.dataUrl)).blob()')).toBe(true);
   });
 
   it('截图等面板藏好最多 300 毫秒：标签页被切走时不会卡住整个采集', () => {

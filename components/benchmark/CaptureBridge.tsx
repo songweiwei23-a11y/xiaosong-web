@@ -20,14 +20,31 @@ const MAX_CAPTURES = 9;
 /** kind=cover：一键采集顺手带来的作品封面；不写是编导截的屏 */
 interface Capture { dataUrl: string; url?: string; title?: string; at?: string; kind?: string }
 
-async function toFiles(captures: Capture[]): Promise<File[]> {
+/**
+ * 插件交来的 data:image/...;base64 → 文件。自己解码，不能拿 fetch 去读：网站的安全策略（next.config.js 的 connect-src）
+ * 不许 fetch 读 data: 地址，一读就抛错，整批数据（连采集结果）都丢了（2026-11-02 采完不回开物拆的根因）。
+ * 坏的一张跳过，不连累别的
+ */
+export function dataUrlToFile(dataUrl: string, name: string): File | null {
+  const m = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return null;
+  try {
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const ext = m[1] === "image/png" ? "png" : m[1] === "image/webp" ? "webp" : "jpg";
+    return new File([bytes], `${name}.${ext}`, { type: m[1] });
+  } catch {
+    return null;
+  }
+}
+
+function toFiles(captures: Capture[]): File[] {
   const out: File[] = [];
   for (const [i, c] of captures.slice(0, MAX_CAPTURES).entries()) {
-    if (typeof c?.dataUrl !== "string" || !/^data:image\/(jpeg|png|webp);/.test(c.dataUrl)) continue;
-    const blob = await (await fetch(c.dataUrl)).blob();
-    const type = /^image\/(jpeg|png|webp)$/.test(blob.type) ? blob.type : "image/jpeg";
-    const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
-    out.push(new File([blob], `${c.kind === "cover" ? COVER_PREFIX : "插件截图"}-${i + 1}.${ext}`, { type }));
+    if (typeof c?.dataUrl !== "string") continue;
+    const file = dataUrlToFile(c.dataUrl, `${c.kind === "cover" ? COVER_PREFIX : "插件截图"}-${i + 1}`);
+    if (file) out.push(file);
   }
   return out;
 }
@@ -130,7 +147,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
 
   useEffect(() => {
     try { setDismissed(localStorage.getItem(DISMISS_KEY) === "1"); } catch { setDismissed(false); }
-    const onMessage = async (event: MessageEvent) => {
+    const onMessage = (event: MessageEvent) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       const data = event.data as { source?: string; type?: string; version?: string; captures?: Capture[]; collection?: unknown } | null;
       if (data?.source !== "kaiwu-capture") return;
@@ -138,7 +155,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
       if (typeof data.version === "string") setVersion(data.version);
       if (data.type !== "captures") return;
       const captures = Array.isArray(data.captures) ? data.captures : [];
-      const got = captures.length ? await toFiles(captures) : [];
+      const got = toFiles(captures);
       const col = sanitizeCollection(data.collection);
       if (got.length || col) {
         const key = batchKey(captures, col);
