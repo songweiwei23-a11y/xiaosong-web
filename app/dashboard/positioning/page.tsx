@@ -1,6 +1,8 @@
 "use client";
 
 import { formatRelativeTime } from "@/lib/script-result-utils";
+import { diagnosisPromptBlock } from "@/lib/account-diagnosis";
+import { fetchDiagnosis } from "@/lib/diagnosis-client";
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { TEXTAREA_CLS, GENERATE_BTN } from "@/components/form/controls";
@@ -249,6 +251,8 @@ export default function PositioningPage() {
     let conversationId = "";
 
     const profileSummary = buildProfileSummary();
+    // 账号诊断（创作进度「诊断我的账号」）：重做定位时知道这个号实际做成了什么样（取不到就不带）
+    const diagnosis = diagnosisPromptBlock(await fetchDiagnosis(activeProfile.id), "foundation");
 
     // 提示词在这里拼完整的。旧版只把档案丢给服务端，服务端那套只规定
     // 「输出哪些小节」、没给任何判断依据，产出自然是格式对但不专业。
@@ -270,6 +274,7 @@ export default function PositioningPage() {
       outputSpec: depth === "quick" ? buildQuickOutputSpec() : undefined,
       mixBlock: mixPromptBlock(resolveMix(activeProfile as unknown as Record<string, unknown>, mixOverride, additionalNotes)),
       taboos: taboosPromptBlock(activeProfile),
+      diagnosis,
     }) + bridge.prompt;
 
     try {

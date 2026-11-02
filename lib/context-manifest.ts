@@ -71,6 +71,14 @@ export interface BoardManifest {
    * 同上：脚本不带定位，避免和档案、写作底线之外的说法打架。
    */
   positioning?: boolean;
+  /**
+   * 账号诊断（创作进度里「诊断我的账号」，lib/account-diagnosis）要不要带、带多少。默认不带。
+   * 2026-11-02 产品方：「需要知道账号目前信息的就让他知道；不需要或者会扰乱该板块的就不要给」——
+   *   planning 诊断要点 + 30 天布局 + 给各板块的指令：规划类（选题、方向、内容规划、起号、自由对话）
+   *   single   只给脚本、人设、变现三行指令：写单条内容的（脚本、二创）。给多了单条会被带偏、容易编（方案 D 的教训）
+   * 分镜（管怎么拍）、审稿（尊重这一稿）、标题、成交理由、拆解爆款（拆的是别人）、知识库不带。
+   */
+  diagnosis?: 'planning' | 'single';
 }
 
 export const BOARD_MANIFESTS: BoardManifest[] = [
@@ -83,6 +91,7 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     brief: [],
     dealReasons: true,
     deep: ['content'],
+    diagnosis: 'planning',
   },
   {
     board: 'script',
@@ -97,6 +106,7 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     positioning: false,
     // 2026-10-29：脚本的结尾要对上商业定位的成交路径（只给成交路径一段，1200 字，见 creator-context）
     deep: ['business'],
+    diagnosis: 'single',
   },
   {
     board: 'storyboard',
@@ -147,6 +157,7 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     profile: ['account', 'audience', 'tone', 'shooting', 'monetize', 'viral', 'restrictions'],
     brief: ['oneline', 'persona', 'audience', 'direction', 'shooting', 'forbidden'],
     dealReasons: false,
+    diagnosis: 'planning',
   },
   {
     board: 'freeChat',
@@ -155,6 +166,7 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     profile: ['account', 'audience', 'tone', 'selling', 'shooting', 'restrictions'],
     brief: ['oneline', 'persona', 'audience', 'direction', 'trust', 'shooting', 'forbidden'],
     dealReasons: false,
+    diagnosis: 'planning',
   },
   /*
    * 下面三个是 2026-09-30 补接的（产品方："每个板块都要有记忆，互相关联互通"）。
@@ -176,6 +188,7 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     profile: ['restrictions'],
     brief: ['oneline', 'persona', 'audience', 'trust', 'memory', 'forbidden'],
     dealReasons: true,
+    diagnosis: 'single',
   },
   {
     board: 'direction',
@@ -190,6 +203,7 @@ export const BOARD_MANIFESTS: BoardManifest[] = [
     brief: [],
     dealReasons: true,
     deep: ['content'],
+    diagnosis: 'planning',
   },
   {
     board: 'knowledge',

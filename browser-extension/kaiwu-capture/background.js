@@ -2,7 +2,8 @@
 // 一键采集的流程在抖音页面上的 collector.js 里跑，进度存在本机。
 // 截图只截发起截图的那个标签页，而且它得是当前看着的那一页：编导切到别的标签页时不截，免得截到别的网站。
 const MAX = 9; // 和开物对标拆解的截图上限一致（lib/benchmark-analysis 的 BENCHMARK_LIMITS.images）
-const KAIWU = 'https://www.biandao.icu/dashboard/benchmark?from=capture';
+const KAIWU_ORIGIN = 'https://www.biandao.icu';
+const KAIWU = `${KAIWU_ORIGIN}/dashboard/benchmark?from=capture`;
 
 async function getCaptures() {
   const { captures = [] } = await chrome.storage.local.get('captures');
@@ -64,14 +65,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     } else if (msg?.type === 'count') {
       reply({ count: (await getCaptures()).length });
     } else if (msg?.type === 'open-kaiwu') {
-      // 从开物粘贴链接发起的：切回原来那个开物标签页，让它转到对标页收数据（编导等的时候可能点去了开物的别的页面）。
-      // 那个标签页关了，或者上面没有插件的桥（不在开物网站上了、插件装好以前就开着的），就在那里打开对标页；再不行新开一个
+      // 从开物粘贴链接发起的：切回原来那个开物标签页，让它转到发起采集的那一页（对标页，或者创作进度页）收数据
+      // （编导等的时候可能点去了开物的别的页面）。那个标签页关了，或者上面没有插件的桥，就在那里打开那一页；再不行新开一个
+      const returnPath = typeof msg.returnPath === 'string' && /^\/dashboard\/[\w-]+$/.test(msg.returnPath) ? msg.returnPath : null;
+      const target = returnPath ? `${KAIWU_ORIGIN}${returnPath}?from=capture` : KAIWU;
       const back = msg.tabId != null ? await chrome.tabs.update(msg.tabId, { active: true }).catch(() => null) : null;
       if (back) {
         await chrome.windows.update(back.windowId, { focused: true }).catch(() => {});
-        const heard = await chrome.tabs.sendMessage(back.id, { type: 'kaiwu-arrive' }).catch(() => null);
-        if (!heard?.ok) await chrome.tabs.update(back.id, { url: KAIWU }).catch(() => chrome.tabs.create({ url: KAIWU }));
-      } else await chrome.tabs.create({ url: KAIWU });
+        const heard = await chrome.tabs.sendMessage(back.id, { type: 'kaiwu-arrive', returnPath }).catch(() => null);
+        if (!heard?.ok) await chrome.tabs.update(back.id, { url: target }).catch(() => chrome.tabs.create({ url: target }));
+      } else await chrome.tabs.create({ url: target });
       reply({ ok: true });
     } else if (msg?.type === 'collect-url') {
       // 开物页面上粘贴的主页链接：只认抖音的链接，新开一个标签页打开，打开后那一页自动开始采集
@@ -79,7 +82,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       if (!/^https:\/\/(www\.|v\.)?(douyin|iesdouyin)\.com\//.test(url)) return reply({ ok: false });
       await chrome.storage.local.set({ captures: [], collection: null, job: null });
       const tab = await chrome.tabs.create({ url, active: true });
-      await chrome.storage.local.set({ autostart: { tabId: tab.id, kaiwuTabId: sender.tab?.id ?? null, at: Date.now() } });
+      // purpose：采的是对标账号（benchmark）还是自己的号（self，创作进度「诊断我的账号」）；returnPath：采完回哪一页
+      const returnPath = typeof msg.returnPath === 'string' && /^\/dashboard\/[\w-]+$/.test(msg.returnPath) ? msg.returnPath : null;
+      await chrome.storage.local.set({ autostart: { tabId: tab.id, kaiwuTabId: sender.tab?.id ?? null, purpose: msg.purpose === 'self' ? 'self' : 'benchmark', returnPath, at: Date.now() } });
       reply({ ok: true });
     } else if (msg?.type === 'covers') {
       reply(await fetchCovers(msg.items));

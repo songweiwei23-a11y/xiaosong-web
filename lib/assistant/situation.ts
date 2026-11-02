@@ -11,6 +11,7 @@
 import { readInternal, type BoardContext } from '@/lib/assistant/boards';
 import { listRecentResults } from '@/lib/assistant/carry';
 import { setupSteps } from '@/lib/setup-progress';
+import { diagnosisPromptBlock, type AccountDiagnosis } from '@/lib/account-diagnosis';
 
 interface Work { title?: string; is_done?: boolean; shoot_status?: string; updated_at?: string }
 interface Todo { content?: string; done?: boolean; due_at?: string | null }
@@ -27,6 +28,8 @@ export interface Situation {
   todos: Todo[] | null;
   benchmarks: { accounts: number; analyzed: number; latestAt: string | null } | null;
   quota: { planName: string; tightest: { featureName: string; remaining: number } | null } | null;
+  /** 账号诊断（创作进度「诊断我的账号」）：有就把要点放进现状，助理协调时照它补全派活单 */
+  diagnosis?: AccountDiagnosis | null;
 }
 
 const shanghaiDay = (d: Date | string) => new Date(d).toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' });
@@ -75,6 +78,10 @@ export function situationItems(s: Situation): SituationItem[] {
     const published = s.works.filter((w) => w.shoot_status === 'published').length;
     if (shotNotPosted) out.push({ key: 'post', signal: `有 ${shotNotPosted} 条拍完还没发：发了才有数据，先发`, label: `${shotNotPosted} 条拍完还没发`, ask: '有几条拍完还没发，帮我排一下这周的发布，记进待办', href: '/dashboard/works' });
     if (unshot >= 2) out.push({ key: 'shoot', signal: `有 ${unshot} 条内容做完还没拍：再出新稿之前，先把这几条拍掉`, label: `${unshot} 条写好了还没拍`, ask: '有几条内容做完还没拍，帮我排进拍摄待办', href: '/dashboard/works' });
+    // 发了几条还没诊断过自己的号，或者诊断已经过了一个月：现状变了，规划还按老情况走
+    const diagAge = s.diagnosis ? daysBetween(s.diagnosis.generatedAt, `${s.today}T12:00:00+08:00`) : null;
+    if (published >= 3 && diagAge === null) out.push({ key: 'diagnose', signal: `已经发了 ${published} 条，还没诊断过自己的号：诊断一次，规划、选题、方向就能按实际情况调整`, label: '还没诊断过自己的号', ask: '帮我诊断一下我的账号', href: '/dashboard/works' });
+    else if (diagAge !== null && diagAge >= 30) out.push({ key: 'diagnose-old', signal: `账号诊断是 ${diagAge} 天前做的，之后的作品没算进去：再诊断一次`, label: `诊断已经 ${diagAge} 天了`, ask: '帮我重新诊断一下我的账号', href: '/dashboard/works' });
     if (published >= 3 && s.benchmarks && s.benchmarks.accounts === 0) out.push({ key: 'benchmark-none', signal: `已经发了 ${published} 条，还没有对标账号：找一个同行拆一下，知道自己差在哪`, label: '还没有对标账号', ask: '我想找一个对标账号拆一下，怎么做？', href: '/dashboard/benchmark' });
   }
 
@@ -120,6 +127,8 @@ export function situationBlock(s: Situation): string {
     lines.push('看出来的事（按要紧程度）：');
     signals.forEach((x, i) => lines.push(`${i + 1}. ${x}`));
   }
+  const diag = diagnosisPromptBlock(s.diagnosis, 'assistant');
+  if (diag) lines.push('', diag);
   return lines.join('\n');
 }
 
@@ -138,13 +147,14 @@ export async function loadSituation(ctx: BoardContext, profileId: string | null,
   const profiles = Array.isArray(profilesRaw) ? (profilesRaw as { id: string; profile_name?: string | null; industry?: string | null }[]) : [];
   const current = profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
 
-  const [positions, recent, works, todos, bench, quota] = await Promise.all([
+  const [positions, recent, works, todos, bench, quota, insight] = await Promise.all([
     current ? soft(readInternal(ctx, `/api/positioning?profileId=${encodeURIComponent(current.id)}`)) : Promise.resolve(null),
     soft(listRecentResults(ctx, 5)),
     soft(readInternal(ctx, '/api/works?limit=20')),
     soft(readInternal(ctx, '/api/todos')),
     soft(readInternal(ctx, '/api/benchmark')),
     soft(readInternal(ctx, '/api/quota/check')),
+    current ? soft(readInternal(ctx, `/api/work-insights?profileId=${encodeURIComponent(current.id)}`)) : Promise.resolve(null),
   ]);
 
   const accounts = (bench as { accounts?: { analyses?: { created_at?: string }[] }[] } | null)?.accounts;
@@ -160,6 +170,7 @@ export async function loadSituation(ctx: BoardContext, profileId: string | null,
     todos: Array.isArray(todos) ? (todos as Todo[]) : null,
     benchmarks: Array.isArray(accounts) ? { accounts: accounts.length, analyzed: accounts.filter((a) => (a.analyses ?? []).length).length, latestAt: analyzedDates.at(-1)?.slice(0, 10) ?? null } : null,
     quota: q ? { planName: q.planName ?? '免费版', tightest: q.tightest ?? null } : null,
+    diagnosis: (insight as { insight?: { diagnosis?: AccountDiagnosis | null } | null } | null)?.insight?.diagnosis ?? null,
   };
   cache.set(key, { at: now, value });
   return value;

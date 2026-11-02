@@ -57,6 +57,8 @@ export interface Collection {
   collectedAt: string;
   /** 采集没跑完整的原因（没登录只看得到前几十条、遇到验证停了……），给拆解时说明数据不全 */
   note: string;
+  /** 采的是对标账号还是自己的号（插件 0.5.0 起；旧版没有这一项，按对标算） */
+  purpose: 'benchmark' | 'self';
 }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
@@ -132,6 +134,7 @@ export function sanitizeCollection(raw: unknown): Collection | null {
     details,
     collectedAt: str(r.collectedAt, 30),
     note: str(r.note, 120),
+    purpose: r.purpose === 'self' ? 'self' : 'benchmark',
   };
 }
 

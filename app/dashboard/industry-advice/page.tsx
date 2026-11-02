@@ -12,6 +12,8 @@ import { postSafely } from '@/lib/safe-post'
 import { buildProfileSummary } from '@/lib/profile-summary'
 import { taboosPromptBlock } from '@/lib/taboos'
 import { performancePromptBlock, type PerformanceSummary } from '@/lib/performance'
+import { diagnosisPromptBlock } from '@/lib/account-diagnosis'
+import { fetchDiagnosis } from '@/lib/diagnosis-client'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import { Markdown } from '@/components/markdown'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
@@ -162,7 +164,8 @@ export default function IndustryAdvicePage() {
         businessBaseline: businessBaseline || undefined,
         contentBaseline: contentBaseline || undefined,
         input: { purpose: choice.purpose, stage: choice.stage, situation: choice.situation, goal: choice.goal },
-        performanceBlock: performancePromptBlock(performance),
+        // 账号诊断跟着作品数据一起带：药方要对上这个号现在的实际情况（取不到就不带）
+        performanceBlock: [performancePromptBlock(performance), diagnosisPromptBlock(await fetchDiagnosis(profileId), 'foundation')].filter(Boolean).join('\n\n'),
         taboos: taboosPromptBlock(profile as any),
       })
 

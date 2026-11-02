@@ -2,6 +2,7 @@ import { CONTENT_ROLE_LIST, ROLE_SPECS, type ContentRole } from '@/lib/content-r
 import { metricsLine, MIN_SAMPLE, readMetrics, summarizePerformance, type PerformanceRow, type PerformanceSummary } from '@/lib/performance';
 import type { ContentMix } from '@/lib/content-mix';
 import { SCRIPT_TYPE_LABELS } from '@/lib/creation-settings';
+import type { AccountDiagnosis } from '@/lib/account-diagnosis';
 
 /**
  * 账号作品概况：从作品记录、录入的数据和导入的文件里，算出这个账号的内容配比、三种视频各自的表现，
@@ -137,6 +138,8 @@ export interface WorkInsight {
   materialNotes: string[];
   modelUsed: boolean;
   caveats: string[];
+  /** 账号诊断（创作进度「诊断我的账号」，lib/account-diagnosis）：存在同一行里，重新分析作品概况时保留 */
+  diagnosis?: AccountDiagnosis | null;
 }
 
 /**
@@ -341,7 +344,8 @@ export function itemDigestLine(items: MaterialItem[]): string | null {
  * 三种视频的定义在 lib/content-roles 里，这里只引用，不重复定义。
  */
 export function workInsightPromptBlock(insight: WorkInsight | null | undefined): string {
-  if (!insight) return '';
+  // 只有诊断、还没算过概况的那一行（或者旧数据缺字段）：没有可写的，不报错
+  if (!insight?.mix || !insight.generatedAt) return '';
   const date = insight.generatedAt.slice(0, 10);
   const parts = [`### 🧭 这个账号的作品概况（${date} 分析）`, ''];
   const m = insight.mix;

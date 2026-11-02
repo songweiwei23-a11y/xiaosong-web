@@ -50,7 +50,9 @@ function toFiles(captures: Capture[]): File[] {
 }
 
 /** 插件最新版本（browser-extension/kaiwu-capture/manifest.json）；装的比它旧就提示下载新版 */
-export const PLUGIN_VERSION = "0.4.1";
+export const PLUGIN_VERSION = "0.5.0";
+/** 从这个版本起能采自己的号（创作进度「诊断我的账号」） */
+export const SELF_SINCE = "0.5.0";
 /** 从这个版本起会一键采集；比它旧的粘贴链接没用，要先更新 */
 export const COLLECT_SINCE = "0.3.0";
 export function versionBelow(installed: string, target: string): boolean {
@@ -156,7 +158,9 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
       if (data.type !== "captures") return;
       const captures = Array.isArray(data.captures) ? data.captures : [];
       const got = toFiles(captures);
-      const col = sanitizeCollection(data.collection);
+      // 自己的号（创作进度「诊断我的账号」采的）不放进对标：插件本来只交给创作进度页，这里再挡一道
+      const raw = sanitizeCollection(data.collection);
+      const col = raw?.purpose === "self" ? null : raw;
       if (got.length || col) {
         const key = batchKey(captures, col);
         if (key === lastBatch.current) return;
@@ -276,7 +280,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
   if (installed && version && pluginOutdated(version)) {
     return (
       <p className="rounded-xl border border-primary/40 px-4 py-2.5 text-[12.5px] text-foreground">
-        {versionBelow(version, COLLECT_SINCE) ? "插件有新版本，能一键采集整个账号了" : "插件有新版本：置顶作品必看，作品列表读到 90 条并推算覆盖多久，细看 8 条作品的文案、话题和评论"}：<a href={EXTENSION_ZIP} download className="text-primary hover:underline">下载新版</a>，解压后覆盖原来的文件夹，再到扩展程序页点插件上的「重新加载」，然后刷新这一页。
+        {versionBelow(version, COLLECT_SINCE) ? "插件有新版本，能一键采集整个账号了" : "插件有新版本：能诊断自己的号了（创作进度里粘贴自己的主页），置顶作品必看，作品列表读到 90 条"}：<a href={EXTENSION_ZIP} download className="text-primary hover:underline">下载新版</a>，解压后覆盖原来的文件夹，再到扩展程序页点插件上的「重新加载」，然后刷新这一页。
       </p>
     );
   }

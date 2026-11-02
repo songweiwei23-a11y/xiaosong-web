@@ -58,6 +58,11 @@ export interface PositioningPromptParams {
   mixBlock?: string;
   /** 平台红线 + 行业禁忌（lib/taboos 的 taboosPromptBlock）：哪些方向不能拍、哪些话不能说 */
   taboos?: string;
+  /**
+   * 账号诊断（lib/account-diagnosis 的 diagnosisPromptBlock(…, 'foundation')）：这个号实际做成了什么样、和地基差多少。
+   * 2026-11-02 产品方：创作进度拿到的账号现状要同步给地基。只当现状参考，方向仍以老板的要求和档案为准
+   */
+  diagnosis?: string;
 }
 
 /**
@@ -1025,6 +1030,15 @@ export function buildPositioningPrompt(p: PositioningPromptParams): string {
     parts.push('- 下面「内容配比」五步里的**第一步、第二步（定作用配比）已经定好**，直接写这个数并解释为什么适合；从第三步（主力形式）往下照常推');
   }
   parts.push('');
+
+  if (p.diagnosis?.trim()) {
+    parts.push('## 🩺 这个号现在的实际情况（账号诊断）');
+    parts.push('');
+    parts.push(p.diagnosis.trim());
+    parts.push('');
+    parts.push('定位时用它判断：哪些做法已经被作品和数据证明有效（保留、放大），哪些和定位对不上（说清是做法要调还是定位要改）。数据是现状，不是方向。');
+    parts.push('');
+  }
 
   if (p.baseline?.trim()) {
     parts.push('## 🧱 已确定的定位地基');

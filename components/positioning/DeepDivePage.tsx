@@ -9,6 +9,8 @@ import { notifyProgressChanged } from '@/lib/progress-events'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
 import { buildPositioningPrompt, type PositioningFocus } from '@/lib/positioning-standards'
+import { diagnosisPromptBlock } from '@/lib/account-diagnosis'
+import { fetchDiagnosis } from '@/lib/diagnosis-client'
 import { Markdown } from '@/components/markdown'
 import { asText, buildProfileSummary, profileSearchHints } from '@/lib/profile-summary'
 import ContinuousDialog from '@/components/ContinuousDialog'
@@ -161,6 +163,8 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
     let convId = ''
 
     const summary = profileSummary(profile)
+    // 账号诊断：深挖时知道这个号实际做成了什么样（取不到就不带）
+    const diagnosis = diagnosisPromptBlock(await fetchDiagnosis(profile.id as string), 'foundation')
     const query = buildPositioningPrompt({
       profileSummary: summary,
       additionalNotes: notes,
@@ -172,6 +176,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
       baseline: baseline || undefined,
       mixBlock: mixPromptBlock(resolveMix(profile, mixOverride, notes)),
       taboos: taboosPromptBlock(profile),
+      diagnosis,
     }) + bridge.prompt
 
     try {

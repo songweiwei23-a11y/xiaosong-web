@@ -16,7 +16,7 @@ export function reportSections(report: string): string[] {
   return [...report.matchAll(/^###\s+(.+?)\s*$/gm)].map((m) => m[1].replace(/^[一二三四五六七八九十]+、/, "").replace(/[（(].*$/, "").trim()).filter(Boolean);
 }
 
-export function BenchmarkReport({ report, streaming = false }: { report: string; streaming?: boolean }) {
+export function BenchmarkReport({ report, streaming = false, title = "拆解报告" }: { report: string; streaming?: boolean; title?: string }) {
   const body = useRef<HTMLDivElement>(null);
   const sections = streaming ? [] : reportSections(report);
 
@@ -33,7 +33,7 @@ export function BenchmarkReport({ report, streaming = false }: { report: string;
   return (
     <div className="rounded-xl border border-border/60 bg-background/70">
       <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-2.5">
-        <p className="text-[13px] font-semibold text-foreground">{streaming ? "拆解报告 · 正在写…" : "拆解报告"}</p>
+        <p className="text-[13px] font-semibold text-foreground">{streaming ? `${title} · 正在写…` : title}</p>
         {!streaming && (
           <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground">
             <Copy className="h-3.5 w-3.5" />复制

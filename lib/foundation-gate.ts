@@ -29,6 +29,8 @@ const NEED_BY_TASK: Record<string, FoundationNeed> = {
   商业定位: 'positioning',
   内容定位: 'positioning',
   创作简报: 'positioning',
+  // 账号诊断：有档案就能诊断（没做定位也能看清现状，报告里写明地基哪一步缺）
+  账号诊断: 'profile',
 };
 
 export function foundationNeedOf(taskType: string | undefined): FoundationNeed {

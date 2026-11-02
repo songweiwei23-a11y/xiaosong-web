@@ -3,6 +3,7 @@ import { buildProfileSummary, businessLines, profileSearchHints } from '@/lib/pr
 import { mixPromptBlock, resolveMix } from '@/lib/content-mix';
 import { taboosPromptBlock } from '@/lib/taboos';
 import { performancePromptBlock } from '@/lib/performance';
+import { diagnosisPromptBlock } from '@/lib/account-diagnosis';
 import { buildPositioningPrompt } from '@/lib/positioning-standards';
 import { buildQuickOutputSpec } from '@/lib/positioning-sections';
 import { BRIEF_TYPE, buildBriefPrompt } from '@/lib/creative-brief';
@@ -122,6 +123,7 @@ export async function runPositioningBoard(ctx: BoardContext, input: PositioningI
     outputSpec: buildQuickOutputSpec(),
     mixBlock: mixPromptBlock(resolveMix(profile, null, notes)),
     taboos: taboosPromptBlock(profile),
+    diagnosis: diagnosisPromptBlock(creatorContext.workInsight?.diagnosis, 'foundation'),
   }) + (page?.bridgePrompt ?? '');
   return callBoardStream(ctx, {
     taskType: '账号定位',
@@ -168,6 +170,7 @@ export async function runDeepDiveBoard(ctx: BoardContext, focus: keyof typeof DE
     baseline,
     mixBlock: mixPromptBlock(resolveMix(profile, null, notes)),
     taboos: taboosPromptBlock(profile),
+    diagnosis: diagnosisPromptBlock(creatorContext.workInsight?.diagnosis, 'foundation'),
   });
   const res = await callBoardStream(ctx, {
     taskType,
@@ -243,7 +246,7 @@ export async function runAdviceBoard(ctx: BoardContext, input: AdviceInput): Pro
       situation: withNote(input.situation?.trim() ?? '', input.extraNote),
       goal: input.goal?.trim() || undefined,
     },
-    performanceBlock: performancePromptBlock(creatorContext.performance as never) || undefined,
+    performanceBlock: [performancePromptBlock(creatorContext.performance as never), diagnosisPromptBlock(creatorContext.workInsight?.diagnosis, 'foundation')].filter(Boolean).join('\n\n') || undefined,
     taboos: taboosPromptBlock(profile),
   });
   return callBoardStream(ctx, { taskType: ADVICE_TYPE, creationSettings: {}, query, profileId: profile.id ?? null });

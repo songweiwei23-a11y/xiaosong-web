@@ -19,6 +19,7 @@ import {
 } from "@/lib/benchmark-analysis";
 import { collectionSummary, COVER_PREFIX, formatCollection, type Collection } from "@/lib/benchmark-collection";
 import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
+import { clearDraft, DRAFT_THROTTLE_MS, readDraft, saveDraft } from "@/lib/report-draft";
 
 /**
  * 对标拆解（整改 C · 对标拆解）：编导放进来的截图、文档、文字、视频，统一拆成同一套框架。
@@ -28,7 +29,8 @@ import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
 interface VideoRead { name: string; frames: number; speechChars: number; truncated: boolean; text: string }
 interface DocRead { name: string; text: string }
 
-async function uploadImage(file: File): Promise<string> {
+/** 截图、封面传上去拿编号，生成时让模型看图（账号诊断也用它） */
+export async function uploadImage(file: File): Promise<string> {
   const form = new FormData();
   form.append("file", file, file.name);
   const res = await fetch("/api/breakdown/upload", { method: "POST", body: form });
@@ -65,6 +67,34 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
   const [report, setReport] = useState("");
+  // 本地草稿（lib/report-draft）：生成中随时存，存服务器成功才清；刷新、关页面、保存失败都不丢
+  const draftKey = `benchmark:${accountId}`;
+  const [draftNote, setDraftNote] = useState("");
+  const lastDraftAt = useRef(0);
+  const saveReport = async (full: string, materials: string[]) => {
+    const saved = await postSafely("/api/benchmark", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "saveAnalysis", accountId, report: full, materials }),
+    });
+    if (!saved.ok) await throwApiError(saved, "拆解结果没保存上，报告先留在页面上，也存在了这台电脑的浏览器里，下次打开会自动再存");
+    clearDraft(draftKey);
+    setDraftNote("");
+  };
+  // 打开页面时：上次写完没存上的自动补存；没写完的摆出来给编导看
+  useEffect(() => {
+    const d = readDraft(draftKey);
+    if (!d) return;
+    setReport(d.report);
+    if (!d.done) {
+      setDraftNote("这是上次没写完的拆解（页面中途关了或刷新了），只存在这台电脑上。可以看，也可以重新拆一次。");
+      return;
+    }
+    setDraftNote("上次拆完没存上，正在补存……");
+    saveReport(d.report, d.materials)
+      .then(() => { setReport(""); setDraftNote("上次没存上的拆解已经补存好了，在下面「已保存的拆解」里（最新一份已展开）"); onSaved(); })
+      .catch(() => setDraftNote("上次拆完没存上，报告在下面；这台电脑上留着，下次打开会再试着保存"));
+  }, [draftKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const handled = useRef(0); // 同一批只处理一次（开发模式下 effect 会跑两遍，不能拆两次）
   useEffect(() => {
     if (!incoming || handled.current === incoming.nonce) return;
@@ -165,17 +195,25 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
         }),
       });
       if (!res.ok) await throwApiError(res, "拆解失败");
-      const full = await readDifyStream(res, { onChunk: (_p, text) => setReport(text) });
+      setDraftNote("");
+      const full = await readDifyStream(res, {
+        onChunk: (_p, text) => {
+          setReport(text);
+          // 边写边存草稿（隔 2 秒存一次）：中途刷新、关页面也留得住
+          if (Date.now() - lastDraftAt.current >= DRAFT_THROTTLE_MS) {
+            lastDraftAt.current = Date.now();
+            saveDraft(draftKey, { report: text, done: false, materials: materialLines });
+          }
+        },
+      });
       if (!full.trim()) throw new Error("这次没拆出内容，可以再试一次");
       setReport(full);
+      saveDraft(draftKey, { report: full, done: true, materials: materialLines });
 
-      const saved = await postSafely("/api/benchmark", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "saveAnalysis", accountId, report: full, materials: materialLines }),
-      });
-      if (!saved.ok) await throwApiError(saved, "拆解结果没保存上，报告先留在页面上");
-      notify("拆解完成，已保存到这个对标账号下面");
+      await saveReport(full, materialLines);
+      // 存好了：这份就是下面「已保存的拆解」里展开的最新一份，这里不再重复摆一份
+      setReport("");
+      notify("拆解完成，已保存到这个对标账号下面（最新一份已展开）");
       onSaved();
     } catch (e) {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message, "error");
@@ -248,6 +286,7 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
         {running ? (progress || "拆解中…") : "开始拆解"}
       </button>
 
+      {draftNote && <p className="rounded-lg border border-primary/30 px-3 py-2 text-[12.5px] text-foreground">{draftNote}</p>}
       {report && <BenchmarkReport report={report} streaming={running} />}
     </div>
   );

@@ -91,17 +91,34 @@ describe('开物里粘贴主页链接', () => {
     const m = JSON.parse(read('manifest.json'));
     const bridge = m.content_scripts.find((c: { js: string[] }) => c.js.includes('bridge.js'));
     expect(bridge.matches).toEqual(['https://www.biandao.icu/*', 'https://biandao.icu/*', 'http://localhost:3000/*']);
-    // 只在对标页交数据，别的页面不交（数据留着等对标页说 ready）
-    expect(read('bridge.js')).toContain("if (changes.collection?.newValue && onBenchmark())");
-    expect(read('bridge.js')).toContain('if (onBenchmark()) await sendCaptures();');
+    // 只在收它的那一页交数据：对标账号交给对标页，自己的号（0.5.0）交给创作进度页；别的页面不交（数据留着等那一页说 ready）
+    const b = read('bridge.js');
+    expect(b).toContain("location.pathname.startsWith('/dashboard/benchmark') ? 'benchmark' : location.pathname.startsWith('/dashboard/works') ? 'self' : null");
+    expect(b).toContain("if ((collection?.purpose || 'benchmark') !== accept) return;");
   });
 
-  it('切回开物标签页：不在对标页就转过去；那个标签页上没有桥，就在那里打开对标页', () => {
-    expect(read('bridge.js')).toContain("msg?.type !== 'kaiwu-arrive'");
-    expect(read('bridge.js')).toContain("location.assign('/dashboard/benchmark?from=capture')");
+  it('切回开物标签页：不在发起采集的那一页就转过去；那个标签页上没有桥，就在那里打开那一页', () => {
+    const b = read('bridge.js');
+    expect(b).toContain("msg?.type !== 'kaiwu-arrive'");
+    expect(b).toContain('if (location.pathname !== back) location.assign(`${back}?from=capture`);');
     const bg = read('background.js');
-    expect(bg).toContain("chrome.tabs.sendMessage(back.id, { type: 'kaiwu-arrive' })");
-    expect(bg).toContain('if (!heard?.ok) await chrome.tabs.update(back.id, { url: KAIWU })');
+    expect(bg).toContain("chrome.tabs.sendMessage(back.id, { type: 'kaiwu-arrive', returnPath })");
+    expect(bg).toContain('if (!heard?.ok) await chrome.tabs.update(back.id, { url: target })');
+    // 回哪一页只认开物自己的 /dashboard/ 路径
+    expect(bg.match(/\/\^\\\/dashboard\\\/\[\\w-\]\+\$\//g)?.length).toBe(2);
+  });
+
+  it('诊断自己的号（0.5.0）：创作进度发起时带 purpose=self，采完的数据标上 self，回到创作进度', () => {
+    expect(read('bridge.js')).toContain("purpose: data.purpose === 'self' ? 'self' : 'benchmark', returnPath: location.pathname");
+    expect(read('background.js')).toContain("purpose: msg.purpose === 'self' ? 'self' : 'benchmark', returnPath");
+    const c = read('collector.js');
+    expect(c).toContain("purpose: job.purpose === 'self' ? 'self' : 'benchmark',");
+    expect(c).toContain("returnPath: job.returnPath ?? null");
+    expect(c).toContain('startCollect({ kaiwuTabId: autostart.kaiwuTabId, purpose: autostart.purpose, returnPath: autostart.returnPath })');
+    // 开物这边：对标页不收自己的号
+    expect(fs.readFileSync('components/benchmark/CaptureBridge.tsx', 'utf8')).toContain('const col = raw?.purpose === "self" ? null : raw;');
+    expect(sanitizeCollection({ ...{ url: 'https://www.douyin.com/user/x', works: [{ id: '1' }] }, purpose: 'self' })!.purpose).toBe('self');
+    expect(sanitizeCollection({ url: 'https://www.douyin.com/user/x', works: [{ id: '1' }], purpose: 'evil' })!.purpose).toBe('benchmark');
   });
 
   it('半路停下不卡死：要求验证时已读到作品就先带回开物拆（说明里写清楚），一条没读到才停在抖音页上', () => {

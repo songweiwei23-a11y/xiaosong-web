@@ -157,10 +157,11 @@ export default function BenchmarkPage() {
             {a.analyses.length > 0 && (
               <div className="mt-3 space-y-2">
                 <p className="text-[12.5px] font-medium text-foreground">已保存的拆解（{a.analyses.length}）</p>
-                {a.analyses.map((x) => (
-                  <details key={x.id} className="rounded-lg border border-border/60 px-3 py-2 text-[12.5px]">
+                {/* 最新一份默认展开（原来全合着，编导以为报告没了）；更早的合着 */}
+                {a.analyses.map((x, i) => (
+                  <details key={x.id} open={i === 0} className="rounded-lg border border-border/60 px-3 py-2 text-[12.5px]">
                     <summary className="cursor-pointer text-foreground">
-                      {new Date(x.created_at).toLocaleDateString("zh-CN")} 的拆解 · 读到 {x.materials.length} 项材料
+                      {new Date(x.created_at).toLocaleString("zh-CN", { hour12: false })} 的拆解{i === 0 ? "（最新）" : ""} · 读到 {x.materials.length} 项材料
                     </summary>
                     <div className="mt-2"><BenchmarkReport report={x.report} /></div>
                     <button

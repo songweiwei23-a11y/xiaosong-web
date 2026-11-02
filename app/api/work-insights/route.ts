@@ -6,7 +6,8 @@ import { createRateLimiter } from '@/lib/rate-limit';
 import { readAssistantConfig } from '@/lib/assistant/config';
 import { callAssistantLlm, type LlmBlock } from '@/lib/assistant/llm';
 import { parseInsightJson, type WorkInsight } from '@/lib/work-insight';
-import { buildWorkInsight, insightPromptFor, type InsightMaterial, type InsightWork, type SettingsOf } from '@/lib/work-insight-build';
+import { buildWorkInsight, insightPromptFor } from '@/lib/work-insight-build';
+import { loadInsightInputs, readStoredInsight } from '@/lib/work-insight-load';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,54 +60,7 @@ export async function POST(request: Request) {
   if (!profile) return NextResponse.json({ error: '找不到这个档案' }, { status: 404 });
 
   const db = getServiceSupabase();
-  const { data: workRows } = await db
-    .from('works')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('profile_id', profileId)
-    .order('created_at', { ascending: false })
-    .limit(300);
-  const works = ((workRows ?? []) as InsightWork[]).map((w) => ({
-    id: w.id,
-    title: w.title,
-    is_done: w.is_done,
-    shoot_status: w.shoot_status,
-    published_at: w.published_at,
-    metrics: w.metrics,
-  }));
-
-  // 每条作品当时的创作设置：优先脚本那一步的，没有就用选题的（和数据回流同一口径）
-  const settingsOf: SettingsOf = new Map();
-  if (works.length) {
-    const { data: items } = await db
-      .from('script_history')
-      .select('work_id, task_type, input_data, created_at')
-      .eq('user_id', userId)
-      .in('work_id', works.map((w) => w.id))
-      .in('task_type', ['脚本生成', '选题策划'])
-      .order('created_at', { ascending: false });
-    const fromScript = new Map<string, boolean>();
-    for (const it of items ?? []) {
-      const s = (it.input_data as Record<string, unknown> | null)?.creationSettings as Record<string, unknown> | undefined;
-      if (!s || !it.work_id) continue;
-      const isScript = it.task_type === '脚本生成';
-      if (!settingsOf.has(it.work_id) || (isScript && !fromScript.get(it.work_id))) {
-        settingsOf.set(it.work_id, s);
-        fromScript.set(it.work_id, isScript);
-      }
-    }
-  }
-
-  const { data: materialRows, error: materialError } = await db
-    .from('account_materials')
-    .select('filename, status, content')
-    .eq('user_id', userId)
-    .eq('profile_id', profileId)
-    .order('created_at', { ascending: false })
-    .limit(60);
-  const materials: InsightMaterial[] = materialError
-    ? []
-    : ((materialRows ?? []) as InsightMaterial[]);
+  const { works, settingsOf, materials } = await loadInsightInputs(userId, profileId);
 
   // 模型：没配置或者出错，都只是少了文字部分，确定的配比和数据照常给出
   const cfg = readAssistantConfig();
@@ -143,7 +97,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const insight = buildWorkInsight({ profile, works, settingsOf, materials, model });
+  // 账号诊断存在同一行里：重新分析作品概况时保留它，不能被冲掉
+  const previous = await readStoredInsight(userId, profileId).catch(() => null);
+  const insight = { ...buildWorkInsight({ profile, works, settingsOf, materials, model }), diagnosis: previous?.diagnosis ?? null };
   const { error } = await db
     .from('account_work_insights')
     .upsert({ profile_id: profileId, user_id: userId, insight, updated_at: insight.generatedAt }, { onConflict: 'profile_id' });

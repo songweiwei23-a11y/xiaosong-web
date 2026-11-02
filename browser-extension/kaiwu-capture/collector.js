@@ -126,12 +126,15 @@
     return !!id && (workKey(location.pathname)?.[2] === id || new URLSearchParams(location.search).get('modal_id') === id);
   };
 
-  /** kaiwuTabId：从开物页面粘贴链接发起的，采完切回那个开物标签页 */
-  async function startCollect({ kaiwuTabId = null } = {}) {
-    if (!isProfile()) return say('先打开对标账号的抖音主页，再点一键采集');
+  /**
+   * kaiwuTabId：从开物页面粘贴链接发起的，采完切回那个开物标签页；
+   * purpose：采的是对标账号（benchmark）还是自己的号（self，创作进度「诊断我的账号」）；returnPath：采完回开物的哪一页
+   */
+  async function startCollect({ kaiwuTabId = null, purpose = 'benchmark', returnPath = null } = {}) {
+    if (!isProfile()) return say('先打开账号的抖音主页，再点一键采集');
     if (captchaShown()) return say('抖音要求先验证一下：请你手动完成验证，再点一键采集');
     await chrome.storage.local.set({ captures: [], collection: null });
-    const job = { status: 'running', tabId: await myTabId(), kaiwuTabId, url: location.href.split('?')[0], startedAt: new Date().toISOString(), profile: null, works: [], queue: [], details: [], notes: [] };
+    const job = { status: 'running', tabId: await myTabId(), kaiwuTabId, purpose, returnPath, url: location.href.split('?')[0], startedAt: new Date().toISOString(), profile: null, works: [], queue: [], details: [], notes: [] };
     await setJob(job);
     render();
 
@@ -247,10 +250,11 @@
       details: job.details,
       collectedAt: new Date().toISOString(),
       note: job.notes.join('；'),
+      purpose: job.purpose === 'self' ? 'self' : 'benchmark',
     };
     await chrome.storage.local.set({ collection, job: null });
     progress('采集完了，正在带进开物');
-    await chrome.runtime.sendMessage({ type: 'open-kaiwu', tabId: job.kaiwuTabId ?? null });
+    await chrome.runtime.sendMessage({ type: 'open-kaiwu', tabId: job.kaiwuTabId ?? null, returnPath: job.returnPath ?? null });
     render();
   }
 
@@ -268,7 +272,7 @@
     job.status = 'running';
     job.why = '';
     await setJob(job);
-    if (!job.works.length) { await setJob(null); return startCollect(); }
+    if (!job.works.length) { await setJob(null); return startCollect({ kaiwuTabId: job.kaiwuTabId, purpose: job.purpose, returnPath: job.returnPath }); }
     if (job.queue[0] && !atQueued(job)) location.href = job.queue[0];
     else if (job.queue[0]) await readWorkPage(job);
     else await finish(job);
@@ -348,7 +352,7 @@
       if (isProfile()) {
         await chrome.storage.local.remove('autostart');
         await waitFor(() => e2e('user-post-list'), 10000);
-        return startCollect({ kaiwuTabId: autostart.kaiwuTabId });
+        return startCollect({ kaiwuTabId: autostart.kaiwuTabId, purpose: autostart.purpose, returnPath: autostart.returnPath });
       }
       const author = () => {
         const a = [...document.querySelectorAll('[data-e2e="user-info"] a[href*="/user/"], [data-e2e="video-author-avatar"] a[href*="/user/"]')][0];

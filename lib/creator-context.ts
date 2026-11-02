@@ -32,6 +32,7 @@ import { scrubProfile } from './interview-exclusions';
 import { personaFactsBlock } from './persona-facts';
 import { performancePromptBlock, type PerformanceSummary } from './performance';
 import { workInsightPromptBlock, type WorkInsight } from './work-insight';
+import { diagnosisPromptBlock } from './account-diagnosis';
 import { PRESET_BOARDS, presetPromptBlock, type CreatorPreset } from './creator-presets';
 import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from './preferences';
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
@@ -264,7 +265,7 @@ export function describeRestrictions(p: CreatorProfile): string {
 export function buildContextBlock(ctx: CreatorContext, module: ContextModule): string {
   // 建档时刻意没选的（排除清单）：相关的句子先从档案里拿掉，再拼进提示词（见 lib/interview-exclusions）
   const p = ctx.profile ? scrubProfile(ctx.profile, readTabooSettings(ctx.profile.taboo_settings).excluded) ?? null : null;
-  if (!p && !ctx.positioning && ctx.dealReasons.length === 0 && !ctx.advice && !ctx.contentPositioning && !ctx.businessPositioning) return '';
+  if (!p && !ctx.positioning && ctx.dealReasons.length === 0 && !ctx.advice && !ctx.contentPositioning && !ctx.businessPositioning && !ctx.workInsight?.diagnosis) return '';
 
   const parts: string[] = [];
   const title = p?.profile_name ? `## 📇 账号背景：${p.profile_name}` : '## 📇 账号背景';
@@ -394,6 +395,10 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
     const insight = workInsightPromptBlock(ctx.workInsight);
     if (insight) parts.push('', insight);
   }
+
+  // 账号诊断（创作进度「诊断我的账号」）：按清单的 diagnosis 字段给——规划类给要点和布局，写单条的只给三行指令，别的板块不给
+  const diag = diagnosisPromptBlock(ctx.workInsight?.diagnosis, manifestOf(module)?.diagnosis);
+  if (diag) parts.push('', diag);
 
   // 风格预设：用户认可的写法，只给写稿类板块；只学表达和结构，事实仍以上面的档案为准
   if (PRESET_BOARDS.has(module)) {
