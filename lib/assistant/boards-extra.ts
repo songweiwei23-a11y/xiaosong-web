@@ -182,12 +182,14 @@ export async function runDeepDiveBoard(ctx: BoardContext, focus: keyof typeof DE
   // 和深挖页一样存进定位表；存不上就按「没存进历史」提醒老板先复制保存
   const content = res.full;
   const firstLine = content.split('\n').find((l) => l.trim())?.replace(/^#+\s*/, '').trim() || '';
+  // 两种取值写成字面量：tests/positioning-type-constraint 扫描写入的值要和数据库约束对得上
+  const typeRow = focus === 'business' ? { positioning_type: '商业定位' } : { positioning_type: '内容定位' };
   const saved = await (ctx.fetchImpl ?? fetch)(`${internalBase(ctx)}/api/positioning`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie: ctx.cookie },
     body: JSON.stringify({
       profile_id: profile.id,
-      positioning_type: taskType,
+      ...typeRow,
       positioning_name: firstLine.slice(0, 50) || `${String(profile.profile_name ?? '账号')}的${taskType}`,
       full_content: content,
       is_active: false,

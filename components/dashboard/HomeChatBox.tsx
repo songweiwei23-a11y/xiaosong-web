@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Globe, Paperclip, Telescope, X } from "lucide-react";
+import { ArrowUp, Globe, Paperclip, Sparkles, Telescope, X } from "lucide-react";
 import { askAssistant } from "@/lib/assistant/ask";
+import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { CHAT_FILE_ACCEPT, MAX_CHAT_FILES, MAX_CHAT_FILE_BYTES, chatFileType } from "@/lib/chat-attachments";
 import { putHomeChat, type WebMode } from "@/lib/home-chat-handoff";
 
@@ -38,6 +39,48 @@ export function checkHomeFiles(files: { name: string; size: number }[]): string 
     return "请选择支持的图片或文档，每个文件不能超过 10 MB；旧版 Office 文件请另存为新格式。";
   }
   return null;
+}
+
+/** 首页「今天」的一件事（/api/assistant/today，和助理每轮看的是同一份老板现状） */
+interface TodayItem { key: string; label: string; ask: string; href: string }
+
+/**
+ * 「今天」（2026-11-02 产品方：助理要主动、站在老板角度）：对话框上方一行，列出现在卡在哪、最值得做的几件事。
+ * 点一下交给助理去办（助理会先列出来等确认）；没配置助理就打开对应的页面。一件都没有就不显示。
+ */
+function TodayStrip({ agentOn }: { agentOn: boolean }) {
+  const router = useRouter();
+  const [items, setItems] = useState<TodayItem[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      const id = getActiveProfileId();
+      fetch(`/api/assistant/today${id ? `?profileId=${encodeURIComponent(id)}` : ""}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (alive) setItems(Array.isArray(d?.items) ? d.items : []); })
+        .catch(() => {});
+    };
+    load();
+    const off = onActiveProfileChange(load);
+    return () => { alive = false; off(); };
+  }, []);
+  if (!items.length) return null;
+  return (
+    <div className="mb-2.5 flex flex-wrap items-center gap-2" aria-label="今天">
+      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-foreground"><Sparkles className="h-3.5 w-3.5 text-primary" />今天</span>
+      {items.map((it) => (
+        <button
+          key={it.key}
+          type="button"
+          onClick={() => (agentOn ? askAssistant(it.ask) : router.push(it.href))}
+          title={agentOn ? `交给助理：${it.ask}` : "打开对应的页面"}
+          className="rounded-full border border-primary/30 bg-primary/[0.06] px-3 py-1 text-[12px] text-foreground hover:border-primary/60"
+        >
+          {it.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function HomeChatBox() {
@@ -104,6 +147,7 @@ export function HomeChatBox() {
 
   return (
     <div className="mb-6">
+      <TodayStrip agentOn={agentOn} />
       <div className="glass-panel rounded-2xl border border-border px-3 pb-2.5 pt-3 focus-within:border-primary/60 sm:px-4">
         {modes.length > 0 && (
           <div className="mb-2 flex gap-1.5" role="tablist" aria-label="对话方式">

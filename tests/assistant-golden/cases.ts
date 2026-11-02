@@ -90,9 +90,9 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'read-performance', category: 'read', question: '我最近发的视频数据怎么样？哪类比较好？', expectTools: ['read_performance'], forbidTools: [...BOARD_TOOLS, ...WRITE_TOOLS], note: '样本少要说先别下结论；不把相关说成因果' },
   { id: 'write-hot-topic', category: 'write', question: '记一下这个热点：今天好多人在拍「秋天第一杯奶茶」', expectTools: ['add_hot_topic'], forbidTools: [...BOARD_TOOLS], noFalseSuccess: true },
   { id: 'write-benchmark-account', category: 'write', question: '把「县城阿杰剪发」加成我的对标账号', expectTools: ['add_benchmark_account'], forbidTools: [...BOARD_TOOLS], noFalseSuccess: true, note: '加好后说清楚深度拆解要去对标页一键采集' },
-  { id: 'board-business-positioning', category: 'board', question: '我不知道视频怎么带来生意，帮我把变现这块理一理', expectTools: ['propose_business_positioning'], note: '没有账号定位时应先列 propose_plan（定位 → 商业定位）或照实说先做定位' },
-  { id: 'board-content-positioning', category: 'board', question: '我想长期做几个固定系列，帮我排一下长期发什么', expectTools: ['propose_content_positioning'] },
-  { id: 'situation-what-next', category: 'board', question: '我现在该做点什么？', expectTools: ['propose_plan'], note: '按【老板现状】里「看出来的事」挑最要紧的 1–3 件并直接列出来，不只给建议' },
+  { id: 'board-business-positioning', category: 'proposal', question: '我不知道视频怎么带来生意，帮我把变现这块理一理', expectTools: ['propose_business_positioning'], noFalseSuccess: true, note: '没有账号定位时应先列 propose_plan（定位 → 商业定位）或照实说先做定位' },
+  { id: 'board-content-positioning', category: 'proposal', question: '我想长期做几个固定系列，帮我排一下长期发什么', expectTools: ['propose_content_positioning'], noFalseSuccess: true },
+  { id: 'situation-what-next', category: 'proposal', question: '我现在该做点什么？', expectTools: ['propose_plan'], noFalseSuccess: true, note: '按【老板现状】里「看出来的事」挑最要紧的 1–3 件并直接列出来，不只给建议' },
   { id: 'read-benchmark-link', category: 'read', question: '帮我拆一下这个对标账号 https://v.douyin.com/iAbCdEf/', expectTools: ['open_page'], forbidTools: [...BOARD_TOOLS], note: '打开对标 & 热点页，说清楚粘贴链接、点一键采集并拆解；不能说自己已经拆了' },
 
   // ── 写入类：要真的调用工具，回答里的「已…」必须有回执 ──

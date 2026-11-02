@@ -2,7 +2,7 @@
 // 每轮对话前把档案、地基、最近的创作、作品进度、对标、待办、额度看一遍，先替老板看出卡在哪
 import fs from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { clearSituationCache, loadSituation, situationBlock, situationSignals, type Situation } from '@/lib/assistant/situation';
+import { clearSituationCache, loadSituation, situationBlock, situationItems, situationSignals, type Situation } from '@/lib/assistant/situation';
 import { ASSISTANT_SYSTEM } from '@/lib/assistant/run';
 
 const base: Situation = {
@@ -106,6 +106,39 @@ describe('读现状', () => {
     expect(calls.length).toBe(n);
     await loadSituation(ctx, 'p1', 70_000);
     expect(calls.length).toBeGreaterThan(n);
+  });
+});
+
+describe('首页「今天」：和助理看的是同一份现状，点一下交给助理（没助理就开页面）', () => {
+  it('每件事都有短标签、交给助理的一句话、对应的页面；页面都真的存在', () => {
+    const items = situationItems({
+      ...base,
+      positioningTypes: ['账号定位'],
+      works: [{ shoot_status: 'shot' }],
+      todos: [{ content: 'x', done: false, due_at: '2026-10-30T10:00:00+08:00' }],
+      benchmarks: { accounts: 2, analyzed: 0, latestAt: null },
+      quota: { planName: '基础版', tightest: { featureName: '脚本', remaining: 1 } },
+    });
+    expect(items.map((i) => i.key)).toEqual(['foundation', 'todos', 'post', 'benchmark-todo', 'quota']);
+    expect(items[0]).toMatchObject({ label: '地基还差一步：生成创作简报', ask: '帮我把「生成创作简报」做了', href: '/dashboard/creative-brief' });
+    for (const i of items) {
+      expect(i.label.length, i.key).toBeLessThanOrEqual(20);
+      expect(i.ask, i.key).toBeTruthy();
+      const p = i.href.replace(/^\/dashboard\/?/, '');
+      expect(fs.existsSync(`app/dashboard/${p ? `${p}/` : ''}page.tsx`), i.href).toBe(true);
+    }
+    // 助理提示词里的说法和首页的是同一份
+    expect(situationSignals({ ...base, positioningTypes: ['账号定位'] })[0]).toBe(situationItems({ ...base, positioningTypes: ['账号定位'] })[0].signal);
+  });
+
+  it('接口只读、最多 4 件；首页对话框上方显示，点了交给助理', () => {
+    const api = fs.readFileSync('app/api/assistant/today/route.ts', 'utf8');
+    expect(api).toContain('situationItems(s).slice(0, MAX_ITEMS)');
+    expect(api).toContain('const MAX_ITEMS = 4;');
+    const box = fs.readFileSync('components/dashboard/HomeChatBox.tsx', 'utf8');
+    expect(box).toContain('<TodayStrip agentOn={agentOn} />');
+    expect(box).toContain('agentOn ? askAssistant(it.ask) : router.push(it.href)');
+    expect(box).toContain('if (!items.length) return null;');
   });
 });
 

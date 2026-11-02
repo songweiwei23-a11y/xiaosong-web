@@ -73,6 +73,7 @@ describe('同一页面立即更新：写入文件都通知进度变化', () => {
   const EXEMPT: Record<string, string> = {
     'app/dashboard/profiles/[id]/edit/page.tsx': '档案编辑只改资料字段，地基和作品不变',
     'components/interview/InterviewEntry.tsx': '访谈笔记写入档案的文字字段，地基和作品不变',
+    'lib/assistant/boards-extra.ts': '助理派的商业定位、内容定位在服务端写入，没有页面可通知；深挖定位不算地基进度（is_active=false），老板打开定位页时会重新读取',
   };
 
   const files: string[] = [];
