@@ -101,8 +101,9 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
       const body = hit.content.slice(0, 1500).toLowerCase();
       const inTitle = focus.filter(f => title.includes(f)).length;
       const inBody = focus.filter(f => !title.includes(f) && body.includes(f)).length;
-      // 一个都对不上：搜索词沾边、内容不相干（官方文档除外，它的标题常常很泛）
-      if (focus.length >= 3 && inTitle + inBody === 0 && !isOfficialHost(host)) return;
+      // 一个都对不上：搜索词沾边、内容不相干（官方文档除外，它的标题常常很泛）。
+      // 标题一个都没对上、正文也只沾一个的，多半是挂羊头的页面（诊断里「C调用lua函数」「七言谈」这种）
+      if (focus.length >= 3 && !isOfficialHost(host) && (inTitle + inBody === 0 || (inTitle === 0 && inBody < 2))) return;
       score += Math.min(10, inTitle * 2 + inBody);
     }
     ranked.push({ hit: { ...hit, url: u.href }, score, host, index, hub });

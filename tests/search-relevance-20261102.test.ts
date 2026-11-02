@@ -68,6 +68,16 @@ describe('相关性排第一，灌水和行情页不要', () => {
     expect(picked.map((x) => x.url)).toEqual(['https://m.meipian.cn/5peg9pj6']);
   });
 
+  it('挂羊头的页面（标题一个关键词都没有、正文只沾一个）不要：诊断里的「C调用lua函数」「七言谈」', () => {
+    const focus = relevanceTerms(['抖音', '双十一', '商家', '活动规则'], ['2026双十一抖音商家活动规则']);
+    const picked = pickFreeChatSources([
+      hit('https://x.com/lua', 'C调用lua函数需要考虑的问题', '抖音 函数 调用'),
+      hit('https://m.toutiao.com/c/user/x', '七言谈', '每天稳挣500元 商家'),
+      hit('https://school.example.com/rule', '2026年抖音商城双11招商规则', '商家 报名 活动规则'),
+    ], '今年双十一抖音商家有什么活动规则', 0, Date.now(), 6, focus);
+    expect(picked.map((x) => x.url)).toEqual(['https://school.example.com/rule']);
+  });
+
   it('相关性词：去掉「怎么、方法、案例、年份」这类不区分内容的词', () => {
     expect(relevanceTerms(['理发店'], ['理发店 抖音 案例 2026年 方法'])).toEqual(['理发店', '抖音']);
   });

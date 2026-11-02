@@ -106,6 +106,15 @@ export function wantsDouyinHot(question: string): boolean {
   return /抖音|dy/i.test(question) && /热点|热榜|热搜|热门|热度|什么火|火了|爆了|上热门|榜单/.test(question);
 }
 
+/**
+ * 问「能蹭什么热点」「最近有什么热点」（没提抖音）也要今天的真榜单：
+ * 2026-11-02 诊断，「最近适合服装店蹭的热点」全网搜回来的是百科和行业网站，没有一条是今天的热点。
+ * 这类问题照样联网，同时带上抖音热榜，让模型从真榜单里挑能蹭的
+ */
+export function wantsHotTopics(question: string): boolean {
+  return wantsDouyinHot(question) || /蹭.{0,4}热点|借势|热点.{0,6}(?:蹭|结合|借)|(?:最近|近期|今天|这几天|当下).{0,4}(?:有什么|有啥)?.{0,2}热点|热点话题/.test(question);
+}
+
 /** 只问抖音热榜、不用再全网搜的（问的还有新闻、别的平台、某个话题的细节，就照样联网） */
 export function douyinHotOnly(question: string): boolean {
   return wantsDouyinHot(question) && !/新闻|微博|知乎|头条|百度|小红书|快手|B站|详情|怎么回事|来龙去脉|为什么/.test(question);

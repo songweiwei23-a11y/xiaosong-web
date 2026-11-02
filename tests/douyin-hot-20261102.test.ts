@@ -1,7 +1,7 @@
 // 抖音今日热榜（2026-11-02 产品方：「至少能知道 10-20 个」；开物服务器直接读抖音网页热榜）
 import fs from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, parseDouyinHot, resetDouyinHotCache, wantsDouyinHot } from '@/lib/douyin-hot';
+import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, parseDouyinHot, resetDouyinHotCache, wantsDouyinHot, wantsHotTopics } from '@/lib/douyin-hot';
 
 // 和 2026-11-02 线上实测返回的结构一致（字段名、类型），条数和话题是造的
 const RAW = {
@@ -71,6 +71,12 @@ describe('什么时候读', () => {
     for (const q of ['微博热搜', '今天有什么新闻', '抖音怎么起号']) expect(wantsDouyinHot(q), q).toBe(false);
   });
 
+  it('问「能蹭什么热点」「最近有什么热点」（没提抖音）也带上今天的抖音热榜，但照样联网', () => {
+    for (const q of ['最近适合服装店蹭的热点', '有什么热点可以借势', '这几天有什么热点', '今天抖音有什么热点']) expect(wantsHotTopics(q), q).toBe(true);
+    for (const q of ['餐饮店团购怎么定价', '热点新闻的写作方法是什么']) expect(wantsHotTopics(q), q).toBe(false);
+    expect(douyinHotOnly('最近适合服装店蹭的热点')).toBe(false);
+  });
+
   it('只问抖音热榜的不再全网搜；还问新闻、别的平台、某个话题来龙去脉的照样联网', () => {
     expect(douyinHotOnly('今天抖音有什么热点')).toBe(true);
     expect(douyinHotOnly('抖音热点和微博热搜对比一下')).toBe(false);
@@ -99,7 +105,7 @@ describe('接线', () => {
 
   it('自由对话：问抖音热点就读；只问热榜的不联网、不扣额度；用户关了联网不读；榜单放在回答规则后面', () => {
     const r = read('app/api/dify/chat/route.ts');
-    expect(r).toContain("const hotWanted = body.freeChat === true && wantsDouyinHot(question) && body.webSearchMode !== 'off';");
+    expect(r).toContain("const hotWanted = body.freeChat === true && wantsHotTopics(question) && body.webSearchMode !== 'off';");
     expect(r).toContain("prepareWebSearch(guard.userId!, question, hotOnly ? 'off' : body.webSearchMode)");
     expect(r).toContain('freeChatAnswerRules(webSession.enabled) + hotBlock');
   });

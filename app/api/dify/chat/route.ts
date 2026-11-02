@@ -37,7 +37,7 @@ import { KB_ROUTING_ENABLED, NO_KB_TASKS, freeChatNeedsKnowledge } from '@/lib/k
 import { freeChatAnswerRules } from '@/lib/free-chat-answer'
 import { searchFreeChatWeb, type FreeChatWebResult } from '@/lib/free-chat-web'
 import { planSearch } from '@/lib/search-plan'
-import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsDouyinHot } from '@/lib/douyin-hot'
+import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsHotTopics } from '@/lib/douyin-hot'
 import { searchProfileHint } from '@/lib/search-profile-hint'
 
 /*
@@ -238,7 +238,8 @@ export async function POST(request: NextRequest) {
     let serverWeb: FreeChatWebResult | null = null;
     // 抖音今日热榜（lib/douyin-hot）：问抖音热点时由开物服务器直接读抖音网页热榜（全站 10 分钟缓存）。
     // 只问抖音热榜的不再联网搜索，也不扣联网额度；用户关了联网就不读
-    const hotWanted = body.freeChat === true && wantsDouyinHot(question) && body.webSearchMode !== 'off';
+    // 问「能蹭什么热点」「最近有什么热点」也带上今天的抖音热榜（照样联网，hotOnly 只认点名抖音热榜的）
+    const hotWanted = body.freeChat === true && wantsHotTopics(question) && body.webSearchMode !== 'off';
     const hotList = hotWanted ? await getDouyinHot() : null;
     const hotBlock = hotWanted
       ? `\n\n${hotList ? `${douyinHotContext(hotList)}\n这份榜单是开物服务器从抖音读到的实时数据，可以当作已核实的抖音热榜引用（来源：[抖音热榜](https://www.douyin.com/hot)），不受上面「未联网」的限制。` : DOUYIN_HOT_MISSING}`

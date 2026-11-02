@@ -1,7 +1,7 @@
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { searchFreeChatWeb } from '@/lib/free-chat-web';
 import { planSearch } from '@/lib/search-plan';
-import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsDouyinHot } from '@/lib/douyin-hot';
+import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsHotTopics } from '@/lib/douyin-hot';
 import { searchProfileHint } from '@/lib/search-profile-hint';
 import { todayCN } from '@/lib/web-query';
 import { freeChatAnswerRules } from '@/lib/free-chat-answer';
@@ -226,7 +226,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
 
   const runWebSearch = async (question: string): Promise<string> => {
     // 抖音今日热榜（lib/douyin-hot）：开物服务器直接读抖音网页热榜。只问热榜的不再联网搜索、不扣联网额度
-    if (wantsDouyinHot(question)) {
+    if (wantsHotTopics(question)) {
       const hot = await getDouyinHot().catch(() => null);
       if (hot && douyinHotOnly(question)) {
         ctx.onWeb?.({ status: 'done', message: '读了抖音热榜', sources: [{ title: '抖音热榜', url: 'https://www.douyin.com/hot' }] });
