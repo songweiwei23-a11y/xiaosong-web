@@ -49,7 +49,8 @@ describe('系统通知（拆解完成时）', () => {
 describe('接线：各处确实用上了这次的改动', () => {
   it('免费联网：按需联网的说明写进了下拉框提示，「本轮联网」注明会扣次数', () => {
     const page = readCode('app/dashboard/free-chat/page.tsx');
-    expect(page).toMatch(/title="按需联网：只在要查资料、或问新闻时自动搜，每次扣 1 次额度/);
+    // 2026-11-02 产品方放开按需联网：在问问题、要信息时都搜
+    expect(page).toMatch(/title="按需联网：在问问题、要信息时自动搜（改写、润色、拆分镜这类加工内容不搜），每次扣 1 次额度/);
     expect(page).toMatch(/<option value="on">本轮联网（扣 1 次）<\/option>/);
   });
 
