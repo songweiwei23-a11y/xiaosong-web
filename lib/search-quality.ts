@@ -12,8 +12,14 @@ export function normalizeTitle(title: string): string {
 }
 
 /** 买卖账号、开户、代运营、收费、导流联系方式等。问的正是这些时不挡 */
-const RISK_HIT = /买卖(?:抖音|快手|小红书|微信|视频号)?(?:号|账号|账户)|出售(?:抖音|快手|小红书|视频号)?(?:号|账号|账户)|账号交易|号商|刷粉|刷量|开户|代运营|哪家口碑好|口碑好的|加微信|加V|私信引流|联系方式/;
-const RISK_QUESTION = /代运营|开户|收费|价格|费用|靠谱|口碑|哪家|服务商|交易|买号|卖号/;
+// 2026-11-02 诊断：「起名大全」「加盟哪家口碑好」「口碑力荐」这类灌水页也挤进了结果，一并挡掉
+const RISK_HIT = /买卖(?:抖音|快手|小红书|微信|视频号)?(?:号|账号|账户)|出售(?:抖音|快手|小红书|视频号)?(?:号|账号|账户)|(?:抖音|快手|小红书)号购买|账号交易|号商|刷粉|刷量|开户|代运营|哪家口碑好|口碑好的|口碑力荐|加盟哪家|起名大全|加微信|加V|私信引流|联系方式|联系电话/;
+/**
+ * 问的就是这些服务（代运营、开户、加盟、买卖号）时才不挡。
+ * 2026-11-02 诊断：原来问题里有「价格」「费用」「口碑」也不挡——创作者常问团购怎么定价、入驻要多少费用，
+ * 结果「抖音团购开户联系方式」这类导流页照样进来、还排在前面
+ */
+const RISK_QUESTION = /代运营|开户|服务商|加盟|交易|买号|卖号/;
 
 export function isRiskHit(hit: Pick<SearchHit, 'title' | 'content'>, question: string): boolean {
   if (RISK_QUESTION.test(question)) return false;
@@ -38,9 +44,14 @@ export function isWeatherHit(hit: Pick<SearchHit, 'title' | 'url'>, question: st
 const MARKET_HIT = /行情|股价|报价|ETF|基金|股吧|涨停|跌停|净值|A股|美股|港股|股市|个股|证券|炒股|股票|复盘|期货|投资价值/i;
 const MARKET_QUESTION = /股|基金|财经|行情|投资|证券|金融|理财|汇率|期货|ETF/i;
 
-export function isMarketHit(hit: Pick<SearchHit, 'title'>, question: string): boolean {
-  if (!isNewsQuestion(question) || MARKET_QUESTION.test(question)) return false;
-  return MARKET_HIT.test(hit.title);
+/** 个股行情、上市公司资料页（2026-11-02 诊断：问服装店蹭热点，回来的是「森马服饰」个股页） */
+const MARKET_URL = /stockdata|stock-info|quotation|\/quote\/|quote\.|gupiao|\/stock\//i;
+
+export function isMarketHit(hit: Pick<SearchHit, 'title'> & { url?: string }, question: string): boolean {
+  if (MARKET_QUESTION.test(question)) return false;
+  // 行情页的网址特征什么问题都挡；标题像行情的只在新闻问题里挡（原规则）
+  if (hit.url && MARKET_URL.test(hit.url)) return true;
+  return isNewsQuestion(question) && MARKET_HIT.test(hit.title);
 }
 
 /**

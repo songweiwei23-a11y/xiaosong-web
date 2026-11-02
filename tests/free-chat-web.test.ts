@@ -29,17 +29,21 @@ describe('自由对话搜索源头', () => {
     expect(freeChatWebQuery('联网核查Dify LLM Memory官方文档').query).toContain('site:docs.dify.ai');
     expect(freeChatWebQuery('Dify与n8n的Memory有何区别').query).not.toContain('site:');
   });
-  it('本地商家问题保留业务约束并优先官方创作指南，官方内容高于培训广告', () => {
+  // 2026-11-02 诊断后改：原来这类问题通用搜索词换成 site:life.douyin.com、结果只收官方文档，
+  // 创作者问的案例和做法官方站里没有，6 个常问问题里 3 个一条来源都没剩。官方站另有一路定向搜索，排序照样在前
+  it('本地商家问题：通用搜索照常全网搜（保留业务约束），官方创作指南排在培训广告前面', () => {
     const question = '抖音本地生活获客，我是县城定制衣柜店老板，一个人用手机和三脚架';
-    expect(freeChatWebQuery(question).query).toContain('site:life.douyin.com');
+    expect(freeChatWebQuery(question).query).not.toContain('site:');
     expect(freeChatWebQuery(question).query).toContain('县城定制衣柜');
     expect(pickFreeChatSources([hit('https://example.com/course'), hit('https://life.douyin.com/support/content/guide')], question)[0].url).toContain('life.douyin.com');
   });
-  it('商家获客不把第三方宣传当成平台依据，真实补读官方经营能力而非编写固定答案', async () => {
+  it('商家获客：真实补读官方经营能力；第三方经验也留着（排在官方后面），不再全部丢掉', async () => {
     const read = vi.fn<typeof fetchPage>(async url => ({ ok: true, url, contentType: 'text/html', html: '<article><p>'+'官方说明短视频、直播和POI渠道，未说明推流权重。'.repeat(20)+'</p></article>' }));
     const out = await readOfficialDocumentation('抖音本地生活商家获客', read);
     expect(out[0].content).toContain('未说明推流权重');
-    expect(pickFreeChatSources([hit('https://example.com/course'), ...out], '抖音本地生活商家获客')).toHaveLength(1);
+    const picked = pickFreeChatSources([hit('https://example.com/course'), ...out], '抖音本地生活商家获客');
+    expect(picked).toHaveLength(2);
+    expect(new URL(picked[0].url).hostname).toBe('developer.open-douyin.com');
   });
   it('过滤重复和带凭证URL，正文优先于门户首页，官方匹配高于转载', () => {
     const out = pickFreeChatSources([

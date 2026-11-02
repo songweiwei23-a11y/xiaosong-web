@@ -18,14 +18,23 @@ export function freeChatWebQuery(question: string, now = Date.now()) {
   // 明确的Dify产品技术问题优先检索其官方文档；跨产品比较仍保留开放检索。
   const difyOnly = /dify/i.test(question) && /官方|文档|LLM|memory|vision|参数|会话变量/i.test(question)
     && !/n8n|coze|扣子|langchain|flowise/i.test(question);
-  const douyinGuide = needsDouyinGuide(question);
-  return { ...w, query: difyOnly && !/site:/i.test(w.query) ? `site:docs.dify.ai ${w.query}`
-    : douyinGuide && !/site:/i.test(w.query) ? `site:life.douyin.com 抖音生活服务 创作指南 ${w.query}` : w.query };
+  // 2026-11-02 诊断：原来问题里有「抖音」+「获客 / 商家 / 本地生活」，通用搜索词就换成「site:life.douyin.com 抖音生活服务 创作指南 …」，
+  // 创作者问的案例、做法官方站里没有，等于没搜。抖音官方站另有一路定向搜索（search-official-sites），通用搜索照常全网搜
+  return { ...w, query: difyOnly && !/site:/i.test(w.query) ? `site:docs.dify.ai ${w.query}` : w.query };
+}
+
+/** 判断相关性用的词：计划里的关键对象 + 搜索词拆开的词（两个字以上），去重 */
+export function relevanceTerms(focus: string[], queries: string[] = []): string[] {
+  const words = [...focus, ...queries.flatMap((q) => q.replace(/\bsite:\S+/gi, ' ').split(/\s+/))]
+    .map((w) => w.trim().toLowerCase())
+    .filter((w) => w.length >= 2 && !/^(怎么|如何|什么|方法|技巧|案例|最新|最近|今年|今天|2\d{3}年?)$/.test(w));
+  return [...new Set(words)].slice(0, 12);
 }
 
 /**
- * focus：读懂需求后的关键对象（lib/search-plan 的 entities：地名、行业、产品、平台……）。
- * 标题和正文开头对得上的加分（最多 +3）；给了两个以上、一个都对不上的减 3——多半是搜索词沾边、内容不相干的页面。
+ * focus：判断相关性用的词（relevanceTerms：读懂需求后的关键对象 + 搜索词）。
+ * 2026-11-02 诊断：原来按正文长短排，「起名大全」「个股行情」这种长页排在真正相关的前面。现在相关性是主分：
+ * 标题里每对上一个词 +2、正文开头每对上一个 +1（最多 +10），正文长短最多只占 1.5 分；给了三个以上的词、一个都对不上的不要。
  */
 export function pickFreeChatSources(hits: SearchHit[], question: string, recencyDays = 0, now = Date.now(), maxSources = 6, focus: string[] = []): SearchHit[] {
   const place = newsPlace(question);
@@ -43,8 +52,8 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     if (isMarketHit(hit, question)) return;
     // 问的是某个地方的新闻：正文里找不到这个地名的，不是那个地方的新闻
     if (isOffPlaceHit(hit, place)) return;
-    // 平台经营操作及获客机制只收对应平台文档；广告课程经验不能证明推流/权限/处罚。
-    if (needsDouyinGuide(question) && !DOUYIN_OFFICIAL.includes(u.hostname.toLowerCase())) return;
+    // 2026-11-02 诊断：原来问题里有「抖音」+「获客 / 商家 / 本地生活」就只收抖音官方文档，别的来源全丢——
+    // 6 个创作者常问的问题里 3 个一条来源都没剩。官方文档照样加分排前面（见下面），不再独占
     // 登录入口及餐饮达人手册不能证明家居商家的推荐机制。
     if (/\/(?:p\/)?login(?:\/|$)/i.test(u.pathname)) return;
     // 微博用户主页不是热搜内容（2026-10-17 实测：搜「热搜」出来的几乎都是 /user/ 主页，题目却写着「微博热搜」）
@@ -73,7 +82,7 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     // 标题里写的日期过旧（聚合站把旧文章翻新）也算过旧
     const tooOld = recencyDays && !officialDoc && ((Number.isFinite(timestamp) && age > recencyDays * 1.5 + 3) || titleSaysStale(hit.title, recencyDays, now));
     if (tooOld) { staleFallback.push({ hit: { ...hit, url: u.href }, score: 0, host, index, hub }); return; }
-    let score = Math.min(hit.content.length / 1500, 4) - (hub ? 6 : 0);
+    let score = Math.min(hit.content.length / 2000, 1.5) - (hub ? 6 : 0);
     // 官方站点是主要依据，排在聚合站和转载前面
     if (isOfficialHost(host)) score += 3;
     // 全国新闻站的要闻稿排在聚合站和财经页前面
@@ -88,9 +97,13 @@ export function pickFreeChatSources(hits: SearchHit[], question: string, recency
     const text = `${hit.title} ${hit.content.slice(0, 1500)}`.toLowerCase();
     score += Math.min(3, new Set(terms.filter(term => text.includes(term.toLowerCase()))).size);
     if (focus.length) {
-      const matched = focus.filter(f => text.includes(f.toLowerCase())).length;
-      score += Math.min(3, matched);
-      if (focus.length >= 2 && matched === 0) score -= 3;
+      const title = hit.title.toLowerCase();
+      const body = hit.content.slice(0, 1500).toLowerCase();
+      const inTitle = focus.filter(f => title.includes(f)).length;
+      const inBody = focus.filter(f => !title.includes(f) && body.includes(f)).length;
+      // 一个都对不上：搜索词沾边、内容不相干（官方文档除外，它的标题常常很泛）
+      if (focus.length >= 3 && inTitle + inBody === 0 && !isOfficialHost(host)) return;
+      score += Math.min(10, inTitle * 2 + inBody);
     }
     ranked.push({ hit: { ...hit, url: u.href }, score, host, index, hub });
   });
