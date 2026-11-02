@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, requireAdminPermission } from '@/lib/admin-auth';
 import { logAdminAction, AdminActions, ACTION_LABELS } from '@/lib/admin-logger';
 import { generateTempPassword } from '@/lib/password';
-import { COUNTED_FEATURES, sumCountedUsage } from '@/lib/config/plans';
+import { COUNTED_FEATURES, getPlan, sumCountedUsage } from '@/lib/config/plans';
+import { checkOfflinePayment, OFFLINE_NOTE } from '@/lib/offline-payment';
 import { accountStatus } from '@/lib/account-status';
 import { previewUserData, purgeUser } from '@/lib/admin-delete-user';
 import { cleanQuery, emailsByIds, searchUsers, UUID_RE } from '@/lib/admin-users';
@@ -253,6 +254,38 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: '到期日格式不对，请重新选择' }, { status: 400 });
         }
 
+        // 线下收款（lib/offline-payment）：收了钱就先记一笔已通过的会员订单，邀请他的代理按它自动算分成（和线上付款一样）；
+        // 没收钱（赠送、调整到期日）不记。先记订单再改会员：会员没改成就把这笔订单撤掉，两边对得上
+        const paymentCheck = checkOfflinePayment(String(plan), body.payment);
+        if (!paymentCheck.ok) {
+          return NextResponse.json({ error: paymentCheck.error }, { status: 400 });
+        }
+        let offlineOrderId: string | null = null;
+        if (paymentCheck.payment) {
+          const now = new Date().toISOString();
+          const { data: order, error: orderError } = await supabase
+            .from('payment_orders')
+            .insert({
+              user_id: userId,
+              plan_id: plan,
+              plan_name: getPlan(String(plan)).name,
+              amount: paymentCheck.payment.amount,
+              billing_cycle: paymentCheck.payment.cycle,
+              payment_method: paymentCheck.payment.method,
+              status: 'approved',
+              reviewer_id: admin.userId,
+              reviewed_at: now,
+              review_note: OFFLINE_NOTE,
+            })
+            .select('id')
+            .single();
+          if (orderError || !order) {
+            console.error('[用户管理] 登记线下收款失败:', orderError?.message);
+            return NextResponse.json({ error: '收款没有登记上，会员也没有改：请稍后再试' }, { status: 500 });
+          }
+          offlineOrderId = order.id as string;
+        }
+
         // 更新或创建subscription
         const { error: subError } = await supabase
           .from('subscriptions')
@@ -268,17 +301,25 @@ export async function POST(request: Request) {
 
         if (subError) {
           console.error('[用户管理] 更新会员失败:', subError);
+          // 会员没改成：刚登记的收款撤掉，不能出现「记了钱、没开会员」
+          if (offlineOrderId) await supabase.from('payment_orders').delete().eq('id', offlineOrderId);
           throw subError;
         }
 
-        // 记录管理员操作
+        // 记录管理员操作（收款金额一起记，事后能查是谁登记的）
         await logAdminAction(admin.userId, AdminActions.UPDATE_USER_MEMBERSHIP, {
           targetUserId: userId,
           plan,
-          endDate
+          endDate,
+          offlinePayment: paymentCheck.payment ?? null,
+          offlineOrderId,
         });
 
-        return NextResponse.json({ success: true, message: '会员等级更新成功' });
+        return NextResponse.json({
+          success: true,
+          message: paymentCheck.payment ? `会员已开通，已登记收款 ${paymentCheck.payment.amount} 元` : '会员等级更新成功',
+          offlineOrderId,
+        });
 
       case 'reset_quota': {
         /*

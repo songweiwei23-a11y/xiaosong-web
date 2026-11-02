@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Copy, Search } from "lucide-react";
 import { notify, confirmDialog } from "@/components/ui/feedback";
 import { SUBSCRIPTION_PLANS, getPlan } from "@/lib/config/plans";
+import { CHARGEABLE_PLANS } from "@/lib/offline-payment";
 import { beijingDate } from "@/lib/admin-dates";
 import { INPUT_CLS, SELECT_CLS } from "@/components/form/controls";
 import {
@@ -78,6 +79,10 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [editPlan, setEditPlan] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
+  const [charged, setCharged] = useState<boolean | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payCycle, setPayCycle] = useState<"monthly" | "yearly">("monthly");
+  const [payMethod, setPayMethod] = useState<"wechat" | "alipay">("wechat");
   const [saving, setSaving] = useState(false);
   const [tempPw, setTempPw] = useState<{ email: string; password: string } | null>(null);
   const [del, setDel] = useState<{ user: User; preview: { email: string; counts: Record<string, number>; paidOrders: number } | null; error: string; input: string; busy: boolean } | null>(null);
@@ -139,20 +144,32 @@ export default function UsersPage() {
     setEditing(user);
     setEditPlan(user.membership_level);
     setEditEndDate(beijingDate(user.subscription_end));
+    // 收没收钱每次都要重新选，不带上一次的（免得改个日期也记一笔钱）
+    setCharged(null);
+    setPayAmount(String(getPlan(user.membership_level).price || ""));
+    setPayCycle("monthly");
+    setPayMethod("wechat");
   };
 
+  // 线下收款（lib/offline-payment）：付费套餐必须选这次收没收钱；收了钱记一笔已通过的会员订单，邀请他的代理自动算分成
+  const paidPlan = (CHARGEABLE_PLANS as readonly string[]).includes(editPlan);
   const saveMembership = async () => {
     if (!editing) return;
+    if (paidPlan && charged === null) return notify("请先选这次开会员有没有收钱", "error");
+    const payment = paidPlan && charged ? { charged: true, amount: Number(payAmount), cycle: payCycle, method: payMethod } : { charged: false };
     const confirmed = await confirmDialog(
-      `把 ${editing.email} 的会员改为「${planOptionLabel(editPlan)}」，到期${editEndDate ? `为 ${editEndDate}（北京时间当天结束）` : "设为永久"}？`,
+      `把 ${editing.email} 的会员改为「${planOptionLabel(editPlan)}」，到期${editEndDate ? `为 ${editEndDate}（北京时间当天结束）` : "设为永久"}？` +
+        (payment.charged
+          ? `\n登记线下收款 ${payAmount} 元（${payCycle === "yearly" ? "年付" : "月付"}，${payMethod === "alipay" ? "支付宝" : "微信"}）${editing.referrer ? `，计入代理「${editing.referrer.agent_name}」本月的分成` : ""}。`
+          : paidPlan ? "\n这次没收钱：不记订单、不算分成。" : ""),
       { tone: "danger", confirmText: "确定修改", title: "修改会员套餐" }
     );
     if (!confirmed) return;
     setSaving(true);
-    const { ok, error: err } = await act(editing.user_id, "update_membership", { plan: editPlan, endDate: editEndDate || null });
+    const { ok, error: err, data } = await act(editing.user_id, "update_membership", { plan: editPlan, endDate: editEndDate || null, payment });
     setSaving(false);
     if (ok) {
-      notify("会员套餐已更新", "success");
+      notify((data?.message as string | undefined) ?? "会员套餐已更新", "success");
       setEditing(null);
       void load();
     } else notify(err || "更新失败", "error");
@@ -432,6 +449,43 @@ export default function UsersPage() {
               <span className={fieldLabel}>到期时间（不填就是永久）</span>
               <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className={INPUT_CLS} />
             </label>
+            {paidPlan && (
+              <div className="space-y-2 rounded-lg border border-border p-3">
+                <span className={fieldLabel}>这次开会员收钱了吗？（必选）</span>
+                <p className="text-[12px] text-muted-foreground">
+                  {editing.referrer
+                    ? `这个用户是代理「${editing.referrer.agent_name}」邀请的：收了钱会记一笔已通过的会员订单，自动计入这位代理本月的分成（以后每次续费也一样）。`
+                    : "这个用户没有来源代理：收了钱照样记一笔订单，方便对账。"}
+                </p>
+                <div className="flex flex-wrap gap-3 text-[13px]">
+                  <label className="inline-flex items-center gap-1.5"><input type="radio" name="charged" checked={charged === true} onChange={() => setCharged(true)} />收了钱（线下收款）</label>
+                  <label className="inline-flex items-center gap-1.5"><input type="radio" name="charged" checked={charged === false} onChange={() => setCharged(false)} />没收钱（赠送、补偿、只改到期日）</label>
+                </div>
+                {charged && (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <label className="block">
+                      <span className={fieldLabel}>实际收款（元）</span>
+                      <input type="number" min="0.01" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className={INPUT_CLS} />
+                    </label>
+                    <label className="block">
+                      <span className={fieldLabel}>周期</span>
+                      <select value={payCycle} onChange={(e) => setPayCycle(e.target.value as "monthly" | "yearly")} className={SELECT_CLS}>
+                        <option value="monthly">月付</option>
+                        <option value="yearly">年付</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className={fieldLabel}>收款方式</span>
+                      <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as "wechat" | "alipay")} className={SELECT_CLS}>
+                        <option value="wechat">微信</option>
+                        <option value="alipay">支付宝</option>
+                      </select>
+                    </label>
+                  </div>
+                )}
+                {charged === false && <p className="text-[12px] text-muted-foreground">不记订单、不算分成。</p>}
+              </div>
+            )}
           </>
         )}
       </Dialog>

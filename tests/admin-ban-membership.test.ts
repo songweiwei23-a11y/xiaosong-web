@@ -14,6 +14,7 @@ const h = vi.hoisted(() => {
     subs: new Map<string, Row>(),
     logs: [] as Row[],
     authBanned: new Set<string>(),
+    orders: [] as Row[],
   };
 
   function table(name: string) {
@@ -45,12 +46,20 @@ const h = vi.hoisted(() => {
       if (name === 'admin_logs' && ctx.op === 'insert') {
         state.logs.push(ctx.payload);
       }
+      // 后台开会员登记的线下收款（2026-11-02）
+      if (name === 'payment_orders' && ctx.op === 'insert') {
+        const row = { id: `o${state.orders.length + 1}`, ...ctx.payload };
+        state.orders.push(row);
+        return { data: ctx.single ? { id: row.id } : [row], error: null };
+      }
       return { data: null, error: null };
     };
     const b: any = {
       select: () => b,
       eq: (col: string, v: unknown) => { ctx.filters[col] = v; return b; },
       maybeSingle: () => { ctx.single = true; return b; },
+      single: () => { ctx.single = true; return b; },
+      delete: () => { ctx.op = 'delete'; return b; },
       update: (p: Row) => { ctx.op = 'update'; ctx.payload = p; return b; },
       insert: (p: Row) => { ctx.op = 'insert'; ctx.payload = p; return b; },
       upsert: (p: Row) => { ctx.op = 'upsert'; ctx.payload = p; return b; },
@@ -136,7 +145,8 @@ describe('封禁与解封不动套餐（H1）', () => {
 
 describe('改会员的到期日按北京时间（H2）', () => {
   it('填 2026-11-10：存成北京时间 11-10 23:59:59（即 UTC 15:59:59）', async () => {
-    const res = await call({ userId: 'u3', action: 'update_membership', plan: 'pro', endDate: '2026-11-10' });
+    // 2026-11-02 起付费套餐要选收没收钱（lib/offline-payment）；这里只测到期日，选「没收钱」
+    const res = await call({ userId: 'u3', action: 'update_membership', plan: 'pro', endDate: '2026-11-10', payment: { charged: false } });
     expect(res.status).toBe(200);
     expect(h.state.subs.get('u3')).toMatchObject({ plan: 'pro', end_date: '2026-11-10T15:59:59.000Z' });
   });
@@ -148,8 +158,32 @@ describe('改会员的到期日按北京时间（H2）', () => {
   });
 
   it('不填到期日：永久（end_date 为 null）', async () => {
-    const res = await call({ userId: 'u5', action: 'update_membership', plan: 'pro', endDate: null });
+    const res = await call({ userId: 'u5', action: 'update_membership', plan: 'pro', endDate: null, payment: { charged: false } });
     expect(res.status).toBe(200);
     expect(h.state.subs.get('u5')).toMatchObject({ plan: 'pro', end_date: null });
+  });
+});
+
+// 2026-11-02 产品方：代理邀请的用户找管理员线下付钱、管理员手动开会员，分成照样归代理
+describe('后台开会员登记线下收款', () => {
+  it('收了钱：记一笔已通过的会员订单（金额、周期、方式、备注），会员照常开通', async () => {
+    const before = h.state.orders.length;
+    const res = await call({ userId: 'u6', action: 'update_membership', plan: 'pro', endDate: '2026-12-02', payment: { charged: true, amount: 99, cycle: 'monthly', method: 'wechat' } });
+    expect(res.status).toBe(200);
+    const order = h.state.orders.at(-1)!;
+    expect(h.state.orders.length).toBe(before + 1);
+    expect(order).toMatchObject({ user_id: 'u6', plan_id: 'pro', amount: 99, billing_cycle: 'monthly', payment_method: 'wechat', status: 'approved', review_note: '线下收款：管理员手动开通会员时登记' });
+    expect(typeof order.reviewed_at).toBe('string');
+    expect(h.state.subs.get('u6')).toMatchObject({ plan: 'pro' });
+  });
+
+  it('没收钱：不记订单；付费套餐没选收没收钱：400，不改会员也不记订单', async () => {
+    const before = h.state.orders.length;
+    expect((await call({ userId: 'u7', action: 'update_membership', plan: 'basic', endDate: null, payment: { charged: false } })).status).toBe(200);
+    expect(h.state.orders.length).toBe(before);
+    const res = await call({ userId: 'u8', action: 'update_membership', plan: 'basic', endDate: null });
+    expect(res.status).toBe(400);
+    expect(h.state.subs.has('u8')).toBe(false);
+    expect(h.state.orders.length).toBe(before);
   });
 });
