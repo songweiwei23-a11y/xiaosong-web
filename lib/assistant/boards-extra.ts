@@ -1,5 +1,5 @@
 import { buildContextBlock } from '@/lib/creator-context';
-import { buildProfileSummary, businessLines } from '@/lib/profile-summary';
+import { buildProfileSummary, businessLines, profileSearchHints } from '@/lib/profile-summary';
 import { mixPromptBlock, resolveMix } from '@/lib/content-mix';
 import { taboosPromptBlock } from '@/lib/taboos';
 import { performancePromptBlock } from '@/lib/performance';
@@ -15,12 +15,12 @@ import { continuationRules } from '@/lib/creation-continuation';
 import { incomingNote } from '@/lib/creation-flow';
 import type { CreationSettings } from '@/lib/creation-settings';
 import type { HandoffPayload } from '@/lib/handoff';
-import type { BoardContext, BoardResult } from './boards';
+import { internalBase, type BoardContext, type BoardResult } from './boards';
 import { callBoardStream, clampCount, loadContext, withNote } from './boards-more';
 import { pageHandoff } from '@/lib/assistant/carry-consume';
 
 /**
- * 管理员能派活的另外七个板块：账号定位、创作简报、行业建议、起号方案、开篇钩子、跨行业二创、文案拆解。
+ * 管理员能派活的另外九个板块：账号定位、商业定位、内容定位、创作简报、行业建议、起号方案、开篇钩子、跨行业二创、文案拆解。
  * 提示词用各板块自己的构造函数（lib/*），背景用档案里的创作上下文，和页面一致；
  * 带过来的内容（carry）按页面收到「带去下一步」时的规则接进来（见 lib/assistant/carry-consume）。
  * 内容由 Dify 生成，走的是同一个生成接口 /api/dify/stream，额度由那个接口按板块自己的功能扣。
@@ -130,6 +130,71 @@ export async function runPositioningBoard(ctx: BoardContext, input: PositioningI
     profileId: profile.id ?? null,
     platform,
   });
+}
+
+export interface DeepDiveInput {
+  /** 带过来的上一步结果：进补充说明（和深挖页收到「带去下一步」时一样） */
+  carry?: HandoffPayload;
+  notes?: string;
+  /** 计划里上一步产出的账号定位：有它就用它当地基，不再读库里的 */
+  upstream?: string;
+  extraNote?: string;
+}
+
+/** 商业定位、内容定位：账号定位里两维的深挖，任务类型和存进定位表的类型名都是页面上那个 */
+export const DEEP_DIVE_TYPE = { business: '商业定位', content: '内容定位' } as const;
+
+/**
+ * 商业定位 / 内容定位（2026-11-02 产品方：助理要能调动整个开物）。和深挖页（components/positioning/DeepDivePage）一样：
+ * 以账号定位为地基，按 focus 深挖那一维；生成完存进定位表（is_active=false，不动当前生效的六维地基），
+ * 页面回来就能看到，选题、方向、脚本按 lib/context-manifest 读它。
+ */
+export async function runDeepDiveBoard(ctx: BoardContext, focus: keyof typeof DEEP_DIVE_TYPE, input: DeepDiveInput): Promise<BoardResult> {
+  const taskType = DEEP_DIVE_TYPE[focus];
+  const creatorContext = await loadContext(ctx);
+  const profile = creatorContext.profile;
+  if (!profile) return { ok: false, text: '', error: `还没有账号档案，请先建档再做${taskType}` };
+  const baseline = input.upstream?.trim() || creatorContext.positioning?.full || '';
+  if (!baseline) return { ok: false, text: '', error: `还没有账号定位。${taskType}是账号定位的深挖，先做账号定位` };
+  const notes = withNote([input.notes?.trim(), input.carry ? incomingNote(input.carry) : ''].filter(Boolean).join('\n'), input.extraNote);
+  const platform = platformOf(profile.account_platform);
+  const summary = buildProfileSummary(profile as never);
+  const query = buildPositioningPrompt({
+    profileSummary: summary,
+    additionalNotes: notes || undefined,
+    platform: platform || undefined,
+    restrictions: profile.content_restrictions || undefined,
+    focus,
+    baseline,
+    mixBlock: mixPromptBlock(resolveMix(profile, null, notes)),
+    taboos: taboosPromptBlock(profile),
+  });
+  const res = await callBoardStream(ctx, {
+    taskType,
+    profileId: profile.id ?? null,
+    query,
+    creationSettings: {},
+    profileInfo: summary,
+    ...profileSearchHints(profile),
+    additionalNotes: notes || '无补充说明',
+  });
+  if (!res.ok || !res.full?.trim() || !profile.id) return res;
+  // 和深挖页一样存进定位表；存不上就按「没存进历史」提醒老板先复制保存
+  const content = res.full;
+  const firstLine = content.split('\n').find((l) => l.trim())?.replace(/^#+\s*/, '').trim() || '';
+  const saved = await (ctx.fetchImpl ?? fetch)(`${internalBase(ctx)}/api/positioning`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: ctx.cookie },
+    body: JSON.stringify({
+      profile_id: profile.id,
+      positioning_type: taskType,
+      positioning_name: firstLine.slice(0, 50) || `${String(profile.profile_name ?? '账号')}的${taskType}`,
+      full_content: content,
+      is_active: false,
+    }),
+    cache: 'no-store',
+  }).then((r) => r.ok).catch(() => false);
+  return { ...res, historySaved: saved };
 }
 
 /**

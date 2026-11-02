@@ -19,9 +19,11 @@ import {
   runOpeningBoard,
   runPositioningBoard,
   runRemixBoard,
+  runDeepDiveBoard,
   type AdviceInput,
   type BreakdownInput,
   type BriefInput,
+  type DeepDiveInput,
   type GrowthInput,
   type OpeningInput,
   type PositioningInput,
@@ -47,6 +49,8 @@ export type BoardKind =
   | 'content-plan'
   | 'deal-reason'
   | 'positioning'
+  | 'business-positioning'
+  | 'content-positioning'
   | 'brief'
   | 'advice'
   | 'growth'
@@ -66,6 +70,8 @@ export const BOARD_LABEL: Record<BoardKind, { label: string; feature: string }> 
   'content-plan': { label: '内容规划', feature: '方向' },
   'deal-reason': { label: '成交理由', feature: '成交理由' },
   positioning: { label: '账号定位', feature: '定位' },
+  'business-positioning': { label: '商业定位', feature: '定位' },
+  'content-positioning': { label: '内容定位', feature: '定位' },
   brief: { label: '创作简报', feature: '定位' },
   advice: { label: '行业建议', feature: '定位' },
   growth: { label: '起号方案', feature: '脚本' },
@@ -89,6 +95,8 @@ export const BOARD_TASK_TYPE: Record<BoardKind, string> = {
   'content-plan': '内容规划',
   'deal-reason': '成交理由',
   positioning: '账号定位',
+  'business-positioning': '商业定位',
+  'content-positioning': '内容定位',
   brief: '创作简报',
   advice: '行业建议',
   growth: '起号方案',
@@ -108,6 +116,8 @@ type BoardAnyShape =
   | { kind: 'content-plan'; input: ContentPlanInput }
   | { kind: 'deal-reason'; input: DealReasonInput }
   | { kind: 'positioning'; input: PositioningInput }
+  | { kind: 'business-positioning'; input: DeepDiveInput }
+  | { kind: 'content-positioning'; input: DeepDiveInput }
   | { kind: 'brief'; input: BriefInput }
   | { kind: 'advice'; input: AdviceInput }
   | { kind: 'growth'; input: GrowthInput }
@@ -156,6 +166,10 @@ export function runAnyBoard(ctx: BoardContext, board: BoardAny): Promise<BoardRe
       return runDealReasonBoard(ctx, { ...board.input, carry: board.carry });
     case 'positioning':
       return runPositioningBoard(ctx, { ...board.input, carry: board.carry });
+    case 'business-positioning':
+      return runDeepDiveBoard(ctx, 'business', { ...board.input, carry: board.carry });
+    case 'content-positioning':
+      return runDeepDiveBoard(ctx, 'content', { ...board.input, carry: board.carry });
     case 'brief':
       return runBriefBoard(ctx, { ...board.input, carry: board.carry });
     case 'advice':
@@ -199,6 +213,8 @@ export function missingFields(board: BoardAny): string[] {
       return missing;
     }
     case 'positioning':
+    case 'business-positioning':
+    case 'content-positioning':
     case 'brief':
     case 'growth':
       return [];
@@ -243,6 +259,10 @@ export function requirementOf(board: BoardAny): string {
       return `成交理由：${board.input.storeName}，店铺特色：${board.input.storeFeatures}`;
     case 'positioning':
       return '账号定位：六维地基，每个结论都要有理由，能直接指导后面的选题和脚本';
+    case 'business-positioning':
+      return '商业定位：在账号定位的基础上，把靠什么赚钱拆到能执行——卖什么、多少钱、从刷到视频到付钱的每一步、凭什么信你';
+    case 'content-positioning':
+      return '内容定位：在账号定位的基础上，把长期发什么排成结构——内容配比、能持续的系列、选题来源、前 30 条的节奏';
     case 'brief':
       return '创作简报：把账号定位转译成每一句都能直接指导创作的简报';
     case 'advice':
@@ -286,6 +306,9 @@ export function summaryOf(board: BoardAny): string {
       return `成交理由｜店铺：${board.input.storeName}｜特色：${board.input.storeFeatures.slice(0, 30)}`;
     case 'positioning':
       return `账号定位${board.input.platform ? `｜平台：${board.input.platform}` : ''}${board.input.notes ? `｜补充：${board.input.notes.slice(0, 30)}` : ''}`;
+    case 'business-positioning':
+    case 'content-positioning':
+      return `${BOARD_LABEL[board.kind].label}${board.input.notes ? `｜补充：${board.input.notes.slice(0, 30)}` : ''}`;
     case 'brief':
       return `创作简报${board.input.notes ? `｜补充：${board.input.notes.slice(0, 30)}` : ''}`;
     case 'advice':
@@ -325,6 +348,12 @@ export function withUpstream(board: BoardAny, text: string): BoardAny {
       return { kind: 'deal-reason', input: { ...board.input, storeFeatures: board.input.storeFeatures + note } };
     case 'positioning':
       return { kind: 'positioning', input: { ...board.input, notes: (board.input.notes ?? '') + note } };
+    case 'business-positioning':
+    case 'content-positioning':
+      // 计划里上一步是账号定位：它就是地基；别的上一步产出进补充说明
+      return /账号定位|六维/.test(text.slice(0, 200))
+        ? { kind: board.kind, input: { ...board.input, upstream: text.slice(0, 20000) } }
+        : { kind: board.kind, input: { ...board.input, notes: (board.input.notes ?? '') + note } };
     case 'brief':
       // 简报要的是「账号定位」本身：上一步的产出就是定位，直接用它，不再读库里的
       return { kind: 'brief', input: { ...board.input, upstream: text.slice(0, 20000) } };

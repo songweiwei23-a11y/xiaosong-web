@@ -10,6 +10,8 @@ import { clampMinutes, OPEN_PAGES, resolveSound, soundChoices } from '@/lib/assi
 import type { ActionReceipt } from '@/lib/assistant/receipts';
 import { internalBase, readInternal, type BoardHistoryRow } from './boards';
 import { benchmarkDigest } from './benchmark-read';
+import { buildMonthlyReport, monthOf, previousMonth, type ReportWork } from '@/lib/monthly-report';
+import { performancePromptBlock, type PerformanceSummary } from '@/lib/performance';
 import { BOARD_LABEL, BOARD_TASK_TYPE, missingFields, revisionCapOf, summaryOf, type BoardAny, type PlanSpec } from '@/lib/assistant/board-dispatch';
 import { foundationGate, foundationNeedOf } from '@/lib/foundation-gate';
 import { isDepth } from '@/lib/research';
@@ -95,6 +97,9 @@ function stepToBoard(s: { board?: unknown; text?: unknown; count?: unknown; plat
       return { kind: 'deal-reason', input: { storeName: '', storeFeatures: text } };
     case 'positioning':
       return { kind: 'positioning', input: { platform, notes: text } };
+    case 'business-positioning':
+    case 'content-positioning':
+      return { kind: s.board, input: { notes: text } };
     case 'brief':
       return { kind: 'brief', input: { notes: text } };
     case 'advice':
@@ -138,6 +143,9 @@ function continueBoard(to: string, request: string, count: number | undefined, p
       return { kind: 'direction', input: { goal: request, count: clampCount(count, 5, 3, 8) } };
     case 'positioning':
       return { kind: 'positioning', input: { platform, notes: request } };
+    case 'business-positioning':
+    case 'content-positioning':
+      return { kind: to, input: { notes: request } };
     case 'brief':
       return { kind: 'brief', input: { notes: request } };
     case 'remix':
@@ -357,6 +365,97 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
       maxResultChars: 9000,
       async run() {
         return benchmarkDigest((await readInternal(ctx, '/api/benchmark')) as Parameters<typeof benchmarkDigest>[0]);
+      },
+    },
+    {
+      // 2026-11-02 产品方：助理要能调动整个开物。作品数据和月报原来读不到，说不出「你哪类视频好」
+      name: 'read_performance',
+      label: '正在看你的作品数据',
+      description:
+        '读取这个号发出去的作品数据（播放、完播、互动、咨询成交，按视频目的和拍法分组，哪些较高、哪些待复盘）和上个月、这个月的月报（拍了几条、发了几条、总播放、完播中位数、下个月排了什么）。老板问数据怎么样、哪类视频好、要复盘、下一步拍什么更好时先用它；派选题、内容规划前想参考数据也可以用。只读，不扣额度。数据是老板手动录的，样本少时不下结论，不把相关说成因果。',
+      input_schema: { type: 'object', properties: {}, required: [] },
+      maxResultChars: 6000,
+      async run() {
+        const scope = ctx.profileId ? `profileId=${encodeURIComponent(ctx.profileId)}` : '';
+        const perf = await readInternal(ctx, `/api/works/performance${scope ? `?${scope}` : ''}`).catch(() => null);
+        const works: ReportWork[] = [];
+        for (let page = 0; page < 4; page++) {
+          const rows = await readInternal(ctx, `/api/works?limit=50&offset=${page * 50}${scope ? `&${scope}` : ''}`).catch(() => null);
+          if (!Array.isArray(rows)) break;
+          works.push(...(rows as ReportWork[]));
+          if (rows.length < 50) break;
+        }
+        const now = Date.now();
+        const months = [previousMonth(now), monthOf(new Date(now).toISOString())!];
+        const reports = works.length ? months.map((m) => buildMonthlyReport(works, m)) : [];
+        const parts = [
+          performancePromptBlock(perf as PerformanceSummary | null) || '作品数据：还没有录过发出去的数据（在「创作进度」里给已发布的作品录播放、完播、咨询）。',
+          ...reports.map((r) => [`【${r.label}月报】拍了 ${r.shot} 条，发了 ${r.published} 条，录了数据的 ${r.withData} 条${r.totalViews != null ? `，总播放 ${r.totalViews}` : ''}${r.medianCompletion != null ? `，完播中位数 ${r.medianCompletion}%` : ''}${r.best ? `，完播最高「${r.best.title}」${r.best.completion}%` : ''}`, ...r.lines.slice(0, 6)].join('\n')),
+        ];
+        return clip(parts.join('\n\n'));
+      },
+    },
+    {
+      // 对标 & 热点：老板在对话里说「记一下这个热点」「把某某加成对标」，直接记进页面（不扣额度，可在页面上删）
+      name: 'add_hot_topic',
+      label: '正在记热点线索',
+      description:
+        '把老板看到的热点记进「对标 & 热点」页的热点线索。标题写清是什么热点；来源链接、看到的日期（YYYY-MM-DD）、备注老板说了才填，不编。选题、方向会参考这些线索。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: '这个热点是什么，一句话' },
+          sourceUrl: { type: 'string', description: '在哪看到的链接（http 开头），没有不填' },
+          seenOn: { type: 'string', description: '哪天看到的，YYYY-MM-DD，老板没说不填' },
+          note: { type: 'string', description: '老板的想法或备注，没有不填' },
+        },
+        required: ['title'],
+      },
+      async run(input) {
+        const res = await doFetch(`${base}/api/benchmark`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', cookie: ctx.cookie },
+          body: JSON.stringify({ action: 'addHot', title: str(input.title), sourceUrl: str(input.sourceUrl), seenOn: str(input.seenOn), note: str(input.note) }),
+          cache: 'no-store',
+        }).catch(() => null);
+        const data = (await res?.json().catch(() => null)) as { error?: string } | null;
+        if (!res?.ok) {
+          emit({ kind: 'benchmark.add', ok: false, text: '热点线索没有记下来' });
+          return `热点线索没有记下来：${data?.error ?? '请稍后再试'}。请如实告诉老板。`;
+        }
+        emit({ kind: 'benchmark.add', ok: true, text: `已记热点线索：「${str(input.title).slice(0, 40)}」` });
+        return `已记进「对标 & 热点」的热点线索：「${str(input.title)}」。之后出选题、方向时会参考它。`;
+      },
+    },
+    {
+      name: 'add_benchmark_account',
+      label: '正在加对标账号',
+      description:
+        '把老板说的同行加成对标账号（「对标 & 热点」页）。名字必填；平台、主页链接（http 开头）、备注老板说了才填。加好后告诉老板：要深度拆解，在对标页粘贴主页链接点「一键采集并拆解」（插件在他自己的浏览器里采），你不能替他去抖音采集。已经加过同名的就不要重复加（先用 read_benchmarks 看）。',
+      input_schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: '对标账号的名字' },
+          platform: { type: 'string', description: '平台，例如抖音' },
+          link: { type: 'string', description: '主页链接，没有不填' },
+          note: { type: 'string', description: '为什么对标它，老板说了才填' },
+        },
+        required: ['name'],
+      },
+      async run(input) {
+        const res = await doFetch(`${base}/api/benchmark`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', cookie: ctx.cookie },
+          body: JSON.stringify({ action: 'addAccount', name: str(input.name), platform: str(input.platform) || '抖音', link: str(input.link), note: str(input.note), profileId: ctx.profileId ?? null }),
+          cache: 'no-store',
+        }).catch(() => null);
+        const data = (await res?.json().catch(() => null)) as { error?: string } | null;
+        if (!res?.ok) {
+          emit({ kind: 'benchmark.add', ok: false, text: '对标账号没有加上' });
+          return `对标账号没有加上：${data?.error ?? '请稍后再试'}。请如实告诉老板。`;
+        }
+        emit({ kind: 'benchmark.add', ok: true, text: `已加对标账号：「${str(input.name).slice(0, 30)}」` });
+        return `已把「${str(input.name)}」加进对标账号。要深度拆解：打开对标 & 热点页，粘贴他的抖音主页链接，点「一键采集并拆解」。`;
       },
     },
     {
@@ -766,6 +865,23 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         return proposeBoard({ kind: 'positioning', input: { platform: str(input.platform), notes: str(input.notes) } });
       },
     },
+    // 2026-11-02 产品方：助理要能调动整个开物。商业定位、内容定位原来只能打开页面，现在能派
+    ...(['business-positioning', 'content-positioning'] as const).map((kind) => ({
+      name: kind === 'business-positioning' ? 'propose_business_positioning' : 'propose_content_positioning',
+      label: kind === 'business-positioning' ? '正在派商业定位板块' : '正在派内容定位板块',
+      description: kind === 'business-positioning'
+        ? '把商业定位派给「商业定位」板块：在账号定位的基础上，把靠什么赚钱拆到能执行（卖什么、多少钱、从刷到视频到付钱的每一步、凭什么信你）。老板问怎么变现、怎么成交、怎么定价、视频怎么带来生意时用。前提是账号定位已经做好；没有就先派账号定位（或用 propose_plan 先定位再商业定位）。这一步只是列给老板看，确认后才开跑，扣定位额度；生成完自动存进商业定位页。'
+        : '把内容定位派给「内容定位」板块：在账号定位的基础上，把长期发什么排成结构（内容配比、能持续的系列、选题来源、前 30 条的节奏）。老板问长期拍什么、怎么做系列、内容怎么排、发什么能持续时用。前提是账号定位已经做好；没有就先派账号定位。这一步只是列给老板看，确认后才开跑，扣定位额度；生成完自动存进内容定位页。',
+      input_schema: {
+        type: 'object',
+        properties: { notes: { type: 'string', description: '老板的补充要求（比如主推什么产品、想怎么成交、想做哪类系列），没有就不填' } },
+        required: [],
+      },
+      async run(input: Record<string, unknown>) {
+        if (!(await hasProfile())) return NO_PROFILE;
+        return proposeBoard({ kind, input: { notes: str(input.notes) } });
+      },
+    })),
     {
       name: 'propose_brief',
       label: '正在派创作简报板块',
@@ -918,7 +1034,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
         type: 'object',
         properties: {
           fromResultId: { type: 'string', description: '要接着做的那份结果的编号（list_results 里的）' },
-          to: { type: 'string', enum: ['topic', 'script', 'review', 'storyboard', 'title', 'opening', 'direction', 'positioning', 'brief', 'remix', 'breakdown'], description: '要去的板块' },
+          to: { type: 'string', enum: ['topic', 'script', 'review', 'storyboard', 'title', 'opening', 'direction', 'positioning', 'business-positioning', 'content-positioning', 'brief', 'remix', 'breakdown'], description: '要去的板块' },
           request: { type: 'string', description: '老板这次的具体要求，没有就不填' },
           count: { type: 'number', description: '条数或方案个数，老板说了才填' },
           platform: { type: 'string', description: '发布平台，不确定就不填' },
@@ -953,7 +1069,7 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
               properties: {
                 board: {
                   type: 'string',
-                  enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan', 'deal-reason', 'positioning', 'brief', 'advice', 'growth', 'opening', 'remix', 'breakdown', 'research'],
+                  enum: ['topic', 'script', 'review', 'title', 'storyboard', 'direction', 'content-plan', 'deal-reason', 'positioning', 'business-positioning', 'content-positioning', 'brief', 'advice', 'growth', 'opening', 'remix', 'breakdown', 'research'],
                 },
                 text: { type: 'string', description: '这一步的主要输入' },
                 count: { type: 'number', description: '条数，不确定就不填' },

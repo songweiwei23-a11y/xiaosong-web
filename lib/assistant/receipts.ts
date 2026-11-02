@@ -25,7 +25,8 @@ export type ReceiptKind =
   | 'work.status'
   | 'knowledge.hits'
   | 'board.done'
-  | 'work.progress';
+  | 'work.progress'
+  | 'benchmark.add';
 
 /** 撤销的做法：界面点「撤销」时，用用户自己的 Cookie 调用对应接口 */
 export type UndoSpec =
@@ -151,6 +152,13 @@ export const CLAIM_RULES: readonly ClaimRule[] = [
     say: /(已经?|已)[^。！？\n]{0,6}(作品|这条作品|这个作品)[^。！？\n]{0,8}(标记|标为|设为|改为|改成)[^。！？\n]{0,6}(做完|完成|没做完|未完成)/,
     need: ['work.progress'],
     reason: '作品进度这次还没有改，要你在页面上确认一下才会生效',
+  },
+  {
+    // 11-02 起助理能记热点线索、加对标账号；说记好了要有回执
+    id: 'benchmark-add',
+    say: /(已经?|已)[^。！？\n]{0,8}(记下|记好|记进|记到|添加|加进|加到|加好|存进)[^。！？\n]{0,10}(热点|对标)/,
+    need: ['benchmark.add'],
+    reason: '这条还没有记进「对标 & 热点」，要记的话我再记一次',
   },
   {
     // 板块的产出只能在老板确认开跑、板块跑完之后才有；对话里说「已经生成好了」一定是假的

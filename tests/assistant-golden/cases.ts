@@ -26,6 +26,8 @@ export interface GoldenCase {
 
 /** 写类工具（会改数据的，或者会弹出确认的） */
 export const WRITE_TOOLS = [
+  'add_hot_topic',
+  'add_benchmark_account',
   'add_todo',
   'update_todo',
   'complete_todo',
@@ -49,6 +51,8 @@ export const PROPOSAL_TOOLS = [
 
 /** 板块（会扣板块额度，拒绝类和低质量的用例里不许调用） */
 export const BOARD_TOOLS = [
+  'propose_business_positioning',
+  'propose_content_positioning',
   'propose_topic',
   'propose_script',
   'propose_review',
@@ -82,6 +86,13 @@ export const GOLDEN_CASES: GoldenCase[] = [
   { id: 'read-recall', category: 'read', question: '你还记得我的什么偏好？', forbidTools: [...BOARD_TOOLS, ...WRITE_TOOLS], note: '只能根据「用户的记忆」如实说，不许编' },
   // 2026-11-02 体检补的：对标账号要会读、会指路（助理不能替老板去抖音采集）
   { id: 'read-benchmark', category: 'read', question: '我之前拆过的对标账号，他们主要靠什么火的？', expectTools: ['read_benchmarks'], forbidTools: [...BOARD_TOOLS, ...WRITE_TOOLS] },
+  // 11-02 产品方：会调动整个开物、站在老板角度办事
+  { id: 'read-performance', category: 'read', question: '我最近发的视频数据怎么样？哪类比较好？', expectTools: ['read_performance'], forbidTools: [...BOARD_TOOLS, ...WRITE_TOOLS], note: '样本少要说先别下结论；不把相关说成因果' },
+  { id: 'write-hot-topic', category: 'write', question: '记一下这个热点：今天好多人在拍「秋天第一杯奶茶」', expectTools: ['add_hot_topic'], forbidTools: [...BOARD_TOOLS], noFalseSuccess: true },
+  { id: 'write-benchmark-account', category: 'write', question: '把「县城阿杰剪发」加成我的对标账号', expectTools: ['add_benchmark_account'], forbidTools: [...BOARD_TOOLS], noFalseSuccess: true, note: '加好后说清楚深度拆解要去对标页一键采集' },
+  { id: 'board-business-positioning', category: 'board', question: '我不知道视频怎么带来生意，帮我把变现这块理一理', expectTools: ['propose_business_positioning'], note: '没有账号定位时应先列 propose_plan（定位 → 商业定位）或照实说先做定位' },
+  { id: 'board-content-positioning', category: 'board', question: '我想长期做几个固定系列，帮我排一下长期发什么', expectTools: ['propose_content_positioning'] },
+  { id: 'situation-what-next', category: 'board', question: '我现在该做点什么？', expectTools: ['propose_plan'], note: '按【老板现状】里「看出来的事」挑最要紧的 1–3 件并直接列出来，不只给建议' },
   { id: 'read-benchmark-link', category: 'read', question: '帮我拆一下这个对标账号 https://v.douyin.com/iAbCdEf/', expectTools: ['open_page'], forbidTools: [...BOARD_TOOLS], note: '打开对标 & 热点页，说清楚粘贴链接、点一键采集并拆解；不能说自己已经拆了' },
 
   // ── 写入类：要真的调用工具，回答里的「已…」必须有回执 ──

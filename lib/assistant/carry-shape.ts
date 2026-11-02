@@ -20,6 +20,8 @@ export const BOARD_SOURCE: Record<BoardKind, string> = {
   'content-plan': 'content-plan',
   'deal-reason': 'deal-reason',
   positioning: 'positioning',
+  'business-positioning': 'business-positioning',
+  'content-positioning': 'content-positioning',
   brief: 'creative-brief',
   advice: 'industry-advice',
   growth: 'growth',
@@ -77,6 +79,8 @@ export function requestTextOf(board: BoardAny): string {
     case 'content-plan':
       return board.input.goal ?? '';
     case 'positioning':
+    case 'business-positioning':
+    case 'content-positioning':
       return board.input.notes ?? '';
     case 'brief':
       return board.input.notes ?? '';
