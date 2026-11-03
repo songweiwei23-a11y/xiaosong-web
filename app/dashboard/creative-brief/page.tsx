@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
-import { readDifyStream } from '@/lib/sse-stream'
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream'
 import { notifyProgressChanged } from '@/lib/progress-events'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
@@ -67,6 +67,8 @@ export default function CreativeBriefPage() {
   const [dirty, setDirty] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState('')
   const [elapsed, setElapsed] = useState(0)
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -167,6 +169,7 @@ export default function CreativeBriefPage() {
 
   const generate = async () => {
     if (!positioning && !bridge.sourceReference) return
+    if (finishing) { notify('上一份还在核对润色，几秒后再点'); return }
     setIsGenerating(true)
     let full = ''
     try {
@@ -192,6 +195,7 @@ export default function CreativeBriefPage() {
 
       full = await readDifyStream(res, {
         onChunk: (_p, all) => setValues(parseBrief(all)),
+        onDraftDone: () => { setIsGenerating(false); setFinishing(FINISHING_NOTE) },
       })
 
       if (full) {
@@ -206,6 +210,7 @@ export default function CreativeBriefPage() {
       notify((e as Error)?.message || '生成失败，请重试')
     } finally {
       setIsGenerating(false)
+      setFinishing('')
     }
   }
 
@@ -409,12 +414,20 @@ export default function CreativeBriefPage() {
                           setDirty(true)
                         }}
                         rows={Math.min(10, Math.max(3, (values[f.key] ?? '').split('\n').length + 1))}
+                        // 核对润色期间先别改：核对完会整篇换掉、自动保存，这时改的会被覆盖
+                        readOnly={!!finishing}
                         placeholder="还没有内容，可以自己写，也可以点上面生成"
                         className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   ))}
                 </div>
+                {!isGenerating && finishing && (
+                  <p role="status" className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3 text-[12px] text-muted-foreground">
+                    <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary" />
+                    {finishing}
+                  </p>
+                )}
 
                 <div className="mt-6 flex items-center justify-between border-t border-border pt-5">
                   <span className="text-[12px] text-muted-foreground">
@@ -422,7 +435,7 @@ export default function CreativeBriefPage() {
                   </span>
                   <button
                     onClick={saveEdits}
-                    disabled={saving || !dirty}
+                    disabled={saving || !dirty || !!finishing}
                     className="rounded-xl bg-primary px-6 py-2 text-[13px] font-medium text-primary-foreground disabled:opacity-40"
                   >
                     {saving ? '保存中…' : '保存修改'}

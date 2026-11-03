@@ -28,7 +28,7 @@ import { checkQuota } from "@/lib/history";
 import { createHistoryId } from '@/lib/history-id';
 import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
-import { readDifyStream } from "@/lib/sse-stream";
+import { readDifyStream, FINISHING_NOTE } from "@/lib/sse-stream";
 import { takeHandoff } from "@/lib/handoff";
 import { FISSION_CATEGORIES, FISSION_MODES, type FissionMode, type FissionSelections } from "@/lib/fission";
 import { originForResult } from '@/lib/creation-continuation';
@@ -147,6 +147,8 @@ export default function RemixPage() {
   const [notes, setNotes] = useState("");
 
   const [running, setRunning] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   // 快速模式（整改 C3）：只留原片、借哪几层、行业；开启时把隐藏的设置重置成初始默认值，请求里用的就是默认值。补充要求不动
   const [quickMode, setQuickMode] = useState(false);
   const toggleQuick = () => {
@@ -240,6 +242,7 @@ export default function RemixPage() {
 
   const start = async () => {
     if (running) return;
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (autoSetup.preparing || ctxLoading) { notify('正在承接原方案，请稍候'); return; }
     const isCurrent = beginProfileRequest();
     const src = source();
@@ -306,6 +309,7 @@ export default function RemixPage() {
       const full = await readDifyStream(res, {
         onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
+        onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
       });
       if (full.trim()) {
         await saveCreativeHistory({ id: historyId, taskType: REMIX_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
@@ -314,6 +318,7 @@ export default function RemixPage() {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "二创失败，请重试", "error");
     } finally {
       setRunning(false);
+      setFinishing("");
     }
   };
 
@@ -515,6 +520,7 @@ export default function RemixPage() {
       <ResultPanel
         result={result}
         isGenerating={running}
+        finishing={finishing}
         title="二创方案"
         // 源资料：最初带进来的那份 > 这次二创用的原片/原文。选某一个方案带走时，整份源资料仍跟着（不被单个方案顶替）
         flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, incomingSetup?.originContent || handed?.text || pasteText || '') }}

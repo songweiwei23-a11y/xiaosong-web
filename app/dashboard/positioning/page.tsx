@@ -17,7 +17,7 @@ import { useCreationBridge } from '@/hooks/useCreationBridge';
 import { incomingNote } from "@/lib/creation-flow";
 import { notifyProgressChanged } from "@/lib/progress-events";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
-import { readDifyStream } from '@/lib/sse-stream';
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
 import { Target, Loader2, User, Plus, Trash2, FileText } from "lucide-react";
 import { extractStrategySummary } from '@/lib/positioning-utils';
 import { buildPositioningPrompt } from '@/lib/positioning-standards';
@@ -88,6 +88,8 @@ export default function PositioningPage() {
   const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
   
   const [isGenerating, setIsGenerating] = useState(false)
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("")
   /**
    * 生成深度。默认快速版——第一次做定位的人最需要的是"尽快看到东西"，
    * 而不是一份五分钟才出完的完整方案。
@@ -233,6 +235,7 @@ export default function PositioningPage() {
    */
   const buildProfileSummary = () => (activeProfile ? summarizeProfile(activeProfile) : '')
   const handleGenerate = async () => {
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (!activeProfile) {
       notify("❌ 请先创建并选择一个用户档案")
       return
@@ -306,6 +309,7 @@ export default function PositioningPage() {
         onChunk: (_piece, full) => setResult(full),
         onConversationId: (id) => { conversationId = id; },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
+        onDraftDone: () => { setIsGenerating(false); setFinishing(FINISHING_NOTE); },
       });
 
       // 保存到数据库
@@ -327,6 +331,7 @@ export default function PositioningPage() {
       notify(error?.message || "生成失败，请重试");
     } finally {
       setIsGenerating(false);
+      setFinishing("");
     }
   };
 
@@ -658,6 +663,7 @@ export default function PositioningPage() {
       <ResultPanel
         result={result}
         isGenerating={isGenerating}
+        finishing={finishing}
         title={viewMode === "summary" ? "选题摘要" : "定位方案"}
         flowContext={bridge.flowContext(result)}
         showStats={false}

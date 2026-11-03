@@ -3,6 +3,7 @@
  * 我们自己识别出来，只让模型改写这一句，别的一字不动（精准小改），和标题后处理同一个做法。
  * 改完不合格就保留原句，不为了改而改坏别的。
  */
+import { mapLimit, REWRITE_CONCURRENCY } from './map-limit';
 
 /**
  * 不符合现实的说法：靠一个小动作、一句话、一个技巧就让整体改变，或几天就能见效的保证。
@@ -119,6 +120,9 @@ export async function polishSentences(
 /**
  * 逐句替换：rewrite 拿到这一句的正文（句首的标签不给它），返回改后的正文；返回 null 就保留原句。
  * 带标签的句子保留标签，别的句子一字不动。现实修复和年限修复共用。
+ *
+ * 2026-11-03 提速：每句的提问只看这一句本身，所以改成同时问（最多 REWRITE_CONCURRENCY 句），
+ * 全部回来后仍按原顺序逐句替换——提问和替换结果都和原来排队问一样，只是不再一句等一句。
  */
 export async function replaceEachSentence(
   text: string,
@@ -128,10 +132,11 @@ export async function replaceEachSentence(
   let out = text;
   let tried = 0;
   let accepted = 0;
-  for (const sentence of sentences) {
+  const answers = await mapLimit(sentences, REWRITE_CONCURRENCY, (sentence) => rewrite(splitLabel(sentence).body));
+  for (const [i, sentence] of sentences.entries()) {
     tried++;
-    const { label, body } = splitLabel(sentence);
-    const next = await rewrite(body);
+    const { label } = splitLabel(sentence);
+    const next = answers[i];
     if (!next) continue;
     out = out.split(sentence).join(label + next);
     accepted++;

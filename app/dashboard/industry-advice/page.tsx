@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
-import { readDifyStream } from '@/lib/sse-stream'
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { notifyProgressChanged } from '@/lib/progress-events'
 import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
@@ -86,6 +86,8 @@ export default function IndustryAdvicePage() {
   const [upstreamAt, setUpstreamAt] = useState<Record<string, string | null>>({})
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState('')
   const [elapsed, setElapsed] = useState(0)
 
   const load = async () => {
@@ -141,6 +143,7 @@ export default function IndustryAdvicePage() {
   }, [isGenerating])
 
   const generate = async () => {
+    if (finishing) { notify('上一份还在核对润色，几秒后再点'); return }
     if (!profile) {
       notify('请先创建一份账号档案')
       router.push('/dashboard/profiles/new')
@@ -184,6 +187,7 @@ export default function IndustryAdvicePage() {
 
       full = await readDifyStream(res, {
         onChunk: (_p, all) => setResult(all),
+        onDraftDone: () => { setIsGenerating(false); setFinishing(FINISHING_NOTE) },
       })
 
       if (full) {
@@ -195,6 +199,7 @@ export default function IndustryAdvicePage() {
       notify((e as Error)?.message || '生成失败，请重试')
     } finally {
       setIsGenerating(false)
+      setFinishing('')
     }
   }
 
@@ -384,6 +389,12 @@ export default function IndustryAdvicePage() {
                 <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:tracking-tight prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px]">
                   <Markdown>{result}</Markdown>
                 </div>
+                {!isGenerating && finishing && (
+                  <p role="status" className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3 text-[12px] text-muted-foreground">
+                    <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary" />
+                    {finishing}
+                  </p>
+                )}
                 {result && !isGenerating && (
                   <div className="mt-5">
                     <CreationLinks body={result} context={{ from: ADVICE_TYPE, originContent: choice.situation || undefined }} />

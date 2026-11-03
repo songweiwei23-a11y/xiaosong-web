@@ -20,7 +20,7 @@ import { checkQuota } from "@/lib/history";
 import { createHistoryId } from "@/lib/history-id";
 import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
-import { readDifyStream } from "@/lib/sse-stream";
+import { readDifyStream, FINISHING_NOTE } from "@/lib/sse-stream";
 import { polishTitlesRemote } from "@/lib/title-polish";
 import { takeHandoff, type HandoffPayload } from "@/lib/handoff";
 import { mergeCreationSettings, settingsFromInput, settingsForResult, creationSettingsBlock, purposeOf, joinUniqueLines } from '@/lib/creation-settings';
@@ -106,6 +106,8 @@ export default function DirectionPage() {
   const resolvedMix = resolveMix(profile, mixOverride, goalText);
 
   const [running, setRunning] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
   const restoredScope = useRef<string>();
   const incoming = useRef(false);
@@ -152,6 +154,7 @@ export default function DirectionPage() {
 
   const start = async () => {
     if (running) return;
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (ctxLoading) { notify("正在读取当前档案，稍等一秒再点"); return; }
     // 带着要拓展的方向来的，目的就是它原本的目的，不用再勾
     if (!hasGoal({ purposes, customGoal }) && !expandContent.trim()) { notify("先勾一个目的，或者自己写一句想达到什么", "error"); return; }
@@ -186,6 +189,7 @@ export default function DirectionPage() {
       const full = await readDifyStream(res, {
         onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
+        onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
       });
       if (full.trim()) {
         // 万能模板标题精准小改：只重写命中的那几条，其余一字不动（lib/title-polish）
@@ -197,6 +201,7 @@ export default function DirectionPage() {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "生成失败，请重试", "error");
     } finally {
       setRunning(false);
+      setFinishing("");
     }
   };
 
@@ -289,6 +294,7 @@ export default function DirectionPage() {
       <ResultPanel
         result={result}
         isGenerating={running}
+        finishing={finishing}
         title="创作方向与思路"
         flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, [customGoal, ideas, selectedGoals].filter(Boolean).join('\n')) }}
         showStats={false}

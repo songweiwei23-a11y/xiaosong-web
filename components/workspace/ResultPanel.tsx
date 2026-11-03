@@ -87,9 +87,15 @@ export function ResultPanel({
   individualPlans = false,
   qualityMix,
   canvasTaskType,
+  finishing,
 }: {
   result: string;
   isGenerating: boolean;
+  /**
+   * 正文已写完、还在核对润色时给页面看的一行字（2026-11-03 产品方选 A）：按钮不转了，正文能看能复制，
+   * 核对做完自动更新。体检上报、按资料修正等到最终版再做。
+   */
+  finishing?: string;
   title?: string;
   /** 是否展示字数与口播时长。对脚本类内容有意义，对问答类没有 */
   showStats?: boolean;
@@ -235,14 +241,16 @@ export function ResultPanel({
   const [expandedBody, setExpandedBody] = useState<string | null>(null);
   const showFullBody = expandedBody === body;
   const collapseBody = !isGenerating && !showFullBody && view.length > LONG_BODY_CHARS;
+  // 还在核对润色也算没写完：体检和自动修正对最终版做，不对草稿做
+  const pending = isGenerating || !!finishing;
   useEffect(() => {
-    if (generatingBefore.current && !isGenerating && body) {
+    if (generatingBefore.current && !pending && body) {
       const seg = pathname?.split('/')[2] || '';
       reportQuality({ taskType: CREATION_SOURCES[seg] || seg || '生成', output: body, profile: qualityCtx.profile, mix: qualityMix, source: flowContext?.originContent });
       setFreshBody(body);
     }
-    generatingBefore.current = isGenerating;
-  }, [isGenerating, body, pathname, qualityCtx.profile, qualityMix, flowContext?.originContent]);
+    generatingBefore.current = pending;
+  }, [pending, body, pathname, qualityCtx.profile, qualityMix, flowContext?.originContent]);
 
   if (!result && !isGenerating) {
     return (
@@ -337,6 +345,12 @@ export function ResultPanel({
           {isGenerating && (
             <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />
           )}
+          {!isGenerating && finishing && (
+            <p role="status" className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3 text-[12px] text-muted-foreground">
+              <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary" />
+              {finishing}
+            </p>
+          )}
         </article>
       ) : (
         <div className="glass-panel flex min-h-[200px] items-center justify-center rounded-2xl">
@@ -348,7 +362,7 @@ export function ResultPanel({
       )}
 
       {/* 这几处请核对（2026-10-05）：资料里找不到出处的价格、百分比、见证、承诺……查到才出现 */}
-      {body && !isGenerating && (
+      {body && !pending && (
         <FactCheckNotice
           text={view}
           taskType={CREATION_SOURCES[segment] || segment}

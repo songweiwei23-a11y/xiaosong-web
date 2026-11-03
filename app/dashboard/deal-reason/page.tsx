@@ -15,7 +15,7 @@ import { Award, Loader2, Sparkles, Save, Check, ChevronDown } from "lucide-react
 import { notify } from "@/components/ui/feedback";
 import { saveGenerationHistory } from "@/lib/history";
 import { profileHistoryQuery } from '@/lib/profile-history';
-import { readDifyStream } from "@/lib/sse-stream";
+import { readDifyStream, FINISHING_NOTE } from "@/lib/sse-stream";
 import type { HandoffPayload } from "@/lib/handoff";
 import { useCreationBridge } from '@/hooks/useCreationBridge';
 import { incomingNote } from "@/lib/creation-flow";
@@ -70,6 +70,8 @@ export default function DealReasonPage() {
   const [targetCustomer, setTargetCustomer] = useState("");
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   const [analysisResult, setAnalysisResult] = useState("");
   /** 勾选的理由，存中文名 */
   const [selected, setSelected] = useState<string[]>([]);
@@ -174,6 +176,7 @@ export default function DealReasonPage() {
   }, [ctxLoading, profileId, bridge.payload]);
 
   const handleAnalyze = async () => {
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     const isCurrent = beginProfileRequest();
     if (!storeName.trim() || !storeFeatures.trim()) {
       notify("请填写店铺名称和特色描述");
@@ -204,6 +207,7 @@ export default function DealReasonPage() {
 
       const full = await readDifyStream(response, {
         onChunk: (_piece, text) => { if (isCurrent()) setAnalysisResult(text); },
+        onDraftDone: () => { if (isCurrent()) { setIsAnalyzing(false); setFinishing(FINISHING_NOTE); } },
       });
 
       // 只自动勾上适用的
@@ -226,6 +230,7 @@ export default function DealReasonPage() {
       notify(error.message || "分析失败");
     } finally {
       setIsAnalyzing(false);
+      setFinishing("");
     }
   };
 
@@ -442,6 +447,7 @@ export default function DealReasonPage() {
       <ResultPanel
         result={analysisResult}
         isGenerating={isAnalyzing}
+        finishing={finishing}
         title="分析结果"
         flowContext={bridge.flowContext(analysisResult)}
         showStats={false}

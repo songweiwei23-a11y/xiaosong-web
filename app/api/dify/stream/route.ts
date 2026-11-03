@@ -528,6 +528,12 @@ export async function POST(req: NextRequest) {
           }
 
           stages.push({ stage: 'generate', ms: Date.now() - generateStart, ok: outcome.kind === 'done' });
+          /*
+           * 正文写完了（2026-11-03 产品方选 A）：先告诉页面，按钮马上停转；下面的核对、修正照样一道不少，
+           * 做完有改动会用 message_replace 整篇换掉，最后照常发 message_end。
+           * 审稿这类要校对通过才算数的（needsCheck）不发：没通过时草稿会被清掉，不能先当成写完。
+           */
+          if (outcome.kind === 'done' && !needsCheck && fullResponse.trim()) send({ event: 'draft_done' });
           // 模型原始输出：后面的整理可能把结构块改坏，拆解要拿它来还原（见 keepStructureBlock）
           const rawResponse = fullResponse;
           if (outcome.kind === 'done' && sourceForReview && fullResponse.trim()) {

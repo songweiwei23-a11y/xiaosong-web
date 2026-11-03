@@ -22,7 +22,7 @@ import { checkQuota } from "@/lib/history";
 import { createHistoryId } from "@/lib/history-id";
 import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
-import { readDifyStream } from "@/lib/sse-stream";
+import { readDifyStream, FINISHING_NOTE } from "@/lib/sse-stream";
 import { asText, buildProfileSummary, businessLines } from "@/lib/profile-summary";
 import { buildContextBlock } from "@/lib/creator-context";
 import { resolveMix, readSetting, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
@@ -78,6 +78,8 @@ export default function ContentPlanPage() {
   const resolvedMix = resolveMix(profile, mixOverride, goalText);
 
   const [running, setRunning] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
   const restoredScope = useRef<string>();
 
@@ -132,6 +134,7 @@ export default function ContentPlanPage() {
 
   const start = async () => {
     if (running) return;
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (ctxLoading) { notify("正在读取当前档案，稍等一秒再点"); return; }
     if (!lastMonth) { setNeedLastMonth(true); notify("先勾一下上个月发了多少条", "error"); return; }
     if (!count || count < 1 || count > 60) { notify("这个月发几条：填 1 到 60 之间的数", "error"); return; }
@@ -163,6 +166,7 @@ export default function ContentPlanPage() {
       const full = await readDifyStream(res, {
         onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
+        onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
       });
       if (full.trim()) {
         await saveCreativeHistory({ id: historyId, taskType: CONTENT_PLAN_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
@@ -171,6 +175,7 @@ export default function ContentPlanPage() {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "生成失败，请重试", "error");
     } finally {
       setRunning(false);
+      setFinishing("");
     }
   };
 
@@ -261,6 +266,7 @@ export default function ContentPlanPage() {
       <ResultPanel
         result={result}
         isGenerating={running}
+        finishing={finishing}
         title={`${monthLabel()}内容规划`}
         flowContext={{ from: "内容规划" }}
         showStats={false}

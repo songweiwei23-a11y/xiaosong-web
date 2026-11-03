@@ -29,7 +29,7 @@ import { ContextBadge } from '@/components/workspace/ContextBadge';
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
-import { readDifyStream } from '@/lib/sse-stream';
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
 import { Sparkles, Loader2, Tag } from "lucide-react";
 import { notify, confirmDialog } from '@/components/ui/feedback';
 import { postSafely } from '@/lib/safe-post';
@@ -95,6 +95,8 @@ export default function TitlePage() {
   const [, setAdditionalInfo] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
 
   // 专业版状态
@@ -187,6 +189,7 @@ export default function TitlePage() {
 
   const handleGenerate = async () => {
     if (isGenerating) return;
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
@@ -273,6 +276,7 @@ export default function TitlePage() {
       // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
       fullResult += await readDifyStream(response, {
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
+        onDraftDone: () => { if (isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); } },
       });
 
       if (fullResult) {
@@ -287,6 +291,7 @@ export default function TitlePage() {
       notify(error?.message || "生成失败，请重试");
     } finally {
       setIsGenerating(false);
+      setFinishing("");
     }
   };
 
@@ -463,6 +468,7 @@ export default function TitlePage() {
       <ResultPanel
         result={result}
         isGenerating={isGenerating}
+        finishing={finishing}
         title="标题方案"
         flowContext={{ settings: settingsForResult(result, titleHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, titleHistory, originContent || scriptContent) }}
         showStats={false}

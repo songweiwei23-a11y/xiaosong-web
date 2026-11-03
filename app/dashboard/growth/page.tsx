@@ -9,7 +9,7 @@ import { resolveCreationSettings, mergeCreationSettings, creationSettingsBlock }
 import { useEffect, useState, useRef } from 'react'
 import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
-import { readDifyStream } from '@/lib/sse-stream'
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream'
 import { saveGenerationHistory } from '@/lib/history'
 import { getActiveProfileId } from '@/lib/active-profile'
 import { profileHistoryQuery } from '@/lib/profile-history';
@@ -82,6 +82,8 @@ export default function GrowthPage() {
   const [openingResult, setOpeningResult] = useState('')
 
   const [busy, setBusy] = useState(false)
+  /** 正文已写完、还在核对润色和保存 */
+  const [finishing, setFinishing] = useState('')
   const [elapsed, setElapsed] = useState(0)
   const [showAllTactics, setShowAllTactics] = useState(false)
   const [openCat, setOpenCat] = useState<string | null>(null)
@@ -324,6 +326,7 @@ export default function GrowthPage() {
     resolveWork?: (profileId: string | null, isCurrent: () => boolean) => Promise<string | null>
   ) => {
     if (contextLoading || autoSetup.preparing) { notify("正在承接原方案，请稍候"); return }
+    if (finishing) { notify('上一份还在核对润色，几秒后再点'); return }
     const isCurrent = beginProfileRequest();
     const generationProfileId = context.profile?.id || null;
     setBusy(true)
@@ -338,7 +341,10 @@ export default function GrowthPage() {
         body: JSON.stringify({ taskType: taskType, profileId: generationProfileId, creationSettings: currentSettings, query: query + creationSettingsBlock(currentSettings), ...profileSearchHints(context.profile) }),
       })
       if (!res.ok) await throwApiError(res)
-      const full = await readDifyStream(res, { onChunk: (_p, all) => { if (isCurrent()) setResult(all); } })
+      const full = await readDifyStream(res, {
+        onChunk: (_p, all) => { if (isCurrent()) setResult(all); },
+        onDraftDone: () => { if (isCurrent()) { setBusy(false); setFinishing(FINISHING_NOTE); } },
+      })
       if (full.trim()) {
         const workId = resolveWork ? await resolveWork(generationProfileId, isCurrent) : null
         await saveGenerationHistory(taskType, { ...inputs, creationSettings: currentSettings, profileId: generationProfileId }, full, workId)
@@ -349,6 +355,7 @@ export default function GrowthPage() {
       notify((e as Error)?.message || '生成失败，请重试')
     } finally {
       setBusy(false)
+      setFinishing('')
     }
   }
 
@@ -851,6 +858,12 @@ export default function GrowthPage() {
             </div>
             {busy && (
               <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />
+            )}
+            {!busy && finishing && (
+              <p role="status" className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3 text-[12px] text-muted-foreground">
+                <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary" />
+                {finishing}
+              </p>
             )}
 
             {/*

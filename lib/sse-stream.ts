@@ -24,7 +24,15 @@ export interface ReadDifyStreamOptions {
   onRecovering?: () => void;
   /** 生成完以后服务端还在处理（比如脚本打磨：体检、第几轮打磨）时调用，message 是给用户看的一句话 */
   onStatus?: (message: string) => void;
+  /**
+   * 正文写完了、服务端开始核对修正时调用（2026-11-03）：页面据此停转圈，改成一行「正在核对」的小字。
+   * 流还会继续读，核对改了稿会整篇替换，读到结束标记才返回。
+   */
+  onDraftDone?: (full: string) => void;
 }
+
+/** 正文出来、还在核对润色时，结果下面那行小字 */
+export const FINISHING_NOTE = '正文已写完，正在核对细节、润色标题，做完会自动更新这份内容';
 
 /**
  * Dify 明确报的错：不再尝试续取，直接把话告诉用户。
@@ -126,6 +134,10 @@ export async function readDifyStream(
         }
         if (data.event === 'message_end') {
           ended = true;
+          continue;
+        }
+        if (data.event === 'draft_done') {
+          options.onDraftDone?.(full);
           continue;
         }
         if (data.event === 'status') {

@@ -12,7 +12,7 @@ import { BookOpen, Search, Loader2 } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 import { saveGenerationHistory } from '@/lib/history';
 
-import { readDifyStream } from '@/lib/sse-stream';
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
@@ -47,6 +47,8 @@ export default function KnowledgePage() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
   const { context: creatorContext } = useCreatorContext();
 
@@ -54,6 +56,7 @@ export default function KnowledgePage() {
   useRestoreLastResult(lastResult, setResult, resultScope);
 
   const handleSearch = async () => {
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
     if (!query.trim()) {
@@ -96,6 +99,7 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
       // 否则页面上显示的会是满屏 data: {...} 而不是检索结果正文
       const full = await readDifyStream(response, {
         onChunk: (_piece, text) => { if (isCurrent()) setResult(text); },
+        onDraftDone: () => { if (isCurrent()) { setIsSearching(false); setFinishing(FINISHING_NOTE); } },
       });
 
       // 存一份到云端，换页面或刷新后才能取回来
@@ -107,6 +111,7 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
       notify(error.message || "查询失败");
     } finally {
       setIsSearching(false);
+      setFinishing("");
     }
   };
 
@@ -210,6 +215,7 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
         flowContext={{ settings: settingsForResult(result, history, { ...settingsFromText(query), userIntent: query }), originContent: originForResult(result, history, query) }}
         result={result}
         isGenerating={isSearching}
+        finishing={finishing}
         title="查询结果"
         showStats={false}
         emptyIcon={BookOpen}

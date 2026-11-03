@@ -40,7 +40,7 @@ import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@
 
 import { useState, useEffect, useMemo } from "react";
 import { readTopicContract } from "@/lib/creation-tree";
-import { readDifyStream } from '@/lib/sse-stream';
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
 import { polishTitlesRemote } from '@/lib/title-polish';
 import { CommentQuestions } from '@/components/topic/CommentQuestions';
 import { Lightbulb, Loader2, Users, Target, Sparkles, Zap, Heart, DollarSign, Eye, Flame, FileText } from "lucide-react";
@@ -185,6 +185,8 @@ export default function TopicPage() {
 
   // 生成状态
   const [isGenerating, setIsGenerating] = useState(false);
+  /** 选题已写完、还在润色标题和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
   // 打法认不出结构的选题：带去脚本页会要手选，这里先明示（2026-10-31）
   const unreadTopics = useMemo(
@@ -359,6 +361,7 @@ export default function TopicPage() {
 
   // 生成选题函数
   const handleGenerate = async () => {
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
@@ -543,6 +546,8 @@ export default function TopicPage() {
         });
       };
       const accumulatedText = await completeBatch(await generateOnce(), topicCount, generateOnce);
+      // 条数够了、不用再补写，按钮停转；下面的润色和保存照常做完，期间结果下面一行小字（这页会补写，所以不用 onDraftDone）
+      if (accumulatedText && isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); }
 
       // 撞题（标题重复）、模板标题、不符合现实的句子：精准小改后再显示和保存（lib/title-dedupe、lib/title-polish）
       const polishedText = accumulatedText ? await polishTitlesRemote(accumulatedText) : accumulatedText;
@@ -570,6 +575,7 @@ export default function TopicPage() {
       notify(error?.message || "生成失败，请重试");
     } finally {
       setIsGenerating(false);
+      setFinishing("");
     }
   };
 
@@ -1031,6 +1037,7 @@ export default function TopicPage() {
       <ResultPanel
         result={result}
         isGenerating={isGenerating}
+        finishing={finishing}
         title="选题方案"
         flowContext={topicFlow}
         showStats={false}

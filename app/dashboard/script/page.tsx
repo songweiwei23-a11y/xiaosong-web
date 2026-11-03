@@ -14,7 +14,7 @@ import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
-import { readDifyStream } from '@/lib/sse-stream';
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
 
 import { useState, useEffect, useRef, useMemo } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
@@ -155,6 +155,8 @@ export default function ScriptPage() {
   const [priceInfo, setPriceInfo] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   // 初稿写完后服务端还在打磨（体检、第几轮打磨，lib/script-polish）：按钮上显示这一句
   const [polishStatus, setPolishStatus] = useState("");
 
@@ -480,6 +482,7 @@ export default function ScriptPage() {
 
   const handleGenerate = async () => {
     if (isGenerating) return;
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
@@ -571,6 +574,7 @@ export default function ScriptPage() {
       const accumulated = await readDifyStream(response, {
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
         onStatus: (message) => { if (isCurrent()) setPolishStatus(message); },
+        onDraftDone: () => { if (isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); } },
       });
       fullResult += accumulated;
 
@@ -583,6 +587,7 @@ export default function ScriptPage() {
       notify(error.message || "生成失败");
     } finally {
       setIsGenerating(false);
+      setFinishing("");
       setPolishStatus("");
 
       // 保存生成历史记录
@@ -1352,6 +1357,7 @@ export default function ScriptPage() {
         flowContext={scriptFlow}
         result={result}
         isGenerating={isGenerating}
+        finishing={finishing && polishStatus ? `初稿已出，${polishStatus}…做完会自动更新` : finishing}
         showQuality
         emptyIcon={Sparkles}
         emptyTitle="填写左侧需求后点击生成"

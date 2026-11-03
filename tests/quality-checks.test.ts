@@ -168,7 +168,9 @@ describe('可靠性补充：正文、语义事实和上游流', () => {
 describe('接线', () => {
   it('所有结果面板生成完体检；按配比的两个板块带上配比；自由对话每轮也体检', () => {
     const panel = readCode('components/workspace/ResultPanel.tsx');
-    expect(panel).toMatch(/generatingBefore\.current && !isGenerating && body/);
+    // 2026-11-03：正文写完按钮先停转（finishing），体检等核对润色完的最终版再做，不对草稿做
+    expect(panel).toMatch(/const pending = isGenerating \|\| !!finishing/);
+    expect(panel).toMatch(/generatingBefore\.current && !pending && body/);
     expect(panel).toMatch(/reportQuality\(\{ taskType: CREATION_SOURCES\[seg\]/);
     expect(readCode('app/dashboard/topic/page.tsx')).toContain('qualityMix={mixUsed}');
     // 方向页不再核对配比（方向输出没有「视频目的」这一行了）

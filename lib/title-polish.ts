@@ -5,6 +5,7 @@
  */
 
 import { findUnrealisticSentences } from './reality-check';
+import { mapLimit, REWRITE_CONCURRENCY } from './map-limit';
 
 /** 万能模板：命中任何一条就要改。与 lib/sharp-rules 的 TITLE_CRAFT 禁用列表保持一致 */
 export const TEMPLATE_TITLE_PATTERNS: RegExp[] = [/别只/, /你知道.{0,10}吗/, /，怎么/, /原来[，,]/, /\d+\s*个(?:技巧|方法|小tips)/i];
@@ -374,6 +375,7 @@ export interface TitlePolishResult {
 /**
  * ask：把修改提示词发给模型，返回一行回答；失败返回 null。
  * 每条模板标题单独改，互不影响；采用不了的那条原样保留。
+ * 2026-11-03 提速：每条的提问只看这一条，改成同时问（最多 REWRITE_CONCURRENCY 条），回来后按原顺序替换，结果和排队问一样。
  */
 export async function polishTitles(
   text: string,
@@ -383,9 +385,11 @@ export async function polishTitles(
   let out = text;
   let tried = 0;
   let accepted = 0;
-  for (const title of findTemplateTitles(text)) {
+  const titles = findTemplateTitles(text);
+  const answers = await mapLimit(titles, REWRITE_CONCURRENCY, (title) => ask(repairTitlePrompt(title, context)));
+  for (const [i, title] of titles.entries()) {
     tried++;
-    const next = acceptRepair(title, await ask(repairTitlePrompt(title, context)));
+    const next = acceptRepair(title, answers[i]);
     if (!next) continue;
     out = replaceTitle(out, title, next);
     accepted++;

@@ -35,7 +35,7 @@ import { checkQuota } from "@/lib/history";
 import { createHistoryId } from '@/lib/history-id';
 import { openUpgrade } from "@/lib/upgrade";
 import { isNetworkError, NETWORK_ERROR_HINT, throwApiError, fetchGeneration } from "@/lib/api-error";
-import { DifyStreamError, readDifyStream } from "@/lib/sse-stream";
+import { DifyStreamError, readDifyStream, FINISHING_NOTE } from "@/lib/sse-stream";
 import { buildProfileSummary } from "@/lib/profile-summary";
 import { buildContextBlock } from "@/lib/creator-context";
 import {
@@ -105,6 +105,8 @@ export default function BreakdownPage() {
   const incomingHandoff = useRef(false);
   const [withProfile, setWithProfile] = useState(true);
   const [running, setRunning] = useState(false);
+  /** 正文已写完、还在核对润色和保存 */
+  const [finishing, setFinishing] = useState("");
   const [stage, setStage] = useState<Stage | null>(null);
   const [progress, setProgress] = useState("");
   const [result, setResult] = useState("");
@@ -283,6 +285,7 @@ export default function BreakdownPage() {
     const full = await readDifyStream(res, {
       onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
       onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
+      onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
     });
     if (full.trim()) {
       await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
@@ -301,7 +304,10 @@ export default function BreakdownPage() {
       query: buildTextBreakdownPrompt(pastedScript, buildContextBlock(context, 'breakdown'), currentSettings),
     }) });
     if (!res.ok) await throwApiError(res, '拆解失败');
-    const full = await readDifyStream(res, { onChunk: (_p, all) => { if (isCurrent()) setResult(all); } });
+    const full = await readDifyStream(res, {
+      onChunk: (_p, all) => { if (isCurrent()) setResult(all); },
+      onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
+    });
     if (full.trim()) {
       await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
       notifyDone("文案拆解完成", "结果存进了历史", !alive.current);
@@ -312,6 +318,7 @@ export default function BreakdownPage() {
   const start = async (retry = false) => {
     if (running || autoSetup.preparing || (!textMode && !file) || (textMode && !pastedScript.trim())) return;
     if (ctxLoading) { notify('正在读取当前档案，请稍后再拆解', 'error'); return; }
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     setRunning(true);
     askDoneNotice(); // 要在点击的同步段里问，浏览器才会弹授权
     const isCurrent = beginProfileRequest();
@@ -341,6 +348,7 @@ export default function BreakdownPage() {
       setError(e instanceof VideoInputError ? e.message : isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "拆解失败，请重试");
     } finally {
       setRunning(false);
+      setFinishing("");
       setStage(null);
       setProgress("");
     }
@@ -491,6 +499,7 @@ export default function BreakdownPage() {
       <ResultPanel
         result={splitBreakdownResult(result).report}
         isGenerating={running && stage === "ai"}
+        finishing={finishing}
         title="拆解报告"
         flowContext={flowCtx}
         hideCreationLinks

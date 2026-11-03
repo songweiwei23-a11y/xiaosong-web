@@ -35,7 +35,7 @@ import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { useWorkResume } from '@/hooks/useWorkResume';
 import { latestOf, workScriptBody } from '@/lib/resume';
 
-import { readDifyStream } from '@/lib/sse-stream';
+import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
 import {
   CONTENT_TYPES,
   CONTENT_TYPE_GROUPS,
@@ -85,6 +85,8 @@ export default function StoryboardPage() {
   const [quickMode, setQuickMode] = useState(false);
   
   const [isGenerating, setIsGenerating] = useState(false);
+  /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
+  const [finishing, setFinishing] = useState("");
   const [isRecommending, setIsRecommending] = useState(false);
   const [result, setResult] = useState("");
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
@@ -233,6 +235,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
     const quickAdditional = quickMode ? "" : additionalInfo;
 
     if (isGenerating) return;
+    if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
@@ -294,11 +297,13 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
       fullResult = await readDifyStream(response, {
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
+        onDraftDone: () => { if (isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); } },
       });
     } catch (error: any) {
       notify(error.message || "生成失败");
     } finally {
       setIsGenerating(false);
+      setFinishing("");
       
       // 保存生成历史记录
       // 只要有内容就存。原来的门槛是 50 字，模型返回得短一点
@@ -497,6 +502,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
       <ResultPanel
         result={result}
         isGenerating={isGenerating}
+        finishing={finishing}
         title="分镜脚本"
         flowContext={{ settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || scriptContent) }}
         showStats={false}
