@@ -276,11 +276,14 @@ export default function TitlePage() {
       });
 
       if (fullResult) {
-        await saveGenerationHistory("标题封面", inputData, fullResult, workId);
-            // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
-            await recordStage(workId, "标题封面");
-        await loadTitleHistory();
         if (isCurrent()) setShowDialog(true);
+        // 存历史、登记作品、刷新列表放后台：结果已经显示，不让转圈等网络（登记要排在保存之后）
+        void (async () => {
+          await saveGenerationHistory("标题封面", inputData, fullResult, workId);
+          // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
+          await recordStage(workId, "标题封面");
+          await loadTitleHistory();
+        })();
       }
     } catch (error: any) {
       console.error("❌ 生成失败:", error);

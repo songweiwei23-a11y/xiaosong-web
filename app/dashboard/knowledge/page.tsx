@@ -100,8 +100,8 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
 
       // 存一份到云端，换页面或刷新后才能取回来
       if (full.trim()) {
-        await saveGenerationHistory(HISTORY_TASK_TYPE, { query, category: selectedCategory, profileId: creatorContext.profile?.id || null, originContent: query, creationSettings: { ...settingsFromText(query), userIntent: query } }, full);
-        void loadHistory();
+        // 存历史放后台，存完再刷新列表：正文已经显示，不让转圈等网络
+        void saveGenerationHistory(HISTORY_TASK_TYPE, { query, category: selectedCategory, profileId: creatorContext.profile?.id || null, originContent: query, creationSettings: { ...settingsFromText(query), userIntent: query } }, full).then(() => loadHistory());
       }
     } catch (error: any) {
       notify(error.message || "查询失败");

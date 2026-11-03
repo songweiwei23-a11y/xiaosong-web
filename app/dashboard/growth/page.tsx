@@ -340,9 +340,12 @@ export default function GrowthPage() {
       if (!res.ok) await throwApiError(res)
       const full = await readDifyStream(res, { onChunk: (_p, all) => { if (isCurrent()) setResult(all); } })
       if (full.trim()) {
-        const workId = resolveWork ? await resolveWork(generationProfileId, isCurrent) : null
-        await saveGenerationHistory(taskType, { ...inputs, creationSettings: currentSettings, profileId: generationProfileId }, full, workId)
-        if (workId) await recordStage(workId, taskType)
+        // 存历史、登记作品放后台：结果已经显示，不让转圈等网络（登记要排在保存之后）
+        void (async () => {
+          const workId = resolveWork ? await resolveWork(generationProfileId, isCurrent) : null
+          await saveGenerationHistory(taskType, { ...inputs, creationSettings: currentSettings, profileId: generationProfileId }, full, workId)
+          if (workId) await recordStage(workId, taskType)
+        })()
       }
     } catch (e: unknown) {
       console.error(`${taskType}失败:`, e)

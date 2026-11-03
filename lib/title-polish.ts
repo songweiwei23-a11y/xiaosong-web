@@ -92,8 +92,11 @@ export function replaceTitle(text: string, from: string, to: string): string {
   return text.split(from).join(to);
 }
 
+/** 润色最多等这么久；超时就用原文，不让后处理拖住页面（服务端最坏要连调好几次模型） */
+export const POLISH_TIMEOUT_MS = 40_000;
+
 /**
- * 页面用：把正文交给服务端的后处理（app/api/polish-titles）。失败或没有模板标题时原样返回，
+ * 页面用：把正文交给服务端的后处理（app/api/polish-titles）。失败、超时或没有模板标题时原样返回，
  * 绝不因为后处理出错而丢掉已经生成好的内容。
  */
 export async function polishTitlesRemote(text: string, context = ''): Promise<string> {
@@ -104,6 +107,7 @@ export async function polishTitlesRemote(text: string, context = ''): Promise<st
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, context }),
+      signal: AbortSignal.timeout(POLISH_TIMEOUT_MS),
     });
     if (!res.ok) return text;
     const data = (await res.json()) as { text?: unknown };

@@ -188,7 +188,8 @@ export default function IndustryAdvicePage() {
 
       if (full) {
         await save(full)
-        await saveGenerationHistory(ADVICE_TYPE, { profileId, notes: choice.situation }, full)
+        // 存历史放后台：建议已经显示，不让转圈等网络
+        void saveGenerationHistory(ADVICE_TYPE, { profileId, notes: choice.situation }, full)
       }
     } catch (e: unknown) {
       console.error('生成失败:', e)

@@ -197,7 +197,8 @@ export default function CreativeBriefPage() {
       if (full) {
         await save(full)
         const historyInput = { notes, profileId, creationSettings: bridge.creationSettings, originContent: bridge.originContent || notes }
-        await saveGenerationHistory('创作简报', historyInput, full)
+        // 历史记录放后台：简报已经保存、其他板块已能用上，不让转圈等网络
+        void saveGenerationHistory('创作简报', historyInput, full)
         bridge.rememberResult(full, historyInput)
         notify('简报已生成，各板块马上就会用上')
       }
@@ -244,7 +245,8 @@ export default function CreativeBriefPage() {
       const ok = await save(content)
       if (ok) {
         const historyInput = { notes, profileId, creationSettings: prior.settings || bridge.creationSettings, originContent: prior.originContent || bridge.originContent || notes }
-        await saveGenerationHistory('创作简报', historyInput, content)
+        // 历史记录放后台：简报已经保存、其他板块已能用上，不让转圈等网络
+        void saveGenerationHistory('创作简报', historyInput, content)
         bridge.rememberResult(content, historyInput)
       }
       notify(ok ? '已保存，各板块立刻生效' : '保存失败，请重试')

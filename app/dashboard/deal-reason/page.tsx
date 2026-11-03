@@ -215,7 +215,8 @@ export default function DealReasonPage() {
 
       if (full.trim()) {
         const historyInput = { storeName, storeType, storeFeatures, targetCustomer, profileId, creationSettings: bridge.creationSettings, originContent: bridge.originContent || storeFeatures };
-        await saveGenerationHistory(
+        // 存历史放后台：分析结果已经显示，不让转圈等网络
+        void saveGenerationHistory(
           HISTORY_TASK_TYPE,
           historyInput,
           full
