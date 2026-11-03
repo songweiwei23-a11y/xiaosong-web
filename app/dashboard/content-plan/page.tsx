@@ -165,8 +165,7 @@ export default function ContentPlanPage() {
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
       });
       if (full.trim()) {
-        // 存历史放后台：正文已经显示，不让转圈等网络
-        void saveCreativeHistory({ id: historyId, taskType: CONTENT_PLAN_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
+        await saveCreativeHistory({ id: historyId, taskType: CONTENT_PLAN_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
       }
     } catch (e) {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "生成失败，请重试", "error");

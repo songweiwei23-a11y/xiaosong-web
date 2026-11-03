@@ -314,8 +314,7 @@ export default function PositioningPage() {
         
         // 保存生成历史
         const historyInput = { profileSummary, additionalNotes, profileId: activeProfile?.id || null, creationSettings: bridge.creationSettings, originContent: bridge.originContent || additionalNotes };
-        // 历史记录放后台：定位已经保存、对话马上能开，不让转圈等网络
-        void saveGenerationHistory("账号定位", historyInput, fullResult);
+        await saveGenerationHistory("账号定位", historyInput, fullResult);
         bridge.rememberResult(fullResult, historyInput);
 
         // 增加配额使用
@@ -744,7 +743,7 @@ export default function PositioningPage() {
             notifyProgressChanged()
             const prior = bridge.flowContext(result)
             const historyInput = { profileId: activeProfile?.id || null, creationSettings: prior.settings || bridge.creationSettings, originContent: prior.originContent || bridge.originContent || additionalNotes }
-            void saveGenerationHistory('账号定位', historyInput, next)
+            await saveGenerationHistory('账号定位', historyInput, next)
             bridge.rememberResult(next, historyInput)
             setResult(next)
             setSelectedPositioning((cur) => (cur ? { ...cur, full_content: next } : cur))

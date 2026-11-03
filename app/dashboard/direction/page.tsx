@@ -188,13 +188,10 @@ export default function DirectionPage() {
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
       });
       if (full.trim()) {
-        // 标题润色和存历史放到后台：正文已经显示，转圈不等它们（润色可能还要再调模型，慢）
-        void (async () => {
-          // 万能模板标题精准小改：只重写命中的那几条，其余一字不动（lib/title-polish）
-          const polished = await polishTitlesRemote(full);
-          if (isCurrent() && polished !== full) setResult(polished);
-          await saveCreativeHistory({ id: historyId, taskType: DIRECTION_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: polished });
-        })();
+        // 万能模板标题精准小改：只重写命中的那几条，其余一字不动（lib/title-polish）
+        const polished = await polishTitlesRemote(full);
+        if (isCurrent() && polished !== full) setResult(polished);
+        await saveCreativeHistory({ id: historyId, taskType: DIRECTION_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: polished });
       }
     } catch (e) {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message || "生成失败，请重试", "error");

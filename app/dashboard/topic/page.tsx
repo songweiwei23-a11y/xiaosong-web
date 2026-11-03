@@ -545,24 +545,22 @@ export default function TopicPage() {
       const accumulatedText = await completeBatch(await generateOnce(), topicCount, generateOnce);
 
       // 撞题（标题重复）、模板标题、不符合现实的句子：精准小改后再显示和保存（lib/title-dedupe、lib/title-polish）
-      // 润色、保存历史放到后台：选题已经显示，转圈不等它们（润色可能还要再调模型，慢）
+      const polishedText = accumulatedText ? await polishTitlesRemote(accumulatedText) : accumulatedText;
+      if (isCurrent() && polishedText !== accumulatedText) setResult(polishedText);
+
+      // 保存到历史记录
       if (accumulatedText) {
-        void (async () => {
-          const polishedText = await polishTitlesRemote(accumulatedText);
-          if (isCurrent() && polishedText !== accumulatedText) setResult(polishedText);
-          // 保存到历史记录
-          const response = await postSafely("/api/topics", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              input_data: requestData,
-              result: polishedText
-            })
-          });
-          if (response.ok) {
-            await loadHistory();
-          }
-        })();
+        const response = await postSafely("/api/topics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input_data: requestData,
+            result: polishedText
+          })
+        });
+        if (response.ok) {
+          await loadHistory();
+        }
         // 生成成功：快用完了就轻轻提醒一次（这一页不走 saveGenerationHistory，单独发）
         notifyGenerated();
       }

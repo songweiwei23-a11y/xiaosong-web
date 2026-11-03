@@ -285,8 +285,7 @@ export default function BreakdownPage() {
       onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
     });
     if (full.trim()) {
-      // 存历史放后台：拆解结果已经显示，不让转圈等网络
-      void saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
+      await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
       notifyDone("拆解完成", `${p.file.name} 已拆好，结果存进了历史`, !alive.current);
     }
   };
@@ -304,8 +303,7 @@ export default function BreakdownPage() {
     if (!res.ok) await throwApiError(res, '拆解失败');
     const full = await readDifyStream(res, { onChunk: (_p, all) => { if (isCurrent()) setResult(all); } });
     if (full.trim()) {
-      // 存历史放后台：拆解结果已经显示，不让转圈等网络
-      void saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
+      await saveCreativeHistory({ id: historyId, taskType: BREAKDOWN_TASK_TYPE, profileId: profile?.id as string || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
       notifyDone("文案拆解完成", "结果存进了历史", !alive.current);
     }
   };
