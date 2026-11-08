@@ -7,6 +7,7 @@ import { manifestOf, type Board } from '@/lib/context-manifest'
 import { briefOlderThanProfile } from '@/lib/creator-context'
 import { activeTaboos, countTaboos } from '@/lib/taboos'
 import { hasPersonaFacts } from '@/lib/persona-facts'
+import { reviewFreshness, reviewMonthLabel, STALE_WARN_DAYS, type ReviewSlot } from '@/lib/monthly-review'
 
 /**
  * 各板块顶部的「已自动带上什么」状态条。
@@ -80,6 +81,23 @@ export function ContextBadge({ board, className = '' }: Props) {
           <p className="text-muted-foreground">
             已避开 {countTaboos(a)} 条禁忌（平台红线{names ? ` + ${names}` : ''}）
             <Link href="/dashboard/profiles" className="ml-1 underline">在档案里调整</Link>
+          </p>
+        )
+      })()}
+
+      {manifest.diagnosis && (() => {
+        // 月度复盘的策略卡（lib/monthly-review）：用了哪个月的、是不是太旧了
+        const r = (context.workInsight as ReviewSlot | null | undefined)?.review
+        const f = reviewFreshness(r)
+        if (f === 'none' || !r) return (
+          <p className="text-muted-foreground">还没有月度复盘的策略卡。<Link href="/dashboard/works" className="ml-1 underline">去复盘</Link>（每月 1 号也会自动复盘）</p>
+        )
+        if (f === 'off') return <p className="text-muted-foreground">策略卡关着，这次不按复盘调整。<Link href="/dashboard/works" className="ml-1 underline">打开</Link></p>
+        if (f === 'fresh') return <p className="text-emerald-500">已按{reviewMonthLabel(r.month)}复盘的策略卡调整方向 ✓</p>
+        return (
+          <p className="text-amber-500">
+            策略卡是{reviewMonthLabel(r.month)}的，超过 {STALE_WARN_DAYS} 天没更新{f === 'expired' ? '，这次不再按它调整' : '，只当参考'}。
+            <Link href="/dashboard/works" className="ml-1 underline">复盘一次</Link>
           </p>
         )
       })()}

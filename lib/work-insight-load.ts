@@ -22,6 +22,9 @@ export async function loadInsightInputs(userId: string, profileId: string): Prom
     shoot_status: w.shoot_status,
     published_at: w.published_at,
     metrics: w.metrics,
+    // 月度复盘按月份挑作品用（lib/monthly-review 的 worksInMonth）
+    created_at: w.created_at ?? null,
+    shot_at: w.shot_at ?? null,
   }));
 
   // 每条作品当时的创作设置：优先脚本那一步的，没有就用选题的（和数据回流同一口径）

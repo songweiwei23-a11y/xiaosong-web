@@ -15,6 +15,8 @@ import { batchKey, dataUrlToFile, douyinLinkFromText, SELF_SINCE, versionBelow }
 import { uploadImage } from "@/components/benchmark/BenchmarkAnalyzer";
 import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
 import { clearDraft, DRAFT_THROTTLE_MS, readDraft, saveDraft } from "@/lib/report-draft";
+import { claimSelfCollection, SELF_LINK_KEY, wantSelfCollection } from "@/lib/self-collect-target";
+import { ReportArchive } from "./ReportArchive";
 
 /**
  * 创作进度顶部的「诊断我的账号」（2026-11-02 产品方：用拆对标的逻辑拆自己的号，也能用抖音的真实数据，
@@ -26,7 +28,7 @@ import { clearDraft, DRAFT_THROTTLE_MS, readDraft, saveDraft } from "@/lib/repor
  */
 
 const MAX_IMAGES = 9;
-const LINK_KEY = (pid: string) => `kaiwu-self-link:${pid}`;
+const LINK_KEY = SELF_LINK_KEY;
 const DRAFT_KEY = (pid: string) => `diagnosis:${pid}`;
 
 interface Capture { dataUrl: string; url?: string; at?: string; kind?: string }
@@ -185,6 +187,8 @@ export function AccountDiagnosis() {
       if (data.type !== "captures") return;
       const col = sanitizeCollection(data.collection);
       if (!col || col.purpose !== "self") return;
+      // 月度复盘发起的那次采集归复盘，这里不跟着诊断（lib/self-collect-target）
+      if (!claimSelfCollection("diagnosis")) return;
       const captures = Array.isArray(data.captures) ? data.captures : [];
       const key = batchKey(captures, col);
       if (key === lastBatch.current) return;
@@ -214,6 +218,7 @@ export function AccountDiagnosis() {
     if (!installed) return setMsg("要先装「开物 · 截屏带入」插件（在「对标 & 热点」页有安装步骤），装好刷新这一页再点");
     if (version && versionBelow(version, SELF_SINCE)) return setMsg(`插件是旧版本（${version}），还不会诊断自己的号：到「对标 & 热点」页按提示更新插件，刷新这一页再点`);
     try { if (profileId) localStorage.setItem(LINK_KEY(profileId), link.trim()); } catch { /* 存不了就算了 */ }
+    wantSelfCollection("diagnosis");
     window.postMessage({ source: "kaiwu-page", type: "collect", url, purpose: "self" }, window.location.origin);
     setMsg("插件已经去打开你的主页、自动采集了：大约 3 分钟，采完自动回到这里开始诊断。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
   };
@@ -257,6 +262,7 @@ export function AccountDiagnosis() {
           <BenchmarkReport report={shown} streaming={running} title="账号诊断报告" />
         </div>
       )}
+      <ReportArchive profileId={profileId} kind="diagnosis" label="历次诊断" />
     </section>
   );
 }

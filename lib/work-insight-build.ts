@@ -24,6 +24,8 @@ export interface InsightWork {
   shoot_status?: string | null;
   published_at?: string | null;
   metrics?: unknown;
+  created_at?: string | null;
+  shot_at?: string | null;
 }
 
 export interface InsightMaterial {

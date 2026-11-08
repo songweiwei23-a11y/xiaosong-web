@@ -33,6 +33,7 @@ import { personaFactsBlock } from './persona-facts';
 import { performancePromptBlock, type PerformanceSummary } from './performance';
 import { workInsightPromptBlock, type WorkInsight } from './work-insight';
 import { diagnosisPromptBlock } from './account-diagnosis';
+import { reviewPromptBlock, type ReviewBoardLabel, type ReviewSlot } from './monthly-review';
 import { PRESET_BOARDS, presetPromptBlock, type CreatorPreset } from './creator-presets';
 import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from './preferences';
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
@@ -40,6 +41,9 @@ import { factInventoryBlock } from './fact-inventory';
 import { adviceContextBlock, threeHavesBlock } from './industry-advice';
 import { topicTagBlock } from './output-tags';
 import { contentSeriesOf, businessRouteOf, CONTENT_SERIES_HEADING, SERIES_ASSIGNMENT_RULE } from './content-series';
+
+/** 策略卡里「给各板块的一句话」，每个板块领哪一句；自由对话不在里面，领全部 */
+const REVIEW_LABEL_OF: Partial<Record<ContextModule, ReviewBoardLabel>> = { topic: '选题', direction: '创作方向', growth: '起号', script: '脚本', remix: '脚本' };
 
 /** 三有自检只给产出选题、脚本、方向的板块（见 lib/industry-advice 的 threeHavesBlock） */
 const THREE_HAVE_BOARDS = new Set<ContextModule>(['topic', 'script', 'direction']);
@@ -399,6 +403,9 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
   // 账号诊断（创作进度「诊断我的账号」）：按清单的 diagnosis 字段给——规划类给要点和布局，写单条的只给三行指令，别的板块不给
   const diag = diagnosisPromptBlock(ctx.workInsight?.diagnosis, manifestOf(module)?.diagnosis);
   if (diag) parts.push('', diag);
+  // 月度复盘定的策略卡（lib/monthly-review）：领法和诊断一样——规划类整张卡，写单条的两行；关掉的、太旧的不给
+  const review = reviewPromptBlock(ctx.workInsight as ReviewSlot | null | undefined, manifestOf(module)?.diagnosis, REVIEW_LABEL_OF[module] ?? null);
+  if (review) parts.push('', review);
 
   // 风格预设：用户认可的写法，只给写稿类板块；只学表达和结构，事实仍以上面的档案为准
   if (PRESET_BOARDS.has(module)) {

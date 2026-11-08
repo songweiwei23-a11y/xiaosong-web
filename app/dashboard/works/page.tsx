@@ -13,6 +13,7 @@ import { WorkCard } from "@/components/works/WorkCard";
 import { MetricsImport } from "@/components/works/MetricsImport";
 import { MaterialsPanel } from "@/components/works/MaterialsPanel";
 import { AccountDiagnosis } from "@/components/works/AccountDiagnosis";
+import { MonthlyReview } from "@/components/works/MonthlyReview";
 import { onActiveProfileChange } from "@/lib/active-profile";
 
 /*
@@ -161,6 +162,8 @@ export default function WorksPage() {
       </header>
       {/* 账号作品概况：导入文件、分析内容配比和反馈；结果给选题、方向等规划类板块用 */}
       <AccountDiagnosis />
+      {/* 月度复盘 · 下月策略卡：每月 1 号自动复盘，策略卡直接给规划类板块用 */}
+      <MonthlyReview />
       <MaterialsPanel />
 
       {/* 学习进度（整改 B2）：离「开物验证写法」还差几条数据 */}

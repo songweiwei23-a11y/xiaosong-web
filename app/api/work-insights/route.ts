@@ -8,6 +8,7 @@ import { callAssistantLlm, type LlmBlock } from '@/lib/assistant/llm';
 import { parseInsightJson, type WorkInsight } from '@/lib/work-insight';
 import { buildWorkInsight, insightPromptFor } from '@/lib/work-insight-build';
 import { loadInsightInputs, readStoredInsight } from '@/lib/work-insight-load';
+import { keepReviewSlot, type ReviewSlot } from '@/lib/monthly-review';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,9 +98,13 @@ export async function POST(request: Request) {
     }
   }
 
-  // 账号诊断存在同一行里：重新分析作品概况时保留它，不能被冲掉
-  const previous = await readStoredInsight(userId, profileId).catch(() => null);
-  const insight = { ...buildWorkInsight({ profile, works, settingsOf, materials, model }), diagnosis: previous?.diagnosis ?? null };
+  // 账号诊断、月度复盘（策略卡、历史版本、长期经验、任务状态）都存在同一行里：重新分析作品概况时保留，不能被冲掉
+  const previous = (await readStoredInsight(userId, profileId).catch(() => null)) as (WorkInsight & ReviewSlot) | null;
+  const insight = {
+    ...buildWorkInsight({ profile, works, settingsOf, materials, model }),
+    diagnosis: previous?.diagnosis ?? null,
+    ...(previous ? keepReviewSlot(previous) : {}),
+  };
   const { error } = await db
     .from('account_work_insights')
     .upsert({ profile_id: profileId, user_id: userId, insight, updated_at: insight.generatedAt }, { onConflict: 'profile_id' });

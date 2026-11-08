@@ -5,6 +5,7 @@ import { buildWorkInsight } from '@/lib/work-insight-build';
 import { workInsightPromptBlock } from '@/lib/work-insight';
 import { loadInsightInputs, readStoredInsight } from '@/lib/work-insight-load';
 import type { AccountDiagnosis } from '@/lib/account-diagnosis';
+import { archiveReport, DIAGNOSIS_ARCHIVE_TASK } from '@/lib/monthly-review-run';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,5 +71,7 @@ export async function POST(request: Request) {
     .from('account_work_insights')
     .upsert({ profile_id: profileId, user_id: userId, insight: { ...base, diagnosis }, updated_at: new Date().toISOString() }, { onConflict: 'profile_id' });
   if (error) return NextResponse.json({ error: '诊断做完了，但暂时没有保存下来，请先复制报告，稍后再试' }, { status: 503 });
+  // 每一份诊断另存一条永久存档（2026-11-08 产品方：「产出的结果要一直保存着」）：上面那一行只放最新一份给各板块读，旧的在存档里都找得回来
+  await archiveReport(userId, profileId, DIAGNOSIS_ARCHIVE_TASK, diagnosis.report, { materials: diagnosis.materials, generatedAt: diagnosis.generatedAt });
   return NextResponse.json({ ok: true, diagnosis });
 }
