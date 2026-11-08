@@ -86,14 +86,16 @@ describe('策略卡进提示词', () => {
     expect(reviewPromptBlock(slot, 'planning', '选题', Date.parse('2026-12-20'))).toContain('超过 45 天');
     expect(reviewPromptBlock(slot, null, null, NOW)).toBe('');
   });
-  it('真实拼提示词：选题、方向、起号、自由对话、脚本带上；分镜、审稿、标题不带', () => {
+  it('真实拼提示词：选题、方向、起号、自由对话带整张，二创两行；分镜、审稿、标题不带；写脚本页不读（只给档案和写作底线）', () => {
+    expect(readCode('lib/boards/script-query.ts')).toMatch(/buildContextBlock\(\s*\{ profile: profile, positioning: null, dealReasons: \[\] \},\s*'script'/);
+    expect(readCode('lib/boards/topic-query.ts')).toMatch(/workInsight: creatorContext\.workInsight,\s*doneList: creatorContext\.doneList,/);
     const realNow = Date.now;
     Date.now = () => NOW;
     try {
       const ctx = { profile: { id: 'p', profile_name: '老张火锅' }, positioning: null, dealReasons: [], workInsight: slot as never } as CreatorContext;
       for (const b of ['topic', 'direction', 'growth', 'freeChat'] as const) expect(buildContextBlock(ctx, b)).toContain('本月策略卡');
       expect(buildContextBlock(ctx, 'freeChat')).toContain('给起号：先立老板人设');
-      const script = buildContextBlock(ctx, 'script');
+      const script = buildContextBlock(ctx, 'remix');
       expect(script).toContain('给脚本：开头先说价格');
       expect(script).not.toContain('多做：');
       for (const b of ['storyboard', 'review', 'title'] as const) expect(buildContextBlock(ctx, b)).not.toContain('本月策略卡');

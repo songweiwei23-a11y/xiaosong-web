@@ -85,7 +85,7 @@ export function ContextBadge({ board, className = '' }: Props) {
         )
       })()}
 
-      {manifest.diagnosis && (() => {
+      {manifest.diagnosis === 'planning' && (() => {
         // 月度复盘的策略卡（lib/monthly-review）：用了哪个月的、是不是太旧了
         const r = (context.workInsight as ReviewSlot | null | undefined)?.review
         const f = reviewFreshness(r)

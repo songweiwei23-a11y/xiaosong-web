@@ -1,6 +1,7 @@
 import type { CreatorContext, CreatorProfile } from '@/lib/creator-context';
 import { BRIEF_TYPE } from '@/lib/creative-brief';
 import { ADVICE_TYPE, staleUpstream } from '@/lib/industry-advice';
+import { readDoneList } from '@/lib/done-list';
 
 /**
  * 服务端版的「创作上下文」：和 hooks/useCreatorContext 拼出的内容一致，只是数据靠用户的 Cookie 调现有接口取。
@@ -105,11 +106,13 @@ export async function loadBoardContext(deps: BoardContextDeps, preferredProfileI
 
   // 账号作品概况：和客户端的 useCreatorContext 取的是同一个接口，助理和页面看到的一样
   let workInsight: CreatorContext['workInsight'] = null;
+  let doneList: CreatorContext['doneList'] = null;
   if (profileId) {
     const got = (await getJson(deps, `/api/work-insights?profileId=${encodeURIComponent(profileId)}`)) as
-      | { insight?: CreatorContext['workInsight'] }
+      | { insight?: CreatorContext['workInsight']; doneList?: unknown }
       | null;
     workInsight = got?.insight ?? null;
+    doneList = readDoneList(got?.doneList);
   }
 
   return {
@@ -121,6 +124,7 @@ export async function loadBoardContext(deps: BoardContextDeps, preferredProfileI
     briefFacts: typeof briefPick?.positioning_description === 'string' ? briefPick.positioning_description : null,
     performance,
     workInsight,
+    doneList,
     preset: null,
     preferences: null,
     advice: adviceText,

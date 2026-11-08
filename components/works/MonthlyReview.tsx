@@ -193,7 +193,7 @@ export function MonthlyReview() {
       <div>
         <h2 className="flex items-center gap-1.5 text-[15px] font-semibold text-foreground"><RefreshCcw className="h-4 w-4 text-primary" />月度复盘 · 下月策略卡</h2>
         <p className="mt-0.5 text-[12px] text-muted-foreground">
-          每月 1 号自动复盘上个月：这个月做了什么、什么起作用、上个月的试验成没成，再定下个月的策略卡。策略卡直接生效，选题、方向、内容规划、起号、自由对话和开物助理会照它调整，脚本只拿两行提醒；你随时可以改、关掉或退回上一版。复盘不扣次数，每一份都永久存着。
+          每月 1 号自动复盘上个月：这个月做了什么、什么起作用、上个月的试验成没成，再定下个月的策略卡。策略卡直接生效，选题、方向、内容规划、起号、自由对话和开物助理会照它调整，二创只拿两行提醒（写脚本不读，保持脚本只看档案和写作底线）；你随时可以改、关掉或退回上一版。复盘不扣次数，每一份都永久存着。
         </p>
       </div>
 

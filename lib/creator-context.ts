@@ -34,6 +34,7 @@ import { performancePromptBlock, type PerformanceSummary } from './performance';
 import { workInsightPromptBlock, type WorkInsight } from './work-insight';
 import { diagnosisPromptBlock } from './account-diagnosis';
 import { reviewPromptBlock, type ReviewBoardLabel, type ReviewSlot } from './monthly-review';
+import { doneListPromptBlock, type DoneItem } from './done-list';
 import { PRESET_BOARDS, presetPromptBlock, type CreatorPreset } from './creator-presets';
 import { PREFERENCE_BOARDS, preferencePromptBlock, type PreferenceItem } from './preferences';
 import { OUTPUT_RULE_BOARDS, outputRulesBlock } from './output-rules';
@@ -44,6 +45,15 @@ import { contentSeriesOf, businessRouteOf, CONTENT_SERIES_HEADING, SERIES_ASSIGN
 
 /** 策略卡里「给各板块的一句话」，每个板块领哪一句；自由对话不在里面，领全部 */
 const REVIEW_LABEL_OF: Partial<Record<ContextModule, ReviewBoardLabel>> = { topic: '选题', direction: '创作方向', growth: '起号', script: '脚本', remix: '脚本' };
+
+/**
+ * 避重清单给谁：出选题、出方向的（选题、创作方向 / 内容规划、自由对话）。
+ * 2026-11-08 真实模型对照（.tmp/done-ab，2 个行业 × 带/不带 × 2 次）：季节、细节没被带进去，但清单把模型往旧题上拽——
+ * 大码女装带清单后 6 条里 2 条又是「50 码裤子」（全文「裤子」19 次，不带时 0～1 次），重复并没有减少。
+ * 所以先不写进提示词（DONE_LIST_IN_PROMPT = false），清单照常取，用在生成之后的比对上。
+ */
+export const DONE_LIST_IN_PROMPT = false;
+const DONE_LIST_BOARDS = new Set<ContextModule>(DONE_LIST_IN_PROMPT ? ['topic', 'direction', 'freeChat'] : []);
 
 /** 三有自检只给产出选题、脚本、方向的板块（见 lib/industry-advice 的 threeHavesBlock） */
 const THREE_HAVE_BOARDS = new Set<ContextModule>(['topic', 'script', 'direction']);
@@ -133,6 +143,8 @@ export interface CreatorContext {
   performance?: PerformanceSummary | null;
   /** 账号作品概况（lib/work-insight）：确定的配比、三类数据反馈、下一批建议；和数据回流走同一批板块 */
   workInsight?: WorkInsight | null;
+  /** 「已经做过」避重清单（lib/done-list）：已拍、已发作品的标题和打法，只给出选题、出方向的板块 */
+  doneList?: DoneItem[] | null;
   /** 这个档案在用的风格预设（lib/creator-presets）：写稿类板块照这个写法 */
   preset?: CreatorPreset | null;
   /** 我的创作偏好（lib/preferences）：从修改、收藏、发布里学到的，只有生效的那几条 */
@@ -406,6 +418,11 @@ export function buildContextBlock(ctx: CreatorContext, module: ContextModule): s
   // 月度复盘定的策略卡（lib/monthly-review）：领法和诊断一样——规划类整张卡，写单条的两行；关掉的、太旧的不给
   const review = reviewPromptBlock(ctx.workInsight as ReviewSlot | null | undefined, manifestOf(module)?.diagnosis, REVIEW_LABEL_OF[module] ?? null);
   if (review) parts.push('', review);
+  // 「已经做过」避重清单（2026-11-08 产品方定，lib/done-list）：只给出选题、出方向的板块，只有标题和打法
+  if (DONE_LIST_BOARDS.has(module)) {
+    const done = doneListPromptBlock(ctx.doneList);
+    if (done) parts.push('', done);
+  }
 
   // 风格预设：用户认可的写法，只给写稿类板块；只学表达和结构，事实仍以上面的档案为准
   if (PRESET_BOARDS.has(module)) {

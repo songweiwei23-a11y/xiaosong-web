@@ -303,6 +303,10 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
           adviceStale: creatorContext.adviceStale,
           // 内容定位的系列清单：选题只能从这里的系列里选（lib/context-manifest 的 deep=content）
           contentPositioning: creatorContext.contentPositioning,
+          // 作品概况（含账号诊断、月度复盘的策略卡）和「已经做过」避重清单（2026-11-08）：
+          // 原来这里没带 workInsight，诊断说「同步给选题」其实没到选题
+          workInsight: creatorContext.workInsight,
+          doneList: creatorContext.doneList,
         },
         'topic'
       );

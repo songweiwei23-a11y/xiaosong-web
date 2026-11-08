@@ -7,6 +7,7 @@ import { BRIEF_TYPE } from "@/lib/creative-brief";
 import { ADVICE_TYPE, staleUpstream } from "@/lib/industry-advice";
 import { fetchActivePreset } from "@/lib/creator-presets";
 import { fetchActivePreferences } from "@/lib/preferences-client";
+import { readDoneList } from "@/lib/done-list";
 
 /**
  * 取当前账号的创作上下文：档案 + 定位 + 成交理由。
@@ -155,11 +156,14 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
 
     // 账号作品概况（lib/work-insight）：和数据回流一起取，服务端的板块也是同一份
     let workInsight: CreatorContext["workInsight"] = null;
+    // 「已经做过」避重清单（lib/done-list）：同一个接口一起给
+    let doneList: CreatorContext["doneList"] = null;
     if (profile) {
       const insightRes = await fetch(`/api/work-insights?profileId=${encodeURIComponent(profile.id)}`).catch(() => null);
       if (insightRes?.ok) {
         const d = await insightRes.json().catch(() => null);
         workInsight = d?.insight ?? null;
+        doneList = readDoneList(d?.doneList);
       }
     }
 
@@ -169,7 +173,7 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     const preferences = await fetchActivePreferences(profile?.id ?? profileId);
 
     const ctx: CreatorContext = {
-      profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, workInsight, preset, preferences,
+      profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, workInsight, doneList, preset, preferences,
       advice, adviceAt, adviceStale, contentPositioning, businessPositioning,
     };
     if (version === cacheVersion) cache.set(key, ctx);

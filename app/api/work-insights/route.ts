@@ -7,7 +7,7 @@ import { readAssistantConfig } from '@/lib/assistant/config';
 import { callAssistantLlm, type LlmBlock } from '@/lib/assistant/llm';
 import { parseInsightJson, type WorkInsight } from '@/lib/work-insight';
 import { buildWorkInsight, insightPromptFor } from '@/lib/work-insight-build';
-import { loadInsightInputs, readStoredInsight } from '@/lib/work-insight-load';
+import { loadDoneList, loadInsightInputs, readStoredInsight } from '@/lib/work-insight-load';
 import { keepReviewSlot, type ReviewSlot } from '@/lib/monthly-review';
 
 export const dynamic = 'force-dynamic';
@@ -40,14 +40,18 @@ export async function GET(request: Request) {
   if (!profileId || !(await ownedProfile(guard.userId!, profileId))) {
     return NextResponse.json({ error: '找不到这个档案' }, { status: 404 });
   }
-  const { data, error } = await getServiceSupabase()
-    .from('account_work_insights')
-    .select('insight, updated_at')
-    .eq('user_id', guard.userId!)
-    .eq('profile_id', profileId)
-    .maybeSingle();
-  if (error) return NextResponse.json({ insight: null, unavailable: true });
-  return NextResponse.json({ insight: (data?.insight as WorkInsight | undefined) ?? null, updatedAt: data?.updated_at ?? null });
+  // 「已经做过」避重清单（lib/done-list）和概况一起给：页面的 useCreatorContext、助理的 board-context 都读这个接口
+  const [{ data, error }, doneList] = await Promise.all([
+    getServiceSupabase()
+      .from('account_work_insights')
+      .select('insight, updated_at')
+      .eq('user_id', guard.userId!)
+      .eq('profile_id', profileId)
+      .maybeSingle(),
+    loadDoneList(guard.userId!, profileId),
+  ]);
+  if (error) return NextResponse.json({ insight: null, unavailable: true, doneList });
+  return NextResponse.json({ insight: (data?.insight as WorkInsight | undefined) ?? null, updatedAt: data?.updated_at ?? null, doneList });
 }
 
 export async function POST(request: Request) {
