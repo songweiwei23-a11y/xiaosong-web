@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   buildReviewPrompt, defaultReviewMonth, installReview, keepReviewSlot, mergeMemory, parseReviewJson, readMix, reviewFreshness,
-  reviewPromptBlock, reviewToMarkdown, rollbackReview, worksInMonth, type MonthlyReview,
+  reviewPromptBlock, reviewToMarkdown, rollbackReview, worksInMonth, type MonthlyReview, type ReviewSlot,
 } from '@/lib/monthly-review';
 import { buildContextBlock, type CreatorContext } from '@/lib/creator-context';
 import { claimSelfCollection, wantSelfCollection } from '@/lib/self-collect-target';
@@ -64,14 +64,14 @@ describe('长期经验、历史版本、退回', () => {
     expect(rollbackReview(row, 99)).toBeNull();
   });
   it('别的接口重建那一行时复盘那几项原样带上', () => {
-    const row = installReview({}, review('2026-10'));
+    const row = installReview<ReviewSlot>({}, review('2026-10'));
     expect(keepReviewSlot({ ...row, reviewJob: { month: '2026-10', startedAt: 'x' } })).toMatchObject({ review: row.review, reviewMemory: row.reviewMemory, reviewJob: { month: '2026-10' } });
     expect(readCode('app/api/work-insights/route.ts')).toMatch(/\.\.\.\(previous \? keepReviewSlot\(previous\) : \{\}\)/);
   });
 });
 
 describe('策略卡进提示词', () => {
-  const slot = installReview({}, review('2026-10'));
+  const slot = installReview<ReviewSlot>({}, review('2026-10'));
   it('规划类整张卡、只给本板块那一句；写单条的只两行；关掉、太旧的不给', () => {
     const plan = reviewPromptBlock(slot, 'planning', '选题', NOW);
     expect(plan).toContain('最该抓：多拍老板本人讲后厨的事');
