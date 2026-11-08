@@ -1,4 +1,5 @@
 import type { HandoffPayload } from './handoff';
+import { findHistoryRecord } from './history-match';
 
 export type ContinuationTask = 'review' | 'storyboard' | 'topic' | 'script' | 'title' | 'growth' | 'free-chat';
 
@@ -154,7 +155,8 @@ export function carriesScript(data: Pick<HandoffPayload, 'settings'> | null | un
 
 /** 刷新或选择历史后，使用该版本保存的根稿，避免错带正在编辑的另一份稿。 */
 export function originForResult(result: string, history: Array<{ result: string; input_data?: Record<string, unknown> | null }>, currentOrigin: string): string {
-  const record = history.find(item => item.result === result);
+  // 润色过、多了空白也认得回原来那条（lib/history-match），认不回才用当前的
+  const record = findHistoryRecord(result, history);
   if (!record) return currentOrigin;
   const input = record.input_data;
   for (const key of ['originContent', 'sourceReference', 'sourceContent', 'additionalInfo', 'draftContent', 'scriptContent', 'query']) {

@@ -114,8 +114,13 @@ export function creationScript(source: string, body: string): string {
 export function buildCreationHandoff(source: string, target: CreationTarget, body: string, context: CreationContext = {}): HandoffPayload {
   const from = context.from || CREATION_SOURCES[source] || '创作结果';
   // 收藏里的标题/开篇仍是局部修改，回到审稿或分镜时携带完整稿。
-  if (source === 'library') source = Object.entries(CREATION_SOURCES).find(([, label]) => label === context.from)?.[0] || source;
-  if (context.partial && ['library', 'free-chat'].includes(source)) source = context.partial;
+  // 素材库带出去的来源写作「素材库·选题策划」：去掉前缀再认，原来带前缀认不出，选题、脚本都当成普通内容带（2026-11-08）
+  const fromLibrary = source === 'library';
+  if (fromLibrary) {
+    const label = (context.from || '').replace(/^素材库[·・]/, '');
+    source = Object.entries(CREATION_SOURCES).find(([, l]) => l === label)?.[0] || (label === '起号方案' || label === '开篇钩子' ? 'growth' : source);
+  }
+  if (context.partial && (fromLibrary || source === 'free-chat')) source = context.partial;
   const title = context.title || context.topic || creationTitle(body);
   // 勾选带走的以勾中的为准；选题页整批带走时从正文解析
   const topicOptions = context.topicOptions?.length ? context.topicOptions : source === 'topic' ? parseTopicOptions(body) : [];

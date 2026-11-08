@@ -10,13 +10,13 @@ export function readCreationSnapshot(value: unknown): HandoffPayload | null {
   if (!value || typeof value !== 'object') return null;
   const v = value as Record<string, unknown>;
   if (typeof v.target !== 'string' || !TARGET.test(v.target) || typeof v.from !== 'string') return null;
-  if (v.profileId != null && (typeof v.profileId !== 'string' || !CREATION_UUID.test(v.profileId))) return null;
-  if (v.workId != null && (typeof v.workId !== 'string' || !CREATION_UUID.test(v.workId))) return null;
-  const out: HandoffPayload = { from: v.from.slice(0, 100), target: v.target, profileId: v.profileId as string | null | undefined, settings: mergeCreationSettings(v.settings) };
+  // 编号格式不对（旧素材、旧链接里存的）只丢掉这一项，不把整份内容判成无效（2026-11-08：原来整份作废，报「请选择要继续创作的内容」）
+  const profileId = typeof v.profileId === 'string' && CREATION_UUID.test(v.profileId) ? v.profileId : null;
+  const out: HandoffPayload = { from: v.from.slice(0, 100), target: v.target, profileId, settings: mergeCreationSettings(v.settings) };
   for (const key of TEXT_FIELDS) {
     if (typeof v[key] === 'string') out[key] = v[key] as string;
   }
-  if (typeof v.workId === 'string') out.workId = v.workId;
+  if (typeof v.workId === 'string' && CREATION_UUID.test(v.workId)) out.workId = v.workId;
   if (typeof v.intentUpdatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v.intentUpdatedAt) && Number.isFinite(Date.parse(v.intentUpdatedAt))) out.intentUpdatedAt = new Date(v.intentUpdatedAt).toISOString();
   if (v.tab === 'opening') out.tab = 'opening';
   if (Array.isArray(v.topicOptions)) out.topicOptions = v.topicOptions.filter((x): x is string => typeof x === 'string');

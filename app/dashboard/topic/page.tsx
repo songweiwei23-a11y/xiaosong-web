@@ -159,11 +159,20 @@ export default function TopicPage() {
    * 写脚本时把这条选题当时的方案（内容方向、开篇钩子、拍法）一起带过去——
    * 原来只带标题，选题策划时想好的东西到脚本页就丢了，等于白想。
    */
-  const sendTopic = async (title: string, stage: TopicStage, body?: string) => {
+  const sendTopic = async (title: string, stage: TopicStage, body?: string, batchId?: string) => {
+    /*
+     * 这条选题出自哪一批，就用那一批当时的设置和原始内容（2026-11-08）。
+     * 选题库里的旧选题原来拿的是页面上当前这份结果、当前表单的设置——带过去的成了现在填的东西，和当初对不上
+     */
+    const batch = batchId ? history.find((b) => b.id === batchId) : undefined;
+    const ownResult = batch?.result ?? result;
+    const ownHistory = batch ? [batch] : history;
+    const ownSettings = settingsForResult(ownResult, ownHistory, currentSettings);
+    const ownOrigin = originForResult(ownResult, ownHistory, originContent || sourceReference);
     const workId = await createWork(title, selectedProfileId || null);
     // 持久保存后再跳（lib/creation-session）：刷新、换设备都能接着这一条
     await openCreationSafely({
-      ...buildCreationHandoff('topic', stage === '脚本生成' ? 'script' : stage === '标题封面' ? 'title' : 'growth', body || title, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title, ...scriptFormOfTopic(body ?? '') }), originContent: originForResult(result, history, originContent || sourceReference) }),
+      ...buildCreationHandoff('topic', stage === '脚本生成' ? 'script' : stage === '标题封面' ? 'title' : 'growth', body || title, { topic: title, settings: mergeCreationSettings(ownSettings, { topic: title, ...scriptFormOfTopic(body ?? '') }), originContent: ownOrigin }),
       from: "选题策划",
       topic: title,
       workId: workId ?? undefined,
@@ -171,10 +180,10 @@ export default function TopicPage() {
       // 打法跟着选题一路走，脚本才能按这一计的结构公式排。
       // 没整批指定时，看这一条自己标的是哪一计
       // 一条选题只归一派（见 lib/script-route）：标了 36 计就带那一计，标了四大脚本就不带计
-      tactic: tactic || tacticOfRoute(topicRouteOf(body ?? "")) || undefined,
+      tactic: (batch ? ownSettings.tactic : tactic) || tacticOfRoute(topicRouteOf(body ?? "")) || undefined,
       note:
         stage === "脚本生成" && body
-          ? buildCreationHandoff('topic', 'script', body, { topic: title, settings: mergeCreationSettings(settingsForResult(result, history, currentSettings), { topic: title, ...scriptFormOfTopic(body ?? '') }), originContent: originForResult(result, history, originContent || sourceReference) }).note
+          ? buildCreationHandoff('topic', 'script', body, { topic: title, settings: mergeCreationSettings(ownSettings, { topic: title, ...scriptFormOfTopic(body ?? '') }), originContent: ownOrigin }).note
           : undefined,
     }, (u) => router.push(u), (m) => notify(m, 'error'));
   };

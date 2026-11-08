@@ -56,7 +56,18 @@ export async function POST(request: Request) {
   const db = await getServerSupabase();
   const inputSettings = (body.payload as Record<string, unknown>)?.settings;
   const persistedPayload = inputSettings && typeof inputSettings === 'object' ? { ...payload, settings: creationSettingsForPersistence(payload.settings || {}) } : payload;
-  const { data, error } = await db.rpc('save_creation_session', { p_id: body.requestId || randomUUID(), p_payload: persistedPayload, p_branch: body.branch === true });
+  const requestId = (body.requestId as string | undefined) || randomUUID();
+  let { data, error } = await db.rpc('save_creation_session', { p_id: requestId, p_payload: persistedPayload, p_branch: body.branch === true });
+  /*
+   * 旧选题、旧素材里存着当时的作品编号 / 档案编号（2026-11-08）：作品后来删了、或者切了档案，原来直接报「作品与当前档案不匹配」，内容带不过去。
+   * 这时去掉对不上的那一项再存一次：另起一条新作品，内容照原样带过去。只是不挂到旧作品上，不会读到别人的、别的档案的作品。
+   */
+  if (error && /ownership mismatch/.test(error.message)) {
+    const retry: Record<string, unknown> = { ...persistedPayload };
+    delete retry.workId;
+    if (/^profile ownership/.test(error.message)) delete retry.profileId;
+    ({ data, error } = await db.rpc('save_creation_session', { p_id: randomUUID(), p_payload: retry, p_branch: body.branch === true }));
+  }
   if (error) {
     const denied = /profile|permission|ownership|档案|权限/.test(error.message);
     return NextResponse.json({ error: denied ? '作品与当前档案不匹配，请检查选择' : '创作需求未保存，请稍后重试；原内容仍在当前页面' }, { status: denied ? 403 : 503 });

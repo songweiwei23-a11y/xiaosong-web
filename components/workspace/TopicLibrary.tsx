@@ -36,7 +36,8 @@ export function TopicLibrary({
 }: {
   batches: { id: string; result: string; created_at: string }[];
   works: Work[];
-  onAction: (title: string, stage: TopicStage, body: string) => Promise<void>;
+  /** batchId：这条选题出自哪一批（历史记录 id）。带去下一步用那一批当时的设置和原始内容，不用页面上当前的 */
+  onAction: (title: string, stage: TopicStage, body: string, batchId?: string) => Promise<void>;
   onDelete: (title: string) => Promise<void>;
 }) {
   const [q, setQ] = useState("");
@@ -172,7 +173,7 @@ export function TopicLibrary({
                           key={a.stage}
                           type="button"
                           disabled={busy !== null}
-                          onClick={() => run(key, () => onAction(t.title, a.stage, t.body))}
+                          onClick={() => run(key, () => onAction(t.title, a.stage, t.body, t.batchId))}
                           className="glass-panel inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-50"
                         >
                           {busy === key ? <Loader2 className="h-3 w-3 animate-spin" /> : <a.icon className="h-3 w-3" />}

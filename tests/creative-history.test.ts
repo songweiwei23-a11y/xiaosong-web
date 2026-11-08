@@ -20,6 +20,8 @@ function dbWith(rows: any[] = [], profiles = [{ id: A, user_id: 'owner' }]) {
       or: (filter: string) => { calls.push(['or', filter]); selected = selected.filter((r) => filter.includes(A) ? r.input_data?.profileId === A : filter.includes(B) ? r.input_data?.profileId === B : !r.input_data?.profileId); return q; },
       maybeSingle: async () => ({ data: selected[0] || null, error: null }),
       insert: async (row: any) => { calls.push(['insert', row]); if (rows.some((r) => r.id === row.id)) return { error: { code: '23505' } }; rows.push(row); return { error: null }; },
+      // update(值).eq(...).eq(...)：等 eq 都过滤完、真正 await 时才改
+      update: (patch: any) => { calls.push(['update', patch]); const u: any = { eq: (key: string, value: unknown) => { selected = selected.filter((r) => r[key] === value); return u; }, then: (resolve: any) => { selected.forEach((r) => Object.assign(r, patch)); return Promise.resolve({ error: null }).then(resolve); } }; return u; },
       then: (resolve: any) => Promise.resolve({ data: selected, error: null }).then(resolve),
     }; return q;
   } };
@@ -28,14 +30,17 @@ function dbWith(rows: any[] = [], profiles = [{ id: A, user_id: 'owner' }]) {
 const input: CreativeHistoryInput = { id: H, taskType: '跨行业二创', profileId: A, inputData: { source: '汽车', profileId: B }, result: '完整二创内容' };
 beforeEach(() => { state.allowed = true; state.db = dbWith().db; });
 describe('持久化与隔离', () => {
-  it('保存固定归属并幂等；重复补存不会再插一条，也不会覆写正文', async () => {
+  // 2026-11-08：原来重复补存不覆写正文——服务端先存润色前的，页面润色完再存同一条就被跳过，历史里一直是润色前的。
+  // 现在同账号、同板块、同档案的同一条，正文更新成最终版本；别人的、别的档案的照旧不动
+  it('保存固定归属并幂等；重复补存不会再插一条，同一条换成最终版本，别人的不动', async () => {
     const { db, rows } = dbWith();
     expect(await persistCreativeHistory(db, 'owner', input)).toBe(true);
     expect(rows[0]).toMatchObject({ user_id: 'owner', task_type: '跨行业二创', input_data: { profileId: A, profile_id: A }, result: input.result });
-    expect(await persistCreativeHistory(db, 'owner', { ...input, result: '不能覆盖旧内容' })).toBe(true);
-    expect(rows).toHaveLength(1); expect(rows[0].result).toBe(input.result);
-    expect(await persistCreativeHistory(db, 'other', input)).toBe(false);
-    expect(await persistCreativeHistory(db, 'owner', { ...input, profileId: B })).toBe(false);
+    expect(await persistCreativeHistory(db, 'owner', { ...input, result: '润色后的最终版' })).toBe(true);
+    expect(rows).toHaveLength(1); expect(rows[0].result).toBe('润色后的最终版');
+    expect(await persistCreativeHistory(db, 'other', { ...input, result: '别人的' })).toBe(false);
+    expect(await persistCreativeHistory(db, 'owner', { ...input, profileId: B, result: '别的档案' })).toBe(false);
+    expect(rows[0].result).toBe('润色后的最终版');
   });
   it('档案必须是当前账号的；没有档案的范围也能保存', async () => {
     expect(await ownsCreativeProfile(state.db, 'owner', A)).toBe(true);

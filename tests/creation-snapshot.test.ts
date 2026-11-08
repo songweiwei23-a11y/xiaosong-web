@@ -15,7 +15,11 @@ describe('durable creation intent', () => {
   });
   it('rejects arbitrary destinations, foreign shape and oversized input without silent truncation', () => {
     expect(readCreationSnapshot({ from: '外部', target: 'https://example.com' })).toBeNull();
-    expect(readCreationSnapshot({ from: '外部', target: '/dashboard/script', profileId: 'bad' })).toBeNull();
+    // 2026-11-08：编号格式不对只丢掉这一项（旧素材、旧链接里的），不再整份作废；错的编号不会被存下来
+    const badId = readCreationSnapshot({ from: '外部', target: '/dashboard/script', profileId: 'bad', workId: 'bad', sourceContent: '正文' });
+    expect(badId?.profileId).toBeNull();
+    expect(badId?.workId).toBeUndefined();
+    expect(JSON.stringify(badId)).not.toContain('bad');
     expect(readCreationSnapshot({ from: '外部', target: '/dashboard/script', sourceContent: 'x'.repeat(900_000) })).toBeNull();
   });
   it('does not persist credentials or arbitrary object keys', () => {

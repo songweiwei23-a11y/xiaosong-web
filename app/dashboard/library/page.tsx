@@ -391,7 +391,8 @@ export default function LibraryPage() {
               {continuing === it.id && full && (
                 <div className="mt-3">
                   <CreationLinks body={full.content} hideFavorite recommended={CATEGORY_NEXT[it.category as LibraryCategory] ?? CATEGORY_NEXT.other}
-                      context={{ ...full.fields?.creationContext, from: `素材库·${it.source || categoryLabel(it.category)}`, title: it.title }} heading="去哪个板块 · 内容自动带入" />
+                      // 素材是收藏那一刻的样子：不挂回当初的作品（作品后来改过的设置会混进来，作品删了还会报错），带过去另起一条
+                      context={{ ...full.fields?.creationContext, workId: undefined, from: `素材库·${it.source || categoryLabel(it.category)}`, title: it.title }} heading="去哪个板块 · 内容自动带入" />
                 </div>
               )}
             </li>

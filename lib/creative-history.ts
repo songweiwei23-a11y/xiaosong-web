@@ -54,7 +54,12 @@ export async function ownsCreativeProfile(db: SupabaseClient, userId: string, pr
   return !!data;
 }
 
-/** 服务端完成后即保存；客户端补取时用同一个 id，不能重复插入或覆盖旧记录。 */
+/**
+ * 服务端完成后即保存；客户端补取时用同一个 id，不能重复插入，也不能覆盖别人的、别的板块的记录。
+ * 2026-11-08：同一条（同 id、同账号、同板块、同档案）再存时，正文换成页面最终显示的版本——
+ * 服务端先存的是润色前的稿子，页面润色完再存同一个 id，原来直接跳过，历史里一直是润色前的，
+ * 从历史打开再「继续创作」就和当时看到的对不上。
+ */
 export async function persistCreativeHistory(db: SupabaseClient, userId: string, input: CreativeHistoryInput): Promise<boolean> {
   const { error } = await db.from('script_history').insert({
     id: input.id, user_id: userId, task_type: input.taskType,
@@ -63,9 +68,15 @@ export async function persistCreativeHistory(db: SupabaseClient, userId: string,
   });
   if (!error) return true;
   if (error.code === '23505') {
-    const existing = await db.from('script_history').select('id,task_type,input_data').eq('id', input.id).eq('user_id', userId).maybeSingle();
-    return !existing.error && !!existing.data && existing.data.task_type === input.taskType &&
+    const existing = await db.from('script_history').select('id,task_type,input_data,result').eq('id', input.id).eq('user_id', userId).maybeSingle();
+    const same = !existing.error && !!existing.data && existing.data.task_type === input.taskType &&
       (existing.data.input_data?.profileId ?? existing.data.input_data?.profile_id ?? null) === input.profileId;
+    if (!same) return false;
+    if (input.result.trim() && existing.data!.result !== input.result) {
+      const { error: updateError } = await db.from('script_history').update({ result: input.result }).eq('id', input.id).eq('user_id', userId);
+      if (updateError) { console.error('[creative-history] 更新最终稿失败', updateError.code); return false; }
+    }
+    return true;
   }
   console.error('[creative-history] 存档失败', error.code);
   return false;

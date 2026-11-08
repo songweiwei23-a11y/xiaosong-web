@@ -6,6 +6,7 @@ import { DEAL_REASONS } from './deal-reasons';
 import { dealReasonsForPurpose } from './content-roles';
 import { SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
 import { tacticInText } from './creative-routes';
+import { findHistoryRecord } from './history-match';
 
 /** 一条创作链的设置。页面字段可以不同，但意图、人群和结构只有一份。 */
 export interface CreationSettings {
@@ -272,7 +273,8 @@ export function settingsFromInput(input: Record<string, unknown> | null | undefi
 }
 
 export function settingsForResult(result: string, history: Array<{ result: string; input_data?: Record<string, unknown> | null }>, current: CreationSettings): CreationSettings {
-  const record = history.find(item => item.result === result);
+  // 润色过、多了空白也认得回原来那条（lib/history-match），认不回才用当前表单的
+  const record = findHistoryRecord(result, history);
   if (!record) return current;
   const saved = settingsFromInput(record.input_data);
   // 旧审稿的“AI 推荐时长”不是具体要求，不能盖住最终稿已经明确的时长。
