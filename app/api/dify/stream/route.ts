@@ -583,7 +583,8 @@ export async function POST(req: NextRequest) {
             if (tidied.trim()) fullResponse = tidied;
           }
           /*
-           * 脚本的口播修复（lib/script-repair）：没交出「纯文字文案」一步，或编导设了时长而口播超过上限的 1.1 倍，就让模型按原稿修一次。
+           * 脚本的口播修复（lib/script-repair）：没交出「纯文字文案」一步、口播超过上限的 1.1 倍，或不到目标下限（2026-11-08：字数要真的够），
+           * 就让模型按原稿修一次。没设时长或 AI 推荐按默认 1分30秒～1分40秒算。
            * 修复稿要过同样的检查才采用，否则保留原稿。额度单独计。
            */
           const repairReason = body.taskType === '脚本生成' && outcome.kind === 'done' && fullResponse.trim() ? scriptRepairReason(fullResponse, creationSettings.duration) : null;
@@ -592,7 +593,7 @@ export async function POST(req: NextRequest) {
             const repaired = await traced('script_repair', () => askDify(buildScriptRepairPrompt({ text: fullResponse, reason: repairReason, spoken: spokenStep(fullResponse), duration: creationSettings.duration }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
               .catch(() => ({ ok: false as const, message: '脚本修复未完成' })));
             const text = repaired.ok ? tidy(cleanRewriteOutput(repaired.text)) : '';
-            const accepted = !!text && acceptScriptRepair(text, creationSettings.duration);
+            const accepted = !!text && acceptScriptRepair(text, creationSettings.duration, spokenStep(fullResponse));
             console.log('[script-repair] 结果:', repaired.ok ? '返回' : `失败（${repaired.message}）`, '口播字数:', text ? spokenStep(text) : null, '采用:', accepted);
             if (accepted && repaired.ok) {
               usageMetadata = combinedReviewUsage(usageMetadata, repaired.completion.usage ?? {}, 'script_repair_steps');

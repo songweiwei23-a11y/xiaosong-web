@@ -590,7 +590,7 @@ ${executionContext}
 - **广告类型**：${SCRIPT_TYPES[scriptType as keyof typeof SCRIPT_TYPES].label}
 - **行业**：${selectedIndustry}
 - **平台**：${platform}
-- **时长**：${isAiDuration ? "不限，以效果最好为准" : finalDuration}
+- **时长**：${isAiDuration ? AI_SCRIPT_TARGET_TEXT : finalDuration}
 - **主题/活动**：${topic}
 
 ${profileInfo}

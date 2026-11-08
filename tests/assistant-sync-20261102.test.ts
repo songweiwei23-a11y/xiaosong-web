@@ -76,10 +76,12 @@ describe('系统提示词同步了近期更新', () => {
     expect(ASSISTANT_SYSTEM).toContain('不照抄对方的标题和文案');
   });
 
-  it('自由对话的分工、深度研究、AI 推荐讲完为止', () => {
+  // 2026-11-08 产品方：脚本 AI 推荐改回默认 1分30秒～1分40秒（原「讲完为止」写得太短），助理口径跟着改
+  it('自由对话的分工、深度研究、脚本默认时长', () => {
     expect(ASSISTANT_SYSTEM).toContain('open_page 打开 free-chat');
     expect(ASSISTANT_SYSTEM).toContain('propose_research');
-    expect(ASSISTANT_SYSTEM).toContain('讲完为止');
+    expect(ASSISTANT_SYSTEM).toContain('脚本默认 1分30秒～1分40秒');
+    expect(ASSISTANT_SYSTEM).not.toContain('讲完为止');
   });
 });
 

@@ -79,12 +79,37 @@ describe('脚本口播超过编导设的时长：生成后压缩一次', () => {
     expect(shown).toContain('## 第4步：执行与优化建议');
   });
 
-  it('AI 推荐时长的脚本不压缩，口播长也不动（内容优先）', async () => {
-    const long = step(words(400));
-    const calls = mockDify(long);
+  // 2026-11-08 产品方：AI 推荐守默认 1分30秒～1分40秒（口播 450～500 字），写短了要补足（原来「内容优先、不动」）
+  it('AI 推荐时长的脚本口播在 450～550 字之间：不修', async () => {
+    const ok = step(words(480));
+    const calls = mockDify(ok);
     const req = new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '脚本生成', query: '写一条脚本。', creationSettings: { duration: 'AI推荐' } }) });
     const stream = await (await POST(req as any)).text();
     expect(calls).toHaveLength(1);
-    expect(shownAfterStream(stream)).toBe(long);
+    expect(shownAfterStream(stream)).toBe(ok);
+  });
+});
+
+describe('脚本口播字数不够：生成后按原稿补足一次', () => {
+  it('AI 推荐只写了 200 字：按默认时长补到 450～500 字，采用更长的补写稿', async () => {
+    const short = step(words(200));
+    const full = step(words(470));
+    const calls = mockDify(short, full);
+    const req = new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '脚本生成', query: '写一条脚本。', creationSettings: { duration: 'AI推荐' } }) });
+    const stream = await (await POST(req as any)).text();
+    expect(calls).toHaveLength(2);
+    expect(String(calls[1].query)).toContain('只有 200 字');
+    expect(String(calls[1].query)).toContain('450～500 字');
+    expect(shownAfterStream(stream)).toBe(full);
+  });
+
+  it('设了 60 秒只写了 150 字：补到 270～300 字；补写稿没变长就保留原稿', async () => {
+    const short = step(words(150));
+    const calls = mockDify(short, step(words(120)));
+    const req = new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '脚本生成', query: '写一条脚本。', creationSettings: { duration: '60秒' } }) });
+    const stream = await (await POST(req as any)).text();
+    expect(calls).toHaveLength(2);
+    expect(String(calls[1].query)).toContain('270～300 字');
+    expect(shownAfterStream(stream)).toBe(short);
   });
 });

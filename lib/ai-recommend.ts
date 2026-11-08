@@ -28,18 +28,30 @@ export function durationCeilingSeconds(duration: string): number | null {
  * - 没设（空、「AI推荐」「AI自行推断」）：内容精彩优先，时长只是次要参考。
  */
 /**
- * 脚本生成选「AI 推荐」或没选时的时长（2026-11-01 产品方：质量比时长重要，按内容讲完为止，不凑也不砍；
- * 1 分钟、3 分钟、6 分钟都可以）。原来（10-17）默认写到 1分30秒～1分40秒、口播约 450～500 字。
+ * 脚本生成选「AI 推荐」或没选时的时长。
+ * 2026-11-08 产品方：实际用下来「按内容讲完为止」（11-01）写得都很短；正常情况一定要守住默认时长——
+ * 回到页面上写的「默认 1 分 30 秒～1 分 40 秒」，口播约 450～500 字，写短了服务端会按原稿补足（lib/script-repair）。
  * 只给脚本生成用；审稿、二创还是 AI_LENGTH_RULE 的口径。
  */
-export const AI_SCRIPT_TARGET_TEXT = '按内容讲完为止';
-export const AI_SCRIPT_LENGTH_RULE = '按内容讲完为止，不凑也不砍：选题设计的每个节点、关键画面都讲到、拍到，该有的情节、细节、对话、情绪转折写足；讲完就收，不为凑时长注水，也不为了短删掉该有的内容';
+export const AI_SCRIPT_DEFAULT_DURATION = '90-100秒';
+export const AI_SCRIPT_TARGET_TEXT = '默认 1分30秒～1分40秒（口播约 450～500 字）';
+export const AI_SCRIPT_LENGTH_RULE = '默认时长 1分30秒～1分40秒：口播约 450～500 字，不少于 450 字（写完数过字再交）。选题设计的每个节点、关键画面都讲到、拍到，该有的情节、细节、对话、情绪转折写足；字数不够就把已有的情节、画面、对话写细，不注水、不重复、不编新事实；也不明显超过 500 字';
+
+/** 脚本第 2 步口播的目标字数：没设或 AI 推荐用默认时长；取不到秒数返回 null */
+export function scriptSpokenTarget(duration: string | null | undefined): { lo: number; hi: number; duration: string } | null {
+  const d = (duration ?? '').trim();
+  const eff = !d || /AI/.test(d) ? AI_SCRIPT_DEFAULT_DURATION : d;
+  const sec = durationCeilingSeconds(eff);
+  if (!sec) return null;
+  const hi = Math.round(sec * SPEECH_CHARS_PER_SECOND);
+  return { lo: Math.round(hi * 0.9), hi, duration: eff };
+}
 
 /**
  * 脚本生成的时长规则：
- * - 选「AI 推荐」或没选：按 AI_SCRIPT_LENGTH_RULE，按内容讲完为止；
+ * - 选「AI 推荐」或没选：按默认时长 1分30秒～1分40秒（AI_SCRIPT_LENGTH_RULE）；
  * - 编导设了时长：严格按设定写（durationRule 的口径），口播字数在设定时长的 90%～100% 之间，
- *   不明显短于设定，也不超出。
+ *   不明显短于设定，也不超出。两种情况写短了、写长了，服务端都会按原稿修一次（lib/script-repair）。
  */
 export function scriptLengthRule(duration: string | null | undefined): string {
   const d = (duration ?? '').trim();

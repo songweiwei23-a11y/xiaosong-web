@@ -21,10 +21,20 @@ describe('脚本修复：什么时候修', () => {
     expect(scriptRepairReason(step(words(307)), '30秒')).toBe('length');
   });
 
-  it('AI推荐或没设时长：不查长度，只查结构', () => {
-    expect(explicitBudget('AI推荐')).toBeNull();
-    expect(scriptRepairReason(step(words(1500)), 'AI推荐')).toBeNull();
-    expect(scriptRepairReason(step(words(1500)), '')).toBeNull();
+  // 2026-11-08 产品方：AI 推荐或没设时长按默认 1分30秒～1分40秒（口播 450～500 字）查长短
+  it('AI推荐或没设时长：按默认 90-100 秒查，450～550 字之间不修', () => {
+    expect(explicitBudget('AI推荐')).toBe(500);
+    expect(explicitBudget('')).toBe(500);
+    expect(scriptRepairReason(step(words(480)), 'AI推荐')).toBeNull();
+    expect(scriptRepairReason(step(words(1500)), 'AI推荐')).toBe('length');
+    expect(scriptRepairReason(step(words(200)), '')).toBe('short');
+  });
+
+  it('写短了要补：设了 60 秒（270～300 字）只写了 150 字 → short；够了不修', () => {
+    expect(scriptRepairReason(step(words(150)), '60秒')).toBe('short');
+    expect(scriptRepairReason(step(words(280)), '60秒')).toBeNull();
+    expect(scriptRepairReason(step(words(160)), '30秒')).toBeNull();
+    expect(scriptRepairReason(step(words(100)), '30秒')).toBe('short');
   });
 
   it('没有第 2 步纯文字文案：结构原因，不论时长', () => {
@@ -48,6 +58,13 @@ describe('脚本修复：修复稿什么时候采用', () => {
   it('修复稿口播太短（不到 40 字），不采用，免得为压缩把口播删空', () => {
     expect(acceptScriptRepair(step('太短。'), '30秒')).toBe(false);
   });
+
+  it('补字数的修复稿：比原稿长、又不超上限才采用', () => {
+    expect(acceptScriptRepair(step(words(280)), '60秒', 150)).toBe(true);
+    expect(acceptScriptRepair(step(words(140)), '60秒', 150)).toBe(false);
+    expect(acceptScriptRepair(step(words(400)), '60秒', 150)).toBe(false);
+    expect(acceptScriptRepair(step(words(470)), 'AI推荐', 200)).toBe(true);
+  });
 });
 
 describe('脚本修复：提示词', () => {
@@ -56,6 +73,17 @@ describe('脚本修复：提示词', () => {
     expect(p).toContain('307 字');
     expect(p).toContain('150 字以内');
     expect(p).toContain('不新增任何素材');
+  });
+
+  it('写短时写明要补到多少字、只把原稿已有的讲细、分镜台词同步', () => {
+    const p = buildScriptRepairPrompt({ text: step(words(150)), reason: 'short', spoken: 150, duration: '60秒' });
+    expect(p).toContain('只有 150 字');
+    expect(p).toContain('270～300 字');
+    expect(p).toContain('第 3 步分镜的台词跟着同步');
+    expect(p).toContain('不新增任何素材');
+    const ai = buildScriptRepairPrompt({ text: step(words(200)), reason: 'short', spoken: 200, duration: 'AI推荐' });
+    expect(ai).toContain('默认时长 1分30秒～1分40秒');
+    expect(ai).toContain('450～500 字');
   });
 
   it('结构缺失时要求按四步重写', () => {
