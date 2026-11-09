@@ -3,7 +3,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  buildReviewPrompt, defaultReviewMonth, installReview, keepReviewSlot, mergeMemory, parseReviewJson, readMix, reviewFreshness,
+  buildReviewPrompt, defaultReviewMonth, installReview, keepInferredFor, keepReviewSlot, reviewDataStatus, mergeMemory, parseReviewJson, readMix, reviewFreshness,
   reviewPromptBlock, reviewToMarkdown, rollbackReview, worksInMonth, type MonthlyReview, type ReviewSlot,
 } from '@/lib/monthly-review';
 import { buildContextBlock, type CreatorContext } from '@/lib/creator-context';
@@ -154,6 +154,38 @@ describe('结果一直存着', () => {
     expect(md).toContain('2026年10月复盘');
     expect(md).toContain('开头先说价格：**成了**');
     expect(md).toContain('选题：多出老板讲手艺的题');
+  });
+});
+
+describe('第三步：没记目的的推测、补数据入口、月报合一页（2026-11-09）', () => {
+  it('推测只收三种目的；只留这个月、没记目的的作品；存档里写明「推测」', () => {
+    const p = parseReviewJson(MODEL.replace('"dataGaps"', '"inferred": [{"title": "新品毛肚上桌", "purpose": "流量型", "why": "展示新品"}, {"title": "x", "purpose": "爆款型"}, {"title": "编的", "purpose": "人设型"}], "dataGaps"'))!;
+    expect(p.inferred!.map((x) => x.title)).toEqual(['新品毛肚上桌', '编的']);
+    const kept = keepInferredFor(p.inferred, [{ title: '新品毛肚上桌', purpose: null }, { title: '凌晨四点', purpose: '人设型' }]);
+    expect(kept).toEqual([{ title: '新品毛肚上桌', purpose: '流量型', why: '展示新品' }]);
+    expect(reviewToMarkdown(review('2026-10', { inferred: kept }))).toContain('没记目的的作品（推测，不算进确定配比）');
+    expect(buildReviewPrompt({ month: '2026-10', today: '2026-11-01', through: '2026-10-31', profileSummary: '', works: [], performanceBlock: '', insightBlock: '', diagnosisKey: '', previous: null, memory: { verified: [], dropped: [] }, collectedText: '', fileTexts: [] }).system).toContain('「目的：未记录」的作品，按上面三种视频的定义推测');
+    expect(readCode('lib/monthly-review-run.ts')).toMatch(/inferred: keepInferredFor\(parsed\.inferred, reviewWorks\)/);
+  });
+  it('补数据：这个月发布的几条没录数据、几条没记目的；面板指到录数据和导入数据表', () => {
+    const s = reviewDataStatus([
+      { title: 'a', published_at: '2026-10-03T00:00:00Z', hasData: true, purpose: '人设型' },
+      { title: 'b', published_at: '2026-10-09T00:00:00Z', hasData: false, purpose: null },
+      { title: 'c', published_at: '2026-09-09T00:00:00Z', hasData: false, purpose: null },
+    ], '2026-10');
+    expect(s).toEqual({ month: '2026-10', published: 2, withData: 1, missing: ['b'], noPurpose: 1 });
+    const panel = readCode('components/works/MonthlyReview.tsx');
+    expect(panel).toMatch(/href="#metrics-import"/);
+    expect(panel).toMatch(/href="#import-materials"/);
+    const page = readCode('app/dashboard/works/page.tsx');
+    expect(page).toMatch(/id="metrics-import"/);
+    expect(page).toMatch(/id="import-materials"/);
+  });
+  it('月报里有那个月的复盘：先找当前卡和最近几版，找不到去永久存档', () => {
+    const report = readCode('app/dashboard/report/page.tsx');
+    expect(report).toMatch(/all\.filter\(\(r\) => r\.month === month\)/);
+    expect(report).toMatch(/archive=review/);
+    expect(report).toMatch(/这个月还没复盘/);
   });
 });
 

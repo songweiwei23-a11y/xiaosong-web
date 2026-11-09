@@ -164,7 +164,8 @@ export default function WorksPage() {
       <AccountDiagnosis />
       {/* 月度复盘 · 下月策略卡：每月 1 号自动复盘，策略卡直接给规划类板块用 */}
       <MonthlyReview />
-      <MaterialsPanel />
+      {/* 锚点：复盘面板「补数据」从这里跳过来（导入抖音后台导出的作品数据表） */}
+      <div id="import-materials" className="scroll-mt-4"><MaterialsPanel /></div>
 
       {/* 学习进度（整改 B2）：离「开物验证写法」还差几条数据 */}
       <LearningProgressNote />
@@ -173,12 +174,12 @@ export default function WorksPage() {
       {(counts?.published ?? 0) > 0 && <PerformanceReview revision={perfRev} />}
       {/* 从平台后台复制数据表批量导入（2026-10-04） */}
       {(counts?.published ?? 0) > 0 && (
-        <MetricsImport onSaved={() => {
+        <div id="metrics-import" className="scroll-mt-4"><MetricsImport onSaved={() => {
           setPerfRev((n) => n + 1);
           invalidateCreatorContext();
           // 当前列表里的作品数据跟着刷新
           if (filter) listWorksPage({ group: filter === "all" ? null : filter, limit: Math.max(PAGE, works?.length ?? 0) }).then(setWorks).catch(() => {});
-        }} />
+        }} /></div>
       )}
 
       {counts && counts.all > 0 && (

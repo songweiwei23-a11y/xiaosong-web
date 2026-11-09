@@ -12,7 +12,7 @@ import { douyinLinkFromText, SELF_SINCE, versionBelow } from "@/components/bench
 import { CONTENT_ROLE_LIST } from "@/lib/content-roles";
 import {
   REVIEW_BOARD_LABELS, reviewFreshness, reviewMonthLabel, STALE_WARN_DAYS,
-  type MonthlyReview as Review, type ReviewMemory, type ReviewStrategy,
+  type MonthlyReview as Review, type ReviewDataStatus, type ReviewMemory, type ReviewStrategy,
 } from "@/lib/monthly-review";
 import { ReportArchive } from "./ReportArchive";
 import { claimSelfCollection, SELF_LINK_KEY, wantSelfCollection } from "@/lib/self-collect-target";
@@ -25,7 +25,7 @@ import { claimSelfCollection, SELF_LINK_KEY, wantSelfCollection } from "@/lib/se
  */
 
 interface Job { state: "idle" | "running" | "failed"; error?: string; month?: string }
-interface Data { review: Review | null; history: Review[]; memory: ReviewMemory; job: Job; defaultMonth: string }
+interface Data { review: Review | null; history: Review[]; memory: ReviewMemory; job: Job; defaultMonth: string; dataStatus?: ReviewDataStatus | null }
 
 function monthOptions(defaultMonth: string): string[] {
   const now = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 7);
@@ -53,12 +53,15 @@ export function MonthlyReview() {
   const [showHistory, setShowHistory] = useState(false);
   const lastBatch = useRef("");
 
-  const load = useCallback(async (pid: string) => {
-    const d = await fetch(`/api/monthly-review?profileId=${encodeURIComponent(pid)}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const load = useCallback(async (pid: string, m?: string) => {
+    const q = `profileId=${encodeURIComponent(pid)}${m ? `&month=${encodeURIComponent(m)}` : ""}`;
+    const d = await fetch(`/api/monthly-review?${q}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!d) return;
     setData(d as Data);
-    setMonth((m) => m || (d as Data).defaultMonth);
+    setMonth((x) => x || (d as Data).defaultMonth);
   }, []);
+  // 换了月份：重新看那个月的数据齐不齐
+  const pickMonth = (m: string) => { setMonth(m); if (profileId) void load(profileId, m); };
 
   useEffect(() => {
     const sync = () => {
@@ -79,7 +82,7 @@ export function MonthlyReview() {
     if (!running || !profileId) return;
     const t = window.setInterval(async () => {
       const before = data?.review?.generatedAt;
-      const d = await fetch(`/api/monthly-review?profileId=${encodeURIComponent(profileId)}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const d = await fetch(`/api/monthly-review?profileId=${encodeURIComponent(profileId)}${month ? `&month=${encodeURIComponent(month)}` : ""}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       if (!d) return;
       setData(d as Data);
       if ((d as Data).job.state !== "running") {
@@ -88,7 +91,7 @@ export function MonthlyReview() {
       }
     }, 5000);
     return () => window.clearInterval(t);
-  }, [running, profileId, data?.review?.generatedAt]);
+  }, [running, profileId, data?.review?.generatedAt, month]);
 
   const start = async (collected?: { text: string; summary: string }) => {
     if (!profileId) { notify("先在侧边栏选一个档案"); return; }
@@ -103,7 +106,7 @@ export function MonthlyReview() {
       if (!res.ok) { notify(d?.error || "复盘没开始，请稍后再试", "error"); return; }
       setMsg("");
       notify("开始复盘了：大约 1～2 分钟，可以先去做别的，做完这里会自动更新");
-      await load(profileId);
+      await load(profileId, month);
     } catch (e) {
       notify(isNetworkError(e) ? NETWORK_ERROR_HINT : (e as Error).message, "error");
     } finally {
@@ -155,7 +158,7 @@ export function MonthlyReview() {
       const res = await postSafely("/api/monthly-review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profileId, ...body }) });
       const d = await res.json().catch(() => null);
       if (!res.ok) { notify(d?.error || "没保存上，请稍后再试", "error"); return; }
-      await load(profileId);
+      await load(profileId, month);
       invalidateCreatorContext();
       notify(done);
       setEditing(null);
@@ -198,7 +201,7 @@ export function MonthlyReview() {
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <select aria-label="复盘哪个月" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-border bg-background px-2.5 py-2 text-[13px] text-foreground">
+        <select aria-label="复盘哪个月" value={month} onChange={(e) => pickMonth(e.target.value)} className="rounded-lg border border-border bg-background px-2.5 py-2 text-[13px] text-foreground">
           {monthOptions(data?.defaultMonth || month || "").filter(Boolean).map((m) => <option key={m} value={m}>{reviewMonthLabel(m)}</option>)}
         </select>
         <input
@@ -211,8 +214,29 @@ export function MonthlyReview() {
         <button type="button" onClick={collect} disabled={busy || running} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60">采集主页并复盘</button>
         <button type="button" onClick={() => void start()} disabled={busy || running} className="shrink-0 rounded-lg border border-border px-3 py-2 text-[12.5px] text-foreground hover:bg-foreground/[0.06] disabled:opacity-60">只用作品记录复盘</button>
       </div>
+      {data?.dataStatus && (() => {
+        // 补数据入口（第三步）：复盘前看一眼这个月的数据齐不齐，缺的指到录数据、导入数据表的地方
+        const ds = data.dataStatus;
+        return (
+          <div className="space-y-1 rounded-lg bg-foreground/[0.03] px-3 py-2 text-[12.5px] text-muted-foreground">
+            {ds.published === 0 ? (
+              <p>{reviewMonthLabel(ds.month)}还没有记成「已发布」的作品：复盘只能看作品记录和导入的数据，结论会比较粗。</p>
+            ) : ds.missing.length ? (
+              <p>
+                <span className="text-amber-500">{reviewMonthLabel(ds.month)}发布了 {ds.published} 条，{ds.published - ds.withData} 条还没录数据</span>，复盘看不到它们的效果：
+                {ds.missing.map((t) => `《${t}》`).join("")}{ds.published - ds.withData > ds.missing.length ? "…" : ""}
+                <a href="#metrics-import" className="ml-1 text-primary underline">去录数据</a>
+                <a href="#import-materials" className="ml-2 text-primary underline">导入抖音后台的数据表</a>
+              </p>
+            ) : (
+              <p className="text-emerald-500">{reviewMonthLabel(ds.month)}发布的 {ds.published} 条都录了数据 ✓</p>
+            )}
+            {ds.noPurpose > 0 && <p>{ds.noPurpose} 条作品没记视频目的：复盘时会按流量型 / 人设型 / 变现型推测，标明「推测」，不算进确定的配比。</p>}
+          </div>
+        );
+      })()}
       {msg && <p className="text-[12.5px] text-foreground">{msg}</p>}
-      {running && <p className="flex items-center gap-1.5 text-[12.5px] text-primary"><Loader2 className="h-3.5 w-3.5 animate-spin" />正在复盘{data?.job.month ? ` ${reviewMonthLabel(data.job.month)}` : ""}，大约 1～2 分钟，做完自动更新</p>}
+      {running &&<p className="flex items-center gap-1.5 text-[12.5px] text-primary"><Loader2 className="h-3.5 w-3.5 animate-spin" />正在复盘{data?.job.month ? ` ${reviewMonthLabel(data.job.month)}` : ""}，大约 1～2 分钟，做完自动更新</p>}
       {data?.job.state === "failed" && <p className="text-[12.5px] text-destructive">上次复盘没完成：{data.job.error}</p>}
 
       {r && s && (
@@ -281,6 +305,9 @@ export function MonthlyReview() {
               <div className="mt-1.5 space-y-1">
                 {r.worked.map((x) => <p key={x}>✓ {x}</p>)}
                 {r.notWorked.map((x) => <p key={x}>✗ {x}</p>)}
+                {!!r.inferred?.length && (
+                  <p className="pt-1">没记目的的作品（推测，不算进确定配比）：{r.inferred.map((x) => `《${x.title}》${x.purpose}${x.why ? `（${x.why}）` : ""}`).join("；")}</p>
+                )}
                 {r.dataGaps.length > 0 && <p className="pt-1 text-foreground">补了能复盘得更准：{r.dataGaps.join("；")}</p>}
                 {r.materials.length > 0 && <p className="pt-1">读到的材料：{r.materials.join("；")}</p>}
               </div>

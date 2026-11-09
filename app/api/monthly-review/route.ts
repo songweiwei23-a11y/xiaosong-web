@@ -5,7 +5,7 @@ import { readJsonBody } from '@/lib/read-body';
 import { createRateLimiter } from '@/lib/rate-limit';
 import { readStoredInsight } from '@/lib/work-insight-load';
 import { defaultReviewMonth, monthKeyCN, MONTH_KEY, reviewToMarkdown, rollbackReview, sanitizeEditedStrategy, type ReviewSlot } from '@/lib/monthly-review';
-import { archiveReport, DIAGNOSIS_ARCHIVE_TASK, jobView, REVIEW_TASK_TYPE, startMonthlyReview } from '@/lib/monthly-review-run';
+import { archiveReport, DIAGNOSIS_ARCHIVE_TASK, jobView, loadReviewDataStatus, REVIEW_TASK_TYPE, startMonthlyReview } from '@/lib/monthly-review-run';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,13 +62,20 @@ export async function GET(request: Request) {
     }, { headers: { 'Cache-Control': 'private, no-store' } });
   }
 
-  const row = (await readStoredInsight(userId, profileId).catch(() => null)) as ReviewSlot | null;
+  // 复盘前的数据情况（第三步「补数据入口」）：看的是页面上选的那个月，没选就是默认复盘的月份
+  const askMonth = params.get('month');
+  const month = askMonth && MONTH_KEY.test(askMonth) ? askMonth : defaultReviewMonth();
+  const [row, dataStatus] = await Promise.all([
+    readStoredInsight(userId, profileId).catch(() => null) as Promise<ReviewSlot | null>,
+    loadReviewDataStatus(userId, profileId, month),
+  ]);
   return NextResponse.json({
     review: row?.review ?? null,
     history: row?.reviewHistory ?? [],
     memory: row?.reviewMemory ?? { verified: [], dropped: [] },
     job: jobView(row?.reviewJob, profileId),
     defaultMonth: defaultReviewMonth(),
+    dataStatus,
   }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 

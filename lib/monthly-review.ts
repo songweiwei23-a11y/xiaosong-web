@@ -64,7 +64,11 @@ export interface MonthlyReview {
   dataGaps: string[];
   /** 读到了哪些材料（一句一项） */
   materials: string[];
+  /** 没记目的的作品，模型按三种视频的定义推测的（2026-11-09 第三步）：只是推测，不算进确定配比 */
+  inferred?: InferredPurpose[];
 }
+
+export interface InferredPurpose { title: string; purpose: ContentRole; why: string }
 
 /** 跨月份留下的经验：试成了的打法长期生效，试过没成的别再推荐 */
 export interface ReviewMemory {
@@ -176,7 +180,8 @@ export function buildReviewPrompt(input: ReviewPromptInput): { system: string; u
     '7. 新试验最多 3 个，每个都要能在一个月里做完、能用录入的数据判断：写清拍什么、几条、看哪个数、和什么比（和自己前几条比，不写绝对合格线）。',
     '8. 给各板块的一句话要具体到能直接执行（多出哪类选题、哪个母题、开头怎么开、结尾动作），不写「可以考虑」「建议加强」这种空话。',
     '9. 材料很少（这个月没有作品、没有任何数据）时：summary 说清楚缺什么，strategy 只给最稳的一件事，experiments 给 1 个最容易做的，不要硬下结论。',
-    '10. 只输出一个 JSON 对象，不要任何其他文字。',
+    '10. 作品清单里「目的：未记录」的作品，按上面三种视频的定义推测它是哪一类，放进 inferred，写一句依据；判断不了的不放。推测的不算进确定配比，分析里用到时写明「推测」。',
+    '11. 只输出一个 JSON 对象，不要任何其他文字。',
     '',
     'JSON 结构：',
     '{"summary": "一句话：这个月整体怎么样（不超过 60 字）",',
@@ -191,7 +196,8 @@ export function buildReviewPrompt(input: ReviewPromptInput): { system: string; u
     '   "experiments": [{"name": "试验名", "how": "怎么做", "success": "怎么算成了"}],',
     '   "boards": {"选题": "一句话", "创作方向": "一句话", "起号": "一句话", "脚本": "一句话"}',
     ' },',
-    ' "dataGaps": ["缺什么材料，补了能复盘得更准，0 到 4 条"]}',
+    ' "dataGaps": ["缺什么材料，补了能复盘得更准，0 到 4 条"],',
+    ' "inferred": [{"title": "目的未记录的作品标题，原样", "purpose": "流量型|人设型|变现型", "why": "依据，不超过 20 字"}]}',
   ].join('\n');
 
   let budget = FILES_TOTAL;
@@ -309,6 +315,11 @@ export function parseReviewJson(raw: string): Omit<MonthlyReview, 'month' | 'gen
       result: (RESULTS as readonly string[]).includes(clip(e.result, 6)) ? clip(e.result, 6) as ExperimentResult['result'] : '数据不够',
       evidence: clip(e.evidence, 200),
     }));
+  const inferred = (Array.isArray(d.inferred) ? d.inferred : [])
+    .map((e) => (e && typeof e === 'object' ? e as Record<string, unknown> : null))
+    .filter((e): e is Record<string, unknown> => !!e && !!clip(e.title, 120) && (CONTENT_ROLE_LIST as string[]).includes(clip(e.purpose, 6)))
+    .slice(0, 60)
+    .map((e) => ({ title: clip(e.title, 120), purpose: clip(e.purpose, 6) as ContentRole, why: clip(e.why, 60) }));
   return {
     summary: clip(d.summary, 120),
     worked: list(d.worked, 5),
@@ -316,6 +327,42 @@ export function parseReviewJson(raw: string): Omit<MonthlyReview, 'month' | 'gen
     experimentResults,
     strategy,
     dataGaps: list(d.dataGaps, 4),
+    inferred,
+  };
+}
+
+/** 推测的目的只留真的是「这个月、没记目的」的作品（模型可能改了标题或编了一条） */
+export function keepInferredFor(inferred: InferredPurpose[] | undefined, works: { title: string; purpose: string | null }[]): InferredPurpose[] {
+  const unrecorded = new Set(works.filter((w) => !w.purpose).map((w) => w.title.trim()));
+  const seen = new Set<string>();
+  return (inferred ?? []).filter((x) => unrecorded.has(x.title) && !seen.has(x.title) && (seen.add(x.title), true));
+}
+
+export interface ReviewDataStatus {
+  month: string;
+  /** 这个月发布的 */
+  published: number;
+  /** 其中录了数据的 */
+  withData: number;
+  /** 发布了还没录数据的标题（最多 8 条） */
+  missing: string[];
+  /** 这个月有动静、但没记视频目的的作品条数（复盘时会推测） */
+  noPurpose: number;
+}
+
+/** 复盘前看一眼数据齐不齐：这个月发布的作品里几条录了数据、几条没记目的 */
+export function reviewDataStatus(
+  works: { title: string; published_at?: string | null; shoot_status?: string | null; created_at?: string | null; shot_at?: string | null; hasData: boolean; purpose: string | null }[],
+  month: string,
+): ReviewDataStatus {
+  const published = works.filter((w) => monthKeyCN(w.published_at) === month);
+  const missing = published.filter((w) => !w.hasData);
+  return {
+    month,
+    published: published.length,
+    withData: published.length - missing.length,
+    missing: missing.map((w) => w.title).slice(0, 8),
+    noPurpose: worksInMonth(works, month).filter((w) => !w.purpose).length,
   };
 }
 
@@ -441,6 +488,7 @@ export function reviewToMarkdown(r: MonthlyReview): string {
     ...sec('少做', s.doLess),
     ...sec('本月试验', s.experiments.map((e) => `${e.name}——${e.how}${e.success ? `（怎么算成了：${e.success}）` : ''}`)),
     ...sec('给各板块', REVIEW_BOARD_LABELS.filter((b) => s.boards[b]).map((b) => `${b}：${s.boards[b]}`)),
+    ...sec('没记目的的作品（推测，不算进确定配比）', (r.inferred ?? []).map((x) => `${x.title}：${x.purpose}${x.why ? `（${x.why}）` : ''}`)),
     ...sec('补了能复盘得更准', r.dataGaps),
     ...sec('读到的材料', r.materials),
   ].join('\n').replace(/\n{3,}/g, '\n\n').trim();

@@ -10,7 +10,7 @@ import { loadInsightInputs, readStoredInsight } from '@/lib/work-insight-load';
 import { diagnosisSection } from '@/lib/account-diagnosis';
 import { todayCN } from '@/lib/web-query';
 import {
-  buildReviewPrompt, installReview, JOB_STALE_MS, monthKeyCN, parseReviewJson, reviewMonthLabel, reviewToMarkdown, worksInMonth,
+  buildReviewPrompt, installReview, JOB_STALE_MS, keepInferredFor, reviewDataStatus, type ReviewDataStatus, monthKeyCN, parseReviewJson, reviewMonthLabel, reviewToMarkdown, worksInMonth,
   type MonthlyReview, type ReviewJob, type ReviewSlot, type ReviewWork,
 } from '@/lib/monthly-review';
 
@@ -124,6 +124,7 @@ export async function runMonthlyReview(input: RunReviewInput): Promise<MonthlyRe
   const withData = reviewWorks.filter((w) => w.metrics).length;
   const review: MonthlyReview = {
     ...parsed, month, through, source,
+    inferred: keepInferredFor(parsed.inferred, reviewWorks),
     generatedAt: new Date(now).toISOString(),
     materials: [
       `${reviewMonthLabel(month)}的作品 ${monthWorks.length} 条（已发布 ${published} 条，录了数据 ${withData} 条）`,
@@ -161,6 +162,19 @@ export async function startMonthlyReview(input: RunReviewInput): Promise<{ start
     })
     .finally(() => running.delete(input.profileId));
   return { started: true };
+}
+
+/** 复盘前的数据情况（页面「补数据」提示用）：这个月发布了几条、几条没录数据、几条没记目的 */
+export async function loadReviewDataStatus(userId: string, profileId: string, month: string): Promise<ReviewDataStatus | null> {
+  try {
+    const { works, settingsOf } = await loadInsightInputs(userId, profileId);
+    return reviewDataStatus(works.map((w) => ({
+      title: w.title, published_at: w.published_at, shoot_status: w.shoot_status, created_at: w.created_at, shot_at: w.shot_at,
+      hasData: !!readMetrics(w.metrics), purpose: purposeOfWork(settingsOf, w.id),
+    })), month);
+  } catch {
+    return null;
+  }
 }
 
 /** 页面上看到的任务状态：进程重启丢了的任务（超过 10 分钟没结束）当作已断 */
