@@ -7,6 +7,7 @@ import { pickFreeChatSources } from '@/lib/web-source-quality';
 import { searchFreeChatWeb } from '@/lib/free-chat-web';
 import type { SearchHit, aliSearch } from '@/lib/ali-search';
 import type { fetchPage } from '@/lib/page-fetch';
+import { readCode } from './helpers/source';
 
 const config = { endpoint: 'https://example.opensearch.aliyuncs.com/v3/web-search/test', apiKey: 'test-only', source: 'env' as const };
 const body = '这是有依据的正文内容。'.repeat(30);
@@ -14,12 +15,12 @@ const hit = (url: string, title = url, content = body, published = ''): SearchHi
 const now = Date.parse('2026-10-18T04:00:00Z');
 
 describe('抖音热榜只搜抖音自己的站点', () => {
-  it('提到抖音热榜时只搜抖音，不掺知乎和头条', () => {
-    expect(hotListSearches('抖音热榜今天')?.map(h => h.site)).toEqual(['www.douyin.com']);
-    expect(hotListSearches('抖音热搜有什么')?.map(h => h.site)).toEqual(['www.douyin.com']);
+  it('提到抖音热榜时不掺知乎和头条；抖音热榜直接读（lib/douyin-hot），不再 site: 搜（2026-11-09）', () => {
+    expect(hotListSearches('抖音热榜今天')).toEqual([]);
+    expect(hotListSearches('抖音热搜有什么')).toEqual([]);
   });
-  it('没有提到平台的热搜问题，四家都搜（含抖音）', () => {
-    expect(hotListSearches('今天有什么热搜')?.map(h => h.site)).toEqual(['zhihu.com', 's.weibo.com', 'toutiao.com', 'www.douyin.com']);
+  it('没有提到平台的热搜问题：只剩知乎走搜索', () => {
+    expect(hotListSearches('今天有什么热搜')?.map(h => h.site)).toEqual(['zhihu.com']);
   });
 });
 
@@ -88,29 +89,19 @@ describe('定向搜索封顶', () => {
     const search = vi.fn<typeof aliSearch>(async () => ({ ok: true as const, hits: [hit('https://example.com/a')] }));
     await searchFreeChatWeb('南乐今天热搜新闻', { config, search, read, onStarted, now });
     expect(search.mock.calls.length).toBeLessThanOrEqual(5);
-    expect(search.mock.calls.filter(c => c[0].startsWith('site:')).length).toBe(4);
+    // 2026-11-09 起抖音、微博、头条热榜直接读（lib/hot-boards），热榜那一路只剩知乎：地方官网 + 知乎
+    expect(search.mock.calls.filter(c => c[0].startsWith('site:')).length).toBeLessThanOrEqual(4);
   });
-  it('抖音热榜问题只发一次定向搜索，搜的是抖音站点', async () => {
+  it('抖音热榜问题不再 site: 搜抖音站点（榜单由开物服务器直接读，见 lib/douyin-hot、lib/hot-boards）', async () => {
     const search = vi.fn<typeof aliSearch>(async () => ({ ok: true as const, hits: [hit('https://www.douyin.com/hot/1', '抖音热榜', body, '2026-10-18T08:00:00+08:00')] }));
     await searchFreeChatWeb('抖音热榜今天有什么', { config, search, read, onStarted, now });
     const queries = search.mock.calls.map(c => c[0]);
-    expect(queries.filter(q => q.startsWith('site:'))).toEqual(['site:www.douyin.com 热点榜']);
+    expect(queries.filter(q => q.startsWith('site:www.douyin.com'))).toEqual([]);
   });
-  it('只点名一个平台的热榜：平台页面没有可用结果时直接说没找到，不掺全网结果', async () => {
-    const search = vi.fn<typeof aliSearch>(async (query) => query.startsWith('site:')
-      ? { ok: true as const, hits: [] }
-      : { ok: true as const, hits: [hit('https://music.example.com/douyin', '抖音音乐', body, '2026-10-18T08:00:00+08:00')] });
-    const result = await searchFreeChatWeb('抖音热榜今天', { config, search, read, onStarted, now });
-    expect(result?.status.status).toBe('unavailable');
-    expect(result?.status.message).toContain('抖音');
-    expect(result?.status.sources).toEqual([]);
-  });
-  it('只点名一个平台的热榜：有平台页面时只用平台页面，全网结果不进来', async () => {
-    const search = vi.fn<typeof aliSearch>(async (query) => query.startsWith('site:www.douyin.com')
-      ? { ok: true as const, hits: [hit('https://www.douyin.com/hot/2646421', '周启豪1:4不敌张本智和', body, '2026-10-18T06:00:00+08:00')] }
-      : { ok: true as const, hits: [hit('https://music.example.com/douyin', '抖音音乐', body, '2026-10-18T08:00:00+08:00')] });
-    const result = await searchFreeChatWeb('抖音热榜今天', { config, search, read, onStarted, now });
-    expect(result?.status.sources.map(s => s.url)).toEqual(['https://www.douyin.com/hot/2646421']);
+  it('只问抖音热榜的，路由里直接用榜单、不联网搜索（boardsOnly）；问来龙去脉的照常搜', () => {
+    const route = readCode('app/api/dify/chat/route.ts');
+    expect(route).toMatch(/const hotOnly = boards\.some\(Boolean\) && boardsOnly\(question\)/);
+    expect(route).toMatch(/prepareWebSearch\(guard\.userId!, question, hotOnly \? 'off' : body\.webSearchMode\)/);
   });
 });
 

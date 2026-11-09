@@ -42,12 +42,12 @@ describe('按需联网：实时事实要自动搜', () => {
 });
 
 describe('热榜、热搜：按平台官网搜（2026-10-17 实测：全网搜回来的是聚合站）', () => {
-  it('问哪个平台就只搜哪个', () => {
+  it('问哪个平台就只搜哪个；微博改成直接读榜单（2026-11-09），不再 site: 搜', () => {
     expect(hotListSearches('知乎热榜今天有什么')?.map((h) => h.site)).toEqual(['zhihu.com']);
-    expect(hotListSearches('微博热搜今天有什么')?.map((h) => h.site)).toEqual(['s.weibo.com']);
+    expect(hotListSearches('微博热搜今天有什么')).toEqual([]);
   });
-  it('没说平台就四家都搜（2026-10-18 起含抖音）', () => {
-    expect(hotListSearches('今天有什么热搜')?.map((h) => h.site)).toEqual(['zhihu.com', 's.weibo.com', 'toutiao.com', 'www.douyin.com']);
+  it('没说平台：只剩知乎走搜索，抖音、微博、头条都直接读榜单（lib/hot-boards）', () => {
+    expect(hotListSearches('今天有什么热搜')?.map((h) => h.site)).toEqual(['zhihu.com']);
   });
   it('微博用户主页不当成热搜来源（实测：「热搜」搜出来的几乎都是 /user/ 主页）', () => {
     const kept = pickFreeChatSources(

@@ -1,7 +1,10 @@
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { searchFreeChatWeb } from '@/lib/free-chat-web';
 import { planSearch } from '@/lib/search-plan';
-import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsHotTopics } from '@/lib/douyin-hot';
+import { wantsHotTopics } from '@/lib/douyin-hot';
+import { BOARD_LABEL as HOT_BOARD_LABEL, BOARD_PAGE as HOT_BOARD_PAGE, boardsOnly, boardsWanted, getHotBoard, hotBoardsContext } from '@/lib/hot-boards';
+import { localNewsSearches } from '@/lib/local-news-sources';
+import { newsPlace } from '@/lib/search-quality';
 import { searchProfileHint } from '@/lib/search-profile-hint';
 import { todayCN } from '@/lib/web-query';
 import { freeChatAnswerRules } from '@/lib/free-chat-answer';
@@ -225,18 +228,21 @@ export function createAssistantTools(ctx: AssistantToolContext): AssistantTool[]
   };
 
   const runWebSearch = async (question: string): Promise<string> => {
-    // 抖音今日热榜（lib/douyin-hot）：开物服务器直接读抖音网页热榜。只问热榜的不再联网搜索、不扣联网额度
-    if (wantsHotTopics(question)) {
-      const hot = await getDouyinHot().catch(() => null);
-      if (hot && douyinHotOnly(question)) {
-        ctx.onWeb?.({ status: 'done', message: '读了抖音热榜', sources: [{ title: '抖音热榜', url: 'https://www.douyin.com/hot' }] });
-        return douyinHotContext(hot);
+    // 热榜直读（2026-11-09 联网整改阶段 2，lib/hot-boards）：抖音、微博、百度、头条，和自由对话同一套规则。
+    // 只问点名平台热榜的不再联网搜索、不扣联网额度；问某地新闻的不塞全国热榜
+    let ids = boardsWanted(question, !!localNewsSearches(question) || !!newsPlace(question));
+    if (!ids.length && wantsHotTopics(question)) ids = ['douyin'];
+    if (ids.length) {
+      const boards = await Promise.all(ids.map((id) => getHotBoard(id).catch(() => null)));
+      const block = hotBoardsContext(ids, boards);
+      const got = ids.filter((_, i) => boards[i]);
+      if (boardsOnly(question)) {
+        ctx.onWeb?.(got.length
+          ? { status: 'done', message: `读了${got.map((id) => HOT_BOARD_LABEL[id]).join('、')}`, sources: got.map((id) => ({ title: HOT_BOARD_LABEL[id], url: HOT_BOARD_PAGE[id] })) }
+          : { status: 'unavailable', message: '这次没读到热榜', sources: [] });
+        return block;
       }
-      if (!hot && douyinHotOnly(question)) {
-        ctx.onWeb?.({ status: 'unavailable', message: '这次没读到抖音热榜', sources: [] });
-        return DOUYIN_HOT_MISSING;
-      }
-      if (hot) return `${douyinHotContext(hot)}\n\n${await runPlainWebSearch(question)}`;
+      return `${block}\n\n${await runPlainWebSearch(question)}`;
     }
     return runPlainWebSearch(question);
   };

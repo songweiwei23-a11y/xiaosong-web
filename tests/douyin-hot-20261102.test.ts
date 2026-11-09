@@ -105,15 +105,16 @@ describe('接线', () => {
 
   it('自由对话：问抖音热点就读；只问热榜的不联网、不扣额度；用户关了联网不读；榜单放在回答规则后面', () => {
     const r = read('app/api/dify/chat/route.ts');
-    expect(r).toContain("const hotWanted = body.freeChat === true && wantsHotTopics(question) && body.webSearchMode !== 'off';");
+    // 2026-11-09 起抖音之外还读微博、百度、头条（lib/hot-boards），用户关了联网仍然不读
+    expect(r).toContain("const boardIds = body.freeChat === true && body.webSearchMode !== 'off'");
     expect(r).toContain("prepareWebSearch(guard.userId!, question, hotOnly ? 'off' : body.webSearchMode)");
     expect(r).toContain('freeChatAnswerRules(webSession.enabled) + hotBlock');
   });
 
-  it('开物助理的联网：问抖音热榜直接给榜单，读不到照实说', () => {
+  it('开物助理的联网：问热榜直接给榜单，读不到照实说（和自由对话同一套 lib/hot-boards）', () => {
     const t = read('lib/assistant/tools.ts');
-    expect(t).toContain('if (hot && douyinHotOnly(question))');
-    expect(t).toContain('return DOUYIN_HOT_MISSING;');
+    expect(t).toContain('if (boardsOnly(question))');
+    expect(t).toContain("{ status: 'unavailable', message: '这次没读到热榜', sources: [] }");
   });
 
   it('插件不读热榜（产品方：调用插件过分了）', () => {

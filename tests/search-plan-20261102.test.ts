@@ -106,12 +106,14 @@ describe('接到搜索上', () => {
     expect(r.context).toContain('用户想找的是：县城理发店做抖音获客的真实案例');
   });
 
-  it('热榜四家 + 两个角度：定向让出名额，总数仍是 5 次', async () => {
+  it('热榜 + 两个角度：两个通用搜索都发；总数不超过 5 次（2026-11-09 起抖音、微博、头条热榜直接读，定向只剩知乎）', async () => {
     const queries: string[] = [];
     const search = (async (q: string) => { queries.push(q); return { ok: true, hits: [] }; }) as never;
-    await searchFreeChatWeb('今天的热搜有什么', { config: {} as never, search, read: (async () => ({ ok: false })) as never, onStarted: async () => {}, plan: { ...PLAN, intent: '行业数据' } });
-    expect(queries.length).toBe(5);
-    expect(queries.filter((q) => !q.startsWith('site:')).length).toBe(2);
+    await searchFreeChatWeb('今天的热搜有什么', { config: {} as never, search, read: (async () => ({ ok: false })) as never, onStarted: async () => {}, plan: { ...PLAN, intent: '行业数据' }, extra: [] });
+    // 第一轮：2 个通用 + 知乎 1 个定向；按「今天」一条都没搜到，通用搜索放宽一档再搜一次（2 个）
+    expect(queries.filter((q) => !q.startsWith('site:')).length).toBeGreaterThanOrEqual(2);
+    expect(queries.filter((q) => q.startsWith('site:'))).toEqual(['site:zhihu.com 热榜']);
+    expect(queries.length).toBeLessThanOrEqual(5);
   });
 
   it('时效：模型给的只在新闻热点时用；案例、价格这类没说时间的不限时效（老案例照样收）', async () => {

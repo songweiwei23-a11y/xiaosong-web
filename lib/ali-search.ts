@@ -52,15 +52,74 @@ export function parseSearchResponse(status: number, body: string): SearchResult 
   return { ok: true, hits };
 }
 
-export async function aliSearch(query: string, config: SearchConfig, opts: { topK?: number; timeoutMs?: number; way?: 'lite' | 'pro' | 'pro-fetch'; rewrite?: boolean; today?: string } = {}): Promise<SearchResult> {
+/** 接口自带的时间过滤（官方文档的 time_range）：只要这段时间内发布的 */
+export type TimeRange = 'day' | 'week' | 'month' | 'year';
+
+/**
+ * 要最近 N 天的 → 交给接口的时间过滤（2026-11-09 联网整改阶段 1）。
+ * 原来没传，搜回来的是不分时间的结果，再在本地按日期丢，新内容本来就没被搜回来。
+ * 「今天」（规则和搜索计划给的都是 2 天）用 day：实测按 week 搜，「今天的热点新闻」拿到的是 3～4 天前的；
+ * day 一条都搜不到时会自动放宽到 week（见 lib/free-chat-web），不会因为太严而空手。
+ */
+export function timeRangeOf(recencyDays: number): TimeRange | undefined {
+  if (!recencyDays || recencyDays <= 0) return undefined;
+  if (recencyDays <= 2) return 'day';
+  if (recencyDays <= 8) return 'week';
+  if (recencyDays <= 40) return 'month';
+  if (recencyDays <= 400) return 'year';
+  return undefined;
+}
+/** 按时间搜不到时放宽一档 */
+export function widerRange(r: TimeRange | undefined): TimeRange | undefined {
+  return r === 'day' ? 'week' : r === 'week' ? 'month' : r === 'month' ? 'year' : undefined;
+}
+
+/**
+ * 全账号每秒最多 3 次调用（官方文档：ops-web-search-001 QPS 上限 3，账号和子账号共用）。
+ * 原来一个问题同时发最多 5 次，开物助理、深度研究也一起发，超出的被限流、在定向搜索里当成「这一路没结果」悄悄丢掉。
+ * 现在本进程里所有搜索排队：任意 1 秒内最多 3 次（三次以内不用等）；被限流的等一下再试一次。
+ * 2026-11-09 基线实测（单人连续 20 问、41 次搜索）没有出现限流；多人同时用时才可能撞上，排队是兜底。
+ */
+export const ALI_QPS = 3;
+/** 最近几次发出的时间（预约好的也算）：任意 1 秒内最多 ALI_QPS 次，三次以内不用等 */
+let starts: number[] = [];
+/** 算出这一次该什么时候发（并预约上）；纯计算，测试可直接调 */
+export function reserveAliSlot(now: number): number {
+  starts = starts.filter((t) => t > now - 1000).sort((a, b) => a - b);
+  const at = starts.length < ALI_QPS ? now : Math.max(now, starts[starts.length - ALI_QPS] + 1000);
+  starts.push(at);
+  return at;
+}
+async function takeSlot(): Promise<void> {
+  const now = Date.now();
+  const at = reserveAliSlot(now);
+  if (at > now) await new Promise((r) => setTimeout(r, at - now));
+}
+/** 测试用 */
+export function resetAliQueue(): void { starts = []; }
+
+export interface AliSearchOptions {
+  topK?: number; timeoutMs?: number; way?: 'lite' | 'pro' | 'pro-fetch'; rewrite?: boolean; today?: string;
+  /** 只要这段时间内发布的（接口的 time_range） */
+  timeRange?: TimeRange;
+  /** 多轮多源搜索（接口的 extend_search）：长尾问题更全，复杂问题约 7 秒；不能和 lite 一起用 */
+  extend?: boolean;
+  /** 测试用：不排队、不等重试 */
+  noQueue?: boolean;
+}
+
+async function aliSearchOnce(query: string, config: SearchConfig, opts: AliSearchOptions): Promise<SearchResult> {
   let res: Response;
   try {
+    const way = opts.way ?? 'lite';
     res = await fetch(config.endpoint, {
       method: 'POST',
       headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: query.slice(0, 500), query_rewrite: opts.rewrite ?? false,
-        top_k: opts.topK ?? 8, content_type: 'mainText', way: opts.way ?? 'lite',
+        top_k: opts.topK ?? 8, content_type: 'mainText', way,
+        ...(opts.timeRange ? { time_range: opts.timeRange } : {}),
+        ...(opts.extend && way !== 'lite' ? { extend_search: true } : {}),
         ...(opts.today ? { history: [{ role: 'system', content: `今天是${opts.today}（北京时间）。保留问题的实体、地区、比较对象和技术限定；只改写检索措辞，不添加不存在的事实。` }] } : {}),
       }),
       signal: AbortSignal.timeout(opts.timeoutMs ?? 25_000),
@@ -70,6 +129,16 @@ export async function aliSearch(query: string, config: SearchConfig, opts: { top
     return { ok: false, reason: 'network' };
   }
   return parseSearchResponse(res.status, await res.text().catch(() => ''));
+}
+
+export async function aliSearch(query: string, config: SearchConfig, opts: AliSearchOptions = {}): Promise<SearchResult> {
+  if (!opts.noQueue) await takeSlot();
+  const first = await aliSearchOnce(query, config, opts);
+  if (first.ok || first.reason !== 'quota' || opts.noQueue) return first;
+  // 被限流：等一秒多再试一次（还在队列里排，不插队）
+  await new Promise((r) => setTimeout(r, 1200));
+  await takeSlot();
+  return aliSearchOnce(query, config, opts);
 }
 
 export const SEARCH_FAILURE_TEXT: Record<SearchFailure, string> = {

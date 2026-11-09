@@ -99,7 +99,8 @@ describe('自由对话搜索源头', () => {
     expect(onStarted).toHaveBeenCalledTimes(1);
     expect(result?.status.status).toBe('done'); expect(result?.readCount).toBe(0);
     expect(result?.context).toContain('搜索返回的正文或片段');
-    expect(read.mock.calls[0][1]).toMatchObject({ timeoutMs: 5000, maxBytes: 800_000 });
+    // 2026-11-09 联网整改：补读每页 6 秒（原来 5 秒）
+    expect(read.mock.calls[0][1]).toMatchObject({ timeoutMs: 6000, maxBytes: 800_000 });
   });
   it('原网页补读成功才记录已读，不冒称阅读全文', async () => {
     const result = await searchFreeChatWeb('行业方法', { config, onStarted: vi.fn(async () => {}),

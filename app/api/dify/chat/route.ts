@@ -37,7 +37,10 @@ import { KB_ROUTING_ENABLED, NO_KB_TASKS, freeChatNeedsKnowledge } from '@/lib/k
 import { freeChatAnswerRules } from '@/lib/free-chat-answer'
 import { searchFreeChatWeb, type FreeChatWebResult } from '@/lib/free-chat-web'
 import { planSearch } from '@/lib/search-plan'
-import { DOUYIN_HOT_MISSING, douyinHotContext, douyinHotOnly, getDouyinHot, wantsHotTopics } from '@/lib/douyin-hot'
+import { wantsHotTopics } from '@/lib/douyin-hot'
+import { boardsOnly, boardsWanted, getHotBoard, hotBoardsContext } from '@/lib/hot-boards'
+import { localNewsSearches } from '@/lib/local-news-sources'
+import { newsPlace } from '@/lib/search-quality'
 import { searchProfileHint } from '@/lib/search-profile-hint'
 
 /*
@@ -239,12 +242,14 @@ export async function POST(request: NextRequest) {
     // 抖音今日热榜（lib/douyin-hot）：问抖音热点时由开物服务器直接读抖音网页热榜（全站 10 分钟缓存）。
     // 只问抖音热榜的不再联网搜索，也不扣联网额度；用户关了联网就不读
     // 问「能蹭什么热点」「最近有什么热点」也带上今天的抖音热榜（照样联网，hotOnly 只认点名抖音热榜的）
-    const hotWanted = body.freeChat === true && wantsHotTopics(question) && body.webSearchMode !== 'off';
-    const hotList = hotWanted ? await getDouyinHot() : null;
-    const hotBlock = hotWanted
-      ? `\n\n${hotList ? `${douyinHotContext(hotList)}\n这份榜单是开物服务器从抖音读到的实时数据，可以当作已核实的抖音热榜引用（来源：[抖音热榜](https://www.douyin.com/hot)），不受上面「未联网」的限制。` : DOUYIN_HOT_MISSING}`
-      : '';
-    const hotOnly = !!hotList && douyinHotOnly(question);
+    // 2026-11-09 联网整改阶段 2：微博、百度、今日头条热榜也直接读（lib/hot-boards）。点名平台读点名的；
+    // 没点名、问热点或今天的新闻大事就四家都读；问某地新闻（有地名）不读全国热榜
+    const boardIds = body.freeChat === true && body.webSearchMode !== 'off'
+      ? (() => { const ids = boardsWanted(question, !!localNewsSearches(question) || !!newsPlace(question)); return ids.length || !wantsHotTopics(question) ? ids : ['douyin' as const]; })()
+      : [];
+    const boards = await Promise.all(boardIds.map((id) => getHotBoard(id)));
+    const hotBlock = boardIds.length ? `\n\n${hotBoardsContext(boardIds, boards)}` : '';
+    const hotOnly = boards.some(Boolean) && boardsOnly(question);
     const callDify = async () => {
       // 失效会话重试复用已搜资料，不重复调用付费搜索。
       if (!serverWeb) {
