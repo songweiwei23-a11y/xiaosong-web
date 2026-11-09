@@ -1122,6 +1122,8 @@ export default function TopicPage() {
         <TopicList
           topics={parseTopicOptions(result)}
           works={works}
+          // 查重（lib/topic-dup）：核对润色做完、标题定下来以后再比，这个号有拍过、发过的才比
+          dupCheck={!finishing && !!selectedProfileId && !!creatorContext.doneList?.length ? selectedProfileId : null}
           onAction={(title, stage) =>
             sendTopic(title, stage, splitTopicSections(result).find((s) => s.title === title)?.body)
           }
