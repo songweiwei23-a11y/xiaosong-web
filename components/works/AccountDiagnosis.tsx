@@ -17,6 +17,7 @@ import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
 import { clearDraft, DRAFT_THROTTLE_MS, readDraft, saveDraft } from "@/lib/report-draft";
 import { claimSelfCollection, SELF_LINK_KEY, wantSelfCollection } from "@/lib/self-collect-target";
 import { ReportArchive } from "./ReportArchive";
+import { PLUGIN_SILENT, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
 
 /**
  * 创作进度顶部的「诊断我的账号」（2026-11-02 产品方：用拆对标的逻辑拆自己的号，也能用抖音的真实数据，
@@ -212,15 +213,24 @@ export function AccountDiagnosis() {
     void runRef.current(collected, images);
   }, [tick, loading, profileId]);
 
-  const collect = () => {
-    const url = douyinLinkFromText(link);
-    if (!url) return setMsg("没认出抖音链接：打开你自己的抖音主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
-    if (!installed) return setMsg("要先装「开物 · 截屏带入」插件（在「对标 & 热点」页有安装步骤），装好刷新这一页再点");
-    if (version && versionBelow(version, SELF_SINCE)) return setMsg(`插件是旧版本（${version}），还不会诊断自己的号：到「对标 & 热点」页按提示更新插件，刷新这一页再点`);
+  const [checking, setChecking] = useState(false);
+  const collect = async () => {
+    const raw = douyinLinkFromText(link);
+    if (!raw) return setMsg("没认出抖音链接：打开你自己的抖音主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
+    const v = version || pluginVersionFromPage();
+    if (!installed && !v) return setMsg("要先装「开物 · 截屏带入」插件（在「对标 & 热点」页有安装步骤），装好刷新这一页再点");
+    if (v && versionBelow(v, SELF_SINCE)) return setMsg(`插件是旧版本（${v}），还不会诊断自己的号：到「对标 & 热点」页重新下载安装新版，刷新这一页再点`);
+    // 2026-11-10：先解析链接（短链接复制不全、过期会落到抖音首页，插件打开了也采不了，原来开物这边一点反应都没有）
+    setChecking(true);
+    setMsg("正在核对链接…");
+    const prepared = await prepareCollectLink(raw);
+    setChecking(false);
+    if (!prepared.ok) return setMsg(prepared.message);
     try { if (profileId) localStorage.setItem(LINK_KEY(profileId), link.trim()); } catch { /* 存不了就算了 */ }
     wantSelfCollection("diagnosis");
-    window.postMessage({ source: "kaiwu-page", type: "collect", url, purpose: "self" }, window.location.origin);
+    window.postMessage({ source: "kaiwu-page", type: "collect", url: prepared.url, purpose: "self" }, window.location.origin);
     setMsg("插件已经去打开你的主页、自动采集了：大约 3 分钟，采完自动回到这里开始诊断。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
+    watchPluginOpened(() => setMsg(PLUGIN_SILENT));
   };
 
   if (!profileId) return null;
@@ -239,11 +249,11 @@ export function AccountDiagnosis() {
           aria-label="我的抖音主页链接"
           value={link}
           onChange={(e) => setLink(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") collect(); }}
+          onKeyDown={(e) => { if (e.key === "Enter") void collect(); }}
           placeholder="粘贴你自己的抖音主页链接，或抖音 App 里分享主页复制的整段文字"
           className="min-w-0 flex-1 rounded-lg border border-border bg-background/50 px-3 py-2 text-[13px] text-foreground"
         />
-        <button type="button" onClick={collect} disabled={running} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60">
+        <button type="button" onClick={() => void collect()} disabled={running || checking} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60">
           一键采集并诊断
         </button>
         <button type="button" onClick={() => void run(null, [])} disabled={running} className="shrink-0 rounded-lg border border-border px-3 py-2 text-[12.5px] text-foreground hover:bg-foreground/[0.06] disabled:opacity-60">

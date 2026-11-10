@@ -153,7 +153,8 @@ describe('接线', () => {
     expect(page.indexOf('<AccountDiagnosis />')).toBeLessThan(page.indexOf('<MaterialsPanel />'));
     const c = read('components/works/AccountDiagnosis.tsx');
     expect(c).toContain('if (!col || col.purpose !== "self") return;');
-    expect(c).toContain('type: "collect", url, purpose: "self"');
+    // 2026-11-10 起交给插件的是服务器解析过的主页地址（lib/collect-link-client）
+    expect(c).toContain('type: "collect", url: prepared.url, purpose: "self"');
     expect(c).toContain('if (!pending.current || loading || !profileId) return;');
     expect(c).toContain('invalidateCreatorContext();');
     expect(c).toContain('taskType: DIAGNOSIS_TASK_TYPE');

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, ImagePlus, X } from "lucide-react";
 import { COVER_PREFIX, sanitizeCollection, type Collection } from "@/lib/benchmark-collection";
+import { PLUGIN_SILENT, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
 
 /**
  * 「开物 · 截屏带入」浏览器插件和对标页的衔接（2026-11-01；11-02 加一键采集）。插件在 browser-extension/kaiwu-capture。
@@ -188,17 +189,23 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
   };
 
   // 粘贴主页链接一键拆解：交给插件去打开主页、自动采集，采完回到这一页自动开拆
-  const collectByLink = () => {
-    const url = douyinLinkFromText(link);
-    if (!url) return setLinkMsg("没认出抖音链接：打开对标账号的主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
-    if (!installed) {
+  const collectByLink = async () => {
+    const raw = douyinLinkFromText(link);
+    if (!raw) return setLinkMsg("没认出抖音链接：打开对标账号的主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
+    const v = version || pluginVersionFromPage();
+    if (!installed && !v) {
       setDismissed(false);
       return setLinkMsg("要先装「开物 · 截屏带入」插件（看下面的步骤），装好刷新这一页再点");
     }
-    if (version && versionBelow(version, COLLECT_SINCE)) return setLinkMsg("插件是旧版本，还不会一键采集：先按下面的提示更新插件");
-    window.postMessage({ source: "kaiwu-page", type: "collect", url }, window.location.origin);
+    if (v && versionBelow(v, COLLECT_SINCE)) return setLinkMsg("插件是旧版本，还不会一键采集：先按下面的提示更新插件");
+    // 2026-11-10：先解析链接，不是主页的当场说清楚（原来插件打开抖音首页就停了，开物这边没反应）
+    setLinkMsg("正在核对链接…");
+    const prepared = await prepareCollectLink(raw);
+    if (!prepared.ok) return setLinkMsg(prepared.message.replace("点自己头像进主页", "进对标账号的主页"));
+    window.postMessage({ source: "kaiwu-page", type: "collect", url: prepared.url }, window.location.origin);
     setLinkMsg("插件已经去打开这个主页、自动采集了：大约 3 分钟，抖音页面会自己往下翻、打开 8 条作品，采完自动回到这里开始拆解。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
     setLink("");
+    watchPluginOpened(() => setLinkMsg(PLUGIN_SILENT));
   };
   const linkForm = (
     <section className="glass-panel space-y-2 rounded-2xl p-5">
@@ -208,11 +215,11 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
           aria-label="对标账号的抖音主页链接"
           value={link}
           onChange={(e) => setLink(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") collectByLink(); }}
+          onKeyDown={(e) => { if (e.key === "Enter") void collectByLink(); }}
           placeholder="粘贴抖音主页链接，或抖音 App 里分享主页复制的整段文字"
           className="min-w-0 flex-1 rounded-lg border border-border bg-background/50 px-3 py-2 text-[13px] text-foreground"
         />
-        <button type="button" onClick={collectByLink} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white">一键采集并拆解</button>
+        <button type="button" onClick={() => void collectByLink()} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white">一键采集并拆解</button>
       </div>
       <p className="text-[12px] text-muted-foreground">插件会读主页信息、作品和点赞，再细看 8 条作品（置顶的、最火的、点赞偏低的、最新的）的文案、话题和评论。报告先按做账号定位的维度把对方倒着拆一遍，再结合你的档案，写出你能借鉴的打法、能直接做的选题和 7 天行动清单。在电脑上登录抖音网页版能读得更全。</p>
       {linkMsg && <p className="text-[12.5px] text-foreground">{linkMsg}</p>}

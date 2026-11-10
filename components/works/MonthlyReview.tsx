@@ -16,6 +16,7 @@ import {
 } from "@/lib/monthly-review";
 import { ReportArchive } from "./ReportArchive";
 import { claimSelfCollection, SELF_LINK_KEY, wantSelfCollection } from "@/lib/self-collect-target";
+import { PLUGIN_SILENT, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
 
 /**
  * 创作进度里的「月度复盘 · 下月策略卡」（2026-11-08 产品方：全链路——产出、结果、复盘、调整接下来的方向）。
@@ -140,15 +141,24 @@ export function MonthlyReview() {
     return () => { window.removeEventListener("message", onMessage); window.clearTimeout(timer); };
   }, []);
 
-  const collect = () => {
-    const url = douyinLinkFromText(link);
-    if (!url) return setMsg("没认出抖音链接：打开你自己的抖音主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
-    if (!installed) return setMsg("要先装「开物 · 截屏带入」插件（在「对标 & 热点」页有安装步骤），装好刷新这一页再点");
-    if (version && versionBelow(version, SELF_SINCE)) return setMsg(`插件是旧版本（${version}），还不会采自己的号：到「对标 & 热点」页按提示更新插件，刷新这一页再点`);
+  const [checking, setChecking] = useState(false);
+  const collect = async () => {
+    const raw = douyinLinkFromText(link);
+    if (!raw) return setMsg("没认出抖音链接：打开你自己的抖音主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
+    const v = version || pluginVersionFromPage();
+    if (!installed && !v) return setMsg("要先装「开物 · 截屏带入」插件（在「对标 & 热点」页有安装步骤），装好刷新这一页再点");
+    if (v && versionBelow(v, SELF_SINCE)) return setMsg(`插件是旧版本（${v}），还不会采自己的号：到「对标 & 热点」页重新下载安装新版，刷新这一页再点`);
+    // 先解析链接（见 lib/collect-link-client）：不是主页的当场说清楚，不交给插件空跑
+    setChecking(true);
+    setMsg("正在核对链接…");
+    const prepared = await prepareCollectLink(raw);
+    setChecking(false);
+    if (!prepared.ok) return setMsg(prepared.message);
     try { if (profileId) localStorage.setItem(SELF_LINK_KEY(profileId), link.trim()); } catch { /* 存不了就算了 */ }
     wantSelfCollection("review");
-    window.postMessage({ source: "kaiwu-page", type: "collect", url, purpose: "self" }, window.location.origin);
+    window.postMessage({ source: "kaiwu-page", type: "collect", url: prepared.url, purpose: "self" }, window.location.origin);
     setMsg("插件已经去打开你的主页、自动采集了：大约 3 分钟，采完自动回到这里开始复盘。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
+    watchPluginOpened(() => setMsg(PLUGIN_SILENT));
   };
 
   const act = async (body: Record<string, unknown>, done: string) => {
@@ -211,7 +221,7 @@ export function MonthlyReview() {
           placeholder="可选：粘贴你自己的抖音主页链接，插件采一遍再复盘"
           className="min-w-0 flex-1 rounded-lg border border-border bg-background/50 px-3 py-2 text-[13px] text-foreground"
         />
-        <button type="button" onClick={collect} disabled={busy || running} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60">采集主页并复盘</button>
+        <button type="button" onClick={() => void collect()} disabled={busy || running || checking} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60">采集主页并复盘</button>
         <button type="button" onClick={() => void start()} disabled={busy || running} className="shrink-0 rounded-lg border border-border px-3 py-2 text-[12.5px] text-foreground hover:bg-foreground/[0.06] disabled:opacity-60">只用作品记录复盘</button>
       </div>
       {data?.dataStatus && (() => {
