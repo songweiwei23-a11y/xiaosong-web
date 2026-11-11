@@ -18,7 +18,7 @@ vi.mock('@/lib/dify-conversation', () => ({
   getDifyConversationId: vi.fn(async () => null), saveDifyConversationId: vi.fn(),
   clearDifyConversationId: vi.fn(), startNewWindow: vi.fn(), isInvalidConversationError: () => false,
 }));
-vi.mock('@/lib/topic-library-server', () => ({ loadPriorTopicTitles: vi.fn(async () => []), saveFollowUpTopics: vi.fn() }));
+vi.mock('@/lib/topic-library-server', () => ({ loadPriorTopicSections: vi.fn(async () => []), loadLatestTopicCompletion: vi.fn(async () => null), saveFollowUpTopics: vi.fn() }));
 vi.mock('@/lib/web-search-quota', () => ({ prepareWebSearch: vi.fn(async () => ({
   enabled: state.enabled, inputs: { web_search_enabled: state.enabled ? '1' : '0' },
   initialEvent: null, observe: vi.fn(), finish: vi.fn(), rejected: vi.fn(), markStarted: vi.fn(),

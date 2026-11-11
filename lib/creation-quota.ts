@@ -29,6 +29,10 @@ export async function refreshCreationPeriod(userId: string): Promise<void> {
   if (error || !data?.allowed) throw new Error('Quota period refresh unavailable');
 }
 
+export function creationRequestFingerprint(payload: unknown): string {
+  return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
 /** Must run after input validation and before any paid generation. No RPC fallback: missing migration fails closed. */
 export async function reserveCreation(userId: string, feature: string, request: Request, payload: unknown): Promise<ReservationResult> {
   if (!usedColumnOf(feature)) return { ok: false, response: Response.json({ error: '不支持的创作类型' }, { status: 400 }) };
@@ -37,7 +41,7 @@ export async function reserveCreation(userId: string, feature: string, request: 
     return { ok: false, response: Response.json({ error: '生成请求编号格式不正确' }, { status: 400 }) };
   }
   const requestId = explicitId as string || randomUUID();
-  const fingerprint = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  const fingerprint = creationRequestFingerprint(payload);
   try {
     const { data, error } = await getServiceSupabase().rpc('kaiwu_reserve_creation', {
       p_user_id: userId, p_request_id: requestId, p_feature: feature, p_fingerprint: fingerprint,

@@ -22,6 +22,7 @@ import { ContentMixBar } from '@/components/workspace/ContentMix'
 import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
 import { taboosPromptBlock } from '@/lib/taboos'
 import { Markdown } from '@/components/markdown'
+import ContinuousDialog from '@/components/ContinuousDialog'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
 import { GROWTH_TACTICS, SELECTION_MATRIX } from '@/lib/growth-tactics'
 import { OPENING_CARDS, OPENING_CATEGORIES } from '@/lib/opening-cards'
@@ -67,6 +68,7 @@ export default function GrowthPage() {
   const restoredProfileRef = useRef<string>()
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('plan')
+  const [dialog, setDialog] = useState<{ content: string; profileId: string | null; tab: Tab } | null>(null)
 
   // 起号方案
   const [pickedTactics, setPickedTactics] = useState<string[]>([])
@@ -834,6 +836,12 @@ export default function GrowthPage() {
               </h2>
               {result && !busy && (
                 <div className="flex gap-2">
+                  {!finishing && (
+                    <button type="button" onClick={() => setDialog({ content: result, profileId: context.profile?.id ?? null, tab })}
+                      className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground">
+                      继续对话
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       navigator.clipboard?.writeText(result)
@@ -992,6 +1000,10 @@ export default function GrowthPage() {
           </div>
         )}
       </div>
+      {dialog && dialog.tab === tab && dialog.profileId === (context.profile?.id ?? null) && (
+        <ContinuousDialog isOpen onClose={() => setDialog(null)} initialContent={dialog.content}
+          profileId={dialog.profileId} taskType={tab === 'plan' ? '起号方案' : '开篇钩子'} />
+      )}
     </div>
   )
 }

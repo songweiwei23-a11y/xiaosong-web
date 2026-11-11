@@ -107,9 +107,8 @@ export default function TitlePage() {
 
   // 历史记录相关
   const { history: titleHistory, loadHistory: loadTitleHistory, lastResult, resultScope } = useGenerationPage({ taskType: '标题封面', historyApiPath: '/api/titles' });
-  useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setOriginContent(''); setOpeningCards([]); setSelectedHistory(null); setShowDialog(false); });
+  useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setOriginContent(''); setOpeningCards([]); setSelectedHistory(null); });
   const [selectedHistory, setSelectedHistory] = useState<any>(null);
-  const [, setShowDialog] = useState(false);
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
   const [workId, setWorkId] = useState<string | null>(null);
   const [originContent, setOriginContent] = useState('');
@@ -284,7 +283,6 @@ export default function TitlePage() {
             // 登记到作品：刷新排序；五个环节都齐了就自动标记完成
             await recordStage(workId, "标题封面");
         await loadTitleHistory();
-        if (isCurrent()) setShowDialog(true);
       }
     } catch (error: any) {
       console.error("❌ 生成失败:", error);
@@ -470,6 +468,7 @@ export default function TitlePage() {
         isGenerating={isGenerating}
         finishing={finishing}
         title="标题方案"
+        continueTask="标题封面"
         flowContext={{ settings: settingsForResult(result, titleHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, titleHistory, originContent || scriptContent) }}
         showStats={false}
         emptyIcon={Tag}

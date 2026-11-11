@@ -9,7 +9,7 @@ import {
   wantsNewTopics,
   NO_REPEAT_LIMIT,
   NO_REPEAT_TASKS,
-  ISOLATED_TASKS,
+  CREATIVE_WINDOW_TASKS,
 } from '@/lib/topic-library';
 import { parseTopicOptions } from '@/lib/handoff';
 import { readCode } from './helpers/source';
@@ -158,9 +158,9 @@ describe('不重复：把出过的明明白白告诉 AI', () => {
     expect(block).not.toContain(`选题${NO_REPEAT_LIMIT}\n`);
   });
 
-  it('选题策划既防重复、也不接共用会话', () => {
+  it('选题策划既防重复，也接入档案创作会话', () => {
     expect(NO_REPEAT_TASKS.has('选题策划')).toBe(true);
-    expect(ISOLATED_TASKS.has('选题策划')).toBe(true);
+    expect(CREATIVE_WINDOW_TASKS.has('选题策划')).toBe(true);
   });
 
   it.each([
@@ -192,39 +192,25 @@ describe('接线：生成和追问都用上', () => {
   it('生成选题前附上出过的清单', () => {
     expect(stream).toMatch(
       // 第二个参数是档案：清单只取这个档案出过的（见 tests/profile-memory）
-      /if \(NO_REPEAT_TASKS\.has\(body\.taskType\)\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!, [^;]+\);[\s\S]{0,500}query \+= buildNoRepeatBlock\(prior, \{ developSelected \}\)/
+      /if \(topicTask\)\s*\{\s*const prior = priorTopics\.map\([^;]+\);[\s\S]{0,500}query \+= buildNoRepeatBlock\(prior, \{ developSelected \}\)/
     );
-  });
-
-  it('生成选题不接共用会话，也不写回去', () => {
-    expect(stream).toMatch(/const isolated = ISOLATED_TASKS\.has\(body\.taskType\)/);
-    expect(stream).toMatch(/isolated \? null : await getDifyConversationId\(/);
-    expect(stream).toMatch(/if \(\(!isolated \|\| CURRENT_CREATIVE_TASKS\.has\(body\.taskType\)\) && generationCompleted/);
   });
 
   it('清单覆盖所有历史批次，删掉的也算出过、排在最前', () => {
     expect(server).toMatch(/\.eq\('user_id', userId\)/);
     expect(server).toMatch(/\.eq\('task_type', '选题策划'\)/);
-    const deleted = server.indexOf('deletedTopicsOf(b.input_data).forEach(add)');
-    const collected = server.indexOf('collectTopics(data ?? [])');
+    const deleted = server.indexOf('deletedTopicsOf(b.input_data).forEach');
+    const collected = server.indexOf('collectTopics(data)');
     expect(deleted).toBeGreaterThan(-1);
     expect(collected).toBeGreaterThan(deleted);
   });
 
-  it('追问：选题不接共用窗口，第一次把整批贴进去', () => {
-    expect(chat).toMatch(/const isolated = ISOLATED_TASKS\.has\(taskType\)/);
-    expect(chat).toMatch(/freshWindow \|\| isolated\s*\?\s*null/);
-    expect(chat).toMatch(/const limit = isolated \? \d{4,} : 1500/);
-    // 2026-11-01 起自由对话线程也不写回共用窗口（一个线程一个 Dify 会话）
-    expect(chat).toMatch(/if \(conversationIdFromResponse && !isolated && !freeChatThread\)/);
-  });
-
   it('追问要新选题时附清单，出的新一批存进选题库', () => {
     expect(chat).toMatch(/NO_REPEAT_TASKS\.has\(taskType\) && wantsNewTopics\(/);
-    expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*const prior = await loadPriorTopicTitles\(guard\.userId!, profileId\)\s*fullQuery \+= buildNoRepeatBlock\(prior\)/);
+    expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*const prior = [^\n]+\.map\([^\n]+\)\s*fullQuery \+= buildNoRepeatBlock\(prior\)/);
     expect(chat).toMatch(/if \(askingNewTopics\)\s*\{\s*await saveFollowUpTopics\(guard\.userId, query \|\| '', answerText, profileId\)/);
     expect(chat).toContain('answerText = applyChatAnswer(answerText, data)');
-    expect(server).toMatch(/splitTopicSections\(answer\)\.length < FOLLOW_UP_MIN_TOPICS\) return false/);
+    expect(server).toMatch(/if \(!splitTopicSections\(answer\)\.length\) return false/);
     expect(server).toMatch(/task_type: '选题策划'/);
   });
 

@@ -7,7 +7,7 @@ import { splitCreationItems, itemsNoun } from '@/lib/creation-items';
 import { buildCreationHandoff, CREATION_DESTINATIONS, CREATION_SOURCES, NOTE_TARGETS, RECOMMENDED_NEXT } from '@/lib/creation-flow';
 import { libraryCategory } from '@/lib/library';
 import { TASK_TYPE_TO_FEATURE } from '@/lib/task-type';
-import { ISOLATED_TASKS } from '@/lib/topic-library';
+import { CREATIVE_WINDOW_TASKS } from '@/lib/topic-library';
 import { COUNTED_FEATURES, SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import { DURABLE_CREATIVE_TASKS } from '@/lib/creative-history';
 import { manifestOf } from '@/lib/context-manifest';
@@ -165,7 +165,7 @@ describe('接到全站', () => {
     expect(SUBSCRIPTION_PLANS.free.quotas.direction).toBe(5);
     expect(SUBSCRIPTION_PLANS.basic.quotas.direction).toBe(50);
     expect(DURABLE_CREATIVE_TASKS.has(DIRECTION_TASK_TYPE)).toBe(true);
-    expect(ISOLATED_TASKS.has(DIRECTION_TASK_TYPE)).toBe(true);
+    expect(CREATIVE_WINDOW_TASKS.has(DIRECTION_TASK_TYPE)).toBe(true);
     expect(readCode('supabase/migrations/20261002_direction.sql')).toMatch(/add column if not exists direction_used integer not null default 0/);
   });
 

@@ -40,7 +40,7 @@ import { getActiveProfileId, setActiveProfileId, onActiveProfileChange } from '@
 
 import { useState, useEffect, useMemo } from "react";
 import { readTopicContract } from "@/lib/creation-tree";
-import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
+import { readDifyStream, FINISHING_NOTE, topicBatchNotice, type TopicBatchStatus } from '@/lib/sse-stream';
 import { polishTitlesRemote } from '@/lib/title-polish';
 import { CommentQuestions } from '@/components/topic/CommentQuestions';
 import { Lightbulb, Loader2, Users, Target, Sparkles, Zap, Heart, DollarSign, Eye, Flame, FileText } from "lucide-react";
@@ -528,7 +528,7 @@ export default function TopicPage() {
       // 现在定位不再截断到 300 字、内容长了 6 倍，这颗雷只会更容易踩到，
       // 所以直接拆掉——该过滤的在源头过滤，不该拿整条提示词去冒险。
 
-      // 条数不够自动补写一次（lib/topic-batch）：补写也是一次生成，会扣一次额度
+      let batch: TopicBatchStatus | undefined;
       const generateOnce = async () => {
         const response = await fetchGeneration("/api/dify/stream", {
           method: "POST",
@@ -552,14 +552,19 @@ export default function TopicPage() {
         // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
         return readDifyStream(response, {
           onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
+          onStatus: (message) => { if (isCurrent()) setFinishing(message); },
+          onTopicBatch: (status) => { batch = status; },
         });
       };
-      const accumulatedText = await completeBatch(await generateOnce(), topicCount, generateOnce);
+      const first = await generateOnce();
+      const accumulatedText = batch ? first : await completeBatch(first, topicCount, generateOnce);
+      const batchNotice = batch ? topicBatchNotice(batch) : '';
+      if (batchNotice && isCurrent()) notify(batchNotice, undefined, 7000);
       // 条数够了、不用再补写，按钮停转；下面的润色和保存照常做完，期间结果下面一行小字（这页会补写，所以不用 onDraftDone）
       if (accumulatedText && isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); }
 
       // 撞题（标题重复）、模板标题、不符合现实的句子：精准小改后再显示和保存（lib/title-dedupe、lib/title-polish）
-      const polishedText = accumulatedText ? await polishTitlesRemote(accumulatedText) : accumulatedText;
+      const polishedText = accumulatedText && !batch ? await polishTitlesRemote(accumulatedText) : accumulatedText;
       if (isCurrent() && polishedText !== accumulatedText) setResult(polishedText);
 
       // 保存到历史记录

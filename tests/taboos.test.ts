@@ -148,7 +148,7 @@ describe('页面接线', () => {
 
   it('所有结果面板生成完都扫一遍；「让 AI 改掉」预填进继续对话', () => {
     // 扫的是正在显示的那一版（画布里改过就扫改过的）
-    expect(readCode('components/workspace/ResultPanel.tsx')).toMatch(/<TabooScan body=\{view\} onContinue=\{onContinue\} \/>/);
+    expect(readCode('components/workspace/ResultPanel.tsx')).toMatch(/<TabooScan body=\{view\} onContinue=\{continueResult\} \/>/);
     expect(readCode('components/workspace/TabooScan.tsx')).toMatch(/setDialogDraft\(text\)[\s\S]*onContinue\(\)/);
     expect(readCode('components/ContinuousDialog.tsx')).toMatch(/takeDialogDraft\(\)[\s\S]{0,40}setInputValue\(draft\)/);
   });

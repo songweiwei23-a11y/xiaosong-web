@@ -3,7 +3,7 @@ vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/foundation-gate')>()),
   foundationGate: async () => null,
 }));
-vi.mock('@/lib/creation-quota', () => ({ reserveCreation: vi.fn(async () => ({ ok: true, reservation: { userId: 'test-user', feature: 'script', requestId: 'test-request-id-12345' } })), releaseCreation: vi.fn(async () => {}), recordCreationCompletion: vi.fn(async () => {}), completionUsage: vi.fn(() => ({})) }));
+vi.mock('@/lib/creation-quota', () => ({ reserveCreation: vi.fn(async () => ({ ok: true, reservation: { userId: 'test-user', feature: 'script', requestId: 'test-request-id-12345' } })), releaseCreation: vi.fn(async () => {}), recordCreationCompletion: vi.fn(async () => {}), completionUsage: vi.fn(() => ({})), creationRequestFingerprint: (body: unknown) => JSON.stringify(body) }));
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
@@ -32,7 +32,8 @@ vi.mock('@/lib/dify-conversation', () => ({
   isInvalidConversationError: vi.fn(() => false),
 }));
 vi.mock('@/lib/topic-library-server', () => ({
-  loadPriorTopicTitles: vi.fn(async () => []),
+  loadPriorTopicSections: vi.fn(async () => []),
+  loadLatestTopicCompletion: vi.fn(async () => null),
 }));
 vi.mock('@/lib/dify-recover', () => ({
   waitForDifyMessage: vi.fn(),
@@ -40,10 +41,11 @@ vi.mock('@/lib/dify-recover', () => ({
 }));
 
 import { POST } from '@/app/api/dify/stream/route';
-import { reserveCreation, releaseCreation } from '@/lib/creation-quota';
+import { reserveCreation, releaseCreation, recordCreationCompletion } from '@/lib/creation-quota';
 import { incrementUsageServer } from '@/lib/api-guard';
-import { clearDifyConversationId, saveDifyConversationId } from '@/lib/dify-conversation';
+import { clearDifyConversationId, getDifyConversationId, saveDifyConversationId } from '@/lib/dify-conversation';
 import { waitForDifyMessage } from '@/lib/dify-recover';
+import { loadLatestTopicCompletion, loadPriorTopicSections } from '@/lib/topic-library-server';
 import { readDifyStream, recoverDifyAnswer, DifyStreamError } from '@/lib/sse-stream';
 import { isContextOverflowError, difyEventError, friendlyDifyError } from '@/lib/dify-errors';
 import { readCode } from './helpers/source';
@@ -97,7 +99,7 @@ const call = (taskType: string) =>
   );
 
 beforeEach(() => vi.clearAllMocks());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('流式接口：报错要说出来，不能一声不吭', () => {
   it('预占失败时没有付费模型请求', async () => {
@@ -126,7 +128,7 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     expect(difyCalls[0].body.conversation_id).toBe('shared-conv');
     expect(difyCalls[1].body.conversation_id).toBeUndefined();
     // 旧的共用会话清掉，别的板块下次也不会接着撞
-    expect(clearDifyConversationId).toHaveBeenCalledWith('u1', 'p1');
+    expect(clearDifyConversationId).toHaveBeenCalledWith('u1', 'p1', 'shared-conv');
     expect(incrementUsageServer).toHaveBeenCalledTimes(1);
   });
 
@@ -164,6 +166,100 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     expect(difyCalls[0].body.conversation_id).toBe('shared-conv');
     expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '成交理由');
   });
+
+  it('选题和脚本顺着同一档案会话生成，选中素材仍以当前输入为准', async () => {
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce(null).mockResolvedValueOnce('c1');
+    const done = ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' });
+    mockDify(difyStream([msg('第一批选题'), done]), difyStream([msg('接着写脚本'), done]));
+    expect(await readDifyStream(await call('选题策划'))).toBe('第一批选题');
+    expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '选题策划', 'creation');
+
+    const response = await POST(new Request('http://x/api/dify/stream', {
+      method: 'POST',
+      body: JSON.stringify({ taskType: '脚本生成', query: '写选中的这一条', profileId: 'p1', creationSettings: { focusContent: '已选主题' } }),
+    }) as any);
+    expect(await readDifyStream(response)).toBe('接着写脚本');
+    expect(difyCalls[0].body.conversation_id).toBeUndefined();
+    expect(difyCalls[1].body.conversation_id).toBe('c1');
+    expect(difyCalls[1].body.query).toContain('已选主题');
+    expect(difyCalls[1].body.query).toContain('不要只换标题、词语或顺序');
+    expect(getDifyConversationId).toHaveBeenCalledWith('u1', 'p1', 'creation');
+  });
+
+  it('选题接口只发核对后的正文，历史撞题没有进入完成记录', async () => {
+    vi.stubEnv('ASSISTANT_API_KEY', '');
+    vi.mocked(loadPriorTopicSections).mockResolvedValueOnce([]).mockResolvedValueOnce([{ title: '柜门开合测试', body: '展示铰链开合' }]);
+    const raw = '## 选题1：柜门开合测试\n展示铰链开合\n\n## 选题2：抽屉满载对比\n对比不同承重时的抽拉动作';
+    mockDify(difyStream([msg(raw), ev({ event: 'message_end' })]));
+    const response = await POST(new Request('http://x/api/dify/stream', {
+      method: 'POST',
+      body: JSON.stringify({ taskType: '选题策划', query: '出一条选题', profileId: 'p1', inputs: { topicCount: 1 } }),
+    }) as any);
+    const stream = await response.text();
+    expect(stream).toContain('topic_batch');
+    expect(stream).toContain('抽屉满载对比');
+    expect(stream).not.toContain('柜门开合测试');
+    expect(recordCreationCompletion).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ result: expect.stringContaining('抽屉满载对比') }), '选题策划');
+    expect(incrementUsageServer).toHaveBeenCalledTimes(1);
+  });
+
+  it('相同设置同时提交时等首轮存好，第二轮在同一 Dify 对话里续写', async () => {
+    vi.stubEnv('ASSISTANT_API_KEY', '');
+    const body = { taskType: '选题策划', query: '首次用的完整创作表单', profileId: 'p1', inputs: { topicCount: 1 } };
+    const first = '## 选题1：柜门开合测试\n拍铰链调节前后的门缝';
+    const second = '## 选题1：抽屉满载对比\n对比不同承重时的抽拉动作';
+    const done = ev({ event: 'message_end', conversation_id: 'c1' });
+    mockDify(difyStream([msg(first), done]), difyStream([msg(second), done]));
+
+    let saved: string | null = null;
+    let unlock!: () => void;
+    const store = new Promise<void>((resolve) => { unlock = resolve; });
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce(null).mockImplementationOnce(async () => saved);
+    vi.mocked(saveDifyConversationId).mockImplementationOnce(async (_user, id) => { await store; saved = id; });
+    vi.mocked(loadLatestTopicCompletion).mockResolvedValueOnce({
+      fingerprint: JSON.stringify(body),
+      topics: [{ title: '柜门开合测试', body: '拍铰链调节前后的门缝' }],
+    });
+    const generate = () => POST(new Request('http://x/api/dify/stream', {
+      method: 'POST', body: JSON.stringify(body),
+    }) as any);
+    const firstResponse = readDifyStream(await generate());
+    const secondResponse = generate();
+    try {
+      await vi.waitFor(() => expect(saveDifyConversationId).toHaveBeenCalled());
+      expect(difyCalls).toHaveLength(1);
+    } finally {
+      unlock();
+    }
+    expect(await firstResponse).toContain('柜门开合测试');
+    expect(await readDifyStream(await secondResponse)).toContain('抽屉满载对比');
+    expect(difyCalls[1].body.conversation_id).toBe('c1');
+    expect(difyCalls[1].body.query).toContain('再出 1 条新选题');
+    expect(difyCalls[1].body.query).toContain('柜门开合测试');
+    expect(difyCalls[1].body.query).not.toContain('首次用的完整创作表单');
+    expect(difyCalls[1].body.inputs.query).toBe(difyCalls[1].body.query);
+  });
+
+  it('补写撞题也接着本轮 Dify 对话，不开新对话或另扣一次', async () => {
+    vi.stubEnv('ASSISTANT_API_KEY', '');
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce(null);
+    const repeated = { title: '柜门开合测试', body: '拍铰链调节前后的门缝' };
+    vi.mocked(loadPriorTopicSections).mockResolvedValueOnce([repeated]).mockResolvedValueOnce([repeated]);
+    const draft = '## 选题1：柜门开合测试\n拍铰链调节前后的门缝\n\n## 选题2：抽屉满载对比\n对比不同承重时的抽拉动作';
+    const repair = '## 选题1：层板高度调整\n移动层板前后试放同一只高瓶';
+    const done = ev({ event: 'message_end', conversation_id: 'c1' });
+    mockDify(difyStream([msg(draft), done]), difyStream([msg(repair), done]));
+    const res = await POST(new Request('http://x/api/dify/stream', {
+      method: 'POST',
+      body: JSON.stringify({ taskType: '选题策划', query: '原始选题表单', profileId: 'p1', inputs: { topicCount: 2 } }),
+    }) as any);
+    expect(await readDifyStream(res)).toContain('抽屉满载对比');
+    expect(difyCalls).toHaveLength(2);
+    expect(difyCalls[1].body.conversation_id).toBe('c1');
+    expect(difyCalls[1].body.query).toContain('只补写 1 条');
+    expect(difyCalls[1].body.query).not.toContain('原始选题表单');
+    expect(incrementUsageServer).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('流式接口：和 Dify 之间断了，把全文取回来', () => {
@@ -183,7 +279,7 @@ describe('流式接口：和 Dify 之间断了，把全文取回来', () => {
     expect(incrementUsageServer).not.toHaveBeenCalled();
   });
 
-  it('浏览器半路走了：独立脚本仍读完并确认次数，自由对话可接最新成稿', async () => {
+  it('浏览器半路走了：脚本仍读完并确认次数，同档案创作可接着写', async () => {
     mockDify(
       difyStream([msg('一'), msg('二'), msg('三'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })])
     );
@@ -192,7 +288,7 @@ describe('流式接口：和 Dify 之间断了，把全文取回来', () => {
     await reader.read();
     await reader.cancel();
     await vi.waitFor(() => expect(incrementUsageServer).toHaveBeenCalledTimes(1));
-    expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '脚本生成');
+    await vi.waitFor(() => expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '脚本生成', 'creation'));
   });
 
   it('响应头关掉 Nginx 缓冲，按事件流下发', async () => {
@@ -325,11 +421,6 @@ describe('追问接口也不再吞报错', () => {
     expect(chat).toMatch(/JSON\.stringify\(\{ event: 'error', message: friendlyDifyError\(failure\) \}\)/);
   });
 
-  it('共用窗口塞满了就清掉，下一句从新窗口开始', () => {
-    expect(chat).toMatch(
-      /isContextOverflowError\(failure\) &&\s*sharedConversationId &&\s*useConversationId === sharedConversationId\s*\)\s*\{\s*await clearDifyConversationId\(guard\.userId!, profileId\)/
-    );
-  });
 
   it('关掉 Nginx 缓冲', () => {
     expect(chat).toMatch(/'X-Accel-Buffering': 'no'/);

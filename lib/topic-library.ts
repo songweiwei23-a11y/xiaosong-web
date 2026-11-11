@@ -56,6 +56,41 @@ export function splitTopicSections(markdown: string): TopicSection[] {
   return locateSections(markdown).map(({ title, body }) => ({ title, body }));
 }
 
+/** 按条目位置替换或移除，保留其他条目的正文和批次说明。 */
+export function editTopicSections(markdown: string, edits: Map<number, TopicSection | null>, extra: TopicSection[] = []): string {
+  if (!edits.size && !extra.length) return markdown;
+  const lines = markdown.split('\n');
+  const sections = locateSections(markdown);
+  const oldFormat = !!sections.length && !HEADING.test(lines[sections[0].start]);
+  let end = 0;
+  let number = 0;
+  const output: string[] = [];
+  const append = (topic: TopicSection, level: string) => {
+    output.push(oldFormat ? `${level} ${number}. ${topic.title}` : `${level} 选题${number}：${topic.title}`, '', topic.body, '');
+  };
+  for (const [index, section] of sections.entries()) {
+    output.push(...lines.slice(end, section.start));
+    end = section.end;
+    if (edits.has(index) && !edits.get(index)) continue;
+    number++;
+    const replacement = edits.get(index);
+    const heading = lines[section.start];
+    if (replacement) {
+      append(replacement, heading.match(/^#{1,4}/)?.[0] || '##');
+    } else {
+      const prefix = oldFormat ? /^(#{2,4}\s*)\d+/ : /^(#{1,4}[^\n]*?选题\s*)\d+/;
+      output.push(heading.replace(prefix, (_, start: string) => start + number), ...lines.slice(section.start + 1, section.end));
+    }
+  }
+  for (const topic of extra) {
+    number++;
+    output.push('');
+    append(topic, oldFormat ? '###' : '##');
+  }
+  if (sections.length) output.push(...lines.slice(end));
+  return output.join('\n').trim();
+}
+
 /** 带行号的拆分结果：删除某一条时要知道它占哪几行 */
 interface LocatedSection extends TopicSection {
   /** 标题行所在行号 */
@@ -185,8 +220,9 @@ export function collectTopics(
  */
 export function batchBelongsToProfile(
   inputData: unknown,
-  profileId: string,
-  profileName?: string | null
+  profileId: string | null,
+  profileName?: string | null,
+  includeUnassigned = true
 ): boolean {
   const d = inputData && typeof inputData === 'object' ? (inputData as Record<string, unknown>) : {};
   const pid = d.profile_id ?? d.profileId;
@@ -201,30 +237,31 @@ export function batchBelongsToProfile(
   }
   const name = info && typeof info === 'object' ? (info as Record<string, unknown>)['档案名称'] : undefined;
   if (typeof name === 'string' && name.trim()) return !!profileName && name.trim() === profileName.trim();
-  return true;
+  return profileId === null || includeUnassigned;
 }
 
 /** 生成前要附上"已经出过的"清单、禁止重复的任务 */
 export const NO_REPEAT_TASKS = new Set(['选题策划']);
 
+/** 共用当前档案的创作对话，包括由成稿发起的追问。 */
+export const CREATIVE_WINDOW_TASKS = new Set([
+  '选题策划', '创作方向', '内容规划', '脚本生成', '起号方案', '开篇钩子', '标题封面', '分镜脚本',
+]);
+
 /**
  * 不接共用会话的任务（生成和追问都不接，也不把自己的会话写回去）。
  *
- * - 选题：共用会话里有上一次同样问题的完整回答，会把出新点子的任务带回老路上。
  * - 三份定位：一次提示词两万字、产出一两万字，塞进共用会话几次就把它撑爆——
  *   9/24 内容定位连续三次"超出模型上下文"就是这么来的，而且连累所有板块。
  *   它们要的背景（档案、已有的账号定位）提示词里都明写了，不靠会话；
  *   别的板块用定位时也是从数据库读，不靠会话。
- * - 起号方案：同理——档案、已定的内容定位都在提示词里，会话只会把上一版方案带进来。
  * - 创作简报（2026-10-02）：定位、档案、配比、禁忌、排除清单都在提示词里。接共用会话的话，
  *   这个档案之前在自由对话、脚本里聊过的东西（比如编导建档时刻意去掉的"公益""直播"）会被带回简报，
  *   而简报会下发到所有板块——一处带偏，处处跑偏。
  */
-export const ISOLATED_TASKS = new Set(['选题策划', '账号定位', '商业定位', '内容定位', '创作简报', '行业建议','起号方案', '拆解爆款', '跨行业二创', '创作方向', '内容规划', '画布改写', '脚本生成', '审稿优化', '分镜脚本', '标题封面', '开篇钩子']);
-/** 完整稿件生成不读旧窗口；完成后自由对话可承接这一份最新成稿。 */
-export const CURRENT_CREATIVE_TASKS = new Set(['脚本生成', '审稿优化', '分镜脚本', '标题封面', '开篇钩子']);
-// 这些页面每次提交完整的当前素材。生成与首次追问隔离旧窗口；后续追问沿用本任务自己的 conversationId。
-// 画布改写（2026-10-03）：自由对话结果画布里"把这段改口语点"，每次单独开会话——不读也不写共用记忆
+export const ISOLATED_TASKS = new Set(['账号定位', '商业定位', '内容定位', '创作简报', '行业建议', '拆解爆款', '跨行业二创', '画布改写', '审稿优化']);
+/** 独立核对后的审稿可供自由对话承接。 */
+export const CURRENT_CREATIVE_TASKS = new Set(['审稿优化']);
 
 /**
  * 追问对话里，用户这句话是不是在要**新**选题。
@@ -235,7 +272,7 @@ export const CURRENT_CREATIVE_TASKS = new Set(['脚本生成', '审稿优化', '
 export function wantsNewTopics(text: string): boolean {
   const t = (text || '').replace(/\s/g, '');
   return (
-    /(再|重新|另外|多)(来|出|给|生成|想|写|列|策划|推荐)[^，。？！,.?!]{0,8}(选题|条|个|批)/.test(t) ||
+    /(再|重新|另外|多)(来|出|给|生成|想|写|列|策划|推荐)(?!第)[^，。？！,.?!]{0,8}(选题|条|个|批)/.test(t) ||
     /换一?(批|组|些)/.test(t) ||
     /(新的|别的|其他的?|不一样的)(选题|角度|方向)/.test(t)
   );

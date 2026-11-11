@@ -541,10 +541,13 @@ describe('接口', () => {
   });
 
   it('提取、修改都不接共用会话（不带 conversation_id，也不存）', () => {
-    for (const src of [extract, revise, readCode('lib/dify-task.ts')]) {
-      expect(src).not.toMatch(/conversation_id\s*:/);
+    for (const src of [extract, revise]) {
+      expect(src).not.toMatch(/conversation_id\s*:|conversationId\s*:/);
       expect(src).not.toMatch(/saveDifyConversationId|getDifyConversationId/);
     }
+    const wrapper = readCode('lib/dify-task.ts');
+    expect(wrapper).toMatch(/\.\.\.\(options\.conversationId \? \{ conversation_id: options\.conversationId \} : \{\}\)/);
+    expect(wrapper).not.toMatch(/saveDifyConversationId|getDifyConversationId/);
   });
 
   it('长任务有心跳，免得链路上哪一层把连接掐掉', () => {

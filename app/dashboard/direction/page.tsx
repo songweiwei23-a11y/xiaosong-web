@@ -296,6 +296,7 @@ export default function DirectionPage() {
         isGenerating={running}
         finishing={finishing}
         title="创作方向与思路"
+        continueTask={DIRECTION_TASK_TYPE}
         flowContext={{ settings: settingsForResult(result, history, currentSettings), originContent: originForResult(result, history, [customGoal, ideas, selectedGoals].filter(Boolean).join('\n')) }}
         showStats={false}
         emptyIcon={Compass}

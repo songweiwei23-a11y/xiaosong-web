@@ -3,7 +3,7 @@ import { topicReference } from '@/lib/creation-continuation';
 import { loadBoardContext } from './board-context';
 import { pageHandoff } from '@/lib/assistant/carry-consume';
 import { VIRAL_ELEMENTS } from '@/lib/viral-elements';
-import { readDifyStream } from '@/lib/sse-stream';
+import { readDifyStream, topicBatchNotice, type TopicBatchStatus } from '@/lib/sse-stream';
 import { resolveMix } from '@/lib/content-mix';
 import { tacticInText, type CreativeRoute } from '@/lib/creative-routes';
 import { defaultRoleOfScriptType, type ContentRole } from '@/lib/content-roles';
@@ -232,7 +232,7 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     quickTopics: false,
   });
 
-  // 条数不够自动补写一次（lib/topic-batch）：补写也是一次生成，会扣一次额度
+  let batch: TopicBatchStatus | undefined;
   const generate = async (): Promise<{ ok: true; text: string } | { ok: false; error: string }> => {
     const res = await doFetch(`${base}/api/dify/stream`, {
       method: 'POST',
@@ -257,11 +257,11 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       return { ok: false, error: data?.error ?? '服务暂时不可用，请稍后再试' };
     }
-    return { ok: true, text: await readDifyStream(res) };
+    return { ok: true, text: await readDifyStream(res, { onTopicBatch: (status) => { batch = status; } }) };
   };
   const first = await generate();
   if (!first.ok) return { ok: false, text: '', error: first.error };
-  const text = await completeBatch(first.text, topicCount, async () => {
+  const text = batch ? first.text : await completeBatch(first.text, topicCount, async () => {
     const again = await generate();
     if (!again.ok) throw new Error(again.error);
     return again.text;
@@ -283,7 +283,8 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
     },
     result: text,
   });
-  return { ok: true, text: boardClip(text), full: text, historySaved };
+  const notice = batch ? topicBatchNotice(batch) : '';
+  return { ok: true, text: [boardClip(text), notice].filter(Boolean).join('\n\n'), full: text, historySaved };
 }
 
 /** 脚本：和脚本页面的算法一致（lib/boards/script-query），记忆预填也按页面的规则 */

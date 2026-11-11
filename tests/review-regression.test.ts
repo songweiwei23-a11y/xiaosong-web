@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildReviewPrompt, reviewDimensionLabels, AMBIGUOUS_REVIEW_DURATION } from '@/lib/review-standards';
 import { reviewDraftStats, resultStats, spokenText } from '@/lib/script-result-utils';
 import { buildSearchQuery } from '@/lib/search-query';
-import { ISOLATED_TASKS } from '@/lib/topic-library';
+import { CREATIVE_WINDOW_TASKS, ISOLATED_TASKS } from '@/lib/topic-library';
 import { buildAdaptiveScriptPrompt } from '@/lib/script-design';
 import { reviewSource, combinedReviewUsage, reconcileReviewSpeechStats } from '@/lib/review-verification';
 
@@ -54,8 +54,9 @@ describe('真实审稿回归：纯文字素材、完整要求与当前会话', (
     expect(q).not.toContain('扫帚');
     expect(q.length).toBeLessThanOrEqual(200);
   });
-  it.each(['审稿优化', '脚本生成', '标题封面', '分镜脚本', '开篇钩子'])('%s 不读取跨板块共用 Dify 会话', task => {
-    expect(ISOLATED_TASKS.has(task)).toBe(true);
+  it('审稿单独核对原稿，创作板块使用档案自己的会话', () => {
+    expect(ISOLATED_TASKS.has('审稿优化')).toBe(true);
+    for (const task of ['脚本生成', '标题封面', '分镜脚本', '开篇钩子']) expect(CREATIVE_WINDOW_TASKS.has(task)).toBe(true);
   });
   it('自由对话保留其自己的连续会话', () => {
     expect(ISOLATED_TASKS.has('自由对话')).toBe(false);

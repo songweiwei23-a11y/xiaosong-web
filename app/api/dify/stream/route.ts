@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
 import { askDify } from '@/lib/dify-task';
 import { reviewSource, reviewVerificationPrompt, combinedReviewUsage, reconcileReviewSpeechStats } from '@/lib/review-verification';
-import { reserveCreation, releaseCreation, recordCreationCompletion, completionUsage, type CreationCompletion, type CreationReservation } from '@/lib/creation-quota';
+import { reserveCreation, releaseCreation, recordCreationCompletion, completionUsage, creationRequestFingerprint, type CreationCompletion, type CreationReservation } from '@/lib/creation-quota';
 import { acquireSlot, slotOptionsFromEnv } from '@/lib/generation-slots';
+import { acquireCreationWindow } from '@/lib/creation-window-lock';
 import { requireUser, requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard';
 import { readJsonBody, BodyError } from '@/lib/read-body';
 import { buildSearchQuery } from '@/lib/search-query';
@@ -20,13 +21,17 @@ import {
   NO_REPEAT_TASKS,
   ISOLATED_TASKS,
   CURRENT_CREATIVE_TASKS,
+  CREATIVE_WINDOW_TASKS,
   wantsNewTopics,
 } from '@/lib/topic-library';
-import { loadPriorTopicTitles } from '@/lib/topic-library-server';
+import { loadLatestTopicCompletion, loadPriorTopicSections } from '@/lib/topic-library-server';
+import { continueTopicPrompt, finalizeTopicBatch, prepareTopicDraft, topicRefillPrompt, TOPIC_BATCH_MAX } from '@/lib/topic-delivery';
+import { loadDoneList } from '@/lib/work-insight-load';
 import { difyErrorCode, difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
 import { waitForDifyMessage } from '@/lib/dify-recover';
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { DURABLE_CREATIVE_TASKS, loadCreativeMemory, ownsCreativeProfile, persistCreativeHistory } from '@/lib/creative-history';
+import { CREATIVE_WINDOW_RULES, loadCreativeWindowHistory } from '@/lib/creative-window';
 import { PROFILE_UUID } from '@/lib/profile-history';
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { difyWebStatus } from '@/lib/dify-web-status';
@@ -81,6 +86,7 @@ export async function POST(req: NextRequest) {
   let generationCompleted = false;
   // 生成并发名额（默认不限制，见 lib/generation-slots）：所有结束路径都要归还
   let releaseSlot: () => void = () => {};
+  let releaseWindow: () => void = () => {};
   try {
     /*
      * 请求体可能是压缩 / 分块发来的（lib/safe-post：用户线路差时超过约 8KB 的 POST 会被切断）。
@@ -140,18 +146,6 @@ export async function POST(req: NextRequest) {
     const originalQuery: string = body.query || '';
 
     /*
-     * 这里原本还有一套「手动对话记忆」：调用方传 sessionId + saveHistory，
-     * 服务端就从 conversation_messages 表读最近 5 轮拼到查询前面，生成完
-     * 再把这一轮写回去。
-     *
-     * 但从来没有任何页面传过这两个参数——生产库里那张表是 0 行。
-     * 记忆早已改由 Dify 的 conversation_id 承担（见 lib/dify-conversation.ts），
-     * 按「用户 + 档案 + 功能」分档，比手动拼历史更准也更省 token。
-     * 留着这段死逻辑只会让人以为记忆是在这里实现的，所以一并删掉。
-     */
-
-
-    /*
      * 这里原来有选题、审稿、分镜、账号定位四套「没传 query 时」的兜底模板，
      * 三百多行 parts.push。所有页面早就在前端拼好完整提示词放进 query 发过来，
      * 这些兜底一次都走不到，而且内容过时——账号定位那套写着
@@ -168,14 +162,23 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('Calling Dify API...');
-    console.log('Query:', query);
 
     // 知识库检索用的短查询，与发给模型的长指令分离，
     // 由 Dify 工作流的 5 个知识检索节点消费（start.search_query）
     const searchQuery = buildSearchQuery(body.taskType, body, originalQuery);
     const creationSettings = mergeCreationSettings(body.creationSettings || body.historyInput?.creationSettings);
     const explicitCreation = hasExplicitCreationContext(creationSettings);
+    const profileId = body.profileId || body.profile_id || null;
+    const creativeWindow = CREATIVE_WINDOW_TASKS.has(body.taskType);
+    const topicTask = NO_REPEAT_TASKS.has(body.taskType);
+    const topicCount = typeof body.inputs?.topicCount === 'number' ? body.inputs.topicCount : 0;
+    const requestedTopics = Number.isInteger(topicCount) && topicCount > 0 ? Math.min(topicCount, TOPIC_BATCH_MAX) : undefined;
+    const priorTopics = topicTask ? await loadPriorTopicSections(guard.userId!, profileId) : [];
     if (historyDb && !explicitCreation) query += await loadCreativeMemory(historyDb, guard.userId!, body.taskType, historyProfileId);
+    if (creativeWindow) {
+      query += await loadCreativeWindowHistory(guard.userId!, profileId, body.taskType);
+      query += CREATIVE_WINDOW_RULES;
+    }
 
     /*
      * 选题：把"已经出过的"明明白白告诉模型，禁止重出。
@@ -189,9 +192,9 @@ export async function POST(req: NextRequest) {
      * 不受 Dify 那个 100 轮记忆窗口的限制——这才是真正的"记得"。
      * 拼在检索短查询算好之后，不污染知识库检索。
      */
-    if (NO_REPEAT_TASKS.has(body.taskType)) {
+    if (topicTask) {
       // 按档案取：只防这个号自己出过的，别的号的选题不相干
-      const prior = await loadPriorTopicTitles(guard.userId!, body.profileId || body.profile_id || null);
+      const prior = priorTopics.map((topic) => topic.title);
       const source = body.inputs?.sourceReference;
       const developSelected = typeof source === 'string' && !!source.trim()
         && !wantsNewTopics(typeof body.inputs?.personalRequirement === 'string' ? body.inputs.personalRequirement : '');
@@ -258,25 +261,8 @@ export async function POST(req: NextRequest) {
       history_length: body.conversationHistory?.length || 0
     });
     
-    console.log('📦 完整请求体:', JSON.stringify(difyRequestBody, null, 2));
-
-    // 带上该作用域的历史会话，让 Dify 把多次生成串成一轮对话。
-    // 作用域 = 用户 + 账号档案 + 功能，见 lib/dify-conversation.ts。
-    const profileId = body.profileId || body.profile_id || null;
-    /*
-     * 有些任务不接共用会话（名单和理由见 ISOLATED_TASKS）。
-     *
-     * 选题：共用会话里躺着上一次同样问题的完整回答，模型会被它带着走——
-     * 这正是选题撞车的根源。三份定位：篇幅太大，会把共用会话撑爆。
-     * 它们需要的背景都已经明确写进这一次的提示词里了，不需要会话来带。
-     * 返回的新会话 id 也不存：存了会把其他板块共用的那个窗口顶掉。
-     */
+    // 创作板块共用档案的创作窗口。其余任务继续沿用原来的作用域。
     const isolated = ISOLATED_TASKS.has(body.taskType) || explicitCreation;
-    const existingConversationId = isolated ? null : await getDifyConversationId(guard.userId!, profileId);
-    if (existingConversationId) {
-      difyRequestBody.conversation_id = existingConversationId;
-      console.log('🔗 延续已有会话:', existingConversationId);
-    }
 
     /*
      * 每一步的调用和耗时（2026-11-01，整改方案阶段 0.3）：只记录，不改变生成。
@@ -318,15 +304,45 @@ export async function POST(req: NextRequest) {
     reservation = reserved.reservation;
     // 排队等名额：等太久或队列满就明确失败（额度同步释放），不让请求无限挂着
     try {
+      if (creativeWindow) releaseWindow = await acquireCreationWindow(guard.userId!, profileId, req.signal);
       releaseSlot = await acquireSlot(guard.userId!, slotOptionsFromEnv(), 0);
     } catch (err) {
       await releaseCreation(reservation);
+      releaseWindow();
       const code = (err as { code?: string }).code;
       return new Response(JSON.stringify({ error: err instanceof Error ? err.message : '生成排队失败', code }), {
         status: 503,
         headers: { 'Content-Type': 'application/json', 'Retry-After': '30' },
       });
     }
+    const existingConversationId = creativeWindow
+      ? await getDifyConversationId(guard.userId!, profileId, 'creation')
+      : isolated ? null : await getDifyConversationId(guard.userId!, profileId);
+    if (existingConversationId) difyRequestBody.conversation_id = existingConversationId;
+    const previousTopic = topicTask && existingConversationId
+      ? await loadLatestTopicCompletion(guard.userId!, existingConversationId)
+      : null;
+    let continuedWithSameSettings = false;
+    let windowRestart: 'expired' | 'context' | undefined;
+    if (topicTask && existingConversationId) {
+      continuedWithSameSettings = !!requestedTopics && !!previousTopic
+        && previousTopic.fingerprint === creationRequestFingerprint(body);
+      const nextQuery = continueTopicPrompt(previousTopic?.topics ?? [], requestedTopics ?? 0, continuedWithSameSettings ? undefined : query);
+      difyRequestBody.query = nextQuery;
+      difyRequestBody.inputs.query = nextQuery;
+    }
+    const restartWindow = (reason: 'expired' | 'context') => {
+      windowRestart = reason;
+      delete difyRequestBody.conversation_id;
+      const recoveredQuery = previousTopic
+        ? query + buildNoRepeatBlock(previousTopic.topics.map((topic) => topic.title))
+        : query;
+      difyRequestBody.query = recoveredQuery;
+      difyRequestBody.inputs.query = recoveredQuery;
+    };
+    const clearAttemptedConversation = (id: string) => creativeWindow
+      ? clearDifyConversationId(guard.userId!, profileId, id, 'creation')
+      : clearDifyConversationId(guard.userId!, profileId, id);
     const generateStart = Date.now();
     let response = await callDify();
 
@@ -335,10 +351,10 @@ export async function POST(req: NextRequest) {
     // 代价是丢失上下文，但功能可以自愈。
     if (!response.ok && existingConversationId) {
       const errText = await response.clone().text();
-      if (isInvalidConversationError(response.status, errText)) {
+      if (isInvalidConversationError(response.status, errText) || isContextOverflowError(errText)) {
         console.warn('⚠️ 会话已失效，清除后以新会话重试:', errText.slice(0, 160));
-        await clearDifyConversationId(guard.userId!, profileId);
-        delete difyRequestBody.conversation_id;
+        await clearAttemptedConversation(existingConversationId);
+        restartWindow(isContextOverflowError(errText) ? 'context' : 'expired');
         response = await callDify();
       }
     }
@@ -348,6 +364,7 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       await releaseCreation(reservation);
       releaseSlot();
+      releaseWindow();
       const err = await response.text();
       console.error('Dify Error:', err);
       return new Response(JSON.stringify({ error: 'API调用失败' }), {
@@ -367,7 +384,7 @@ export async function POST(req: NextRequest) {
     const sourceForReview = body.taskType === '审稿优化' ? reviewSource(body) : '';
     const boundedTask = body.taskType === '标题封面' || body.taskType === '跨行业二创';
     // 需要事后校对/修复的任务：正文照样边生成边显示，结束后若被改过，用 message_replace 整篇替换
-    const needsCheck = !!sourceForReview || boundedTask;
+    const needsCheck = !!sourceForReview || boundedTask || topicTask;
     const expectedCount = body.taskType === '标题封面' ? creationSettings.titleCount : body.historyInput?.count;
     // 兼容尚未刷新页面的旧客户端：主题是用户直接输入，不能扫描含通用规则的query。
     const boundedIntent = creationSettings.userIntent || creationSettings.topic || '';
@@ -396,7 +413,7 @@ export async function POST(req: NextRequest) {
         /** 把页面上的全文整篇换成 answer（页面端按 message_replace 整篇替换，见 lib/sse-stream.ts） */
         const showFullText = (answer: string) => {
           shownText = answer;
-          send({ event: 'message_replace', answer, conversation_id: capturedConversationId, message_id: capturedMessageId });
+          send({ event: 'message_replace', answer, ...(topicTask ? {} : { conversation_id: capturedConversationId, message_id: capturedMessageId }) });
         };
 
         /*
@@ -460,15 +477,17 @@ export async function POST(req: NextRequest) {
                 if (isContent) {
                   totalChunks++;
                   fullResponse += text;
-                  shownText += text;
                   if (totalChunks === 1) {
                     console.log('✅ 开始接收内容，事件类型:', data.event);
                   }
-                  send({
-                    answer: text,
-                    conversation_id: capturedConversationId || data.conversation_id,
-                    message_id: capturedMessageId || undefined,
-                  });
+                  if (!topicTask) {
+                    shownText += text;
+                    send({
+                      answer: text,
+                      conversation_id: capturedConversationId || data.conversation_id,
+                      message_id: capturedMessageId || undefined,
+                    });
+                  }
                 }
               }
               if (done) return totalChunks > 0 && !receivedEnd ? { kind: 'broken', error: new Error('上游缺少完成标记') } : { kind: 'done' };
@@ -497,8 +516,8 @@ export async function POST(req: NextRequest) {
             isContextOverflowError(outcome.message)
           ) {
             console.warn('⚠️ 会话超出模型上下文，换新会话重试:', outcome.message.slice(0, 160));
-            if (!isolated) await clearDifyConversationId(userId, profileId);
-            delete difyRequestBody.conversation_id;
+            await clearAttemptedConversation(difyRequestBody.conversation_id);
+            restartWindow('context');
             capturedConversationId = '';
             capturedMessageId = '';
             const retry = await callDify();
@@ -519,7 +538,7 @@ export async function POST(req: NextRequest) {
             if (got.status === 'done') {
               fullResponse = got.answer;
               totalChunks = Math.max(totalChunks, 1);
-              showFullText(got.answer);
+              if (!topicTask) showFullText(got.answer);
               outcome = { kind: 'done' };
               completionTerminal = 'recovered_message';
             } else if (got.status === 'error') {
@@ -527,6 +546,8 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          // 后续校对会有自己的会话 id，不能拿它替换创作窗口。
+          const generationConversationId = capturedConversationId || difyRequestBody.conversation_id;
           stages.push({ stage: 'generate', ms: Date.now() - generateStart, ok: outcome.kind === 'done' });
           /*
            * 正文写完了（2026-11-03 产品方选 A）：先告诉页面，按钮马上停转；下面的核对、修正照样一道不少，
@@ -757,11 +778,45 @@ export async function POST(req: NextRequest) {
               fullResponse = reconciled;
             }
           }
+          if (outcome.kind === 'done' && topicTask && fullResponse.trim()) {
+            send({ event: 'status', message: '正在逐条核对选题，撞题会自动补写' });
+            const polishSignal = AbortSignal.timeout(35_000);
+            const polish = (text: string) => prepareTopicDraft(text, async (prompt) => {
+              const reply = await traced('topic_polish', () => askDify(prompt, userId, '', { signal: polishSignal })).catch(() => null);
+              if (!reply?.ok) return null;
+              usageMetadata = combinedReviewUsage(usageMetadata, reply.completion.usage ?? {}, 'topic_polish_steps');
+              return reply.text;
+            });
+            const [freshTopics, done, draft] = await Promise.all([
+              loadPriorTopicSections(userId, profileId),
+              profileId ? loadDoneList(userId, profileId) : [],
+              polish(fullResponse),
+            ]);
+            const prior = freshTopics.length ? freshTopics : priorTopics;
+            const result = await finalizeTopicBatch(draft, [...(previousTopic?.topics ?? []), ...prior, ...done.map(({ title }) => ({ title, body: '' }))], requestedTopics, async (refill) => {
+              if (!generationConversationId) return '';
+              const repair = await traced('topic_refill', () => askDify(topicRefillPrompt(refill), userId, searchQuery, {
+                conversationId: generationConversationId, signal: AbortSignal.timeout(120_000),
+              }));
+              if (!repair.ok) return '';
+              usageMetadata = combinedReviewUsage(usageMetadata, repair.completion.usage ?? {}, 'topic_refill_steps');
+              return holdUnsupported(tidy(repair.text), factIssues).text;
+            });
+            if (result.requested) {
+              const { text, ...batch } = result;
+              if (result.count) {
+                fullResponse = text;
+                send({ event: 'topic_batch', ...batch });
+              } else {
+                outcome = { kind: 'error', message: '这次没有生成可交付的新选题，请调整要求后再试' };
+              }
+            }
+          }
           // 需要校对的任务：没通过校对的草稿不能留在页面上，先清掉再报错
           if (outcome.kind !== 'done' && needsCheck && shownText) showFullText('');
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
-            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
+            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
             else send({ event: 'error', message: friendlyDifyError(outcome.message), code: difyErrorCode(outcome.message) });
           } else if (outcome.kind === 'broken') {
             console.error('Stream error:', outcome.error);
@@ -788,13 +843,21 @@ export async function POST(req: NextRequest) {
             // Commit before completion: ambiguous commit failure must not release a successful generation.
             generationCompleted = true;
             try {
-              const telemetry = { stages, main_calls: mainCalls, extra_calls: stages.filter((s) => s.stage !== 'generate').length, post_changed: rawResponse !== fullResponse };
+              const telemetry = {
+                stages, main_calls: mainCalls, extra_calls: stages.filter((s) => s.stage !== 'generate').length, post_changed: rawResponse !== fullResponse,
+                ...(creativeWindow ? { creation_window: { mode: windowRestart ? 'recovered' : existingConversationId ? 'continued' : 'started', restart: windowRestart, same_settings: !windowRestart && continuedWithSameSettings } } : {}),
+              };
               await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: { ...usageMetadata, ...telemetry } }, body.taskType);
               await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation);
               // 学习信号：这次生成是不是对照组、结果开头的指纹（尽力而为，不影响结果）
               void recordGenerationSignal({ userId: userId!, profileId: profileId ?? null, board: getFeatureFromTaskType(body.taskType), result: fullResponse }); }
             catch { send({ event: 'quota_warning', message: '内容已生成，额度同步稍有延迟，请保留结果' }); }
-            // 结束标记：页面据此区分"写完了"和"半路断了"
+            if (creativeWindow && generationConversationId) {
+              await saveDifyConversationId(userId, generationConversationId, profileId, body.taskType, 'creation');
+            } else if (!creativeWindow && (!isolated || CURRENT_CREATIVE_TASKS.has(body.taskType)) && capturedConversationId) {
+              await saveDifyConversationId(userId, capturedConversationId, profileId, body.taskType || '未知');
+            }
+            // 窗口先存下来，收到完成事件后立即再生成也能接上。
             send({ event: 'message_end', conversation_id: capturedConversationId, message_id: capturedMessageId });
           }
 
@@ -810,21 +873,6 @@ export async function POST(req: NextRequest) {
           if (!generationCompleted) await releaseCreation(reservation);
           releaseSlot();
 
-          // 持久化会话 id，使下一次同作用域的生成延续本轮对话。
-          // 仅在确有内容产出时保存，避免把失败的空会话记下来。
-          // 独立会话不写回共用窗口（见上面 isolated 的说明）
-          if ((!isolated || CURRENT_CREATIVE_TASKS.has(body.taskType)) && generationCompleted && outcome.kind === 'done' && totalChunks > 0 && capturedConversationId) {
-            await saveDifyConversationId(
-              userId,
-              capturedConversationId,
-              profileId,
-              body.taskType || '未知'
-            );
-          } else if (totalChunks > 0 && !capturedConversationId) {
-            // 有内容产出却没拿到会话 id，说明 SSE 事件里始终不含 conversation_id。
-            // 不记下来的话，表为空时无法判断是没执行还是执行了没拿到值。
-            console.warn('[dify-conversation] 本轮未捕获到 conversation_id，会话不会被延续');
-          }
         } catch (err) {
           clearInterval(heartbeat);
           if (!generationCompleted) await releaseCreation(reservation);
@@ -835,6 +883,8 @@ export async function POST(req: NextRequest) {
           } catch {
             /* 对面已经关了 */
           }
+        } finally {
+          releaseWindow();
         }
       }
     });
@@ -853,6 +903,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (!generationCompleted) await releaseCreation(reservation);
     releaseSlot();
+    releaseWindow();
+    if (error instanceof Error && error.name === 'CreationConversationUnavailable') {
+      return Response.json({ error: error.message }, { status: 503 });
+    }
     console.error('API Error:', error);
     return new Response(JSON.stringify({ error: '服务器错误' }), { 
       status: 500,

@@ -1,15 +1,31 @@
 import { getServiceSupabase } from '@/lib/admin-auth';
-import { batchBelongsToProfile, collectTopics, deletedTopicsOf, splitTopicSections, topicKey } from '@/lib/topic-library';
+import { batchBelongsToProfile, collectTopics, deletedTopicsOf, NO_REPEAT_LIMIT, splitTopicSections, topicKey, type TopicSection } from '@/lib/topic-library';
+import { historyProfileFilter } from '@/lib/profile-history';
 
-/** 追问的回答里至少认出这么多条选题，才当成"新的一批"存进选题库 */
-export const FOLLOW_UP_MIN_TOPICS = 3;
+/** 只读取同用户、同一个原生会话上一次实际交付的内容。 */
+export async function loadLatestTopicCompletion(userId: string, conversationId: string): Promise<{ fingerprint: string; topics: TopicSection[] } | null> {
+  try {
+    const { data, error } = await getServiceSupabase().from('creation_completion_evidence')
+      .select('task_type,request_fingerprint,result')
+      .eq('user_id', userId)
+      .eq('dify_conversation_id', conversationId)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || data?.task_type !== '选题策划' || !data.request_fingerprint) return null;
+    const topics = splitTopicSections(data.result || '');
+    return topics.length ? { fingerprint: data.request_fingerprint, topics } : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 追问里"再来 10 条"出的选题，也存进选题库。
  *
  * 不存的话，这些选题只躺在那一次对话里：选题库里找不到、不能单独送去写脚本，
  * 下次生成时防重复清单里也没有它们——又会被原样再出一遍。
- * 认不出几条的（比如只是把某一条展开讲讲）不存，免得选题库里混进半截内容。
+ * 调用方已识别为新批次并完成查重。保留所有通过核对的选题。
  */
 export async function saveFollowUpTopics(
   userId: string,
@@ -17,7 +33,7 @@ export async function saveFollowUpTopics(
   answer: string,
   profileId: string | null
 ): Promise<boolean> {
-  if (splitTopicSections(answer).length < FOLLOW_UP_MIN_TOPICS) return false;
+  if (!splitTopicSections(answer).length) return false;
   const { error } = await getServiceSupabase()
     .from('script_history')
     .insert({
@@ -42,7 +58,7 @@ export async function saveFollowUpTopics(
  *
  * 取不到就当没有，不挡生成——防重复是加分项，不该让生成因此失败。
  */
-export async function loadPriorTopicTitles(userId: string, profileId?: string | null): Promise<string[]> {
+export async function loadPriorTopicSections(userId: string, profileId?: string | null): Promise<TopicSection[]> {
   try {
     const db = getServiceSupabase();
     const { data: all, error } = await db
@@ -50,8 +66,9 @@ export async function loadPriorTopicTitles(userId: string, profileId?: string | 
       .select('id, result, input_data, created_at')
       .eq('user_id', userId)
       .eq('task_type', '选题策划')
+      .or(historyProfileFilter(profileId || 'default') + (profileId ? ',and(input_data->>profile_id.is.null,input_data->>profileId.is.null)' : ''))
       .order('created_at', { ascending: false })
-      // 一批 10-20 条；要按档案筛，多取一些，筛完仍够凑满清单上限
+      .order('id')
       .limit(80);
     if (error) {
       console.error('[no-repeat] 读取历史选题失败:', error.message);
@@ -59,7 +76,7 @@ export async function loadPriorTopicTitles(userId: string, profileId?: string | 
     }
 
     // 只看这个档案出过的——别的号的选题跟它无关，混进来只会挤掉它自己的
-    let data = all ?? [];
+    let profileName: string | null = null;
     if (profileId) {
       const { data: prof } = await db
         .from('user_profiles')
@@ -67,21 +84,22 @@ export async function loadPriorTopicTitles(userId: string, profileId?: string | 
         .eq('id', profileId)
         .eq('user_id', userId)
         .maybeSingle();
-      data = data.filter((b) => batchBelongsToProfile(b.input_data, profileId, prof?.profile_name));
+      profileName = prof?.profile_name ?? null;
     }
+    const data = (all ?? []).filter((b) => batchBelongsToProfile(b.input_data, profileId ?? null, profileName, false));
 
-    const out: string[] = [];
+    const out: TopicSection[] = [];
     const seen = new Set<string>();
-    const add = (t: string) => {
-      const k = topicKey(t);
+    const add = (topic: TopicSection) => {
+      const k = topicKey(topic.title);
       if (k && !seen.has(k)) {
         seen.add(k);
-        out.push(t);
+        out.push(topic);
       }
     };
-    for (const b of data ?? []) deletedTopicsOf(b.input_data).forEach(add);
-    for (const t of collectTopics(data ?? [])) add(t.title);
-    return out;
+    for (const b of data) deletedTopicsOf(b.input_data).forEach((title) => add({ title, body: '' }));
+    for (const t of collectTopics(data)) add({ title: t.title, body: t.body });
+    return out.slice(0, NO_REPEAT_LIMIT);
   } catch (e: any) {
     console.error('[no-repeat] 读取历史选题异常:', e?.message);
     return [];

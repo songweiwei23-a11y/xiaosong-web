@@ -3,6 +3,7 @@ import { reserveCreation, releaseCreation, recordCreationCompletion, completionU
 import { requireUser, requireUserWithQuota, incrementUsageServer } from '@/lib/api-guard'
 import { readJsonBody, BodyError } from '@/lib/read-body'
 import { buildSearchQuery } from '@/lib/search-query'
+import { acquireCreationWindow } from '@/lib/creation-window-lock'
 import { recordGenerationSignal } from '@/lib/learning-signals'
 import {
   getDifyConversationId,
@@ -17,9 +18,15 @@ import {
   ISOLATED_TASKS,
   NO_REPEAT_LIMIT,
   NO_REPEAT_TASKS,
+  CREATIVE_WINDOW_TASKS,
+  splitTopicSections,
   wantsNewTopics,
 } from '@/lib/topic-library'
-import { loadPriorTopicTitles, saveFollowUpTopics } from '@/lib/topic-library-server'
+import { loadLatestTopicCompletion, loadPriorTopicSections, saveFollowUpTopics } from '@/lib/topic-library-server'
+import { finalizeTopicBatch, topicCountInRequest, topicRefillPrompt } from '@/lib/topic-delivery'
+import { loadDoneList } from '@/lib/work-insight-load'
+import { askDify } from '@/lib/dify-task'
+import { combinedReviewUsage } from '@/lib/review-verification'
 import { difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors'
 import { verifiedAttachments, toDifyFiles, attachmentTextBlock, CHAT_FILES_BUCKET } from '@/lib/chat-attachments-server'
 import { attachmentReadable, attachmentToText } from '@/lib/document-text'
@@ -42,6 +49,7 @@ import { boardsOnly, boardsWanted, getHotBoard, hotBoardsContext } from '@/lib/h
 import { localNewsSearches } from '@/lib/local-news-sources'
 import { newsPlace } from '@/lib/search-quality'
 import { searchProfileHint } from '@/lib/search-profile-hint'
+import { CREATIVE_WINDOW_RULES, loadCreativeWindowHistory, loadLatestCreativeResult } from '@/lib/creative-window'
 
 /*
  * 自由对话与所有「追问」都走这个路由。
@@ -61,6 +69,7 @@ const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1'
 export async function POST(request: NextRequest) {
   let reservation: CreationReservation | undefined;
   let generationCompleted = false;
+  let releaseWindow: () => void = () => {};
   try {
     // 压缩 / 分块发来的大请求（lib/safe-post），分块的先验登录才能取
     let owner: string | null = null
@@ -74,15 +83,9 @@ export async function POST(request: NextRequest) {
     catch (e) { return Response.json({ error: e instanceof BodyError ? e.message : '请求格式不正确' }, { status: 400 }) }
     const { query, conversationId, profileData, initialContent, freshWindow, taskType } = body
     const profileId = body.profileId || profileData?.id || null
-    /*
-     * 选题的追问不接共用窗口，也不写回去——和生成时一样（见 ISOLATED_TASKS）。
-     * 生成选题时没进共用窗口，窗口里压根没有这批选题；追问要是接进去，
-     * 问"第 3 条展开讲讲"模型根本不知道第 3 条是什么。
-     * 所以第一次追问开自己的会话、把整批选题贴进去，之后接着这个会话聊。
-     */
+    const freeChatThread = body.freeChat === true
+    const creativeWindow = !freeChatThread && CREATIVE_WINDOW_TASKS.has(taskType)
     const isolated = ISOLATED_TASKS.has(taskType) || hasExplicitCreationContext(body.creationSettings)
-    /** 用户这句是在要一批新选题（"再来 10 条""换一批"），不是追问某一条 */
-    const askingNewTopics = NO_REPEAT_TASKS.has(taskType) && wantsNewTopics(query || '')
 
     // 追问走的是自由对话额度。不传 feature 会导致免费版限额失效，
     // 且下方扣减必须用同一个 key，否则查得到额度却扣不掉。
@@ -91,6 +94,8 @@ export async function POST(request: NextRequest) {
     if (typeof query !== 'string' || !query.trim() || query.length > 80_000) {
       return Response.json({ error: '请输入问题，内容不能超过 8 万字符' }, { status: 400 });
     }
+    const askingNewTopics = NO_REPEAT_TASKS.has(taskType) && wantsNewTopics(query)
+    const priorTopics = askingNewTopics ? await loadPriorTopicSections(guard.userId!, profileId) : []
     let files;
     try { files = verifiedAttachments(body.files, guard.userId!); }
     catch (error) { return Response.json({ error: (error as Error).message }, { status: 400 }); }
@@ -107,26 +112,35 @@ export async function POST(request: NextRequest) {
     }
 
     // 用户明确要求开一个干净的窗口（自由对话页的「新建对话」）
-    if (freshWindow) {
+    if (freshWindow && !creativeWindow) {
       await startNewWindow(guard.userId!, profileId)
     }
 
-    /*
-     * 用哪个会话：调用方给了就用它（自由对话的某条线程、某次追问自己的线程），
-     * 没给就接入这个档案的主工作窗口——这样在自由对话里问
-     * 「刚才那条脚本怎么改」时，模型是真的见过那条脚本的。
-     */
-    const sharedConversationId = freshWindow || isolated
-      ? null
-      : await getDifyConversationId(guard.userId!, profileId)
-    const useConversationId = conversationId || sharedConversationId || ''
+    if (creativeWindow) {
+      try {
+        releaseWindow = await acquireCreationWindow(guard.userId!, profileId, request.signal);
+      } catch {
+        return Response.json({ error: '这个档案的上一轮创作还在进行，请等它结束后继续' }, { status: 503 });
+      }
+    }
+    // 创作追问读取服务端当前的档案会话，避免旧弹窗把窗口切回已失效的 id。
+    const sharedConversationId = creativeWindow
+      ? await getDifyConversationId(guard.userId!, profileId, 'creation')
+      : freshWindow || isolated ? null : await getDifyConversationId(guard.userId!, profileId)
+    const useConversationId = (creativeWindow ? sharedConversationId : conversationId || sharedConversationId) || ''
+    const previousTopic = askingNewTopics && sharedConversationId
+      ? await loadLatestTopicCompletion(guard.userId!, sharedConversationId)
+      : null;
+    let windowRestart: 'expired' | 'context' | undefined;
+    const clearAttemptedConversation = () => creativeWindow
+      ? clearDifyConversationId(guard.userId!, profileId, useConversationId, 'creation')
+      : clearDifyConversationId(guard.userId!, profileId, useConversationId)
     /*
      * 自由对话：一个线程一个 Dify 会话（2026-11-01，整改方案 1.4）。
      * 原来每条线程回答完都把自己写成档案的主工作窗口，系统自动开的下一条线程接进主窗口时拿到的就是上一条线程的会话，
      * 两条线程从此往同一个 Dify 会话里写，互相看得到。现在：自由对话线程不写回主窗口（主窗口只由脚本这类成稿板块写，
      * 「刚才那条脚本怎么改」照样接得上）；接进主窗口的线程把它认领走，下一条线程不会再接同一个会话。
      */
-    const freeChatThread = body.freeChat === true
     const claimsSharedWindow = freeChatThread && !conversationId && !!sharedConversationId
 
     console.log('📞 持续对话请求:', {
@@ -163,14 +177,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 会话是全新的（既没指定也没主窗口）才需要把刚生成的内容贴进去；
-    // 接入主窗口时模型已经见过它了，再贴一遍是白花 token
-    if (!useConversationId && initialContent) {
-      // 一批选题十来条、每条带拍法，1500 字只够前三四条，
-      // 后面的"第 8 条怎么拍"就没法答了
-      const limit = isolated ? 8000 : 1500
-      fullQuery = `【刚才生成的内容】\n${initialContent.substring(0, limit)}\n\n---\n\n【用户的追问】\n${query}`
-      console.log('✅ 全新窗口，附带初始内容')
+    if (creativeWindow) {
+      fullQuery += await loadCreativeWindowHistory(guard.userId!, profileId, taskType)
+      fullQuery += CREATIVE_WINDOW_RULES
     }
 
     /*
@@ -179,8 +188,9 @@ export async function POST(request: NextRequest) {
      */
     if (askingNewTopics) {
       // 按档案取：只防这个号自己出过的
-      const prior = await loadPriorTopicTitles(guard.userId!, profileId)
+      const prior = [...(previousTopic?.topics ?? []), ...priorTopics].map((topic) => topic.title)
       fullQuery += buildNoRepeatBlock(prior)
+      fullQuery += '\n每一条新选题都用「## 选题1：标题」开头，写清切入角度和具体拍摄动作。'
       console.log(`[no-repeat] 追问要新选题：附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`)
     }
 
@@ -195,6 +205,9 @@ export async function POST(request: NextRequest) {
      * 这也是原先那个「副助手」应用最大的缺陷——它压根没有这个变量。
      */
     const question = typeof body.question === 'string' ? body.question : query
+    if (freeChatThread && !conversationId && !freshWindow && !isolated && !initialContent && !files.length) {
+      fullQuery += await loadLatestCreativeResult(guard.userId!, profileId, question);
+    }
     // 编导知识库按任务分流（lib/kb-routing）：空检索词 = 不查。画布改一句不查；自由对话只在问短视频相关的事时查。
     // 但这一轮要联网时检索词照常传：线上工作流的联网节点可能也读 search_query（docs/dify 的 DSL 里是这样），清空会让联网搜不到
     const fullSearchQuery = body.freeChat === true ? freeChatSearchQuery(question) : buildSearchQuery('自由对话', { taskType: '自由对话' }, question)
@@ -267,10 +280,19 @@ export async function POST(request: NextRequest) {
       }
       Object.assign(difyPayload.inputs, webSession.inputs);
       // 每轮重新构建，重试不叠加规则；由服务端真实联网授权决定资料边界。
-      const roundQuery = body.freeChat === true
+      let roundQuery = body.freeChat === true
         ? fullQuery + (serverWeb ? `\n\n${serverWeb.context}` : '') + freeChatAnswerRules(webSession.enabled) + hotBlock
           + `\n\n【本轮用户原话与输出约束，请逐项回应】\n${question}`
         : fullQuery;
+      // 首次追问以页面所见的最终稿为准。正常续聊复用会话，换窗口时重新带上成稿。
+      if (typeof initialContent === 'string' && initialContent &&
+        (!difyPayload.conversation_id || (creativeWindow && (body.anchorCurrentResult === true || conversationId !== difyPayload.conversation_id)))) {
+        const limit = creativeWindow ? 16000 : isolated ? 8000 : 1500;
+        const recent = creativeWindow && typeof body.recentDialog === 'string'
+          ? `\n\n【这份成稿的近期追问记录】\n${body.recentDialog.slice(0, 2400)}`
+          : '';
+        roundQuery = `【用户正在查看的成稿】\n${initialContent.slice(0, limit)}${recent}\n\n---\n\n【用户的追问】\n${roundQuery}`;
+      }
       difyPayload.query = roundQuery;
       difyPayload.inputs.query = roundQuery;
       if (serverWeb) {
@@ -296,7 +318,10 @@ export async function POST(request: NextRequest) {
     }
 
     const reserved = await reserveCreation(guard.userId!, 'freeChat', request, body)
-    if (!reserved.ok) return reserved.response
+    if (!reserved.ok) {
+      releaseWindow();
+      return reserved.response;
+    }
     reservation = reserved.reservation
     let response = await callDify()
 
@@ -305,9 +330,10 @@ export async function POST(request: NextRequest) {
     // 代价是丢上下文，但功能能自愈。与 /api/dify/stream 同一套处理。
     if (!response.ok && useConversationId) {
       const errText = await response.clone().text()
-      if (isInvalidConversationError(response.status, errText)) {
+      if (isInvalidConversationError(response.status, errText) || isContextOverflowError(errText)) {
         console.warn('⚠️ 会话已失效，清除后以新会话重试:', errText.slice(0, 160))
-        await clearDifyConversationId(guard.userId!, profileId)
+        await clearAttemptedConversation()
+        windowRestart = isContextOverflowError(errText) ? 'context' : 'expired';
         delete difyPayload.conversation_id
         response = await callDify()
       }
@@ -317,6 +343,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       await releaseCreation(reservation)
+      releaseWindow();
       const errorText = await response.text()
       console.error('Dify Error:', errorText)
       return new Response(JSON.stringify({ error: '对话服务暂时不可用，请稍后重试' }), {
@@ -332,6 +359,7 @@ export async function POST(request: NextRequest) {
 
     const stream = new ReadableStream({
       async start(controller) {
+        let heartbeat: ReturnType<typeof setInterval> | undefined;
         try {
           let conversationIdFromResponse = ''
           let hasContent = false
@@ -345,6 +373,8 @@ export async function POST(request: NextRequest) {
             if (clientGone) return
             try { controller.enqueue(chunk) } catch { clientGone = true }
           }
+          const sendEvent = (data: Record<string, unknown>) => send(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          if (askingNewTopics) heartbeat = setInterval(() => send(encoder.encode(': ping\n\n')), 8_000);
           let answerText = ''
           /*
            * 跨数据块的行缓冲。
@@ -366,12 +396,42 @@ export async function POST(request: NextRequest) {
               await webSession.finish();
               console.log('✅ 对话流结束，有内容:', hasContent)
               if (!receivedEnd && !upstreamFailed) send(encoder.encode(`data: ${JSON.stringify({ event: 'error', message: '回答没有完整结束，请保留已生成的内容后重试' })}\n\n`))
+              if (askingNewTopics && hasContent && receivedEnd && !upstreamFailed && guard.userId) {
+                sendEvent({ event: 'status', message: '正在逐条核对选题，撞题会自动补写' });
+                const done = profileId ? await loadDoneList(guard.userId, profileId) : [];
+                const current = typeof initialContent === 'string' ? splitTopicSections(initialContent.slice(0, 16_000)) : [];
+                const result = await finalizeTopicBatch(answerText, [...current, ...(previousTopic?.topics ?? []), ...priorTopics, ...done.map(({ title }) => ({ title, body: '' }))],
+                  topicCountInRequest(query) ?? (splitTopicSections(answerText).length || 3), async (refill) => {
+                    const conversationId = conversationIdFromResponse || difyPayload.conversation_id;
+                    if (!conversationId) return '';
+                    const reply = await askDify(topicRefillPrompt(refill), guard.userId!, searchQuery, {
+                      conversationId, signal: AbortSignal.timeout(120_000),
+                    });
+                    if (!reply.ok) return '';
+                    usageMetadata = combinedReviewUsage(usageMetadata, reply.completion.usage ?? {}, 'topic_refill_steps');
+                    return reply.text;
+                  });
+                if (!result.count) {
+                  upstreamFailed = true;
+                  sendEvent({ event: 'error', message: '这次没有生成可交付的新选题，请调整要求后再试' });
+                } else {
+                  const { text, ...batch } = result;
+                  answerText = text;
+                  sendEvent({ event: 'topic_batch', ...batch });
+                  sendEvent({ event: 'message_replace', answer: text });
+                  sendEvent({ event: 'message_end', conversation_id: conversationIdFromResponse });
+                }
+              }
               if (hasContent && answerText.trim() && receivedEnd && !upstreamFailed && guard.userId) {
                 generationCompleted = true
                 // key 必须与 api-guard 的 featureMap 完全一致（驼峰 freeChat）。
                 // 此处曾传 'chat'，映射不到列名，扣减被静默跳过，用了不计次。
                 try {
-                  await recordCreationCompletion(reservation!, { result: answerText, terminal: completionTerminal!, conversationId: conversationIdFromResponse, messageId: upstreamMessageId, usage: usageMetadata }, '自由对话')
+                  const usage = creativeWindow ? {
+                    ...usageMetadata,
+                    creation_window: { task: taskType, mode: windowRestart ? 'recovered' : sharedConversationId ? 'continued' : 'started', restart: windowRestart },
+                  } : usageMetadata;
+                  await recordCreationCompletion(reservation!, { result: answerText, terminal: completionTerminal!, conversationId: conversationIdFromResponse || difyPayload.conversation_id, messageId: upstreamMessageId, usage }, '自由对话')
                   void recordGenerationSignal({ userId: guard.userId!, profileId: profileId ?? null, board: 'freeChat', result: answerText })
                   await incrementUsageServer(guard.userId, 'freeChat', '自由对话', {
                   question: (query || '').slice(0, 2000),
@@ -386,11 +446,9 @@ export async function POST(request: NextRequest) {
                   await saveFollowUpTopics(guard.userId, query || '', answerText, profileId)
                 }
 
-                // 把这轮的会话记为该档案的主工作窗口，下次别的板块生成时
-                // 会接着它——这是「所有板块同一个窗口」的另一半：
-                // 不只是读，聊出来的上下文也要能被生成板块继承。
-                // 选题的独立会话不写回去（见上面 isolated）。
-                if (conversationIdFromResponse && !isolated && !freeChatThread) {
+                if (creativeWindow && conversationIdFromResponse) {
+                  await saveDifyConversationId(guard.userId, conversationIdFromResponse, profileId, taskType, 'creation')
+                } else if (conversationIdFromResponse && !isolated && !freeChatThread) {
                   await saveDifyConversationId(
                     guard.userId,
                     conversationIdFromResponse,
@@ -456,11 +514,11 @@ export async function POST(request: NextRequest) {
                 console.error('[dify/chat] Dify 报错:', failure.slice(0, 300))
                 if (
                   !hasContent &&
-                  isContextOverflowError(failure) &&
+                  (isContextOverflowError(failure) || isInvalidConversationError(400, failure)) &&
                   sharedConversationId &&
                   useConversationId === sharedConversationId
                 ) {
-                  await clearDifyConversationId(guard.userId!, profileId)
+                  await clearAttemptedConversation()
                 }
                 send(
                   encoder.encode(`data: ${JSON.stringify({ event: 'error', message: friendlyDifyError(failure) })}\n\n`)
@@ -473,13 +531,16 @@ export async function POST(request: NextRequest) {
                 answerText = applyChatAnswer(answerText, data)
               }
 
-              send(encoder.encode(`data: ${jsonStr}\n\n`))
+              if (!askingNewTopics) send(encoder.encode(`data: ${jsonStr}\n\n`))
             }
           }
         } catch (error) {
           if (!generationCompleted) await releaseCreation(reservation)
           console.error('流处理错误:', error)
           try { controller.error(error) } catch { /* client closed */ }
+        } finally {
+          clearInterval(heartbeat);
+          releaseWindow();
         }
       },
     })
@@ -495,7 +556,11 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    releaseWindow();
     if (!generationCompleted) await releaseCreation(reservation)
+    if (error instanceof Error && error.name === 'CreationConversationUnavailable') {
+      return Response.json({ error: error.message }, { status: 503 });
+    }
     console.error('API 错误:', error)
     return new Response(
       JSON.stringify({ error: String(error) }),

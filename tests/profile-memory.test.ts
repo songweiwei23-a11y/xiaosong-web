@@ -40,8 +40,8 @@ describe('每个档案一个记忆窗口', () => {
 
 describe('接线', () => {
   it('生成选题和追问"再来一批"，防重复清单都按档案取', () => {
-    expect(readCode('app/api/dify/stream/route.ts')).toMatch(/loadPriorTopicTitles\(guard\.userId!, body\.profileId \|\| body\.profile_id \|\| null\)/);
-    expect(readCode('app/api/dify/chat/route.ts')).toMatch(/loadPriorTopicTitles\(guard\.userId!, profileId\)/);
+    expect(readCode('app/api/dify/stream/route.ts')).toMatch(/loadPriorTopicSections\(guard\.userId!, profileId\)/);
+    expect(readCode('app/api/dify/chat/route.ts')).toMatch(/loadPriorTopicSections\(guard\.userId!, profileId\)/);
     expect(readCode('lib/topic-library-server.ts')).toMatch(/batchBelongsToProfile\(b\.input_data, profileId/);
   });
 

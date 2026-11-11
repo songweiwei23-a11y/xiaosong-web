@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({ fetch: vi.fn(), usage: vi.fn(), guard: vi.fn() }));
 vi.mock('@/lib/api-guard', () => ({ requireUserWithQuota: () => state.guard(), incrementUsageServer: state.usage }));
 vi.mock('@/lib/dify-conversation', () => ({ getDifyConversationId: vi.fn(async () => null), saveDifyConversationId: vi.fn(), clearDifyConversationId: vi.fn(), claimSharedWindow: vi.fn(), startNewWindow: vi.fn(), isInvalidConversationError: () => false }));
-vi.mock('@/lib/topic-library-server', () => ({ loadPriorTopicTitles: vi.fn(async () => []), saveFollowUpTopics: vi.fn() }));
+vi.mock('@/lib/topic-library-server', () => ({ loadPriorTopicSections: vi.fn(async () => []), loadLatestTopicCompletion: vi.fn(async () => null), saveFollowUpTopics: vi.fn() }));
 import { signAttachment } from '@/lib/chat-attachments-server';
 import { releaseCreation } from '@/lib/creation-quota';
 const userId = '11111111-1111-1111-1111-111111111111';
@@ -18,6 +18,52 @@ function call(files: unknown) {
   return POST(new Request('http://localhost/api/dify/chat', { method: 'POST', body: JSON.stringify({ query: '【档案背景】餐饮账号\n【我的问题】今天有什么科技新闻？', question: '今天有什么科技新闻？', freeChat: true, files }) }) as any);
 }
 describe('自由对话将附件与联网状态传给页面', () => {
+  it('追问再来一条时筛掉当前批次的撞题，保存实际展示的结果', async () => {
+    vi.stubEnv('ASSISTANT_API_KEY', '');
+    const { saveFollowUpTopics } = await import('@/lib/topic-library-server');
+    const raw = '## 选题1：柜门开合测试\n展示铰链开合\n\n## 选题2：抽屉满载对比\n分别拍抽屉空载和装满物品时的拉动';
+    const event = { event: 'message', answer: raw, conversation_id: 'creative-window' };
+    state.fetch.mockResolvedValue(new Response('data: ' + JSON.stringify(event) + '\n\ndata: {"event":"message_end"}\n\n'));
+    const response = await POST(new Request('https://local/api/dify/chat', {
+      method: 'POST',
+      body: JSON.stringify({ taskType: '选题策划', query: '再来一条', initialContent: '## 选题1：柜门开合测试\n展示铰链开合' }),
+    }) as any);
+    const stream = await response.text();
+    expect(stream).toContain('topic_batch');
+    expect(stream).toContain('抽屉满载对比');
+    expect(stream).not.toContain('柜门开合测试');
+    expect(saveFollowUpTopics).toHaveBeenCalledWith(userId, '再来一条', expect.stringContaining('抽屉满载对比'), null);
+    expect(state.usage).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['old-dialog', 'creative-window'])('从 %s 进入的追问接入该档案窗口，并以用户正在看的最终稿为准', async (conversationId) => {
+    const { getDifyConversationId, saveDifyConversationId, claimSharedWindow } = await import('@/lib/dify-conversation');
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce('creative-window');
+    state.fetch.mockResolvedValue(new Response('data: {"event":"message","answer":"从第八条接着写"}\n\ndata: {"event":"message_end","conversation_id":"creative-window"}\n\n'));
+    const response = await POST(new Request('https://local/api/dify/chat', {
+      method: 'POST',
+      body: JSON.stringify({ taskType: '选题策划', query: '第八条怎么拍', initialContent: '第八条的校对后成稿', conversationId, anchorCurrentResult: conversationId === 'creative-window' }),
+    }) as any);
+    await response.text();
+    const payload = JSON.parse(state.fetch.mock.calls[0][1].body);
+    expect(payload.conversation_id).toBe('creative-window');
+    expect(payload.query).toContain('第八条的校对后成稿');
+    expect(saveDifyConversationId).toHaveBeenCalledWith(userId, 'creative-window', null, '选题策划', 'creation');
+    expect(claimSharedWindow).not.toHaveBeenCalled();
+  });
+  it('创作窗口超出上下文时，只清掉请求使用的旧窗口', async () => {
+    const { getDifyConversationId, clearDifyConversationId, saveDifyConversationId } = await import('@/lib/dify-conversation');
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce('full-creative-window');
+    state.fetch.mockResolvedValue(new Response('data: {"event":"error","message":"Input exceeds the model context window"}\n\n'));
+    const response = await POST(new Request('https://local/api/dify/chat', {
+      method: 'POST',
+      body: JSON.stringify({ taskType: '创作方向', query: '再来三个方向', profileId: userId }),
+    }) as any);
+    expect(await response.text()).toContain('已经为你换了一个新窗口');
+    expect(clearDifyConversationId).toHaveBeenCalledWith(userId, userId, 'full-creative-window', 'creation');
+    expect(saveDifyConversationId).not.toHaveBeenCalled();
+    expect(releaseCreation).toHaveBeenCalledTimes(1);
+  });
   it('审稿首次追问用当前稿件开独立会话，后续使用调用方的审稿会话', async () => {
     const { getDifyConversationId, saveDifyConversationId } = await import('@/lib/dify-conversation');
     state.fetch.mockResolvedValue(new Response('data: {"event":"message","answer":"保留原稿细节"}\n\ndata: {"event":"message_end","conversation_id":"review-own"}\n\n'));

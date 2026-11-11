@@ -5,9 +5,11 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Send, Loader2, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
 import { Markdown } from '@/components/markdown'
 import { WordDownloadButton } from '@/components/ui/WordDownloadButton'
-import { readDifyStream } from '@/lib/sse-stream'
+import { readDifyStream, topicBatchNotice } from '@/lib/sse-stream'
 import { getActiveProfileId } from '@/lib/active-profile'
 import { takeDialogDraft } from '@/lib/dialog-draft'
+import { CREATIVE_WINDOW_TASKS, splitTopicSections } from '@/lib/topic-library'
+import { notify } from '@/components/ui/feedback'
 import {
   listConversations,
   createConversation,
@@ -51,6 +53,7 @@ interface ContinuousDialogProps {
   onClose: () => void
   initialContent: string
   conversationId?: string
+  profileId?: string | null
   taskType: string
   contextData?: any
 }
@@ -60,6 +63,7 @@ export default function ContinuousDialog({
   onClose,
   initialContent,
   conversationId: initialConversationId,
+  profileId: resultProfileId,
   taskType,
   contextData
 }: ContinuousDialogProps) {
@@ -74,6 +78,12 @@ export default function ContinuousDialog({
   const abortRef = useRef<AbortController | null>(null)
   /** 本次追问对话在 chat_conversations 里的主键，未落库时为空 */
   const remoteIdRef = useRef<string>('')
+  const dialogVersion = useRef(0)
+  const needsAnchor = useRef(true)
+  const creativeWindow = CREATIVE_WINDOW_TASKS.has(taskType)
+  const profileId = resultProfileId === undefined
+    ? contextData?.profileInfo?.id || getActiveProfileId()
+    : resultProfileId
 
   // 打开弹窗时先去云端找这次生成是否已经聊过。
   // 以前这里只是把 messages 重置成生成结果，刷新页面后之前的追问全部消失。
@@ -87,16 +97,20 @@ export default function ContinuousDialog({
   useEffect(() => {
     if (!isOpen || !initialContent) return
 
-    let cancelled = false
+    const version = ++dialogVersion.current
     const restore = async () => {
       setIsRestoring(true)
+      setIsLoading(false)
       // 先摆上生成结果，网络慢时也不至于是一片空白
       setMessages([{ role: 'assistant', content: initialContent, timestamp: new Date() }])
-      setConversationId('')
+      setConversationId(initialConversationId || '')
       remoteIdRef.current = ''
+      needsAnchor.current = true
 
-      const history = await listConversations('continuous', { taskType, limit: 20 })
-      if (cancelled) return
+      const history = await listConversations('continuous', {
+        taskType, limit: 20, ...(creativeWindow ? { profileId } : {}),
+      })
+      if (dialogVersion.current !== version) return
 
       const hit = history.find((c) => matchesGeneration(c.messages[0], initialContent))
       if (hit) {
@@ -110,8 +124,8 @@ export default function ContinuousDialog({
     }
 
     restore()
-    return () => { cancelled = true }
-  }, [isOpen, initialContent, taskType])
+    return () => { ++dialogVersion.current }
+  }, [isOpen, initialContent, initialConversationId, taskType, creativeWindow, profileId])
 
   useEffect(() => {
     // requestAnimationFrame 确保 DOM 已更新，避免 Strict Mode removeChild 竞态
@@ -143,10 +157,10 @@ export default function ContinuousDialog({
     return () => {
       abortRef.current?.abort()
     }
-  }, [isOpen])
+  }, [isOpen, profileId, taskType, initialContent])
 
   const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return
+    if (!inputValue.trim() || isLoading || isRestoring) return
 
     const userMessage: Message = {
       role: 'user',
@@ -156,6 +170,12 @@ export default function ContinuousDialog({
 
     // 发送前的快照，落库时以它为基准拼接，避免从闭包里读到旧数组
     const baseMessages = messages
+    const latestTopic = taskType === '选题策划'
+      ? baseMessages.slice(1).reverse().find((message) => message.role === 'assistant' && splitTopicSections(message.content).length)?.content
+      : undefined
+    const version = dialogVersion.current
+    const isCurrent = () => dialogVersion.current === version
+    let remoteId = remoteIdRef.current
 
     setMessages(prev => [...prev, userMessage])
     const userInput = inputValue
@@ -170,16 +190,21 @@ export default function ContinuousDialog({
      * 打开对话框后一个请求都没发出去。存记录改成后台进行，最多等 15 秒，结束时再拿它的结果写回完整记录
      */
     let creating: Promise<void> | null = null
-    if (!remoteIdRef.current) {
+    if (!remoteId) {
       creating = withTimeout(createConversation({
         kind: 'continuous',
         taskType,
+        profileId,
         title: initialContent.slice(0, 18) || taskType,
         difyConversationId: conversationId || '',
         messages: toStoredMessages([...baseMessages, userMessage]),
-      }), 15_000).then((created) => { if (created) remoteIdRef.current = created.id })
+      }), 15_000).then((created) => {
+        if (!created) return
+        remoteId = created.id
+        if (isCurrent()) remoteIdRef.current = remoteId
+      })
     } else {
-      void updateConversation(remoteIdRef.current, {
+      void updateConversation(remoteId, {
         messages: toStoredMessages([...baseMessages, userMessage]),
       })
     }
@@ -188,6 +213,7 @@ export default function ContinuousDialog({
     let assistantText = ''
     let capturedDifyId = conversationId || ''
     let shouldSave = true
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
 
     try {
       console.log('📞 持续对话 - 方案B（Chatbot原生记忆）:', {
@@ -197,7 +223,7 @@ export default function ContinuousDialog({
 
       const controller = new AbortController()
       abortRef.current = controller
-      const timeoutId = setTimeout(() => controller.abort(), 90_000)
+      timeoutId = setTimeout(() => controller.abort(), 90_000)
 
       const response = await fetchGeneration('/api/dify/chat', {
         method: 'POST',
@@ -208,12 +234,11 @@ export default function ContinuousDialog({
           // 服务端据此判断：在选题结果上说"再来 10 条"时，要附上已经出过的选题防重复
           taskType: taskType,
           conversationId: conversationId || undefined,
-          initialContent: !conversationId ? initialContent : undefined, // ✅ 首次对话时传递
-          // 没有自己的会话时，服务端会接入该档案的主工作窗口，
-          // 于是追问时模型已经见过刚生成的内容，不必再整段贴一遍
-          profileId:
-            contextData?.profileInfo?.id ||
-            getActiveProfileId(),
+          initialContent: creativeWindow ? (latestTopic ?? initialContent).slice(0, 16000) : !conversationId ? initialContent : undefined,
+          anchorCurrentResult: creativeWindow && (needsAnchor.current || !!latestTopic),
+          recentDialog: creativeWindow ? baseMessages.slice(1).slice(-4)
+            .map((message) => `${message.role === 'user' ? '用户' : '回答'}：${message.content.slice(0, 500)}`).join('\n') : undefined,
+          profileId,
           profileData: contextData?.profileInfo ? {
             profile_name: contextData.profileInfo
           } : undefined
@@ -239,11 +264,16 @@ export default function ContinuousDialog({
       // 统一走 readDifyStream：原先手写的 decode(value) 未开 stream 模式，
       // 中文被拆在数据块边界上会解码成乱码，且半行 JSON 会被整行丢弃。
       assistantText = await readDifyStream(response, {
+        onTopicBatch: (batch) => {
+          const notice = topicBatchNotice(batch)
+          if (notice && isCurrent()) notify(notice, undefined, 7000)
+        },
         onConversationId: (id) => {
           capturedDifyId = id
-          setConversationId(id)
+          if (isCurrent()) setConversationId(id)
         },
         onChunk: (_piece, full) => {
+          if (!isCurrent()) return
           setMessages(prev => {
             const newMessages = [...prev]
             const lastMsg = newMessages[newMessages.length - 1]
@@ -262,18 +292,11 @@ export default function ContinuousDialog({
           })
         },
       })
-
-      if (assistantText && messages[messages.length - 1]?.role !== 'assistant') {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: assistantText,
-          timestamp: new Date()
-        }])
-      }
+      if (isCurrent() && assistantText) needsAnchor.current = false
 
     } catch (error) {
       const isAbort = error instanceof DOMException && error.name === 'AbortError'
-      if (isAbort && !isOpen) {
+      if (!isCurrent()) {
         // 用户主动关掉了弹窗：不提示，也不要把半截回答写进云端
         shouldSave = false
         return
@@ -289,14 +312,17 @@ export default function ContinuousDialog({
         timestamp: new Date()
       }])
     } finally {
-      abortRef.current = null
-      setIsLoading(false)
+      clearTimeout(timeoutId)
+      if (isCurrent()) {
+        abortRef.current = null
+        setIsLoading(false)
+      }
 
       // 本轮结束后写回完整记录，刷新页面再打开时即可原样恢复。
       // 首轮的记录是后台在建的，等它建好（或超时放弃）再写
       const writeBack = () => {
-        if (!shouldSave || !remoteIdRef.current) return
-        void updateConversation(remoteIdRef.current, {
+        if (!shouldSave || !remoteId) return
+        void updateConversation(remoteId, {
           difyConversationId: capturedDifyId,
           messages: toStoredMessages([
             ...baseMessages,

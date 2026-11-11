@@ -13,14 +13,13 @@ const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1';
 
 /**
  * 调一次「开物」，把整段回复收齐。
- * 不带 conversation_id：这类任务和前后的创作没有关系，接进共用会话只会把会话撑满、
- * 还可能被上一轮的文案带偏。
+ * 校对默认独立执行。明确需要在原会话继续生成时，调用方提供该会话的 id。
  */
 export async function askDify(
   query: string,
   userId: string,
   searchQuery: string,
-  options: { signal?: AbortSignal; files?: ChatAttachment[] } = {}
+  options: { signal?: AbortSignal; files?: ChatAttachment[]; conversationId?: string } = {}
 ): Promise<{ ok: true; text: string; completion: Omit<CreationCompletion,'result'> } | { ok: false; message: string }> {
   const res = await fetch(`${DIFY_BASE_URL}/chat-messages`, {
     method: 'POST',
@@ -31,6 +30,7 @@ export async function askDify(
       query,
       response_mode: 'streaming',
       user: userId,
+      ...(options.conversationId ? { conversation_id: options.conversationId } : {}),
       ...(options.files?.length ? { files: toDifyFiles(options.files) } : {}),
     }),
   });

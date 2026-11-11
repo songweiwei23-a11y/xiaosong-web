@@ -268,6 +268,7 @@ export default function ContentPlanPage() {
         isGenerating={running}
         finishing={finishing}
         title={`${monthLabel()}内容规划`}
+        continueTask={CONTENT_PLAN_TASK_TYPE}
         flowContext={{ from: "内容规划" }}
         showStats={false}
         emptyIcon={CalendarRange}

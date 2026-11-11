@@ -15,6 +15,21 @@
 //   什么都没有就断了  半路断线。Dify 那边照样会写完，按消息 id 去取回全文
 //                    （账号定位一篇要五分钟，线上真的断过，Dify 里是完整的、我们这边没存上）
 
+export interface TopicBatchStatus {
+  requested: number;
+  count: number;
+  checked: boolean;
+  removed: number;
+  replaced: number;
+}
+
+export function topicBatchNotice(batch: TopicBatchStatus): string {
+  const notes: string[] = [];
+  if (batch.count < batch.requested) notes.push(`本次交付 ${batch.count}/${batch.requested} 条。其余选题撞题或补写未通过核对。`);
+  if (!batch.checked) notes.push('本次完成了字面查重，内容查重暂不可用。');
+  return notes.join(' ');
+}
+
 export interface ReadDifyStreamOptions {
   /** 每收到一段新文本时调用，piece 是增量，full 是累计全文 */
   onChunk?: (piece: string, full: string) => void;
@@ -24,6 +39,7 @@ export interface ReadDifyStreamOptions {
   onRecovering?: () => void;
   /** 生成完以后服务端还在处理（比如脚本打磨：体检、第几轮打磨）时调用，message 是给用户看的一句话 */
   onStatus?: (message: string) => void;
+  onTopicBatch?: (batch: TopicBatchStatus) => void;
   /**
    * 正文写完了、服务端开始核对修正时调用（2026-11-03）：页面据此停转圈，改成一行「正在核对」的小字。
    * 流还会继续读，核对改了稿会整篇替换，读到结束标记才返回。
@@ -142,6 +158,10 @@ export async function readDifyStream(
         }
         if (data.event === 'status') {
           if (typeof data.message === 'string') options.onStatus?.(data.message);
+          continue;
+        }
+        if (data.event === 'topic_batch') {
+          options.onTopicBatch?.(data as TopicBatchStatus);
           continue;
         }
         if (data.event === 'message_replace' && typeof data.answer === 'string') {

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Markdown } from "@/components/markdown";
 import { Copy, Download, Loader2, MessageCircle, Clock, Type, ArrowRight, ArrowDown, FileText, PenLine, type LucideIcon } from "lucide-react";
 import { ResultCanvas } from '@/components/chat/ResultCanvas';
+import ContinuousDialog from '@/components/ContinuousDialog';
 import { addVersion, type CanvasVersion } from '@/lib/canvas';
 import { CANVAS_TASK_BY_BOARD, saveResultVersions } from '@/lib/result-versions';
 import { getActiveProfileId } from '@/lib/active-profile';
@@ -79,6 +80,7 @@ export function ResultPanel({
   onCopy,
   onDownload,
   onContinue,
+  continueTask,
   nextActions,
   footer,
   bodyClassName,
@@ -108,6 +110,7 @@ export function ResultPanel({
   onCopy?: (bodyOnly: string) => void;
   onDownload?: (bodyOnly: string) => void;
   onContinue?: () => void;
+  continueTask?: string;
   /**
    * 「接下来」的去处。内容会自动带过去，不用复制粘贴——
    * 这是九个功能之间最缺的一环：同一条内容原先要手动粘贴四五次。
@@ -167,6 +170,11 @@ export function ResultPanel({
   const correction = useMemo(() => autoCorrectTaboos(body, qualityCtx.profile), [body, qualityCtx.profile]);
   const shown = showOriginal || !correction.changes.length ? body : correction.text;
   const view = adopted ?? shown;
+  const [dialog, setDialog] = useState<{ content: string; profileId: string | null } | null>(null);
+  const profileId = qualityCtx.profile?.id ?? null;
+  const continueResult = onContinue ?? (continueTask && view && !finishing
+    ? () => setDialog({ content: view, profileId })
+    : undefined);
   useEffect(() => { if (isGenerating) setCanvasOpen(false); }, [isGenerating]);
   const openCanvas = () => {
     if (!canvas || canvas.base !== body) setCanvas({ base: body, id: null, versions: [{ content: shown, at: Date.now(), note: '生成稿' }] });
@@ -285,7 +293,7 @@ export function ResultPanel({
           <div className="flex gap-2">
             {supportsCreationLinks && <ActionButton icon={ArrowDown} label="继续创作" onClick={() => document.getElementById(individualPlans ? "remix-continuation" : "creation-links")?.scrollIntoView({ behavior: "smooth", block: "start" })} />}
             {canvasTask && supportsCreationLinks && <ActionButton icon={PenLine} label={adopted ? `画布第 ${canvas!.versions.length} 版` : "在画布里改"} onClick={openCanvas} />}
-            {onContinue && <ActionButton icon={MessageCircle} label="继续对话" onClick={onContinue} />}
+            {continueResult && <ActionButton icon={MessageCircle} label="继续对话" onClick={continueResult} />}
             {/* 复制与下载只取正文，不含质量报告；在画布里改过的取最新一版 */}
             {plainCopy && <ActionButton icon={FileText} label="复制纯文案" onClick={() => { navigator.clipboard?.writeText(plainCopy); notify("纯文案已复制：只有要念的话，可以直接贴进提词器"); }} />}
             {onCopy && <ActionButton icon={Copy} label="复制" onClick={() => onCopy(view)} />}
@@ -391,7 +399,7 @@ export function ResultPanel({
           </button>
         </div>
       )}
-      {body && !isGenerating && <TabooScan body={view} onContinue={onContinue} />}
+      {body && !isGenerating && <TabooScan body={view} onContinue={continueResult} />}
       {body && !isGenerating && segment && <ResultFeedback key={`${body.length}:${body.slice(0, 80)}`} board={segment} excerpt={body} />}
       {/*
        * 继续创作 / 收藏：放在正文底部（2026-10-02 产品方要求）。原来在正文上面，
@@ -400,6 +408,15 @@ export function ResultPanel({
        */}
       {body && !isGenerating && !individualPlans && !hideCreationLinks && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={view} context={flowContext} /></div>}
       {body && !isGenerating && planParts && <RemixContinuation body={view} plans={planParts.plans} context={flowContext} />}
+      {continueTask && dialog && dialog.profileId === profileId && (
+        <ContinuousDialog
+          isOpen
+          onClose={() => setDialog(null)}
+          initialContent={dialog.content}
+          profileId={dialog.profileId}
+          taskType={continueTask}
+        />
+      )}
 
       {/* 画布：右侧抽屉（手机全屏）。关掉时有未保存修改会先确认，草稿留在本机 */}
       {canvasOpen && canvas && (

@@ -26,6 +26,13 @@ describe('会话作用域键：一个账号档案 = 一个工作窗口', () => {
     expect(buildScopeKey('   ')).toBe('default');
     expect(buildScopeKey()).toBe('default');
   });
+
+  it('同一档案的创作和自由对话分别保留自己的会话指针', () => {
+    expect(buildScopeKey('profile-a', 'creation')).toBe('creation:profile-a');
+    expect(buildScopeKey('profile-a', 'creation')).not.toBe(buildScopeKey('profile-a'));
+    expect(buildScopeKey('profile-b', 'creation')).not.toBe(buildScopeKey('profile-a', 'creation'));
+    expect(buildScopeKey(null, 'creation')).toBe('creation:default');
+  });
 });
 
 describe('会话失效判定', () => {
