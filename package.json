@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "pack:capture": "node scripts/pack-kaiwu-capture.mjs",
+    "prebuild": "node scripts/pack-kaiwu-capture.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

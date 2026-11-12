@@ -20,6 +20,7 @@ import {
 import { collectionSummary, COVER_PREFIX, formatCollection, type Collection } from "@/lib/benchmark-collection";
 import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
 import { clearDraft, DRAFT_THROTTLE_MS, readDraft, saveDraft } from "@/lib/report-draft";
+import { canStartFromCapture, preserveUserText } from "@/lib/collect-link-client";
 
 /**
  * 对标拆解（整改 C · 对标拆解）：编导放进来的截图、文档、文字、视频，统一拆成同一套框架。
@@ -104,7 +105,12 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
     if (!incoming.collected) return;
     setCollected(incoming.collected);
     setConsent(true);
-    void run({ files: nextFiles, pasted, collected: incoming.collected, consent: true });
+    // 备注框里的字原样留着，不把采集正文写进去。结果区已有内容时只挂上采集，不 setReport("") 重开
+    if (!canStartFromCapture(report)) {
+      setDraftNote("采集到了，没有盖掉你已经写的拆解，文字框里的内容也还在。材料已经挂上，想用这次采集再拆，点下面「开始拆解」。");
+      return;
+    }
+    void run({ files: nextFiles, pasted: preserveUserText(pasted), collected: incoming.collected, consent: true });
   }, [incoming?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addFiles = (list: FileList | null) => {

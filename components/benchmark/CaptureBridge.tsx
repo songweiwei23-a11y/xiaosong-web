@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, ImagePlus, X } from "lucide-react";
 import { COVER_PREFIX, sanitizeCollection, type Collection } from "@/lib/benchmark-collection";
-import { PLUGIN_SILENT, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
+import { PluginDownloadHint } from "@/components/benchmark/PluginDownloadHint";
+import { clearMissingPluginMessage, PLUGIN_MISSING, PLUGIN_SILENT, pluginMessageNeedsDownload, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
 
 /**
  * 「开物 · 截屏带入」浏览器插件和对标页的衔接（2026-11-01；11-02 加一键采集）。插件在 browser-extension/kaiwu-capture。
@@ -155,6 +156,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
       const data = event.data as { source?: string; type?: string; version?: string; captures?: Capture[]; collection?: unknown } | null;
       if (data?.source !== "kaiwu-capture") return;
       setInstalled(true);
+      setLinkMsg((m) => clearMissingPluginMessage(m));
       if (typeof data.version === "string") setVersion(data.version);
       if (data.type !== "captures") return;
       const captures = Array.isArray(data.captures) ? data.captures : [];
@@ -195,16 +197,15 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
     const v = version || pluginVersionFromPage();
     if (!installed && !v) {
       setDismissed(false);
-      return setLinkMsg("要先装「开物 · 截屏带入」插件（看下面的步骤），装好刷新这一页再点");
+      return setLinkMsg(PLUGIN_MISSING);
     }
-    if (v && versionBelow(v, COLLECT_SINCE)) return setLinkMsg("插件是旧版本，还不会一键采集：先按下面的提示更新插件");
+    if (v && versionBelow(v, COLLECT_SINCE)) return setLinkMsg("插件是旧版本，还不会一键采集：先下载安装新版，装好刷新这一页再点");
     // 2026-11-10：先解析链接，不是主页的当场说清楚（原来插件打开抖音首页就停了，开物这边没反应）
     setLinkMsg("正在核对链接…");
     const prepared = await prepareCollectLink(raw);
     if (!prepared.ok) return setLinkMsg(prepared.message.replace("点自己头像进主页", "进对标账号的主页"));
     window.postMessage({ source: "kaiwu-page", type: "collect", url: prepared.url }, window.location.origin);
     setLinkMsg("插件已经去打开这个主页、自动采集了：大约 3 分钟，抖音页面会自己往下翻、打开 8 条作品，采完自动回到这里开始拆解。采集时先别动那个标签页；抖音要求验证的话，在那个页面上手动完成就行。");
-    setLink("");
     watchPluginOpened(() => setLinkMsg(PLUGIN_SILENT));
   };
   const linkForm = (
@@ -222,7 +223,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
         <button type="button" onClick={() => void collectByLink()} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white">一键采集并拆解</button>
       </div>
       <p className="text-[12px] text-muted-foreground">插件会读主页信息、作品和点赞，再细看 8 条作品（置顶的、最火的、点赞偏低的、最新的）的文案、话题和评论。报告先按做账号定位的维度把对方倒着拆一遍，再结合你的档案，写出你能借鉴的打法、能直接做的选题和 7 天行动清单。在电脑上登录抖音网页版能读得更全。</p>
-      {linkMsg && <p className="text-[12.5px] text-foreground">{linkMsg}</p>}
+      {linkMsg && (pluginMessageNeedsDownload(linkMsg) ? <PluginDownloadHint text={linkMsg} /> : <p className="text-[12.5px] text-foreground">{linkMsg}</p>)}
     </section>
   );
 
@@ -231,7 +232,7 @@ export function CaptureBridge({ accounts, accountsReady, onAssign, onCreate }: {
     return (
       <p className="rounded-xl border border-primary/40 px-4 py-2.5 text-[13px] text-foreground">
         {started
-          ? <>插件采集的数据已经放进「{placed}」，正在拆解，往下找到这个账号看进度。插件读得到标题、文案、数据和评论，读不到视频里说了什么：想把开头怎么抓人、脚本结构拆准，把他最火的 2 条视频下载下来，拖进这个账号的拆解区再拆一次（会自动转写口播），报告的材料清单里会点名是哪 2 条。</>
+          ? <>插件采集的数据已经放进「{placed}」。你写在文字框里的内容不会被盖掉；下面如果已经有一份没写完的拆解，也不会清掉，采集只挂在材料里，点「开始拆解」才会用这次的数据。没有没写完的拆解时会自动开始拆。往下找到这个账号看进度。插件读得到标题、文案、数据和评论，读不到视频里说了什么：想把开头怎么抓人、脚本结构拆准，把他最火的 2 条视频下载下来，拖进这个账号的拆解区再拆一次（会自动转写口播），报告的材料清单里会点名是哪 2 条。</>
           : <>插件带来的截图已经放进「{placed}」的拆解里，往下找到这个账号，点「开始拆解」就行。想拆得更细，可以再传一两条爆款视频。</>}
       </p>
     );

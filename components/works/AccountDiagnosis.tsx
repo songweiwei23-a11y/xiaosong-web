@@ -17,7 +17,8 @@ import { BenchmarkReport } from "@/components/benchmark/BenchmarkReport";
 import { clearDraft, DRAFT_THROTTLE_MS, readDraft, saveDraft } from "@/lib/report-draft";
 import { claimSelfCollection, SELF_LINK_KEY, wantSelfCollection } from "@/lib/self-collect-target";
 import { ReportArchive } from "./ReportArchive";
-import { PLUGIN_SILENT, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
+import { PluginDownloadHint } from "@/components/benchmark/PluginDownloadHint";
+import { canStartFromCapture, clearMissingPluginMessage, PLUGIN_MISSING, PLUGIN_SILENT, pluginMessageNeedsDownload, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
 
 /**
  * 创作进度顶部的「诊断我的账号」（2026-11-02 产品方：用拆对标的逻辑拆自己的号，也能用抖音的真实数据，
@@ -46,10 +47,13 @@ export function AccountDiagnosis() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
   const [report, setReport] = useState("");
+  const reportRef = useRef("");
+  reportRef.current = report;
   const [saved, setSaved] = useState<Diagnosis | null>(null);
   const [draftNote, setDraftNote] = useState("");
   const lastBatch = useRef("");
   const [tick, setTick] = useState(0);
+  const [heldCapture, setHeldCapture] = useState(false);
   const runRef = useRef<(collected: Collection | null, images: File[]) => Promise<void>>(async () => {});
 
   /** 存到服务器（作品概况那一行）；成功就清掉本地草稿 */
@@ -184,6 +188,7 @@ export function AccountDiagnosis() {
       const data = event.data as { source?: string; type?: string; version?: string; captures?: Capture[]; collection?: unknown } | null;
       if (data?.source !== "kaiwu-capture") return;
       setInstalled(true);
+      setMsg((m) => clearMissingPluginMessage(m));
       if (typeof data.version === "string") setVersion(data.version);
       if (data.type !== "captures") return;
       const col = sanitizeCollection(data.collection);
@@ -202,14 +207,24 @@ export function AccountDiagnosis() {
     };
     window.addEventListener("message", onMessage);
     window.postMessage({ source: "kaiwu-page", type: "ready" }, window.location.origin);
-    const timer = window.setTimeout(() => { if (document.documentElement.hasAttribute("data-kaiwu-capture")) setInstalled(true); }, 1500);
+    const timer = window.setTimeout(() => {
+      if (document.documentElement.hasAttribute("data-kaiwu-capture")) setInstalled(true);
+      else setMsg((m) => m || PLUGIN_MISSING);
+    }, 1500);
     return () => { window.removeEventListener("message", onMessage); window.clearTimeout(timer); };
   }, []);
 
   useEffect(() => {
     if (!pending.current || loading || !profileId) return;
+    // 页面上已经有一份诊断正文（没写完的草稿，或正在看的这份）：先挂着，不 setReport("")
+    if (!canStartFromCapture(reportRef.current)) {
+      setHeldCapture(true);
+      setMsg("采集到了，没有盖掉你正在看的诊断。看完后点「用这次采集再诊断」。");
+      return;
+    }
     const { collected, images } = pending.current;
     pending.current = null;
+    setHeldCapture(false);
     void runRef.current(collected, images);
   }, [tick, loading, profileId]);
 
@@ -218,8 +233,8 @@ export function AccountDiagnosis() {
     const raw = douyinLinkFromText(link);
     if (!raw) return setMsg("没认出抖音链接：打开你自己的抖音主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
     const v = version || pluginVersionFromPage();
-    if (!installed && !v) return setMsg("要先装「开物 · 截屏带入」插件（在「对标 & 热点」页有安装步骤），装好刷新这一页再点");
-    if (v && versionBelow(v, SELF_SINCE)) return setMsg(`插件是旧版本（${v}），还不会诊断自己的号：到「对标 & 热点」页重新下载安装新版，刷新这一页再点`);
+    if (!installed && !v) return setMsg(PLUGIN_MISSING);
+    if (v && versionBelow(v, SELF_SINCE)) return setMsg(`插件是旧版本（${v}），还不会诊断自己的号：点旁边的「下载插件」安装新版，刷新这一页再点`);
     // 2026-11-10：先解析链接（短链接复制不全、过期会落到抖音首页，插件打开了也采不了，原来开物这边一点反应都没有）
     setChecking(true);
     setMsg("正在核对链接…");
@@ -259,11 +274,27 @@ export function AccountDiagnosis() {
         <button type="button" onClick={() => void run(null, [])} disabled={running} className="shrink-0 rounded-lg border border-border px-3 py-2 text-[12.5px] text-foreground hover:bg-foreground/[0.06] disabled:opacity-60">
           只用导入的数据诊断
         </button>
+        {heldCapture && (
+          <button
+            type="button"
+            onClick={() => {
+              const p = pending.current;
+              if (!p) return;
+              pending.current = null;
+              setHeldCapture(false);
+              void run(p.collected, p.images);
+            }}
+            disabled={running}
+            className="shrink-0 rounded-lg border border-border px-3 py-2 text-[12.5px] text-foreground hover:bg-foreground/[0.06] disabled:opacity-60"
+          >
+            用这次采集再诊断
+          </button>
+        )}
       </div>
       <p className="text-[12px] text-muted-foreground">
         想诊断得准：在下面「账号作品概况」里导入抖音创作者中心导出的作品数据表格（播放、完播、5 秒完播、涨粉），诊断会一起读；在电脑上登录抖音网页版，采集能读得更全。
       </p>
-      {msg && <p className="text-[12.5px] text-foreground">{msg}</p>}
+      {msg && (pluginMessageNeedsDownload(msg) ? <PluginDownloadHint text={msg} /> : <p className="text-[12.5px] text-foreground">{msg}</p>)}
       {draftNote && <p className="rounded-lg border border-primary/30 px-3 py-2 text-[12.5px] text-foreground">{draftNote}</p>}
       {running && <p className="flex items-center gap-1.5 text-[12.5px] text-primary"><Loader2 className="h-3.5 w-3.5 animate-spin" />{progress || "诊断中…"}</p>}
       {shown && (

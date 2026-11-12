@@ -44,7 +44,7 @@ const navGroups: {
       { name: "创作进度", href: "/dashboard/works", icon: ListChecks },
       // 月报（体检 F3）：一个月发了什么、效果怎样、下个月计划，可以打印或存 PDF 发给客户
       { name: "月报", href: "/dashboard/report", icon: FileText },
-      { name: "对标 & 热点", href: "/dashboard/benchmark", icon: TrendingUp },
+      { name: "对标 & 热点", href: "/dashboard/benchmark", icon: TrendingUp, hint: "粘贴抖音主页，一键采集并拆解" },
     ],
   },
   {

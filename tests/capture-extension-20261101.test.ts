@@ -4,7 +4,11 @@
 // 2. 自动化守底线：只在编导发起后跑、节奏像人、遇到验证码就停不代解、有条数上限、不碰 Cookie 和抖音接口、
 //    评论只留文字和点赞数（不收评论人昵称）；
 // 3. 开物这边对网页来的数据先校验、限量，再排成拆解材料。
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import zlib from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { batchKey, COLLECT_SINCE, dataUrlToFile, douyinLinkFromText, douyinUserKey, nameFromTitle, pickAccount, pluginOutdated, PLUGIN_VERSION, versionBelow } from '@/components/benchmark/CaptureBridge';
 import { COLLECTION_LIMITS, coverageEstimate, formatCollection, parseCount, sanitizeCollection } from '@/lib/benchmark-collection';
@@ -243,11 +247,96 @@ describe('自动采集守底线', () => {
     expect(m.content_scripts[0]).toMatchObject({ matches: ['https://www.douyin.com/*'], js: ['collector.js'] });
   });
 
-  it('网站上能下载到插件包，安装提示指向它', () => {
-    expect(fs.existsSync('public/kaiwu-capture.zip')).toBe(true);
+  it('网站上能下载到插件包：打包脚本打出 zip，安装提示指向它（不依赖仓库里那份被忽略的二进制）', () => {
+    const out = path.join(os.tmpdir(), `kaiwu-capture-${process.pid}-${Date.now()}.zip`);
+    execFileSync(process.execPath, ['scripts/pack-kaiwu-capture.mjs', '--out', out], { cwd: process.cwd(), stdio: 'pipe' });
+    const entries = readZip(fs.readFileSync(out));
+    fs.rmSync(out, { force: true });
+    expect(entries.map((e) => e.name)).toEqual(['manifest.json', 'background.js', 'bridge.js', 'collector.js', 'popup.html', 'popup.js']);
+    // 路径在根上，用正斜杠；套一层目录或反斜杠，Chrome 会说找不到清单
+    expect(entries.every((e) => !e.name.includes('\\') && !e.name.includes('/'))).toBe(true);
+    const manifest = JSON.parse(entries[0].data.toString('utf8'));
+    expect(manifest.version).toBe(JSON.parse(read('manifest.json')).version);
+    expect(entries.find((e) => e.name === 'collector.js')!.data.toString('utf8')).toContain('startCollect');
     expect(fs.readFileSync('components/benchmark/CaptureBridge.tsx', 'utf8')).toContain('/kaiwu-capture.zip');
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
+    expect(pkg.scripts.prebuild).toContain('scripts/pack-kaiwu-capture.mjs');
+    expect(pkg.scripts['pack:capture']).toContain('scripts/pack-kaiwu-capture.mjs');
+  });
+
+  it('部署不再因为清单里暂时没有插件包就把它从线上删掉，同步前会先打包', () => {
+    const prune = fs.readFileSync('scripts/deploy-prune.sh', 'utf8');
+    const keep = prune.indexOf('public/kaiwu-capture.zip)');
+    const glob = prune.indexOf('public/*');
+    expect(keep).toBeGreaterThan(-1);
+    expect(glob).toBeGreaterThan(keep); // 更具体的那条写在 public/* 前面，bash 才匹配得到
+    const sync = fs.readFileSync('同步到服务器.ps1', 'utf8');
+    const packAt = sync.indexOf('node scripts/pack-kaiwu-capture.mjs');
+    const manifestAt = sync.indexOf('$manifestLines');
+    expect(packAt).toBeGreaterThan(-1);
+    expect(manifestAt).toBeGreaterThan(packAt);
+    expect(sync).toContain('browser-extension/kaiwu-capture');
+    expect(sync).toContain('scripts/pack-kaiwu-capture.mjs');
+  });
+
+  it('源码目录不在时沿用已有包；源码和包都没有就失败，不写出半个文件', () => {
+    const out = path.join(os.tmpdir(), `kaiwu-keep-${process.pid}.zip`);
+    fs.writeFileSync(out, Buffer.from('not-a-zip'));
+    const kept = execFileSync(process.execPath, ['scripts/pack-kaiwu-capture.mjs', '--source', path.join(os.tmpdir(), 'no-kaiwu-src'), '--out', out], { encoding: 'utf8' });
+    expect(kept).toContain('沿用已有插件包');
+    expect(fs.readFileSync(out).toString()).toBe('not-a-zip');
+    fs.rmSync(out, { force: true });
+    const missing = path.join(os.tmpdir(), `kaiwu-missing-${process.pid}.zip`);
+    expect(() => execFileSync(process.execPath, ['scripts/pack-kaiwu-capture.mjs', '--source', path.join(os.tmpdir(), 'no-kaiwu-src'), '--out', missing], { stdio: 'pipe' })).toThrow();
+    expect(fs.existsSync(missing)).toBe(false);
+  });
+
+  it('工作台首页能看见「一键采集」（侧边栏那一项叫「对标 & 热点」，光看首页会以为没有）', () => {
+    const home = fs.readFileSync('app/dashboard/page.tsx', 'utf8');
+    expect(home).toContain('一键采集');
+    expect(home).toContain('href="/dashboard/benchmark"');
+    expect(fs.readFileSync('components/dashboard/Sidebar.tsx', 'utf8')).toContain('href: "/dashboard/benchmark"');
   });
 });
+
+/** 读 zip 中央目录并解压，和打包脚本分开写，免得脚本自己说自己是对的 */
+function readZip(buf: Buffer): { name: string; data: Buffer }[] {
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('不是 zip');
+  const count = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+  const out: { name: string; data: Buffer }[] = [];
+  for (let n = 0; n < count; n++) {
+    if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error('中央目录损坏');
+    const method = buf.readUInt16LE(p + 10);
+    const crc = buf.readUInt32LE(p + 16);
+    const compSize = buf.readUInt32LE(p + 20);
+    const size = buf.readUInt32LE(p + 24);
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const commentLen = buf.readUInt16LE(p + 32);
+    const localOff = buf.readUInt32LE(p + 42);
+    const name = buf.subarray(p + 46, p + 46 + nameLen).toString('utf8');
+    const localNameLen = buf.readUInt16LE(localOff + 26);
+    const localExtraLen = buf.readUInt16LE(localOff + 28);
+    const dataOff = localOff + 30 + localNameLen + localExtraLen;
+    const payload = buf.subarray(dataOff, dataOff + compSize);
+    const data = method === 0 ? Buffer.from(payload) : zlib.inflateRawSync(payload);
+    if (data.length !== size) throw new Error(`长度不对: ${name}`);
+    let c = 0xffffffff;
+    for (let i = 0; i < data.length; i++) {
+      c ^= data[i];
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    if (((c ^ 0xffffffff) >>> 0) !== crc) throw new Error(`校验失败: ${name}`);
+    out.push({ name, data });
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  return out;
+}
 
 describe('开物这边：网页来的数据先校验、限量，再排成拆解材料', () => {
   const raw = {
