@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic';
 const lastFired = new Map<string, number>();
 
 /**
- * 告警检查（后台扩展方案 P1-4）。由服务器 crontab 每分钟调用一次：
- *   curl -H "x-cron-secret: $ALERT_CRON_SECRET" http://127.0.0.1:3000/api/admin/alerts/tick
+ * 告警检查（后台扩展方案 P1-4）。由服务器 crontab 调用。
+ * 端口用 scripts/active-port.sh 读 Nginx upstream 片段（和发布脚本同一份），不要写死。
  * 管理员（需要 view_monitor）也可以手动调用，同样按规则检查和推送。
  */
 export async function GET(request: Request) {

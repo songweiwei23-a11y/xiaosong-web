@@ -11,7 +11,7 @@ function writeExec(file: string, body: string) {
   fs.writeFileSync(file, body, { mode: 0o755 });
 }
 
-function run(mode: 'ok' | 'fail', extra?: { memKb?: number; nginxTestFail?: boolean }) {
+function run(mode: 'ok' | 'fail' | 'wrong', extra?: { memKb?: number; nginxTestFail?: boolean; portBusy?: boolean }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kaiwu-reload-'));
   const bin = path.join(dir, 'bin');
   const app = path.join(dir, 'app');
@@ -24,15 +24,27 @@ function run(mode: 'ok' | 'fail', extra?: { memKb?: number; nginxTestFail?: bool
   const mem = path.join(dir, 'meminfo');
   fs.writeFileSync(mem, `MemAvailable: ${extra?.memKb ?? 2_000_000} kB\n`);
   const jlist = path.join(dir, 'jlist.json');
+  const started = path.join(dir, 'started');
+  const portBusy = path.join(dir, 'port-busy');
+  if (extra?.portBusy) fs.writeFileSync(portBusy, '1');
   fs.writeFileSync(jlist, JSON.stringify([{
     name: 'xiaosong-web',
+    pid: 1111,
     pm2_env: { status: 'online', pm_cwd: app, args: ['start', '-p', '3000'], env: { PORT: '3000' } },
   }]));
   const nginxFail = path.join(dir, 'nginx-fail');
   if (extra?.nginxTestFail) fs.writeFileSync(nginxFail, '1');
   writeExec(path.join(bin, 'pm2'), `#!/bin/bash
 echo "pm2 $*" >> "$LOG"
-if [ "$1" = "jlist" ]; then cat "$JLIST"; exit 0; fi
+if [ "$1" = "jlist" ]; then
+  if [ -f "$STARTED" ]; then
+    node -e 'const fs=require("fs"); const base=JSON.parse(fs.readFileSync(process.env.JLIST,"utf8")); base.push({name:"xiaosong-web-next", pid:4242, pm2_env:{status:"online", pm_cwd:base[0].pm2_env.pm_cwd, env:{PORT:"3001"}}}); process.stdout.write(JSON.stringify(base));'
+    exit 0
+  fi
+  cat "$JLIST"
+  exit 0
+fi
+if [ "$1" = "start" ]; then touch "$STARTED"; exit 0; fi
 if [ "$1" = "delete" ]; then echo "delete name=$2" >> "$LOG"; exit 0; fi
 exit 0
 `);
@@ -49,8 +61,20 @@ if [ "$MODE" = "fail" ]; then
   printf '500'
   exit 0
 fi
-printf '%s' '{"ok":true}' > "$body"
+if [ "$MODE" = "wrong" ]; then
+  printf '%s' '{"ok":true,"pid":1111,"boot":"stale"}' > "$body"
+  printf '200'
+  exit 0
+fi
+printf '%s' "{\\"ok\\":true,\\"pid\\":4242,\\"boot\\":\\"$KAIWU_BOOT_ID\\"}" > "$body"
 printf '200'
+exit 0
+`);
+  writeExec(path.join(bin, 'ss'), `#!/bin/bash
+echo "ss $*" >> "$LOG"
+if [ -f "$PORT_BUSY" ]; then
+  echo "LISTEN 0 128 127.0.0.1:3001 0.0.0.0:*"
+fi
 exit 0
 `);
   writeExec(path.join(bin, 'nginx'), `#!/bin/bash
@@ -82,6 +106,9 @@ exit 1
       MEMINFO_FILE: mem,
       HEALTH_TRIES: '2',
       HEALTH_INTERVAL: '0',
+      DRAIN_SECONDS: '0',
+      STARTED: started,
+      PORT_BUSY: portBusy,
     },
   });
   const recorded = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
@@ -104,6 +131,17 @@ describe('换端口切换', () => {
     expect(out.log).not.toMatch(/http:\/\/127\.0\.0\.1:3001\/(\s|$)/);
   });
 
+  it('健康检查的 boot 和 pid 对不上时，不把旧进程当成新进程', () => {
+    const out = run('wrong');
+    expect(out.status).not.toBe(0);
+    expect(out.stdout).toContain('不是这次拉起的进程');
+    expect(out.stdout).not.toContain('SWITCH_OK');
+    expect(out.upstream).toContain('127.0.0.1:3000');
+    expect(out.upstream).not.toContain('127.0.0.1:3001');
+    expect(out.log).not.toContain('delete name=xiaosong-web\n');
+    expect(out.log).not.toContain('nginx -s');
+  });
+
   it('健康检查通过才把 upstream 切到新端口，并停掉旧进程', () => {
     const out = run('ok');
     expect(out.status).toBe(0);
@@ -113,6 +151,15 @@ describe('换端口切换', () => {
     expect(out.log).toContain('nginx -s reload');
     expect(out.log).toContain('http://127.0.0.1:3001/api/health');
     expect(out.log).not.toContain('http://localhost:3000/');
+  });
+
+  it('新端口已被占用时不起第二个进程', () => {
+    const out = run('ok', { portBusy: true });
+    expect(out.status).not.toBe(0);
+    expect(out.stdout).toContain('已被占用');
+    expect(out.log).not.toContain('pm2 start');
+    expect(out.upstream).toContain('127.0.0.1:3000');
+    expect(out.log).not.toContain('delete name=xiaosong-web\n');
   });
 
   it('Nginx 配置检查失败时恢复旧 upstream，旧进程继续服务', () => {
@@ -141,9 +188,13 @@ describe('换端口切换', () => {
     expect(ps1).toContain('deploy-reload.sh');
     expect(sh).toContain('/api/health');
     expect(sh).toContain('creation-window-lock');
+    expect(sh).toContain('KAIWU_BOOT_ID');
+    expect(sh).toContain('DRAIN_SECONDS:-90');
+    expect(sh).toContain('已被占用');
     expect(sh).not.toContain("instances: 'max'");
     expect(readSource('ecosystem.config.cjs')).toContain("exec_mode: 'fork'");
     expect(readSource('ecosystem.config.cjs')).toContain('instances: 1');
+    expect(readSource('ecosystem.config.cjs')).toContain('KAIWU_BOOT_ID');
     expect(readSource('ecosystem.config.cjs')).not.toContain("instances: 'max'");
   });
 });

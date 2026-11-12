@@ -5,6 +5,7 @@
  * POST / PUT / PATCH / DELETE 不重试 5xx：服务端可能已经写过。
  * 这类写请求只在「很快就失败」的网络错误上重试——那种失败多半是请求没出去。
  * 超过几秒才断的，可能已经到了服务器，交给调用方。
+ * 单次请求有超时。超时中止的是这一次：读请求会重试，写请求不重试。
  * 用户离开页面导致的 AbortError 一律不重试。
  */
 
@@ -13,6 +14,39 @@ const IDEMPOTENT = new Set(['GET', 'HEAD', 'OPTIONS']);
 const WRITE_FAST_FAIL_MS = 3000;
 
 export const FETCH_RETRY_DELAYS_MS = [400, 1200];
+/** 单次请求的上限。到点就中止这一次，读请求还可以按退避再试 */
+export const FETCH_ATTEMPT_TIMEOUT_MS = 15_000;
+
+function attemptSignal(outer: AbortSignal | null | undefined, timeoutMs: number): {
+  signal: AbortSignal;
+  didTimeout: () => boolean;
+  cleanup: () => void;
+} {
+  if (!timeoutMs || timeoutMs <= 0) {
+    return {
+      signal: outer ?? new AbortController().signal,
+      didTimeout: () => false,
+      cleanup: () => {},
+    };
+  }
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const onOuter = () => controller.abort();
+  if (outer?.aborted) controller.abort();
+  else outer?.addEventListener('abort', onOuter, { once: true });
+  return {
+    signal: controller.signal,
+    didTimeout: () => timedOut && !outer?.aborted,
+    cleanup: () => {
+      clearTimeout(timer);
+      outer?.removeEventListener('abort', onOuter);
+    },
+  };
+}
 
 export function isAbortError(error: unknown): boolean {
   return !!error && typeof error === 'object' && 'name' in error && (error as { name?: unknown }).name === 'AbortError';
@@ -51,25 +85,32 @@ function abortError(signal: AbortSignal | null | undefined): Error {
 export async function fetchWithBackoff(
   url: string,
   init: RequestInit = {},
-  options?: { retries?: number; delays?: number[] },
+  options?: { retries?: number; delays?: number[]; timeoutMs?: number },
 ): Promise<Response> {
   const retries = options?.retries ?? 2;
   const delays = options?.delays ?? FETCH_RETRY_DELAYS_MS;
+  const timeoutMs = options?.timeoutMs ?? FETCH_ATTEMPT_TIMEOUT_MS;
   const method = (init.method || 'GET').toUpperCase();
   const idempotent = IDEMPOTENT.has(method);
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     if (attempt > 0) await wait(delays[Math.min(attempt - 1, delays.length - 1)] ?? 400, init.signal);
     const started = Date.now();
+    const attemptAbort = attemptSignal(init.signal, timeoutMs);
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, { ...init, signal: attemptAbort.signal });
       if (response.status >= 500 && idempotent && attempt < retries) continue;
       return response;
     } catch (error) {
-      if (isAbortError(error) || init.signal?.aborted) throw isAbortError(error) ? error : abortError(init.signal);
-      if (!isRetriableNetwork(error) || attempt >= retries) throw error;
-      // 非幂等写请求：慢失败不重试，避免重复提交
-      if (!idempotent && Date.now() - started > WRITE_FAST_FAIL_MS) throw error;
+      if (init.signal?.aborted || (isAbortError(error) && !attemptAbort.didTimeout())) {
+        throw isAbortError(error) ? error : abortError(init.signal);
+      }
+      const failure = attemptAbort.didTimeout() ? new TypeError('Failed to fetch') : error;
+      if (!isRetriableNetwork(failure) || attempt >= retries) throw failure;
+      // 非幂等写请求：慢失败不重试，避免重复提交。超时算慢失败。
+      if (!idempotent && (attemptAbort.didTimeout() || Date.now() - started > WRITE_FAST_FAIL_MS)) throw failure;
+    } finally {
+      attemptAbort.cleanup();
     }
   }
   throw new TypeError('Failed to fetch');

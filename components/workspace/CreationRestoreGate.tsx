@@ -8,7 +8,7 @@ import { CREATION_UUID, readCreationSnapshot } from '@/lib/creation-snapshot';
 import { creationRestorePlan, markCreationRestored, wasCreationRestored } from '@/lib/creation-restore';
 import { fetchWork } from '@/lib/resume';
 import { isNetworkError, NETWORK_ERROR_HINT } from '@/lib/api-error';
-import { fetchWithBackoff, isAbortError } from '@/lib/fetch-retry';
+import { FETCH_ATTEMPT_TIMEOUT_MS, fetchWithBackoff, isAbortError } from '@/lib/fetch-retry';
 import type { HandoffPayload } from '@/lib/handoff';
 
 function restoreErrorText(error: unknown): string {
@@ -43,8 +43,12 @@ export function CreationRestoreGate({ children }: { children: React.ReactNode })
     setError(''); setOtherProfile(null);
     if (!CREATION_UUID.test(id)) { setError('创作链接不正确'); return; }
     const abort = new AbortController();
-    // 读快照是幂等的：网络错误和 5xx 最多再试 2 次（退避见 fetchWithBackoff）。离开页面的 abort 不重试。
-    void fetchWithBackoff(`/api/creation-sessions?id=${encodeURIComponent(id)}`, { cache: 'no-store', signal: abort.signal })
+    // 读快照是幂等的：单次最多等 15 秒。网络错误、超时和 5xx 最多再试 2 次。离开页面的 abort 不重试。
+    void fetchWithBackoff(
+      `/api/creation-sessions?id=${encodeURIComponent(id)}`,
+      { cache: 'no-store', signal: abort.signal },
+      { timeoutMs: FETCH_ATTEMPT_TIMEOUT_MS },
+    )
       .then(async response => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || (response.status >= 500 ? '服务暂时没有响应，请稍后再试' : '暂时无法恢复创作需求'));

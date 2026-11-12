@@ -31,6 +31,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: port,
+        // 发布脚本每次生成一个新值。健康检查靠它确认应答的是这次拉起的进程。
+        KAIWU_BOOT_ID: process.env.KAIWU_BOOT_ID || '',
       },
     },
   ],

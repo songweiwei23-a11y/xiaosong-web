@@ -71,7 +71,7 @@ PORT=3000 PM2_APP_NAME=xiaosong-web APP_CWD=/var/www/xiaosong-web pm2 start ecos
 pm2 save
 ```
 
-确认 `curl -sS http://127.0.0.1:3000/api/health` 返回 HTTP 200 且正文里有 `"ok":true`。之后的发布都走脚本。
+确认 `curl -sS http://127.0.0.1:3000/api/health` 返回 HTTP 200，正文里有 `"ok":true`。这次是人工起的进程，`boot` 为空。之后的发布都走脚本，脚本会检查 `boot` 和 `pid`。
 
 ## 每次发布
 
@@ -80,11 +80,12 @@ pm2 save
 1. 找到唯一在线的 `xiaosong-web` 或 `xiaosong-web-next`，工作目录必须是部署目录。
 2. 确认 Nginx 已经引用 upstream 片段。
 3. `MemAvailable` 低于约 500MB 时**不起**第二个进程，旧进程继续服务，脚本非零退出。
-4. 在另一个端口（3000 和 3001 对调）用 ecosystem 起新进程。fork、单实例。
-5. 对本机 `http://127.0.0.1:<新端口>/api/health` 重试约 2 分钟。要 HTTP 200 且 `"ok":true`（会读数据库）。首页 200 不算成功。
-6. 没通过：`pm2 delete` 只删新进程，不改 Nginx，不重启旧进程，退出码非 0。
-7. 通过：改 upstream、`nginx -t`、`nginx reload`，再确认配置里是新端口，并再探一次 `/api/health`。任一步失败都把 upstream 改回去并删掉新进程，旧进程继续服务，退出码非 0。
-8. 都成功才停掉旧进程，`pm2 save`，输出 `SWITCH_OK`。
+4. 先清掉上次留下的暂存进程名，再确认另一个端口（3000 和 3001 对调）没有在听。被占用就不起新进程，旧进程继续服务。
+5. 用 ecosystem 在新端口起新进程。fork、单实例。这次启动带一个新的 `KAIWU_BOOT_ID`。
+6. 对本机 `http://127.0.0.1:<新端口>/api/health` 重试约 2 分钟。要 HTTP 200、`"ok":true`，并且 `boot`、`pid` 对得上这次拉起的进程（会读数据库）。对不上就当失败：可能探到的是还在服务的旧进程，不能拿它当新进程。首页 200 不算成功。
+7. 没通过：`pm2 delete` 只删新进程，不改 Nginx，不重启旧进程，退出码非 0。
+8. 通过：改 upstream、`nginx -t`、`nginx reload`，再确认配置里是新端口，并再探一次 `/api/health`。任一步失败都把 upstream 改回去并删掉新进程，旧进程继续服务，退出码非 0。
+9. 切流后再等 90 秒，让还挂在旧进程上的流式生成跑完。等完再探一次。仍对得上，才停掉旧进程，`pm2 save`，输出 `SWITCH_OK`。等的过程中新进程不健康，就把流量改回旧端口并删掉新进程。
 
 失败之后**不要**对旧进程 `pm2 restart`。构建已经覆盖了磁盘上的 `.next`，restart 会让还在内存里的旧代码换成一份没通过健康检查的新构建。
 
@@ -92,9 +93,9 @@ pm2 save
 
 新请求在 Nginx 切走之前一直打到旧进程，不再出现「旧进程已死、新进程还没 listen」那种 502。下面几段仍然存在：
 
-- Nginx reload 的几秒里，少数请求可能打到新端口、少数还在旧端口。这两边的创作窗口锁互不相通。这段很短，切完并停掉旧进程后只剩一把锁。
-- 旧进程被停掉时，还挂在旧进程上的长生成会被掐断。新进程的 `kill_timeout` 是 20 秒；**第一次**从旧的 `pm2 start npm` 切过来时，旧进程没有这个等待，进行中的生成会马上断。
-- 2G 内存上，第二个进程起来之后仍可能把机器打满。脚本只在启动前看 `MemAvailable`，挡不住启动后的峰值。不要在生成高峰发布。内存不够时脚本会放弃，网站继续跑旧版本。
+- Nginx reload 之后，新请求进新端口，已经连在旧进程上的流式生成还留在旧进程。两边的创作窗口锁互不相通。这段现在大约 90 秒（切流后故意不立刻停旧进程），停掉旧进程后只剩一把锁。
+- 90 秒结束后才 `pm2 delete` 旧进程。删除时新进程的 `kill_timeout` 是 20 秒，旧进程若是这次脚本拉起的，也有同样的等待。**第一次**从旧的 `pm2 start npm` 切过来时，那个旧进程没有这个等待；90 秒的停留仍然留给已经开始的生成，到点后删除会马上发停止信号。
+- 这 90 秒里两个 `next start` 同时占内存。2G 机器上，第二个进程起来之后仍可能把机器打满。脚本只在启动前看 `MemAvailable`，挡不住启动后的峰值，也挡不住这 90 秒的重叠。不要在生成高峰发布。内存不够时脚本会放弃，网站继续跑旧版本。
 - 第一次改 Nginx 主配置那一下，要人工 reload。端口不变。
 
 ## 回滚
@@ -109,4 +110,13 @@ pm2 save
 
 上一份 upstream 会抄在部署目录的 `.deploy-upstream.prev`（不在会被 prune 的子目录里）。那只是端口记录，不是旧代码。
 
-日志：构建在 `/tmp/build.log`，进程用 `pm2 logs`。就绪看 `/api/health`，不要用首页状态码。
+日志：构建在 `/tmp/build.log`，进程用 `pm2 logs`。就绪看 `/api/health` 的 `ok`、`boot` 和 `pid`，不要用首页状态码。
+
+## 上线检查单
+
+换端口第一次生效前，在服务器上核对下面几项。不要把真实密钥写进仓库。
+
+- **小助理的本机地址。** 代码读 `ASSISTANT_INTERNAL_URL`。留空时，进程用自己的 `PORT` 调自己，切到 3000 或 3001 都打得到。如果这个变量写成了 `http://127.0.0.1:3000` 或 `:3001`，代码会把端口改成当前进程的 `PORT`，避免切走之后打到已经停掉的端口。想固定走 Nginx 时，写成不带 3000/3001 的本机入口 `http://127.0.0.1`（Nginx 在 80 上，并且这个地址能进到本站）。上线前在服务器执行 `grep '^ASSISTANT_INTERNAL_URL=' .env.local`：应当没有这一行，或者是 Nginx 入口，不能是一个写死的应用端口。
+- **月度复盘定时任务。** 重新执行 `bash scripts/install-review-cron.sh`。它会换掉 crontab 里旧的 `monthly-review/tick` 行。新行只调用 `scripts/review-cron-tick.sh`。这个脚本每次用 `scripts/active-port.sh` 读 `/etc/nginx/snippets/xiaosong-upstream.conf`，和发布脚本写入的是同一份文件。`crontab -l` 里不应再出现 `127.0.0.1:3000`。新写入的 `REVIEW_CRON_SECRET` 不要靠 `pm2 restart` 加载，下一次换端口发布会带上。
+- **其他本机调用。** 告警接口 `/api/admin/alerts/tick` 如果已经写进 crontab，同样改成先跑 `scripts/active-port.sh` 再请求 `http://127.0.0.1:<端口>/...`，不要写死 `:3000`。公网探测 `scripts/health-probe.sh` 走的是站点域名，不经过应用端口，不用改。仓库里的 `localhost:3000` 出现在本地开发文档、浏览器插件和测试夹具里，不是线上内部调用。
+- **发布脚本本身。** 新端口被占用时不会启动第二个进程。`/api/health` 必须返回这次的 `boot` 和 `pid`，对不上就不改 Nginx、不删正在服务的进程。切流后等 90 秒再删旧进程。这 90 秒两个进程同时在，创作窗口锁互不相通，2G 内存要避开生成高峰。

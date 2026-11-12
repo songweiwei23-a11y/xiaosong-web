@@ -13,6 +13,7 @@ import { buildReviewBoardQuery, reviewCreationSettings } from '@/lib/boards/revi
 import { buildTopicBoardQuery, topicCreationSettings } from '@/lib/boards/topic-query';
 import { completeBatch } from '@/lib/topic-batch';
 import { buildScriptBoardQuery, SCRIPT_PAGE_DEFAULTS, scriptCreationSettings, scriptMemoryPatch, scriptResultWithQuality } from '@/lib/boards/script-query';
+import { resolveInternalBase } from '@/lib/assistant/internal-base';
 
 /**
  * 开物的细分板块（选题、脚本、审稿）。内容真正是这些板块用 Dify 生成的；助理只负责派活。
@@ -104,7 +105,7 @@ const BOARD_TRUNC = 6000;
 const boardClip = (s: string) => (s.length > BOARD_TRUNC ? `${s.slice(0, BOARD_TRUNC)}\n…（内容太长，已截断）` : s);
 
 export function internalBase(ctx: BoardContext): string {
-  return ctx.internalBase ?? process.env.ASSISTANT_INTERNAL_URL ?? `http://127.0.0.1:${process.env.PORT || 3000}`;
+  return resolveInternalBase(ctx.internalBase);
 }
 
 export async function readInternal(ctx: BoardContext, path: string): Promise<unknown> {
