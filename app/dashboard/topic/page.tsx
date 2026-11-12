@@ -57,7 +57,7 @@ import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { postSafely } from '@/lib/safe-post';
 import { buildTopicBoardQuery, topicCreationSettings } from '@/lib/boards/topic-query';
 import { completeBatch } from '@/lib/topic-batch';
-import { customTopicFieldMessage, missingCustomTopicFields } from '@/lib/topic-form';
+import { customTopicFieldMessage, decideTopicAccountStage, handoffOwnsProfile, missingCustomTopicFields, topicAccountStageOptions } from '@/lib/topic-form';
 
 export default function TopicPage() {
   const beginProfileRequest = useProfileRequestGuard();
@@ -100,6 +100,8 @@ export default function TopicPage() {
 
   // 基础表单字段
   const [accountStage, setAccountStage] = useState("");
+  /** 账号阶段是档案预填的，还是用户自己改过的。换档案会重新预填 */
+  const [stageMeta, setStageMeta] = useState<{ profileId: string | null; edited: boolean }>({ profileId: null, edited: false });
   const [fansLevel, setFansLevel] = useState("");
   const [avgViewsInput, setAvgViewsInput] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -371,6 +373,39 @@ export default function TopicPage() {
   const elementNote = elementFitNote(selectedElements, industryKeysOf(profiles.find((p) => p.id === selectedProfileId) ?? null));
   const resolvedMix = resolveMix(mixProfile, mixOverride, personalRequirement);
 
+  /*
+   * 自定义模式的账号阶段：档案加载完、用户还没自己选过，才用档案里的原文预填。
+   * 档案写的是「有定位，需要内容方向」这种，和下拉里的「有基础」不是同一句，不猜着换。
+   * 从别的板块承接过来时，这一页已经按承接写过阶段，这里不再盖掉。
+   */
+  const stageDecision = decideTopicAccountStage({
+    loading: contextLoading || autoSetup.preparing,
+    handoffForProfile: handoffOwnsProfile(incomingSetup, creatorContext.profile?.id ?? null),
+    profileId: creatorContext.profile?.id ?? null,
+    profileStage: creatorContext.profile?.account_stage,
+    current: accountStage,
+    settledProfileId: stageMeta.profileId,
+    userEdited: stageMeta.edited,
+  });
+  if (stageDecision.settledProfileId !== stageMeta.profileId || stageDecision.userEdited !== stageMeta.edited) {
+    setStageMeta({ profileId: stageDecision.settledProfileId, edited: stageDecision.userEdited });
+  }
+  if (stageDecision.value !== null && stageDecision.value !== accountStage) {
+    setAccountStage(stageDecision.value);
+    if (stageDecision.value.trim()) setFormError("");
+  }
+  const shownAccountStage = stageDecision.value !== null ? stageDecision.value : accountStage;
+  const accountStageOptions = topicAccountStageOptions(
+    contextLoading ? '' : creatorContext.profile?.account_stage,
+    shownAccountStage,
+  );
+  /*
+   * 预填只为了自定义下拉框。快速模式原先不写这一栏（承接时除外），
+   * 档案原文自动填进去之后，快速模式的提示词仍按没手选来，避免多出一行阶段。
+   */
+  const stageTouchedForQuick = stageMeta.edited || handoffOwnsProfile(incomingSetup, creatorContext.profile?.id ?? null);
+  const stageForRequest = mode === "quick" && !stageTouchedForQuick ? "" : shownAccountStage;
+
   // 缺字段提示出来之后再滚到那一项：分组可能刚被 forceOpen 展开，点下去的那一帧控件还不在页面上
   useEffect(() => {
     if (mode !== "custom" || !formError) return;
@@ -390,7 +425,7 @@ export default function TopicPage() {
      * 字段徽章却写着「可选」，右上角提示 3 秒就没了，点按钮像没反应。
      * 快速模式 missingCustomTopicFields 直接返回空，下面的生成流程不动。
      */
-    const missing = missingCustomTopicFields({ mode, accountStage });
+    const missing = missingCustomTopicFields({ mode, accountStage: stageForRequest });
     if (missing.length) {
       const message = customTopicFieldMessage(missing);
       setFormError(message);
@@ -465,7 +500,7 @@ export default function TopicPage() {
         // 传递完整的档案和定位信息，而不是ID
         profileInfo: profileInfo ? JSON.stringify(profileInfo) : "",
         positioningInfo: positioningInfo ? JSON.stringify(positioningInfo) : "",
-        accountStage: accountStage,
+        accountStage: stageForRequest,
         fansLevel: fansLevel,
         avgViews: avgViewsInput,
         platforms: selectedPlatforms.join("、"),
@@ -511,7 +546,7 @@ export default function TopicPage() {
         keyword3,
         personalRequirement,
         currentSettings,
-        accountStage,
+        accountStage: stageForRequest,
         fansLevel,
         avgViewsInput,
         selectedPlatforms,
@@ -664,22 +699,23 @@ export default function TopicPage() {
                 <Field label="账号阶段" required>
                   <select
                     id="topic-field-accountStage"
-                    value={accountStage}
-                    aria-invalid={!accountStage.trim() && !!formError}
+                    value={shownAccountStage}
+                    aria-invalid={!shownAccountStage.trim() && !!formError}
                     aria-describedby={formError ? "topic-form-error" : undefined}
                     onChange={(e) => {
                       const value = e.target.value;
                       setAccountStage(value);
+                      setStageMeta({ profileId: creatorContext.profile?.id ?? '', edited: true });
                       if (value.trim()) setFormError("");
                     }}
-                    className={`${SELECT_CLS}${!accountStage.trim() && formError ? " ring-2 ring-destructive/70" : ""}`}
+                    className={`${SELECT_CLS}${!shownAccountStage.trim() && formError ? " ring-2 ring-destructive/70" : ""}`}
                   >
                     <option value="">选择阶段</option>
-                    {["刚起号", "有基础", "稳定更新", "寻求突破"].map((s) => (
+                    {accountStageOptions.map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
-                  {!accountStage.trim() && formError && (
+                  {!shownAccountStage.trim() && formError && (
                     <p className="mt-1.5 text-[12px] text-destructive">{formError}</p>
                   )}
                 </Field>

@@ -9,7 +9,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { buildTopicBoardQuery, type TopicBoardInput } from '@/lib/boards/topic-query';
 import { resolveMix } from '@/lib/content-mix';
-import { customTopicFieldMessage, missingCustomTopicFields } from '@/lib/topic-form';
+import { PROFILE_CHOICES } from '@/lib/profile-fields';
+import {
+  TOPIC_ACCOUNT_STAGE_OPTIONS,
+  customTopicFieldMessage,
+  decideTopicAccountStage,
+  handoffOwnsProfile,
+  missingCustomTopicFields,
+  prefillTopicAccountStage,
+  topicAccountStageOptions,
+} from '@/lib/topic-form';
 import type { CreatorContext } from '@/lib/creator-context';
 
 const EMPTY_CTX = { profile: null, positioning: null, dealReasons: [] } as unknown as CreatorContext;
@@ -84,6 +93,127 @@ describe('自定义选题缺必填项', () => {
   });
 });
 
+describe('自定义账号阶段用档案原文预填', () => {
+  const fresh = { current: '', settledProfileId: null as string | null, userEdited: false, loading: false, handoffForProfile: false };
+
+  it('档案表单的四句和下拉的四项对不上，不把一句猜成另一项', () => {
+    for (const stage of PROFILE_CHOICES.account_stage) {
+      expect(TOPIC_ACCOUNT_STAGE_OPTIONS).not.toContain(stage);
+      expect(prefillTopicAccountStage(stage)).toBe(stage);
+      expect(topicAccountStageOptions(stage)).toEqual([...TOPIC_ACCOUNT_STAGE_OPTIONS, stage]);
+    }
+  });
+
+  it('原文正好是下拉里的一项：选中它，不另加一行', () => {
+    expect(prefillTopicAccountStage('刚起号')).toBe('刚起号');
+    expect(topicAccountStageOptions('刚起号')).toEqual([...TOPIC_ACCOUNT_STAGE_OPTIONS]);
+  });
+
+  it('旧数据「起号期」原样保留，不改成「刚起号」', () => {
+    expect(prefillTopicAccountStage('起号期')).toBe('起号期');
+    expect(topicAccountStageOptions('起号期')).toContain('起号期');
+    expect(topicAccountStageOptions('起号期')).toContain('刚起号');
+  });
+
+  it('没填、空白、不是字符串：不预填，必填提示照旧', () => {
+    for (const empty of ['', '  ', null, undefined, 3]) {
+      expect(prefillTopicAccountStage(empty)).toBe('');
+      expect(missingCustomTopicFields({ mode: 'custom', accountStage: prefillTopicAccountStage(empty) })).toHaveLength(1);
+    }
+    expect(topicAccountStageOptions('')).toEqual([...TOPIC_ACCOUNT_STAGE_OPTIONS]);
+  });
+
+  it('档案还在加载时不预填', () => {
+    const decision = decideTopicAccountStage({ ...fresh, loading: true, profileId: 'p1', profileStage: '有定位，需要内容方向' });
+    expect(decision.value).toBeNull();
+    expect(decision.settledProfileId).toBeNull();
+  });
+
+  it('档案还没到时用户已经手选：加载完不覆盖', () => {
+    const decision = decideTopicAccountStage({
+      ...fresh,
+      profileId: 'p1',
+      profileStage: '稳定运营，需要新选题',
+      current: '有基础',
+      settledProfileId: null,
+      userEdited: true,
+    });
+    expect(decision.value).toBeNull();
+    expect(decision.userEdited).toBe(true);
+  });
+
+  it('加载完成且用户还没选：写成档案原文', () => {
+    const decision = decideTopicAccountStage({ ...fresh, profileId: 'p1', profileStage: '稳定运营，需要新选题' });
+    expect(decision).toMatchObject({ value: '稳定运营，需要新选题', settledProfileId: 'p1', userEdited: false });
+  });
+
+  it('同一个档案上用户改过之后，不再覆盖', () => {
+    const decision = decideTopicAccountStage({
+      ...fresh,
+      profileId: 'p1',
+      profileStage: '稳定运营，需要新选题',
+      current: '刚起号',
+      settledProfileId: 'p1',
+      userEdited: true,
+    });
+    expect(decision.value).toBeNull();
+    expect(decision.userEdited).toBe(true);
+  });
+
+  it('换了档案：按新档案重填，旧的手选不带过去', () => {
+    const decision = decideTopicAccountStage({
+      ...fresh,
+      profileId: 'p2',
+      profileStage: '成熟期，需要突破',
+      current: '刚起号',
+      settledProfileId: 'p1',
+      userEdited: true,
+    });
+    expect(decision).toMatchObject({ value: '成熟期，需要突破', settledProfileId: 'p2', userEdited: false });
+  });
+
+  it('新档案没填阶段：下拉清空，仍然要提示必填', () => {
+    const decision = decideTopicAccountStage({
+      ...fresh,
+      profileId: 'p2',
+      profileStage: '',
+      current: '刚起号',
+      settledProfileId: 'p1',
+      userEdited: false,
+    });
+    expect(decision.value).toBe('');
+    expect(missingCustomTopicFields({ mode: 'custom', accountStage: decision.value ?? '' })).toHaveLength(1);
+  });
+
+  it('从别的板块承接、而且就是当前档案：不盖掉承接写上的阶段', () => {
+    expect(handoffOwnsProfile({ profileId: 'p1' }, 'p1')).toBe(true);
+    expect(handoffOwnsProfile({ profileId: 'p1' }, 'p2')).toBe(false);
+    expect(handoffOwnsProfile(null, 'p1')).toBe(false);
+    const decision = decideTopicAccountStage({
+      ...fresh,
+      handoffForProfile: true,
+      profileId: 'p1',
+      profileStage: '刚起号，定位未确定',
+      current: '有定位，需要内容方向',
+    });
+    expect(decision.value).toBeNull();
+    expect(decision.settledProfileId).toBe('p1');
+  });
+
+  it('承接的是上一个档案，切到新档案后按新档案预填', () => {
+    const decision = decideTopicAccountStage({
+      ...fresh,
+      handoffForProfile: false,
+      profileId: 'p2',
+      profileStage: '刚起号，定位未确定',
+      current: '有定位，需要内容方向',
+      settledProfileId: 'p1',
+      userEdited: false,
+    });
+    expect(decision.value).toBe('刚起号，定位未确定');
+  });
+});
+
 describe('选题页把缺字段写在按钮旁边', () => {
   const page = fs.readFileSync(path.join(process.cwd(), 'app/dashboard/topic/page.tsx'), 'utf8');
 
@@ -108,5 +238,12 @@ describe('选题页把缺字段写在按钮旁边', () => {
     expect(page).toContain('if (finishing)');
     expect(page).toContain('if (!resultScope)');
     expect(page).toContain('id: "quick"');
+    expect(page).toContain('mode === "quick" && !stageTouchedForQuick');
+  });
+
+  it('下拉用档案原文预填，用户改过才记成手选', () => {
+    expect(page).toContain('decideTopicAccountStage({');
+    expect(page).toContain('topicAccountStageOptions(');
+    expect(page).toContain('setStageMeta({ profileId: creatorContext.profile?.id ?? \'\', edited: true })');
   });
 });
