@@ -110,6 +110,7 @@ export function ContextBadge({ board, className = '' }: Props) {
             {briefCopy.link.label}
           </Link>
         )}
+        {briefCopy.tail ? <> {briefCopy.tail}</> : null}
       </p>
       {briefCopy.attached && briefOlderThanProfile(context) && (
         <p className="text-amber-500">

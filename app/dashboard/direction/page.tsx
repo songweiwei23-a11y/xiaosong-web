@@ -8,6 +8,7 @@ import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, TEXTAREA_CLS, GENERATE_BTN, chipCls } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
+import { ContextBadge } from "@/components/workspace/ContextBadge";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
 import { notify } from "@/components/ui/feedback";
@@ -210,6 +211,7 @@ export default function DirectionPage() {
       sidebar={
         <>
           <PageHeader title="创作方向" subtitle="告诉 AI 你拍视频是为了什么，它按你的档案把方向和思路铺开，再推荐一个最好的" />
+          <ContextBadge board="direction" className="mb-4" />
 
           {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
           <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>

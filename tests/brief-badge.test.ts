@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { briefBadgeCopy, briefLoadOf } from '@/lib/brief-badge';
-import { manifestOf } from '@/lib/context-manifest';
+import { BOARD_MANIFESTS, manifestOf } from '@/lib/context-manifest';
 import { readCode } from './helpers/source';
 
 const BRIEF = `### 1. 一句话定位
@@ -65,6 +65,26 @@ describe('没有记录、标题对不上、读取失败，三句分开', () => {
     expect(copy.link).toEqual({ href: '/dashboard/creative-brief', label: '去生成' });
     // 不把方案 D 不读简报的板块说成「做完就会自动用上」
     expect(copy.text).not.toContain('都会自动用上');
+    expect(copy.tail ?? null).toBeNull();
+  });
+
+  it('会读简报的页面，还没生成时在后面补「生成后本页会自动用上」', () => {
+    for (const m of BOARD_MANIFESTS) {
+      const copy = briefBadgeCopy({ board: m.board, brief: null, load: 'missing' });
+      expect(copy.text, m.label).toContain('还没生成创作简报');
+      expect(copy.link?.label, m.label).toBe('去生成');
+      if (m.brief.length > 0) {
+        expect(copy.tail, m.label).toBe('生成后本页会自动用上。');
+      } else {
+        expect(copy.tail ?? null, m.label).toBeNull();
+      }
+      expect(`${copy.text ?? ''}${copy.tail ?? ''}`, m.label).not.toContain('选题、脚本、分镜都会自动用上');
+    }
+    // 有简报、标题对不上、读取失败，都不加这句
+    expect(briefBadgeCopy({ board: 'review', brief: BRIEF, load: 'ok' }).tail ?? null).toBeNull();
+    expect(briefBadgeCopy({ board: 'title', brief: '## 账号概况\n没有标准标题', load: 'ok' }).tail ?? null).toBeNull();
+    expect(briefBadgeCopy({ board: 'growth', brief: null, load: 'error' }).tail ?? null).toBeNull();
+    expect(readCode('components/workspace/ContextBadge.tsx')).toMatch(/briefCopy\.link[\s\S]*briefCopy\.tail/);
   });
 
   it('审稿、标题的小节标题对不上时，不说还没生成，也不叫人去生成', () => {
@@ -121,6 +141,16 @@ describe('起号页用自己的板块', () => {
     expect(copy.text).toContain('一句话定位');
     expect(copy.text).not.toContain('还没生成');
     expect(copy.link).toBeNull();
+  });
+
+  it('方向页用同一枚徽章，文案仍是「不读简报」，不在页面里另写', () => {
+    const page = readCode('app/dashboard/direction/page.tsx');
+    expect(page).toMatch(/<ContextBadge board="direction"/);
+    expect(page).not.toContain('本板块这次不读简报');
+    const copy = briefBadgeCopy({ board: 'direction', brief: BRIEF, load: 'ok' });
+    expect(copy.text).toBe('本板块这次不读简报，只用档案。');
+    expect(copy.link).toBeNull();
+    expect(copy.tail ?? null).toBeNull();
   });
 
   it('页面和助理取简报时，都把读取失败和没有记录分开', () => {

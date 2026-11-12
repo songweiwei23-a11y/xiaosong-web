@@ -27,6 +27,11 @@ export interface BriefBadgeCopy {
   link: { href: string; label: string } | null;
   /** 本板块确实带上了简报字段，才接着提醒「档案比简报新」 */
   attached: boolean;
+  /**
+   * 会读简报、又还没生成时，跟在「去生成」后面的一句。
+   * 选题、脚本、分镜、方向按方案 D 不读简报，不写这句。
+   */
+  tail?: string | null;
 }
 
 /**
@@ -51,11 +56,14 @@ export function briefBadgeCopy(input: {
   const text = input.brief?.trim() ?? '';
   if (!text) {
     if (input.load === 'missing' || input.load === 'ok') {
+      // 清单里点了简报字段的板块，生成之后这一页会用上。不读的板块不要这句
+      const readsBrief = (manifestOf(input.board)?.brief.length ?? 0) > 0;
       return {
         tone: 'muted',
         text: '还没生成创作简报，这次只能用档案里的字段。',
         link: { href: BRIEF_PAGE, label: '去生成' },
         attached: false,
+        tail: readsBrief ? '生成后本页会自动用上。' : null,
       };
     }
     return {
