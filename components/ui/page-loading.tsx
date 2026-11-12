@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import LoadingRings from '@/components/ui/loading';
+import { Loading } from '@/components/ui/loading';
 
 interface PageLoadingProps {
   /**
@@ -50,7 +50,7 @@ export function PageLoading({
       aria-live="polite"
       aria-busy="true"
     >
-      <LoadingRings size={48} />
+      <Loading size="lg" />
       <p className="mt-3 text-sm text-muted-foreground">
         {message}
       </p>

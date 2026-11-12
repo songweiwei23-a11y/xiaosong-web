@@ -3,6 +3,7 @@ import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { resolveCreationSettings, mergeCreationSettings, settingsForResult, creationSettingsBlock } from '@/lib/creation-settings';
+import { GeneratingIndicator } from '@/components/ui/generating-indicator';
 
 
 import { takeHandoff } from "@/lib/handoff";
@@ -499,25 +500,31 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         </>
       }
     >
-      <ResultPanel
-        result={result}
-        isGenerating={isGenerating}
-        finishing={finishing}
-        title="分镜脚本"
-        flowContext={{ settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || scriptContent) }}
-        showStats={false}
-        emptyIcon={Film}
-        emptyTitle="填入脚本内容后生成分镜"
-        emptyHint="AI 会自动配置景别、运镜与时长，无需手动选择参数"
-        emptyTips={[
-          "脚本写得越细，分镜越贴合实拍",
-          "拿不准参数就点「让 AI 推荐参数」",
-          "生成后可继续追问调整某个镜头",
-        ]}
-        generatingHint="正在拆解镜头…"
-        onCopy={(text) => copyToClipboard(text)}
-        onDownload={(text) => downloadAsFile(text, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
-        onContinue={result ? () => openContinuousDialog(result) : undefined}
+      {isGenerating && !result ? (
+        <GeneratingIndicator 
+          taskName="AI 正在生成分镜"
+          estimatedSeconds={60}
+        />
+      ) : (
+        <ResultPanel
+          result={result}
+          isGenerating={isGenerating}
+          finishing={finishing}
+          title="分镜脚本"
+          flowContext={{ settings: settingsForResult(result, history, currentSettings), workId: workId ?? undefined, originContent: originForResult(result, history, originContent || scriptContent) }}
+          showStats={false}
+          emptyIcon={Film}
+          emptyTitle="填入脚本内容后生成分镜"
+          emptyHint="AI 会自动配置景别、运镜与时长，无需手动选择参数"
+          emptyTips={[
+            "脚本写得越细，分镜越贴合实拍",
+            "拿不准参数就点「让 AI 推荐参数」",
+            "生成后可继续追问调整某个镜头",
+          ]}
+          generatingHint="正在拆解镜头…"
+          onCopy={(text) => copyToClipboard(text)}
+          onDownload={(text) => downloadAsFile(text, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
+          onContinue={result ? () => openContinuousDialog(result) : undefined}
         // 代码数出来的核对结果。模型自检栏写的数字不可信，以这里为准
         footer={
           audit ? (
@@ -568,6 +575,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
           },
         ]}
       />
+      )}
 
       <HistoryPanel
         items={history}

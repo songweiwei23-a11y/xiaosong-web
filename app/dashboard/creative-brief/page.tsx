@@ -13,6 +13,7 @@ import { incomingNote } from '@/lib/creation-flow'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
 import { PageLoading } from '@/components/ui/page-loading'
+import { GeneratingIndicator } from '@/components/ui/generating-indicator'
 import {
   BRIEF_FIELDS,
   BRIEF_TYPE,
@@ -30,6 +31,7 @@ import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
 import { taboosPromptBlock } from '@/lib/taboos'
 import { ContentMixBar } from '@/components/workspace/ContentMix'
 import { WordDownloadButton } from '@/components/ui/WordDownloadButton'
+import { apiCallWithNotify } from '@/lib/api-client';
 
 /**
  * 创作简报。
@@ -82,8 +84,7 @@ export default function CreativeBriefPage() {
     setLoading(true)
     try {
       const id = getActiveProfileId()
-      const profRes = await fetch('/api/profiles')
-      const list = profRes.ok ? await profRes.json() : []
+      const list = await apiCallWithNotify<any[]>('/api/profiles', {}, '档案列表加载失败');
       const p = Array.isArray(list) && list.length ? list.find((x: any) => x.id === id) || list[0] : null
       setProfileId(p?.id ?? null)
       setProfileName(p?.profile_name || '')
@@ -99,23 +100,34 @@ export default function CreativeBriefPage() {
       if (p) {
         // 商业定位和内容定位也取回来。它们生成完原本躺在库里没人读，
         // 简报是唯一能把结论下传到创作环节的通道
-        const get = (t: string) =>
-          fetch(`/api/positioning?profileId=${p.id}&type=${encodeURIComponent(t)}`)
-        const [posRes, briefRes, bizRes, conRes] = await Promise.all([
-          get('账号定位'),
-          get(BRIEF_TYPE),
-          get('商业定位'),
-          get('内容定位'),
+        const [posData, briefData, bizData, conData] = await Promise.all([
+          apiCallWithNotify<any[]>(
+            `/api/positioning?profileId=${p.id}&type=${encodeURIComponent('账号定位')}`,
+            {},
+            '账号定位加载失败'
+          ),
+          apiCallWithNotify<any[]>(
+            `/api/positioning?profileId=${p.id}&type=${encodeURIComponent(BRIEF_TYPE)}`,
+            {},
+            '创作简报加载失败'
+          ),
+          apiCallWithNotify<any[]>(
+            `/api/positioning?profileId=${p.id}&type=${encodeURIComponent('商业定位')}`,
+            {},
+            '商业定位加载失败'
+          ),
+          apiCallWithNotify<any[]>(
+            `/api/positioning?profileId=${p.id}&type=${encodeURIComponent('内容定位')}`,
+            {},
+            '内容定位加载失败'
+          ),
         ])
-        const first = async (r: Response) => {
-          if (!r.ok) return null
-          const j = await r.json().catch(() => null)
-          return Array.isArray(j) && j[0] ? j[0] : null
-        }
-        setPositioning(await first(posRes))
-        setBusiness(await first(bizRes))
-        setContentPos(await first(conRes))
-        const b = await first(briefRes)
+        
+        const first = (data: any[] | null) => (Array.isArray(data) && data[0] ? data[0] : null)
+        setPositioning(first(posData))
+        setBusiness(first(bizData))
+        setContentPos(first(conData))
+        const b = first(briefData)
         setBrief(b)
         setValues(parseBrief(b?.full_content))
         setDirty(false)
@@ -358,10 +370,13 @@ export default function CreativeBriefPage() {
                     ? '重新生成简报'
                     : '生成创作简报'}
               </button>
-              {isGenerating && (
-                <p className="mt-2 text-center text-[12px] text-muted-foreground">
-                  简报比定位短得多，通常 1 分钟左右。
-                </p>
+              {isGenerating && !hasAny && (
+                <div className="mt-4">
+                  <GeneratingIndicator 
+                    taskName="AI 正在生成创作简报"
+                    estimatedSeconds={90}
+                  />
+                </div>
               )}
             </div>
 

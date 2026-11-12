@@ -7,6 +7,7 @@ import { routeKeyOf, routeFields } from '@/lib/script-route';
 import { ScriptRoutePicker } from '@/components/workspace/ScriptRoutePicker';
 import { ContractNotice } from '@/components/workspace/ContractNotice';
 import { readContract, readStrategyContract } from '@/lib/creation-tree';
+import { GeneratingIndicator } from '@/components/ui/generating-indicator';
 
 import ContinuousDialog from "@/components/ContinuousDialog";
 import { useRouter } from "next/navigation";
@@ -1353,20 +1354,26 @@ export default function ScriptPage() {
         hint="策略卡没写清用的是哪个结构（「实际采用形式」），分镜、标题、审稿会缺这一层约束。请重新生成，或在策略卡里写明结构全名。"
       />
 
-      <ResultPanel
-        flowContext={scriptFlow}
-        result={result}
-        isGenerating={isGenerating}
-        finishing={finishing && polishStatus ? `初稿已出，${polishStatus}…做完会自动更新` : finishing}
-        showQuality
-        emptyIcon={Sparkles}
-        emptyTitle="填写左侧需求后点击生成"
-        emptyHint="AI 会结合编导知识库为你生成专业脚本"
-        emptyTips={[
-          "主题写得越具体，脚本越贴合",
-          "选上账号档案，语气会更像你",
-          "生成后可以直接拆分镜、审稿、起标题",
-        ]}
+      {isGenerating && !result ? (
+        <GeneratingIndicator 
+          taskName="AI 正在生成脚本"
+          estimatedSeconds={120}
+        />
+      ) : (
+        <ResultPanel
+          flowContext={scriptFlow}
+          result={result}
+          isGenerating={isGenerating}
+          finishing={finishing && polishStatus ? `初稿已出，${polishStatus}…做完会自动更新` : finishing}
+          showQuality
+          emptyIcon={Sparkles}
+          emptyTitle="填写左侧需求后点击生成"
+          emptyHint="AI 会结合编导知识库为你生成专业脚本"
+          emptyTips={[
+            "主题写得越具体，脚本越贴合",
+            "选上账号档案，语气会更像你",
+            "生成后可以直接拆分镜、审稿、起标题",
+          ]}
         onCopy={(bodyOnly) => {
           navigator.clipboard.writeText(bodyOnly);
           notify("✅ 已复制到剪贴板");
@@ -1432,6 +1439,7 @@ export default function ScriptPage() {
           },
         ]}
       />
+      )}
 
       <HistoryPanel
         items={scriptHistory}

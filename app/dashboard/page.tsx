@@ -25,6 +25,7 @@ import { onProgressChanged } from '@/lib/progress-events';
 import { PendingMetrics } from '@/components/dashboard/PendingMetrics';
 import { AgentRecruitBanner } from '@/components/agent/AgentRecruitBanner';
 import { useCollapsed } from '@/lib/home-prefs';
+import { apiCallWithNotify } from '@/lib/api-client';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   ChevronRight, ChevronDown, Clock, Crown, User, History,
@@ -271,12 +272,12 @@ export default function DashboardPage() {
    * 切回这个标签页时刷一次，开着的时候每分钟刷一次；后台标签页不刷，省请求。
    */
   useEffect(() => {
-    const refresh = () => {
+    const refresh = async () => {
       if (document.visibilityState !== "visible") return;
-      fetch("/api/quota/check")
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => d && !d.error && applyQuota(d))
-        .catch(() => {});
+      const data = await apiCallWithNotify<any>("/api/quota/check", {}, '额度信息加载失败');
+      if (data && !data.error) {
+        applyQuota(data);
+      }
     };
     const timer = window.setInterval(refresh, 60_000);
     document.addEventListener("visibilitychange", refresh);
@@ -306,12 +307,16 @@ export default function DashboardPage() {
      * 它依赖档案 id，必须等档案回来才能发；也刻意不 await 进主流程——
      * 地基进度晚一点出来无所谓，不该为它把整页的加载态拖长。
      */
-    fetch(`/api/positioning?profileId=${active.id}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: any) => {
-        if (Array.isArray(rows)) setPosTypes(rows.map((x: any) => x.positioning_type ?? ""));
-      })
-      .catch(() => {});
+    (async () => {
+      const rows = await apiCallWithNotify<any[]>(
+        `/api/positioning?profileId=${active.id}`,
+        {},
+        '定位信息加载失败'
+      );
+      if (Array.isArray(rows)) {
+        setPosTypes(rows.map((x: any) => x.positioning_type ?? ""));
+      }
+    })();
   };
 
   /*
@@ -324,8 +329,12 @@ export default function DashboardPage() {
    * 打开首页时取一次，侧边栏切换档案时再取一次。
    */
   const loadProfileWork = async () => {
-    const [historyRes, workList, groupCounts, shootList, publishedList] = await Promise.all([
-      fetch(`/api/script-history?taskType=all&limit=6${profileHistoryQuery(getActiveProfileId())}`).catch(() => null),
+    const [historyData, workList, groupCounts, shootList, publishedList] = await Promise.all([
+      apiCallWithNotify<any[]>(
+        `/api/script-history?taskType=all&limit=6${profileHistoryQuery(getActiveProfileId())}`,
+        {},
+        '历史记录加载失败'
+      ),
       listWorks(10),
       workGroupCounts(),
       listWorksPage({ group: "toShoot", limit: 1 }).catch(() => [] as Work[]),
@@ -340,9 +349,8 @@ export default function DashboardPage() {
     const ready = shootList.length ? shootList : workList.filter((w) => progressGroup(w) === "toShoot");
     setToShoot({ count: groupCounts?.toShoot ?? ready.length, first: ready[0]?.title ?? null });
 
-    const list = historyRes?.ok ? await historyRes.json().catch(() => null) : null;
-    setRecent(Array.isArray(list)
-      ? list.slice(0, 5).map((x: any) => ({
+    setRecent(Array.isArray(historyData)
+      ? historyData.slice(0, 5).map((x: any) => ({
           id: x.id,
           // 与历史列表同一套标题提取，避免首页显示成另一个样子
           title: extractTitle(splitQualityReport(x.result || "").body),
@@ -357,12 +365,12 @@ export default function DashboardPage() {
   };
   useEffect(() => {
     // 切换档案，或者建档、定位、简报、作品有变化：重新取档案、定位类型和作品（同一页面里也马上更新）
-    const refresh = () => {
-      fetch("/api/profiles")
-        .then((r) => (r.ok ? r.json() : null))
-        .then((list) => list && applyProfiles(list))
-        .catch(() => {});
-      loadProfileWork().catch(() => {});
+    const refresh = async () => {
+      const list = await apiCallWithNotify<any[]>('/api/profiles', {}, '档案列表加载失败');
+      if (list) {
+        applyProfiles(list);
+      }
+      await loadProfileWork();
     };
     const offProfile = onActiveProfileChange(refresh);
     const offProgress = onProgressChanged(refresh);
@@ -380,15 +388,18 @@ export default function DashboardPage() {
         if (!session) return;
 
         // 额度、档案和「这个档案的作品与记录」互不依赖，并行发出；首页不该为此串行等待
-        const [quotaRes, profileRes] = await Promise.all([
-          fetch(`/api/quota/check?userId=${session.user.id}`).catch(() => null),
-          fetch("/api/profiles").catch(() => null),
+        const [quotaData, profileList] = await Promise.all([
+          apiCallWithNotify<any>(
+            `/api/quota/check?userId=${session.user.id}`,
+            {},
+            '额度信息加载失败'
+          ),
+          apiCallWithNotify<any[]>('/api/profiles', {}, '档案列表加载失败'),
           loadProfileWork(),
         ]);
 
-        if (quotaRes?.ok) applyQuota(await quotaRes.json());
-
-        if (profileRes?.ok) applyProfiles(await profileRes.json());
+        if (quotaData) applyQuota(quotaData);
+        if (profileList) applyProfiles(profileList);
       } catch {
         // 首页这些信息都不是必需的，取不到就少显示一块，不打断使用
       } finally {

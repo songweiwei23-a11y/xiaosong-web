@@ -10,6 +10,7 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { PageLoading } from "@/components/ui/page-loading";
+import { GeneratingIndicator } from '@/components/ui/generating-indicator';
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { buildCreationHandoff } from '@/lib/creation-flow';
@@ -39,6 +40,7 @@ import { throwApiError, fetchGeneration } from "@/lib/api-error";
 import { openUpgrade } from "@/lib/upgrade";
 import ContinuousDialog from '@/components/ContinuousDialog';
 import { notify, confirmDialog } from '@/components/ui/feedback';
+import { apiCallWithNotify } from '@/lib/api-client';
 
 import { getActiveProfileId } from '@/lib/active-profile';
 import { postSafely } from '@/lib/safe-post';
@@ -179,9 +181,8 @@ export default function PositioningPage() {
         return
       }
 
-      const res = await fetch('/api/profiles')
-      if (res.ok) {
-        const profiles = await res.json()
+      const profiles = await apiCallWithNotify<Profile[]>('/api/profiles', {}, '档案列表加载失败');
+      if (profiles) {
         const active = profiles.find((p: Profile) => p.id === activeId)
         if (active && getActiveProfileId() === activeId) {
           setActiveProfile(active)
@@ -199,12 +200,12 @@ export default function PositioningPage() {
     
     try {
       // 只列六维地基。商业定位和内容定位有各自的页面，混在这里会让人以为生成重复了
-      const res = await fetch(
-        `/api/positioning?profileId=${activeProfile.id}&type=${encodeURIComponent('账号定位')}`
-      )
-      if (res.ok) {
-        const data = await res.json()
-        if (getActiveProfileId() !== activeProfile.id) return
+      const data = await apiCallWithNotify<Positioning[]>(
+        `/api/positioning?profileId=${activeProfile.id}&type=${encodeURIComponent('账号定位')}`,
+        {},
+        '定位历史加载失败'
+      );
+      if (data && getActiveProfileId() === activeProfile.id) {
         setPositionings(data)
         console.log(`✅ 加载了 ${data.length} 个定位`)
 
@@ -654,28 +655,35 @@ export default function PositioningPage() {
         </>
       }
     >
-      <ResultPanel
-        result={result}
-        isGenerating={isGenerating}
-        finishing={finishing}
-        title={viewMode === "summary" ? "选题摘要" : "定位方案"}
-        flowContext={bridge.flowContext(result)}
-        showStats={false}
-        emptyIcon={Target}
-        emptyTitle="基于档案生成定位方案"
-        emptyHint="AI 会分析赛道、人群、差异化与变现路径"
-        emptyTips={[
-          "档案填得越全，定位越贴合实际",
-          "生成后可继续追问某一部分",
-          "定位会被脚本与选题自动引用",
-        ]}
-        generatingHint="正在分析账号定位…"
-        onCopy={(text) => {
-          navigator.clipboard.writeText(text);
-          notify("已复制到剪贴板");
-        }}
-        onContinue={result ? () => setShowDialog(true) : undefined}
-      />
+      {isGenerating && !result ? (
+        <GeneratingIndicator 
+          taskName="AI 正在生成定位"
+          estimatedSeconds={60}
+        />
+      ) : (
+        <ResultPanel
+          result={result}
+          isGenerating={isGenerating}
+          finishing={finishing}
+          title={viewMode === "summary" ? "选题摘要" : "定位方案"}
+          flowContext={bridge.flowContext(result)}
+          showStats={false}
+          emptyIcon={Target}
+          emptyTitle="基于档案生成定位方案"
+          emptyHint="AI 会分析赛道、人群、差异化与变现路径"
+          emptyTips={[
+            "档案填得越全，定位越贴合实际",
+            "生成后可继续追问某一部分",
+            "定位会被脚本与选题自动引用",
+          ]}
+          generatingHint="正在分析账号定位…"
+          onCopy={(text) => {
+            navigator.clipboard.writeText(text);
+            notify("已复制到剪贴板");
+          }}
+          onContinue={result ? () => setShowDialog(true) : undefined}
+        />
+      )}
 
       {/*
         定位做完之后最要紧的下一步。

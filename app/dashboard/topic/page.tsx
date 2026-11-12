@@ -3,6 +3,7 @@ import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { mergeCreationSettings, settingsForResult, scriptFormOfTopic, REVIEW_SCRIPT_TYPES, topicReasonIds } from '@/lib/creation-settings';
+import { GeneratingIndicator } from '@/components/ui/generating-indicator';
 
 
 import { useRouter } from "next/navigation";
@@ -1048,22 +1049,28 @@ export default function TopicPage() {
           <p className="mt-1">把打法改成标准写法：36计·第N计 计名，或 四大脚本·结构全名。</p>
         </div>
       )}
-      <ResultPanel
-        result={result}
-        isGenerating={isGenerating}
-        finishing={finishing}
-        title="选题方案"
-        flowContext={topicFlow}
-        showStats={false}
-        emptyIcon={Lightbulb}
-        emptyTitle="填好条件就能出选题"
-        emptyHint="每条会给出标题、内容方向和拍摄思路"
-        emptyTips={[
-          "快速模式直接套用已存的档案与定位",
-          "爆款元素每条用几个由创意难度定，不适用于当前行业的会自动不用",
-          "每条选题只担一个目的：流量、人设或变现",
-        ]}
-        generatingHint="正在策划选题…"
+      {isGenerating && !result ? (
+        <GeneratingIndicator 
+          taskName="AI 正在生成选题"
+          estimatedSeconds={90}
+        />
+      ) : (
+        <ResultPanel
+          result={result}
+          isGenerating={isGenerating}
+          finishing={finishing}
+          title="选题方案"
+          flowContext={topicFlow}
+          showStats={false}
+          emptyIcon={Lightbulb}
+          emptyTitle="填好条件就能出选题"
+          emptyHint="每条会给出标题、内容方向和拍摄思路"
+          emptyTips={[
+            "快速模式直接套用已存的档案与定位",
+            "爆款元素每条用几个由创意难度定，不适用于当前行业的会自动不用",
+            "每条选题只担一个目的：流量、人设或变现",
+          ]}
+          generatingHint="正在策划选题…"
         footer={mixUsed ? <MixCheckLine text={result} resolved={mixUsed.resolved} count={mixUsed.count} /> : undefined}
         qualityMix={mixUsed}
         onCopy={(text) => copyToClipboard(text)}
@@ -1121,6 +1128,7 @@ export default function TopicPage() {
           },
         ]}
       />
+      )}
 
       {/* 每一条选题单独送去下一个板块。新生成的、从历史里打开的旧批次都能用 */}
       {!isGenerating && (

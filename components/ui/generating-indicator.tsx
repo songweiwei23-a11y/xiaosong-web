@@ -7,7 +7,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import LoadingRings from '@/components/ui/loading';
+import { Loading } from '@/components/ui/loading';
 
 interface GeneratingIndicatorProps {
   /**
@@ -73,7 +73,7 @@ export function GeneratingIndicator({
       aria-live="polite"
       aria-busy="true"
     >
-      <LoadingRings size={64} />
+      <Loading size="lg" />
       
       <p className="mt-4 text-base font-medium text-foreground">
         {taskName}中...

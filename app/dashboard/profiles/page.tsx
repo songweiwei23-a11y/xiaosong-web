@@ -8,6 +8,7 @@ import { getActiveProfileId, onActiveProfileChange, setActiveProfileId } from '@
 import { postSafely } from '@/lib/safe-post';
 import { notifyProgressChanged } from '@/lib/progress-events';
 import { PageLoading } from '@/components/ui/page-loading';
+import { apiCallWithNotify } from '@/lib/api-client';
 
 interface UserProfile {
   id: string
@@ -44,17 +45,18 @@ export default function ProfilesPage() {
 
   const fetchProfiles = async () => {
     try {
-      const res = await fetch('/api/profiles')
-      if (res.ok) {
-        const data = await res.json()
-        setProfiles(data)
-      } else {
-        console.error('获取档案失败，状态码:', res.status)
+      const data = await apiCallWithNotify<UserProfile[]>(
+        '/api/profiles',
+        {},
+        '档案列表加载失败'
+      );
+      if (data) {
+        setProfiles(data);
       }
     } catch (error) {
-      console.error('获取档案失败:', error)
+      console.error('获取档案失败:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 

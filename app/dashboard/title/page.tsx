@@ -3,6 +3,7 @@ import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
 import { resolveCreationSettings, mergeCreationSettings, settingsForResult, creationSettingsBlock } from '@/lib/creation-settings';
+import { GeneratingIndicator } from '@/components/ui/generating-indicator';
 
 
 import { takeHandoff } from "@/lib/handoff";
@@ -463,28 +464,35 @@ export default function TitlePage() {
         </>
       }
     >
-      <ResultPanel
-        result={result}
-        isGenerating={isGenerating}
-        finishing={finishing}
-        title="标题方案"
-        continueTask="标题封面"
-        flowContext={{ settings: settingsForResult(result, titleHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, titleHistory, originContent || scriptContent) }}
-        showStats={false}
-        emptyIcon={Tag}
-        emptyTitle="填写主题后生成标题"
-        emptyHint="一次给出多个方案，方便横向对比挑选"
-        emptyTips={[
-          "主题写得越具体，标题越有针对性",
-          "同一主题可以换不同类型多试几轮",
-          "生成数量选多一些便于 A/B 对比",
-        ]}
-        generatingHint="正在构思标题…"
-        onCopy={(text) => {
-          navigator.clipboard.writeText(text);
-          notify("已复制到剪贴板");
-        }}
-      />
+      {isGenerating && !result ? (
+        <GeneratingIndicator 
+          taskName="AI 正在生成标题"
+          estimatedSeconds={30}
+        />
+      ) : (
+        <ResultPanel
+          result={result}
+          isGenerating={isGenerating}
+          finishing={finishing}
+          title="标题方案"
+          continueTask="标题封面"
+          flowContext={{ settings: settingsForResult(result, titleHistory, currentSettings), workId: workId ?? undefined, topic, originContent: originForResult(result, titleHistory, originContent || scriptContent) }}
+          showStats={false}
+          emptyIcon={Tag}
+          emptyTitle="填写主题后生成标题"
+          emptyHint="一次给出多个方案，方便横向对比挑选"
+          emptyTips={[
+            "主题写得越具体，标题越有针对性",
+            "同一主题可以换不同类型多试几轮",
+            "生成数量选多一些便于 A/B 对比",
+          ]}
+          generatingHint="正在构思标题…"
+          onCopy={(text) => {
+            navigator.clipboard.writeText(text);
+            notify("已复制到剪贴板");
+          }}
+        />
+      )}
 
       <HistoryPanel
         items={titleHistory}
