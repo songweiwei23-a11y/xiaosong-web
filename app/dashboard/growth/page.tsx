@@ -530,7 +530,8 @@ export default function GrowthPage() {
           ))}
         </div>
 
-        <ContextBadge board="script" className="mb-5" />
+        {/* 起号清单里有简报字段。传 script 会落到方案 D 的空清单上，徽章就一直说还没生成 */}
+        <ContextBadge board="growth" className="mb-5" />
         <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
 
         {tab === 'plan' ? (

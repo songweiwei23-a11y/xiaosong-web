@@ -1,5 +1,6 @@
 import type { CreatorContext, CreatorProfile } from '@/lib/creator-context';
 import { BRIEF_TYPE } from '@/lib/creative-brief';
+import { briefLoadOf } from '@/lib/brief-badge';
 import { ADVICE_TYPE, staleUpstream } from '@/lib/industry-advice';
 import { readDoneList } from '@/lib/done-list';
 
@@ -81,8 +82,12 @@ export async function loadBoardContext(deps: BoardContextDeps, preferredProfileI
     : [];
 
   const briefRows = asRows(brief);
-  const briefPick = pickOwn(briefRows, profileId);
-  const briefText = briefPick?.full_content || null;
+  // getJson 失败时是 null，成功时才是数组。空数组是「没有记录」，不是读取失败
+  const briefFetched = Array.isArray(brief);
+  const briefPick = briefFetched ? pickOwn(briefRows, profileId) : null;
+  const briefRaw = briefPick?.full_content;
+  const briefText = typeof briefRaw === 'string' && briefRaw.trim() ? briefRaw : null;
+  const briefLoad = briefLoadOf({ fetched: briefFetched, parsed: briefFetched, brief: briefText });
 
   const adviceRows = asRows(advice);
   const ownAdvice = profileId ? adviceRows.find((x) => x.profile_id === profileId) : null;
@@ -121,6 +126,7 @@ export async function loadBoardContext(deps: BoardContextDeps, preferredProfileI
     dealReasons,
     brief: briefText,
     briefAt: briefPick?.updated_at || briefPick?.created_at || null,
+    briefLoad,
     briefFacts: typeof briefPick?.positioning_description === 'string' ? briefPick.positioning_description : null,
     performance,
     workInsight,
