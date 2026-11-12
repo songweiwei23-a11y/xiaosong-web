@@ -2,9 +2,11 @@
  * 登录页的小温度（2026-10-04）：按时段问候、认出老用户、今日一计、注册送什么、大写锁定提醒。
  * 退出登录必须清掉本机记住的名字，否则共用电脑打开 /login 仍显示「欢迎回来，上一个账号」。
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { freeTrialLine, greetingFor } from '@/components/auth/LoginExtras';
-import { forgetLoginName, readLoginName, rememberLoginName } from '@/lib/login-memory';
+import { attachLoginNameCleanup, forgetLoginName, readLoginName, rememberLoginName } from '@/lib/login-memory';
 import { SUBSCRIPTION_PLANS } from '@/lib/config/plans';
 import { readCode } from './helpers/source';
 
@@ -88,5 +90,60 @@ describe('登录页记住的名字：退出要清掉', () => {
     expect(() => rememberLoginName('coder@biandao.icu')).not.toThrow();
     expect(readLoginName()).toBe('');
     expect(() => forgetLoginName()).not.toThrow();
+  });
+
+  it('只有 SIGNED_OUT 清掉名字；登录成功（SIGNED_IN）和刷新会话都不动它', () => {
+    vi.stubGlobal('window', { localStorage: storage });
+    let listener: ((event: string) => void) | null = null;
+    attachLoginNameCleanup({
+      onAuthStateChange: (cb) => { listener = cb; return { data: { subscription: { unsubscribe() {} } } }; },
+    });
+    rememberLoginName('coder@biandao.icu');
+    for (const event of ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED', 'PASSWORD_RECOVERY']) {
+      listener!(event);
+      expect(readLoginName(), event).toBe('coder');
+    }
+    listener!('SIGNED_OUT');
+    expect(readLoginName()).toBe('');
+  });
+});
+
+describe('SIGNED_OUT 只在浏览器客户端清一次', () => {
+  const root = process.cwd();
+  function files(dir: string, out: string[] = []): string[] {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'node_modules' || entry.name === '.next') continue;
+        files(full, out);
+      } else if (/\.(ts|tsx)$/.test(entry.name)) out.push(full);
+    }
+    return out;
+  }
+
+  it('各页面的 onAuthStateChange 不处理 SIGNED_OUT，清名字只挂在 supabase 浏览器客户端', () => {
+    const listeners = [...files(path.join(root, 'app')), ...files(path.join(root, 'components')), ...files(path.join(root, 'lib')), ...files(path.join(root, 'hooks'))]
+      .filter((f) => /onAuthStateChange\(/.test(fs.readFileSync(f, 'utf8')));
+    const rel = listeners.map((f) => path.relative(root, f)).sort();
+    expect(rel).toEqual([
+      'components/auth/UserProfile.tsx',
+      'components/landing/LandingNavCTA.tsx',
+      'components/works/ProductionPack.tsx',
+      'lib/home-prefs.ts',
+      'lib/login-memory.ts',
+    ]);
+    for (const file of rel) {
+      if (file === 'lib/login-memory.ts') continue;
+      const src = fs.readFileSync(path.join(root, file), 'utf8');
+      const slice = src.slice(src.indexOf('onAuthStateChange('), src.indexOf('onAuthStateChange(') + 240);
+      expect(slice, file).not.toContain('SIGNED_OUT');
+      expect(slice, file).not.toContain('forgetLoginName');
+    }
+    const client = readCode('lib/supabase/client.ts');
+    const memory = readCode('lib/login-memory.ts');
+    expect(client).toContain('attachLoginNameCleanup(supabase.auth)');
+    expect(client.match(/attachLoginNameCleanup\(/g)).toHaveLength(1);
+    expect(memory).toMatch(/if \(event === "SIGNED_OUT"\) forgetLoginName\(\)/);
+    expect(readCode('app/login/page.tsx')).toMatch(/rememberLoginName\(email\.trim\(\)\)/);
   });
 });
