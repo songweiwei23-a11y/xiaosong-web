@@ -28,7 +28,7 @@ import { useCollapsed } from '@/lib/home-prefs';
 import {
   FileText, Lightbulb, Film, CheckCircle, Tag, Target, Award, BookOpen,
   ChevronRight, ChevronDown, Clock, Crown, User, History,
-  ClipboardList, Stethoscope, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass, CalendarRange,
+  ClipboardList, Stethoscope, Rocket, Wallet, LayoutList, Sparkles, FileSearch, Clapperboard, Shuffle, Bookmark, Compass, CalendarRange, TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -153,6 +153,8 @@ const FOUNDATION: { name: string; desc: string; icon: LucideIcon; href: string; 
 ];
 
 const MORE_TOOLS: { name: string; icon: LucideIcon; href: string; tip?: string }[] = [
+  // 2026-11-12：一键采集原来只在侧边栏「对标 & 热点」里，首页不放（那时它还是手动台账）。工作台上看不到这几个字
+  { name: "一键采集", icon: TrendingUp, href: "/dashboard/benchmark", tip: "粘贴抖音主页，拆对标或诊断自己的号" },
   { name: "审稿优化", icon: CheckCircle, href: "/dashboard/review" },
   { name: "拆解爆款", icon: Clapperboard, href: "/dashboard/breakdown", tip: "传视频，逐镜头拆" },
   { name: "跨行业二创", icon: Shuffle, href: "/dashboard/remix", tip: "借别的行业爆款拍成你的" },
@@ -465,6 +467,22 @@ export default function DashboardPage() {
           }
           toShoot={toShoot}
         />
+
+        {/* 一键采集不在主流程三张卡里（那三张是产品定的「接着上次 / 审稿 / 今天拍什么」）。
+            单独放一行：侧边栏那一项叫「对标 & 热点」，工作台首页原先没有「一键采集」这几个字 */}
+        <Link
+          href="/dashboard/benchmark"
+          className="glass-panel glass-interactive mb-5 flex items-center gap-3 rounded-2xl px-4 py-3"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+            <TrendingUp className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium text-foreground">一键采集</span>
+            <span className="mt-0.5 block text-[12px] text-muted-foreground">粘贴抖音主页链接，拆对标账号；自己的号在创作进度里采集并诊断、复盘</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+        </Link>
 
         {/* 本周要发：计划在 7 天内、还没发的作品（体检 F2）；没有就不出现 */}
         <PlanThisWeek works={works} />

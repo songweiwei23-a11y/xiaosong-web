@@ -17,6 +17,10 @@ if [ -f "$OLD" ]; then
   tr -d '\r' < "$NEW" | sort -u > /tmp/deploy-new.sorted
   comm -23 /tmp/deploy-old.sorted /tmp/deploy-new.sorted | while IFS= read -r f; do
     case "$f" in
+      # 插件包不进 git，清单是按工作区现有文件写的。某次打包没带上它时，不能把线上还能下载的包删掉。
+      public/kaiwu-capture.zip)
+        echo "保留插件包（清单里暂时没有也不删）: $f"
+        ;;
       app/*|components/*|hooks/*|lib/*|types/*|supabase/*|public/*|tests/*)
         if [ -f "$f" ]; then
           rm -f -- "$f"

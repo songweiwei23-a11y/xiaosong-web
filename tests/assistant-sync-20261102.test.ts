@@ -76,6 +76,17 @@ describe('系统提示词同步了近期更新', () => {
     expect(ASSISTANT_SYSTEM).toContain('不照抄对方的标题和文案');
   });
 
+  it('指路用的是页面上的按钮原文：一键采集并拆解、一键采集并诊断、采集主页并复盘', () => {
+    expect(ASSISTANT_SYSTEM).toContain('在页面最上面粘贴对方的抖音主页链接，点「一键采集并拆解」');
+    expect(ASSISTANT_SYSTEM).toContain('在「诊断我的账号」里粘贴自己的抖音主页链接');
+    expect(ASSISTANT_SYSTEM).toContain('点「一键采集并诊断」');
+    expect(ASSISTANT_SYSTEM).toContain('「月度复盘 · 下月策略卡」');
+    expect(ASSISTANT_SYSTEM).toContain('点「采集主页并复盘」');
+    expect(ASSISTANT_SYSTEM).not.toContain('点开始诊断');
+    expect(OPEN_PAGES.works).toEqual({ path: '/dashboard/works', label: '创作进度' });
+    expect(OPEN_PAGES.benchmark).toEqual({ path: '/dashboard/benchmark', label: '对标 & 热点' });
+  });
+
   // 2026-11-08 产品方：脚本 AI 推荐改回默认 1分30秒～1分40秒（原「讲完为止」写得太短），助理口径跟着改
   it('自由对话的分工、深度研究、脚本默认时长', () => {
     expect(ASSISTANT_SYSTEM).toContain('open_page 打开 free-chat');

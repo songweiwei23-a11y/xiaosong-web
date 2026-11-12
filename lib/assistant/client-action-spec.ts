@@ -19,7 +19,7 @@ export const OPEN_PAGES: Record<string, { path: string; label: string }> = {
   script: { path: '/dashboard/script', label: '脚本生成' },
   review: { path: '/dashboard/review', label: '审稿优化' },
   profiles: { path: '/dashboard/profiles', label: '账号档案' },
-  works: { path: '/dashboard/works', label: '作品' },
+  works: { path: '/dashboard/works', label: '创作进度' },
   knowledge: { path: '/dashboard/knowledge', label: '编导知识库' },
   // 2026-11-02 体检：原来只有上面 7 个，老板说「去对标页」「打开自由对话」助理只能说去不了。补齐侧边栏的主要页面
   'free-chat': { path: '/dashboard/free-chat', label: '自由对话' },

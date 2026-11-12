@@ -11,8 +11,8 @@ import type { Collection } from "@/lib/benchmark-collection";
 import { postSafely } from "@/lib/safe-post";
 
 /**
- * 对标 & 热点（整改 C · 对标账号追踪）。全部手动录入：你看到的对标账号作品数据、热点线索，自己记下来。
- * 不去抓取任何平台的数据。
+ * 对标 & 热点。页面最上面是一键采集：粘贴主页链接，插件在编导自己的浏览器里读公开页面，读完回到这里拆。
+ * 热点线索和作品数据仍可以手动记。开物自己不去请求抖音的数据接口。
  */
 
 interface Video { id: string; title: string; published_on: string | null; views: number | null; likes: number | null; completion: number | null }

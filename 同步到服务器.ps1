@@ -133,7 +133,9 @@ Write-Host "创建压缩包..." -ForegroundColor Yellow
 $payload = @(
     "app", "components", "hooks", "lib", "types", "supabase", "public", "tests",
     "middleware.ts", "next.config.js", "postcss.config.js", "tailwind.config.js",
-    "tsconfig.json", "components.json", "package.json", "package-lock.json"
+    "tsconfig.json", "components.json", "package.json", "package-lock.json",
+    # 服务器上 npm run build 会先跑 prebuild，从这份源码重打 public/kaiwu-capture.zip
+    "browser-extension/kaiwu-capture", "scripts/pack-kaiwu-capture.mjs"
 )
 $existing = @($payload | Where-Object { Test-Path $_ })
 $missing  = @($payload | Where-Object { -not (Test-Path $_) })
@@ -144,6 +146,16 @@ if ($missing.Count -gt 0) {
     Write-Host "以下项不存在，已跳过: $($missing -join ', ')" -ForegroundColor DarkYellow
 }
 Write-Host "打包 $($existing.Count) 项..." -ForegroundColor Gray
+
+# 插件包不进 git。先打进 public/，再写清单、再上传。
+# 清单里没有 public/kaiwu-capture.zip 时，服务器会把它当成「这次没有的文件」删掉，下载变成 404。
+Write-Host "  打包一键采集插件..." -ForegroundColor Gray
+node scripts/pack-kaiwu-capture.mjs
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "插件包没打出来，已中止部署（否则线上下载会 404）" -ForegroundColor Red
+    pause
+    exit 1
+}
 
 # 部署清单：记下这次同步的文件（同步目录内）。服务器下次部署时按它找出"这次没有了"的文件删掉，
 # 否则仓库里删掉的页面、接口会在线上一直留着（曾因此留下 /api/admin/check）。

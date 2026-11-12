@@ -16,7 +16,8 @@ import {
 } from "@/lib/monthly-review";
 import { ReportArchive } from "./ReportArchive";
 import { claimSelfCollection, SELF_LINK_KEY, wantSelfCollection } from "@/lib/self-collect-target";
-import { PLUGIN_SILENT, pluginVersionFromPage, prepareCollectLink, watchPluginOpened } from "@/lib/collect-link-client";
+import { PluginDownloadHint } from "@/components/benchmark/PluginDownloadHint";
+import { clearMissingPluginMessage, PLUGIN_MISSING, PLUGIN_SILENT, pluginMessageNeedsDownload, pluginVersionFromPage, prepareCollectLink, shouldHoldReviewCapture, watchPluginOpened } from "@/lib/collect-link-client";
 
 /**
  * 创作进度里的「月度复盘 · 下月策略卡」（2026-11-08 产品方：全链路——产出、结果、复盘、调整接下来的方向）。
@@ -51,6 +52,12 @@ export function MonthlyReview() {
   const [version, setVersion] = useState("");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<null | { focus: string; mixReason: string; doMore: string; doLess: string; experiments: string; boards: Record<string, string> }>(null);
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+  const reviewEditedRef = useRef(false);
+  reviewEditedRef.current = !!data?.review?.edited;
+  const heldCollect = useRef<{ text: string; summary: string } | null>(null);
+  const [heldCollectOn, setHeldCollectOn] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const lastBatch = useRef("");
 
@@ -124,6 +131,7 @@ export function MonthlyReview() {
       const d = event.data as { source?: string; type?: string; version?: string; captures?: unknown[]; collection?: unknown } | null;
       if (d?.source !== "kaiwu-capture") return;
       setInstalled(true);
+      setMsg((m) => clearMissingPluginMessage(m));
       if (typeof d.version === "string") setVersion(d.version);
       if (d.type !== "captures") return;
       const col = sanitizeCollection(d.collection);
@@ -133,11 +141,24 @@ export function MonthlyReview() {
       if (!claimSelfCollection("review")) return;
       lastBatch.current = key;
       window.postMessage({ source: "kaiwu-page", type: "received" }, window.location.origin);
-      void startRef.current({ text: formatCollection(col), summary: collectionSummary(col) });
+      const payload = { text: formatCollection(col), summary: collectionSummary(col) };
+      // 正在改，或这张卡是用户改过再保存的：采集正文不写进输入框，也不自动换成新卡
+      if (shouldHoldReviewCapture({ editing: !!editingRef.current, edited: reviewEditedRef.current })) {
+        heldCollect.current = payload;
+        setHeldCollectOn(true);
+        setMsg(editingRef.current
+          ? "采集到了，没有盖掉你正在改的策略卡。先保存或取消，再点「用这次采集复盘」。"
+          : "采集到了，没有盖掉你改过的策略卡。要换成这次采集的复盘，点「用这次采集复盘」（旧的在「退回旧版」里）。");
+        return;
+      }
+      void startRef.current(payload);
     };
     window.addEventListener("message", onMessage);
     window.postMessage({ source: "kaiwu-page", type: "ready" }, window.location.origin);
-    const timer = window.setTimeout(() => { if (document.documentElement.hasAttribute("data-kaiwu-capture")) setInstalled(true); }, 1500);
+    const timer = window.setTimeout(() => {
+      if (document.documentElement.hasAttribute("data-kaiwu-capture")) setInstalled(true);
+      else setMsg((m) => m || PLUGIN_MISSING);
+    }, 1500);
     return () => { window.removeEventListener("message", onMessage); window.clearTimeout(timer); };
   }, []);
 
@@ -146,8 +167,8 @@ export function MonthlyReview() {
     const raw = douyinLinkFromText(link);
     if (!raw) return setMsg("没认出抖音链接：打开你自己的抖音主页，复制浏览器地址栏的链接，或者抖音 App 里「分享主页 → 复制链接」");
     const v = version || pluginVersionFromPage();
-    if (!installed && !v) return setMsg("要先装「开物 · 截屏带入」插件（在「对标 & 热点」页有安装步骤），装好刷新这一页再点");
-    if (v && versionBelow(v, SELF_SINCE)) return setMsg(`插件是旧版本（${v}），还不会采自己的号：到「对标 & 热点」页重新下载安装新版，刷新这一页再点`);
+    if (!installed && !v) return setMsg(PLUGIN_MISSING);
+    if (v && versionBelow(v, SELF_SINCE)) return setMsg(`插件是旧版本（${v}），还不会采自己的号：点旁边的「下载插件」安装新版，刷新这一页再点`);
     // 先解析链接（见 lib/collect-link-client）：不是主页的当场说清楚，不交给插件空跑
     setChecking(true);
     setMsg("正在核对链接…");
@@ -223,6 +244,22 @@ export function MonthlyReview() {
         />
         <button type="button" onClick={() => void collect()} disabled={busy || running || checking} className="brand-gradient shrink-0 rounded-lg px-4 py-2 text-[13px] font-medium text-white disabled:opacity-60">采集主页并复盘</button>
         <button type="button" onClick={() => void start()} disabled={busy || running} className="shrink-0 rounded-lg border border-border px-3 py-2 text-[12.5px] text-foreground hover:bg-foreground/[0.06] disabled:opacity-60">只用作品记录复盘</button>
+        {heldCollectOn && (
+          <button
+            type="button"
+            disabled={!!editing || busy || running}
+            onClick={() => {
+              if (editing) return;
+              const h = heldCollect.current;
+              heldCollect.current = null;
+              setHeldCollectOn(false);
+              if (h) void start(h);
+            }}
+            className="shrink-0 rounded-lg border border-border px-3 py-2 text-[12.5px] text-foreground hover:bg-foreground/[0.06] disabled:opacity-60"
+          >
+            用这次采集复盘
+          </button>
+        )}
       </div>
       {data?.dataStatus && (() => {
         // 补数据入口（第三步）：复盘前看一眼这个月的数据齐不齐，缺的指到录数据、导入数据表的地方
@@ -245,7 +282,7 @@ export function MonthlyReview() {
           </div>
         );
       })()}
-      {msg && <p className="text-[12.5px] text-foreground">{msg}</p>}
+      {msg && (pluginMessageNeedsDownload(msg) ? <PluginDownloadHint text={msg} /> : <p className="text-[12.5px] text-foreground">{msg}</p>)}
       {running &&<p className="flex items-center gap-1.5 text-[12.5px] text-primary"><Loader2 className="h-3.5 w-3.5 animate-spin" />正在复盘{data?.job.month ? ` ${reviewMonthLabel(data.job.month)}` : ""}，大约 1～2 分钟，做完自动更新</p>}
       {data?.job.state === "failed" && <p className="text-[12.5px] text-destructive">上次复盘没完成：{data.job.error}</p>}
 
