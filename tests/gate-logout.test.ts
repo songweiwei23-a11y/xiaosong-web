@@ -61,6 +61,20 @@ describe('退出登录：作废这台设备的首页通行', () => {
     }
   });
 
+  it('signOut 抛错也要清掉记住的名字：清掉写在 finally 里，作废通行和回首页仍在后面', () => {
+    for (const file of ['components/auth/UserProfile.tsx', 'app/dashboard/account/page.tsx']) {
+      const src = read(file);
+      expect(src, file).toMatch(
+        /try\s*\{[\s\S]*?supabase\.auth\.signOut\(\)[\s\S]*?\}\s*finally\s*\{[\s\S]*?forgetLoginName\(\)[\s\S]*?\}/,
+      );
+      const forget = src.indexOf('forgetLoginName()');
+      const revoke = src.indexOf('/api/gate/logout');
+      const home = src.indexOf('window.location.replace("/")');
+      expect(revoke, file).toBeGreaterThan(forget);
+      expect(home, file).toBeGreaterThan(revoke);
+    }
+  });
+
   it('退出接口清掉 Cookie，并作废库里这台设备的通行', () => {
     const route = read('app/api/gate/logout/route.ts');
     expect(route).toContain('revokeDevicePass');
