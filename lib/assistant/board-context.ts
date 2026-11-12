@@ -13,7 +13,7 @@ import { readDoneList } from '@/lib/done-list';
 
 export interface BoardContextDeps {
   cookie: string;
-  /** 内部接口的地址，例如 http://127.0.0.1:3000 */
+  /** 内部接口的地址。线上用当前进程端口，或本机 Nginx，不要写死 3000 */
   base: string;
   fetchImpl?: typeof fetch;
 }

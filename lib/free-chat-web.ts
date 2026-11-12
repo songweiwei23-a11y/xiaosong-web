@@ -108,12 +108,14 @@ export async function searchFreeChatWeb(question: string, deps: Dependencies): P
     }))).then(x => x.flat());
   // 全部一起发出（lib/ali-search 里排队，不超过接口每秒 3 次）：通用搜索失败也不直接放弃，定向搜索和官方文档的结果照样用。
   // 第二个角度只补充，取 6 条
-  let [generals, targetedHits, official, extraHits] = await Promise.all([
+  const [generalsInit, targetedHits, official, extraHitsInit] = await Promise.all([
     Promise.all(generalQueries.map((q, i) => generalSearch(q, i === 0 ? 10 : 6, range, extend && i === 0))),
     Promise.all(targeted.map(t => directed(t.query, 6, t.rewrite, t.news ? range : undefined))).then(x => x.flat()),
     readOfficialDocumentation(question, deps.read || fetchPage),
     extraSearch(range),
   ]);
+  let generals = generalsInit;
+  let extraHits = extraHitsInit;
   // 按时间过滤一条都没搜到：放宽一档再搜一次通用搜索，回答里写明放宽了（比如「当天没找到，以下是本周的」）
   let widenedFrom: TimeRange | undefined;
   if (range && !generals.some(g => g.ok && g.hits.length) && !targetedHits.length && !extraHits.length) {

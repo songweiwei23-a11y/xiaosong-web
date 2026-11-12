@@ -8,8 +8,8 @@ import { reviewRunning, runMonthlyReview } from '@/lib/monthly-review-run';
 export const dynamic = 'force-dynamic';
 
 /**
- * 每月 1 号的自动复盘（2026-11-08 产品方定：每月 1 号自动跑 + 页面可手动）。由服务器 crontab 调用：
- *   curl -X POST -H "x-cron-secret: $REVIEW_CRON_SECRET" http://127.0.0.1:3000/api/admin/monthly-review/tick
+ * 每月 1 号的自动复盘（2026-11-08 产品方定：每月 1 号自动跑 + 页面可手动）。
+ * 服务器 crontab 调用 scripts/review-cron-tick.sh。端口从 Nginx upstream 片段读取，不写死。
  * 给上个月有作品动静（建了、拍了或发了）的档案各复盘一次；已经复盘过上个月的跳过（同一天重复调用不会重复花钱）。
  * 一个一个跑（和线上共用模型余额）；连续失败 3 次就停，免得把余额或接口打穿（见每晚质检的教训）。
  * 立刻返回要跑多少个，跑的过程在后台，结果看服务日志（[monthly-review/tick]）。

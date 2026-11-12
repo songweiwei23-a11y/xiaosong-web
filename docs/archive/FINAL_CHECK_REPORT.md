@@ -237,7 +237,7 @@ npm run dev
 - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` 已配置
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` 已配置
 - [ ] `DIFY_API_KEY` 已配置
-- [ ] `DIFY_API_URL` 已配置
+- [ ] `DIFY_BASE_URL` 已配置
 
 ### 数据库 ✅
 - [ ] `user_subscriptions` 表已创建

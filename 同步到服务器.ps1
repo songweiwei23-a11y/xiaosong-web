@@ -75,7 +75,8 @@ if ($pm2Cwd -ne $serverPath) {
     Write-Host ""
     Write-Host "两者不一致，部署不会生效，已中止。" -ForegroundColor Red
     Write-Host "修复方式（让 PM2 指向部署目录）：" -ForegroundColor Yellow
-    Write-Host "  pm2 delete xiaosong-web; cd $serverPath && pm2 start npm --name xiaosong-web -- start && pm2 save" -ForegroundColor Gray
+    Write-Host "  pm2 delete xiaosong-web; cd $serverPath && pm2 start ecosystem.config.cjs && pm2 save" -ForegroundColor Gray
+    Write-Host "  必须是 fork、单实例。不要用 cluster：创作窗口锁在进程内存里，多进程会失效。" -ForegroundColor Gray
     pause
     exit 1
 }
@@ -122,8 +123,6 @@ Write-Host "创建压缩包..." -ForegroundColor Yellow
 
 # 部署清单。缺少 hooks 会导致 useGenerationPage 解析失败，
 # 缺少 postcss.config.js 会导致 Tailwind 不生效，两者都会让服务器构建出问题。
-# 部署清单。缺少 hooks 会导致 useGenerationPage 解析失败，
-# 缺少 postcss.config.js 会导致 Tailwind 不生效，两者都会让服务器构建出问题。
 #
 # tests 也必须传。服务器上的 npm run build 会跑 tsc，而 tsc 会把 tests/ 一起
 # 类型检查。早期部署过一份 tests，之后清单里没有它，那份就永远停在旧版本——
@@ -133,7 +132,8 @@ Write-Host "创建压缩包..." -ForegroundColor Yellow
 $payload = @(
     "app", "components", "hooks", "lib", "types", "supabase", "public", "tests",
     "middleware.ts", "next.config.js", "postcss.config.js", "tailwind.config.js",
-    "tsconfig.json", "components.json", "package.json", "package-lock.json"
+    "tsconfig.json", "components.json", "package.json", "package-lock.json", "ecosystem.config.cjs",
+    "scripts/deploy-reload.sh", "scripts/active-port.sh", "scripts/review-cron-tick.sh", "scripts/install-review-cron.sh"
 )
 $existing = @($payload | Where-Object { Test-Path $_ })
 $missing  = @($payload | Where-Object { -not (Test-Path $_) })
@@ -170,6 +170,30 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# Nginx、内存、ecosystem 先看一眼。不过关就不上传，线上目录保持原样。
+# 检查用的是这次要发布的切换脚本，所以先把它单独传上去。
+Write-Host "上传前检查 Nginx、内存和 ecosystem..." -ForegroundColor Yellow
+$preflightLocal = Join-Path $env:TEMP "deploy-reload-preflight-$timestamp.sh"
+$preflightText = [System.IO.File]::ReadAllText("$projectPath\scripts\deploy-reload.sh") -replace "`r`n", "`n"
+[System.IO.File]::WriteAllText($preflightLocal, $preflightText, (New-Object System.Text.UTF8Encoding($false)))
+scp -i "$sshKey" $preflightLocal "${serverUser}@${serverIP}:/tmp/deploy-reload.sh"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "切换脚本上传失败，已中止，线上目录还没改" -ForegroundColor Red
+    Remove-Item $tempPkg, $preflightLocal -Force -ErrorAction SilentlyContinue
+    pause
+    exit 1
+}
+Remove-Item $preflightLocal -Force -ErrorAction SilentlyContinue
+$preflightCmd = "bash /tmp/deploy-reload.sh --preflight $serverPath"
+$preflight = ssh -i "$sshKey" ${serverUser}@${serverIP} $preflightCmd
+$preflight | Write-Host
+if ($LASTEXITCODE -ne 0 -or ($preflight | Out-String) -notmatch "PRECHECK_OK") {
+    Write-Host "上传前检查没过，没有上传代码，线上目录还没改。" -ForegroundColor Red
+    Remove-Item $tempPkg -Force -ErrorAction SilentlyContinue
+    pause
+    exit 1
+}
+
 Write-Host "上传到服务器..." -ForegroundColor Yellow
 scp -i "$sshKey" $tempPkg "${serverUser}@${serverIP}:/tmp/$pkgName"
 if ($LASTEXITCODE -ne 0) {
@@ -197,10 +221,22 @@ if ($LASTEXITCODE -ne 0) {
     pause
     exit 1
 }
-Remove-Item $manifestLocal, $pruneLocal -Force -ErrorAction SilentlyContinue
+$reloadLocal = Join-Path $env:TEMP "deploy-reload-$timestamp.sh"
+$reloadText = [System.IO.File]::ReadAllText("$projectPath\scripts\deploy-reload.sh") -replace "`r`n", "`n"
+[System.IO.File]::WriteAllText($reloadLocal, $reloadText, (New-Object System.Text.UTF8Encoding($false)))
+scp -i "$sshKey" $reloadLocal "${serverUser}@${serverIP}:/tmp/deploy-reload.sh"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "切换脚本上传失败，已中止部署" -ForegroundColor Red
+    Remove-Item $tempPkg, $manifestLocal, $pruneLocal, $reloadLocal -Force -ErrorAction SilentlyContinue
+    pause
+    exit 1
+}
+Remove-Item $manifestLocal, $pruneLocal, $reloadLocal -Force -ErrorAction SilentlyContinue
 
 Write-Host "服务器端部署..." -ForegroundColor Yellow
-# 解压与依赖安装。这一步很快，放在前台执行。
+# 解压与依赖安装发生在正在服务的目录里。旧进程还在，但磁盘上的 .next
+# 会被后面的构建改写，这段时间页面可能 404 或 500。见 DEPLOYMENT.md「构建时的空窗」。
+# 这一步很快，放在前台执行。
 # 注意：绝不要在这里 rm -rf .next。服务器只有 2G 内存，删掉缓存会触发全量
 # 构建，内存峰值直接把机器压死——SSH 和网站一起失联，只能去控制台强制重启。
 # 保留缓存做增量构建，内存占用低得多。
@@ -304,35 +340,19 @@ if ($stale) {
     exit 1
 }
 
-ssh -i "$sshKey" ${serverUser}@${serverIP} "pm2 restart xiaosong-web"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "重启失败，请登录服务器检查" -ForegroundColor Red
-    Remove-Item $tempPkg -Force -ErrorAction SilentlyContinue
-    pause
-    exit 1
-}
-
 Remove-Item $tempPkg -Force -ErrorAction SilentlyContinue
 
-# pm2 restart 返回后服务并未立即可用：Next.js 还要几十秒才起得来，
-# 期间旧进程可能仍在应答。曾因此把请求交给旧进程处理，新增逻辑没执行，
-# 排查了很久才发现只是差了 24 秒。这里必须等到新进程真正接管。
+# 不再 pm2 restart。那会先杀掉唯一进程，Next 还没 listen 时 Nginx 对外就是 502。
+# scripts/deploy-reload.sh：fork 单实例，在另一个端口把新进程拉起来，
+# 本机 /api/health 返回 200 且 ok 之后才改 Nginx upstream。
+# 健康检查失败、Nginx 没切过去：新进程被删掉，旧进程继续服务，这里非零退出。
+# 不要在失败后对旧进程 pm2 restart——磁盘上的 .next 已经是新构建，restart 会把旧进程换成没验证过的新代码。
 Write-Host ""
-Write-Host "[4/5] 等待服务就绪..." -ForegroundColor Yellow
-$ready = $false
-for ($i = 1; $i -le 40; $i++) {
-    Start-Sleep -Seconds 3
-    $code = ssh -i "$sshKey" ${serverUser}@${serverIP} "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:3000/ || echo 000"
-    $code = ($code | Out-String).Trim()
-    if ($code -match '^(200|30\d)$') {
-        $ready = $true
-        Write-Host "  服务已响应 (HTTP $code)，耗时约 $($i * 3) 秒" -ForegroundColor Green
-        break
-    }
-    Write-Host "  第 $i 次探测: $code" -ForegroundColor DarkGray
-}
-if (-not $ready) {
-    Write-Host "  服务超过 2 分钟仍未响应，请登录服务器查看 pm2 logs" -ForegroundColor Red
+Write-Host "[4/5] 换端口启动新进程，/api/health 通过后才切换..." -ForegroundColor Yellow
+$reload = ssh -i "$sshKey" ${serverUser}@${serverIP} "bash /tmp/deploy-reload.sh $serverPath"
+$reload | Write-Host
+if ($LASTEXITCODE -ne 0 -or ($reload | Out-String) -notmatch "SWITCH_OK") {
+    Write-Host "没有切换流量。旧进程应仍在服务。请勿 pm2 restart。上面是切换脚本的输出。" -ForegroundColor Red
     pause
     exit 1
 }
@@ -388,5 +408,5 @@ Write-Host "  $($localHash.Count) 个文件全部比对一致" -ForegroundColor 
 
 Write-Host ""
 Write-Host "部署完成，服务已就绪！" -ForegroundColor Green
-Write-Host "现在可以访问 http://$serverIP 使用，不会再落到重启窗口里。" -ForegroundColor Cyan
+Write-Host "现在可以访问 http://$serverIP 。流量已切到通过 /api/health 的新进程。" -ForegroundColor Cyan
 if (-not $Yes) { pause }

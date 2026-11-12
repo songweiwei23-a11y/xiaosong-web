@@ -1,185 +1,138 @@
-﻿# 小宋编导工作台 - Vercel 部署指南
+﻿# 开物现网部署（腾讯云 + PM2）
 
-## 🚀 快速部署步骤
+现网是一台腾讯云虚拟机上的 **PM2 fork 单进程**，不是 Vercel。发布用仓库根目录的 `同步到服务器.ps1`（`一键部署.ps1` 会先做本地检查再调用它）。本文只写变量名和占位符，不要把真实密钥写回仓库。
 
-### 前提条件
-- GitHub 账号
-- Vercel 账号（可用 GitHub 登录）
-- 已完成本地开发和测试
+## 环境变量
 
----
-
-## 第一步：准备 GitHub 仓库
-
-### 1. 安装 Git（如果还没安装）
-访问 https://git-scm.com/downloads 下载安装
-
-### 2. 初始化 Git 仓库
-在项目目录打开终端，执行：
-```bash
-cd xiaosong-web
-git init
-git add .
-git commit -m "初始提交：小宋编导工作台"
-```
-
-### 3. 创建 GitHub 仓库
-1. 访问 https://github.com/new
-2. 仓库名称：`xiaosong-web`
-3. 选择 **Private**（私有仓库，保护代码）
-4. 点击 **Create repository**
-
-### 4. 推送代码到 GitHub
-```bash
-git remote add origin https://github.com/你的用户名/xiaosong-web.git
-git branch -M main
-git push -u origin main
-```
-
----
-
-## 第二步：部署到 Vercel
-
-### 1. 访问 Vercel
-打开 https://vercel.com
-
-### 2. 登录/注册
-- 点击 **Sign Up** 或 **Login**
-- 选择 **Continue with GitHub**
-- 授权 Vercel 访问你的 GitHub
-
-### 3. 导入项目
-1. 点击 **Add New Project**
-2. 选择 **Import Git Repository**
-3. 找到 `xiaosong-web` 仓库，点击 **Import**
-
-### 4. 配置环境变量
-在 Vercel 项目设置中，添加以下环境变量：
+在服务器项目目录的环境里配置（不要写进 Git）：
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://nxxbzdstmtuyplcwrrhs.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=你的Supabase匿名密钥
-SUPABASE_SERVICE_ROLE_KEY=你的Supabase服务密钥
-DIFY_API_KEY=app-IIt4vrWNrq4gzchKQ4ixUj9U
-DIFY_API_URL=https://api.dify.ai/v1
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名密钥
+SUPABASE_SERVICE_ROLE_KEY=你的服务角色密钥
+DIFY_API_KEY=app-xxxxxxxx
+DIFY_BASE_URL=https://api.dify.ai/v1
 NEXT_PUBLIC_APP_NAME=小宋编导工作台
-NEXT_PUBLIC_APP_URL=你的Vercel域名（部署后会显示）
+NEXT_PUBLIC_APP_URL=https://你的域名
 ```
 
-**重要提示：** 
-- 从你的 `.env.local` 文件复制这些值
-- Supabase 密钥在 Supabase 控制台的 **Settings** → **API** 中找到
+代码读的是 `DIFY_BASE_URL`。写成 `DIFY_API_URL` 不会生效。
 
-### 5. 部署设置
-- **Framework Preset**: Next.js
-- **Build Command**: `npm run build`
-- **Output Directory**: `.next`
-- **Install Command**: `npm install`
+仓库历史里曾经出现过明文 `DIFY_API_KEY` 和服务角色密钥。改文档删不掉历史，上线前要在 Dify 和 Supabase 里作废旧密钥，服务器只保留新值。作废和更换必须人工做，本仓库的改动不会连上控制台。
 
-### 6. 点击 Deploy
-等待 2-3 分钟，部署完成！
+## 为什么不用 cluster
 
----
+`lib/creation-window-lock.ts` 把同一档案的创作窗口放在**进程内存**里。生产注释写明应用是单进程。若 `exec_mode: 'cluster'` 或 `instances` 大于 1，每个进程各有一把锁，同一档案可以并行开两轮创作，锁不再正确。
 
-## 第三步：配置 Supabase
+因此：
 
-部署完成后，你会得到一个 Vercel 域名，例如：
+- `ecosystem.config.cjs` 固定 `exec_mode: 'fork'`、`instances: 1`。
+- **不要**设 `instances: 'max'`，也不要为了零停机把 instances 固定成 2。这台机器物理内存 2G，常驻两个 `next start` 会把内存打满。
+- `wait_ready` 保持关闭。`next start` 不会 `process.send('ready')`，打开后 `pm2 reload` 会空等到 `listen_timeout` 再误判失败。
+
+发布时的空窗用换端口解决，不靠多进程常驻。切换过程中会短暂存在两个进程（见下文「剩余空窗」），稳态仍然只有一个，锁恢复有效。
+
+## 一次性：Nginx 指到 upstream 片段
+
+脚本只改 `/etc/nginx/snippets/xiaosong-upstream.conf`，不改 Nginx 主配置。第一次上这套切换之前，由人工把反代改成 include 这个文件，并确认 `ubuntu` 对 `nginx -t`、`nginx -T`、`nginx -s reload` 和写这个文件有免密 sudo（脚本用 `sudo -n`，要密码就会失败并停在旧进程上）。
+
+`server_name` 要包含 `biandao.icu`。发布脚本在 reload 之后会执行 `curl -H 'Host: biandao.icu' http://127.0.0.1/api/health`，Host 对不上就会回滚。
+
+502、503、504 使用仓库里的中文维护页 `public/maintenance.html`（页面会自己再试）。Nginx 直接读磁盘上的这个文件，不经过当时可能已经起不来的 Node。
+
+```nginx
+upstream xiaosong_backend {
+    include /etc/nginx/snippets/xiaosong-upstream.conf;
+}
+
+server {
+    server_name biandao.icu www.biandao.icu;
+    # 原有的证书照旧
+    error_page 502 503 504 /maintenance.html;
+    location = /maintenance.html {
+        root /var/www/xiaosong-web/public;
+        add_header Cache-Control "no-store";
+    }
+    location / {
+        proxy_pass http://xiaosong_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}
 ```
-https://xiaosong-web-abc123.vercel.app
+
+片段当前内容应是正在服务的端口，一般是：
+
+```
+server 127.0.0.1:3000;
 ```
 
-### 1. 更新 Supabase URL 配置
-1. 打开 Supabase 控制台
-2. 进入 **Authentication** → **URL Configuration**
-3. 添加以下 URL：
-   - **Site URL**: `https://你的域名.vercel.app`
-   - **Redirect URLs**: 
-     - `https://你的域名.vercel.app/auth/callback`
-     - `https://你的域名.vercel.app/dashboard`
+改完执行 `sudo nginx -t && sudo nginx -s reload`。这一次 reload 不换端口，不应出现 502。`sudo nginx -T` 里要能看到 `xiaosong-upstream.conf`。没做这一步时，发布脚本会拒绝启动第二个进程。
 
-### 2. 更新环境变量
-回到 Vercel 项目设置：
-1. 点击 **Settings** → **Environment Variables**
-2. 编辑 `NEXT_PUBLIC_APP_URL` 为你的 Vercel 域名
-3. 点击 **Redeploy** 重新部署
+如果机器上还没有用 ecosystem 启动的进程，人工切一次（这一次会有短暂停顿，因为要换掉现在的 `pm2 start npm -- start`）：
 
----
-
-## 第四步：绑定自定义域名（可选）
-
-如果你有自己的域名（如 xiaosong.ai）：
-
-### 1. 在 Vercel 添加域名
-1. 进入项目 **Settings** → **Domains**
-2. 输入你的域名，点击 **Add**
-3. Vercel 会提示需要添加的 DNS 记录
-
-### 2. 配置 DNS
-在你的域名服务商（阿里云、腾讯云等）添加 DNS 记录：
-- **类型**: CNAME
-- **名称**: @ 或 www
-- **值**: cname.vercel-dns.com
-
-### 3. 等待生效
-DNS 解析通常需要 5-30 分钟生效
-
----
-
-## ✅ 部署完成检查清单
-
-- [ ] 网站可以正常访问
-- [ ] 用户可以注册/登录
-- [ ] 所有功能正常工作
-- [ ] 管理员后台可以访问
-- [ ] 支付页面显示正常
-- [ ] 环境变量已正确配置
-
----
-
-## 🔧 常见问题
-
-### Q1: 部署失败怎么办？
-**A:** 检查以下几点：
-1. 确保所有依赖都在 `package.json` 中
-2. 检查环境变量是否正确配置
-3. 查看 Vercel 的构建日志找到错误原因
-
-### Q2: 国内访问很慢怎么办？
-**A:** Vercel 在国内访问可能较慢，解决方案：
-1. 使用 CDN 加速（Cloudflare）
-2. 考虑迁移到国内服务器（阿里云/腾讯云）
-3. 使用国内的 Serverless 平台
-
-### Q3: 如何更新代码？
-**A:** 
 ```bash
-git add .
-git commit -m "更新说明"
-git push
+cd /var/www/xiaosong-web
+pm2 delete xiaosong-web
+PORT=3000 PM2_APP_NAME=xiaosong-web APP_CWD=/var/www/xiaosong-web pm2 start ecosystem.config.cjs
+pm2 save
 ```
-推送到 GitHub 后，Vercel 会自动重新部署
 
-### Q4: 如何查看访问日志？
-**A:** 在 Vercel 项目中点击 **Analytics** 和 **Logs**
+确认 `curl -sS http://127.0.0.1:3000/api/health` 返回 HTTP 200，正文里有 `"ok":true`。这次是人工起的进程，`boot` 为空。之后的发布都走脚本，脚本会检查 `boot` 和 `pid`。
 
----
+## 每次发布
 
-## 📞 技术支持
+改环境变量也走这一套：新进程会带上当前环境。不要对线上进程直接 `pm2 restart`，那会回到单进程空窗。
 
-如遇到问题：
-1. 查看 Vercel 官方文档: https://vercel.com/docs
-2. 查看 Next.js 文档: https://nextjs.org/docs
-3. 查看 Supabase 文档: https://supabase.com/docs
+1. 找到唯一在线的 `xiaosong-web` 或 `xiaosong-web-next`，工作目录必须是部署目录。
+2. 确认 Nginx 已经引用 upstream 片段。
+3. `MemAvailable` 低于约 500MB 时**不起**第二个进程，旧进程继续服务，脚本非零退出。
+4. 先清掉上次留下的暂存进程名，再确认另一个端口（3000 和 3001 对调）没有在听。被占用就不起新进程，旧进程继续服务。
+5. 用 ecosystem 在新端口起新进程。fork、单实例。这次启动带一个新的 `KAIWU_BOOT_ID`。
+6. 对本机 `http://127.0.0.1:<新端口>/api/health` 重试约 2 分钟。要 HTTP 200、`"ok":true`，并且 `boot`、`pid` 对得上这次拉起的进程（会读数据库）。对不上就当失败：可能探到的是还在服务的旧进程，不能拿它当新进程。首页 200 不算成功。
+7. 没通过：`pm2 delete` 只删新进程，不改 Nginx，不重启旧进程，退出码非 0。
+8. 通过：改 upstream、`nginx -t`、`nginx reload`，再确认配置里是新端口。然后执行 `curl -H 'Host: biandao.icu' http://127.0.0.1/api/health`，要 HTTP 200、`"ok":true`，并且 `boot`、`pid` 仍是这次的新进程。任一步失败都把 upstream 改回去并删掉新进程，旧进程继续服务，退出码非 0。
+9. 切流后再等 90 秒，让还挂在旧进程上的流式生成跑完。等完再探一次。仍对得上，才停掉旧进程，`pm2 save`，输出 `SWITCH_OK`。等的过程中新进程不健康，就把流量改回旧端口并删掉新进程。
 
----
+失败之后**不要**对旧进程 `pm2 restart`。构建已经覆盖了磁盘上的 `.next`，restart 会让还在内存里的旧代码换成一份没通过健康检查的新构建。
 
-## 🎉 恭喜！
+## 剩余空窗
 
-你的小宋编导工作台已经成功部署上线！
+新请求在 Nginx 切走之前一直打到旧进程，不再出现「旧进程已死、新进程还没 listen」那种 502。下面几段仍然存在：
 
-现在可以：
-- 分享链接给用户使用
-- 监控网站访问数据
-- 持续优化和添加新功能
+- Nginx reload 之后，新请求进新端口，已经连在旧进程上的流式生成还留在旧进程。两边的创作窗口锁互不相通。这段现在大约 90 秒（切流后故意不立刻停旧进程），停掉旧进程后只剩一把锁。
+- 90 秒结束后才 `pm2 delete` 旧进程。删除时新进程的 `kill_timeout` 是 20 秒，旧进程若是这次脚本拉起的，也有同样的等待。**第一次**从旧的 `pm2 start npm` 切过来时，那个旧进程没有这个等待；90 秒的停留仍然留给已经开始的生成，到点后删除会马上发停止信号。
+- 这 90 秒里两个 `next start` 同时占内存。2G 机器上，第二个进程起来之后仍可能把机器打满。脚本只在启动前看 `MemAvailable`，挡不住启动后的峰值，也挡不住这 90 秒的重叠。不要在生成高峰发布。内存不够时脚本会放弃，网站继续跑旧版本。
+- 第一次改 Nginx 主配置那一下，要人工 reload。端口不变。
 
-**祝你的平台运营顺利！** 🚀
+## 构建时的空窗
+
+`同步到服务器.ps1` 在旧进程还在服务时，就在部署目录里原地 `npm install` 和 `npm run build`。Next 会改写正在被请求的 `.next`。这段时间页面可能出现 404 或 500，流量还没切到新进程。构建失败不会 `pm2 restart`，旧进程继续用已经加载进内存的代码；磁盘上的 `.next` 可能已经是一份没建完的产物，所以失败之后不要 restart。
+
+这台机器只有 2G。再复制一份完整目录来构建，会同时留下两份 `node_modules` 和 `.next`，比换端口时短暂的第二个进程更吃内存，所以没有改成独立目录构建。上传代码之前先跑 `bash /tmp/deploy-reload.sh --preflight <部署目录>`：Nginx 片段、可用内存、`ecosystem.config.cjs` 不过关就不上传，避免在切不了流量的机器上先改线上目录。不要在生成高峰发布。
+
+## 回滚
+
+健康检查或 Nginx 检查失败时，脚本已经把流量留在（或改回）旧进程，一般不用再操作。确认 `pm2 status` 里旧名字仍是 online，然后看脚本打印的原因。不要 restart 它。
+
+已经打印 `SWITCH_OK`、事后发现新版本有问题：
+
+1. 磁盘上的 `.next` 已是新构建，把 upstream 改回旧端口**不能**找回旧代码，除非旧进程还没被删掉。脚本在健康检查通过后会删掉旧进程。
+2. 把上一版代码放到部署目录，再跑一遍 `同步到服务器.ps1`。它会在另一个端口构建并启动，`/api/health` 通过后才切 Nginx。
+3. 若新进程健康但 `pm2 delete` 旧进程失败，脚本会非零退出，两个进程会同时占内存。流量已经在新端口。手动 `pm2 delete <旧名字>`，名字在脚本输出里。
+
+上一份 upstream 会抄在部署目录的 `.deploy-upstream.prev`（不在会被 prune 的子目录里）。那只是端口记录，不是旧代码。
+
+日志：构建在 `/tmp/build.log`，进程用 `pm2 logs`。就绪看 `/api/health` 的 `ok`、`boot` 和 `pid`，不要用首页状态码。
+
+## 上线检查单
+
+换端口第一次生效前，在服务器上核对下面几项。不要把真实密钥写进仓库。
+
+- **小助理的本机地址。** 代码读 `ASSISTANT_INTERNAL_URL`。留空时，进程用自己的 `PORT` 调自己，切到 3000 或 3001 都打得到。如果这个变量写成了 `http://127.0.0.1:3000` 或 `:3001`，代码会把端口改成当前进程的 `PORT`，避免切走之后打到已经停掉的端口。想固定走 Nginx 时，写成不带 3000/3001 的本机入口 `http://127.0.0.1`（Nginx 在 80 上，并且这个地址能进到本站）。上线前在服务器执行 `grep '^ASSISTANT_INTERNAL_URL=' .env.local`：应当没有这一行，或者是 Nginx 入口，不能是一个写死的应用端口。
+- **月度复盘定时任务。** 重新执行 `bash scripts/install-review-cron.sh`。它会换掉 crontab 里旧的 `monthly-review/tick` 行。新行只调用 `scripts/review-cron-tick.sh`。这个脚本每次用 `scripts/active-port.sh` 读 `/etc/nginx/snippets/xiaosong-upstream.conf`，和发布脚本写入的是同一份文件。`crontab -l` 里不应再出现 `127.0.0.1:3000`。新写入的 `REVIEW_CRON_SECRET` 不要靠 `pm2 restart` 加载，下一次换端口发布会带上。
+- **其他本机调用。** 告警接口 `/api/admin/alerts/tick` 如果已经写进 crontab，同样改成先跑 `scripts/active-port.sh` 再请求 `http://127.0.0.1:<端口>/...`，不要写死 `:3000`。公网探测 `scripts/health-probe.sh` 走的是站点域名，不经过应用端口，不用改。仓库里的 `localhost:3000` 出现在本地开发文档、浏览器插件和测试夹具里，不是线上内部调用。
+- **发布脚本本身。** 新端口被占用时不会启动第二个进程。`/api/health` 必须返回这次的 `boot` 和 `pid`，对不上就不改 Nginx、不删正在服务的进程。切流后等 90 秒再删旧进程。这 90 秒两个进程同时在，创作窗口锁互不相通，2G 内存要避开生成高峰。

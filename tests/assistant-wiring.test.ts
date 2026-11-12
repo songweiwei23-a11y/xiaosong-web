@@ -51,7 +51,12 @@ describe('额度：每条消息预留 1 次自由对话，成功结算，停止�
 });
 
 describe('密钥不进仓库', () => {
-  const KEY_PREFIX = 'sk-b4720cdc8391178ec9';
+  // 不把真实密钥写进断言。占位 app-xxxxxxxx、夹具 sk-test- 对不上这些长度。
+  const LEAKS = [
+    /sk-[0-9a-f]{16,}/,
+    /app-[0-9A-Za-z]{16,}/,
+    /eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}/,
+  ];
   const SCAN = ['lib', 'app', 'components', 'hooks', 'tests', 'scripts', 'supabase'];
   const SKIP = new Set(['node_modules', '.next', '.git']);
 
@@ -70,10 +75,9 @@ describe('密钥不进仓库', () => {
     for (const d of SCAN) walk(path.join(ROOT, d), files);
     expect(files.length).toBeGreaterThan(200);
     const leaks = files.filter((f) => {
-      // 这个测试文件自己写着密钥的前缀，用来做检查，不算泄露
-      if (f.endsWith('assistant-wiring.test.ts')) return false;
       try {
-        return fs.readFileSync(f, 'utf8').includes(KEY_PREFIX);
+        const text = fs.readFileSync(f, 'utf8');
+        return LEAKS.some((pattern) => pattern.test(text));
       } catch {
         return false;
       }

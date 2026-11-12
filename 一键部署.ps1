@@ -1,7 +1,8 @@
 ﻿# 一键部署：推送代码 -> 同步到服务器 -> 等待就绪 -> 校验
 #
 # 把「git push」和「同步到服务器」串起来，避免两步之间遗漏。
-# 之前出现过代码已推送但没同步、以及同步后立刻访问撞上重启窗口的情况。
+# 之前出现过代码已推送但没同步、以及同步后立刻访问撞上重启空窗的情况。
+# 同步脚本改为换端口，/api/health 通过后才切 Nginx，失败则旧进程继续服务。
 # 外部命令(tar/scp/ssh/git/npx)向 stderr 写入时，PowerShell 5.1 会把它包成
 # ErrorRecord。若 ErrorActionPreference 为 Stop，这会直接终止脚本，连后面的
 # pause 都执行不到，表现就是"窗口闪退、看不到任何错误"。
@@ -84,7 +85,7 @@ if ($ahead -eq "0") {
 
 # ---------- 4. 同步到服务器 ----------
 Write-Host ""
-Write-Host "[4/4] 同步到服务器（含构建、重启、就绪等待）..." -ForegroundColor Yellow
+Write-Host "[4/4] 同步到服务器（含构建、换端口、/api/health）..." -ForegroundColor Yellow
 Write-Host ""
 & "$projectPath\同步到服务器.ps1"
 

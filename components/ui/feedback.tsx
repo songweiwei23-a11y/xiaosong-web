@@ -57,11 +57,16 @@ function detectType(message: string): ToastType {
  * 浏览器原样的网络报错（Chrome「Failed to fetch」、Safari「Load failed」、Firefox「NetworkError…」）用户看不懂，
  * 以为功能坏了（2026-10-05 线上：带去「创作方向」时弹了一句 Failed to fetch）。不管哪个页面直接把它丢进提示，都换成人话
  */
-const RAW_NETWORK_ERROR = /^(?:TypeError:\s*)?(?:Failed to fetch|Load failed|NetworkError when attempting to fetch resource|Network request failed|fetch failed)/i;
+const RAW_NETWORK_ERROR = /^(?:TypeError:\s*)?(?:Failed to fetch|Load failed|NetworkError when attempting to fetch resource|Network request failed)/i;
+/** 服务端 undici 报 "fetch failed" 时，请求已经到了我们这边，不要说成没发出去。 */
+const SERVER_FETCH_FAILED = /^(?:TypeError:\s*)?fetch failed$/i;
+const SERVER_FETCH_HINT = "服务暂时没有连上，请稍后再试";
 export const FRIENDLY_NETWORK_ERROR = "网络断了一下，请求没发出去，再点一次就好（当前内容都还在）";
 
 export function notify(message: string, type?: ToastType, duration = 3200) {
-  if (RAW_NETWORK_ERROR.test(message?.trim?.() ?? "")) message = FRIENDLY_NETWORK_ERROR;
+  const raw = message?.trim?.() ?? "";
+  if (SERVER_FETCH_FAILED.test(raw)) message = SERVER_FETCH_HINT;
+  else if (RAW_NETWORK_ERROR.test(raw)) message = FRIENDLY_NETWORK_ERROR;
   const id = seq++;
   const resolvedType = type ?? detectType(message);
   toasts = [...toasts, { id, type: resolvedType, message, duration }];
