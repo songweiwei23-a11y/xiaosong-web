@@ -8,10 +8,13 @@ import { approveViaRpc } from '@/lib/order-approval';
 import { countPackById, countPackExpiry, isCountPackId } from '@/lib/config/count-packs';
 import { approveCountPackOrder } from '@/lib/count-pack';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+/** 请求进来再创建。模块顶层创建会在没有环境变量时让 next build 收集页面数据失败。 */
+function createReviewClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
 
 export async function POST(request: Request) {
   try {
@@ -19,6 +22,10 @@ export async function POST(request: Request) {
     const admin = await requireAdminPermission('review_orders');
     if (!admin) {
       return NextResponse.json({ error: '无权审核订单' }, { status: 403 });
+    }
+    const supabase = createReviewClient();
+    if (!supabase) {
+      return NextResponse.json({ error: '服务端缺少数据库配置，暂时不能审核订单' }, { status: 500 });
     }
     if (adminWriteLimited(admin.userId)) {
       return NextResponse.json({ error: '操作太频繁，请稍后再试' }, { status: 429 });

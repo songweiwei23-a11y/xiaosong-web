@@ -1,9 +1,13 @@
 ﻿// 数据库初始化脚本 - 补全用户数据
 import { createClient } from '@supabase/supabase-js';
 
-// 从环境变量或直接配置
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://nxxbzdstmtuyplcwrrhs.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54eGJ6ZHN0bXR1eXBsY3dycmhzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTE0NTE1NiwiZXhwIjoyMTAwNzIxMTU2fQ.x-pX1CMLjGlJV-UrgFyDzkhcrGaGBLveHp2bxSsmwew';
+// 只从环境变量读，不在仓库里放服务角色密钥。
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!supabaseUrl || !supabaseKey) {
+  console.error('请设置 NEXT_PUBLIC_SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

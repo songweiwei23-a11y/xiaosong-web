@@ -56,8 +56,8 @@ npm install
 NEXT_PUBLIC_SUPABASE_URL=你的Supabase URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=你的Supabase匿名密钥
 SUPABASE_SERVICE_ROLE_KEY=你的Supabase服务密钥
-DIFY_API_KEY=你的Dify API密钥
-DIFY_API_URL=https://api.dify.ai/v1
+DIFY_API_KEY=app-xxxxxxxx
+DIFY_BASE_URL=https://api.dify.ai/v1
 ```
 
 4. **启动开发服务器**
@@ -68,9 +68,9 @@ npm run dev
 5. **访问应用**
 打开浏览器访问 http://localhost:3000
 
-### 部署到 Vercel
+### 部署
 
-详细部署步骤请查看 [DEPLOYMENT.md](./DEPLOYMENT.md)
+现网是腾讯云上的 PM2 单进程，步骤、健康检查和回滚见 [DEPLOYMENT.md](./DEPLOYMENT.md)。
 
 ## 📁 项目结构
 

@@ -49,7 +49,7 @@
 ║     「API 访问」或「API」                                 ║
 ║                                                           ║
 ║  7. 你会看到 API 密钥，格式类似：                        ║
-║     app-aBcD1234eFgH5678                                  ║
+║     app-xxxxxxxx                                  ║
 ║                                                           ║
 ║  8. 点击复制按钮，或手动选中复制                          ║
 ║                                                           ║
@@ -74,7 +74,7 @@
 ║     DIFY_API_KEY=你的Dify_API密钥                         ║
 ║                                                           ║
 ║  6. 改成（把你复制的密钥粘贴进去）：                      ║
-║     DIFY_API_KEY=app-aBcD1234eFgH5678                     ║
+║     DIFY_API_KEY=app-xxxxxxxx                     ║
 ║                                                           ║
 ║  7. 按 Ctrl + S 保存文件                                  ║
 ║                                                           ║
@@ -144,8 +144,8 @@
 ║  .env.local 文件应该像这样：                              ║
 ║                                                           ║
 ║  # Dify API Configuration                                 ║
-║  DIFY_API_KEY=app-aBcD1234eFgH5678iJkL9012               ║
-║  DIFY_API_URL=https://api.dify.ai/v1                      ║
+║  DIFY_API_KEY=app-xxxxxxxx               ║
+║  DIFY_BASE_URL=https://api.dify.ai/v1                      ║
 ║                                                           ║
 ║  # App Configuration                                      ║
 ║  NEXT_PUBLIC_APP_NAME=小宋编导工作台                      ║

@@ -19,7 +19,7 @@ import path from 'node:path';
  * 这类缺陷没法靠跑一次部署发现——它只在"构建恰好没起来"时才显形，
  * 而那时它伪装成成功。只能把两道闸钉死：
  *   1. 每次构建打唯一标记，日志里没有这个标记就不认
- *   2. 重启前比对 .next 与源码的新旧，产物比源码旧就中止
+ *   2. 切换进程前比对 .next 与源码的新旧，产物比源码旧就中止，不能拿旧构建去换端口
  */
 
 const script = fs.readFileSync(path.join(process.cwd(), '同步到服务器.ps1'), 'utf8');
@@ -27,7 +27,8 @@ const script = fs.readFileSync(path.join(process.cwd(), '同步到服务器.ps1'
 describe('部署脚本不会把失败的构建当成成功', () => {
   it('确实读到了脚本（防止路径写错导致空过）', () => {
     expect(script.length).toBeGreaterThan(3000);
-    expect(script).toContain('pm2 restart xiaosong-web');
+    expect(script).toContain('bash /tmp/deploy-reload.sh');
+    expect(script).not.toContain('pm2 restart xiaosong-web');
   });
 
   it('每次构建打唯一标记', () => {
@@ -55,13 +56,14 @@ describe('部署脚本不会把失败的构建当成成功', () => {
     expect(script).toMatch(/\$startOut\s*-notmatch\s*"BUILD_STARTED"/);
   });
 
-  it('重启前比对构建产物与源码的新旧', () => {
+  it('切换前比对构建产物与源码的新旧', () => {
     expect(script, '缺少 .next 是否比源码旧的检查').toMatch(/-newer \.next\/BUILD_ID/);
-    // 这道检查必须在 pm2 restart 之前
+    // 这道检查必须在换端口之前，否则会拿旧构建去切流量
     const staleCheck = script.indexOf('-newer .next/BUILD_ID');
-    const restart = script.indexOf('pm2 restart xiaosong-web');
+    const reload = script.indexOf('bash /tmp/deploy-reload.sh');
     expect(staleCheck).toBeGreaterThan(0);
-    expect(staleCheck, '新旧比对必须排在重启之前，否则拦不住').toBeLessThan(restart);
+    expect(reload, '切换脚本必须还在').toBeGreaterThan(0);
+    expect(staleCheck, '新旧比对必须排在切换之前，否则拦不住').toBeLessThan(reload);
   });
 
   it('非交互环境仍然能跑（-Yes）', () => {

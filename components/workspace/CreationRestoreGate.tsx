@@ -7,7 +7,16 @@ import { getActiveProfileId, setActiveProfileId } from '@/lib/active-profile';
 import { CREATION_UUID, readCreationSnapshot } from '@/lib/creation-snapshot';
 import { creationRestorePlan, markCreationRestored, wasCreationRestored } from '@/lib/creation-restore';
 import { fetchWork } from '@/lib/resume';
+import { isNetworkError, NETWORK_ERROR_HINT } from '@/lib/api-error';
+import { fetchWithBackoff, isAbortError } from '@/lib/fetch-retry';
 import type { HandoffPayload } from '@/lib/handoff';
+
+function restoreErrorText(error: unknown): string {
+  if (isNetworkError(error)) return NETWORK_ERROR_HINT;
+  const message = error instanceof Error ? error.message : '';
+  if (/failed to fetch|load failed|networkerror|network request failed|fetch failed/i.test(message)) return NETWORK_ERROR_HINT;
+  return message || '网络异常，请重试';
+}
 
 /**
  * Mount destination forms after durable intent is available, including refresh/new devices.
@@ -34,10 +43,11 @@ export function CreationRestoreGate({ children }: { children: React.ReactNode })
     setError(''); setOtherProfile(null);
     if (!CREATION_UUID.test(id)) { setError('创作链接不正确'); return; }
     const abort = new AbortController();
-    fetch(`/api/creation-sessions?id=${encodeURIComponent(id)}`, { cache: 'no-store', signal: abort.signal })
+    // 读快照是幂等的：网络错误和 5xx 最多再试 2 次（退避见 fetchWithBackoff）。离开页面的 abort 不重试。
+    void fetchWithBackoff(`/api/creation-sessions?id=${encodeURIComponent(id)}`, { cache: 'no-store', signal: abort.signal })
       .then(async response => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || '暂时无法恢复创作需求');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || (response.status >= 500 ? '服务暂时没有响应，请稍后再试' : '暂时无法恢复创作需求'));
         const payload = readCreationSnapshot(data.payload);
         if (!payload || payload.target !== pathname) throw new Error('此链接属于另一创作板块，请从作品打开对应环节');
         if (abort.signal.aborted) return;
@@ -48,7 +58,7 @@ export function CreationRestoreGate({ children }: { children: React.ReactNode })
         const plan = creationRestorePlan({ id, payload, createdAt: typeof data.created_at === 'string' ? data.created_at : null, work, restoredBefore: wasCreationRestored(id) });
         if (plan === 'snapshot') restore(payload);
         else { markCreationRestored(id); setReady(id); }
-      }).catch(e => { if (!abort.signal.aborted) setError(e.message || '网络异常，请重试'); });
+      }).catch(e => { if (!abort.signal.aborted && !isAbortError(e)) setError(restoreErrorText(e)); });
     return () => abort.abort();
     // restore runs only for this immutable URL; form changes must never trigger rehydration.
     // eslint-disable-next-line react-hooks/exhaustive-deps
