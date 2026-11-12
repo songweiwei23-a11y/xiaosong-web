@@ -129,4 +129,48 @@ describe('分镜核对器', () => {
     expect(auditStoryboard(REAL_OUTPUT, '15秒')!.target).toBe(15);
     expect(auditStoryboard(REAL_OUTPUT, '3-5分钟')!.target).toBe(300);
   });
+
+  it('只数当前这张分镜表：旧表和拍摄顺序不再把 11 镜加成 19 镜', () => {
+    const current = [
+      ...Array.from({ length: 8 }, (_, i) => `| ${i + 1} | 中景📹 | 固定 | 画面 | 现在的台词 | 5s | 要点 |`),
+      ...Array.from({ length: 3 }, (_, i) => `| ${i + 9} | 特写🔍 | 推镜 | 画面 | 现在的台词 | 4s | 要点 |`),
+    ].join('\n');
+    const older = [
+      '| 1 | 近景📸 | 固定 | 旧画面 | 旧台词 | 7s | 旧 |',
+      ...Array.from({ length: 7 }, (_, i) => `| ${i + 2} | 近景📸 | 固定 | 旧画面 | 旧台词 | 5s | 旧 |`),
+    ].join('\n');
+    const markdown = [
+      '# 旧分镜',
+      '| 镜号 | 景别 | 运镜 | 画面 | 台词 | 时长 | 要点 |',
+      '|---|---|---|---|---|---|---|',
+      older,
+      '',
+      '# 🎬 分镜脚本表',
+      '| 镜号 | 景别 | 运镜 | 画面内容 | 台词/旁白 | 时长 | 拍摄要点 |',
+      '|---|---|---|---|---|---|---|',
+      current,
+      '',
+      '## 拍摄顺序建议',
+      '| 拍摄批次 | 包含镜号 | 机位/场景 | 一次布置能拍完的理由 |',
+      '|---|---|---|---|',
+      '| 1 | 1-4 | 门口 | 同一机位 |',
+      '| 2 | 5-8 | 后厨 | 同一机位 |',
+      '| 3 | 9-11 | 全景 | 补一个 |',
+      '',
+      '- 总时长：94s（已对账）',
+    ].join('\n');
+    const audit = auditStoryboard(markdown, '42秒', '审过的口播')!;
+    expect(audit.shots).toBe(11);
+    expect(audit.totalSeconds).toBe(52);
+    expect(audit.target).toBe(42);
+    expect(audit.issues.join(' ')).toContain('文中总时长写 94s');
+  });
+
+  it('时长列不在固定位置时按表头相加，不拿错列', () => {
+    const markdown = '| 镜号 | 时长 | 景别 | 台词 |\n|---|---|---|---|\n| 1 | 3s | 中景 | 你好 |\n| 2 | 4s | 特写 | 世界 |';
+    const audit = auditStoryboard(markdown, '60秒')!;
+    expect(audit.shots).toBe(2);
+    expect(audit.totalSeconds).toBe(7);
+    expect(audit.closeUpRatio).toBe(50);
+  });
 });

@@ -83,6 +83,7 @@ export function ResultPanel({
   continueTask,
   nextActions,
   footer,
+  renderFooter,
   bodyClassName,
   flowContext,
   hideCreationLinks,
@@ -124,6 +125,11 @@ export function ResultPanel({
    * 做成插槽而不是写死在这里：别的板块的核对项各不相同。
    */
   footer?: React.ReactNode;
+  /**
+   * 和 footer 同一位置，但拿到的是画面上正在显示的正文（画布改过的最新一版）。
+   * 分镜核对必须数这张表，不能拿作品记录里的旧稿。
+   */
+  renderFooter?: (view: string) => React.ReactNode;
   /** 给正文额外的排版（接在 prose 后面）。拆解爆款用它把每个镜头的四级标题排成卡片头 */
   bodyClassName?: string;
   flowContext?: CreationContext;
@@ -385,7 +391,7 @@ export function ResultPanel({
       {showQuality && report && !isGenerating && <QualityCard report={report} quality={quality} />}
 
       {/* 各页面自己的核对结果。紧跟正文，因为它说的就是上面这份内容对不对 */}
-      {body && !isGenerating && footer}
+      {body && !isGenerating && (renderFooter ? renderFooter(view) : footer)}
       {/* 禁忌兜底：平台红线 + 行业禁忌词（lib/taboos），命中了就标出来 */}
       {/* 我的创作偏好：这次按哪些偏好写的（lib/preferences），写稿类板块才有 */}
       {body && !isGenerating && <PreferenceHint board={CONTEXT_BOARD[segment] ?? 'script'} />}
