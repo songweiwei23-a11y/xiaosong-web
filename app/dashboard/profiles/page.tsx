@@ -7,6 +7,7 @@ import { notify, confirmDialog } from '@/components/ui/feedback';
 import { getActiveProfileId, onActiveProfileChange, setActiveProfileId } from '@/lib/active-profile';
 import { postSafely } from '@/lib/safe-post';
 import { notifyProgressChanged } from '@/lib/progress-events';
+import { PageLoading } from '@/components/ui/page-loading';
 
 interface UserProfile {
   id: string
@@ -78,11 +79,7 @@ export default function ProfilesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-muted-foreground">加载中...</div>
-      </div>
-    )
+    return <PageLoading message="正在加载档案..." />;
   }
 
   return (

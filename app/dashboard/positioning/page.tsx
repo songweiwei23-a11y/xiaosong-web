@@ -9,6 +9,7 @@ import { TEXTAREA_CLS, GENERATE_BTN } from "@/components/form/controls";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
+import { PageLoading } from "@/components/ui/page-loading";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { buildCreationHandoff } from '@/lib/creation-flow';
@@ -416,14 +417,7 @@ export default function PositioningPage() {
   }
 
   if (loadingProfile) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
-          <p className="text-muted-foreground">加载档案中...</p>
-        </div>
-      </div>
-    )
+    return <PageLoading message="正在加载档案..." />;
   }
 
   // 定位是按旧档案写的（整改 B4）：保存定位时的事实指纹和现在的档案对不上。只提醒，旧的继续用

@@ -12,6 +12,7 @@ import { useCreationBridge } from '@/hooks/useCreationBridge'
 import { incomingNote } from '@/lib/creation-flow'
 import { CreationLinks } from '@/components/workspace/CreationLinks'
 import { invalidateCreatorContext } from '@/hooks/useCreatorContext'
+import { PageLoading } from '@/components/ui/page-loading'
 import {
   BRIEF_FIELDS,
   BRIEF_TYPE,
@@ -262,16 +263,7 @@ export default function CreativeBriefPage() {
   const hasAny = Object.values(values).some((v) => v?.trim())
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background py-8" aria-busy="true" aria-label="加载中">
-        <div className="mx-auto max-w-4xl animate-pulse space-y-4 px-4 sm:px-6 lg:px-8">
-          <div className="h-7 w-32 rounded bg-muted" />
-          <div className="h-4 w-3/4 rounded bg-muted" />
-          <div className="h-40 rounded-xl bg-muted" />
-          <div className="h-24 rounded-xl bg-muted" />
-        </div>
-      </div>
-    )
+    return <PageLoading message="正在加载创作简报..." />;
   }
 
   return (
