@@ -1,16 +1,22 @@
--- 【草稿，未接入代码，未在线上执行】订单审核与会员开通放进同一个事务（2026-10-10 后台巡检 P2-10）
+-- 【已在线上执行，已接入代码】订单审核与会员开通放进同一个事务（2026-10-10 后台巡检 P2-10）
 --
--- 现状：app/api/admin/orders/review/route.ts 分三步写库（改订单 → 写会员 → 清额度），
+-- 2026-11-12 威威在生产 Supabase 只读核对：public.admin_approve_order 已存在，
+-- 只有 1 个版本、11 个参数，与本文件一致。
+-- 调用处：lib/order-approval.ts 的 approveViaRpc（常量 APPROVE_RPC），
+-- 由 app/api/admin/orders/review/route.ts 优先调用。
+--
+-- 编写时的背景：审核路由曾分三步写库（改订单 → 写会员 → 清额度），
 --       靠代码里的回滚兜底。进程若在中间崩溃，订单可能停在 approved 而会员没开通。
+--       该分步流程仍留作函数缺失时的退路。
 -- 本函数：一个事务内完成三步；任何一步失败整体回滚，订单状态不会先变。
 --
 -- 套餐到期日、是否续费、额度要不要清零，仍由 lib/config/plans.ts 的 activationPlan() 算好，
 -- 作为参数传进来。这样数据库函数不重复业务规则，只负责「要么全做，要么全不做」。
 --
--- 接入前必须做的事：
---   1) 在线上 SQL Editor 执行本文件（或放进 supabase/migrations）；
+-- 历史（起草时「接入前必须做的事」，均已完成）：
+--   1) 在线上执行本文件（2026-11-12 只读核对：1 个版本、11 个参数）；
 --   2) 在本地或测试库跑通 tests/ 里的对应用例；
---   3) 再改路由去调用 supabase.rpc('admin_approve_order', ...)，并删掉原来的 rollback 逻辑。
+--   3) 路由已改为调用 supabase.rpc('admin_approve_order', ...)，见 lib/order-approval.ts。
 
 create or replace function public.admin_approve_order(
   p_order_id uuid,

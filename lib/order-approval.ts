@@ -7,8 +7,9 @@ import { COUNTED_FEATURES, activationPlan } from '@/lib/config/plans';
  * 优先调用 public.admin_approve_order：订单状态、会员、额度三步在一个事务里完成，
  * 中途失败整体回滚。到期日、续费、额度是否清零仍由 activationPlan() 算好再传进去。
  *
- * 函数还没在线上执行时（PGRST202 / 42883），返回 null，由调用方退回原来的分步流程，
- * 所以先发布代码、后执行 SQL 也不会中断审核。
+ * 2026-11-12 生产只读核对：函数已在线上，1 个版本、11 个参数，与
+ * supabase/migrations/20261010_admin_approve_order.sql 一致。本文件 approveViaRpc 即调用处。
+ * 若函数缺失（PGRST202 / 42883），返回 null，由调用方退回原来的分步流程。
  */
 
 export const APPROVE_RPC = 'admin_approve_order';
@@ -30,7 +31,7 @@ type Db = {
 };
 
 /**
- * 函数不存在（还没部署）时返回 true，调用方应退回老流程。
+ * 函数不存在时返回 true，调用方应退回老流程。
  * 只认「函数」这一类报错：PostgREST 的 PGRST202，或 Postgres 的 42883（undefined_function）。
  * 不能用宽泛的 "does not exist" 去匹配——那会把「某一列不存在」（42703）也当成函数缺失，
  * 从而悄悄退回老流程（测试 admin-async-and-transaction 抓到过这个问题）。
