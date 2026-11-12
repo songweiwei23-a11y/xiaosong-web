@@ -94,7 +94,7 @@ export default function LoginPage() {
    */
   const goDashboard = (to: string = "/dashboard") => {
     handoffTarget.current = to;
-    // 下次打开登录页叫得出名字（只存邮箱 @ 前面那段，在本机；登录页上「不是你？」能清掉）
+    // 下次打开登录页叫得出名字（只存邮箱 @ 前面那段，在本机；退出登录和「不是你？」会清掉）
     if (email.includes("@")) rememberLoginName(email.trim());
     navigationPending.current = true;
     authBusy.current = true;

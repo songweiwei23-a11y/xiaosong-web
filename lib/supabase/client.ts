@@ -1,6 +1,7 @@
 'use client'
 
 import { createBrowserClient } from '@supabase/ssr'
+import { attachLoginNameCleanup } from '@/lib/login-memory'
 import { supabaseFetch } from './fetch'
 
 /**
@@ -13,3 +14,7 @@ export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   { global: { fetch: supabaseFetch } }
 )
+
+// 全站只有这一处听 SIGNED_OUT。各页面自己的 onAuthStateChange 只关心「现在有没有会话」，
+// 不负责清登录页记住的名字。服务端渲染没有 window，不在这里订阅。
+if (typeof window !== 'undefined') attachLoginNameCleanup(supabase.auth)

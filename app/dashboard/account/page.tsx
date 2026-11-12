@@ -8,6 +8,7 @@ import { confirmDialog, notify } from "@/components/ui/feedback";
 import { INPUT_CLS, PRIMARY_BTN } from "@/components/form/controls";
 import { throwApiError } from "@/lib/api-error";
 import { postSafely } from "@/lib/safe-post";
+import { forgetLoginName } from "@/lib/login-memory";
 import { supabase } from "@/lib/supabase/client";
 import { SUPPORT_WECHAT } from "@/lib/config/contact";
 
@@ -229,7 +230,12 @@ function DeleteAccountCard({ email }: { email: string | null }) {
         body: JSON.stringify({ confirmEmail: typed }),
       });
       if (!res.ok) await throwApiError(res, "注销失败");
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } finally {
+        // 账号已经没了。哪怕退出会话这一步失败，登录页也不能再喊这个邮箱
+        forgetLoginName();
+      }
       // 注销后这台设备的首页通行也作废，要重新凭邀请链接进门
       await postSafely("/api/gate/logout", { method: "POST" }).catch(() => {});
       notify("账号已注销，相关数据已删除");
