@@ -84,6 +84,7 @@ export function ResultPanel({
   nextActions,
   footer,
   renderFooter,
+  creationBody,
   bodyClassName,
   flowContext,
   hideCreationLinks,
@@ -130,6 +131,11 @@ export function ResultPanel({
    * 分镜核对必须数这张表，不能拿作品记录里的旧稿。
    */
   renderFooter?: (view: string) => React.ReactNode;
+  /**
+   * 继续创作带走的正文。分镜页要带输入框里的口播，不能带画面上的分镜表。
+   * 不传就用当前展示的结果。
+   */
+  creationBody?: string;
   /** 给正文额外的排版（接在 prose 后面）。拆解爆款用它把每个镜头的四级标题排成卡片头 */
   bodyClassName?: string;
   flowContext?: CreationContext;
@@ -412,7 +418,7 @@ export function ResultPanel({
        * 用户读完往下找下一步找不到；而且顶部那时还没读内容，不知道该勾哪几条。
        * 顶部按钮排里留了一个「继续创作 ↓」跳到这里，结果很长时也找得到。
        */}
-      {body && !isGenerating && !individualPlans && !hideCreationLinks && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={view} context={flowContext} /></div>}
+      {body && !isGenerating && !individualPlans && !hideCreationLinks && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={creationBody?.trim() ? creationBody : view} context={flowContext} /></div>}
       {body && !isGenerating && planParts && <RemixContinuation body={view} plans={planParts.plans} context={flowContext} />}
       {continueTask && dialog && dialog.profileId === profileId && (
         <ContinuousDialog

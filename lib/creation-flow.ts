@@ -1,4 +1,5 @@
 import { extractOpening, parseTopicOptions, type HandoffPayload } from './handoff';
+import { extractPlainCopy } from './script-copy';
 import { splitRemixPlans } from './remix-plans';
 import { creationReference, continuationRules } from './creation-continuation';
 import { cleanTitle, mergeCreationSettings, settingsFromText, creationSettingsBlock, isBatch, type CreationSettings } from './creation-settings';
@@ -81,15 +82,74 @@ export function creationTitle(body: string): string {
     .replace(/^#+\s*/, '').replace(/\*\*/g, '').trim().slice(0, 180);
 }
 
+/** 分镜表的「台词/旁白」列。没有纯文字文案时，审稿只能带这些要念的字，不能带整张表。 */
+function storyboardSpeechColumn(body: string): string {
+  let speech = -1;
+  let shot = -1;
+  let current: string[] = [];
+  let last: string[] = [];
+  const flush = () => { if (current.length) last = current; current = []; speech = -1; shot = -1; };
+  for (const raw of body.split('\n')) {
+    if (!/^\s*\|/.test(raw)) { flush(); continue; }
+    const cells = raw.trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.replace(/\*\*/g, '').trim());
+    if (cells.every(cell => /^:?-{2,}:?$/.test(cell.replace(/\s/g, '')))) continue;
+    const speechCol = cells.findIndex(cell => /台词|口播|旁白/.test(cell));
+    const shotCol = cells.findIndex(cell => /镜号|镜头编号|镜头号/.test(cell));
+    if (shotCol >= 0 && speechCol >= 0 && cells.some(cell => /时长|画面|景别/.test(cell))) {
+      flush();
+      speech = speechCol;
+      shot = shotCol;
+      continue;
+    }
+    if (speech < 0 || shot < 0) continue;
+    if (!/^\d+/.test((cells[shot] ?? '').trim())) { flush(); continue; }
+    const line = (cells[speech] ?? '').replace(/^["“‘]|["”’]$/g, '').trim();
+    if (line && !/^(?:无|—|-|\/|空镜|无台词)$/.test(line)) current.push(line);
+  }
+  flush();
+  return last.join('\n');
+}
+
+/**
+ * 选题里能念的开头只在「开篇钩子」那一节。
+ * 第一节通常是「承接」，拿它预填会把参考句当成要改的口播。这一节没有，或只带了题目，就留空。
+ */
+function topicHookLine(body: string): string {
+  const lines = body.replace(/\*\*/g, '').split('\n');
+  const start = lines.findIndex(line => /开篇钩子/.test(line));
+  if (start < 0) return '';
+  const chunk: string[] = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^\s*#{1,4}\s+/.test(line)) break;
+    const label = line.trim().replace(/^[^\p{Script=Han}]+/u, '');
+    if (chunk.some(item => item.trim()) && /^(?:承接|视频目的|视频任务|打法|爆款元素|内容方向|脚本结构)/.test(label)) break;
+    chunk.push(line);
+  }
+  const text = chunk.join('\n').trim();
+  if (!text || /用户本次不需要/.test(text)) return '';
+  const labelled = text.match(/(?:^|\n)\s*(?:[-*>]\s*)?(?:台词|口播|开场台词|开头一句)[：:]\s*(.+)/)?.[1];
+  const line = (labelled || text.split('\n').map(item => item.trim()).find(item => item && !/^(?:承接|视频目的|打法|开篇钩子)/.test(item)) || '')
+    .replace(/^["“‘]|["”’]$/g, '').trim();
+  if (!line || /^(?:承接|视频目的|打法)/.test(line)) return '';
+  return line.slice(0, 120);
+}
+
 /** 明确存在正文栏目时，只让正文进入审稿/分镜输入框，整份方案仍作为参考带入。 */
 export function creationScript(source: string, body: string): string {
   // 整批选择必须保留全部方案，不能只提取第一份的口播。
   if (source === 'remix' && splitRemixPlans(body).plans.length > 1) return body;
-  // 模型未输出“纯文字文案”栏目时，从明确标出的台词恢复正文。
-  // 策略卡、拍摄建议仍保存在 sourceContent 中，不能算作待审口播。
+  // 纯文字文案优先。行首「台词：」只在没有这一节时兜底，不能压过完整口播。
+  // 分镜表没有这两种标记时，只取台词列，不把镜号和景别送去审稿。
   if (source === 'script' || source === 'storyboard') {
+    const plain = extractPlainCopy(body);
+    if (plain) return plain;
     const speech = body.replace(/\*\*/g, '').split('\n').map(line => line.match(/^\s*(?:[-*>]\s*)?(?:台词(?:外音)?|口播)[：:]\s*(.+)/)?.[1]?.replace(/^["“‘]|["”’]$/g, '').trim()).filter((v): v is string => Boolean(v));
     if (speech.length >= 2 && splitRemixPlans(body).plans.length <= 1) return speech.join('\n');
+    if (source === 'storyboard') {
+      const column = storyboardSpeechColumn(body);
+      if (column) return column;
+    }
   }
   const name = source === 'remix' ? /(?:口播全文|完整口播|完整脚本)/ : source === 'review' ? /优化后的完整脚本/ : /(?:纯文字文案|口播全文|完整口播|完整脚本)/;
   if (!name) return body;
@@ -157,6 +217,6 @@ export function buildCreationHandoff(source: string, target: CreationTarget, bod
   const topic = cleanTitle(topicOptions[0] || settings.topic || context.topic || title) || title;
   settings.topic = topic;
   if (target === 'script') return { ...common, topic, topicOptions, openingLine: settings.openingLine, openingCards: settings.openingCards, tactic: settings.tactic, note: `【来自${from}的参考内容】\n${creationReference(common)}${creationSettingsBlock(settings)}${continuationRules('script')}` };
-  if (target === 'growth') return { ...common, topic, topicOptions, tab: 'opening', currentOpening: extractOpening(creationScript(source, body)) };
+  if (target === 'growth') return { ...common, topic, topicOptions, tab: 'opening', currentOpening: source === 'topic' ? topicHookLine(body) : extractOpening(creationScript(source, body)) };
   return { ...common, topic, scriptContent: ['review', 'storyboard'].includes(target) ? draft : body };
 }
