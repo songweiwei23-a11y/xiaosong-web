@@ -65,8 +65,8 @@ describe('接入', () => {
   it('结果区有「在画布里改」；改过的版本用于显示、复制、继续创作；生成统计排除改稿记录', () => {
     const panel = readCode('components/workspace/ResultPanel.tsx');
     expect(panel).toMatch(/label=\{adopted \? `画布第 \$\{canvas!\.versions\.length\} 版` : "在画布里改"\}/);
-    // 没另外指定正文时，继续创作仍用画布改过的版本；分镜页会传入口播，不能把整张表带走。
-    expect(panel).toMatch(/<CreationLinks body=\{creationBody\?\.trim\(\) \? creationBody : view\} context=\{flowContext\} \/>/);
+    // 继续创作的正文仍是画布改过的这一版。口播是另外的参数，只给审稿和标题的输入框。
+    expect(panel).toMatch(/<CreationLinks body=\{view\} spokenBody=\{spokenBody\} context=\{flowContext\} \/>/);
     expect(panel).toMatch(/onCopy\(view\)/);
     expect(readCode('app/api/admin/monitor/route.ts').match(/\.is\('input_data->>canvasOf', null\)/g)?.length).toBe(3);
   });

@@ -506,7 +506,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         onDownload={(text) => downloadAsFile(text, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
         // 按画面上这张表重算。作品记录里的旧镜数、旧秒数不能再拿来显示。
-        creationBody={scriptContent}
+        spokenBody={scriptContent}
         renderFooter={(view) => {
           const audit = auditStoryboard(view, duration, scriptContent);
           return audit ? (

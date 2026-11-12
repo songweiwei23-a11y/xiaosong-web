@@ -166,6 +166,22 @@ describe('分镜核对器', () => {
     expect(audit.issues.join(' ')).toContain('文中总时长写 94s');
   });
 
+  it('续行、S01、时长(秒)和时间码：只数真正的镜头，分秒按秒相加', () => {
+    const markdown = [
+      '| 序号 | 景别 | 台词/旁白 | 时间码 | 时长(秒) |',
+      '|---|---|---|---|---|',
+      '| S01 | 特写 | 节后第一天店里冷清 | 00:00:00 | 0:03 |',
+      '|  |  | —— |  |  |',
+      '| S02 | 近景 | （无） | 00:00:03 | 00:04 |',
+      '| S03 | 中景 | 我问了三家才知道 | 00:00:07 | 4s |',
+      '|  |  | 第二句也要念 |  | 0:02 |',
+      '|  |  | BGM |  |  |',
+    ].join('\n');
+    const audit = auditStoryboard(markdown, '60秒')!;
+    expect(audit.shots).toBe(3);
+    expect(audit.totalSeconds).toBe(13);
+  });
+
   it('时长列不在固定位置时按表头相加，不拿错列', () => {
     const markdown = '| 镜号 | 时长 | 景别 | 台词 |\n|---|---|---|---|\n| 1 | 3s | 中景 | 你好 |\n| 2 | 4s | 特写 | 世界 |';
     const audit = auditStoryboard(markdown, '60秒')!;

@@ -8,7 +8,7 @@ import { workIdFromUrl } from '@/lib/resume';
 import { getActiveProfileId } from '@/lib/active-profile';
 import { isNetworkError, NETWORK_ERROR_HINT } from '@/lib/api-error';
 import { draftFromBody, draftFromItem, saveToLibrary } from '@/lib/library';
-import { buildCreationHandoff, creationScript, CREATION_DESTINATIONS, CREATION_SOURCES, RECOMMENDED_NEXT, type CreationContext, type CreationTarget } from '@/lib/creation-flow';
+import { creationLinkMaterial, creationScript, CREATION_DESTINATIONS, CREATION_SOURCES, handoffFromCreationLinks, RECOMMENDED_NEXT, type CreationContext, type CreationTarget } from '@/lib/creation-flow';
 import { defaultPickIds, itemsNoun, selectionBody, splitCreationItems } from '@/lib/creation-items';
 import { selectedCreationContext } from '@/lib/creation-selection';
 import { factsFromBody, nextSteps } from '@/lib/next-steps';
@@ -30,8 +30,11 @@ const GENERAL_SOURCES = new Set(['free-chat', 'knowledge', 'positioning', 'conte
  * 再点去哪个板块——只带勾中的（2026-10-02，产品方要求：任何板块的产出都能挑着接着做）。
  * 默认全选，不勾时和原来一样整份带走。
  */
-export function CreationLinks({ body, context, heading = '继续创作 · 内容自动带入', allDestinations = false, embedded = false, recommended: recommendedProp, hideFavorite = false, favoriteBoard, singleDocument = false }: {
-  body: string; context?: CreationContext; heading?: string; allDestinations?: boolean; embedded?: boolean;
+export function CreationLinks({ body, spokenBody, context, heading = '继续创作 · 内容自动带入', allDestinations = false, embedded = false, recommended: recommendedProp, hideFavorite = false, favoriteBoard, singleDocument = false }: {
+  body: string;
+  /** 只在跳去审稿、标题时填进那边的输入框。收藏、推荐和带去其他板块仍用 body。 */
+  spokenBody?: string;
+  context?: CreationContext; heading?: string; allDestinations?: boolean; embedded?: boolean;
   /** 指定推荐的下一步（素材库按分类给） */
   recommended?: CreationTarget[];
   /** 素材库里的素材本身就是收藏的，不再显示收藏按钮 */
@@ -48,8 +51,10 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
   const [fav, setFav] = useState<'idle' | 'saving' | 'done'>('idle');
   const moreId = useId();
   const source = pathname?.split('/')[2] || '';
+  // 收藏、勾选、下一步推荐都看画面上的正文。口播不参与这些。
+  const material = creationLinkMaterial(body, spokenBody);
   // 审稿的总评、评分和问题清单是报告章节，不能当成几份脚本供选择。
-  const parts = useMemo(() => singleDocument ? splitCreationItems('') : source === 'review' ? splitCreationItems(creationScript('review', body)) : splitCreationItems(body), [body, source, singleDocument]);
+  const parts = useMemo(() => singleDocument ? splitCreationItems('') : source === 'review' ? splitCreationItems(creationScript('review', material)) : splitCreationItems(material), [material, source, singleDocument]);
   const selectable = parts.items.length >= 2;
   const [picked, setPicked] = useState<Set<string>>(() => new Set(defaultPickIds(parts)));
   const noun = selectable ? itemsNoun(parts.items) : '';
@@ -65,7 +70,7 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
   const [hasProfile, setHasProfile] = useState(false);
   useEffect(() => setHasProfile(Boolean(getActiveProfileId())), []);
   // 只在确实有结构时才传 hasStructure：传 undefined 会把正文里认出来的结构信号盖掉
-  const plan = useMemo(() => nextSteps(source, factsFromBody(body, source, hasProfile, context?.structured ? { hasStructure: true } : {})), [body, source, hasProfile, context?.structured]);
+  const plan = useMemo(() => nextSteps(source, factsFromBody(material, source, hasProfile, context?.structured ? { hasStructure: true } : {})), [material, source, hasProfile, context?.structured]);
   if (!CREATION_SOURCES[source] || !body.trim()) return null;
 
   const allPicked = picked.size === parts.items.length;
@@ -95,7 +100,7 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
     const board = favoriteBoard || source;
     const drafts = pickMode
       ? parts.items.filter((it) => picked.has(it.id)).map((it) => draftFromItem(it, board, label))
-      : [draftFromBody(withStructure(body), board, label, context?.title)];
+      : [draftFromBody(withStructure(material), board, label, context?.title)];
     if (!drafts.length) { notify(`先勾选要收藏的${noun}`, 'error'); return; }
     setFav('saving');
     try {
@@ -123,7 +128,7 @@ export function CreationLinks({ body, context, heading = '继续创作 · 内容
       const topics = parts.items.map((it) => it.topic).filter((t): t is string => Boolean(t));
       if (topics.length) ctx = { ...context, topicOptions: context?.topicOptions?.length ? context.topicOptions : topics };
     }
-    const payload = buildCreationHandoff(source, target, withStructure(sendBody), { ...ctx, workId: ctx?.workId || workIdFromUrl() || undefined });
+    const payload = handoffFromCreationLinks(source, target, withStructure(sendBody), { ...ctx, workId: ctx?.workId || workIdFromUrl() || undefined }, spokenBody);
     setContinuing(true);
     // 保存完整创作需求再跳（lib/creation-session）；重试沿用同一个请求编号
     try { await openCreation(payload, (url) => router.push(url), branch || ctx?.branch === true); }

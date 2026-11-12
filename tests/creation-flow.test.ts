@@ -108,6 +108,13 @@ describe('交接保护', () => {
     vi.stubGlobal('window', { location: { pathname } });
     return storage;
   }
+  it('地址栏还停在分镜页时，带上审稿路径能取到口播，不带路径的调用不会把它清掉', () => {
+    browser('profile-a', '/dashboard/storyboard');
+    expect(putHandoff({ from: '分镜脚本', target: '/dashboard/review', scriptContent: '审过的口播', sourceContent: '| 镜号 | 时长 |' })).toBe(true);
+    expect(takeHandoff()).toBeNull();
+    expect(takeHandoff('/dashboard/review')?.scriptContent).toBe('审过的口播');
+    expect(takeHandoff('/dashboard/review')).toBeNull();
+  });
   it('只有指定目标页能接收一次，其他页面不能提前消费', () => {
     browser('profile-a', '/dashboard/title');
     expect(putHandoff({ from: '跨行业二创', target: '/dashboard/review', scriptContent: '唯一方案' })).toBe(true);

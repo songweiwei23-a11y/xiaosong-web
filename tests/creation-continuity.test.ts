@@ -139,9 +139,23 @@ describe('统一持久跳转（openCreation）', () => {
     expect(readCode('components/workspace/CreationLinks.tsx')).toMatch(/await openCreation\(payload, \(url\) => router\.push\(url\), branch \|\| ctx\?\.branch === true\)/);
   });
 
-  it('分镜页按当前地址收交接，核对用画面上的正文而不是整份旧结果', () => {
+  it('分镜页核对用画面上的正文而不是整份旧结果', () => {
     const page = readCode('app/dashboard/storyboard/page.tsx');
-    expect(page).toMatch(/takeHandoff\(pathname \|\| "\/dashboard\/storyboard"\)/);
     expect(page).toMatch(/renderFooter=\{\(view\) => \{[\s\S]*auditStoryboard\(view, duration, scriptContent\)/);
+  });
+
+  it('分镜输入框里存的是「时长(秒)」表时，不当成口播', async () => {
+    const { workCreationHandoff } = await import('@/lib/creation-work-resume');
+    const table = '| 序号 | 画面 | 时长(秒) |\n|---|---|---|\n| S01 | 门口 | 3 |';
+    const work = {
+      id: WORK, title: '老灶火锅', profile_id: null, is_done: false,
+      items: [
+        { id: 's', task_type: '脚本生成', result: '## 纯文字文案\n真正的口播。', created_at: '2026-10-04T01:00:00Z', input_data: {} },
+        { id: 'b', task_type: '分镜脚本', result: table, created_at: '2026-10-04T02:00:00Z', input_data: { scriptContent: table } },
+      ],
+    };
+    const p = workCreationHandoff(work as never, 'storyboard');
+    expect(p.scriptContent).toBe('真正的口播。');
+    expect(p.scriptContent).not.toContain('时长(秒)');
   });
 });

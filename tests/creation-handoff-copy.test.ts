@@ -3,8 +3,9 @@
  * 分镜去审稿不能把整张表送进审稿框；选题去开篇不能把「承接」预填成现有开头。
  */
 import { describe, expect, it } from 'vitest';
-import { buildCreationHandoff, creationScript } from '@/lib/creation-flow';
-import { readCode } from './helpers/source';
+import { buildCreationHandoff, creationLinkMaterial, creationScript, handoffFromCreationLinks } from '@/lib/creation-flow';
+import { draftFromBody } from '@/lib/library';
+import { factsFromBody } from '@/lib/next-steps';
 
 const TABLE = [
   '| 镜号 | 景别 | 运镜 | 画面内容 | 台词/旁白 | 时长 | 拍摄要点 |',
@@ -15,6 +16,21 @@ const TABLE = [
 ].join('\n');
 
 describe('分镜、脚本去审稿只带口播', () => {
+  it('镜号为空的续行、S01 和「无」「BGM」：只留下要念的字', () => {
+    const table = [
+      '| 镜头 | 景别 | 台词/旁白 | 时间码 | 时长(秒) |',
+      '|---|---|---|---|---|',
+      '| S01 | 特写 | 节后第一天店里冷清 | 00:00:00 | 0:03 |',
+      '|  |  | —— |  |  |',
+      '| S02 | 近景 | （无） | 00:00:03 | 00:04 |',
+      '| S03 | 中景 | 我问了三家才知道 | 00:00:07 | 4s |',
+      '|  |  | 第二句也要念 |  | 0:02 |',
+      '|  |  | BGM |  |  |',
+      '|  |  | 音乐 |  |  |',
+    ].join('\n');
+    expect(creationScript('storyboard', table)).toBe('节后第一天店里冷清\n我问了三家才知道\n第二句也要念');
+  });
+
   it('标准分镜表只带台词列，不带镜号、景别和「无」', () => {
     const script = creationScript('storyboard', `# 🎬 分镜脚本表\n\n${TABLE}\n\n## 拍摄顺序\n按机位拍`);
     expect(script).toBe('节后第一天店里冷清\n我问了三家才知道');
@@ -35,10 +51,28 @@ describe('分镜、脚本去审稿只带口播', () => {
     expect(script).not.toContain('半句');
   });
 
-  it('分镜页继续创作带走输入框里的口播，和起标题用的是同一份', () => {
-    const page = readCode('app/dashboard/storyboard/page.tsx');
-    expect(page).toMatch(/creationBody=\{scriptContent\}/);
-    expect(readCode('app/dashboard/review/page.tsx')).toMatch(/takeHandoff\(pathname \|\| "\/dashboard\/review"\)/);
+  it('审稿和标题用输入框里的口播；收藏、推荐和自由对话仍用分镜表', () => {
+    const table = '# 分镜脚本表\n| 镜号 | 景别 | 台词/旁白 | 时长 |\n|---|---|---|---|\n| 1 | 特写 | 节后第一天店里冷清 | 4s |';
+    const spoken = '审过的完整口播。这一句表里没有。';
+    const review = handoffFromCreationLinks('storyboard', 'review', table, {}, spoken);
+    expect(review.scriptContent).toBe(spoken);
+    expect(review.settings?.workingScript).toBe(spoken);
+    expect(review.sourceContent).toContain('镜号');
+    expect(review.sourceContent).not.toBe(spoken);
+
+    const title = handoffFromCreationLinks('storyboard', 'title', table, {}, spoken);
+    expect(title.sourceContent).toBe(spoken);
+    expect(title.sourceContent).not.toContain('镜号');
+
+    const chat = handoffFromCreationLinks('storyboard', 'free-chat', table, {}, spoken);
+    expect(chat.sourceContent).toContain('| 镜号 |');
+    expect(chat.sourceContent).not.toBe(spoken);
+
+    const material = creationLinkMaterial(table, spoken);
+    expect(material).toBe(table);
+    expect(draftFromBody(material, 'storyboard', '分镜脚本')).toMatchObject({ content: table, category: 'storyboard' });
+    expect(factsFromBody(material, 'storyboard', false).hasShots).toBe(true);
+    expect(factsFromBody(spoken, 'storyboard', false).hasShots).toBe(false);
   });
 });
 
@@ -62,6 +96,27 @@ describe('选题去开篇：现有开头不预填承接', () => {
     const handed = buildCreationHandoff('topic', 'growth', topic);
     expect(handed.currentOpening).toBe('节后第一天，店里到底还有没有人？');
     expect(handed.currentOpening).not.toContain('用户原话');
+  });
+
+  it('钩子不带「台词：」、前面有承接、和标签写在同一行时，只取那一句', () => {
+    const sameLine = [
+      '**承接**：用户原话说节后店里冷清，想知道是不是只有自己这样。',
+      '**打法**：先用开篇钩子把人留住，再讲三家店的客流。',
+      '**2️⃣ 开篇钩子**：节后第一天，店里到底还有没有人？',
+      '**3️⃣ 内容方向及目的**',
+      '问三家店节后的真实客流',
+    ].join('\n');
+    const handed = buildCreationHandoff('topic', 'growth', sameLine);
+    expect(handed.currentOpening).toBe('节后第一天，店里到底还有没有人？');
+    expect(handed.currentOpening).not.toContain('用户原话');
+    expect(handed.currentOpening).not.toContain('内容方向');
+
+    const quoted = [
+      '**承接**：参考句不该进现有开头。',
+      '**开篇钩子**',
+      '- 文案：「节后第一天，店里到底还有没有人？」',
+    ].join('\n');
+    expect(buildCreationHandoff('topic', 'growth', quoted).currentOpening).toBe('节后第一天，店里到底还有没有人？');
   });
 
   it('只带了题目时，现有开头留空', () => {

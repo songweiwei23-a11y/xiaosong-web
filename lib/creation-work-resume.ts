@@ -3,6 +3,7 @@ import { buildCreationHandoff, creationScript, CREATION_SOURCES, type CreationTa
 import { mergeCreationSettings, settingsFromInput, settingsFromText } from './creation-settings';
 import { extractOpening, type HandoffPayload } from './handoff';
 import { extractPlainCopy } from './script-copy';
+import { isDurationHeaderCell, isShotHeaderCell } from './storyboard-standards';
 
 const SOURCES: Record<string, string> = {
   '选题策划': 'topic', '开篇钩子': 'growth', '脚本生成': 'script',
@@ -10,7 +11,11 @@ const SOURCES: Record<string, string> = {
 };
 
 function isStoryboardTable(text: string): boolean {
-  return /\|\s*镜号\s*\|/.test(text) && /\|\s*(?:时长|时间)\s*\|/.test(text);
+  return text.split('\n').some((line) => {
+    if (!/^\s*\|/.test(line)) return false;
+    const cells = line.split('|').map((cell) => cell.trim());
+    return cells.some(isShotHeaderCell) && cells.some(isDurationHeaderCell);
+  });
 }
 
 /**

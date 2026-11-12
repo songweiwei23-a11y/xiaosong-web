@@ -270,9 +270,36 @@ const MOVE_WORDS = ['推镜', '拉镜', '摇镜', '移镜', '跟随'];
  */
 interface AuditRow { no: string; size: string; move: string; speech: string; seconds: number }
 
+/** 「0:03」「00:03」是分秒，不是 0 秒。纯数字和「4s」仍按原来的数读。 */
 function durationSeconds(cell: string): number {
+  const clock = cell.match(/(\d+):(\d{2})(?::(\d{2}))?/);
+  if (clock) {
+    const head = Number(clock[1]);
+    const mid = Number(clock[2]);
+    if (clock[3] !== undefined) return head * 3600 + mid * 60 + Number(clock[3]);
+    return head * 60 + mid;
+  }
   const n = Number((cell.match(/[\d.]+/) || [])[0] || 0);
   return n > 0 ? n : 0;
+}
+
+/** 镜号列。「镜头运动」是运镜，不是镜号。 */
+export function isShotHeaderCell(cell: string): boolean {
+  const text = cell.trim();
+  if (/镜头运动|运镜/.test(text)) return false;
+  return /^(?:镜号|镜头编号|镜头号|镜头|序号)(?:\s|$|[（(])/.test(text);
+}
+
+/** 时长列。「时间码」是起点，不能拿来相加。时长(秒) 这种写法要认。 */
+export function isDurationHeaderCell(cell: string): boolean {
+  const text = cell.trim();
+  if (/时间码/.test(text)) return false;
+  return /时长|时间/.test(text);
+}
+
+/** 1、01、S01 都是镜号。空的是上一镜的续行，不是新的一张表。 */
+export function isShotNumber(cell: string): boolean {
+  return /^[A-Za-z]{0,3}\d+$/.test(cell.trim());
 }
 
 function splitCells(line: string): string[] {
@@ -297,8 +324,8 @@ function shotTables(markdown: string): AuditRow[][] {
     if (!/^\s*\|/.test(line)) { flush(); continue; }
     const cells = splitCells(line);
     if (isSeparator(cells)) continue;
-    const no = cells.findIndex((cell) => /镜号|镜头编号|镜头号/.test(cell));
-    const duration = cells.findIndex((cell) => /时长|时间/.test(cell));
+    const no = cells.findIndex(isShotHeaderCell);
+    const duration = cells.findIndex(isDurationHeaderCell);
     if (no >= 0 && duration >= 0 && cells.some((cell) => /画面|台词|口播|旁白|景别/.test(cell))) {
       flush();
       cols = {
@@ -312,7 +339,17 @@ function shotTables(markdown: string): AuditRow[][] {
     }
     if (!cols) continue;
     const number = (cells[cols.no] ?? '').trim();
-    if (!/^\d+/.test(number)) { flush(); continue; }
+    // 镜号空着是上一镜的续行（台词或时长写到下一格），后面的镜头还在这张表里。
+    if (!number) {
+      const prev = rows.at(-1);
+      if (prev) {
+        const extra = cols.speech >= 0 ? (cells[cols.speech] ?? '').trim() : '';
+        if (spokenChars(extra) > 0) prev.speech = `${prev.speech}\n${extra}`.trim();
+        prev.seconds += durationSeconds(cells[cols.duration] ?? '');
+      }
+      continue;
+    }
+    if (!isShotNumber(number)) { flush(); continue; }
     rows.push({
       no: number,
       size: cols.size >= 0 ? cells[cols.size] ?? '' : '',
