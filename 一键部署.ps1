@@ -4,8 +4,11 @@
 # 之前出现过代码已推送但没同步、以及同步后立刻访问撞上重启窗口的情况。
 # 服务器同步打包的是本地文件，不从 GitHub pull。推送是让远程的当前分支
 # 记下即将发布的提交；这一步失败就停，不继续同步。
-# 只做普通快进推送，推的是当前分支，不是 main。远程有本地没有的提交时停下，
-# 请先 pull。线上发布分支见 $expectedBranch，对不上会先问一声。
+# 只做普通快进推送，推的是当前分支，不是 main。
+# 比较之前先获取当前分支，更新本机的 origin/分支；获取失败就停，不用旧缓存。
+# 远程还没有这个分支时按新分支普通推送。
+# 本地落后于远程就停，请先 pull，避免把线上回退。
+# 线上发布分支见 $expectedBranch，对不上会先问一声。
 # 外部命令(tar/scp/ssh/git/npx)向 stderr 写入时，PowerShell 5.1 会把它包成
 # ErrorRecord。若 ErrorActionPreference 为 Stop，这会直接终止脚本，连后面的
 # pause 都执行不到，表现就是"窗口闪退、看不到任何错误"。
@@ -73,34 +76,69 @@ if ($branch -cne $expectedBranch) {
     if ($go -ne "y") { exit 0 }
 }
 
-# 只和远程同名分支比，不看 main。没有远程分支时，后面按新分支普通推送。
-$remoteRef = "origin/$branch"
-$remoteSha = "$(git rev-parse --verify --quiet $remoteRef 2>$null)".Trim()
+# 先拿到远程同名分支的最新提交，再和本地比。不用本机缓存的 origin/分支。
+# refspec 前面没有加号：更新不了就失败停下，不会覆盖本机的远程跟踪分支。
+Write-Host "  获取 origin/$branch ..." -ForegroundColor Gray
+$fetchSpec = "refs/heads/${branch}:refs/remotes/origin/${branch}"
+$fetchRaw = @(git fetch origin -- $fetchSpec 2>&1)
+$fetchCode = $LASTEXITCODE
 $ahead = "0"
 $behind = "0"
 $skipPush = $false
-if ($remoteSha) {
+$remoteMissing = $false
+if ($fetchCode -ne 0) {
+    # 远程没有这个分支时，fetch 也会失败。用 ls-remote 的退出码把它和网络/更新失败分开：
+    # 退出码 2 表示已经连上远程、但没有这条分支。
+    # 只要退出码。2 表示连上了但没有这条分支；输出本身不用。
+    $null = @(git ls-remote --exit-code origin -- "refs/heads/$branch" 2>&1)
+    $probeCode = $LASTEXITCODE
+    if ($probeCode -eq 2) {
+        $remoteMissing = $true
+        Write-Host "  远程还没有 origin/$branch，稍后会普通推送并建立这个分支" -ForegroundColor Gray
+    } else {
+        Write-Host ""
+        Write-Host "获取 origin/$branch 失败，已中止部署。" -ForegroundColor Red
+        Write-Host "没有用本机缓存的远程分支做比较，类型检查和同步都还没开始。" -ForegroundColor Red
+        Write-Host "请检查网络和 GitHub 登录后再发布。下面是 git 的原话：" -ForegroundColor Yellow
+        $fetchRaw | ForEach-Object { Write-Host ("  " + "$_") -ForegroundColor DarkGray }
+        pause
+        exit 1
+    }
+}
+
+if (-not $remoteMissing) {
+    $remoteRef = "refs/remotes/origin/$branch"
+    $remoteSha = "$(git rev-parse --verify --quiet $remoteRef 2>$null)".Trim()
+    if (-not $remoteSha) {
+        Write-Host ""
+        Write-Host "获取 origin/$branch 之后，本机仍然没有这个远程跟踪分支，已中止部署。" -ForegroundColor Red
+        Write-Host "没有继续类型检查，也还没同步。" -ForegroundColor Red
+        pause
+        exit 1
+    }
     $ahead = (git rev-list --count ($remoteRef + "..HEAD") 2>$null | Out-String).Trim()
     $behind = (git rev-list --count ("HEAD.." + $remoteRef) 2>$null | Out-String).Trim()
     if ($ahead -notmatch '^\d+$' -or $behind -notmatch '^\d+$') {
-        # 数不清就不要当成「没有新提交」跳过，后面仍走普通推送，由 git 决定是否拒绝。
-        Write-Host "  数不清和 $remoteRef 差几个提交，稍后仍会尝试普通推送。" -ForegroundColor Yellow
-        $behind = "0"
-    } else {
-        Write-Host "  相对 ${remoteRef}：本地多 $ahead 个提交，远程多 $behind 个提交" -ForegroundColor Gray
-        if ([int]$ahead -gt 0 -and [int]$behind -gt 0) {
-            Write-Host ""
-            Write-Host "不是快进：origin/$branch 有 $behind 个本地没有的提交，本地又多 $ahead 个。" -ForegroundColor Red
-            Write-Host "已中止部署。没有强推，服务器也还没同步。" -ForegroundColor Red
-            Write-Host "请先在「$branch」上执行 git pull 合并远程提交，再重新一键部署。" -ForegroundColor Yellow
-            Write-Host "比较用的是本机记住的 origin/$branch。若远程刚刚更新过，先 git fetch 再看一次。" -ForegroundColor DarkGray
-            pause
-            exit 1
-        }
-        if ($ahead -eq "0") { $skipPush = $true }
+        Write-Host ""
+        Write-Host "已经拿到 origin/$branch，但数不清本地落后多少，已中止部署。" -ForegroundColor Red
+        Write-Host "没有继续类型检查，也还没同步。" -ForegroundColor Red
+        pause
+        exit 1
     }
-} else {
-    Write-Host "  远程还没有 $remoteRef，稍后会普通推送并建立这个分支" -ForegroundColor Gray
+    Write-Host "  相对 origin/${branch}：本地多 $ahead 个提交，远程多 $behind 个提交" -ForegroundColor Gray
+    # 落后就停，不管本地有没有多出来的提交。同步用的是工作区文件，继续会把线上回退。
+    if ([int]$behind -gt 0) {
+        Write-Host ""
+        Write-Host "本地比 origin/$branch 落后 $behind 个提交，已中止部署。" -ForegroundColor Red
+        if ([int]$ahead -gt 0) {
+            Write-Host "本地另外多 $ahead 个提交，两边已经分叉。" -ForegroundColor Red
+        }
+        Write-Host "请先在「$branch」上执行 git pull，再重新一键部署。" -ForegroundColor Yellow
+        Write-Host "现在继续会把服务器同步成旧代码，线上会被回退。" -ForegroundColor Yellow
+        pause
+        exit 1
+    }
+    if ($ahead -eq "0") { $skipPush = $true }
 }
 
 # ---------- 2. 类型检查与测试 ----------
@@ -132,10 +170,6 @@ Write-Host ""
 Write-Host "[3/4] 推送当前分支到 GitHub..." -ForegroundColor Yellow
 if ($skipPush) {
     Write-Host "  没有待推送的提交，跳过" -ForegroundColor Gray
-    if ([int]$behind -gt 0) {
-        Write-Host "  注意：本地比 origin/$branch 落后 $behind 个提交。同步用的是当前工作区。" -ForegroundColor Yellow
-        Write-Host "  要带上远程那些提交，请先 git pull 再发布。" -ForegroundColor Yellow
-    }
 } else {
     $refspec = "refs/heads/${branch}:refs/heads/${branch}"
     Write-Host "  普通推送 origin/$branch（快进，不强推）" -ForegroundColor Gray
