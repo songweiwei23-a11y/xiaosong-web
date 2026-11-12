@@ -297,9 +297,24 @@ export function isDurationHeaderCell(cell: string): boolean {
   return /时长|时间/.test(text);
 }
 
-/** 1、01、S01 都是镜号。空的是上一镜的续行，不是新的一张表。 */
+/** 同一表头里先用「时长」。没有这一列时才用「时间」，避免「时间」「拍摄时间」排在前面把秒数算丢。 */
+export function durationColumnIndex(cells: string[]): number {
+  const named = cells.findIndex((cell) => /时长/.test(cell) && !/时间码/.test(cell));
+  if (named >= 0) return named;
+  return cells.findIndex(isDurationHeaderCell);
+}
+
+/** 「〃」「同上」不是新镜头，台词和时长算在上一镜上。 */
+export function isContinuationShot(cell: string): boolean {
+  const text = cell.trim();
+  return text === '〃' || text === '同上';
+}
+
+/** 以数字开头，或以字母加数字开头：1、1-1、2a、3（插入）、S01。 */
 export function isShotNumber(cell: string): boolean {
-  return /^[A-Za-z]{0,3}\d+$/.test(cell.trim());
+  const text = cell.trim();
+  if (!text || isContinuationShot(text)) return false;
+  return /^(?:\d|[A-Za-z]{1,3}\d)/.test(text);
 }
 
 function splitCells(line: string): string[] {
@@ -325,7 +340,7 @@ function shotTables(markdown: string): AuditRow[][] {
     const cells = splitCells(line);
     if (isSeparator(cells)) continue;
     const no = cells.findIndex(isShotHeaderCell);
-    const duration = cells.findIndex(isDurationHeaderCell);
+    const duration = durationColumnIndex(cells);
     if (no >= 0 && duration >= 0 && cells.some((cell) => /画面|台词|口播|旁白|景别/.test(cell))) {
       flush();
       cols = {
@@ -339,8 +354,8 @@ function shotTables(markdown: string): AuditRow[][] {
     }
     if (!cols) continue;
     const number = (cells[cols.no] ?? '').trim();
-    // 镜号空着是上一镜的续行（台词或时长写到下一格），后面的镜头还在这张表里。
-    if (!number) {
+    // 镜号空着，或写成「〃」「同上」，都是上一镜的续行。后面的镜头还在这张表里。
+    if (!number || isContinuationShot(number)) {
       const prev = rows.at(-1);
       if (prev) {
         const extra = cols.speech >= 0 ? (cells[cols.speech] ?? '').trim() : '';

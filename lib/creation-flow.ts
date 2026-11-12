@@ -1,6 +1,6 @@
 import { extractOpening, parseTopicOptions, type HandoffPayload } from './handoff';
 import { extractPlainCopy } from './script-copy';
-import { isDurationHeaderCell, isShotHeaderCell, isShotNumber, spokenChars } from './storyboard-standards';
+import { isContinuationShot, isDurationHeaderCell, isShotHeaderCell, isShotNumber, spokenChars } from './storyboard-standards';
 import { splitRemixPlans } from './remix-plans';
 import { creationReference, continuationRules } from './creation-continuation';
 import { cleanTitle, mergeCreationSettings, settingsFromText, creationSettingsBlock, isBatch, type CreationSettings } from './creation-settings';
@@ -105,7 +105,7 @@ function storyboardSpeechColumn(body: string): string {
     if (speech < 0 || shot < 0) continue;
     const number = (cells[shot] ?? '').trim();
     const line = (cells[speech] ?? '').replace(/^["“‘'「]|["”’'」]$/g, '').trim();
-    if (!number) {
+    if (!number || isContinuationShot(number)) {
       if (current.length && spokenChars(line) > 0) current[current.length - 1] += `\n${line}`;
       continue;
     }

@@ -182,6 +182,33 @@ describe('分镜核对器', () => {
     expect(audit.totalSeconds).toBe(13);
   });
 
+  it('子镜头编号和「〃」「同上」续行留在同一张表里，不会只剩第一镜', () => {
+    const markdown = [
+      '| 镜号 | 景别 | 台词 | 时长 |',
+      '|---|---|---|---|',
+      '| 1 | 中景 | 第一句 | 3s |',
+      '| 1-1 | 特写 | 插一句 | 2s |',
+      '| 〃 |  | 续上的一句 | 1s |',
+      '| 2a | 近景 | 第二句 | 4s |',
+      '| 同上 |  | 接着说 | 1s |',
+      '| 3（插入） | 特写 | 第三句 | 2s |',
+      '| S01 | 全景 | 收尾 | 2s |',
+    ].join('\n');
+    const audit = auditStoryboard(markdown, '60秒')!;
+    expect(audit.shots).toBe(5);
+    expect(audit.totalSeconds).toBe(15);
+    expect(audit.issues.join(' ')).not.toContain('少 57s');
+  });
+
+  it('「时间」或「拍摄时间」排在「时长」前面时，仍按时长相加', () => {
+    const timeFirst = '| 镜号 | 时间 | 景别 | 台词 | 时长 |\n|---|---|---|---|---|\n| 1 | 1s | 中景 | 你好 | 3s |\n| 2 | 2s | 特写 | 世界 | 4s |';
+    expect(auditStoryboard(timeFirst, '60秒')!.totalSeconds).toBe(7);
+    const shootTimeFirst = '| 镜号 | 拍摄时间 | 景别 | 台词 | 时长 |\n|---|---|---|---|---|\n| 1 | 上午 | 中景 | 你好 | 3s |\n| 2 | 下午 | 特写 | 世界 | 4s |';
+    expect(auditStoryboard(shootTimeFirst, '60秒')!.totalSeconds).toBe(7);
+    const timeOnly = '| 镜号 | 时间 | 景别 | 台词 |\n|---|---|---|---|\n| 1 | 3s | 中景 | 你好 |\n| 2 | 4s | 特写 | 世界 |';
+    expect(auditStoryboard(timeOnly, '60秒')!.totalSeconds).toBe(7);
+  });
+
   it('时长列不在固定位置时按表头相加，不拿错列', () => {
     const markdown = '| 镜号 | 时长 | 景别 | 台词 |\n|---|---|---|---|\n| 1 | 3s | 中景 | 你好 |\n| 2 | 4s | 特写 | 世界 |';
     const audit = auditStoryboard(markdown, '60秒')!;

@@ -139,6 +139,11 @@ describe('统一持久跳转（openCreation）', () => {
     expect(readCode('components/workspace/CreationLinks.tsx')).toMatch(/await openCreation\(payload, \(url\) => router\.push\(url\), branch \|\| ctx\?\.branch === true\)/);
   });
 
+  it('分镜页和审稿页取交接时带上当前路径', () => {
+    expect(readCode('app/dashboard/storyboard/page.tsx')).toMatch(/takeHandoff\(pathname \|\| "\/dashboard\/storyboard"\)/);
+    expect(readCode('app/dashboard/review/page.tsx')).toMatch(/takeHandoff\(pathname \|\| "\/dashboard\/review"\)/);
+  });
+
   it('分镜页核对用画面上的正文而不是整份旧结果', () => {
     const page = readCode('app/dashboard/storyboard/page.tsx');
     expect(page).toMatch(/renderFooter=\{\(view\) => \{[\s\S]*auditStoryboard\(view, duration, scriptContent\)/);
