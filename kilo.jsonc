@@ -1,0 +1,4 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "instructions": [".kilo/rules/开物协作.md"]
+}
