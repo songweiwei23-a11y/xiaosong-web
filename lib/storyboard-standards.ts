@@ -22,6 +22,7 @@ import { continuationRules } from './creation-continuation';
 import { creativeCraftRules } from './creative-craft';
 import { contractBlockFromText } from './creation-tree';
 import { extractPlainCopy } from './script-copy';
+import { splitQualityReport } from './script-result-utils';
 
 /** 五种景别各自的任务。这是整套方法论的地基 */
 const SHOT_SIZE_LANGUAGE = `### 景别不是随便选的，每一种都有它的活儿
@@ -267,14 +268,129 @@ const MOVE_WORDS = ['推镜', '拉镜', '摇镜', '移镜', '跟随'];
  * 往提示词里再加几句「务必相加」解决不了，只能由代码来数。
  * 数出来的结果直接摆给用户，他拍之前就知道素材够不够。
  */
+interface AuditRow { no: string; size: string; move: string; speech: string; seconds: number }
+
+/** 「0:03」「00:03」是分秒，不是 0 秒。纯数字和「4s」仍按原来的数读。 */
+function durationSeconds(cell: string): number {
+  const clock = cell.match(/(\d+):(\d{2})(?::(\d{2}))?/);
+  if (clock) {
+    const head = Number(clock[1]);
+    const mid = Number(clock[2]);
+    if (clock[3] !== undefined) return head * 3600 + mid * 60 + Number(clock[3]);
+    return head * 60 + mid;
+  }
+  const n = Number((cell.match(/[\d.]+/) || [])[0] || 0);
+  return n > 0 ? n : 0;
+}
+
+/** 镜号列。「镜头运动」是运镜，不是镜号。 */
+export function isShotHeaderCell(cell: string): boolean {
+  const text = cell.trim();
+  if (/镜头运动|运镜/.test(text)) return false;
+  return /^(?:镜号|镜头编号|镜头号|镜头|序号)(?:\s|$|[（(])/.test(text);
+}
+
+/** 时长列。「时间码」是起点，不能拿来相加。时长(秒) 这种写法要认。 */
+export function isDurationHeaderCell(cell: string): boolean {
+  const text = cell.trim();
+  if (/时间码/.test(text)) return false;
+  return /时长|时间/.test(text);
+}
+
+/** 同一表头里先用「时长」。没有这一列时才用「时间」，避免「时间」「拍摄时间」排在前面把秒数算丢。 */
+export function durationColumnIndex(cells: string[]): number {
+  const named = cells.findIndex((cell) => /时长/.test(cell) && !/时间码/.test(cell));
+  if (named >= 0) return named;
+  return cells.findIndex(isDurationHeaderCell);
+}
+
+/** 「〃」「同上」不是新镜头，台词和时长算在上一镜上。 */
+export function isContinuationShot(cell: string): boolean {
+  const text = cell.trim();
+  return text === '〃' || text === '同上';
+}
+
+/** 以数字开头，或以字母加数字开头：1、1-1、2a、3（插入）、S01。 */
+export function isShotNumber(cell: string): boolean {
+  const text = cell.trim();
+  if (!text || isContinuationShot(text)) return false;
+  return /^(?:\d|[A-Za-z]{1,3}\d)/.test(text);
+}
+
+function splitCells(line: string): string[] {
+  return line.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map((cell) => cell.replace(/\\\|/g, '|').replace(/\*\*/g, '').trim());
+}
+
+function isSeparator(cells: string[]): boolean {
+  return cells.length > 0 && cells.every((cell) => /^:?-{2,}:?$/.test(cell.replace(/\s/g, '')));
+}
+
+/** 按表头认出分镜表。同一篇里的旧表、拍摄顺序表不混进来；有多张时用最后一张。 */
+function shotTables(markdown: string): AuditRow[][] {
+  const tables: AuditRow[][] = [];
+  let cols: { no: number; size: number; move: number; speech: number; duration: number } | null = null;
+  let rows: AuditRow[] = [];
+  const flush = () => {
+    if (cols && rows.length) tables.push(rows);
+    cols = null;
+    rows = [];
+  };
+  for (const line of markdown.split('\n')) {
+    if (!/^\s*\|/.test(line)) { flush(); continue; }
+    const cells = splitCells(line);
+    if (isSeparator(cells)) continue;
+    const no = cells.findIndex(isShotHeaderCell);
+    const duration = durationColumnIndex(cells);
+    if (no >= 0 && duration >= 0 && cells.some((cell) => /画面|台词|口播|旁白|景别/.test(cell))) {
+      flush();
+      cols = {
+        no,
+        duration,
+        size: cells.findIndex((cell) => /景别/.test(cell)),
+        move: cells.findIndex((cell) => /运镜|镜头运动/.test(cell)),
+        speech: cells.findIndex((cell) => /台词|口播|旁白/.test(cell)),
+      };
+      continue;
+    }
+    if (!cols) continue;
+    const number = (cells[cols.no] ?? '').trim();
+    // 镜号空着，或写成「〃」「同上」，都是上一镜的续行。后面的镜头还在这张表里。
+    if (!number || isContinuationShot(number)) {
+      const prev = rows.at(-1);
+      if (prev) {
+        const extra = cols.speech >= 0 ? (cells[cols.speech] ?? '').trim() : '';
+        if (spokenChars(extra) > 0) prev.speech = `${prev.speech}\n${extra}`.trim();
+        prev.seconds += durationSeconds(cells[cols.duration] ?? '');
+      }
+      continue;
+    }
+    if (!isShotNumber(number)) { flush(); continue; }
+    rows.push({
+      no: number,
+      size: cols.size >= 0 ? cells[cols.size] ?? '' : '',
+      move: cols.move >= 0 ? cells[cols.move] ?? '' : '',
+      speech: cols.speech >= 0 ? cells[cols.speech] ?? '' : '',
+      seconds: durationSeconds(cells[cols.duration] ?? ''),
+    });
+  }
+  flush();
+  return tables;
+}
+
+/** 没有表头的旧表：仍按「第二格是镜号、时长在固定列」读，避免以前的核对用例失效。 */
+function legacyRows(markdown: string): AuditRow[] {
+  return markdown.split('\n').filter((line) => /^\s*\|\s*\d+\s*\|/.test(line)).map((line) => {
+    const cells = line.split('|').map((cell) => cell.trim());
+    return { no: cells[1] ?? '', size: cells[2] ?? '', move: cells[3] ?? '', speech: cells[5] ?? '', seconds: durationSeconds(cells[6] ?? '') };
+  });
+}
+
 export function auditStoryboard(markdown: string, duration: string, script = ''): StoryboardAudit | null {
   const target = planShots(duration, script).seconds;
-
-  // 只取分镜表的数据行：以 | 开头、第二格是纯数字（镜号）
-  const rows = (markdown || '')
-    .split('\n')
-    .filter((line) => /^\s*\|\s*\d+\s*\|/.test(line))
-    .map((line) => line.split('|').map((c) => c.trim()));
+  // 质量报告贴在正文后面，画面上不显示；核对只看和画面同一份正文
+  const body = splitQualityReport(markdown || '').body;
+  const tables = shotTables(body);
+  const rows = tables.length ? tables[tables.length - 1] : legacyRows(body);
 
   if (rows.length === 0) return null;
 
@@ -285,24 +401,18 @@ export function auditStoryboard(markdown: string, duration: string, script = '')
   const rushed: { no: string; chars: number; need: number; given: number }[] = [];
   let speechChars = 0;
 
-  for (const cells of rows) {
-    // 表格列序：| 镜号 | 景别 | 运镜 | 画面 | 台词 | 时长 | 拍摄要点 |
-    // split('|') 后首尾各有一个空串，所以镜号在 [1]、时长在 [6]
-    const size = cells[2] ?? '';
-    const move = cells[3] ?? '';
-    const dur = cells[6] ?? '';
-
-    const n = Number((dur.match(/[\d.]+/) || [])[0] || 0);
+  for (const row of rows) {
+    const n = row.seconds;
     if (n > 0) durations.push(n);
 
     // 台词按口播 5 字/秒算要几秒（和脚本页、上面的预检同一个口径）；比给的时长多出 1 秒以上才报
-    const chars = spokenChars(cells[5] ?? '');
+    const chars = spokenChars(row.speech);
     speechChars += chars;
     const need = Math.round((chars / SPEECH_RATE) * 10) / 10;
-    if (n > 0 && chars > 0 && need - n >= 1) rushed.push({ no: cells[1] ?? '', chars, need, given: n });
+    if (n > 0 && chars > 0 && need - n >= 1) rushed.push({ no: row.no, chars, need, given: n });
 
-    if (size.includes('特写')) closeUps++;
-    if (MOVE_WORDS.some((w) => move.includes(w))) moves++;
+    if (row.size.includes('特写')) closeUps++;
+    if (MOVE_WORDS.some((w) => row.move.includes(w))) moves++;
   }
 
   const shots = rows.length;
@@ -323,7 +433,7 @@ export function auditStoryboard(markdown: string, duration: string, script = '')
   }
   // 按脚本排时允许动作与未知回答增加时长，但模型写出的总数仍须与表格一致。
   if (durations.length === rows.length) {
-    const stated = [...markdown.replace(/\*\*/g, '').matchAll(/总时长[：:]\s*(\d+(?:\.\d+)?)\s*(?:s\b|秒)/gi)];
+    const stated = [...body.replace(/\*\*/g, '').matchAll(/总时长[：:]\s*(\d+(?:\.\d+)?)\s*(?:s\b|秒)/gi)];
     for (const value of new Set(stated.map((m) => Number(m[1])))) {
       if (Math.abs(value - totalSeconds) > 2) {
         issues.push(`文中总时长写 ${value}s，但镜头表实际合计 ${totalSeconds}s，需要核对总数`);

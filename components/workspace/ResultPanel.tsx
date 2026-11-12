@@ -83,6 +83,8 @@ export function ResultPanel({
   continueTask,
   nextActions,
   footer,
+  renderFooter,
+  spokenBody,
   bodyClassName,
   flowContext,
   hideCreationLinks,
@@ -124,6 +126,16 @@ export function ResultPanel({
    * 做成插槽而不是写死在这里：别的板块的核对项各不相同。
    */
   footer?: React.ReactNode;
+  /**
+   * 和 footer 同一位置，但拿到的是画面上正在显示的正文（画布改过的最新一版）。
+   * 分镜核对必须数这张表，不能拿作品记录里的旧稿。
+   */
+  renderFooter?: (view: string) => React.ReactNode;
+  /**
+   * 跳去审稿、标题时填进输入框的口播。
+   * 收藏、推荐和带去其他板块仍用画面上的正文。
+   */
+  spokenBody?: string;
   /** 给正文额外的排版（接在 prose 后面）。拆解爆款用它把每个镜头的四级标题排成卡片头 */
   bodyClassName?: string;
   flowContext?: CreationContext;
@@ -385,7 +397,7 @@ export function ResultPanel({
       {showQuality && report && !isGenerating && <QualityCard report={report} quality={quality} />}
 
       {/* 各页面自己的核对结果。紧跟正文，因为它说的就是上面这份内容对不对 */}
-      {body && !isGenerating && footer}
+      {body && !isGenerating && (renderFooter ? renderFooter(view) : footer)}
       {/* 禁忌兜底：平台红线 + 行业禁忌词（lib/taboos），命中了就标出来 */}
       {/* 我的创作偏好：这次按哪些偏好写的（lib/preferences），写稿类板块才有 */}
       {body && !isGenerating && <PreferenceHint board={CONTEXT_BOARD[segment] ?? 'script'} />}
@@ -406,7 +418,7 @@ export function ResultPanel({
        * 用户读完往下找下一步找不到；而且顶部那时还没读内容，不知道该勾哪几条。
        * 顶部按钮排里留了一个「继续创作 ↓」跳到这里，结果很长时也找得到。
        */}
-      {body && !isGenerating && !individualPlans && !hideCreationLinks && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={view} context={flowContext} /></div>}
+      {body && !isGenerating && !individualPlans && !hideCreationLinks && <div id="creation-links" className="scroll-mt-4"><CreationLinks body={view} spokenBody={spokenBody} context={flowContext} /></div>}
       {body && !isGenerating && planParts && <RemixContinuation body={view} plans={planParts.plans} context={flowContext} />}
       {continueTask && dialog && dialog.profileId === profileId && (
         <ContinuousDialog

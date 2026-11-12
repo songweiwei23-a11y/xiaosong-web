@@ -1,12 +1,49 @@
-import type { WorkDetail } from './resume';
+import type { WorkDetail, WorkItem } from './resume';
 import { buildCreationHandoff, creationScript, CREATION_SOURCES, type CreationTarget } from './creation-flow';
 import { mergeCreationSettings, settingsFromInput, settingsFromText } from './creation-settings';
 import { extractOpening, type HandoffPayload } from './handoff';
+import { extractPlainCopy } from './script-copy';
+import { isDurationHeaderCell, isShotHeaderCell } from './storyboard-standards';
 
 const SOURCES: Record<string, string> = {
   '选题策划': 'topic', '开篇钩子': 'growth', '脚本生成': 'script',
   '审稿优化': 'review', '分镜脚本': 'storyboard', '标题封面': 'title',
 };
+
+function isStoryboardTable(text: string): boolean {
+  return text.split('\n').some((line) => {
+    if (!/^\s*\|/.test(line)) return false;
+    const cells = line.split('|').map((cell) => cell.trim());
+    return cells.some(isShotHeaderCell) && cells.some(isDurationHeaderCell);
+  });
+}
+
+/**
+ * 分镜、审稿的输入框要口播，不要分镜表，也不要整份审稿报告。
+ * 从新到旧找：最新的审稿、分镜生成时输入框里的稿、脚本正文。分镜表本身跳过。
+ */
+function spokenForResume(item: WorkItem): string {
+  if (item.task_type === '审稿优化') {
+    const section = creationScript('review', item.result).trim();
+    if (section && section !== item.result.trim()) return section;
+    return extractPlainCopy(item.result);
+  }
+  if (item.task_type === '分镜脚本') {
+    const saved = typeof item.input_data?.scriptContent === 'string' ? item.input_data.scriptContent.trim() : '';
+    return saved && !isStoryboardTable(saved) ? saved : '';
+  }
+  if (item.task_type === '脚本生成') return (extractPlainCopy(item.result) || creationScript('script', item.result)).trim();
+  return '';
+}
+
+function latestSpokenScript(items: WorkItem[] | undefined): string {
+  const sorted = [...(items || [])].filter(item => item.result?.trim()).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  for (const item of sorted) {
+    const spoken = spokenForResume(item);
+    if (spoken) return spoken;
+  }
+  return '';
+}
 
 /**
  * 作品链接没有一次性交接数据，也必须恢复整条创作链的选择。
@@ -40,7 +77,12 @@ export function workCreationHandoff(work: WorkDetail, target: CreationTarget): H
   });
   payload.profileId = work.profile_id;
   payload.topic = settings.topic || work.title;
-  if (settings.workingScript && ['review', 'storyboard'].includes(target)) payload.scriptContent = settings.workingScript;
+  // 刚跳过来的作品需求比旧生成新：用跳转时带的正文。否则最新口播盖过分镜表。
+  const spoken = preferBrief ? '' : latestSpokenScript(items);
+  if (spoken && ['review', 'storyboard'].includes(target)) {
+    payload.scriptContent = spoken;
+    payload.settings = { ...(payload.settings || {}), workingScript: spoken };
+  } else if (settings.workingScript && ['review', 'storyboard'].includes(target)) payload.scriptContent = settings.workingScript;
   if (target === 'growth' && settings.workingScript) payload.currentOpening = settings.openingLine || extractOpening(settings.workingScript);
   return payload;
 }

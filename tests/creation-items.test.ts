@@ -210,7 +210,8 @@ describe('勾选后带走', () => {
 
   it('组件：识别出两条以上才出勾选，默认全选（不勾时和原来整条带走一样），一条都没勾不让走', () => {
     const src = readCode('components/workspace/CreationLinks.tsx');
-    expect(src).toMatch(/splitCreationItems\(body\)/);
+    expect(src).toMatch(/const material = creationLinkMaterial\(body, spokenBody\)/);
+    expect(src).toMatch(/splitCreationItems\(material\)/);
     expect(src).toMatch(/parts\.items\.length >= 2/);
     expect(src).toMatch(/new Set\(parts\.items\.map\(\(it\) => it\.id\)\)/);
     expect(src).toMatch(/先勾选要带走的/);

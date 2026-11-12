@@ -5,7 +5,7 @@ import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice'
 import { resolveCreationSettings, settingsForResult, settingsFromText, REVIEW_SCRIPT_TYPES } from '@/lib/creation-settings';
 
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { takeHandoff } from "@/lib/handoff";
 import { openCreationSafely } from "@/lib/creation-session";
 import { buildCreationHandoff } from "@/lib/creation-flow";
@@ -113,15 +113,16 @@ export default function ReviewPage() {
   // 和助理共用同一个算法（lib/boards/review-query）：AI 推荐时连续设置里不写时长，见那边的说明
   const currentSettings = reviewCreationSettings({ draftContent, platform, duration, scriptType, autoSettings: autoSetup.settings, creatorContext });
 
-  // 接收从脚本页带来的正文作为待审稿件
+  const pathname = usePathname();
+  // 客户端跳转时地址栏可能还停在分镜页。不带当前路径，口播会接不住。
   useEffect(() => {
-    const data = takeHandoff();
+    const data = takeHandoff(pathname || "/dashboard/review");
     if (data) setIncomingSetup(data);
     if (data) setOriginContent(data.originContent || data.sourceContent || '');
     if (data?.workId) setWorkId(data.workId);
     if (data?.scriptContent) setDraftContent(data.scriptContent);
     if (data && creationReference(data) !== data.scriptContent) setSourceReference(creationReference(data));
-  }, []);
+  }, [pathname]);
 
   /*
    * 打开某个作品（地址带 ?work=）：脚本正文填进来当待审稿件，

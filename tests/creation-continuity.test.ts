@@ -59,6 +59,39 @@ describe('作品恢复叠上作品需求', () => {
     expect(p.scriptContent).not.toContain('优化后的完整脚本');
   });
 
+  it('已有分镜再去审稿：从作品打开分镜时带审过的稿，不把分镜表或更早的口播当输入', async () => {
+    const { workCreationHandoff } = await import('@/lib/creation-work-resume');
+    const table = '| 镜号 | 景别 | 运镜 | 画面内容 | 台词/旁白 | 时长 | 拍摄要点 |\n|---|---|---|---|---|---|---|\n| 1 | 特写 | 固定 | 碗 | 旧台词 | 3s | 稳住 |';
+    const reviewed = '## 5. 优化后的完整脚本\n客人说太辣了，老板递来一碗冰粉。\n## 6. 纯文字文案\n客人说太辣了，老板递来一碗冰粉。';
+    const work = {
+      id: WORK, title: '老灶火锅', profile_id: null, is_done: false,
+      items: [
+        { id: 'b', task_type: '分镜脚本', result: table, created_at: '2026-10-04T01:00:00Z', input_data: { scriptContent: '更早的口播', duration: '42秒' } },
+        { id: 'r', task_type: '审稿优化', result: reviewed, created_at: '2026-10-04T02:00:00Z', input_data: {} },
+      ],
+    };
+    const p = workCreationHandoff(work as never, 'storyboard');
+    expect(p.target).toBe('/dashboard/storyboard');
+    expect(p.scriptContent).toBe('客人说太辣了，老板递来一碗冰粉。');
+    expect(p.scriptContent).not.toContain('镜号');
+    expect(p.scriptContent).not.toContain('更早的口播');
+  });
+
+  it('分镜比审稿新时，用生成分镜时输入框里的稿，不用表格', async () => {
+    const { workCreationHandoff } = await import('@/lib/creation-work-resume');
+    const table = '| 镜号 | 景别 | 运镜 | 画面内容 | 台词/旁白 | 时长 | 拍摄要点 |\n|---|---|---|---|---|---|---|\n| 1 | 特写 | 固定 | 碗 | 旧台词 | 3s | 稳住 |';
+    const work = {
+      id: WORK, title: '老灶火锅', profile_id: null, is_done: false,
+      items: [
+        { id: 'r', task_type: '审稿优化', result: '## 优化后的完整脚本\n更早审过的一句。', created_at: '2026-10-04T01:00:00Z', input_data: {} },
+        { id: 'b', task_type: '分镜脚本', result: table, created_at: '2026-10-04T02:00:00Z', input_data: { scriptContent: '审过的这一句。' } },
+      ],
+    };
+    const p = workCreationHandoff(work as never, 'storyboard');
+    expect(p.scriptContent).toBe('审过的这一句。');
+    expect(p.scriptContent).not.toContain('|');
+  });
+
   it('迁移没跑（没有 creation_brief）照旧按生成记录恢复', async () => {
     const { workCreationHandoff } = await import('@/lib/creation-work-resume');
     const p = workCreationHandoff({ id: WORK, title: 'T', profile_id: null, is_done: false, items: [] } as never, 'script');
@@ -104,5 +137,30 @@ describe('统一持久跳转（openCreation）', () => {
       expect(code, page).toMatch(/openCreationSafely\(/);
     }
     expect(readCode('components/workspace/CreationLinks.tsx')).toMatch(/await openCreation\(payload, \(url\) => router\.push\(url\), branch \|\| ctx\?\.branch === true\)/);
+  });
+
+  it('分镜页和审稿页取交接时带上当前路径', () => {
+    expect(readCode('app/dashboard/storyboard/page.tsx')).toMatch(/takeHandoff\(pathname \|\| "\/dashboard\/storyboard"\)/);
+    expect(readCode('app/dashboard/review/page.tsx')).toMatch(/takeHandoff\(pathname \|\| "\/dashboard\/review"\)/);
+  });
+
+  it('分镜页核对用画面上的正文而不是整份旧结果', () => {
+    const page = readCode('app/dashboard/storyboard/page.tsx');
+    expect(page).toMatch(/renderFooter=\{\(view\) => \{[\s\S]*auditStoryboard\(view, duration, scriptContent\)/);
+  });
+
+  it('分镜输入框里存的是「时长(秒)」表时，不当成口播', async () => {
+    const { workCreationHandoff } = await import('@/lib/creation-work-resume');
+    const table = '| 序号 | 画面 | 时长(秒) |\n|---|---|---|\n| S01 | 门口 | 3 |';
+    const work = {
+      id: WORK, title: '老灶火锅', profile_id: null, is_done: false,
+      items: [
+        { id: 's', task_type: '脚本生成', result: '## 纯文字文案\n真正的口播。', created_at: '2026-10-04T01:00:00Z', input_data: {} },
+        { id: 'b', task_type: '分镜脚本', result: table, created_at: '2026-10-04T02:00:00Z', input_data: { scriptContent: table } },
+      ],
+    };
+    const p = workCreationHandoff(work as never, 'storyboard');
+    expect(p.scriptContent).toBe('真正的口播。');
+    expect(p.scriptContent).not.toContain('时长(秒)');
   });
 });

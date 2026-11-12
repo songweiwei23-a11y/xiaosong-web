@@ -25,9 +25,9 @@ import { PageHeader } from "@/components/workspace/PageHeader";
 import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { ContextBadge } from '@/components/workspace/ContextBadge';
 import { HistoryPanel } from "@/components/workspace/HistoryPanel";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Film, Loader2, Sparkles, Wand2, Tag } from "lucide-react";
 import { notify } from '@/components/ui/feedback';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
@@ -101,15 +101,16 @@ export default function StoryboardPage() {
   });
   const currentSettings = resolveCreationSettings({ from: '分镜脚本', sourceContent: scriptContent, settings: mergeCreationSettings(autoSetup.settings, { platform, duration, contentType: quickMode ? "auto" : contentType, visualStyle: quickMode ? "cinematic" : visualStyle }) }, creatorContext);
 
-  // 接收从脚本页带来的正文，省掉一次复制粘贴
+  const pathname = usePathname();
+  // 客户端跳转时地址栏可能还停在上一页。takeHandoff 不带路径就会对不上、把审过的稿丢掉。
   useEffect(() => {
-    const data = takeHandoff();
+    const data = takeHandoff(pathname || "/dashboard/storyboard");
     if (data) setIncomingSetup(data);
     if (data) setOriginContent(data.originContent || data.sourceContent || '');
     if (data?.workId) setWorkId(data.workId);
     if (data?.scriptContent) setscriptContent(data.scriptContent);
     if (data && creationReference(data) !== data.scriptContent) setAdditionalInfo(`【相关方案参考】\n${creationReference(data)}\n以上仅为背景资料，请对脚本输入框中的正文拆分镜。`);
-  }, []);
+  }, [pathname]);
 
   /*
    * 打开某个作品（地址带 ?work=）：脚本正文填进来当输入，
@@ -129,20 +130,6 @@ export default function StoryboardPage() {
 
   // 切换页面或刷新后，把云端最近一条生成结果取回来显示
   useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setOriginContent(''); });
-
-  /*
-   * 对模型排出来的分镜表做一次代码核对。
-   *
-   * 不能信它自己写的那行「总时长：60s（已对账）」——实测里表格实际相加
-   * 是 55s，它声称加过了其实没加。时长对不上，拍摄当天才会发现素材不够。
-   *
-   * 生成结束后才核对：流式过程中表格还是残缺的，中途算出来的数字没有意义。
-   * 用 useMemo 是因为流式生成时 result 每个字都在变，不必每帧重算整张表。
-   */
-  const audit = useMemo(
-    () => (isGenerating || !result ? null : auditStoryboard(result, duration, scriptContent)),
-    [isGenerating, result, duration, scriptContent]
-  );
 
   // 加载示例脚本
   const loadExample = () => {
@@ -518,9 +505,11 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
         onCopy={(text) => copyToClipboard(text)}
         onDownload={(text) => downloadAsFile(text, `分镜脚本-${new Date().toLocaleDateString()}.txt`)}
         onContinue={result ? () => openContinuousDialog(result) : undefined}
-        // 代码数出来的核对结果。模型自检栏写的数字不可信，以这里为准
-        footer={
-          audit ? (
+        // 按画面上这张表重算。作品记录里的旧镜数、旧秒数不能再拿来显示。
+        spokenBody={scriptContent}
+        renderFooter={(view) => {
+          const audit = auditStoryboard(view, duration, scriptContent);
+          return audit ? (
             <div className="glass-panel rounded-xl px-4 py-3">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
                 <span className="font-medium text-foreground">系统核对</span>
@@ -548,8 +537,8 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
                 </p>
               )}
             </div>
-          ) : null
-        }
+          ) : null;
+        }}
         // 分镜此前没有任何往下的交接，作品链条到这里就断了。
         // 拆完分镜通常还剩起标题这一步。
         nextActions={[

@@ -1,4 +1,6 @@
 import { extractOpening, parseTopicOptions, type HandoffPayload } from './handoff';
+import { extractPlainCopy } from './script-copy';
+import { isContinuationShot, isDurationHeaderCell, isShotHeaderCell, isShotNumber, spokenChars } from './storyboard-standards';
 import { splitRemixPlans } from './remix-plans';
 import { creationReference, continuationRules } from './creation-continuation';
 import { cleanTitle, mergeCreationSettings, settingsFromText, creationSettingsBlock, isBatch, type CreationSettings } from './creation-settings';
@@ -81,15 +83,125 @@ export function creationTitle(body: string): string {
     .replace(/^#+\s*/, '').replace(/\*\*/g, '').trim().slice(0, 180);
 }
 
+/** 分镜表的「台词/旁白」列。没有纯文字文案时，审稿只能带这些要念的字，不能带整张表。 */
+function storyboardSpeechColumn(body: string): string {
+  let speech = -1;
+  let shot = -1;
+  let current: string[] = [];
+  let last: string[] = [];
+  const flush = () => { if (current.length) last = current; current = []; speech = -1; shot = -1; };
+  for (const raw of body.split('\n')) {
+    if (!/^\s*\|/.test(raw)) { flush(); continue; }
+    const cells = raw.trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.replace(/\*\*/g, '').trim());
+    if (cells.every(cell => /^:?-{2,}:?$/.test(cell.replace(/\s/g, '')))) continue;
+    const speechCol = cells.findIndex(cell => /台词|口播|旁白/.test(cell));
+    const shotCol = cells.findIndex(isShotHeaderCell);
+    if (shotCol >= 0 && speechCol >= 0 && cells.some(cell => isDurationHeaderCell(cell) || /画面|景别/.test(cell))) {
+      flush();
+      speech = speechCol;
+      shot = shotCol;
+      continue;
+    }
+    if (speech < 0 || shot < 0) continue;
+    const number = (cells[shot] ?? '').trim();
+    const line = (cells[speech] ?? '').replace(/^["“‘'「]|["”’'」]$/g, '').trim();
+    if (!number || isContinuationShot(number)) {
+      if (current.length && spokenChars(line) > 0) current[current.length - 1] += `\n${line}`;
+      continue;
+    }
+    if (!isShotNumber(number)) { flush(); continue; }
+    if (spokenChars(line) > 0) current.push(line);
+  }
+  flush();
+  return last.join('\n');
+}
+
+/** 「开篇钩子」得是这一行的标题或标签。打法正文里顺口提到，不算这一节。 */
+function hookLabel(line: string): string | null {
+  const label = line.replace(/\*\*/g, '').trim().replace(/^[^\p{Script=Han}]+/u, '');
+  const matched = label.match(/^开篇钩子(?:\s*[（(][^）)]*[）)])?\s*(?:[：:]\s*([\s\S]*))?$/);
+  if (!matched) return null;
+  return (matched[1] || '').trim();
+}
+
+function cleanHookText(raw: string): string {
+  let line = raw.replace(/\*\*/g, '').trim();
+  line = line.replace(/^(?:[-*•]\s*)?(?:文案|台词|口播|开场台词|开头一句)\s*[：:]\s*/, '').trim();
+  line = line.replace(/^["“‘'「]+|["”’'」]+$/g, '').trim();
+  return line;
+}
+
+/**
+ * 选题里能念的开头只在「开篇钩子」那一节。
+ * 第一节通常是「承接」，拿它预填会把参考句当成要改的口播。这一节没有，或只带了题目，就留空。
+ * 标签和要念的字可以写在同一行。
+ */
+function topicHookLine(body: string): string {
+  const lines = body.split('\n');
+  let start = -1;
+  let inline = '';
+  for (let i = 0; i < lines.length; i++) {
+    const found = hookLabel(lines[i]);
+    if (found !== null) { start = i; inline = found; break; }
+  }
+  if (start < 0) return '';
+  const chunk: string[] = [];
+  if (inline) chunk.push(inline);
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^\s*#{1,4}\s+/.test(line) || hookLabel(line) !== null) break;
+    const label = line.replace(/\*\*/g, '').trim().replace(/^[^\p{Script=Han}]+/u, '');
+    if (/^(?:承接|视频目的|视频任务|打法|爆款元素|内容方向|脚本结构)/.test(label)) break;
+    chunk.push(line);
+  }
+  const text = chunk.join('\n').trim();
+  if (!text || /用户本次不需要/.test(text)) return '';
+  const line = text.split('\n').map(cleanHookText).find(item => item && !/^(?:承接|视频目的|打法|开篇钩子)/.test(item)) || '';
+  if (!line || /^(?:承接|视频目的|打法)/.test(line)) return '';
+  return line.slice(0, 120);
+}
+
+/**
+ * 继续创作：收藏、推荐、带去其他板块用画面上的正文。
+ * 只有去审稿、起标题时，输入框另用口播（分镜页传进来的脚本）。
+ */
+export function creationLinkPieces(body: string, spokenBody: string | undefined, target: CreationTarget): { material: string; handoffBody: string; scriptContent?: string } {
+  const spoken = spokenBody?.trim() || '';
+  if (spoken && target === 'title') return { material: body, handoffBody: spoken };
+  if (spoken && target === 'review') return { material: body, handoffBody: body, scriptContent: spoken };
+  return { material: body, handoffBody: body };
+}
+
+/** 收藏和「建议的下一步」用的正文。口播只影响审稿和标题的输入框。 */
+export function creationLinkMaterial(body: string, spokenBody?: string): string {
+  return creationLinkPieces(body, spokenBody, 'free-chat').material;
+}
+
+export function handoffFromCreationLinks(source: string, target: CreationTarget, body: string, context: CreationContext = {}, spokenBody?: string): HandoffPayload {
+  const pieces = creationLinkPieces(body, spokenBody, target);
+  const payload = buildCreationHandoff(source, target, pieces.handoffBody, context);
+  if (pieces.scriptContent) {
+    payload.scriptContent = pieces.scriptContent;
+    payload.settings = { ...(payload.settings || {}), workingScript: pieces.scriptContent };
+  }
+  return payload;
+}
+
 /** 明确存在正文栏目时，只让正文进入审稿/分镜输入框，整份方案仍作为参考带入。 */
 export function creationScript(source: string, body: string): string {
   // 整批选择必须保留全部方案，不能只提取第一份的口播。
   if (source === 'remix' && splitRemixPlans(body).plans.length > 1) return body;
-  // 模型未输出“纯文字文案”栏目时，从明确标出的台词恢复正文。
-  // 策略卡、拍摄建议仍保存在 sourceContent 中，不能算作待审口播。
+  // 纯文字文案优先。行首「台词：」只在没有这一节时兜底，不能压过完整口播。
+  // 分镜表没有这两种标记时，只取台词列，不把镜号和景别送去审稿。
   if (source === 'script' || source === 'storyboard') {
+    const plain = extractPlainCopy(body);
+    if (plain) return plain;
     const speech = body.replace(/\*\*/g, '').split('\n').map(line => line.match(/^\s*(?:[-*>]\s*)?(?:台词(?:外音)?|口播)[：:]\s*(.+)/)?.[1]?.replace(/^["“‘]|["”’]$/g, '').trim()).filter((v): v is string => Boolean(v));
     if (speech.length >= 2 && splitRemixPlans(body).plans.length <= 1) return speech.join('\n');
+    if (source === 'storyboard') {
+      const column = storyboardSpeechColumn(body);
+      if (column) return column;
+    }
   }
   const name = source === 'remix' ? /(?:口播全文|完整口播|完整脚本)/ : source === 'review' ? /优化后的完整脚本/ : /(?:纯文字文案|口播全文|完整口播|完整脚本)/;
   if (!name) return body;
@@ -157,6 +269,6 @@ export function buildCreationHandoff(source: string, target: CreationTarget, bod
   const topic = cleanTitle(topicOptions[0] || settings.topic || context.topic || title) || title;
   settings.topic = topic;
   if (target === 'script') return { ...common, topic, topicOptions, openingLine: settings.openingLine, openingCards: settings.openingCards, tactic: settings.tactic, note: `【来自${from}的参考内容】\n${creationReference(common)}${creationSettingsBlock(settings)}${continuationRules('script')}` };
-  if (target === 'growth') return { ...common, topic, topicOptions, tab: 'opening', currentOpening: extractOpening(creationScript(source, body)) };
+  if (target === 'growth') return { ...common, topic, topicOptions, tab: 'opening', currentOpening: source === 'topic' ? topicHookLine(body) : extractOpening(creationScript(source, body)) };
   return { ...common, topic, scriptContent: ['review', 'storyboard'].includes(target) ? draft : body };
 }
