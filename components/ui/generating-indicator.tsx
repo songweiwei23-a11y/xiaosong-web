@@ -7,7 +7,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LoadingRings } from '@/components/ui/loading';
+import LoadingRings from '@/components/ui/loading';
 
 interface GeneratingIndicatorProps {
   /**

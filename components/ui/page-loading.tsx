@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { LoadingRings } from '@/components/ui/loading';
+import LoadingRings from '@/components/ui/loading';
 
 interface PageLoadingProps {
   /**
