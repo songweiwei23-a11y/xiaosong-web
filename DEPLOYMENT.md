@@ -36,13 +36,23 @@ NEXT_PUBLIC_APP_URL=https://你的域名
 
 脚本只改 `/etc/nginx/snippets/xiaosong-upstream.conf`，不改 Nginx 主配置。第一次上这套切换之前，由人工把反代改成 include 这个文件，并确认 `ubuntu` 对 `nginx -t`、`nginx -T`、`nginx -s reload` 和写这个文件有免密 sudo（脚本用 `sudo -n`，要密码就会失败并停在旧进程上）。
 
+`server_name` 要包含 `biandao.icu`。发布脚本在 reload 之后会执行 `curl -H 'Host: biandao.icu' http://127.0.0.1/api/health`，Host 对不上就会回滚。
+
+502、503、504 使用仓库里的中文维护页 `public/maintenance.html`（页面会自己再试）。Nginx 直接读磁盘上的这个文件，不经过当时可能已经起不来的 Node。
+
 ```nginx
 upstream xiaosong_backend {
     include /etc/nginx/snippets/xiaosong-upstream.conf;
 }
 
 server {
-    # 原有的 server_name、证书照旧
+    server_name biandao.icu www.biandao.icu;
+    # 原有的证书照旧
+    error_page 502 503 504 /maintenance.html;
+    location = /maintenance.html {
+        root /var/www/xiaosong-web/public;
+        add_header Cache-Control "no-store";
+    }
     location / {
         proxy_pass http://xiaosong_backend;
         proxy_http_version 1.1;
@@ -84,7 +94,7 @@ pm2 save
 5. 用 ecosystem 在新端口起新进程。fork、单实例。这次启动带一个新的 `KAIWU_BOOT_ID`。
 6. 对本机 `http://127.0.0.1:<新端口>/api/health` 重试约 2 分钟。要 HTTP 200、`"ok":true`，并且 `boot`、`pid` 对得上这次拉起的进程（会读数据库）。对不上就当失败：可能探到的是还在服务的旧进程，不能拿它当新进程。首页 200 不算成功。
 7. 没通过：`pm2 delete` 只删新进程，不改 Nginx，不重启旧进程，退出码非 0。
-8. 通过：改 upstream、`nginx -t`、`nginx reload`，再确认配置里是新端口，并再探一次 `/api/health`。任一步失败都把 upstream 改回去并删掉新进程，旧进程继续服务，退出码非 0。
+8. 通过：改 upstream、`nginx -t`、`nginx reload`，再确认配置里是新端口。然后执行 `curl -H 'Host: biandao.icu' http://127.0.0.1/api/health`，要 HTTP 200、`"ok":true`，并且 `boot`、`pid` 仍是这次的新进程。任一步失败都把 upstream 改回去并删掉新进程，旧进程继续服务，退出码非 0。
 9. 切流后再等 90 秒，让还挂在旧进程上的流式生成跑完。等完再探一次。仍对得上，才停掉旧进程，`pm2 save`，输出 `SWITCH_OK`。等的过程中新进程不健康，就把流量改回旧端口并删掉新进程。
 
 失败之后**不要**对旧进程 `pm2 restart`。构建已经覆盖了磁盘上的 `.next`，restart 会让还在内存里的旧代码换成一份没通过健康检查的新构建。
@@ -97,6 +107,12 @@ pm2 save
 - 90 秒结束后才 `pm2 delete` 旧进程。删除时新进程的 `kill_timeout` 是 20 秒，旧进程若是这次脚本拉起的，也有同样的等待。**第一次**从旧的 `pm2 start npm` 切过来时，那个旧进程没有这个等待；90 秒的停留仍然留给已经开始的生成，到点后删除会马上发停止信号。
 - 这 90 秒里两个 `next start` 同时占内存。2G 机器上，第二个进程起来之后仍可能把机器打满。脚本只在启动前看 `MemAvailable`，挡不住启动后的峰值，也挡不住这 90 秒的重叠。不要在生成高峰发布。内存不够时脚本会放弃，网站继续跑旧版本。
 - 第一次改 Nginx 主配置那一下，要人工 reload。端口不变。
+
+## 构建时的空窗
+
+`同步到服务器.ps1` 在旧进程还在服务时，就在部署目录里原地 `npm install` 和 `npm run build`。Next 会改写正在被请求的 `.next`。这段时间页面可能出现 404 或 500，流量还没切到新进程。构建失败不会 `pm2 restart`，旧进程继续用已经加载进内存的代码；磁盘上的 `.next` 可能已经是一份没建完的产物，所以失败之后不要 restart。
+
+这台机器只有 2G。再复制一份完整目录来构建，会同时留下两份 `node_modules` 和 `.next`，比换端口时短暂的第二个进程更吃内存，所以没有改成独立目录构建。上传代码之前先跑 `bash /tmp/deploy-reload.sh --preflight <部署目录>`：Nginx 片段、可用内存、`ecosystem.config.cjs` 不过关就不上传，避免在切不了流量的机器上先改线上目录。不要在生成高峰发布。
 
 ## 回滚
 

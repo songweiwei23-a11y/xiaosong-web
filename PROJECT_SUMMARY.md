@@ -338,7 +338,7 @@ NEXT_PUBLIC_SUPABASE_URL=你的Supabase URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名密钥
 SUPABASE_SERVICE_ROLE_KEY=你的服务密钥
 DIFY_API_KEY=你的Dify密钥
-DIFY_API_URL=https://api.dify.ai/v1
+DIFY_BASE_URL=https://api.dify.ai/v1
 ```
 
 ### 3. 部署到 Vercel

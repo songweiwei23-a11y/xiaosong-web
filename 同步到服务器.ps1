@@ -123,8 +123,6 @@ Write-Host "创建压缩包..." -ForegroundColor Yellow
 
 # 部署清单。缺少 hooks 会导致 useGenerationPage 解析失败，
 # 缺少 postcss.config.js 会导致 Tailwind 不生效，两者都会让服务器构建出问题。
-# 部署清单。缺少 hooks 会导致 useGenerationPage 解析失败，
-# 缺少 postcss.config.js 会导致 Tailwind 不生效，两者都会让服务器构建出问题。
 #
 # tests 也必须传。服务器上的 npm run build 会跑 tsc，而 tsc 会把 tests/ 一起
 # 类型检查。早期部署过一份 tests，之后清单里没有它，那份就永远停在旧版本——
@@ -134,7 +132,8 @@ Write-Host "创建压缩包..." -ForegroundColor Yellow
 $payload = @(
     "app", "components", "hooks", "lib", "types", "supabase", "public", "tests",
     "middleware.ts", "next.config.js", "postcss.config.js", "tailwind.config.js",
-    "tsconfig.json", "components.json", "package.json", "package-lock.json", "ecosystem.config.cjs"
+    "tsconfig.json", "components.json", "package.json", "package-lock.json", "ecosystem.config.cjs",
+    "scripts/deploy-reload.sh", "scripts/active-port.sh", "scripts/review-cron-tick.sh", "scripts/install-review-cron.sh"
 )
 $existing = @($payload | Where-Object { Test-Path $_ })
 $missing  = @($payload | Where-Object { -not (Test-Path $_) })
@@ -167,6 +166,30 @@ $manifestLocal = Join-Path $env:TEMP "deploy-manifest-$timestamp.txt"
 tar -czf $tempPkg $existing
 if ($LASTEXITCODE -ne 0) {
     Write-Host "打包失败，已中止部署" -ForegroundColor Red
+    pause
+    exit 1
+}
+
+# Nginx、内存、ecosystem 先看一眼。不过关就不上传，线上目录保持原样。
+# 检查用的是这次要发布的切换脚本，所以先把它单独传上去。
+Write-Host "上传前检查 Nginx、内存和 ecosystem..." -ForegroundColor Yellow
+$preflightLocal = Join-Path $env:TEMP "deploy-reload-preflight-$timestamp.sh"
+$preflightText = [System.IO.File]::ReadAllText("$projectPath\scripts\deploy-reload.sh") -replace "`r`n", "`n"
+[System.IO.File]::WriteAllText($preflightLocal, $preflightText, (New-Object System.Text.UTF8Encoding($false)))
+scp -i "$sshKey" $preflightLocal "${serverUser}@${serverIP}:/tmp/deploy-reload.sh"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "切换脚本上传失败，已中止，线上目录还没改" -ForegroundColor Red
+    Remove-Item $tempPkg, $preflightLocal -Force -ErrorAction SilentlyContinue
+    pause
+    exit 1
+}
+Remove-Item $preflightLocal -Force -ErrorAction SilentlyContinue
+$preflightCmd = "bash /tmp/deploy-reload.sh --preflight $serverPath"
+$preflight = ssh -i "$sshKey" ${serverUser}@${serverIP} $preflightCmd
+$preflight | Write-Host
+if ($LASTEXITCODE -ne 0 -or ($preflight | Out-String) -notmatch "PRECHECK_OK") {
+    Write-Host "上传前检查没过，没有上传代码，线上目录还没改。" -ForegroundColor Red
+    Remove-Item $tempPkg -Force -ErrorAction SilentlyContinue
     pause
     exit 1
 }
@@ -211,7 +234,9 @@ if ($LASTEXITCODE -ne 0) {
 Remove-Item $manifestLocal, $pruneLocal, $reloadLocal -Force -ErrorAction SilentlyContinue
 
 Write-Host "服务器端部署..." -ForegroundColor Yellow
-# 解压与依赖安装。这一步很快，放在前台执行。
+# 解压与依赖安装发生在正在服务的目录里。旧进程还在，但磁盘上的 .next
+# 会被后面的构建改写，这段时间页面可能 404 或 500。见 DEPLOYMENT.md「构建时的空窗」。
+# 这一步很快，放在前台执行。
 # 注意：绝不要在这里 rm -rf .next。服务器只有 2G 内存，删掉缓存会触发全量
 # 构建，内存峰值直接把机器压死——SSH 和网站一起失联，只能去控制台强制重启。
 # 保留缓存做增量构建，内存占用低得多。

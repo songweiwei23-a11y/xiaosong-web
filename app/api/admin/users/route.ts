@@ -23,10 +23,14 @@ const PERMISSION_FOR_ACTION: Record<string, AdminPermission> = {
   delete_user: 'delete_user',
 };
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+/** 请求进来再创建。模块顶层创建会在没有环境变量时让 next build 收集页面数据失败。 */
+function supabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +40,7 @@ export const dynamic = 'force-dynamic';
  * 没有订阅行的用户才新建一行免费版；有行就只 update status。
  */
 async function setSubscriptionStatus(userId: string, status: 'active' | 'inactive') {
+  const supabase = supabaseClient();
   const now = new Date().toISOString();
   const { data: existing, error: readError } = await supabase
     .from('subscriptions')
@@ -61,6 +66,7 @@ export async function GET(request: Request) {
     if (!admin) {
       return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     }
+    const supabase = supabaseClient();
 
     const { searchParams } = new URL(request.url);
     const detailId = searchParams.get('detail');
@@ -134,6 +140,7 @@ function referrerView(info: ReferrerInfo | undefined): { agent_name: string; inv
 
 async function loadUserDetail(userId: string) {
   try {
+    const supabase = supabaseClient();
     const { data: au, error: authError } = await supabase.auth.admin.getUserById(userId);
     if (authError || !au?.user) {
       return NextResponse.json({ error: '没找到这个用户，可能已经删过了' }, { status: 404 });
@@ -227,6 +234,7 @@ export async function POST(request: Request) {
     if (!admin) {
       return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     }
+    const supabase = supabaseClient();
 
     const body = await request.json();
     const { userId, action, plan, endDate } = body;

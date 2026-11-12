@@ -11,7 +11,7 @@ function writeExec(file: string, body: string) {
   fs.writeFileSync(file, body, { mode: 0o755 });
 }
 
-function run(mode: 'ok' | 'fail' | 'wrong', extra?: { memKb?: number; nginxTestFail?: boolean; portBusy?: boolean }) {
+function run(mode: 'ok' | 'fail' | 'wrong' | 'front-fail', extra?: { memKb?: number; nginxTestFail?: boolean; portBusy?: boolean; preflight?: boolean }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kaiwu-reload-'));
   const bin = path.join(dir, 'bin');
   const app = path.join(dir, 'app');
@@ -66,6 +66,17 @@ if [ "$MODE" = "wrong" ]; then
   printf '200'
   exit 0
 fi
+url=""
+for a in "$@"; do
+  case "$a" in
+    http://*) url="$a" ;;
+  esac
+done
+if [ "$MODE" = "front-fail" ] && [ "$url" = "http://127.0.0.1/api/health" ]; then
+  printf '%s' '{"ok":false}' > "$body"
+  printf '502'
+  exit 0
+fi
 printf '%s' "{\\"ok\\":true,\\"pid\\":4242,\\"boot\\":\\"$KAIWU_BOOT_ID\\"}" > "$body"
 printf '200'
 exit 0
@@ -91,7 +102,8 @@ fi
 if [ "$1" = "-s" ]; then exit 0; fi
 exit 1
 `);
-  const result = spawnSync('bash', [SCRIPT, app], {
+  const args = extra?.preflight ? ['--preflight', app] : [app];
+  const result = spawnSync('bash', [SCRIPT, ...args], {
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -142,6 +154,27 @@ describe('换端口切换', () => {
     expect(out.log).not.toContain('nginx -s');
   });
 
+  it('经过 Nginx 的健康检查失败时回滚，不停旧进程', () => {
+    const out = run('front-fail');
+    expect(out.status).not.toBe(0);
+    expect(out.stdout).toContain('经过 Nginx');
+    expect(out.stdout).not.toContain('SWITCH_OK');
+    expect(out.upstream).toContain('server 127.0.0.1:3000;');
+    expect(out.log).toContain("Host: biandao.icu");
+    expect(out.log).toContain('http://127.0.0.1/api/health');
+    expect(out.log).not.toContain('delete name=xiaosong-web\n');
+    expect(out.log).toContain('delete name=xiaosong-web-next');
+  });
+
+  it('上传前检查只确认 Nginx、内存和 ecosystem，不启动新进程', () => {
+    const out = run('ok', { preflight: true });
+    expect(out.status).toBe(0);
+    expect(out.stdout).toContain('PRECHECK_OK');
+    expect(out.log).not.toContain('pm2 start');
+    expect(out.upstream).toContain('127.0.0.1:3000');
+    expect(out.log).not.toContain('delete name=xiaosong-web\n');
+  });
+
   it('健康检查通过才把 upstream 切到新端口，并停掉旧进程', () => {
     const out = run('ok');
     expect(out.status).toBe(0);
@@ -150,6 +183,8 @@ describe('换端口切换', () => {
     expect(out.log).toContain('delete name=xiaosong-web\n');
     expect(out.log).toContain('nginx -s reload');
     expect(out.log).toContain('http://127.0.0.1:3001/api/health');
+    expect(out.log).toContain("Host: biandao.icu");
+    expect(out.log).toContain('http://127.0.0.1/api/health');
     expect(out.log).not.toContain('http://localhost:3000/');
   });
 

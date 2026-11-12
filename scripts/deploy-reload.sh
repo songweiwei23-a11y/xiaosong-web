@@ -13,6 +13,12 @@
 #       Nginx 已 include /etc/nginx/snippets/xiaosong-upstream.conf
 set -euo pipefail
 
+# --preflight 只做上传前检查：Nginx、可用内存、ecosystem。不启动、不改流量。
+PREFLIGHT=0
+if [ "${1:-}" = "--preflight" ]; then
+  PREFLIGHT=1
+  shift
+fi
 APP_DIR="${1:-}"
 UPSTREAM_FILE="${UPSTREAM_FILE:-/etc/nginx/snippets/xiaosong-upstream.conf}"
 PM2="${PM2:-pm2}"
@@ -114,6 +120,34 @@ wait_health() {
   return 1
 }
 
+# reload 之后走本机 Nginx，确认流量真的到了这次的进程。
+# Host 必须是站点名，否则可能打到别的 server，误判成功。
+front_ok() {
+  local boot="$1" pid="$2" body code
+  body=$(mktemp)
+  code="000"
+  if code=$("$CURL" -sS -o "$body" -w '%{http_code}' --max-time 5 --retry 0 -H 'Host: biandao.icu' "http://127.0.0.1/api/health"); then
+    :
+  else
+    code="000"
+  fi
+  local ok=0
+  if [ "$code" = "200" ] && match_health "$body" "$boot" "$pid"; then
+    ok=1
+  fi
+  rm -f "$body"
+  [ "$ok" = "1" ]
+}
+
+wait_front() {
+  local boot="$1" pid="$2" i
+  for i in $(seq 1 "$HEALTH_TRIES"); do
+    if front_ok "$boot" "$pid"; then return 0; fi
+    if [ "$i" -lt "$HEALTH_TRIES" ]; then sleep "$HEALTH_INTERVAL"; fi
+  done
+  return 1
+}
+
 # 正在听这个端口才算占用。TIME_WAIT 不算。
 port_busy() {
   local port="$1"
@@ -204,6 +238,11 @@ if [ ! -f "$APP_DIR/ecosystem.config.cjs" ]; then
   exit 1
 fi
 
+if [ "$PREFLIGHT" = "1" ]; then
+  echo "PRECHECK_OK"
+  exit 0
+fi
+
 "$PM2" delete "$STAGING_NAME" >/dev/null 2>&1 || true
 
 if port_busy "$NEXT_PORT"; then
@@ -262,6 +301,10 @@ if ! nginx_bin -T >"$dump" 2>/dev/null || ! grep -q "127.0.0.1:${NEXT_PORT}" "$d
   fail_closed "Nginx 配置里没有新端口"
 fi
 rm -f "$dump"
+
+if ! wait_front "$BOOT_ID" "$STAGING_PID"; then
+  fail_closed "经过 Nginx 的 /api/health 没有返回 200 且 ok:true，已把流量改回旧端口"
+fi
 
 if ! health_ok "$NEXT_PORT" "$BOOT_ID" "$STAGING_PID"; then
   fail_closed "切换后新端口的 /api/health 对不上这次的进程，已把流量改回旧端口"

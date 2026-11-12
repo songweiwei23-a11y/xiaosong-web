@@ -156,6 +156,27 @@ describe('恢复创作链接', () => {
     expect(fetchMock.mock.calls.length).toBeGreaterThan(3);
   });
 
+  it('返回 200 但读不出快照时，不说成另一板块', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ payload: { note: '没有目标板块' } }) });
+    render();
+    runPending();
+    await vi.advanceTimersByTimeAsync(0);
+    render();
+    expect(textOf(tree)).toContain('内容读不出来');
+    expect(textOf(tree)).not.toContain('另一创作板块');
+  });
+
+  it('服务端返回 fetch failed 时，不说成请求没发出去', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({ error: 'fetch failed' }) });
+    render();
+    runPending();
+    await vi.advanceTimersByTimeAsync(2_000);
+    render();
+    expect(textOf(tree)).toContain('服务暂时没有连上');
+    expect(textOf(tree)).not.toContain(NETWORK_ERROR_HINT);
+    expect(textOf(tree)).not.toContain('请求没发出去');
+  });
+
   it('离开页面引起的 AbortError 不重试', async () => {
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
       const signal = init?.signal;

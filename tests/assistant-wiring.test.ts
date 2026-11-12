@@ -51,8 +51,12 @@ describe('额度：每条消息预留 1 次自由对话，成功结算，停止�
 });
 
 describe('密钥不进仓库', () => {
-  // 中转密钥形如 sk- 加一长串十六进制。不把真实前缀写进仓库；测试夹具里的 sk-test- 对不上。
-  const LEAK = /sk-[0-9a-f]{16,}/;
+  // 不把真实密钥写进断言。占位 app-xxxxxxxx、夹具 sk-test- 对不上这些长度。
+  const LEAKS = [
+    /sk-[0-9a-f]{16,}/,
+    /app-[0-9A-Za-z]{16,}/,
+    /eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}/,
+  ];
   const SCAN = ['lib', 'app', 'components', 'hooks', 'tests', 'scripts', 'supabase'];
   const SKIP = new Set(['node_modules', '.next', '.git']);
 
@@ -72,7 +76,8 @@ describe('密钥不进仓库', () => {
     expect(files.length).toBeGreaterThan(200);
     const leaks = files.filter((f) => {
       try {
-        return LEAK.test(fs.readFileSync(f, 'utf8'));
+        const text = fs.readFileSync(f, 'utf8');
+        return LEAKS.some((pattern) => pattern.test(text));
       } catch {
         return false;
       }

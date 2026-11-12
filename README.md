@@ -24,7 +24,7 @@
 - **认证系统**: Supabase Auth
 - **数据库**: Supabase (PostgreSQL)
 - **AI 接口**: Dify Chatflow API
-- **部署平台**: Vercel
+- **部署平台**: 腾讯云 + PM2（见 DEPLOYMENT.md）
 
 ## 💎 会员体系
 

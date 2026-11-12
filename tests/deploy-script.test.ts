@@ -28,6 +28,10 @@ describe('部署脚本不会把失败的构建当成成功', () => {
   it('确实读到了脚本（防止路径写错导致空过）', () => {
     expect(script.length).toBeGreaterThan(3000);
     expect(script).toContain('bash /tmp/deploy-reload.sh');
+    const preflight = script.indexOf('--preflight');
+    const upload = script.indexOf('上传到服务器');
+    expect(preflight, 'Nginx、内存、ecosystem 要在上传之前检查').toBeGreaterThan(0);
+    expect(upload).toBeGreaterThan(preflight);
     expect(script).not.toContain('pm2 restart xiaosong-web');
   });
 
@@ -60,7 +64,8 @@ describe('部署脚本不会把失败的构建当成成功', () => {
     expect(script, '缺少 .next 是否比源码旧的检查').toMatch(/-newer \.next\/BUILD_ID/);
     // 这道检查必须在换端口之前，否则会拿旧构建去切流量
     const staleCheck = script.indexOf('-newer .next/BUILD_ID');
-    const reload = script.indexOf('bash /tmp/deploy-reload.sh');
+    // 前面还有一次 --preflight。要比的是构建之后真正切换的那次。
+    const reload = script.lastIndexOf('bash /tmp/deploy-reload.sh');
     expect(staleCheck).toBeGreaterThan(0);
     expect(reload, '切换脚本必须还在').toBeGreaterThan(0);
     expect(staleCheck, '新旧比对必须排在切换之前，否则拦不住').toBeLessThan(reload);
