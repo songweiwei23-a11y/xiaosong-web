@@ -43,7 +43,7 @@ export async function validateBody<T>(
     return { data, error: null };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const messages = error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
       return {
         data: null,
         error: apiError(`请求参数错误: ${messages}`, 400),
@@ -95,9 +95,9 @@ export function apiHandler(
 
       // 如果有特定的错误码，使用它
       if (error && typeof error === 'object' && 'code' in error) {
-        const errorCode = (error as any).code;
-        if (errorCode === 'creation_window_wait') {
-          return apiError((error as Error).message, 409);
+        const errorWithCode = error as { code: string; message?: string };
+        if (errorWithCode.code === 'creation_window_wait') {
+          return apiError(errorWithCode.message || '请稍后重试', 409);
         }
       }
 
