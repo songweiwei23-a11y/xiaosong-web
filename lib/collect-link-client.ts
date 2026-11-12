@@ -27,14 +27,9 @@ export function canStartFromCapture(visibleResult: string): boolean {
   return !visibleResult.trim();
 }
 
-/** 采集回填不许改用户已经写在输入框里的文字 */
-export function preserveUserText(written: string): string {
-  return written;
-}
-
-/** 正在改策略卡，或这张卡是用户改过的：采集回来先别开一轮新复盘（会换成新卡） */
-export function shouldHoldReviewCapture(userWroteStrategy: boolean): boolean {
-  return userWroteStrategy;
+/** 正在改策略卡，或这张卡已经是用户改过再保存的：采集回来先别开一轮新复盘（会换成新卡） */
+export function shouldHoldReviewCapture(input: { editing: boolean; edited: boolean }): boolean {
+  return input.editing || input.edited;
 }
 
 export async function prepareCollectLink(url: string): Promise<PreparedLink> {

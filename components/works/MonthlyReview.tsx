@@ -143,7 +143,7 @@ export function MonthlyReview() {
       window.postMessage({ source: "kaiwu-page", type: "received" }, window.location.origin);
       const payload = { text: formatCollection(col), summary: collectionSummary(col) };
       // 正在改，或这张卡是用户改过再保存的：采集正文不写进输入框，也不自动换成新卡
-      if (shouldHoldReviewCapture(!!editingRef.current || reviewEditedRef.current)) {
+      if (shouldHoldReviewCapture({ editing: !!editingRef.current, edited: reviewEditedRef.current })) {
         heldCollect.current = payload;
         setHeldCollectOn(true);
         setMsg(editingRef.current

@@ -19,8 +19,46 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 
-/** 插件运行需要的文件。多出来的（系统垃圾、另一个 zip）不打进去 */
-const FILES = ['manifest.json', 'background.js', 'bridge.js', 'collector.js', 'popup.html', 'popup.js'];
+/**
+ * manifest 里点名的本地文件（service worker、弹窗、内容脚本、图标等）。
+ * 不靠写死的名单：清单多引用一个文件，这里必须能找到，否则打包失败。
+ */
+export function filesReferencedByManifest(manifest) {
+  const names = [];
+  const seen = new Set();
+  const add = (value) => {
+    if (typeof value !== 'string') return;
+    const name = value.replace(/\\/g, '/').replace(/^\.\//, '').split(/[?#]/)[0];
+    if (!name || name.includes('://') || name.startsWith('/') || name.startsWith('data:')) return;
+    if (!/\.(js|mjs|html|css|json|png|jpe?g|gif|webp|svg|wasm)$/i.test(name)) return;
+    if (name.includes('..') || name.includes('/')) {
+      throw new Error(`manifest 引用的路径只能是插件根目录上的文件：${name}`);
+    }
+    if (seen.has(name)) return;
+    seen.add(name);
+    names.push(name);
+  };
+  const walk = (node) => {
+    if (Array.isArray(node)) node.forEach(walk);
+    else if (node && typeof node === 'object') Object.values(node).forEach(walk);
+    else add(node);
+  };
+  walk(manifest);
+  return names;
+}
+
+/** html 里的本地脚本和样式（popup.js 不写在 manifest 里，弹窗却要它） */
+function htmlLocalFiles(html) {
+  const out = [];
+  const re = /<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["']/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const src = m[1].replace(/^\.\//, '').split(/[?#]/)[0];
+    if (!src || src.includes('://') || src.startsWith('/') || src.startsWith('data:') || src.includes('..')) continue;
+    out.push(src);
+  }
+  return out;
+}
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -166,18 +204,39 @@ if (!fs.existsSync(manifestPath)) {
   fail(`找不到 ${manifestPath}，也没有现成的 ${outFile}。一键采集的插件包打不出来。`);
 }
 
-const files = FILES.map((name) => {
-  const full = path.join(sourceDir, name);
-  if (!fs.existsSync(full)) fail(`插件源码缺 ${name}`);
-  return { name, data: fs.readFileSync(full) };
-});
-const manifest = JSON.parse(files[0].data.toString('utf8'));
+const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 if (typeof manifest.version !== 'string' || !manifest.version) fail('manifest.json 没有版本号');
 
+let referenced;
+try {
+  referenced = filesReferencedByManifest(manifest);
+} catch (e) {
+  fail(e instanceof Error ? e.message : String(e));
+}
+const missing = referenced.filter((name) => !fs.existsSync(path.join(sourceDir, name)));
+if (missing.length) fail(`manifest 引用了这些文件，但源码里没有：${missing.join('、')}`);
+
+const names = ['manifest.json'];
+for (const name of referenced) if (!names.includes(name)) names.push(name);
+for (const name of [...names]) {
+  if (!name.endsWith('.html')) continue;
+  const html = fs.readFileSync(path.join(sourceDir, name), 'utf8');
+  for (const local of htmlLocalFiles(html)) {
+    if (names.includes(local)) continue;
+    if (!fs.existsSync(path.join(sourceDir, local))) fail(`「${name}」引用了 ${local}，源码里没有`);
+    names.push(local);
+  }
+}
+
+const files = names.map((name) => ({ name, data: fs.readFileSync(path.join(sourceDir, name)) }));
 const zipped = zipFiles(files);
 const back = readZip(zipped);
-if (back.map((e) => e.name).join('\n') !== FILES.join('\n')) fail('打出来的包文件清单不对');
-const packedManifest = JSON.parse(back[0].data.toString('utf8'));
+const packed = new Set(back.map((e) => e.name));
+if (back.map((e) => e.name).join('\n') !== names.join('\n')) fail('打出来的包文件清单不对');
+for (const name of ['manifest.json', ...referenced]) {
+  if (!packed.has(name)) fail(`打出来的包缺 manifest 引用的文件：${name}`);
+}
+const packedManifest = JSON.parse(back.find((e) => e.name === 'manifest.json').data.toString('utf8'));
 if (packedManifest.version !== manifest.version) fail('包里的版本和源码不一致');
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });

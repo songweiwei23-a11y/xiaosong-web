@@ -13,7 +13,6 @@ import {
   PLUGIN_SILENT,
   pluginMessageNeedsDownload,
   prepareCollectLink,
-  preserveUserText,
   shouldHoldReviewCapture,
 } from '@/lib/collect-link-client';
 import { readCode } from './helpers/source';
@@ -136,16 +135,18 @@ describe('接线', () => {
     expect(canStartFromCapture('')).toBe(true);
     expect(canStartFromCapture('  \n')).toBe(true);
     expect(canStartFromCapture('上次没写完的拆解')).toBe(false);
-    expect(preserveUserText('我已经写的备注')).toBe('我已经写的备注');
-    expect(shouldHoldReviewCapture(true)).toBe(true);
-    expect(shouldHoldReviewCapture(false)).toBe(false);
+    expect(shouldHoldReviewCapture({ editing: true, edited: false })).toBe(true);
+    expect(shouldHoldReviewCapture({ editing: false, edited: true })).toBe(true);
+    expect(shouldHoldReviewCapture({ editing: false, edited: false })).toBe(false);
 
     const analyzer = readCode('components/benchmark/BenchmarkAnalyzer.tsx');
+    const incomingEffect = analyzer.slice(analyzer.indexOf('handled.current === incoming.nonce'), analyzer.indexOf('const addFiles'));
     expect(analyzer).toMatch(/if \(!canStartFromCapture\(report\)\) \{[\s\S]*return;\s*\}\s*void run\(/);
-    expect(analyzer).toContain('pasted: preserveUserText(pasted)');
+    expect(incomingEffect).not.toContain('setPasted');
+    expect(incomingEffect).toContain('pasted,');
+    expect(analyzer).not.toContain('preserveUserText');
     expect(analyzer).toContain('[...files, ...incoming.files]');
-    expect(analyzer).not.toContain('setPasted(formatCollection');
-    expect(analyzer).not.toContain('setPasted("")');
+    expect(readCode('lib/collect-link-client.ts')).not.toContain('preserveUserText');
 
     const diagnosis = readCode('components/works/AccountDiagnosis.tsx');
     expect(diagnosis).toMatch(/if \(!canStartFromCapture\(reportRef\.current\)\) \{[\s\S]*return;\s*\}/);
@@ -153,7 +154,7 @@ describe('接线', () => {
     expect(diagnosis).not.toContain('setLink("")');
 
     const review = readCode('components/works/MonthlyReview.tsx');
-    expect(review).toMatch(/shouldHoldReviewCapture\(!!editingRef\.current \|\| reviewEditedRef\.current\)\) \{[\s\S]*?return;\s*\}\s*void startRef\.current\(payload\)/);
+    expect(review).toMatch(/shouldHoldReviewCapture\(\{ editing: !!editingRef\.current, edited: reviewEditedRef\.current \}\)\) \{[\s\S]*?return;\s*\}\s*void startRef\.current\(payload\)/);
     expect(review).toContain('用这次采集复盘');
     expect(review).not.toContain('setLink("")');
 

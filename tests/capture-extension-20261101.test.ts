@@ -252,7 +252,11 @@ describe('自动采集守底线', () => {
     execFileSync(process.execPath, ['scripts/pack-kaiwu-capture.mjs', '--out', out], { cwd: process.cwd(), stdio: 'pipe' });
     const entries = readZip(fs.readFileSync(out));
     fs.rmSync(out, { force: true });
-    expect(entries.map((e) => e.name)).toEqual(['manifest.json', 'background.js', 'bridge.js', 'collector.js', 'popup.html', 'popup.js']);
+    const names = entries.map((e) => e.name);
+    expect(names[0]).toBe('manifest.json');
+    for (const required of ['background.js', 'bridge.js', 'collector.js', 'popup.html', 'popup.js']) {
+      expect(names).toContain(required);
+    }
     // 路径在根上，用正斜杠；套一层目录或反斜杠，Chrome 会说找不到清单
     expect(entries.every((e) => !e.name.includes('\\') && !e.name.includes('/'))).toBe(true);
     const manifest = JSON.parse(entries[0].data.toString('utf8'));
@@ -289,6 +293,19 @@ describe('自动采集守底线', () => {
     const missing = path.join(os.tmpdir(), `kaiwu-missing-${process.pid}.zip`);
     expect(() => execFileSync(process.execPath, ['scripts/pack-kaiwu-capture.mjs', '--source', path.join(os.tmpdir(), 'no-kaiwu-src'), '--out', missing], { stdio: 'pipe' })).toThrow();
     expect(fs.existsSync(missing)).toBe(false);
+  });
+
+  it('manifest 点名的文件不在源码里，打包失败，不写出 zip', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kaiwu-pack-'));
+    fs.cpSync('browser-extension/kaiwu-capture', dir, { recursive: true });
+    const manifestPath = path.join(dir, 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.options_page = 'no-such.html';
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    const out = path.join(dir, 'out.zip');
+    expect(() => execFileSync(process.execPath, ['scripts/pack-kaiwu-capture.mjs', '--source', dir, '--out', out], { cwd: process.cwd(), stdio: 'pipe' })).toThrow();
+    expect(fs.existsSync(out)).toBe(false);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('工作台首页能看见「一键采集」（侧边栏那一项叫「对标 & 热点」，光看首页会以为没有）', () => {
