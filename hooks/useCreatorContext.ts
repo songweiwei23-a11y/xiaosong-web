@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { CreatorContext, CreatorProfile } from "@/lib/creator-context";
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { BRIEF_TYPE } from "@/lib/creative-brief";
+import { briefLoadOf } from "@/lib/brief-badge";
 import { ADVICE_TYPE, staleUpstream } from "@/lib/industry-advice";
 import { fetchActivePreset } from "@/lib/creator-presets";
 import { fetchActivePreferences } from "@/lib/preferences-client";
@@ -113,17 +114,22 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     let brief: string | null = null;
     let briefAt: string | null = null;
     let briefFacts: string | null = null;
+    // 请求没回来、或回来的不是数组：算读取失败。空数组才是「这份档案还没有简报」
+    let parsed = false;
     if (briefRes?.ok) {
       const list = await briefRes.json().catch(() => null);
-      if (Array.isArray(list) && list.length > 0) {
+      if (Array.isArray(list)) {
+        parsed = true;
         // 取这个档案自己的那份（接口已按 created_at 倒序）；同上，不拿别的档案的顶上
         const own = profile ? list.find((x: any) => x.profile_id === profile!.id) : null;
         const pick = own || list.find((x: any) => !x.profile_id);
-        brief = pick?.full_content || null;
+        const raw = pick?.full_content;
+        brief = typeof raw === 'string' && raw.trim() ? raw : null;
         briefAt = pick?.updated_at || pick?.created_at || null;
         briefFacts = typeof pick?.positioning_description === 'string' ? pick.positioning_description : null;
       }
     }
+    const briefLoad = briefLoadOf({ fetched: !!briefRes?.ok, parsed, brief });
 
     let advice: string | null = null;
     let adviceAt: string | null = null;
@@ -173,7 +179,7 @@ async function fetchContext(profileId: string | null): Promise<CreatorContext> {
     const preferences = await fetchActivePreferences(profile?.id ?? profileId);
 
     const ctx: CreatorContext = {
-      profile, positioning, dealReasons, brief, briefAt, briefFacts, performance, workInsight, doneList, preset, preferences,
+      profile, positioning, dealReasons, brief, briefAt, briefFacts, briefLoad, performance, workInsight, doneList, preset, preferences,
       advice, adviceAt, adviceStale, contentPositioning, businessPositioning,
     };
     if (version === cacheVersion) cache.set(key, ctx);

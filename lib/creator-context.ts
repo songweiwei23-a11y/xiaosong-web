@@ -139,6 +139,11 @@ export interface CreatorContext {
   briefAt?: string | null;
   /** 生成 / 保存简报时档案事实的指纹（lib/creative-brief 的 profileFactsFingerprint） */
   briefFacts?: string | null;
+  /**
+   * 这次简报接口读得怎么样（lib/brief-badge 的 briefLoadOf）。
+   * 不传时徽章不当成「还没生成」——读取失败和库里没有是两件事。
+   */
+  briefLoad?: 'ok' | 'missing' | 'error';
   /** 数据回流：这个号发出去的作品录的数据汇总（lib/performance） */
   performance?: PerformanceSummary | null;
   /** 账号作品概况（lib/work-insight）：确定的配比、三类数据反馈、下一批建议；和数据回流走同一批板块 */

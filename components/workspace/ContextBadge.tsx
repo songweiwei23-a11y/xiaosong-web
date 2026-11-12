@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCreatorContext } from '@/hooks/useCreatorContext'
-import { parseBrief, BRIEF_FIELDS } from '@/lib/creative-brief'
+import { briefBadgeCopy } from '@/lib/brief-badge'
 import { manifestOf, type Board } from '@/lib/context-manifest'
 import { briefOlderThanProfile } from '@/lib/creator-context'
 import { activeTaboos, countTaboos } from '@/lib/taboos'
@@ -33,10 +33,7 @@ export function ContextBadge({ board, className = '' }: Props) {
   if (!manifest) return null
 
   const profileName = context.profile?.profile_name?.trim()
-  const values = parseBrief(context.brief)
-  const used = manifest.brief
-    .map((k) => (values[k]?.trim() ? BRIEF_FIELDS.find((f) => f.key === k)?.label : null))
-    .filter(Boolean) as string[]
+  const briefCopy = briefBadgeCopy({ board, brief: context.brief, load: context.briefLoad })
 
   const base =
     'rounded-xl border border-border bg-foreground/[0.03] px-3.5 py-2.5 text-[12px] leading-relaxed'
@@ -102,27 +99,25 @@ export function ContextBadge({ board, className = '' }: Props) {
         )
       })()}
 
-      {used.length > 0 ? (
-        <>
-          <p className="text-emerald-500">
-            创作简报已带上：{used.join('、')} ✓
-          </p>
-          {briefOlderThanProfile(context) && (
-            <p className="text-amber-500">
-              档案在简报之后改过，简报里的人设、年限可能是旧的（生成时会以档案为准）。
-              <Link href="/dashboard/creative-brief" className="ml-1 underline">
-                重新生成简报
-              </Link>
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="text-muted-foreground">
-          还没生成创作简报，这次只能用档案里的字段。
-          <Link href="/dashboard/creative-brief" className="ml-1 underline">
-            去生成
+      {/*
+        有没有简报、本板块读不读、这次读没读成，是三件事。
+        方案 D 的板块清单里 brief 是空数组：有简报也不注入，不能说成「还没生成」。
+      */}
+      <p className={briefCopy.tone === 'emerald' ? 'text-emerald-500' : briefCopy.tone === 'amber' ? 'text-amber-500' : 'text-muted-foreground'}>
+        {briefCopy.text}
+        {briefCopy.link && (
+          <Link href={briefCopy.link.href} className="ml-1 underline">
+            {briefCopy.link.label}
           </Link>
-          （做完选题、脚本、分镜都会自动用上）
+        )}
+        {briefCopy.tail ? <> {briefCopy.tail}</> : null}
+      </p>
+      {briefCopy.attached && briefOlderThanProfile(context) && (
+        <p className="text-amber-500">
+          档案在简报之后改过，简报里的人设、年限可能是旧的（生成时会以档案为准）。
+          <Link href="/dashboard/creative-brief" className="ml-1 underline">
+            重新生成简报
+          </Link>
         </p>
       )}
     </div>
