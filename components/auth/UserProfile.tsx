@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { postSafely } from "@/lib/safe-post";
+import { forgetLoginName } from "@/lib/login-memory";
 import { supabase } from "@/lib/supabase/client";
 import { Briefcase, ChevronDown, Crown, LogOut, User as UserIcon, UserCog } from "lucide-react";
 import { useAgentStatus } from "@/components/agent/useAgentStatus";
@@ -50,6 +51,8 @@ export function UserProfile() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // 登录页「欢迎回来」记在本机，会话清掉它还在；共用电脑会看到上一个账号
+    forgetLoginName();
     // 退出后这台设备的首页通行也作废：再打开首页要重新凭邀请链接或门票进门
     await postSafely("/api/gate/logout", { method: "POST" }).catch(() => {});
     // 整页跳转（退出是安全动作，不沿用页面里登录后的缓存）：首页要由服务器重新判断，不能显示登录后的内容

@@ -4,20 +4,18 @@ import { useEffect, useState } from "react";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { FACTS, SHOWCASE_CARDS, SHOWCASE_STRUCTURES, SHOWCASE_TACTICS } from "@/lib/showcase";
 import { SUBSCRIPTION_PLANS } from "@/lib/config/plans";
+import { forgetLoginName, readLoginName } from "@/lib/login-memory";
+
+export { rememberLoginName, forgetLoginName } from "@/lib/login-memory";
 
 /**
  * 登录页的几处小温度（2026-10-04 产品方：加点惊喜、温馨，让人更想点进去）：
- *   - 按时段问候；这台电脑上登录过的，叫得出名字（只存邮箱 @ 前面那段，在本机，「不是你？」一键清掉）
+ *   - 按时段问候；这台电脑上登录过、且还没退出的，叫得出名字（只存邮箱 @ 前面那段；
+ *     「不是你？」、退出登录、注销账号都会清掉，见 lib/login-memory）
  *   - 今日一计：还没登录先送一招真编导方法（每天换，可「换一个」）
  *   - 注册时说清楚送什么（从套餐配置算，不手写）
  * 本机存储读写都包在 try 里：隐私模式、禁用存储时照常显示，只是不认人。
  */
-const NAME_KEY = "kaiwu:login-name";
-
-export function rememberLoginName(email: string) {
-  const name = email.includes("@") ? email.split("@")[0].slice(0, 20) : "";
-  try { if (name) window.localStorage.setItem(NAME_KEY, name); } catch { /* 存不了就下次不认人 */ }
-}
 
 /** 按小时问候。深夜那句是心疼，不是催 */
 export function greetingFor(hour: number, isLogin: boolean): { title: string; sub: string } {
@@ -33,9 +31,7 @@ export function LoginGreeting({ isLogin }: { isLogin: boolean }) {
   // 时间和名字只在浏览器里算：服务端渲染不知道访客几点、是谁，先渲染会对不上
   const [state, setState] = useState<{ hour: number; name: string } | null>(null);
   useEffect(() => {
-    let name = "";
-    try { name = window.localStorage.getItem(NAME_KEY) || ""; } catch { /* 读不到就不认人 */ }
-    setState({ hour: new Date().getHours(), name });
+    setState({ hour: new Date().getHours(), name: readLoginName() });
   }, []);
   if (!state) return <div className="mb-5 h-[52px]" aria-hidden />;
   const g = greetingFor(state.hour, isLogin);
@@ -50,7 +46,7 @@ export function LoginGreeting({ isLogin }: { isLogin: boolean }) {
         {welcomeBack && (
           <button
             type="button"
-            onClick={() => { try { window.localStorage.removeItem(NAME_KEY); } catch { /* 无妨 */ } setState({ ...state, name: "" }); }}
+            onClick={() => { forgetLoginName(); setState({ ...state, name: "" }); }}
             className="ml-2 text-xs text-muted-foreground/80 underline hover:text-foreground"
           >
             不是你？
