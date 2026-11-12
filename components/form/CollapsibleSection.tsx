@@ -16,23 +16,27 @@ export function CollapsibleSection({
   title,
   icon: Icon,
   defaultOpen = true,
+  forceOpen = false,
   children,
 }: {
   title: string;
   /** 仅在折叠状态下作为小提示显示，展开后不出现，避免与标题争夺注意力 */
   icon?: any;
   defaultOpen?: boolean;
+  /** 校验失败时把收起的分组展开，缺的字段才点得到 */
+  forceOpen?: boolean;
   children: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const shown = forceOpen || isOpen;
 
   return (
     // p-5 与 FieldGroup 一致：内边距是「不紧凑」最直接的来源
     <div className="glass-panel rounded-2xl p-4 sm:p-5">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
+        onClick={() => { if (!forceOpen) setIsOpen((open) => !open); }}
+        aria-expanded={shown}
         className="group flex w-full items-center justify-between gap-2"
       >
         <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 transition-colors group-hover:text-muted-foreground">
@@ -41,13 +45,13 @@ export function CollapsibleSection({
         </span>
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
+            shown ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {/* 字段间距 20px。原先是 16px，配合 16px 的内边距，整块看起来是压实的 */}
-      {isOpen && <div className="mt-4 space-y-5">{children}</div>}
+      {shown && <div className="mt-4 space-y-5">{children}</div>}
     </div>
   );
 }

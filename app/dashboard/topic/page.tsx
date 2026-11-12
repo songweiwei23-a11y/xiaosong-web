@@ -57,6 +57,7 @@ import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { postSafely } from '@/lib/safe-post';
 import { buildTopicBoardQuery, topicCreationSettings } from '@/lib/boards/topic-query';
 import { completeBatch } from '@/lib/topic-batch';
+import { customTopicFieldMessage, missingCustomTopicFields } from '@/lib/topic-form';
 
 export default function TopicPage() {
   const beginProfileRequest = useProfileRequestGuard();
@@ -194,6 +195,8 @@ export default function TopicPage() {
 
   // 生成状态
   const [isGenerating, setIsGenerating] = useState(false);
+  /** 自定义模式缺必填项时留在按钮旁边，不靠右上角一闪而过的提示 */
+  const [formError, setFormError] = useState("");
   /** 选题已写完、还在润色标题和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
   const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
@@ -331,7 +334,7 @@ export default function TopicPage() {
   }, []);
 
   const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
-    setMode('quick'); setAccountStage(creatorContext.profile?.account_stage || '有定位，需要内容方向');
+    setMode('quick'); setFormError(""); setAccountStage(creatorContext.profile?.account_stage || '有定位，需要内容方向');
     // 只填原内容写明的和档案里有的；没写的保持页面默认（目的「按配比」、类型和元素空着），不猜（2026-10-03）
     setFansLevel(creatorContext.profile?.fans_level || '0-1000'); setSelectedPlatforms([s.platform!]);
     setSelectedTracks(s.industry ? s.industry.split('、').map((x) => x.trim()).filter(Boolean) : []);
@@ -368,16 +371,33 @@ export default function TopicPage() {
   const elementNote = elementFitNote(selectedElements, industryKeysOf(profiles.find((p) => p.id === selectedProfileId) ?? null));
   const resolvedMix = resolveMix(mixProfile, mixOverride, personalRequirement);
 
+  // 缺字段提示出来之后再滚到那一项：分组可能刚被 forceOpen 展开，点下去的那一帧控件还不在页面上
+  useEffect(() => {
+    if (mode !== "custom" || !formError) return;
+    const field = document.getElementById("topic-field-accountStage");
+    field?.scrollIntoView({ block: "center", behavior: "smooth" });
+    field?.focus();
+  }, [formError, mode]);
+
   // 生成选题函数
   const handleGenerate = async () => {
     if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (autoSetup.preparing || contextLoading) { notify("正在承接原方案，请稍候"); return; }
     if (!resultScope) { notify("档案正在加载，请稍后再试，还不行就刷新页面"); return; }
     const isCurrent = beginProfileRequest();
-    if (!accountStage && mode === "custom") {
-      notify("请选择账号阶段");
+    /*
+     * 自定义模式的账号阶段是必填。以前没填就 return，只 notify 一句，
+     * 字段徽章却写着「可选」，右上角提示 3 秒就没了，点按钮像没反应。
+     * 快速模式 missingCustomTopicFields 直接返回空，下面的生成流程不动。
+     */
+    const missing = missingCustomTopicFields({ mode, accountStage });
+    if (missing.length) {
+      const message = customTopicFieldMessage(missing);
+      setFormError(message);
+      notify(message, "warning");
       return;
     }
+    setFormError("");
 
     setIsGenerating(true);
     setResult("");
@@ -613,7 +633,10 @@ export default function TopicPage() {
             ] as const).map((m) => (
               <button
                 key={m.id}
-                onClick={() => setMode(m.id)}
+                onClick={() => {
+                  setMode(m.id);
+                  if (m.id !== "custom") setFormError("");
+                }}
                 title={m.hint}
                 aria-pressed={mode === m.id}
                 className={`flex-1 rounded-xl py-2.5 text-[13px] font-medium transition-all ${
@@ -637,14 +660,28 @@ export default function TopicPage() {
 
           {mode === "custom" && (
             <>
-              <CollapsibleSection title="账号情况" defaultOpen>
-                <Field label="账号阶段" optional>
-                  <select value={accountStage} onChange={(e) => setAccountStage(e.target.value)} className={SELECT_CLS}>
+              <CollapsibleSection title="账号情况" defaultOpen forceOpen={Boolean(formError)}>
+                <Field label="账号阶段" required>
+                  <select
+                    id="topic-field-accountStage"
+                    value={accountStage}
+                    aria-invalid={!accountStage.trim() && !!formError}
+                    aria-describedby={formError ? "topic-form-error" : undefined}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setAccountStage(value);
+                      if (value.trim()) setFormError("");
+                    }}
+                    className={`${SELECT_CLS}${!accountStage.trim() && formError ? " ring-2 ring-destructive/70" : ""}`}
+                  >
                     <option value="">选择阶段</option>
                     {["刚起号", "有基础", "稳定更新", "寻求突破"].map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
+                  {!accountStage.trim() && formError && (
+                    <p className="mt-1.5 text-[12px] text-destructive">{formError}</p>
+                  )}
                 </Field>
 
                 <Field label="粉丝量级" optional>
@@ -1019,7 +1056,12 @@ export default function TopicPage() {
             </Field>
           </CollapsibleSection>
 
-          <button onClick={handleGenerate} disabled={autoSetup.preparing || contextLoading || isGenerating} className={GENERATE_BTN}>
+          {mode === "custom" && formError && (
+            <p id="topic-form-error" role="alert" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-[13px] leading-relaxed text-amber-900 dark:text-amber-200">
+              {formError}
+            </p>
+          )}
+          <button type="button" onClick={handleGenerate} disabled={autoSetup.preparing || contextLoading || isGenerating} className={GENERATE_BTN}>
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
