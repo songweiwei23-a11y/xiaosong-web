@@ -126,7 +126,7 @@ export async function POST(request: Request) {
 
     /*
      * 优先走数据库事务函数（2026-10-10 巡检 P2-10）：订单、会员、额度一次提交，中途失败整体回滚。
-     * 函数还没在线上执行时返回 null，下面照常走老流程。
+     * 2026-11-12 已核对该函数在线上（1 个版本、11 个参数）。若调用时函数缺失，approveViaRpc 返回 null，下面照常走老流程。
      */
     const viaTransaction = await approveViaRpc(supabase as never, {
       orderId,
