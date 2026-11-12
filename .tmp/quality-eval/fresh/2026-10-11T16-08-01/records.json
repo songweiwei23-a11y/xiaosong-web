@@ -1,0 +1,31 @@
+[
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "脚本生成",
+    "key": "script",
+    "status": "done",
+    "firstAnswerMs": 8347,
+    "totalMs": 129600,
+    "chars": 4138,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [
+        "第 2 步口播 450 字，编导设了 30 秒，超出约 150 字"
+      ],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4138,
+      "spokenCjk": 450
+    },
+    "file": "p1-script.md",
+    "steps": []
+  }
+]

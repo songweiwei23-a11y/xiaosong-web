@@ -1,0 +1,3531 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>评估器校准表</title>
+<style>
+  :root { --fg:#1d1d1f; --bg:#fafaf7; --card:#ffffff; --mut:#6b6b6b; --line:#dcdcd6; --acc:#2f5bd3; --ok:#1a7f37; --bad:#cf222e; --nt:#9a6700; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg:#e8e8e6; --bg:#1b1b1a; --card:#232321; --mut:#9a9a94; --line:#3a3a37; --acc:#7da0ff; --ok:#5fd17f; --bad:#ff7b72; --nt:#e3b341; } }
+  :root[data-theme="dark"] { --fg:#e8e8e6; --bg:#1b1b1a; --card:#232321; --mut:#9a9a94; --line:#3a3a37; --acc:#7da0ff; --ok:#5fd17f; --bad:#ff7b72; --nt:#e3b341; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.65 system-ui, "Microsoft YaHei", sans-serif; }
+  main { max-width: 940px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 4px 0 6px; } h2 { font-size: 18px; margin: 28px 0 8px; }
+  .note { color: var(--mut); font-size: 13px; }
+  .bar { position: sticky; top: 0; background: var(--bg); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 1; }
+  button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+  button.primary { background: var(--acc); color: #fff; border-color: var(--acc); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 14px 0; padding: 12px 14px; }
+  header { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+  .no { font-weight: 600; } .board { color: var(--acc); } .who { color: var(--mut); font-size: 13px; }
+  pre { white-space: pre-wrap; word-break: break-word; font: 14px/1.7 system-ui, "Microsoft YaHei", sans-serif; margin: 8px 0; }
+  .ctx { color: var(--mut); font-size: 13px; }
+  .body { max-height: 560px; overflow: auto; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .judge { border-top: 1px solid var(--line); padding-top: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 3px 0; }
+  .row .cn { min-width: 150px; font-weight: 600; } .row.total { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 6px; }
+  .why { width: 100%; margin-top: 8px; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); box-sizing: border-box; }
+  .crit { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; font-size: 14px; }
+  .pf { margin-top: 4px; } .pf span { display: inline-block; font-size: 12px; font-weight: 600; margin-right: 6px; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); } .nt { color: var(--nt); }
+  .src { color: var(--mut); font-size: 12px; margin-top: 4px; }
+  textarea { width: 100%; min-height: 120px; font: 13px/1.5 ui-monospace, monospace; margin-top: 8px; box-sizing: border-box; }
+  details.rub > summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<h1>评估器校准表（20 份）</h1>
+<p class="note">我要做一个按咱们自己方法论验收稿子的评估器。它能不能替你验收，先看它和你的眼光对不对得上：同样这 20 份，你判一次，评估器判一次，比一致率。判得不一致的地方，就是标准卡没写清楚的地方。</p>
+<p class="note"><b>怎么判</b>：每份先看内容，再按下面的标准卡逐条点「合格 / 不合格 / 说不清」，最后给整体判断、1–5 分和一句原因。不用每条都想很久，按你的第一感觉。浏览器会自动保存，可以分几次判完。全部判完点「导出结果」，把框里的文字贴回对话。稿子来自虚构的测评档案；采样批次不显示。</p>
+
+<details class="rub" open><summary>标准卡：选题（4 条）</summary>
+<div class="crit"><b>T1 出发点清楚</b>：说得清这条给谁看、为什么会看、要达到什么目的吗？
+<div class="pf"><span class="ok">合格</span>一句话说得清：给这个号的哪类人看；落在人、货、场的哪一个上；符合三有（有用、有趣、有共鸣）的哪一条；目的只有一个（大流量、人设、变现）。大流量还要陌生人也看得懂、感兴趣的人够多。</div>
+<div class="pf"><span class="bad">不合格</span>说不清给谁看；只是一个抽象的知识点或观点，没有人、货、场的具体画面；一条里混了几个目的（比如大流量却引导私信、到店）；只有内行才懂的专业难题。</div>
+<div class="src">出处：三种目的_大流量人设型变现型_说明（二、六）；流量型与大流量_修正说明（三）；第17节 选题三大原则</div></div>
+<div class="crit"><b>T2 爆款元素一眼认得出</b>：用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？
+<div class="pf"><span class="ok">合格</span>标题里就有这个元素的句式（如「最难用的」「当年最火的」「南方人 vs 北方人」「花十分之一的钱」），而且元素落在这个行业、这个人、这个场上。</div>
+<div class="pf"><span class="bad">不合格</span>元素只写在说明里，标题看不出；为了用元素硬套（小店去做「头牌」）；标题平淡，看不出看点。</div><div class="pf"><span class="nt">注意</span>大流量必须有。人设型、变现型有更好，是否也必须，待产品方确认。</div>
+<div class="src">出处：八大爆款元素选题；5.正确使用八大爆款元素的选题技巧；流量型与大流量_修正说明（三）</div></div>
+<div class="crit"><b>T3 只有这家店拍得出来</b>：换一家同行，这个选题还成立吗？
+<div class="pf"><span class="ok">合格</span>用上了这个号自己的东西：档案里的人、在卖的货、店里的场景、独特的做法或真实经历（如「剪前先聊脸型」「旧件当面拆给你看」）；或者比观众多一步认知（新证据、新解释、新视角）。</div>
+<div class="pf"><span class="bad">不合格</span>放之四海皆准，任何同行都能原样发（「装修避坑 5 个点」）；老掉牙、烂大街的说法。</div>
+<div class="src">出处：第9节 差异化；第17节 选题三大原则（第三条标准）；第12节 视频记忆点</div></div>
+<div class="crit"><b>T4 拍得出来</b>：这个号现有的人、场地、设备和素材，能把它拍出来吗？
+<div class="pf"><span class="ok">合格</span>一部手机、现有的场地和人手就能拍；要用的素材档案里有，或者现场拍得到；不需要编故事、编数字来撑。</div>
+<div class="pf"><span class="bad">不合格</span>要明星、大场面或档案里没有的资源；靠编出来的客户故事、数字才成立；碰了档案里的禁忌。</div>
+<div class="src">出处：三种目的_大流量人设型变现型_说明（2.1 第5步 落地检查）；流量型与大流量_修正说明（三.5）；第40节 起号三十六计说明书</div></div></details>
+<details class="rub"><summary>标准卡：脚本（4 条）</summary>
+<div class="crit"><b>S1 钩子兑现</b>：前 3 秒抓不抓人？后面有没有兑现开头的承诺？
+<div class="pf"><span class="ok">合格</span>开头 3 秒就给出和目的对应的钩子（大流量：看点、噱头、反差；人设：一段经历；变现：一个问题或一个效果），后面的内容正好兑现开头抛出的问题或承诺。</div>
+<div class="pf"><span class="bad">不合格</span>开头是自我介绍、寒暄或空话；开头承诺的东西后面没给（标题党）；钩子和目的对不上（大流量开头就讲卖点）。</div>
+<div class="src">出处：开篇36计_完整知识体系精编版；10.晒过程1（六大钩子）；三种目的_大流量人设型变现型_说明（六.7）</div></div>
+<div class="crit"><b>S2 结构落在事件上</b>：用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？
+<div class="pf"><span class="ok">合格</span>结构的每个节点都有具体的事和人、货、场：晒过程有起因（带钩子）→ 关键步骤 → 结果；讲故事有困境和转机；教知识有具体的问题和做法；聊观点有观点和至少 3 个论据；用了某一计，那一计的公式在事件里走完。</div>
+<div class="pf"><span class="bad">不合格</span>只在标题或策略卡里写了计名，正文没有那个结构；节点只是空标题；结构和内容对不上（写「对比改造」却没有改造前后）。</div>
+<div class="src">出处：流量型与大流量_修正说明（四）；小黄脚本结构与流量来源；短视频脚本创作全案手册；10.晒过程1（火车节模型）</div></div>
+<div class="crit"><b>S3 像本人说的话</b>：读出来像不像出镜人自己在说？说的是不是真事？
+<div class="pf"><span class="ok">合格</span>大白话、短句，有画面（说具体的动作和东西，不堆形容词和四字成语）；身份对（老板说老板的话，店员说店员的话）；具体的东西来自档案、访谈或现场拍得到的画面。</div>
+<div class="pf"><span class="bad">不合格</span>书面腔、成语堆砌、「赋能」「打造」这类词；身份不对（出镜人称自己「师傅」「主厨」）；编出来的经历、客户故事、数字（「昨天来了个妈妈」「有人花 3 万做收纳」）。具体但不真，比空泛更糟。</div><div class="pf"><span class="nt">注意</span>知识库要求文案有画面感（描述法），但具体要来自真实材料；编出来的具体细节不算画面感。</div>
+<div class="src">出处：7.文案写作基础课（画面感 + 力量感）；第13节 口播表现力；三种目的_大流量人设型变现型_说明（素材必须真实）</div></div>
+<div class="crit"><b>S4 有落点</b>：看完能记住什么？结尾要观众做什么？
+<div class="pf"><span class="ok">合格</span>结尾回到这条的目的，只给一个动作：大流量是关注或评论；人设是记住这个人、看主页；变现是让成交理由在画面里看得见，再给私信、到店、留资里的一个。看完能记住这个人，或者记住一个具体的理由。</div>
+<div class="pf"><span class="bad">不合格</span>结尾同时要好几个动作；大流量结尾推产品、引导私信；变现的成交理由只写在标题里，画面里看不见；看完什么也记不住。</div>
+<div class="src">出处：三种目的_大流量人设型变现型_说明（二.4、三.4、四）；第12节 视频记忆点</div></div></details>
+
+<div class="bar"><button class="primary" id="export">导出结果</button><span id="progress" class="note"></span></div>
+<textarea id="out" readonly placeholder="点「导出结果」后，结果会出现在这里"></textarea>
+
+<h2>一、选题（编号 1–10）</h2>
+
+<section class="card" data-no="1">
+  <header><span class="no">编号 1</span><span class="board">选题</span><span class="who">川味餐饮（地摊串串） · 完整档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：锦园地摊串串一元火锅
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **出镜人是谁**：成都来的川菜厨师
+- **和店的关系**：本人（掌勺）
+- **从哪来**：成都人
+- **干这行几年**：做川菜9年
+- **在本地多久**：来南乐半年
+- **主卖什么**：川味串串火锅、川味烧烤、川菜
+- **招牌 / 特色**：一元火锅
+- **其他硬事实**：
+  - 每天下午4点出摊
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：川味串串火锅、川味烧烤、川菜
+- 平台：抖音
+- 赛道：美食烹饪、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：南乐本地
+- 目标年龄：25-35岁
+- 目标职业：白领、宝妈
+- 已有的内容方向：以川味串串火锅、川味烧烤、川菜三个品类为核心，晒食材准备过程，教知识，厨师经验分享
+- 核心卖点：正宗川味配方，一元火锅低门槛
+- 卖的产品/服务：川味串串火锅、川味烧烤、川菜
+- 前采要点（客户原话和真实细节，写内容时优先用）：出镜人是成都来的川菜厨师，做川菜9年，来南乐半年；一元火锅是门店核心卖点，低门槛引流
+
+访谈要点：问：您做川菜多少年了？答：九年，在成都做了好几家店。问：怎么想到来南乐？答：朋友在这边合伙摆地摊，我就过来帮忙。问：一元火锅为什么敢这么卖？答：料要真，量要足，客人吃了还会回来。问：您最在意的是哪一步？答：炒之前的准备，调料怎么下、油温怎么控，省了后面怎么炒都补不回来。问：有没有客人特别记得的事？答：有个老顾客每周都来，说就喜欢我们的汤底不咸。</pre></details>
+  <pre class="body">## 选题1：第一次体验下午4点出摊的川味烧烤，先看懂一份食材怎么准备
+
+**承接**：取自方向1“秋天下班，下午4点这摊川味怎么准备”，以及“每天下午4点出摊”“只拍川味串串火锅、川味烧烤、川菜中的一类”。
+
+**0️⃣ 视频目的**  
+流量型——用下班前的真实备菜过程，让本地用户停下来，看懂一份川味烧烤是怎么准备的。
+
+**视频任务**  
+让观众看完知道下午4点出摊前，川味烧烤要经过哪些具体准备步骤。
+
+**🅰 打法**  
+**36计·第36计 冷知识**：先提出“烧烤不是到了摊位才开始准备”→展示出摊前的真实动作→解释每一步和口感、出摊效率的关系→把问题交给观众。
+
+**1️⃣ 爆款元素**  
+人群——第一次体验川味烧烤的人。
+
+**2️⃣ 开篇钩子**  
+“第一次看下午4点出摊的川味烧烤，先别急着看烤好的，看看它出摊前要准备什么。”
+
+**3️⃣ 内容方向及目的**
+
+- **核心内容方向**：拍一项当天真实的川味烧烤出摊准备任务，不拍成泛泛的“美食展示”。
+- **核心问题与观众价值**：一份烧烤食材在出摊前要做哪些准备？下班想吃烧烤的人，可以提前知道现场大概在忙什么。
+- **取材与内容推进**：  
+  1. 先让出镜人说清楚今天只拍哪一类食材。  
+  2. 依次拍清洗、处理、装盘或摆放等当天真实发生的动作。  
+  3. 每完成一步追问：“这一步主要是在准备什么？”“如果少了这一步，现场会有什么不方便？”  
+  4. 最后拍整理好的烧烤食材和出摊位置，不预设口感或顾客反馈。
+- **事实边界**：已知出镜人是成都来的川菜厨师，做川菜9年，每天下午4点出摊；具体食材、处理步骤和当天出摊时间现场拍摄确认。
+- **关键画面（3个）**：  
+  1. 出镜人拿出当天实际要处理的烧烤食材。  
+  2. 一个关键处理动作的近景。  
+  3. 食材完成准备后摆放到出摊位置。  
+- **场景设置**：店内干净操作台和出摊区域，尽量一镜到底或少量切镜。
+
+**4️⃣ 脚本结构**  
+按“反常识开篇→动作展示→解释原理→回到观众”：  
+先说“烧烤不是到了摊位才开始准备”；随后用连续动作展示准备过程；每个动作配一句现场解释；结尾问观众：“你下班吃烧烤时，会先看食材怎么准备吗？”
+
+**5️⃣ 结尾行动指令**  
+“想继续看下午4点出摊前的真实过程，关注我。”
+
+**6️⃣ 执行要点**  
+手机竖拍，先擦镜头；操作台提前整理干净；只拍当天真实存在的食材，不补拍虚构步骤；收声时靠近出镜人，避免油烟机和街边噪音盖住声音；不拍顾客正脸。
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="1-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="1-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="1-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="1-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="1-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="1-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="1-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="1-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="1-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="1-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="1-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="1-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="1-v" value="合格"> 合格</label>
+      <label><input type="radio" name="1-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="1-s" value="1"> 1</label> <label><input type="radio" name="1-s" value="2"> 2</label> <label><input type="radio" name="1-s" value="3"> 3</label> <label><input type="radio" name="1-s" value="4"> 4</label> <label><input type="radio" name="1-s" value="5"> 5</label></span></div>
+    <input class="why" name="1-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="2">
+  <header><span class="no">编号 2</span><span class="board">选题</span><span class="who">大码女装（店主本人出镜） · 稀疏档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：阿梅大码女装店
+- 经营品类（每一个都在卖，定位里都要体现）：大码女装
+- 平台：抖音
+- 赛道：时尚穿搭、本地服务
+- 账号阶段：起号期
+- 地域：县城本地
+- 卖的产品/服务：大码女装</pre></details>
+  <pre class="body">## 选题2：外行人绝对不知道的大码试衣视角：同一件衣服，先看转身
+
+**【方向】** 同一件大码女装，换个试衣视角看  
+**【目的】** 流量型  
+**【结尾动作】** 关注  
+**【成交步骤】** —  
+
+**承接**：方向2“不从店内挂衣服或正面展示开始，而是从试衣者准备观察衣服的视角拍”。
+
+**0️⃣ 视频目的**  
+流量型。让陌生观众获得一种“像自己正在试衣”的观看视角，并愿意继续看后续真实试穿内容。
+
+**视频任务**  
+让观众代入试衣现场，意识到挂在衣架上的样子和穿到人身上的观察顺序并不一样。
+
+**🅰 打法**  
+- **36计·第32计 换个视角**：常规从衣架正面展示衣服 → 换成试衣者视角拿起衣服、走向镜子、转身观察衣长和活动状态 → 用第一视角回收“如果是你，会先看哪里”。
+
+**1️⃣ 爆款元素**  
+- **奇葩**：套用句式“外行人绝对不知道的X”  
+- 应用：把“试衣视角”作为信息差，而不是把衣服本身夸成特殊款。
+
+**2️⃣ 开篇钩子**  
+“同一件大码女装，挂在衣架上看一眼，穿上以后要换个视角再看。”
+
+**3️⃣ 内容方向及目的（重中之重！）**  
+- **核心内容方向**：从试衣者的视角，完整走一遍“拿衣服—穿上—看镜子—转身—看衣长”的过程。  
+- **核心问题与观众价值**：观众在店里试衣时，到底该先看哪几个位置？这条不替观众下结论，而是给她一个可照着做的观察顺序。  
+- **取材与内容推进**：选择一件店内真实在售、秋季可穿的大码女装。第一镜拍手从衣架上拿起衣服；第二镜从镜子前拍穿上后的局部；第三镜转身看侧面和衣长。最后停在镜子前，抛出问题让观众选择自己最在意的位置。  
+- **事实边界**：不使用“这件谁穿都合适”“上身一定好看”等表述；画面只呈现当次试穿者的真实状态。  
+- **关键画面（3个）**：  
+  1. 手从衣架上取下一件大码女装。  
+  2. 镜前第一视角拍衣服穿上后的正面局部。  
+  3. 对着镜子完成转身，镜头停在衣长和侧面状态。  
+- **场景设置**：店内衣架区到试衣镜之间，镜头只走一小段，不切换外景。
+
+**4️⃣ 脚本结构**  
+- **新POV开场**：镜头以试衣者视角拿衣服，口播：“今天不从衣架上看，换成试衣的人来看。”  
+- **新信息推进**：穿上后依次看正面、转身、衣长。  
+- **情绪回收**：镜头停在镜子前：“衣服挂着是一回事，自己动起来又是另一回事。”  
+- **互动收口**：不公布标准答案，保留观众判断空间。
+
+**5️⃣ 结尾行动指令**  
+“想继续看哪种试衣视角，关注我。”
+
+**6️⃣ 执行要点**  
+- 手机可手持拍，模拟试衣者视角；手持时走动放慢，避免画面晃动。  
+- 出镜人不必露脸，可拍手部、肩部以下和镜中背影。  
+- 现场保留衣架摩擦、拿衣服等自然声音；口播后期补录也可以。  
+- 一条只拍一件衣服，避免连续展示多件导致观众看不清重点。  
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="2-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="2-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="2-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="2-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="2-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="2-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="2-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="2-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="2-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="2-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="2-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="2-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="2-v" value="合格"> 合格</label>
+      <label><input type="radio" name="2-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="2-s" value="1"> 1</label> <label><input type="radio" name="2-s" value="2"> 2</label> <label><input type="radio" name="2-s" value="3"> 3</label> <label><input type="radio" name="2-s" value="4"> 4</label> <label><input type="radio" name="2-s" value="5"> 5</label></span></div>
+    <input class="why" name="2-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="3">
+  <header><span class="no">编号 3</span><span class="board">选题</span><span class="who">本地家具店（老板本人出镜） · 模糊档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：县城木工家具店
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **和店的关系**：有时老板出镜，有时店员出镜
+- **干这行几年**：做家具12年
+- **在本地多久**：本地人
+- **主卖什么**：实木餐桌椅、布艺沙发
+- **招牌 / 特色**：现场看木料
+- **其他硬事实**：
+  - 门店在县城，自家有木工工坊
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：实木家具、布艺沙发、顺带卖一些周边小商品
+- 平台：抖音
+- 赛道：家居家装、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：县城本地
+- 目标年龄：28-45岁
+- 目标职业：新婚家庭、换房的业主
+- 已有的内容方向：选家具的常识、木料辨认、工坊过程
+- 核心卖点：自家工坊，木料可现场看
+- 卖的产品/服务：实木家具、布艺沙发、顺带卖一些周边小商品
+
+访谈要点：问：您做家具多少年了？答：十二年，木工出身。问：客人最常问什么？答：沙发到底怎么挑，布艺还是皮的，坐久了会不会塌。问：您怎么回答？答：先看木架，木架不稳什么料子都白搭；坐垫的回弹要现场试。问：有没有印象深的事？答：有对年轻夫妻来看了三次，最后说就是因为能看到木料才放心买。问：您觉得做家具最讲究什么？答：料要干透，榫头要严，别偷工减料。</pre></details>
+  <pre class="body">## 选题三：第一次布置餐厅，坐下后才发现餐桌旁要留意什么？
+
+**承接**：方向三「一张餐桌，从坐下的人视角看」，保留拉椅子、起身和端东西经过的拍法。
+
+**0️⃣ 视频目的**  
+流量型。让准备结婚或换房的人代入餐厅日常。
+
+**视频任务**  
+让观众想到：选餐桌不能只看款式，还要看看坐下、起身和经过时的空间。
+
+**🅰 打法**  
+36计·第32计 换个视角：站着看餐桌 → 手机放到餐椅附近，以坐下者视角记录拉椅、起身 → 切换到端东西经过的视角 → 呈现现场实际空间。
+
+**1️⃣ 爆款元素**  
+人群；套用句式「第一次体验X的人」：第一次布置餐厅的人。
+
+**2️⃣ 开篇钩子**  
+“第一次布置餐厅，餐桌看着能放下，坐下来以后呢？”
+
+**3️⃣ 内容方向及目的**
+
+【方向】一张餐桌，从坐下的人视角看  
+【目的】流量  
+【结尾动作】评论  
+【成交步骤】—
+
+- **核心内容方向**：用坐下和经过的视角，看看餐桌旁的活动空间。
+- **核心问题与观众价值**：餐椅拉开后，人能否顺利起身、绕行或端东西经过？观众可以把这组动作带回自己的餐厅检查。
+- **取材与内容推进**：选门店里已有的餐桌椅组合，先拍站着看时的摆放，再把手机固定在餐椅旁，分别拍拉椅、坐下、起身；用托盘模拟端东西绕过餐桌。以真实拍到的空间为结果，宽松或局促都如实呈现。
+- **事实边界**：门店空间不等于观众家里的餐厅；不编统一通道尺寸，不预设一定会被挡住。
+- **关键画面**：
+  - 从餐椅旁看椅子拉出。
+  - 坐下后起身、绕过椅背。
+  - 手端托盘经过桌椅之间。
+- **场景设置**：门店餐桌椅陈列区。
+
+**4️⃣ 脚本结构**  
+按计的公式走。
+
+**5️⃣ 结尾行动指令**  
+“你家餐桌旁边，容易被什么挡住？评论区说说。”
+
+**6️⃣ 执行要点**  
+手机靠稳固定，出镜人自行完成动作；托盘用轻便物品，通道先清理，避免碰撞。只呈现使用动作，不讲门店卖点。
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="3-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="3-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="3-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="3-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="3-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="3-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="3-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="3-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="3-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="3-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="3-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="3-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="3-v" value="合格"> 合格</label>
+      <label><input type="radio" name="3-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="3-s" value="1"> 1</label> <label><input type="radio" name="3-s" value="2"> 2</label> <label><input type="radio" name="3-s" value="3"> 3</label> <label><input type="radio" name="3-s" value="4"> 4</label> <label><input type="radio" name="3-s" value="5"> 5</label></span></div>
+    <input class="why" name="3-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="4">
+  <header><span class="no">编号 4</span><span class="board">选题</span><span class="who">社区理发店（老板本人出镜） · 完整档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：阿杰剪发
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **出镜人是谁**：店主阿杰
+- **和店的关系**：老板本人出镜
+- **干这行几年**：剪发11年
+- **在本地多久**：本地人
+- **主卖什么**：男士剪发、女士染烫
+- **招牌 / 特色**：剪前先聊脸型
+- **其他硬事实**：
+  - 店在小区门口，两张椅子
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：男士剪发、女士染烫
+- 平台：抖音
+- 赛道：美发造型、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：本小区及周边
+- 目标年龄：20-40岁
+- 目标职业：上班族、学生
+- 已有的内容方向：发型和脸型的关系、日常打理、染烫前要知道的事
+- 核心卖点：剪前先聊脸型，按打理习惯剪
+- 卖的产品/服务：男士剪发、女士染烫
+- 前采要点（客户原话和真实细节，写内容时优先用）：店主剪发11年，坚持剪前先聊脸型和打理习惯；客人多是附近上班族
+
+访谈要点：问：您剪发多少年了？答：十一年。问：为什么剪之前要聊那么久？答：每个人打理头发的时间不一样，早上只有五分钟的人就不能剪太讲究的。问：客人最常问什么？答：自己适合什么发型，染了会不会伤头发。问：有没有印象深的客人？答：有个小伙子要去面试，剪完说终于不像学生了。</pre></details>
+  <pre class="body">## 选题4：第一次体验剪发的人，开剪前我会先做什么
+
+**【方向】**：开剪前，我先做的普通动作  
+**【目的】**：人设型  
+**【结尾动作】**：关注  
+**【成交步骤】**：—  
+
+**承接**：方向4“记录阿杰准备开始服务前的真实动作”“剪发11年，且‘剪前先聊脸型，按打理习惯剪’是明确的工作特点”。
+
+**0️⃣ 视频目的**  
+人设型。让用户记住阿杰剪发前会先沟通，不是拿起剪刀就开始剪。
+
+**视频任务**  
+让刷到视频的人通过一个真实服务前动作，认识阿杰的工作方式并关注账号。
+
+**🅰 打法**  
+36计·第7计 **一句话设定故事感**：阿杰站在镜子前准备开始服务 → 用一句话说出“剪发11年，我开剪前会先问这两件事” → 跟拍真实沟通动作 → 用镜子前的停顿收住。
+
+**1️⃣ 爆款元素**  
+- **人群**：套用“第一次体验X的人”——“第一次体验剪发的人”，降低陌生用户理解门槛。
+
+**2️⃣ 开篇钩子**  
+“剪发11年，我开剪前会先停一下，不是看头发，是先听你平时怎么打理。”
+
+**3️⃣ 内容方向及目的（重中之重！）**  
+- **核心内容方向**：用阿杰服务开始前的一个真实停顿，呈现他会先聊脸型和打理习惯。  
+- **核心问题与观众价值**：为什么有人剪完当下觉得可以，回家后却不知道怎么整理？因为剪发前的生活习惯也需要提前说。  
+- **取材与内容推进**：  
+  - 有顾客授权时，拍阿杰看镜子、看头发局部、开口沟通的画面；顾客不愿出镜则只拍阿杰手部、背影、镜面局部。  
+  - 没有顾客时，由阿杰面对空椅子模拟自己的固定工作动作，但不编顾客对话。  
+  - 阿杰只讲自己会问什么，不讲“客户后来怎么样”。  
+- **事实边界**：可使用“剪发11年”“剪前先聊脸型，按打理习惯剪”这两项已知事实；不增加未提供的客户故事和效果反馈。  
+- **关键画面（3个）**：  
+  1. 空椅子或获得同意的顾客背影，阿杰拿起梳子又停下。  
+  2. 阿杰看向镜子，问“你平时会不会整理头发？”  
+  3. 剪刀、梳子、镜子前准备沟通的手部特写。  
+- **场景设置**：店内两张椅子旁，镜面作为主要画面元素。
+
+**4️⃣ 脚本结构**  
+- **普通动作**：阿杰整理围布、拿起梳子，准备开始服务。  
+- **一句话设定**：“剪发11年，我开剪前会先停一下。”  
+- **目标/关系设定**：不是拖时间，而是先听对方平时怎么打理、想要什么状态。  
+- **故事期待**：镜头停在“这次沟通完，才开始剪”的动作上。  
+- **人设回收**：先把日常说清楚，再开始动剪刀。  
+
+**5️⃣ 结尾行动指令**  
+“想看我把剪发前的沟通过程拍出来，就关注我。”
+
+**6️⃣ 执行要点**  
+- 优先拍真实服务动作；顾客未授权时，不拍顾客声音、正脸和聊天内容。  
+- 阿杰的口播尽量边做动作边说，避免全程站着念稿。  
+- 画面可用镜子反射增加层次，但开拍前擦干净镜面。  
+- 不用刻意煽情，重点是“停一下、问一句、再开始”的连续动作。  
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="4-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="4-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="4-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="4-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="4-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="4-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="4-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="4-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="4-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="4-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="4-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="4-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="4-v" value="合格"> 合格</label>
+      <label><input type="radio" name="4-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="4-s" value="1"> 1</label> <label><input type="radio" name="4-s" value="2"> 2</label> <label><input type="radio" name="4-s" value="3"> 3</label> <label><input type="radio" name="4-s" value="4"> 4</label> <label><input type="radio" name="4-s" value="5"> 5</label></span></div>
+    <input class="why" name="4-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="5">
+  <header><span class="no">编号 5</span><span class="board">选题</span><span class="who">小学数学辅导（老师本人出镜） · 稀疏档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：王老师数学小班
+- 经营品类（每一个都在卖，定位里都要体现）：小学数学小班课
+- 平台：抖音
+- 赛道：教育培训、本地服务
+- 账号阶段：起号期
+- 地域：市区
+- 卖的产品/服务：小学数学小班课</pre></details>
+  <pre class="body">## 选题5：外行人绝对不知道的：同一道题，错的可能不是算式
+
+**【方向】**：方向5「同一道题，错不在算式」  
+**【目的】**：变现型  
+**【结尾动作】**：私信  
+**【成交步骤】**：私信咨询  
+
+**承接**：承接原文“左边展示一种常见错误路径，例如读题后立刻列式、漏看单位、混淆每份和总数；右边展示正确的检查顺序。讲清‘为什么会错、应该先看什么、什么情况下适用’”。
+
+**0️⃣ 视频目的**  
+变现型。把“孩子做错题”背后的判断过程拍出来，承接家长对孩子当前卡点的咨询。
+
+**视频任务**  
+让家长知道错题不能只看算式对不对，并愿意私信说明孩子当前最常见的错误路径。
+
+**🅰 打法**  
+36计·第15计 正确做法VS错误做法：左侧演示读题后立刻列式、混淆每份与总数的错误路径 → 标出错误从哪里开始 → 右侧按“单位—对象—每份/总数—问题”检查 → 说明这种检查适用于什么类型的题。
+
+**1️⃣ 爆款元素**  
+- **奇葩**：套句式“外行人绝对不知道的X”  
+- 应用：看起来像算式错了，实际可能从读到数字的那一刻就把“每份”和“总数”混在一起了。
+
+**2️⃣ 开篇钩子**  
+“同一道题，算式写错只是最后一步，真正的问题可能从看见这个数字时就开始了。”
+
+**3️⃣ 内容方向及目的（重中之重！）**  
+- **核心内容方向**：用一道包含“每份、总数、单位”信息的公开题，做错误路径和检查路径的纸面对照。  
+- **核心问题与观众价值**：孩子总在应用题里列错式，到底要先检查哪几件事？家长可以据此判断孩子更像是读题、单位还是数量关系卡住。  
+- **取材与内容推进**：  
+  1. 选一道能同时出现“每份”和“总数”的公开题。  
+  2. 左侧先展示一种常见错误路径：看到数字立刻运算，没有确认数字分别代表什么。  
+  3. 镜头停住，用红笔追溯：这个数字是“每份”还是“总数”？单位是什么？  
+  4. 右侧展示检查顺序：先读单位，再找对象，再判断每份和总数，最后看题目问法。  
+  5. 王老师说明：这套检查适合信息较多的应用题；简单计算题不需要强行套用。  
+- **事实边界**：错误路径是教学演示，不归因于某位真实学生；不说孩子按这个方法一定不再出错。  
+- **关键画面（3个）**：  
+  1. 左右分屏：左侧快速列式，右侧先在数字旁标“每份/总数”。  
+  2. 红笔从错误算式回拉到题目中的对应数字。  
+  3. 白板列出检查顺序：“单位→对象→每份/总数→问题”。  
+- **场景设置**：店内白板前或书桌俯拍，左、右两张纸保持同机位。
+
+**4️⃣ 脚本结构**  
+**教知识·解题型：场景难题 → 放大危机 → 低行动成本解决 → 操作步骤。**  
+- **场景难题**：孩子会算，却在应用题里总把算式列反。  
+- **放大危机**：只把错误算式擦掉重写，下一道题换个数字和说法，错误路径还会出现。  
+- **低行动成本解决**：列式前多做一次纸面检查，不需要额外教具。  
+- **操作步骤**：  
+  1. 看数字前先看单位。  
+  2. 给每个数字标注它属于谁。  
+  3. 分清“每份”和“一共”。  
+  4. 回看题目问的是哪一个量。  
+  5. 再开始列式，并检查算式是否回答了问题。  
+
+**5️⃣ 结尾行动指令**  
+“孩子总是读题就列式、漏单位，还是分不清每份和总数？私信发题型描述。”
+
+**6️⃣ 执行要点**  
+- 左右两栏必须用同一道题，避免观众以为题目难度不同。  
+- 错误示范只保留一种错误，讲透比堆多个错误更清楚。  
+- 用红笔标错误起点、蓝笔标检查路径，增强视觉对照。  
+- 视频中标注“教学情境演示”，不出现真实学生资料。  
+
+**7️⃣ 成交理由**  
+- **体现的理由**：专业强——能从错误路径判断孩子具体卡点。  
+- **转化路径**：看懂卡点→私信描述→咨询小班课  
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="5-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="5-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="5-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="5-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="5-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="5-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="5-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="5-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="5-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="5-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="5-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="5-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="5-v" value="合格"> 合格</label>
+      <label><input type="radio" name="5-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="5-s" value="1"> 1</label> <label><input type="radio" name="5-s" value="2"> 2</label> <label><input type="radio" name="5-s" value="3"> 3</label> <label><input type="radio" name="5-s" value="4"> 4</label> <label><input type="radio" name="5-s" value="5"> 5</label></span></div>
+    <input class="why" name="5-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="6">
+  <header><span class="no">编号 6</span><span class="board">选题</span><span class="who">母婴用品店（店员出镜） · 模糊档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：暖暖母婴生活馆
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **和店的关系**：有时老板出镜，有时店员出镜
+- **干这行几年**：在店里做了4年
+- **在本地多久**：本地人
+- **主卖什么**：奶粉、纸尿裤、婴儿洗护
+- **招牌 / 特色**：新手妈妈可领试用装
+- **其他硬事实**：
+  - 店在县医院对面
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：奶粉、纸尿裤、婴儿洗护、顺带卖一些周边小商品
+- 平台：抖音
+- 赛道：母婴育儿、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：县城本地
+- 目标年龄：22-35岁
+- 目标性别：女
+- 目标职业：新手妈妈、孕妇
+- 已有的内容方向：新手妈妈选品常识、纸尿裤尺码、婴儿洗护
+- 核心卖点：新手妈妈可领试用装，店员懂选品
+- 卖的产品/服务：奶粉、纸尿裤、婴儿洗护、顺带卖一些周边小商品
+
+访谈要点：问：您在店里做了多久？答：四年。问：新手妈妈最常问什么？答：纸尿裤选哪个牌子，奶粉要不要换。问：您一般怎么建议？答：先看宝宝体重和腿围，不要只看月龄。问：有没有印象深的客人？答：有个妈妈连着换了三个牌子，后来发现是尺码的问题。</pre></details>
+  <pre class="body">## 选题6：孕妇来母婴店最常问的三句话,第一句就让人心疼
+
+**承接**：方向3中提到「围绕孕产期常见困惑」,本条用暴躁态度立场站在孕妇这边
+
+**0️⃣ 视频目的**  
+流量型。让陌生用户停下来、看完、评论区共鸣
+
+**视频任务**  
+让观众看完后在评论区说&quot;我当时也是这样&quot;&quot;说到心坎里了&quot;
+
+**🅰 打法**  
+36计·第25计 暴躁态度：痛点事件（孕妇常问的三句话）→ 高情绪表达（&quot;第一句就让人心疼&quot;）→ 干货判断（为什么会这样问,背后是什么顾虑）→ 行动出口（新手妈妈可以怎么做）
+
+**1️⃣ 爆款元素**  
+人群（孕妇、新手妈妈）+ 反差（表面问题 vs 背后真实顾虑）
+
+**2️⃣ 开篇钩子**  
+&quot;在县医院对面开母婴店4年,孕妇来店里最常问三句话,第一句就让人心疼。&quot;
+
+**3️⃣ 内容方向及目的（重中之重！）**  
+- **核心内容方向**：从孕妇来店里常问的三句话切入,展示新手妈妈在孕产期的真实顾虑和焦虑
+- **核心问题与观众价值**：孕妇问的表面问题（如&quot;这个贵不贵&quot;&quot;我现在能买吗&quot;&quot;买多了浪费怎么办&quot;）背后是对花钱、时机、决策的不安,观众能看到&quot;原来不是我一个人焦虑&quot;
+- **取材与内容推进**：
+  - 素材来源：店员4年真实接待经验、县医院对面位置的特殊性（孕妇客群多）
+  - 内容推进：开篇点出&quot;孕妇最常问三句话&quot;→ 逐句展开（第一句:【换成你听到的真实问题,如&quot;这个贵不贵&quot;】,背后是担心花冤枉钱;第二句:【换成真实问题,如&quot;我现在买早不早&quot;】,背后是不确定时机;第三句:【换成真实问题,如&quot;买多了用不完怎么办&quot;】,背后是怕浪费）→ 收尾一句话（&quot;做母婴店4年,我发现新手妈妈不是不舍得花钱,是怕花错。&quot;）
+- **事实边界**：店员4年经验、县医院对面位置是档案已有事实;具体三句话需从真实接待经历中提取,若无可用【换成你听到的孕妇常问问题】
+- **关键画面（3个）**：
+  1. 店内场景（货架、收银台,孕妇常来的环境）
+  2. 产品特写（奶粉、纸尿裤、婴儿洗护,对应三句话的场景）
+  3. 店员表情或手部动作（回答问题时的耐心状态）
+- **场景设置**：店内,自然光或店内照明,日常营业时段
+
+**4️⃣ 脚本结构**  
+暴躁态度（第25计公式）：  
+痛点事件（&quot;孕妇最常问三句话&quot;）→ 逐句展开（每句话+背后真实顾虑）→ 情绪共鸣（&quot;第一句就让人心疼&quot;）→ 一句话收住（&quot;不是不舍得花钱,是怕花错&quot;）
+
+**5️⃣ 结尾行动指令**  
+评论区说说:&quot;你怀孕时最担心什么?评论区说说。&quot;
+
+**6️⃣ 执行要点**  
+- 素材准备：提前回忆孕妇常问的真实问题（至少3句）,提炼出背后的顾虑逻辑;若无可先拍店内场景+产品画面,口播用【换成你的真实经历】占位
+- 拍摄要点：不拍孕妇正脸,只讲经历不露隐私;情绪表达要真诚,不煽情、不夸大
+- 时间成本：15-20分钟,一人一机可完成
+- 注意事项：不说&quot;只有我们店理解孕妇&quot;&quot;别的店不耐心&quot;,只讲自己的观察;不承诺&quot;来我们店就不会花错钱&quot;,只提供理解和共鸣
+
+---
+
+## ✅ 本批选题自检确认
+
+- ✅ 每条都承接带来内容中的具体方向、人物或事件
+- ✅ 全部使用街头采访拍法（第35计），差异来自问题与追问
+- ✅ 6条均为流量型（用户本轮明确要求），结尾行动指令只要关注或评论
+- ✅ 每条都标注了具体打法（36计·第N计 计名）
+- ✅ 爆款元素数量符合要求（流量型最多2个）
+- ✅ 开篇钩子结合知识库优化，未采访时用提问型开头
+- ✅ 内容方向写清核心问题、取材步骤、关键画面
+- ✅ 执行要点落地可行，一人一机可完成
+- ✅ 未编造档案外的数字、客户经历、经营承诺
+- ✅ 守住禁忌边界（不吓唬家长、不贬低同行、不拍顾客正脸）</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="6-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="6-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="6-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="6-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="6-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="6-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="6-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="6-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="6-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="6-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="6-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="6-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="6-v" value="合格"> 合格</label>
+      <label><input type="radio" name="6-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="6-s" value="1"> 1</label> <label><input type="radio" name="6-s" value="2"> 2</label> <label><input type="radio" name="6-s" value="3"> 3</label> <label><input type="radio" name="6-s" value="4"> 4</label> <label><input type="radio" name="6-s" value="5"> 5</label></span></div>
+    <input class="why" name="6-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="7">
+  <header><span class="no">编号 7</span><span class="board">选题</span><span class="who">装修设计工作室（设计师本人出镜） · 完整档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：林姐装修设计
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **出镜人是谁**：设计师林姐
+- **和店的关系**：设计师本人出镜
+- **干这行几年**：做室内设计7年
+- **在本地多久**：本地人
+- **主卖什么**：老房翻新、小户型设计
+- **招牌 / 特色**：先量房再出图
+- **其他硬事实**：
+  - 工作室有材料样板间
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：老房翻新、小户型设计
+- 平台：抖音
+- 赛道：家居家装、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：市区
+- 目标年龄：28-45岁
+- 目标职业：刚买房的业主、老房翻新的家庭
+- 已有的内容方向：小户型收纳、老房翻新避坑、量房时要注意什么
+- 核心卖点：先量房再出图，材料样板间现场看
+- 卖的产品/服务：老房翻新、小户型设计
+- 前采要点（客户原话和真实细节，写内容时优先用）：林姐做室内设计7年，坚持先量房再出图；业主最怕装完不好用
+
+访谈要点：问：您做设计多少年了？答：七年。问：为什么一定要先量房？答：图纸上的尺寸和实际差几厘米，柜子就装不进去。问：业主最常问什么？答：小户型怎么显大，老房水电要不要全换。问：有没有印象深的业主？答：有对老夫妻，翻新完说厨房终于转得开身了。</pre></details>
+  <pre class="body">## 选题1：第一次体验老房翻新的人，拿到户型图后会先看哪里？
+
+**承接**：方向2「只看户型图，为什么还不够」；从“只看平面图就开始想布局”的常见做法切入。  
+
+**【方向】**：只看户型图，为什么还不够  
+**【目的】**：流量型  
+**【结尾动作】**：评论  
+**【成交步骤】**：—  
+
+**0️⃣ 视频目的**  
+流量型。用“看图前后判断会不会变化”这个大众问题，吸引刚买房、准备翻新的业主停留讨论。
+
+**视频任务**  
+让观众意识到：户型图能看布局，但不一定能看清实际生活里的障碍和动线。
+
+**🅰 打法**  
+36计·第35计 **街头采访**：在市区公共区域或工作室外，问准备装修、近期看过户型图的人“你拿到图纸先看哪里”→请对方看一眼卷尺、户型图和量房记录示范→追问他看完后有没有新增关注点→保留不同回答。
+
+**1️⃣ 爆款元素**  
+- **人群**：套用「第一次体验X的人」  
+- 应用方式：点名第一次经历老房翻新、第一次看户型图的人，降低理解门槛。
+
+**2️⃣ 开篇钩子**  
+“第一次装老房的人，拿到户型图以后，你会先看客厅，还是先看门和过道？”
+
+**3️⃣ 内容方向及目的**  
+- **核心内容方向**：采访准备装修的人如何看户型图，再用真实量房动作补充“图上看不到什么”。  
+- **核心问题与观众价值**：户型图和现场之间，到底还差哪些信息？观众能知道自己看房、做设计前该留意哪些地方。  
+- **取材与内容推进**：  
+  - 访问对象：征得同意的市区装修意向业主、建材市场附近的装修咨询者，优先选择近期看过户型图的人。  
+  - **主问题（原目的）**：“你拿到户型图，第一眼通常先看哪里？”  
+  - **本条深入的问题**：“如果图上没有标出现场尺寸、门的开启方向和过道情况，你会不会忽略它们？”  
+  - 追问：“你家最担心哪个地方装完不好走？”“看完现场和只看图相比，你觉得自己会多确认什么？”“能不能指着图说说，你原来最容易忽略的位置？”  
+  - 验证动作：林姐拿卷尺在可公开拍摄的示范空间演示“看门、看通道、看使用动作”的量房顺序，不给出未经测量的统一尺寸标准。  
+- **事实边界**：户型图、卷尺、量房流程可拍；受访者的想法和判断全部保留现场原话。不预设大家都会忽略同一个问题。  
+- **关键画面（3个）**：  
+  - 受访者指着户型图说“我第一眼看这里”，保留现场原话。  
+  - 卷尺测量门口、通道或墙边位置的手部特写。  
+  - 林姐在图纸上圈出“需要现场核对”的位置。  
+- **场景设置**：工作室样板间、可公开拍摄的示范空间或建材市场周边安静区域。
+
+**4️⃣ 脚本结构**  
+按计的公式走：  
+- 提问：第一次翻新的人，图纸上先看哪里？  
+- 回答：保留不同受访者的第一反应。  
+- 追问：只看图和到了现场，你觉得差在哪里？  
+- 演示：林姐用卷尺核对门、通道、使用动作。  
+- 收束：户型图是开始，现场才决定“住起来顺不顺”。  
+
+**5️⃣ 结尾行动指令**  
+“你拿到户型图第一眼看哪里？评论区说说。”
+
+**6️⃣ 执行要点**  
+提前准备一张可公开使用的户型示意图、卷尺和空白记录纸；采访前明确说明用途并征得拍摄、发布同意；手机靠近受访者收音，环境嘈杂时让对方复述一句核心回答；不拍小区名、门牌和私人家庭全貌。  
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="7-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="7-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="7-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="7-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="7-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="7-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="7-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="7-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="7-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="7-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="7-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="7-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="7-v" value="合格"> 合格</label>
+      <label><input type="radio" name="7-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="7-s" value="1"> 1</label> <label><input type="radio" name="7-s" value="2"> 2</label> <label><input type="radio" name="7-s" value="3"> 3</label> <label><input type="radio" name="7-s" value="4"> 4</label> <label><input type="radio" name="7-s" value="5"> 5</label></span></div>
+    <input class="why" name="7-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="8">
+  <header><span class="no">编号 8</span><span class="board">选题</span><span class="who">汽修店（老板本人出镜） · 稀疏档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：老赵汽修
+- 经营品类（每一个都在卖，定位里都要体现）：汽车保养、钣金喷漆、轮胎
+- 平台：抖音
+- 赛道：汽车、本地服务
+- 账号阶段：起号期
+- 地域：县城及周边乡镇
+- 卖的产品/服务：汽车保养、钣金喷漆、轮胎</pre></details>
+  <pre class="body">## 选题2：车身划了一道,你第一眼看的那个地方,修车师傅根本不看
+
+**承接**：取自方向2&quot;车身划碰的反常识判断&quot;，用第1计·反向操作拍车主常规判断 vs 修车师傅实际检查的反差
+
+**0️⃣ 视频目的**
+流量型——让车主看到&quot;不能只凭外观判断处理范围&quot;这个反常识认知，不推钣金喷漆服务
+
+**视频任务**
+让观众看完后知道：车身划碰不能只看划痕长度或颜色深浅,修车师傅要先看划痕位置和车身结构
+
+**🅰 打法**
+36计·第1计 反向操作：常规A（车主看到划痕,第一反应是量长度、看颜色深浅）→ 反向B（修车师傅不先看这些,而是先看划痕在哪个部位、是不是接缝处、有没有伤到底漆）→ 真实反应/结果（同样长度的划痕,位置不同处理方式完全不同）
+
+**1️⃣ 爆款元素**
+- **反差**：&quot;你以为 vs 其实&quot;——车主以为看长度和颜色,修车师傅看位置和结构
+
+**2️⃣ 开篇钩子**
+&quot;车身划了一道,你第一眼看长度,修车师傅第一眼看的根本不是这个。&quot;
+
+**3️⃣ 内容方向及目的（重中之重！）**
+- **核心内容方向**：拍真实车身划痕，对比车主常规判断（看长度、颜色）vs 修车师傅实际检查（看位置、是否伤底漆、是否在接缝处）
+- **核心问题与观众价值**：车主遇到划痕时容易凭外观自己判断要不要修、怎么修，但位置和结构决定处理方式；这条让他们知道正确的判断顺序
+- **取材与内容推进**：
+  1. 拍一处真实车身划痕（店里接待的车或老赵自己的车）
+  2. 口播车主常规做法：&quot;很多人看到划痕,第一反应是量多长、掉没掉漆&quot;
+  3. 展示反向做法：老赵蹲下来先看划痕在哪个部位（车门中间、接缝处、塑料件还是金属件），再用手指轻摸判断是否伤到底漆
+  4. 交代为什么位置重要：接缝处的划痕容易进水锈蚀,塑料件和金属件的处理方式不同
+  5. 结尾：下次遇到划痕,先看位置再判断
+- **事实边界**：划痕位置影响处理方式是行业常识；接缝处易锈蚀、塑料件和金属件处理方式不同是真实逻辑；不推销店里的钣金喷漆服务,不承诺具体价格
+- **关键画面（3个）**：
+  1. 车身划痕特写（手机拍摄即可）
+  2. 老赵蹲下来,手指划痕位置（车门中间 vs 接缝处的对比）
+  3. 老赵用手指轻摸划痕,判断是否伤到底漆
+- **场景设置**：店内或室外自然光下,拍真实车身划痕,老赵出镜检查
+
+**4️⃣ 脚本结构**
+按36计·第1计 反向操作的公式走：
+1. 常规A（5秒）：车身划了一道,很多人第一反应是量多长、看颜色深浅
+2. 反向B（20秒）：修车师傅不先看这些,而是先看位置——接缝处、塑料件还是金属件,再用手指摸是否伤到底漆
+3. 真实反应/结果（10秒）：同样长度的划痕,在接缝处就得注意防锈,在塑料件上可能只需抛光
+4. 收尾（5秒）：下次遇到划痕,先看位置再判断
+
+**5️⃣ 结尾行动指令**
+&quot;你车上有划痕吗?在哪个位置?评论区说说。&quot;
+
+**6️⃣ 执行要点**
+- 素材准备：找一辆有划痕的车（店里接待的车或老赵自己的车），确认划痕位置清晰可见
+- 拍摄要求：手机拍摄,自然光下拍车身划痕特写,老赵出镜检查时保持画面稳定
+- 口播节奏：语速正常,解释位置重要性时可用手指具体指示
+- 时长控制：40秒左右
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="8-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="8-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="8-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="8-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="8-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="8-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="8-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="8-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="8-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="8-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="8-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="8-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="8-v" value="合格"> 合格</label>
+      <label><input type="radio" name="8-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="8-s" value="1"> 1</label> <label><input type="radio" name="8-s" value="2"> 2</label> <label><input type="radio" name="8-s" value="3"> 3</label> <label><input type="radio" name="8-s" value="4"> 4</label> <label><input type="radio" name="8-s" value="5"> 5</label></span></div>
+    <input class="why" name="8-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="9">
+  <header><span class="no">编号 9</span><span class="board">选题</span><span class="who">健身私教工作室（教练本人出镜） · 模糊档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：小刘私教工作室
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **和店的关系**：有时老板出镜，有时店员出镜
+- **干这行几年**：带私教6年
+- **在本地多久**：本地人
+- **主卖什么**：减脂私教、体态矫正
+- **招牌 / 特色**：第一节课先做体测
+- **其他硬事实**：
+  - 工作室只有两名教练
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：减脂私教、体态矫正、顺带卖一些周边小商品
+- 平台：抖音
+- 赛道：运动健身、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：市区
+- 目标年龄：22-40岁
+- 目标职业：上班族、产后妈妈
+- 已有的内容方向：减脂误区、体态问题自测、上班族怎么练
+- 核心卖点：先体测再定计划，两名教练小而精
+- 卖的产品/服务：减脂私教、体态矫正、顺带卖一些周边小商品
+
+访谈要点：问：您带私教多少年了？答：六年。问：为什么第一节课先体测？答：不知道身体是什么情况，计划就是瞎定的。问：学员最常问什么？答：多久能瘦下来，饮食要怎么控制。问：有没有印象深的学员？答：有个产后妈妈练了三个月，说抱孩子腰不疼了。</pre></details>
+  <pre class="body">## 选题3：外行人绝对不知道的减脂记录：体重之外还要看什么？
+
+【方向】方向3：减脂只盯体重，可能漏看了什么  
+【目的】流量型  
+【结尾动作】评论  
+【成交步骤】—  
+
+**承接**：承接方向3中“一人分饰‘只问体重的人’和‘先问训练情况的教练’，用一问一答解释为什么不能只围绕一个数字判断训练情况”。
+
+**0️⃣ 视频目的**  
+流量型。用“减脂只看体重”的常见认知制造反差，让正在减脂的人参与讨论自己平时最关注什么。
+
+**视频任务**  
+让减脂人群明白：记录体重可以，但训练情况、日常活动和身体状态也值得一起看。
+
+**🅰 打法**  
+36计·第9计 一人分饰多角：角色A反复问“轻了多少” → 角色B不急着回答数字，追问训练、日常活动和身体状态 → 用记录板展示“别只围着一个数字转”。
+
+**1️⃣ 爆款元素**  
+奇葩：套用句式「外行人绝对不知道的X」；把“减脂记录不只看体重”做成外行容易忽略的信息差。
+
+**2️⃣ 开篇钩子**  
+“减脂记录里，为什么教练不只问你轻了多少？”
+
+**3️⃣ 内容方向及目的（重中之重！）**  
+- **核心内容方向**：通过两种提问方式的对比，讲清减脂记录不宜只盯一个体重数字。  
+- **核心问题与观众价值**：不少人称完体重就决定当天练不练、吃不吃；观众能多一个判断角度：记录近期训练是否完成、日常活动有没有变化、训练时身体状态如何。  
+- **取材与内容推进**：  
+  1. 教练饰演“只问体重的人”，拿着体重秤或记录板追问“轻了多少”；  
+  2. 切换为“先问训练情况的教练”，依次问：这几天训练有没有完成？平时走路、久坐情况有没有变化？训练时有没有不舒服？  
+  3. 用同一张记录板划出“体重”“训练情况”“日常活动”“身体状态”四栏；  
+  4. 收束为“数字可以记，但别让一个数字替你做全部判断”。  
+- **事实边界**：不讨论具体体重数值、减重速度或效果承诺；不把体重变化归因到单一方法。  
+- **关键画面（3个）**：  
+  1. 一人饰演两角的正反打镜头；  
+  2. 体重秤数字虚化或不入镜；  
+  3. 记录板四栏依次被勾画出来。  
+- **场景设置**：工作室记录桌旁；用帽子、外套或站位变化区分两个角色。
+
+**4️⃣ 脚本结构**  
+按计的公式走：  
+- **角色A观点**：“减脂就看体重，轻了就行。”  
+- **角色B回应**：“体重能看，但我还要问三件事。”  
+- **知识反转**：训练是否完成、日常活动是否变化、身体状态是否舒服，也会影响对训练安排的理解。  
+- **互动收尾**：把问题抛给观众，不给具体效果结论。
+
+**5️⃣ 结尾行动指令**  
+“你减脂时最常看体重、围度，还是训练状态？评论区选一个。”
+
+**6️⃣ 执行要点**  
+- 全程一名教练完成，固定机位拍两遍后剪成对话。  
+- 角色切换只需换外套、拿不同颜色的笔，避免复杂剧情。  
+- 不拍真实客户数据，不展示体重秤上的具体数字。  
+- 字幕突出“三个追问”，节奏保持一问一答，不做长篇口播。
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="9-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="9-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="9-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="9-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="9-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="9-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="9-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="9-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="9-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="9-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="9-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="9-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="9-v" value="合格"> 合格</label>
+      <label><input type="radio" name="9-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="9-s" value="1"> 1</label> <label><input type="radio" name="9-s" value="2"> 2</label> <label><input type="radio" name="9-s" value="3"> 3</label> <label><input type="radio" name="9-s" value="4"> 4</label> <label><input type="radio" name="9-s" value="5"> 5</label></span></div>
+    <input class="why" name="9-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="10">
+  <header><span class="no">编号 10</span><span class="board">选题</span><span class="who">宠物洗护店（店主出镜） · 完整档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：小美宠物洗护
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **出镜人是谁**：店主小美
+- **和店的关系**：老板本人出镜
+- **干这行几年**：做宠物洗护5年
+- **在本地多久**：本地人
+- **主卖什么**：猫狗洗护、宠物美容
+- **招牌 / 特色**：洗护全程可视
+- **其他硬事实**：
+  - 店里养了两只店猫
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：猫狗洗护、宠物美容
+- 平台：抖音
+- 赛道：萌宠、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：市区
+- 目标年龄：20-35岁
+- 目标职业：养猫养狗的年轻人
+- 已有的内容方向：洗澡频率、怕水的宠物怎么洗、美容前要知道的事
+- 核心卖点：洗护全程可视，主人放心
+- 卖的产品/服务：猫狗洗护、宠物美容
+- 前采要点（客户原话和真实细节，写内容时优先用）：小美做宠物洗护5年，洗护全程主人可以看；主人最怕宠物在店里受委屈
+
+访谈要点：问：您做洗护多少年了？答：五年。问：为什么要全程可视？答：主人看着放心，宠物也不容易紧张。问：主人最常问什么？答：多久洗一次，掉毛怎么办。问：有没有印象深的宠物？答：有只泰迪第一次来叫个不停，现在进门自己往洗护台上跳。</pre></details>
+  <pre class="body">## 选题4：店里两只猫,一只是我捡的,一只是客人不要的
+
+**承接**：取自方向4「记录小美和两只店猫真实相处的日常互动,从细节里呈现她对待宠物的方式和性格」
+
+**0️⃣ 视频目的**  
+人设型。让观众记住小美这个人、看她怎么对待店里的猫、愿意关注或看主页
+
+**视频任务**  
+让观众通过小美和两只店猫的故事,记住她的性格和对宠物的态度,愿意关注她
+
+**🅰 打法**  
+36计·第8计 加入人物关系:小美日常工作+两只店猫出镜+互动细节→呈现小美的性格
+
+四大脚本·讲故事·平凡英雄型:普通人(小美)→一件不普通的小事(收留两只猫)→细节验证(日常相处)→感悟
+
+**1️⃣ 爆款元素**  
+无(人设型不强求爆款元素,真实相处即可)
+
+**2️⃣ 开篇钩子**  
+&quot;店里这两只猫,一只是我捡的,一只是客人不要的&quot;
+
+**3️⃣ 内容方向及目的(重中之重!)**  
+- **核心内容方向**:讲两只店猫的来历,记录小美和它们日常相处的真实片段,从细节里呈现小美对待宠物的方式
+- **核心问题与观众价值**:小美是个什么样的人?她怎么对待店里的猫?让观众从真实相处里看到她的性格和态度
+- **取材与内容推进**:
+  - 开篇:两只猫的来历(一只是小美捡的,一只是客人不要的)
+  - 日常片段1:小美给猫喂食、梳毛、陪玩(自然发生的互动)
+  - 日常片段2:猫在店里自由活动,小美工作时的互动(比如猫跳到工作台、小美轻轻挪开)
+  - 日常片段3:客人来店里,猫的反应和小美的安抚(如果有)
+  - 感悟:小美对镜头说一句话(比如&quot;它们在,店里就不只是工作的地方&quot;)
+- **事实边界**:只拍自然发生的片段,不安排剧情;两只猫的来历需小美确认真实性
+- **关键画面(3个)**:
+  1. 小美给猫喂食或梳毛的近景(手部动作+猫的反应)
+  2. 猫在店里自由活动,小美工作时的自然互动
+  3. 小美对镜头说一句话,表达她对这两只猫的感情
+- **场景设置**:店内,日常工作场景,手机拍摄
+
+**4️⃣ 脚本结构**  
+讲故事·平凡英雄型:
+- 开篇:两只猫的来历(结果钩子)
+- 片段1:日常喂食、梳毛(细节验证)
+- 片段2:工作时的互动(细节验证)
+- 片段3:客人来店时的场景(如果有)
+- 感悟:小美一句话点题
+
+**5️⃣ 结尾行动指令**  
+关注:&quot;关注我,看更多店里的日常&quot;
+
+**6️⃣ 执行要点**  
+- 只拍自然发生的片段,不摆拍、不强迫猫配合
+- 两只猫的来历需小美确认真实性,不编故事
+- 拍摄时注意捕捉小美和猫互动的细节(眼神、动作、语气)
+- 不煽情、不刻意营造感动,保持日常感
+- 如果猫不配合拍摄,不强求,换其他时间拍
+
+---</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="说得清这条给谁看、为什么会看、要达到什么目的吗？">T1 出发点清楚</span>
+      <label><input type="radio" name="10-T1" value="合格"> 合格</label>
+      <label><input type="radio" name="10-T1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="10-T1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用上了八大爆款元素（成本、人群、头牌、奇葩、最差、反差、怀旧、荷尔蒙）里的哪一个？光看标题认不认得出？">T2 爆款元素一眼认得出</span>
+      <label><input type="radio" name="10-T2" value="合格"> 合格</label>
+      <label><input type="radio" name="10-T2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="10-T2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="换一家同行，这个选题还成立吗？">T3 只有这家店拍得出来</span>
+      <label><input type="radio" name="10-T3" value="合格"> 合格</label>
+      <label><input type="radio" name="10-T3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="10-T3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="这个号现有的人、场地、设备和素材，能把它拍出来吗？">T4 拍得出来</span>
+      <label><input type="radio" name="10-T4" value="合格"> 合格</label>
+      <label><input type="radio" name="10-T4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="10-T4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="10-v" value="合格"> 合格</label>
+      <label><input type="radio" name="10-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="10-s" value="1"> 1</label> <label><input type="radio" name="10-s" value="2"> 2</label> <label><input type="radio" name="10-s" value="3"> 3</label> <label><input type="radio" name="10-s" value="4"> 4</label> <label><input type="radio" name="10-s" value="5"> 5</label></span></div>
+    <input class="why" name="10-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+<h2>二、脚本（编号 11–20）</h2>
+
+<section class="card" data-no="11">
+  <header><span class="no">编号 11</span><span class="board">脚本</span><span class="who">山货特产（农户本人出镜） · 稀疏档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：老陈家果园
+- 经营品类（每一个都在卖，定位里都要体现）：猕猴桃、土蜂蜜
+- 平台：抖音
+- 赛道：三农、美食
+- 账号阶段：起号期
+- 地域：全国
+- 卖的产品/服务：猕猴桃、土蜂蜜</pre></details>
+  <pre class="body">## 第1步：脚本策略卡
+
+**核心问题**：猕猴桃到手后，面对不同到货状态，不能不看说明就随手放置。  
+**用户目的**：变现型；解决“收到后怎么放”的问题，承接用户私信了解当期发货说明。  
+**目标人群**：刚收到或准备购买猕猴桃、不确定该怎么放的人。  
+**采用形式**：**对比型公式 + 36计·第15计 正确做法VS错误做法**。用同一颗猕猴桃、同一张桌面，呈现“常见错误动作”和“店内确认做法”的区别。  
+**材料递进**：错误动作 → 已确认的可能情况 → 店内真实处理动作 → 查看当期发货说明 → 私信咨询。  
+**事实边界**：  
+- 【错误动作】、【可能情况】、【真实做法】、【需查看的信息】均需拍前由店内确认后替换。  
+- 不说固定成熟时间、保存时长，不承诺口感或状态。  
+- 不把“硬果”直接等同于好或不好。  
+- 本条只讲“放置”一个问题，不扩展到挑果、催熟、外观判断。  
+
+---
+
+## 第2步：纯文字文案
+
+猕猴桃刚到手，先别顺手往这里一放，很多人第一步就弄反了。  
+
+不少人拿到果子，看着还偏硬，直接【换成真实常见错误动作】。  
+
+问题是，到货状态没看清，放的位置也弄反了，后面可能会出现【换成店内确认过的真实情况】。  
+
+先别急着照着别人家方法放。  
+
+我这边发出去前，会先看当期的果子状态，再按说明处理。  
+
+如果这箱是【换成适用到货状态】，就先【换成店里确认过的真实做法】。  
+
+放的时候注意【换成真实注意事项】，别把果子挤在一起，也别和【换成店内确认需避开的物品或情况】放一块。  
+
+如果到手状态不一样，就别硬套这一种放法。  
+
+这就是为什么，同样是猕猴桃，到手先看说明，比随手找个地方放更重要。  
+
+果子不是放得越久越好，关键是先看清它现在是什么状态。  
+
+想确认你收到这箱该怎么放，私信问当期发货说明。  
+
+---
+
+## 第3步：完整分镜脚本
+
+&gt; **口播字数说明**：替换完方括号内的店内真实做法后，整体控制在约270—300字。  
+&gt; **出镜方式**：只拍手部、猕猴桃、包装和说明信息即可，不需要露脸。
+
+### 【镜头1】0—5秒｜钩子：错误动作即将发生
+
+**画面**：厨房台面或工作台上，一箱刚拆开的猕猴桃。手拿起一颗果子，准备放向【换成真实常见错误放置位置】。  
+
+**台词**：  
+“猕猴桃刚到手，先别顺手往这里一放，很多人第一步就弄反了。”  
+
+**拍摄/收音要点**：  
+- 俯拍开场，果子和即将放置的位置必须同框。  
+- 手伸到一半停住，制造“别这样做”的视觉停留。  
+- 保留拆箱纸张和果子放到桌面的现场声音。  
+
+---
+
+### 【镜头2】5—13秒｜A方案：常见错误做法
+
+**画面**：继续演示【真实常见错误动作】，例如放入某处、堆叠、密封等；仅演示动作，不要真的长时间糟蹋果子。  
+
+**台词**：  
+“不少人拿到果子，看着还偏硬，直接【换成真实常见错误动作】。”  
+
+**拍摄/收音要点**：  
+- 镜头贴近手和果子，画面要让人看清“错在哪个动作”。  
+- 字幕：**“先别这样放”**。  
+- 不出现“很多人都这样”“人人都这样”等扩大化表达。  
+
+---
+
+### 【镜头3】13—22秒｜A方案后果：只说已确认情况
+
+**画面**：手把果子从错误位置取回，放回桌面；镜头给到包装上的现有信息或待确认说明卡。  
+
+**台词**：  
+“问题是，到货状态没看清，放的位置也弄反了，后面可能会出现【换成店内确认过的真实情况】。”  
+
+**拍摄/收音要点**：  
+- 这里不要拍腐坏、变质等未真实发生的画面。  
+- 如果没有可展示的真实对应画面，就只拍“取回果子、翻看说明”的动作。  
+- 情绪从“提醒”进入“需要确认”的转折。  
+
+---
+
+### 【镜头4】22—30秒｜转折：别照搬别人的放法
+
+**画面**：手指向包装信息、说明卡或当期可公开的真实提示；隐私信息、订单信息不要入镜。  
+
+**台词**：  
+“先别急着照着别人家方法放。”  
+“我这边发出去前，会先看当期的果子状态，再按说明处理。”  
+
+**拍摄/收音要点**：  
+- 两句话之间留一个短停顿。  
+- 说明卡没有准备好时，改为拍现有包装可公开信息。  
+- 字幕可突出：**“先看状态，再决定怎么放”**。  
+
+---
+
+### 【镜头5】30—42秒｜B方案：店内真实做法
+
+**画面**：同一颗猕猴桃，按店内确认做法重新放置。镜头完整拍清“拿起—处理—放好”的动作。  
+
+**台词**：  
+“如果这箱是【换成适用到货状态】，就先【换成店里确认过的真实做法】。”  
+“放的时候注意【换成真实注意事项】。”  
+
+**拍摄/收音要点**：  
+- 这段必须替换成真实可执行步骤再拍。  
+- 若店内做法涉及容器、位置、是否通风、是否分开放置，画面要逐项对应。  
+- 不要用快剪跳过关键动作，观众需要看明白。  
+
+---
+
+### 【镜头6】42—50秒｜补充适用条件
+
+**画面**：手调整果子之间的位置，或指向包装/说明卡中可公开的“当期提示”。  
+
+**台词**：  
+“别把果子挤在一起，也别和【换成店内确认需避开的物品或情况】放一块。”  
+“如果到手状态不一样，就别硬套这一种放法。”  
+
+**拍摄/收音要点**：  
+- 只有店内确认过“需避开的物品或情况”才能说；未确认则删掉前半句。  
+- 这段语速放慢一点，给观众消化时间。  
+
+---
+
+### 【镜头7】50—56秒｜差异揭示与回收
+
+**画面**：左侧放错误示范时的画面定格，右侧放正确放置完成后的画面；若不做分屏，则拍手把说明卡放到果子旁边。  
+
+**台词**：  
+“这就是为什么，同样是猕猴桃，到手先看说明，比随手找个地方放更重要。”  
+“果子不是放得越久越好，关键是先看清它现在是什么状态。”  
+
+**拍摄/收音要点**：  
+- 这不是“放置前后效果对比”，而是“处理逻辑对比”，不要暗示效果已经发生。  
+- 字幕只保留核心句：**“先看状态，再决定怎么放”**。  
+
+---
+
+### 【镜头8】56—60秒｜行动指令
+
+**画面**：一箱猕猴桃、现有包装和说明卡同框；手把果子轻放回正确位置。  
+
+**台词**：  
+“想确认你收到这箱该怎么放，私信问当期发货说明。”  
+
+**拍摄/收音要点**：  
+- 语气自然，不催促。  
+- 画面停在已整理好的果子和说明信息上。  
+- 不展示价格、优惠、联系方式或任何经营承诺。  
+
+---
+
+## 第4步：执行与优化建议
+
+### 开拍前必须确认并替换的内容
+
+1. **真实错误动作**  
+   - 【待确认：顾客或店内最常见的错误放置动作是什么】  
+   - 例如是否存在“直接冷藏”“密封放置”“与某物放在一起”等情况；未确认不写。  
+
+2. **真实做法**  
+   - 【待确认：不同到货状态下，店内建议的实际放置方法】  
+   - 需要明确可拍动作，而不是“妥善保存”这类空话。  
+
+3. **适用条件**  
+   - 【待确认：什么到货状态适用本条方法】  
+   - 如无法确认分类条件，本条改成：“具体按当期包装说明处理。”  
+
+4. **可能情况**  
+   - 【待确认：错误放置后，店内确认能够公开表达的真实情况】  
+   - 没有依据时，删掉“后面可能会出现……”这句，改为：  
+     **“到货状态没看清，后面就容易不知道该怎么处理。”**
+
+### 拍摄准备
+
+- 准备一箱现有猕猴桃、现有包装材料、可公开说明卡或包装信息。  
+- 全程使用同一颗猕猴桃，避免被理解为不同批次对比。  
+- 场景选厨房台面、餐桌或打包台，背景只保留果子、包装和必要道具。  
+- 白天靠窗拍，果皮细节更清楚；避免顶灯直射造成反光。  
+- 主镜头用手机俯拍，另补两组近景：果子状态、说明卡局部。  
+
+### 剪辑节奏
+
+- 前5秒必须拍到“手准备放错位置又停住”的动作。  
+- 错误动作不超过10秒，重点留给真实做法。  
+- 方括号内容替换后，字幕与口播保持一致。  
+- 不使用“保鲜、锁鲜、保证熟、一定甜”等未经确认表述。</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="11-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="11-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="11-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="11-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="11-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="11-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="11-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="11-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="11-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="11-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="11-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="11-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="11-v" value="合格"> 合格</label>
+      <label><input type="radio" name="11-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="11-s" value="1"> 1</label> <label><input type="radio" name="11-s" value="2"> 2</label> <label><input type="radio" name="11-s" value="3"> 3</label> <label><input type="radio" name="11-s" value="4"> 4</label> <label><input type="radio" name="11-s" value="5"> 5</label></span></div>
+    <input class="why" name="11-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="12">
+  <header><span class="no">编号 12</span><span class="board">脚本</span><span class="who">儿童摄影工作室（摄影师出镜） · 模糊档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：阿宁儿童摄影
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **和店的关系**：有时老板出镜，有时店员出镜
+- **干这行几年**：拍儿童照9年
+- **在本地多久**：本地人
+- **主卖什么**：百天照、生日照、全家福
+- **招牌 / 特色**：不催孩子笑
+- **其他硬事实**：
+  - 影棚在商场三楼
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：百天照、生日照、全家福、顺带卖一些周边小商品
+- 平台：抖音
+- 赛道：摄影、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：市区
+- 目标年龄：25-38岁
+- 目标职业：宝爸宝妈
+- 已有的内容方向：孩子拍照不哭的办法、拍照前怎么准备、全家福怎么站
+- 核心卖点：不催孩子笑，等孩子自己放松
+- 卖的产品/服务：百天照、生日照、全家福、顺带卖一些周边小商品
+
+访谈要点：问：您拍儿童照多少年了？答：九年。问：为什么不催孩子笑？答：催出来的笑是僵的，等出来的才好看。问：家长最常问什么？答：孩子哭了怎么办，要带几套衣服。问：有没有印象深的事？答：有个孩子哭了半小时，后来抱着我们的小熊笑了，那张成了他们家最喜欢的照片。</pre></details>
+  <pre class="body"># 📋 第1步：脚本策略卡
+
+## 核心问题
+一岁宝宝拍照总哭，家长怎么办？
+
+## 用户目的
+**流量型**。让陌生宝爸宝妈停下来看——因为这是他们带孩子拍照前最担心的问题；看完能带走一个具体判断标准（什么情况该等、什么情况该换方式），而不是空洞的安慰。
+
+## 目标人群
+25-38岁宝爸宝妈，尤其是准备带一岁左右孩子拍百天照、生日照的家长。
+
+## 所选形式
+**对比型公式**：A方案（大部分家长的错误反应）vs B方案（我们现场的处理方式），揭示差异和原因。
+
+## 出发点
+- **围绕人**：一岁宝宝在影棚里的真实状态
+- **符合三有**：有用处——家长看完知道&quot;孩子哭时该等还是该换方式&quot;
+- **爆款元素**：人群（精准锁定带娃拍照的家长）+ 反差（家长以为要哄，其实要等）
+- **设计在**：开场第一句抛出&quot;哭了怎么办&quot;这个问题，中段用A方案（越哄越急）vs B方案（先停下来等）的对比展开，结尾回到&quot;不催孩子笑&quot;的核心卖点
+
+## 材料如何递进
+1. 开场：抛出一岁宝宝拍照最常见的问题——哭
+2. A方案：大部分家长的本能反应（越哄越急、一直催）→ 导致孩子更抵触
+3. B方案：我们现场的处理方式（先停下来、观察孩子状态、等他自己缓过来）→ 为什么这样做有效
+4. 差异揭示：根本原因是孩子需要时间适应陌生环境，催促只会加重压力
+5. 行动召唤：引导评论区互动
+
+## 事实边界
+- **已知事实**：拍儿童照9年、核心卖点是&quot;不催孩子笑，等孩子自己放松&quot;、影棚在商场三楼
+- **未知细节**：具体孩子哭的时长、家长常见的错误话术、现场等待的具体时间——这些用【待确认】占位或改成开放式表达
+- **不能写的**：没有真实客户经历就不写&quot;前两天来了个一岁宝宝&quot;；没有数据就不写&quot;90%的孩子&quot;；不承诺&quot;按我说的做就一定不哭&quot;
+
+---
+
+# 📝 第2步：纯文字文案
+
+我见过最多的，就是一岁左右的孩子，一进影棚就哭。
+
+家长第一反应是什么？
+
+赶紧哄：&quot;宝宝不哭不哭，看这里，笑一个。&quot;
+
+哄完不行就拿玩具，玩具不行就换人抱，抱来抱去孩子越哭越凶。
+
+为啥？
+
+因为你越急，孩子越能感觉到你在逼他做一件他不想做的事。
+
+但我们拍了9年儿童照，遇到孩子哭，第一件事不是哄。
+
+而是先停下来。
+
+相机放低，灯光调暗一点,让家长也别着急说话。
+
+等孩子自己缓过来。
+
+有的孩子缓个【待确认:X】分钟,看看周围,发现没人逼他,自己就不哭了。
+
+有的孩子会先盯着地上的小道具,慢慢走过去摸一摸。
+
+这时候再拍,表情是真放松的。
+
+这就是为什么,同样是一岁孩子拍照,有的全程在哭,有的却能拍出自然的笑。
+
+不是孩子配不配合,是大人给不给他适应的时间。
+
+记住这句话:孩子哭的时候,别急着催,先停下来等一等。
+
+你家孩子拍照会哭吗?评论区说说。
+
+---
+
+# 🎬 第3步:完整分镜脚本
+
+## 【开场钩子】0-8秒 | 😓 痛点型+人群锁定
+
+**【镜头1】0-3秒**
+- **画面**:影棚内景,摄影师正对镜头,背景是儿童拍摄道具(小凳子、气球等)
+- **台词**:&quot;我见过最多的,就是一岁左右的孩子,一进影棚就哭。&quot;
+- **情绪**:平静陈述,语速正常,像在讲一个很常见的事
+- **拍摄要点**:手机稳定器拍摄,光线柔和,背景道具清晰可见
+- **波点标记**:🤝 共鸣波点(家长听到&quot;一岁孩子哭&quot;立刻有画面感)
+
+**【镜头2】3-8秒**
+- **画面**:特写摄影师表情,眼神真诚
+- **台词**:&quot;家长第一反应是什么?赶紧哄:'宝宝不哭不哭,看这里,笑一个。'&quot;
+- **情绪**:模仿家长哄孩子的语气,略带无奈
+- **拍摄要点**:近景,捕捉表情细节
+- **波点标记**:😰 焦虑+共鸣波点(家长回忆起自己的反应)
+
+---
+
+## 【A方案:错误做法】8-25秒
+
+**【镜头3】8-15秒**
+- **画面**:摄影师模拟家长动作:拿起玩具晃、换个姿势抱(只拍手部动作,不安排真实孩子配合)
+- **台词**:&quot;哄完不行就拿玩具,玩具不行就换人抱,抱来抱去孩子越哭越凶。&quot;
+- **情绪**:语速加快,模拟家长的手忙脚乱
+- **拍摄要点**:手持拍摄,画面略有晃动感,营造忙乱氛围
+- **收音要点**:保持人声清晰,背景音量降低
+
+**【镜头4】15-25秒**
+- **画面**:摄影师停下动作,对镜头摊手
+- **台词**:&quot;为啥?因为你越急,孩子越能感觉到你在逼他做一件他不想做的事。&quot;
+- **情绪**:从忙乱转为冷静分析,语速放缓
+- **拍摄要点**:切回正面稳定机位
+- **波点标记**:😓 痛点+认同波点(家长意识到&quot;原来是我太急了&quot;)
+
+---
+
+## 【B方案:正确做法】25-45秒
+
+**【镜头5】25-32秒**
+- **画面**:摄影师做出&quot;停下来&quot;的动作——相机放低(或做放低的手势),关掉一盏补光灯
+- **台词**:&quot;但我们拍了9年儿童照,遇到孩子哭,第一件事不是哄。而是先停下来。&quot;
+- **情绪**:坚定,语速慢下来,像在强调重点
+- **拍摄要点**:拍摄真实动作:相机放低、灯光调暗
+- **波点标记**:💡 顿悟波点(家长第一次听到&quot;不哄&quot;的处理方式)
+
+**【镜头6】32-38秒**
+- **画面**:影棚内景,摄影师站在一旁,保持安静等待的姿态(可以拍背影或侧面)
+- **台词**:&quot;相机放低,灯光调暗一点,让家长也别着急说话。等孩子自己缓过来。&quot;
+- **情绪**:语气温和,像在描述一个安静的场景
+- **拍摄要点**:用慢镜头或固定机位,营造安静氛围
+
+**【镜头7】38-45秒**
+- **画面**:空镜:地上的小道具特写(积木、小车等)
+- **台词**:&quot;有的孩子缓个【待确认:X】分钟,看看周围,发现没人逼他,自己就不哭了。有的孩子会先盯着地上的小道具,慢慢走过去摸一摸。这时候再拍,表情是真放松的。&quot;
+- **情绪**:语气轻柔,像在讲故事
+- **拍摄要点**:近景拍道具,光线温暖
+- **收音要点**:可以加轻柔背景音乐,音量不压台词
+- **波点标记**:💡 学习+认同波点(家长理解了&quot;等待&quot;的意义)
+
+---
+
+## 【差异揭示】45-52秒
+
+**【镜头8】45-52秒**
+- **画面**:摄影师正对镜头,表情认真
+- **台词**:&quot;这就是为什么,同样是一岁孩子拍照,有的全程在哭,有的却能拍出自然的笑。不是孩子配不配合,是大人给不给他适应的时间。&quot;
+- **情绪**:语速加快,音量提高,像在敲重点
+- **拍摄要点**:正面特写,眼神坚定
+- **波点标记**:⚡ 情绪高潮(揭示本质原因)
+
+---
+
+## 【行动召唤】52-60秒
+
+**【镜头9】52-58秒**
+- **画面**:摄影师手掌向前推,像在传递一个重要提醒
+- **台词**:&quot;记住这句话:孩子哭的时候,别急着催,先停下来等一等。&quot;
+- **情绪**:真诚劝告,语速放缓
+- **拍摄要点**:中景,捕捉手势动作
+- **金句**:&quot;孩子哭的时候,别急着催,先停下来等一等&quot;(18字)
+
+**【镜头10】58-60秒**
+- **画面**:摄影师微笑,眼神温和
+- **台词**:&quot;你家孩子拍照会哭吗?评论区说说。&quot;
+- **情绪**:轻松邀请,像在和朋友聊天
+- **拍摄要点**:特写表情,保持亲和力
+- **CTA行动指令**:&quot;评论区说说&quot;
+
+---
+
+# 🎯 第4步:执行与优化建议
+
+## 拍摄准备
+
+### 场地与道具
+- **拍摄地点**:影棚内景,背景保留儿童拍摄常用道具(小凳子、气球、积木等),让观众一眼看出是儿童摄影环境
+- **灯光设置**:柔和自然光,避免过亮或过暗;镜头5需要演示&quot;调暗灯光&quot;的动作,提前安排可操作的补光灯
+- **道具清单**:相机(或做放低相机的手势)、小道具(积木、小车等,用于镜头7的空镜)
+
+### 拍摄设备与技巧
+- **设备**:手机+稳定器即可完成
+- **机位**:以正面中景为主,镜头3用手持营造忙乱感,镜头7用固定机位拍道具特写
+- **收音**:人声清晰优先,背景音乐可选,音量不压台词
+
+### 出镜人准备
+- **服装**:日常工作服或休闲装,不要过于正式
+- **状态**:放松自然,像在和朋友分享经验,不要背稿感
+- **表情管理**:镜头1-2共鸣+无奈,镜头5-7坚定+温和,镜头8认真,镜头9-10亲和
+
+## 资料缺口与待确认项
+
+1. **具体时长**:孩子缓过来通常需要多久?建议补充真实案例数据,替换【待确认:X】
+2. **家长常见话术**:除了&quot;笑一个&quot;,家长还会说什么?可以补充1-2句真实对话,增强共鸣
+3. **现场等待细节**:等待时摄影师和家长具体在做什么?可以补充画面,增强可信度
+
+## 优化方向
+
+### 如果完播率低于预期
+- **开场优化**:前3秒加入更具体的场景描述,如&quot;一岁半的孩子,刚进门看到灯光就哭&quot;
+- **中段优化**:A方案部分可以补充家长的真实对话(如果有录音或回忆),增强代入感
+- **结尾优化**:金句可以配字幕特效,强化记忆点
+
+### 如果评论区互动不足
+- **引导话题**:在评论区置顶一条:&quot;我家孩子上次拍照哭了半小时,你们家呢?&quot;
+- **回复策略**:对评论&quot;我家也是&quot;的用户,回复&quot;下次可以试试先让他在影棚玩一会儿,不急着拍&quot;
+
+### 如果想增强变现引导
+- **在镜头7后补充一句**(可选,不影响流量型定位):&quot;我们店的做法是,孩子不配合时,拍摄时间可以延长,不额外收费。&quot;(前提:需要老板确认这是真实政策)
+- **结尾CTA可改为**:&quot;想了解我们怎么拍,私信发孩子月龄。&quot;(如果老板希望直接引流咨询)
+
+## 发布建议
+
+- **发布时间**:晚上8-10点,宝爸宝妈刷手机的高峰期
+- **话题标签**:#儿童摄影 #一岁宝宝 #带娃日常 #育儿经验 #本地服务
+- **封面文字**:&quot;一岁宝宝拍照哭?别急着哄&quot;
+- **标题**:《一岁宝宝拍照总哭怎么办?9年摄影师:别急着哄》
+
+## 下一步行动
+
+1. **确认资料缺口**:补充孩子缓过来的具体时长、家长常见话术
+2. **拍摄排期**:选择影棚空闲时段拍摄,避免影响正常接待
+3. **素材积累**:如果后续有真实客户授权,可以补拍一条&quot;真实现场版&quot;,作为本条内容的延伸
+
+---
+
+## ✅ 脚本自检清单
+
+- [x] 开场钩子:包含痛点(一岁孩子拍照哭)+人群锁定(家长)
+- [x] A方案:描述大部分家长的错误反应(越哄越急)+导致的后果(孩子更抵触)
+- [x] B方案:展示正确处理方式(先停下来等)+为什么有效(孩子需要适应时间)
+- [x] 差异揭示:揭示本质原因(不是孩子不配合,是大人太急)
+- [x] 行动召唤:金句+评论区互动
+- [x] 时间分配:开场8秒、A方案17秒、B方案20秒、差异揭示7秒、行动召唤8秒,总计60秒
+- [x] 逻辑连贯:各部分自然衔接,情绪曲线层层递进
+- [x] 事实边界:没有编造客户故事、没有承诺效果、数字用【待确认】占位
+- [x] 禁忌规避:没有绝对化用语、没有贬低同行、没有诱导互动
+- [x] 出镜人身份:全程用&quot;我们&quot;,不用&quot;师傅&quot;&quot;摄影师&quot;指自己</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="12-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="12-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="12-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="12-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="12-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="12-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="12-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="12-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="12-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="12-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="12-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="12-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="12-v" value="合格"> 合格</label>
+      <label><input type="radio" name="12-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="12-s" value="1"> 1</label> <label><input type="radio" name="12-s" value="2"> 2</label> <label><input type="radio" name="12-s" value="3"> 3</label> <label><input type="radio" name="12-s" value="4"> 4</label> <label><input type="radio" name="12-s" value="5"> 5</label></span></div>
+    <input class="why" name="12-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="13">
+  <header><span class="no">编号 13</span><span class="board">脚本</span><span class="who">川味餐饮（地摊串串） · 完整档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：锦园地摊串串一元火锅
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **出镜人是谁**：成都来的川菜厨师
+- **和店的关系**：本人（掌勺）
+- **从哪来**：成都人
+- **干这行几年**：做川菜9年
+- **在本地多久**：来南乐半年
+- **主卖什么**：川味串串火锅、川味烧烤、川菜
+- **招牌 / 特色**：一元火锅
+- **其他硬事实**：
+  - 每天下午4点出摊
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：川味串串火锅、川味烧烤、川菜
+- 平台：抖音
+- 赛道：美食烹饪、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：南乐本地
+- 目标年龄：25-35岁
+- 目标职业：白领、宝妈
+- 已有的内容方向：以川味串串火锅、川味烧烤、川菜三个品类为核心，晒食材准备过程，教知识，厨师经验分享
+- 核心卖点：正宗川味配方，一元火锅低门槛
+- 卖的产品/服务：川味串串火锅、川味烧烤、川菜
+- 前采要点（客户原话和真实细节，写内容时优先用）：出镜人是成都来的川菜厨师，做川菜9年，来南乐半年；一元火锅是门店核心卖点，低门槛引流
+
+访谈要点：问：您做川菜多少年了？答：九年，在成都做了好几家店。问：怎么想到来南乐？答：朋友在这边合伙摆地摊，我就过来帮忙。问：一元火锅为什么敢这么卖？答：料要真，量要足，客人吃了还会回来。问：您最在意的是哪一步？答：炒之前的准备，调料怎么下、油温怎么控，省了后面怎么炒都补不回来。问：有没有客人特别记得的事？答：有个老顾客每周都来，说就喜欢我们的汤底不咸。</pre></details>
+  <pre class="body">【本轮内容落实规则】
+
+- 本条落实主题：**川菜最不能省的是炒前准备**。
+- 目的：变现型。通过同一份川菜的两种准备流程，展示出镜人的炒菜手艺，重点体现“专业强”。
+- 主体：同一个出镜人、同一份【待确认：川菜品名】、同一操作台。
+- 比较对象锁定：
+  - A方案：食材、调味料没有提前准备好，就直接开火。
+  - B方案：下锅前，先完成当天确认的炒前准备。
+- 时间范围：当天实际拍摄，不补写过去经历、顾客反馈或经营结果。
+- 取材方式：A方案可以用同一份食材做演示；B方案必须拍当天真实使用的准备动作。具体动作、菜名和出镜人的解释，现场确认后再填入。
+- 身份事实只作为字幕或背景信息使用：出镜人是成都来的川菜厨师，做川菜9年，来南乐半年。
+- 现场回答不提前编写，按真实回答保留。若回答过长，后期只保留“动作是什么、为什么做、影响哪个状态”三部分。
+
+### 第1步：脚本策略卡
+
+- **核心问题**：同样炒一份川菜，为什么不能等锅热了才开始找料、处理食材？
+- **用户目的**：让准备到店的南乐本地用户看懂，一份川菜从下锅前开始，具体要做哪些准备。
+- **目标人群**：南乐本地、关注川味餐饮和现场制作过程的用户。
+- **所选形式**：对比型公式——A方案错误演示 VS B方案真实做法。
+- **材料递进**：
+  1. 先展示“没准备好就开火”的操作困境；
+  2. 再展示当天真实的炒前准备；
+  3. 通过主问和追问，让出镜人说明这一步影响哪个炒制状态；
+  4. 最后回到“炒前准备不能省”。
+- **事实边界**：不预设具体备料动作、调味顺序或口感结果；涉及内容统一使用【待确认】或按现场真实回答。
+
+---
+
+### 第2步：纯文字文案
+
+同样一份【待确认：川菜品名】，有人锅热了才找料，有人下锅前先把准备做完，差别到底在哪？今天只看炒前这一段。
+
+先看第一种演示：食材还没处理好，调味料也没按顺序放，锅已经开火。
+
+等锅热了再找、再切、再调，手上的动作会被一件件事情打断。
+
+不是说这样一定炒不好，而是锅里的状态，未必会等人。
+
+再看我们现在的做法。
+
+下锅前，先完成【待确认：动作一】、【待确认：动作二】和【待确认：动作三】。
+
+你刚才为什么要先做这一步？
+
+如果少了这一步，后面哪个状态会受影响？
+
+什么情况下需要调整？
+
+我做川菜9年，今天不把一个动作说成万能，只把这份菜从准备到下锅拍清楚。
+
+下午4点出摊前，想看真实制作，可以到摊前看看。
+
+&gt; 现场回答不计入以上固定口播，需控制在简短、具体范围内，最终根据真实回答剪辑到60秒内。
+
+---
+
+### 第3步：完整分镜脚本
+
+#### 【开场钩子】0—8秒｜对比反差
+
+**【镜头1】0—4秒**
+
+- **画面**：同一份【待确认：川菜品名】的食材放在操作台上，一边是未整理的食材和调味料，另一边是已经摆放好的准备区。
+- **台词**：  
+  “同样一份【待确认：川菜品名】，有人锅热了才找料，有人下锅前先把准备做完，差别到底在哪？”
+- **拍摄要点**：先拍两种状态，再切出镜人半身。字幕突出“锅热了才找料”和“下锅前准备好”。
+- **情绪**：快速抛出问题，形成第一处反差。
+
+**【镜头2】4—8秒**
+
+- **画面**：手机从操作台推近到锅边，暂不展示完成菜品。
+- **台词**：  
+  “今天只看炒前这一段。”
+- **收音**：保留开火声、锅具碰撞声，音乐不要压住人声。
+
+#### 【A方案：错误演示】8—22秒
+
+**【镜头3】8—14秒**
+
+- **画面**：出镜人演示食材还没处理好就开火；调味料放在一旁，手部出现寻找、停顿动作。
+- **台词**：  
+  “先看第一种演示：食材还没处理好，调味料也没按顺序放，锅已经开火。”
+- **拍摄要点**：固定机位拍完整动作，不补拍皱眉、着急等未确认反应。
+
+**【镜头4】14—22秒**
+
+- **画面**：锅边与操作台交替特写：锅在加热，手再去处理食材或寻找调味料。
+- **台词**：  
+  “等锅热了再找、再切、再调，手上的动作会被一件件事情打断。”
+- **台词**：  
+  “不是说这样一定炒不好，而是锅里的状态，未必会等人。”
+- **情绪波点**：从演示转为提醒，不夸大后果。
+
+#### 【B方案：真实做法】22—43秒
+
+**【镜头5】22—29秒**
+
+- **画面**：回到同一操作台，拍当天真实使用的准备动作。
+- **台词**：  
+  “再看我们现在的做法。”
+- **台词**：  
+  “下锅前，先完成【待确认：动作一】、【待确认：动作二】和【待确认：动作三】。”
+- **拍摄要点**：待现场确认具体动作后替换占位内容；只拍实际发生的动作。
+
+**【镜头6】29—36秒**
+
+- **画面**：手部近景，按实际顺序拍食材、调味料和锅具状态。每个动作保留一个完整过程。
+- **台词**：  
+  “你刚才为什么要先做这一步？”
+- **受访者回答**：按现场真实回答。
+- **拍摄要点**：出镜人回答时切半身或侧面；回答中涉及不可公开配方时，只保留动作和可公开的判断依据。
+
+**【镜头7】36—43秒**
+
+- **画面**：拍出镜人继续准备，随后把食材或调味料放到下锅位置。
+- **台词**：  
+  “如果少了这一步，后面哪个状态会受影响？”
+- **台词**：  
+  “什么情况下需要调整？”
+- **受访者回答**：按现场真实回答。
+- **剪辑要点**：优先保留“具体影响什么”和“什么情况下调整”，删除重复解释。
+
+#### 【差异揭示】43—52秒
+
+**【镜头8】43—52秒**
+
+- **画面**：A方案与B方案分屏或交替剪辑：一边是开火后再找料，一边是下锅前准备完成。
+- **台词**：  
+  “这就是两种做法的差别：不是把一个动作说成万能，而是先把下锅前该做的事准备好，再让锅里的每一步接得上。”
+- **拍摄要点**：不要补写“更香”“更好吃”等结果，画面只呈现动作和顺序。
+
+#### 【收尾】52—60秒
+
+**【镜头9】52—60秒**
+
+- **画面**：拍准备完成后的操作台，接一个锅边画面；如果当天已经完成炒制，可展示实际完成状态。
+- **台词**：  
+  “我做川菜9年，今天不把一个动作说成万能，只把这份菜从准备到下锅拍清楚。”
+- **台词**：  
+  “下午4点出摊前，想看真实制作，可以到摊前看看。”
+- **行动指令**：到摊前看看。
+- **收音**：保留锅边真实环境声，结尾不叠加其他行动要求。
+
+---
+
+### 第4步：执行与优化建议
+
+1. **拍摄前先确认三项内容**
+   - 当天拍哪一道川菜；
+   - 炒前具体有哪些准备动作；
+   - 哪些步骤和判断依据可以公开。
+
+2. **A方案只做演示，不做夸张后果**
+   - 不说“这样一定炒坏”；
+   - 不安排出镜人假装慌乱；
+   - 只拍“开火后再找料、再处理”的动作顺序。
+
+3. **B方案必须拍真实动作**
+   - 将【待确认：动作一】替换为当天确实发生的动作；
+   - 每个动作单独拍手部特写；
+   - 若实际准备动作少于三项，不要硬凑三项，按真实数量改写台词。
+
+4. **采访建议**
+   - 主问：为什么要先做这一步？
+   - 追问一：如果少了这一步，后面哪个状态会受影响？
+   - 追问二：什么情况下需要调整？
+   - 追问三：这一步是固定顺序，还是要看当天食材状态？
+   - 所有回答按现场真实内容保留，不提前写答案。
+
+5. **时长控制**
+   - 固定口播控制在约270—300字以内；
+   - 出镜人每个回答尽量只保留一句核心解释；
+   - 如果现场回答较长，优先保留“动作—原因—影响”三段；
+   - 最终以实拍语速和真实回答为准，剪成60秒，不用额外补旁白凑时长。</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="13-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="13-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="13-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="13-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="13-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="13-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="13-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="13-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="13-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="13-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="13-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="13-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="13-v" value="合格"> 合格</label>
+      <label><input type="radio" name="13-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="13-s" value="1"> 1</label> <label><input type="radio" name="13-s" value="2"> 2</label> <label><input type="radio" name="13-s" value="3"> 3</label> <label><input type="radio" name="13-s" value="4"> 4</label> <label><input type="radio" name="13-s" value="5"> 5</label></span></div>
+    <input class="why" name="13-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="14">
+  <header><span class="no">编号 14</span><span class="board">脚本</span><span class="who">大码女装（店主本人出镜） · 稀疏档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：阿梅大码女装店
+- 经营品类（每一个都在卖，定位里都要体现）：大码女装
+- 平台：抖音
+- 赛道：时尚穿搭、本地服务
+- 账号阶段：起号期
+- 地域：县城本地
+- 卖的产品/服务：大码女装</pre></details>
+  <pre class="body">## 第1步：脚本策略卡
+
+- **核心问题**：大码女生试秋季外套时，只看正面容易遗漏侧面和活动状态；该怎么按顺序多看几眼。
+- **用户目的**：流量型，引发目标人群评论自己试衣时最容易漏看的位置。
+- **目标人群**：县城本地有秋季外套试穿需求的丰满女生。
+- **所选形式**：**对比型结构**。A段是“只站着看正面”，B段是“正面—侧面—抬手—走两步”的补充观察。这里不把前者说成绝对错误，而是指出“信息还没看全”。
+- **材料递进**：同一件店内真实在售的大码女装外套，保持同一人、同一试衣镜、同一机位；从静态正面，推进到侧面和活动状态。
+- **事实边界**：不承诺“显瘦”效果；不评价具体面料、版型；只描述镜头里能看到的衣长、轮廓、侧面及活动时的变化。
+- **出发点**：围绕“人”——丰满女生试秋装外套的真实场景｜三有：有用处，给出可照做的试衣观察顺序｜爆款元素：人群，开头直接点出“大码女生”。
+
+---
+
+## 第2步：纯文字文案
+
+大码女生挑秋天外套，别只盯正面显不显胖。  
+
+同一件外套，站着看和动起来看，差别很大。  
+
+很多人试外套，镜子前站一下，看完正面就准备脱。  
+
+这时能看到衣长、肩部和正面轮廓。  
+
+可侧面、抬手、走路时的状态，还没看清。  
+
+别急着决定，先把这一圈看完。  
+
+同一件外套，先正面站好，看衣长落在哪里。  
+
+再转到侧面，看自己最在意的位置。  
+
+接着抬一次手，模拟拿包；再走两步，看衣摆和袖口怎么动。  
+
+重点不是追求某一种效果，是把静态和活动时的画面都看清。  
+
+这就是为什么，正面看完还要多做几个动作。  
+
+外套要穿着活动，不只站在镜子前看。  
+
+你试外套最容易漏看哪里？评论区说说。  
+
+---
+
+## 第3步：完整分镜脚本
+
+### 【镜头1】0-4秒
+- **画面**：试衣镜前，出镜人已穿好一件店内真实在售的秋季外套。镜头不先给正面，先给侧面全身。
+- **台词**：大码女生挑秋天外套，别只盯正面显不显胖。
+- **拍摄/收音要点**：手机竖拍固定，镜头高度接近腰部，保证能拍到全身和衣摆。字幕突出“别只盯正面”。
+
+### 【镜头2】4-8秒
+- **画面**：同机位下，出镜人从侧面缓慢转到正面，再停住。
+- **台词**：同一件外套，站着看和动起来看，差别很大。
+- **拍摄/收音要点**：转身动作放慢，不要快速切镜头，让观众看清同一件外套不同角度的状态。
+- **情绪波点**：⚡提出反差——同一件外套，观察方式不同。
+
+### 【镜头3】8-14秒
+- **画面**：A方案。正面对镜站立，看一眼镜子后，手部做出准备整理衣服或准备脱下的动作。
+- **台词**：很多人试外套，镜子前站一下，看完正面就准备脱。
+- **拍摄/收音要点**：画面角落加字幕：**“只看正面”**。动作自然，不需要演出犹豫或失望。
+
+### 【镜头4】14-19秒
+- **画面**：正面全身静止画面，镜头从肩部缓慢带到衣摆。
+- **台词**：这时能看到衣长、肩部和正面轮廓。
+- **拍摄/收音要点**：只拍画面中看得到的部位，不用箭头指向未经确认的版型特点。
+
+### 【镜头5】19-25秒
+- **画面**：画面暂停半秒，随后切回侧面全身；出镜人尚未做动作。
+- **台词**：可侧面、抬手、走路时的状态，还没看清。
+- **拍摄/收音要点**：字幕依次出现：**“侧面”**、**“抬手”**、**“走两步”**。
+- **情绪波点**：😓信息缺口——只看正面，画面还没看全。
+
+### 【镜头6】25-29秒
+- **画面**：B方案开始。回到同一机位，正面全身站好。
+- **台词**：别急着决定，先把这一圈看完。
+- **拍摄/收音要点**：字幕切换为：**“多看几步”**。镜头保持稳定，和前半段形成统一对照。
+
+### 【镜头7】29-34秒
+- **画面**：正面全身，镜头停留在完整上身状态。
+- **台词**：同一件外套，先正面站好，看衣长落在哪里。
+- **拍摄/收音要点**：不必推近特写，保留全身比例，方便观众观察衣长位置。
+
+### 【镜头8】34-39秒
+- **画面**：出镜人缓慢转到侧面，停住。
+- **台词**：再转到侧面，看自己最在意的位置。
+- **拍摄/收音要点**：侧面停留足够长，避免一闪而过。字幕：**“再看侧面”**。
+
+### 【镜头9】39-45秒
+- **画面**：出镜人抬一次手，模拟拿包；随后自然向前走两步，再回到原位。
+- **台词**：接着抬一次手，模拟拿包；再走两步，看衣摆和袖口怎么动。
+- **拍摄/收音要点**：固定机位不跟拍，让衣摆、袖口的动态变化留在同一画面里。
+- **情绪波点**：💡顿悟点——静态试穿之外，还要看活动状态。
+
+### 【镜头10】45-52秒
+- **画面**：将“正面站立”和“抬手、走两步”的两个画面做上下分屏，均为同一件外套、同一人、同一空间。
+- **台词**：重点不是追求某一种效果，是把静态和活动时的画面都看清。
+- **拍摄/收音要点**：分屏字幕简洁标注：**“站着看”**、**“动起来看”**。不加“显瘦”“遮肉”等效果词。
+
+### 【镜头11】52-56秒
+- **画面**：出镜人站回镜前，整理一下衣摆后自然转身。
+- **台词**：这就是为什么，正面看完还要多做几个动作。
+- **拍摄/收音要点**：语速稍放慢，作为前面步骤的回收。
+
+### 【镜头12】56-60秒
+- **画面**：镜前侧面或背影，最后定格在完整上身画面。
+- **台词**：外套要穿着活动，不只站在镜子前看。你试外套最容易漏看哪里？评论区说说。
+- **拍摄/收音要点**：最后一秒保留问题字幕：**“你最容易漏看哪里？”**  
+- **行动指令**：评论。
+
+---
+
+## 第4步：执行与优化建议
+
+1. **只用一件外套拍完整条**  
+   从“只看正面”到“正面、侧面、活动状态”，必须是同一件真实在售外套，避免观众误以为是换衣服造成差异。
+
+2. **固定机位是关键**  
+   手机放在试衣镜斜侧前方，前后镜头距离、高度尽量一致。这样正面、侧面和动态画面才有可比性。
+
+3. **动作保持日常化**  
+   只做转身、抬手、模拟拿包、走两步，不需要夸张摆拍。重点是让观众看到“试衣时还能多看什么”。
+
+4. **画面背景做减法**  
+   镜头内保留试衣镜、衣架和一小块干净墙面即可。拍摄前检查镜面反光，避免拍到未经同意的顾客或店员。
+
+5. **后期节奏**  
+   A方案“只看正面”可以略快；B方案的侧面、抬手、走路镜头要多停留一点。让观众真正看清，而不是只听口播。
+
+6. **标题可用**  
+   **大码女生挑秋天外套，先别只看正面**</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="14-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="14-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="14-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="14-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="14-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="14-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="14-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="14-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="14-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="14-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="14-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="14-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="14-v" value="合格"> 合格</label>
+      <label><input type="radio" name="14-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="14-s" value="1"> 1</label> <label><input type="radio" name="14-s" value="2"> 2</label> <label><input type="radio" name="14-s" value="3"> 3</label> <label><input type="radio" name="14-s" value="4"> 4</label> <label><input type="radio" name="14-s" value="5"> 5</label></span></div>
+    <input class="why" name="14-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="15">
+  <header><span class="no">编号 15</span><span class="board">脚本</span><span class="who">本地家具店（老板本人出镜） · 模糊档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：县城木工家具店
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **和店的关系**：有时老板出镜，有时店员出镜
+- **干这行几年**：做家具12年
+- **在本地多久**：本地人
+- **主卖什么**：实木餐桌椅、布艺沙发
+- **招牌 / 特色**：现场看木料
+- **其他硬事实**：
+  - 门店在县城，自家有木工工坊
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：实木家具、布艺沙发、顺带卖一些周边小商品
+- 平台：抖音
+- 赛道：家居家装、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：县城本地
+- 目标年龄：28-45岁
+- 目标职业：新婚家庭、换房的业主
+- 已有的内容方向：选家具的常识、木料辨认、工坊过程
+- 核心卖点：自家工坊，木料可现场看
+- 卖的产品/服务：实木家具、布艺沙发、顺带卖一些周边小商品
+
+访谈要点：问：您做家具多少年了？答：十二年，木工出身。问：客人最常问什么？答：沙发到底怎么挑，布艺还是皮的，坐久了会不会塌。问：您怎么回答？答：先看木架，木架不稳什么料子都白搭；坐垫的回弹要现场试。问：有没有印象深的事？答：有对年轻夫妻来看了三次，最后说就是因为能看到木料才放心买。问：您觉得做家具最讲究什么？答：料要干透，榫头要严，别偷工减料。</pre></details>
+  <pre class="body">## 【本轮内容落实规则】
+
+- 本条落实主题：**沙发怎么挑才不踩坑**，具体聚焦“第一次买布艺沙发，到店先怎么试坐”。
+- 内容目的：**变现型**，让准备买布艺沙发的新婚家庭、换房业主到店实际试坐。
+- 主体：店内出镜人，以“我”口播；不额外编造老板、店员身份。
+- 采用形式：**对比型公式＋36计·第24计 懒人学习**。  
+  - A方案：只看颜色和款式。  
+  - B方案：坐下、靠住、起身，再结合自己的使用感受判断。  
+- 不做产品好坏的虚假对比，不替观众判断某一张沙发一定适合谁；只演示到店试坐流程。
+- 数字限制：不使用无依据的价格、尺寸、比例或效果数字。“三个动作”来自原始材料中的真实设定。
+- 成交理由：**布艺沙发可现场试坐、现场看**。
+- 出发点：围绕“货”｜三有中的“有用处”｜不使用流量型爆款元素，重点展示到店可执行的试坐动作。
+
+---
+
+## 第1步：脚本策略卡
+
+**核心问题**：第一次买布艺沙发，到店不能只看颜色和款式，还要怎么判断是否适合自己的日常使用？
+
+**用户目的**：让观众记住三个可直接执行的动作，并到店实际体验。
+
+**目标人群**：准备买沙发的新婚家庭、换房业主，以及第一次买布艺沙发的人。
+
+**材料递进**：
+
+1. 先展示常见做法：站着看颜色、款式。
+2. 再指出局限：只看外观，无法替代实际试坐。
+3. 给出三个动作：坐下、靠住、起身。
+4. 说明动作对应的观察点。
+5. 用另一张沙发重复动作，方便按照自己的感受比较。
+6. 结尾引导到店试坐。
+
+**事实边界**：
+
+- 只说现场试坐和观察动作，不承诺某款沙发一定舒适。
+- 不使用“久坐不累”“适合所有人”等未经确认的结论。
+- 不拍未经同意的顾客正脸。
+- 现场需确认沙发可正常试坐，若有顾客使用，改拍空置沙发。
+
+---
+
+## 第2步：纯文字文案
+
+第一次买布艺沙发，别只看颜色，先做这三个动作：坐下、靠住、起身。
+
+很多人到店先看颜色和款式，站着看一圈，觉得顺眼就准备选了。
+
+但只看外观，没法替你判断每天坐下、靠住、起身时是什么感受。
+
+到店可以这样试：先自然坐下，感受身体落点；再靠住，感受背部支撑；最后起身，看看动作顺不顺手。
+
+这三个动作，不替你下结论，先把你自己的使用感受试出来。
+
+同样的动作，也可以在另一张沙发上再试一次，按家里主要使用者的感受来比较。
+
+颜色当然要看，但别让颜色替你做完整决定。
+
+想实际试坐，可以到店把这三个动作做一遍。
+
+---
+
+## 第3步：完整分镜脚本
+
+### 【镜头1】0-4秒｜开场钩子
+
+- **画面**：手机固定在布艺沙发侧前方。出镜人站在沙发旁，先看一眼沙发颜色，再转向镜头。
+- **台词**：  
+  “第一次买布艺沙发，别只看颜色，先做这三个动作：坐下、靠住、起身。”
+- **拍摄/收音要点**：  
+  “坐下、靠住、起身”三个词配合手势或字幕出现。第一句直接进入主题，不拍“大家好”。
+
+### 【镜头2】4-10秒｜A方案：只看外观
+
+- **画面**：出镜人站在沙发前，手指轻轻指向沙发颜色和整体款式，只站着观察。
+- **台词**：  
+  “很多人到店先看颜色和款式，站着看一圈，觉得顺眼就准备选了。”
+- **拍摄/收音要点**：  
+  保留站着看沙发的完整动作，画面不要只拍沙发特写，要让观众看出“人没有坐下试”。
+
+### 【镜头3】10-19秒｜A方案局限
+
+- **画面**：镜头从沙发整体切到出镜人的坐姿区域，出镜人仍站在沙发前，没有试坐。
+- **台词**：  
+  “但只看外观，没法替你判断每天坐下、靠住、起身时是什么感受。”
+- **拍摄/收音要点**：  
+  “坐下、靠住、起身”分别用字幕标出，形成后面三个动作的铺垫。
+
+### 【镜头4】19-27秒｜B方案第一步：坐下
+
+- **画面**：出镜人自然坐下，侧面拍摄身体落座动作，补一个坐垫局部。
+- **台词**：  
+  “到店可以这样试：先自然坐下，感受身体落点；”
+- **拍摄/收音要点**：  
+  动作放慢，不能故意用力坐下。只描述试坐动作，不替观众下舒适或不舒适的结论。
+
+### 【镜头5】27-35秒｜B方案第二步：靠住
+
+- **画面**：出镜人坐稳后向靠背靠住，拍侧面和背部与靠垫接触的画面。
+- **台词**：  
+  “再靠住，感受背部支撑；”
+- **拍摄/收音要点**：  
+  保留靠住前后的完整动作，避免用手大力按压靠垫制造夸张效果。
+
+### 【镜头6】35-43秒｜B方案第三步：起身
+
+- **画面**：出镜人从沙发上起身，拍腿部、扶手和起身动作。
+- **台词**：  
+  “最后起身，看看动作顺不顺手。”
+- **拍摄/收音要点**：  
+  不使用“轻松起身”“一坐就知道”等扩大结论的说法，只拍真实动作。
+
+### 【镜头7】43-51秒｜重复动作进行现场比较
+
+- **画面**：出镜人在另一张布艺沙发上，按照同样顺序完成坐下、靠住、起身。可用三个短镜头并列剪辑。
+- **台词**：  
+  “这三个动作，不替你下结论，先把你自己的使用感受试出来。”
+- **拍摄/收音要点**：  
+  两张沙发使用相近机位和相同动作顺序，避免剪辑造成不真实的前后效果。
+
+### 【镜头8】51-56秒｜差异揭示
+
+- **画面**：两张沙发的局部画面交替出现，最后回到出镜人坐在其中一张沙发旁。
+- **台词**：  
+  “同样的动作，也可以在另一张沙发上再试一次，按家里主要使用者的感受来比较。”
+- **拍摄/收音要点**：  
+  字幕突出“坐下、靠住、起身”，不添加未经确认的尺寸、坐感或适用人群结论。
+
+### 【镜头9】56-60秒｜结尾行动指令
+
+- **画面**：出镜人站在布艺沙发旁，手指向试坐区域，画面保持店内真实环境。
+- **台词**：  
+  “颜色当然要看，但别让颜色替你做完整决定。想实际试坐，可以到店把这三个动作做一遍。”
+- **拍摄/收音要点**：  
+  “到店把这三个动作做一遍”作为结尾字幕。只保留一个行动指令：到店。
+
+---
+
+## 第4步：执行与优化建议
+
+### 拍摄前准备
+
+1. 选择一张当天可以正常试坐的布艺沙发。
+2. 如需拍第二张沙发，提前确认两张都能试坐，且周围没有顾客。
+3. 手机固定在侧前方，保证能同时拍到坐下、靠住、起身。
+4. 补拍坐垫、靠背、扶手和起身动作的近景。
+5. 店内声音嘈杂时，动作现场拍摄，口播可在安静位置后期补录。
+
+### 需要现场确认的内容
+
+- 具体拍摄哪两张布艺沙发。
+- 两张沙发是否都可以正常试坐。
+- “家里主要使用者”是否需要在字幕中进一步细分；如果没有更多真实资料，不补充老人、孩子等人物设定。
+- 是否有顾客进入画面；有则避开正脸，优先拍出镜人、手部和沙发局部。
+
+### 剪辑建议
+
+- 开头直接保留“别只看颜色”这句，删掉所有店铺介绍。
+- A方案控制在前半段，不延伸成“只看颜色一定买错”。
+- B方案必须完整保留“坐下、靠住、起身”三个动作。
+- 两张沙发对比时，只比较相同动作下的现场体验，不剪出“某张一定更好”的结论。
+- 字幕关键词按顺序出现：**坐下｜靠住｜起身｜自己试感受｜到店试坐**。</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="15-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="15-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="15-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="15-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="15-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="15-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="15-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="15-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="15-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="15-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="15-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="15-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="15-v" value="合格"> 合格</label>
+      <label><input type="radio" name="15-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="15-s" value="1"> 1</label> <label><input type="radio" name="15-s" value="2"> 2</label> <label><input type="radio" name="15-s" value="3"> 3</label> <label><input type="radio" name="15-s" value="4"> 4</label> <label><input type="radio" name="15-s" value="5"> 5</label></span></div>
+    <input class="why" name="15-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="16">
+  <header><span class="no">编号 16</span><span class="board">脚本</span><span class="who">社区理发店（老板本人出镜） · 完整档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：阿杰剪发
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **出镜人是谁**：店主阿杰
+- **和店的关系**：老板本人出镜
+- **干这行几年**：剪发11年
+- **在本地多久**：本地人
+- **主卖什么**：男士剪发、女士染烫
+- **招牌 / 特色**：剪前先聊脸型
+- **其他硬事实**：
+  - 店在小区门口，两张椅子
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：男士剪发、女士染烫
+- 平台：抖音
+- 赛道：美发造型、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：本小区及周边
+- 目标年龄：20-40岁
+- 目标职业：上班族、学生
+- 已有的内容方向：发型和脸型的关系、日常打理、染烫前要知道的事
+- 核心卖点：剪前先聊脸型，按打理习惯剪
+- 卖的产品/服务：男士剪发、女士染烫
+- 前采要点（客户原话和真实细节，写内容时优先用）：店主剪发11年，坚持剪前先聊脸型和打理习惯；客人多是附近上班族
+
+访谈要点：问：您剪发多少年了？答：十一年。问：为什么剪之前要聊那么久？答：每个人打理头发的时间不一样，早上只有五分钟的人就不能剪太讲究的。问：客人最常问什么？答：自己适合什么发型，染了会不会伤头发。问：有没有印象深的客人？答：有个小伙子要去面试，剪完说终于不像学生了。</pre></details>
+  <pre class="body">## 第1步：脚本策略卡
+
+- **核心问题**：圆脸男生剪短发时，哪些结构容易让脸部横向轮廓更明显；又该怎样根据脸型和打理习惯做选择。
+- **用户目的**：变现型。用“错误结构 vs 合适结构”的可视化对比，体现「剪前先聊脸型，按打理习惯剪」。
+- **目标人群**：本小区及周边、想剪短发的男性上班族和学生。
+- **所选形式**：对比型公式。  
+  A方案展示常见误区：两侧堆厚、顶部贴、刘海齐压；B方案展示调整方向：控制两侧厚度、顶部留层次、刘海留走向。
+- **材料递进**：视觉疑问 → 常见错误 → 剪前沟通与调整逻辑 → 差异原因 → 到店行动。
+- **事实边界**：不承诺“剪完脸一定变小”；只表达发型结构可能带来的视觉变化。开头不使用具体数字对比，因现有资料没有可核实的案例数据。
+- **成交理由**：专业强——「剪前先聊脸型，按打理习惯剪」。
+
+---
+
+## 第2步：纯文字文案
+
+圆脸男生，同样短发：一边更横，一边更利落，差在哪？
+
+别一上来把两边推太高，也别把刘海剪成一堵齐墙。
+
+侧面一蓬、顶部贴头皮，脸的横向轮廓会更明显。
+
+不少人拿着图片直接剪，剪完才发现：发型没问题，放到自己的脸型上，画面却不对。
+
+我剪前会先看你的脸型，再问你平时有没有时间打理。
+
+想让轮廓更利落，重点是：两侧别堆厚度，顶部留能整理的层次，刘海别齐齐压下来，要留一点走向。
+
+洗完头只想吹干就出门，别选需要反复抓的结构。
+
+差的不只是长度，是头发的重心放在哪。
+
+发量和发际线，也得一起看。
+
+到店前想好打理习惯，我先跟你聊脸型，再决定怎么剪。
+
+---
+
+## 第3步：完整分镜脚本
+
+### 【开场钩子】0-8秒｜视觉反差波点
+
+**【镜头1】0-4秒**  
+- **画面**：分屏对比。同一个假发头或经授权的成年模特，一侧展示“两侧蓬、顶部贴、齐刘海”的结构；另一侧展示“两侧收、顶部有层次、刘海有走向”的结构。  
+- **台词**：  
+  “圆脸男生，同样短发：一边更横，一边更利落，差在哪？”  
+- **拍摄/收音要点**：镜头正面平视，左右画面保持同样距离、同样光线。屏幕字幕标注“结构示意”，避免把示意画面当成真实顾客案例。  
+- **情绪**：语速稍快，重读“更横”“更利落”。  
+- **波点**：⚡反差提问。
+
+**【镜头2】4-8秒**  
+- **画面**：阿杰站在镜前，手指分别指向假发头的两侧和刘海位置。  
+- **台词**：  
+  “别一上来把两边推太高，也别把刘海剪成一堵齐墙。”  
+- **拍摄/收音要点**：中近景，镜子和假发头都入画；说“两边”时指侧面，说“齐墙”时用手比出平直刘海线。
+
+---
+
+### 【A方案：常见错误】8-25秒｜共鸣波点
+
+**【镜头3】8-15秒**  
+- **画面**：假发头侧面特写。阿杰用梳子将两侧头发拨蓬，再压低顶部，展示结构问题。  
+- **台词**：  
+  “侧面一蓬、顶部贴头皮，脸的横向轮廓会更明显。”  
+- **拍摄/收音要点**：侧面机位，梳子动作要慢；用自然顶光或柔和侧前光，让发型轮廓看清楚。  
+- **情绪**：平稳解释，不夸张。
+
+**【镜头4】15-25秒**  
+- **画面**：阿杰拿着一张不露人脸的发型参考图，转向镜子旁的假发头；随后切到假发头正面。  
+- **台词**：  
+  “不少人拿着图片直接剪，剪完才发现：发型没问题，放到自己的脸型上，画面却不对。”  
+- **拍摄/收音要点**：参考图不要出现未经授权的人像正脸，可用自制线稿图或打码图片替代。  
+- **情绪**：前半句像复述常见情况，后半句稍停顿。  
+- **波点**：😓“不是发型不好，而是不一定适合自己”的共鸣。
+
+---
+
+### 【B方案：调整方向】25-45秒｜顿悟波点
+
+**【镜头5】25-31秒**  
+- **画面**：阿杰坐在两张椅子旁，对镜头做“先聊再剪”的动作示意；镜头带到店内真实环境即可。  
+- **台词**：  
+  “我剪前会先看你的脸型，再问你平时有没有时间打理。”  
+- **拍摄/收音要点**：中景固定机位，保留两张椅子和店内空间，画面真实干净。  
+- **情绪**：语速放慢，突出“先看”“再问”。
+
+**【镜头6】31-40秒**  
+- **画面**：切回假发头。  
+  - 阿杰将两侧梳顺、收薄视觉厚度；  
+  - 手指提起顶部，展示层次位置；  
+  - 调整刘海方向，不让刘海齐压额头。  
+- **台词**：  
+  “想让轮廓更利落，重点是：两侧别堆厚度，顶部留能整理的层次，刘海别齐齐压下来，要留一点走向。”  
+- **拍摄/收音要点**：三个动作分别给特写，每个动作切一次镜头；字幕同步出现“两侧”“顶部”“刘海”。  
+- **情绪**：讲到三个位置时节奏清楚、逐项落下。  
+- **波点**：💡结构调整的顿悟点。
+
+**【镜头7】40-45秒**  
+- **画面**：阿杰一手模拟“吹干就出门”，另一手模拟反复抓头发的动作；画面右侧保留整理后的假发头。  
+- **台词**：  
+  “洗完头只想吹干就出门，别选需要反复抓的结构。”  
+- **拍摄/收音要点**：半身近景，动作简洁，不需要夸张表演。  
+
+---
+
+### 【差异揭示】45-52秒｜情绪高潮
+
+**【镜头8】45-52秒**  
+- **画面**：分屏再次出现。左边为厚重、齐压的结构示意；右边为调整后的结构示意。阿杰站在中间，手掌分别指向两边。  
+- **台词**：  
+  “差的不只是长度，是头发的重心放在哪。”  
+  “发量和发际线，也得一起看。”  
+- **拍摄/收音要点**：第一句说完停顿半秒，再说第二句。字幕突出“重心”。  
+- **情绪**：语气坚定，但不喊。  
+- **波点**：⚡从“照图剪”回到“看本人条件”。
+
+---
+
+### 【行动召唤】52-60秒｜收口
+
+**【镜头9】52-60秒**  
+- **画面**：阿杰站在店内镜前，镜头从假发头缓慢推到阿杰正面；结尾定格在店内两张椅子和镜子。  
+- **台词**：  
+  “到店前想好打理习惯，我先跟你聊脸型，再决定怎么剪。”  
+- **拍摄/收音要点**：用近景收尾，人声清楚；最后保留一秒店内环境，不额外添加未经确认的优惠、价格或承诺。  
+- **行动指令**：到店。  
+
+---
+
+## 第4步：执行与优化建议
+
+### 拍摄准备
+- **演示载体优先级**：  
+  1. 经本人同意出镜的成年圆脸模特；  
+  2. 没有模特时，用假发头完成全部结构演示，并在字幕写“结构示意”。  
+- 不拍未经同意的顾客正脸；店内如有其他顾客入镜，拍背影、手部或避开镜头。
+- 准备一张自制发型线稿或已获授权的参考图，避免直接使用来源不明的人像。
+
+### 画面与打光
+- **机位**：手机竖屏，镜头高度与假发头或人物眼睛平齐，避免俯拍让脸部横向被放大。  
+- **光线**：人物正前方或斜前方补光，别只开顶灯；侧面展示头型时加一点侧前光，头发层次更清楚。  
+- **重点特写**：两侧厚度、顶部层次、刘海走向。这三处是本条的证据画面，不能只靠口播讲。
+
+### 剪辑节奏
+- 开头分屏对比要在首帧直接出现。  
+- 每讲到“两侧、顶部、刘海”，立刻切对应特写。  
+- “差的不只是长度，是头发的重心放在哪”这句保留半秒停顿，再切回左右对比，形成收束。
+
+### 下一步可补充的真实素材
+如后续有经授权拍摄的真实剪发过程，可补充以下画面，让这条更有说服力：  
+- 【换成你接待的真实客户：剪前沟通时，对方的脸型、发量、打理习惯】  
+- 【换成你实际采用的剪发步骤】  
+- 【换成经本人同意展示的剪后侧面、正面画面】</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="16-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="16-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="16-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="16-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="16-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="16-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="16-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="16-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="16-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="16-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="16-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="16-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="16-v" value="合格"> 合格</label>
+      <label><input type="radio" name="16-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="16-s" value="1"> 1</label> <label><input type="radio" name="16-s" value="2"> 2</label> <label><input type="radio" name="16-s" value="3"> 3</label> <label><input type="radio" name="16-s" value="4"> 4</label> <label><input type="radio" name="16-s" value="5"> 5</label></span></div>
+    <input class="why" name="16-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="17">
+  <header><span class="no">编号 17</span><span class="board">脚本</span><span class="who">小学数学辅导（老师本人出镜） · 稀疏档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：王老师数学小班
+- 经营品类（每一个都在卖，定位里都要体现）：小学数学小班课
+- 平台：抖音
+- 赛道：教育培训、本地服务
+- 账号阶段：起号期
+- 地域：市区
+- 卖的产品/服务：小学数学小班课</pre></details>
+  <pre class="body"># 【本轮内容落实规则】
+
+**当前任务核心**：将选题 2「小学数学题：看到&quot;还剩&quot;就做减法，为什么错了？」落实成 60 秒可拍摄脚本。
+
+**用户明确要求**：
+- 时长：60 秒（口播约 270-300 字）
+- 视频目的：流量型
+- 打法：36 计·第 36 计 冷知识
+- 平台：抖音
+- 主题：孩子应用题总读不懂怎么办
+
+**事实边界锁定**：
+- 王老师数学小班课，起号期，市区
+- 题目是王老师日常教学中的真实例子（用户原文），不编数据、不虚构学生回答
+- 没有具体客户经历、教学年限、学生人数，相关数字一律不写
+- 出镜人：按人设事实卡，没填就不编身份，台词只用「我」「你」
+- 拍摄场景：书桌前，固定机位俯拍，手机支架
+
+**内容执行边界**：
+- 只演示题目和算式，不虚构学生回答或课堂场景
+- 数学题目本身是真实教学例子（用户已确认），可直接使用
+- 开头钩子、反常识结论、原理解释、应用建议都基于这道题展开
+- 不承诺&quot;看完就会&quot;&quot;100% 提分&quot;，只讲清楚一个卡点
+
+---
+
+# 第 1 步：脚本策略卡
+
+**核心问题**：为什么看到&quot;还剩&quot;不一定做减法？家长陪作业时常被直觉带偏，这条视频讲清楚一个卡点。
+
+**用户目的**：流量型。让市区陌生家长停下来看完，产生&quot;原来是这样&quot;的认知反差，记住王老师这个账号。
+
+**目标人群**：市区小学生家长（尤其是陪作业时遇到应用题卡点的家长）
+
+**所选形式**：36 计·第 36 计 冷知识（反常识结论 → 证据/例子 → 原理 → 应用）
+
+**出发点**：
+- 围绕：人（家长陪作业的认知盲区）
+- 三有：有用处（看完能带走一个判断方法）
+- 爆款元素：反差（家长以为&quot;还剩&quot;=减法，实际不一定）
+- 设计在：开场第一句点出反常识结论，中段用纸面演示两道题的差异，收尾给应用方法
+
+**材料递进**：
+1. 开场：反常识结论（&quot;看到'还剩'不一定做减法&quot;）
+2. 证据：纸面演示两道题（一道做减法，一道先除法再减法）
+3. 原理：单位和问题不同，算式就不同
+4. 应用：家长陪作业时怎么判断（&quot;先看问的是什么&quot;）
+5. 收尾：反问（&quot;你家孩子也遇到过吗？&quot;）
+
+**事实边界**：
+- 题目是王老师日常教学中的真实例子（用户原文确认）
+- 不编学生回答、不虚构课堂场景、不承诺效果
+- 数字只用题目本身的数字（10 个苹果、3 个等），不填学生人数、提分比例
+- 画面只拍题目纸、手部动作、算式演示，不拍学生、不虚构课堂
+
+---
+
+# 第 2 步：纯文字文案
+
+看到&quot;还剩&quot;就做减法？错了。
+
+小明有 10 个苹果，吃了 3 个，还剩几个？
+
+这道题做减法，10 减 3 等于 7。
+
+但这道题呢——
+
+小明有 10 个苹果，分给 3 个同学，每人分几个，还剩几个？
+
+同样有&quot;还剩&quot;，但这道题不能直接减。
+
+得先算每人分几个，10 除以 3 等于 3 个，还余 1 个。
+
+答案是每人分 3 个，还剩 1 个。
+
+看出来了吗？
+
+都是&quot;还剩&quot;，一个做减法，一个先除法再减法。
+
+差在哪？
+
+差在问的东西不一样。
+
+第一道问&quot;还剩几个苹果&quot;，直接减就行。
+
+第二道问&quot;每人分几个，还剩几个&quot;，得先分再算剩。
+
+孩子做应用题卡住，很多时候就卡在这——
+
+看到关键词就直接套公式，没看清楚问的是什么。
+
+所以家长陪作业时，别急着报答案。
+
+先问孩子一句：这道题问的是什么？
+
+他能说清问题，算式基本就对了。
+
+你家孩子也遇到过这种题吗？
+
+---
+
+# 第 3 步：完整分镜脚本
+
+**总时长**：约 60 秒  
+**拍摄场景**：书桌前，固定机位俯拍（手机支架），光线充足  
+**道具准备**：白纸或练习本 1 张，黑色水笔 1 支，题目提前写好
+
+---
+
+### 【镜头 1】0-5 秒 | 开场钩子
+
+**画面**：
+- 固定机位俯拍，画面中央是一张白纸，题目已写好：&quot;小明有 10 个苹果，吃了 3 个，还剩几个？&quot;
+- 手持黑色水笔，指着&quot;还剩&quot;这两个字
+
+**台词**：
+看到&quot;还剩&quot;就做减法？错了。
+
+**拍摄要点**：
+- 手机支架固定俯拍，确保题目字迹清晰可读
+- 手指停留在&quot;还剩&quot;处 1-2 秒，给观众反应时间
+- 光线充足，避免阴影遮挡字迹
+
+**情绪标记**：🤔 疑问波点
+
+---
+
+### 【镜头 2】5-12 秒 | 第一道题演示
+
+**画面**：
+- 手在纸上写算式：&quot;10 - 3 = 7&quot;
+- 每写一个数字停顿 1 秒，让观众跟上
+
+**台词**：
+小明有 10 个苹果，吃了 3 个，还剩几个？  
+这道题做减法，10 减 3 等于 7。
+
+**拍摄要点**：
+- 写字速度放慢，每个数字写完停顿 1 秒
+- 算式写在题目正下方，保持画面整洁
+- 手不要遮挡题目和算式
+
+---
+
+### 【镜头 3】12-20 秒 | 第二道题演示（上半部分）
+
+**画面**：
+- 手翻到纸的另一面（或在下方空白处）
+- 写第二道题：&quot;小明有 10 个苹果，分给 3 个同学，每人分几个,还剩几个?&quot;
+- 手指着&quot;还剩&quot;停留 1 秒
+
+**台词**：
+但这道题呢——  
+小明有 10 个苹果，分给 3 个同学，每人分几个，还剩几个？  
+同样有&quot;还剩&quot;，但这道题不能直接减。
+
+**拍摄要点**：
+- 第二道题写在新的位置（或纸的另一面），与第一道区分
+- 手指停留在&quot;还剩&quot;处，强调关键词
+- 语速稍慢，让观众意识到&quot;这道不一样&quot;
+
+**情绪标记**：💡 顿悟波点（观众开始察觉差异）
+
+---
+
+### 【镜头 4】20-30 秒 | 第二道题演示（下半部分）
+
+**画面**：
+- 手在第二道题下方写算式：&quot;10 ÷ 3 = 3……1&quot;
+- 再写：&quot;每人分 3 个，还剩 1 个&quot;
+- 每一步停顿 1-2 秒
+
+**台词**：
+得先算每人分几个，10 除以 3 等于 3 个,还余 1 个。  
+答案是每人分 3 个，还剩 1 个。
+
+**拍摄要点**：
+- 除法算式和答案分两行写，保持清晰
+- 手指先点&quot;10 ÷ 3&quot;，再点&quot;还剩 1 个&quot;，引导观众视线
+- 写完后手停留在答案处 1 秒
+
+---
+
+### 【镜头 5】30-42 秒 | 原理揭示
+
+**画面**：
+- 手在两道题之间来回指（先指第一道，再指第二道）
+- 用笔圈出第一道的&quot;还剩几个&quot;，再圈出第二道的&quot;每人分几个，还剩几个&quot;
+
+**台词**：
+看出来了吗？  
+都是&quot;还剩&quot;，一个做减法，一个先除法再减法。  
+差在哪？  
+差在问的东西不一样。  
+第一道问&quot;还剩几个苹果&quot;，直接减就行。  
+第二道问&quot;每人分几个，还剩几个&quot;，得先分再算剩。
+
+**拍摄要点**：
+- 手在两道题之间来回指，制造对比感
+- 圈关键词时动作清晰，停留 1-2 秒
+- 语速稍快，营造&quot;恍然大悟&quot;的节奏
+
+**情绪标记**：⚡ 情绪高潮（原理揭示）
+
+---
+
+### 【镜头 6】42-52 秒 | 应用建议
+
+**画面**：
+- 手放下笔,镜头稍微拉远一点（或保持俯拍，手自然放在纸旁）
+- 两道题和算式都清晰可见
+
+**台词**：
+孩子做应用题卡住，很多时候就卡在这——  
+看到关键词就直接套公式，没看清楚问的是什么。  
+所以家长陪作业时，别急着报答案。  
+先问孩子一句：这道题问的是什么?  
+他能说清问题，算式基本就对了。
+
+**拍摄要点**：
+- 手自然放在纸旁，不遮挡题目
+- 这段话是给家长的建议，语速放慢，语气真诚
+- 画面保持稳定，让观众能回看两道题的差异
+
+**情绪标记**：🤝 共鸣波点（家长的痛点）
+
+---
+
+### 【镜头 7】52-60 秒 | 收尾与行动指令
+
+**画面**：
+- 手指轻敲纸面（或自然放在纸旁）
+- 两道题和算式完整呈现
+
+**台词**：
+你家孩子也遇到过这种题吗？
+
+**拍摄要点**：
+- 最后一句是反问，语气上扬
+- 画面保持 2-3 秒，让观众有时间反应
+- 不要急着结束，给评论区留反应时间
+
+**行动指令**：评论区说说（通过反问句自然引导）
+
+---
+
+### 📊 时间分配核查
+
+- 开场钩子：0-5 秒（8%）✅
+- 第一道题演示：5-12 秒（12%）✅
+- 第二道题演示（上）：12-20 秒（13%）✅
+- 第二道题演示（下）：20-30 秒（17%）✅
+- 原理揭示：30-42 秒（20%）✅
+- 应用建议：42-52 秒（17%）✅
+- 收尾与行动指令：52-60 秒（13%）✅
+
+总计：约 60 秒，口播约 280 字 ✅
+
+---
+
+# 第 4 步：执行与优化建议
+
+### 📋 拍摄前准备清单
+
+**道具**：
+- [ ] 白纸或练习本 1 张（A4 大小，横放）
+- [ ] 黑色水笔 1 支（粗头，字迹清晰）
+- [ ] 题目提前写好（或拍摄时现场写，但要确保字迹工整）
+
+**设备**：
+- [ ] 手机 1 部（建议苹果 12 及以上，画面更清晰）
+- [ ] 手机支架 1 个（固定俯拍）
+- [ ] 补光灯或台灯 1 盏（确保光线充足，无阴影）
+
+**场景**：
+- [ ] 书桌或干净的桌面（背景简洁，无杂物）
+- [ ] 桌面颜色浅色为佳（白色、米色、浅木色），与黑色字迹形成对比
+
+---
+
+### 🎬 拍摄执行要点
+
+**机位设置**：
+- 手机支架固定在桌面正上方，镜头垂直向下
+- 拍摄高度约 40-60 厘米（确保纸张完整入镜，手部动作清晰）
+- 开拍前先测试：纸张四角都能看见，手不出画面边缘
+
+**光线调整**：
+- 补光灯或台灯放在手机侧面（避免手的阴影遮挡字迹）
+- 拍摄前用手机预览画面，确认无阴影、字迹清晰可读
+
+**节奏控制**：
+- 每写一个数字停顿 1-2 秒（给观众反应时间）
+- 每说一句话后停顿 0.5 秒（避免语速过快）
+- 手指指向关键词时停留 1-2 秒（强化重点）
+
+**常见问题规避**：
+- ❌ 手遮挡题目或算式 → ✅ 手只在需要指向时出现，其余时间放在画面外
+- ❌ 字迹潦草难认 → ✅ 提前写好题目,或拍摄时放慢写字速度
+- ❌ 光线不足或有阴影 → ✅ 多角度测试补光位置,确保字迹清晰
+
+---
+
+### 🔧 剪辑优化建议
+
+**字幕**：
+- 关键词加粗或变色：&quot;还剩&quot;&quot;问的是什么&quot;&quot;先看问题&quot;
+- 算式单独加字幕（如&quot;10 - 3 = 7&quot;），与画面同步出现
+
+**节奏**：
+- 开场前 3 秒加快节奏（钩子要快）
+- 中段演示题目时放慢节奏（让观众跟上）
+- 收尾应用建议时再放慢（真诚感）
+
+**音乐**（可选）：
+- 轻快的背景音乐（音量低于人声，不抢台词）
+- 原理揭示处（30-42 秒）可加短促的&quot;叮&quot;音效（强化顿悟感）
+
+---
+
+### 📊 发布后数据关注点
+
+**完播率**：
+- 目标：≥ 50%（冷知识类内容的合格线）
+- 若低于 40%：检查开场钩子是否够快,中段是否拖沓
+
+**评论区互动**：
+- 主动回复评论：&quot;你家孩子是哪一步卡住的？&quot;
+- 引导家长分享具体题目（为后续选题积累素材）
+
+**点赞与收藏**：
+- 点赞高、收藏低 → 内容有共鸣但实用性不够（下次可增加&quot;3 个常见关键词&quot;清单）
+- 点赞低、完播高 → 内容有价值但情绪不够（下次可增加&quot;你也遇到过吗&quot;的共鸣开头)
+
+---
+
+### 🔄 后续选题方向（基于本条反馈）
+
+**若评论区高频提到**：
+- &quot;我家孩子看到'一共'就做加法&quot; → 下一条选题：《看到&quot;一共&quot;不一定做加法》
+- &quot;应用题读不懂&quot; → 下一条选题：《孩子读题 3 遍还不懂？试试这个方法》
+- &quot;关键词太多记不住&quot; → 下一条选题：《小学应用题 5 个最坑人的关键词》
+
+**素材积累**：
+- 每次评论区出现家长分享的具体题目，截图保存（作为后续选题库）
+- 记录高赞评论的措辞（下次开头可直接用：&quot;评论区有家长说……&quot;）
+
+---
+
+### ⚠️ 资料缺口与待确认项
+
+**无需补充**：本条内容所需素材（题目、算式、拍摄场景）均已明确，无额外资料缺口。
+
+**可选优化**（非必需）：
+- 若后续想增加真实学生案例，需征得家长同意并打码
+- 若想拍真实课堂场景，需提前沟通学生家长（但本条不需要，纸面演示即可）
+
+---
+
+### ✅ 最后核对
+
+- [x] 脚本目的：流量型（让陌生家长停留、记住王老师）✅
+- [x] 时长：60 秒（口播约 280 字）✅
+- [x] 事实边界：题目真实、不编学生回答、不虚构数据 ✅
+- [x] 出发点：围绕人（家长陪作业盲区）、有用处、爆款元素（反差）✅
+- [x] 结尾行动指令：评论区说说（自然引导）✅
+- [x] 禁忌规避：无绝对化用语、无效果承诺、无虚构经历 ✅
+- [x] 可落地性：一人一机可完成，道具简单，场景易得 ✅
+
+---
+
+**交付完成**。本脚本已就绪，可直接执行拍摄。若有调整需求或其他选题需落地，请随时告知。</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="17-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="17-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="17-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="17-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="17-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="17-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="17-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="17-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="17-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="17-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="17-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="17-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="17-v" value="合格"> 合格</label>
+      <label><input type="radio" name="17-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="17-s" value="1"> 1</label> <label><input type="radio" name="17-s" value="2"> 2</label> <label><input type="radio" name="17-s" value="3"> 3</label> <label><input type="radio" name="17-s" value="4"> 4</label> <label><input type="radio" name="17-s" value="5"> 5</label></span></div>
+    <input class="why" name="17-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="18">
+  <header><span class="no">编号 18</span><span class="board">脚本</span><span class="who">母婴用品店（店员出镜） · 模糊档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：暖暖母婴生活馆
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **和店的关系**：有时老板出镜，有时店员出镜
+- **干这行几年**：在店里做了4年
+- **在本地多久**：本地人
+- **主卖什么**：奶粉、纸尿裤、婴儿洗护
+- **招牌 / 特色**：新手妈妈可领试用装
+- **其他硬事实**：
+  - 店在县医院对面
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：奶粉、纸尿裤、婴儿洗护、顺带卖一些周边小商品
+- 平台：抖音
+- 赛道：母婴育儿、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：县城本地
+- 目标年龄：22-35岁
+- 目标性别：女
+- 目标职业：新手妈妈、孕妇
+- 已有的内容方向：新手妈妈选品常识、纸尿裤尺码、婴儿洗护
+- 核心卖点：新手妈妈可领试用装，店员懂选品
+- 卖的产品/服务：奶粉、纸尿裤、婴儿洗护、顺带卖一些周边小商品
+
+访谈要点：问：您在店里做了多久？答：四年。问：新手妈妈最常问什么？答：纸尿裤选哪个牌子，奶粉要不要换。问：您一般怎么建议？答：先看宝宝体重和腿围，不要只看月龄。问：有没有印象深的客人？答：有个妈妈连着换了三个牌子，后来发现是尺码的问题。</pre></details>
+  <pre class="body">## 第1步：脚本策略卡
+
+**主题**：纸尿裤尺码怎么选不红屁屁  
+**建议发布标题**：纸尿裤尺码怎么选？红屁屁别只怪尺码
+
+- **核心问题**：新手妈妈买纸尿裤时，只报月龄是否足够？宝宝出现红屁屁时，能不能只靠换尺码判断？
+- **用户目的**：流量型，引发新手妈妈围绕“我平时怎么问尺码”进行评论。
+- **目标人群**：县城本地孕妇、新手妈妈。
+- **所选形式**：对比型公式 + **36计·第1计 反向操作**。  
+  A方案是“只报月龄直接拿尺码”；B方案是“先说实际使用情况，再对照包装信息”。
+- **出发点**：围绕“人”——新手妈妈临时买纸尿裤的真实提问场景｜**三有：有用处、 有共鸣**｜**爆款元素：反差**，设计在开场和A/B两种问法对比中。
+- **材料递进**：  
+  月龄问法 → 信息不完整 → 补充实际使用情况 → 对照包装信息 → 红屁屁不只归因于尺码。
+- **事实边界**：  
+  不指定固定月龄对应尺码；不承诺换对尺码就不会红屁屁；不做皮肤问题诊断。店员如需补充实际问询顺序，以现场真实做法为准。
+
+---
+
+## 第2步：纯文字文案
+
+纸尿裤尺码怎么选，别把“宝宝几个月”当成唯一答案。  
+
+尤其宝宝有红屁屁时，也别急着把原因全算到尺码上。  
+
+很多人到货架前只问：几个月穿几码？听到一个答案就拿走。  
+
+问题是，月龄只是一条信息。  
+
+宝宝现在穿什么尺码、腰腿位置有没有勒痕、会不会侧漏、白天和夜里怎么用，这些情况没说清，店员也不好帮你对照。  
+
+更稳妥的问法是：先说宝宝现在用的情况，再拿包装上的尺码信息一起看。  
+
+不确定，就先把你遇到的问题说出来。  
+
+这就是为什么，同样问纸尿裤，有人只带走一个尺码，有人先把情况说明白。  
+
+纸尿裤不是只看月龄，先看宝宝现在怎么用。  
+
+红屁屁反复或者明显不适，别只靠换尺码自己判断，及时咨询医生。  
+
+你买纸尿裤第一句会怎么问？评论区说说。  
+
+---
+
+## 第3步：完整分镜脚本
+
+### 【镜头1】0-8秒｜开场钩子：反差切口
+
+- **画面**：纸尿裤货架前，出镜人左手拿起一包纸尿裤，右手停在另一包纸尿裤前。画面中间加分屏字幕：  
+  左侧“只问月龄”  
+  右侧“先说使用情况”
+- **台词**：  
+  “纸尿裤尺码怎么选，别把‘宝宝几个月’当成唯一答案。”  
+  “尤其宝宝有红屁屁时，也别急着把原因全算到尺码上。”
+- **情绪/语速**：第一句直接、清楚；“唯一答案”“全算到尺码上”重读。
+- **拍摄/收音要点**：固定中近景，货架只作为背景，不连续拍包装价格。
+
+---
+
+### 【镜头2】8-16秒｜A方案：只报月龄
+
+- **画面**：手持近景，出镜人拿起一包纸尿裤，模拟只问一句的场景。随后把包装直接放进购物篮。
+- **台词**：  
+  “很多人到货架前只问：几个月穿几码？听到一个答案就拿走。”
+- **情绪/语速**：语速稍快，停在“就拿走”处。
+- **字幕**：  
+  “A方案：只报月龄”
+- **拍摄/收音要点**：只拍手部、包装和购物篮，不拍顾客或未成年人。
+
+---
+
+### 【镜头3】16-25秒｜A方案的问题
+
+- **画面**：购物篮里的纸尿裤被拿出来，重新放回货架。镜头切到出镜人半身，手指向包装上的尺码区域。
+- **台词**：  
+  “问题是，月龄只是一条信息。”
+- **情绪/语速**：放慢，留出停顿。
+- **波点**：😓 从“直接拿”转到“信息不够”。
+- **字幕**：  
+  “月龄，不是全部信息”
+- **拍摄/收音要点**：包装信息按店内实际货品拍摄；不解读未经确认的产品功效。
+
+---
+
+### 【镜头4】25-37秒｜B方案：补充实际使用情况
+
+- **画面**：出镜人面对镜头，边说边用手指依次点出画面字幕；穿插纸尿裤包装尺码区域、货架陈列的近景。
+- **台词**：  
+  “宝宝现在穿什么尺码、腰腿位置有没有勒痕、会不会侧漏、白天和夜里怎么用，这些情况没说清，店员也不好帮你对照。”
+- **情绪/语速**：语速平稳，每个问题之间稍停顿，让观众能跟上。
+- **字幕**：  
+  “现在穿什么尺码”  
+  “使用中哪里不合适”  
+  “白天还是夜里使用”
+- **拍摄/收音要点**：  
+  “腰腿勒痕、侧漏”等只作为家长可描述的使用现象，不拍宝宝穿戴画面。  
+  店员若有真实问询顺序，可按现场原话替换字幕顺序。
+
+---
+
+### 【镜头5】37-45秒｜B方案：正确沟通顺序
+
+- **画面**：出镜人将纸尿裤放在货架前方，先用手指自己，再指向包装尺码信息，形成“先说情况、再看包装”的动作关系。
+- **台词**：  
+  “更稳妥的问法是：先说宝宝现在用的情况，再拿包装上的尺码信息一起看。”  
+  “不确定，就先把你遇到的问题说出来。”
+- **情绪/语速**：语气从解释转为提醒。
+- **波点**：💡 观众获得可直接复述的问法。
+- **字幕**：  
+  “先说情况，再对照信息”
+
+---
+
+### 【镜头6】45-52秒｜差异揭示
+
+- **画面**：分屏回放。左侧是“只问月龄”的手部画面；右侧是“补充使用情况、对照包装”的手部画面。最后画面合回出镜人正面。
+- **台词**：  
+  “这就是为什么，同样问纸尿裤，有人只带走一个尺码，有人先把情况说明白。”
+- **情绪/语速**：语速加重，“同样问”“情况说明白”重读。
+- **波点**：⚡ 对比结论落地。
+- **字幕**：  
+  “差别不只在尺码”  
+  “还在你提供的信息”
+
+---
+
+### 【镜头7】52-60秒｜安全提醒 + 评论引导
+
+- **画面**：出镜人站在纸尿裤货架前，最后镜头推进到半身近景。结尾停在货架与人物同框画面。
+- **台词**：  
+  “纸尿裤不是只看月龄，先看宝宝现在怎么用。”  
+  “红屁屁反复或者明显不适，别只靠换尺码自己判断，及时咨询医生。”  
+  “你买纸尿裤第一句会怎么问？评论区说说。”
+- **情绪/语速**：前两句真诚、稳住语气；最后一句放轻，像和新手妈妈聊天。
+- **字幕**：  
+  “先说情况，再看尺码”  
+  “你第一句会怎么问？”
+- **拍摄/收音要点**：结尾只引导评论，不出现试用装、价格、优惠或到店引导。
+
+---
+
+## 第4步：执行与优化建议
+
+1. **拍前先确认店内真实问询顺序**  
+   让出镜店员先用日常说法回答：当家长来问纸尿裤尺码时，通常会先了解哪些情况。拍摄时按真实口径替换镜头4的字幕和表达顺序。
+
+2. **道具只准备纸尿裤货架与购物篮**  
+   不需要拆封纸尿裤，不拍宝宝穿戴，不拍顾客和未成年人。核心画面是“直接拿走”与“放回去补充信息”的动作对比。
+
+3. **画面重点放在问法，不放在商品推销**  
+   同一款或同一排纸尿裤即可完成拍摄。包装是“对照信息”的证据，不要用连续特写把视频拍成商品展示。
+
+4. **红屁屁相关表述保持边界**  
+   只说“不要把原因全归到尺码”“明显不适及时咨询医生”，不说某款纸尿裤能改善、预防或解决红屁屁。
+
+5. **剪辑节奏**  
+   前段“A方案”剪得更快，突出“问一句就拿”；中段“B方案”留足字幕阅读时间；结尾保留医生咨询提醒，不要为了节奏删掉。</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="18-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="18-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="18-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="18-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="18-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="18-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="18-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="18-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="18-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="18-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="18-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="18-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="18-v" value="合格"> 合格</label>
+      <label><input type="radio" name="18-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="18-s" value="1"> 1</label> <label><input type="radio" name="18-s" value="2"> 2</label> <label><input type="radio" name="18-s" value="3"> 3</label> <label><input type="radio" name="18-s" value="4"> 4</label> <label><input type="radio" name="18-s" value="5"> 5</label></span></div>
+    <input class="why" name="18-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="19">
+  <header><span class="no">编号 19</span><span class="board">脚本</span><span class="who">装修设计工作室（设计师本人出镜） · 完整档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：林姐装修设计
+
+### 🪪 人设事实卡（最硬的事实，以它为准）
+
+- **出镜人是谁**：设计师林姐
+- **和店的关系**：设计师本人出镜
+- **干这行几年**：做室内设计7年
+- **在本地多久**：本地人
+- **主卖什么**：老房翻新、小户型设计
+- **招牌 / 特色**：先量房再出图
+- **其他硬事实**：
+  - 工作室有材料样板间
+
+这是编导确认过的事实：**和档案其他栏、前采要点、已有的定位或简报对不上时，一律以这里为准**；
+写人设、经历、年限、籍贯、在卖什么时只用这里的说法，不改写、不夸大；这里没写的经历和数字不要自己编（用 X 或【换成你的：……】）。
+
+- 经营品类（每一个都在卖，定位里都要体现）：老房翻新、小户型设计
+- 平台：抖音
+- 赛道：家居家装、本地服务
+- 账号阶段：起号期
+- 粉丝量级：0-1000
+- 地域：市区
+- 目标年龄：28-45岁
+- 目标职业：刚买房的业主、老房翻新的家庭
+- 已有的内容方向：小户型收纳、老房翻新避坑、量房时要注意什么
+- 核心卖点：先量房再出图，材料样板间现场看
+- 卖的产品/服务：老房翻新、小户型设计
+- 前采要点（客户原话和真实细节，写内容时优先用）：林姐做室内设计7年，坚持先量房再出图；业主最怕装完不好用
+
+访谈要点：问：您做设计多少年了？答：七年。问：为什么一定要先量房？答：图纸上的尺寸和实际差几厘米，柜子就装不进去。问：业主最常问什么？答：小户型怎么显大，老房水电要不要全换。问：有没有印象深的业主？答：有对老夫妻，翻新完说厨房终于转得开身了。</pre></details>
+  <pre class="body"># 【第1步：脚本策略卡】
+
+## 核心问题
+小户型厨房怎么做收纳？大部分人只盯着买收纳工具、堆柜子，会做的人先解决动线和尺寸问题。
+
+## 用户目的
+流量型。让正在装修或打算改造小户型厨房的人停下来看完，评论区说「原来我想错了」「原来要先看这个」。
+
+## 目标人群
+28-45岁刚买房的业主、老房翻新的家庭，尤其是住小户型、厨房挤、不知道从哪里下手改的人。
+
+## 所选形式
+对比型结构（A方案 vs B方案）。通过错误做法（只买收纳架、堆柜子）和正确做法（先量房、先看动线和尺寸）的对比，揭示大部分人踩坑的原因。
+
+## 材料递进逻辑
+1. 开场：极端对比案例（有人花3万做收纳还是挤，有人不到1万就够用）
+2. A方案：展示大部分人的错误做法——只盯着买收纳工具、堆柜子，结果东西越堆越挤
+3. B方案：展示会做的人的做法——先量房、先确认动线（洗切炒的路线）和尺寸关系（台面高度、转身空间），再配收纳
+4. 差异揭示：揭示本质原因——小户型厨房的问题不是柜子少，是空间安排不对
+5. 收尾：金句总结，引导评论
+
+## 事实边界
+- 林姐做室内设计7年，坚持先量房再出图（人设事实卡）
+- 没有具体客户案例时不编「前两天来了一对……」，用【示例】标注虚构情节
+- 没有具体价格、面积、尺寸数字时用【待确认】或改成问题
+- 不写「3万」「1万」这类具体金额，改成「花了不少钱」「没花多少钱」
+- 不写「90%的人」「十个有九个」，改成「不少人」「大部分人」
+
+## 出发点：流量型三要素
+- **围绕人货场哪一个**：场（小户型厨房这个空间）
+- **三有哪一条**：有用处——观众看完能带走一个具体判断：改厨房不是先买收纳工具，是先解决动线和尺寸
+- **爆款元素**：反差（曾经 vs 现在）——花钱多但挤 vs 没花多少钱但够用，设计在开场钩子和差异揭示段
+
+---
+
+# 【第2步：纯文字文案】
+
+我见过最挤的小户型厨房，花了不少钱做收纳，转个身都费劲。
+
+也见过最够用的，没花多少钱，东西全放得下。
+
+差距就在这三件事上。
+
+大部分人是这么干的：一进门就想着买收纳架、装挂钩、堆柜子。
+
+结果呢？东西是多了，但人挤得转不开身，炒个菜锅铲都碰到墙。
+
+为啥？因为小户型厨房的问题，不是柜子少，是空间安排不对。
+
+会做的人，进门第一件事不是挑柜子，是先量房。
+
+量什么？
+
+第一，量动线——洗菜、切菜、炒菜这三个位置的路线，能不能顺着走，不用来回绕。
+
+第二,量尺寸——台面高不高、转身空间够不够、冰箱门能不能完全打开。
+
+这些都确认了，再配收纳。
+
+这就是为什么，同样是小户型厨房，有人花了不少钱还是挤,有人没花多少钱就够用。
+
+小户型不是靠堆柜子解决问题的，是靠先把空间安排对。
+
+记住这句话：小户型厨房不是柜子少，是空间没安排对。
+
+评论区说说,你家厨房现在最挤的地方是哪里?
+
+---
+
+# 【第3步:完整分镜脚本】
+
+## 【镜头1】0-8秒 | 开场钩子 | 💰金钱型+⚡反差
+
+**时间**:0-8秒
+
+**画面**:
+- 林姐正对镜头,手势配合数字(竖起三根手指强调&quot;三件事&quot;),眼神坚定
+- 背景:工作室材料样板间(体现专业身份)
+
+**台词**:
+我见过最挤的小户型厨房,花了不少钱做收纳,转个身都费劲。
+
+也见过最够用的,没花多少钱,东西全放得下。
+
+差距就在这三件事上。
+
+**拍摄要点**:
+- 语速快,制造极端对比
+- &quot;花了不少钱&quot;和&quot;没花多少钱&quot;要重读
+- 手机横拍,林姐正对镜头,距离约1米
+
+**波点标记**:⚡反差波点
+
+---
+
+## 【镜头2】8-25秒 | A方案:错误做法
+
+**时间**:8-25秒
+
+**画面**:
+- 林姐模拟挤在狭小空间里转身的动作,表情无奈
+- 可用手势比划柜子、挂钩、收纳架的位置
+
+**台词**:
+大部分人是这么干的:一进门就想着买收纳架、装挂钩、堆柜子。
+
+结果呢?东西是多了,但人挤得转不开身,炒个菜锅铲都碰到墙。
+
+为啥?因为小户型厨房的问题,不是柜子少,是空间安排不对。
+
+**拍摄要点**:
+- 语气从期待转为失望,带自嘲
+- &quot;转不开身&quot;&quot;碰到墙&quot;要配合肢体动作
+- 手机横拍,可用侧面或45度角拍摄
+
+**波点标记**:😓痛点共鸣波点
+
+---
+
+## 【镜头3】25-45秒 | B方案:正确做法
+
+**时间**:25-45秒
+
+**画面**:
+- 林姐手持卷尺或指向地面,模拟量房动作
+- 可用手势比划洗菜、切菜、炒菜的位置和路线
+
+**台词**:
+会做的人,进门第一件事不是挑柜子,是先量房。
+
+量什么?
+
+第一,量动线——洗菜、切菜、炒菜这三个位置的路线,能不能顺着走,不用来回绕。
+
+第二,量尺寸——台面高不高、转身空间够不够、冰箱门能不能完全打开。
+
+这些都确认了,再配收纳。
+
+**拍摄要点**:
+- 语气坚定,像在传授经验
+- &quot;第一&quot;&quot;第二&quot;要分段停顿,让观众记住
+- 手机横拍,可用正面或45度角拍摄
+- 收音清晰,建议用领夹麦
+
+**波点标记**:💡顿悟波点
+
+---
+
+## 【镜头4】45-52秒 | 差异揭示
+
+**时间**:45-52秒
+
+**画面**:
+- 林姐正对镜头,手掌向前推,像在强调重点
+- 眼神真诚,表情坚定
+
+**台词**:
+这就是为什么,同样是小户型厨房,有人花了不少钱还是挤,有人没花多少钱就够用。
+
+小户型不是靠堆柜子解决问题的,是靠先把空间安排对。
+
+**拍摄要点**:
+- 语速加快,音量提高,像在敲警钟
+- &quot;空间安排对&quot;要重读
+- 手机横拍,林姐正对镜头
+
+**波点标记**:⚡⚡最强情绪波点
+
+---
+
+## 【镜头5】52-60秒 | 收尾金句+行动召唤
+
+**时间**:52-60秒
+
+**画面**:
+- 林姐正对镜头,手掌向前推,像在传递力量
+- 眼神真诚坚定
+
+**台词**:
+记住这句话:小户型厨房不是柜子少,是空间没安排对。
+
+评论区说说,你家厨房现在最挤的地方是哪里?
+
+**拍摄要点**:
+- 金句&quot;小户型厨房不是柜子少,是空间没安排对&quot;要慢读,让观众记住
+- 最后一句语气放松,像在和朋友聊天
+- 手机横拍,林姐正对镜头
+
+**波点标记**:金句收尾
+
+---
+
+# 【第4步:执行与优化建议】
+
+## 拍摄准备
+
+### 场地
+- 工作室材料样板间(体现专业身份,背景干净)
+- 如果有客户厨房实景更好,但需征得同意并打码门牌、小区名
+
+### 设备
+- 手机横拍(苹果12及以上或同等画质安卓机)
+- 领夹麦或手机靠近收音(确保台词清晰)
+- 三脚架或稳定器(避免画面抖动)
+
+### 时长控制
+- 60秒脚本,口播约280字,符合时长要求
+- 拍摄时可适当放慢语速,后期剪辑时删除停顿和冗余
+
+## 资料缺口
+
+1. **具体客户案例**:如果有真实客户经历(改造前后对比、具体尺寸问题),可在开场或中段补充,增强说服力。格式:【换成你接待的真实客户:业主姓氏+具体问题+解决方案】
+
+2. **量房细节**:如果有具体尺寸标准(台面高度、转身空间、冰箱门开合距离),可在B方案段落补充。格式:【待确认:台面高度X厘米、转身空间X厘米】
+
+3. **常见错误案例**:如果有客户踩坑的真实案例(买了哪些收纳工具、花了多少钱、结果怎样),可在A方案段落补充。格式:【换成你见过的真实案例:具体收纳工具+具体问题】
+
+## 优化建议
+
+1. **画面丰富度**:如果有客户厨房改造前后的照片或视频,可穿插在A方案和B方案段落,增强对比效果。拍摄时需征得客户同意并打码隐私信息。
+
+2. **互动设计**:结尾行动指令可根据实际情况调整。如果想引导私信咨询,可改成「评论区说说你家厨房现在最挤的地方,我帮你看看怎么改」。
+
+3. **系列化**:这条视频如果效果好,可以延伸出系列选题:
+   - 小户型厨房动线怎么设计(洗切炒的最佳路线)
+   - 小户型厨房尺寸怎么量(台面、转身空间、冰箱门)
+   - 小户型厨房收纳怎么配(确认动线和尺寸后再选收纳工具)
+
+4. **封面与标题**:
+   - 封面文案建议:「小户型厨房不是柜子少」或「先量房再做收纳」
+   - 标题建议:「小户型厨房怎么做收纳?大部分人第一步就错了」
+   - 话题标签:#小户型装修 #厨房收纳 #老房翻新 #本地设计师(3-5个)
+
+## 下一步行动
+
+1. 核对拍摄场地和设备是否齐全
+2. 如果有真实客户案例,整理具体细节(尺寸、问题、解决方案)
+3. 拍摄前rehearsal一遍台词,确保语速和情绪到位
+4. 拍摄时多拍几条备选,后期选最自然的一条
+5. 剪辑时确保字幕无错字,转场不抢内容
+6. 发布前过一遍自检清单(开头有钩子、中间有波点、结尾有金句和行动指令)
+
+---
+
+**核对完成**:本脚本围绕用户明确选择的主题「小户型厨房怎么做收纳」,使用对比型结构,时长60秒,符合流量型目的(让人停下来看完并评论),未编造数字、客户经历或经营承诺,资料缺口已标注清楚。</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="19-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="19-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="19-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="19-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="19-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="19-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="19-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="19-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="19-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="19-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="19-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="19-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="19-v" value="合格"> 合格</label>
+      <label><input type="radio" name="19-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="19-s" value="1"> 1</label> <label><input type="radio" name="19-s" value="2"> 2</label> <label><input type="radio" name="19-s" value="3"> 3</label> <label><input type="radio" name="19-s" value="4"> 4</label> <label><input type="radio" name="19-s" value="5"> 5</label></span></div>
+    <input class="why" name="19-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<section class="card" data-no="20">
+  <header><span class="no">编号 20</span><span class="board">脚本</span><span class="who">汽修店（老板本人出镜） · 稀疏档案</span></header>
+  <details><summary>这个档案的原始输入（判「只有这家店拍得出来」「拍得出来」「是不是真事」用）</summary><pre class="ctx">- 档案名称：老赵汽修
+- 经营品类（每一个都在卖，定位里都要体现）：汽车保养、钣金喷漆、轮胎
+- 平台：抖音
+- 赛道：汽车、本地服务
+- 账号阶段：起号期
+- 地域：县城及周边乡镇
+- 卖的产品/服务：汽车保养、钣金喷漆、轮胎</pre></details>
+  <pre class="body">## 第1步：脚本策略卡
+
+- **核心问题**：做汽车保养时，哪些项目不能因为“听起来有用”就默认加做？  
+- **用户目的**：流量型，用车主常见的“项目单越多越安心”心理切入，提供可直接使用的判断问题。  
+- **目标人群**：准备做保养、面对清洗养护类项目拿不定主意的车主。  
+- **采用形式**：对比型公式。  
+  - A方案：看到项目就一次全选。  
+  - B方案：先看保养手册，再看现场检查，问清依据后决定。  
+- **材料递进**：项目单上的常见词 → 盲目全选的困惑 → 三个核对问题 → 清洗养护类项目的判断边界。  
+- **事实边界**：不把任何项目说成“所有车都不用做”。机油、机滤等常规项目是否需要保养，以及清洗养护类项目是否需要做，均以车辆保养手册、使用情况和现场检查为准。  
+- **出发点**：围绕“车主做保养时面对项目单”的场景｜满足“有用处”｜爆款元素：**人群**，开场直接点出车主面对的两种选择。  
+
+---
+
+## 第2步：纯文字文案
+
+保养时，全做和该做才做，差别就在项目单上。  
+
+机油机滤，该做的不能跳过。  
+
+很多人一进店，看到清洗、养护、除积碳，就一次全选。  
+
+听着每项都有用，项目越多心里越踏实；可没核对车况，做完也不知道这次解决了什么，更不知道是不是当次需要。  
+
+但更稳妥的做法，先看保养手册，再看现场检查。  
+
+问清：手册要求吗？看到了什么？今天不做有什么影响？  
+
+像发动机内部清洗、喷油嘴清洗、空调深度清洗，别听到名字就默认做。  
+
+有没有异常、使用情况怎样、现场看到了什么，都要分开判断。  
+
+差别不在省掉该做的，而是不把没依据的项目提前做。  
+
+保养前，先把理由问清。  
+
+你最常被推荐哪一项？评论区说说。  
+
+---
+
+## 第3步：完整分镜脚本
+
+### 【镜头1】0-4秒
+- **画面**：桌上放一张空白项目单，镜头从上往下拍。左边写“全做”，右边写“该做才做”。  
+- **台词**：  
+  保养时，全做和该做才做，差别就在项目单上。  
+- **拍摄/收音要点**：  
+  用手指分别点一下“全做”和“该做才做”。首帧文字要大，方便观众一眼看懂对比关系。  
+- **情绪波点**：⚡选择反差。  
+
+### 【镜头2】4-8秒
+- **画面**：镜头切到保养手册或车辆保养记录中可公开拍摄的页面；没有合适页面时，拍老赵翻看手册的动作即可。  
+- **台词**：  
+  机油机滤，该做的不能跳过。  
+- **拍摄/收音要点**：  
+  不拍具体保养周期、里程数字，避免不同车型标准不同造成误导。  
+- **屏幕字幕**：  
+  “具体以车辆保养手册和实际车况为准”  
+
+### 【镜头3】8-15秒
+- **画面**：回到项目单。用便利贴或手写词展示“清洗”“养护”“除积碳”等字样，手把它们逐个贴到“全选”一侧。  
+- **台词**：  
+  很多人一进店，看到清洗、养护、除积碳，就一次全选。  
+- **拍摄/收音要点**：  
+  不展示真实客户项目单，不拍客户姓名、车牌、联系方式。  
+- **情绪波点**：😓“怕漏做”的共鸣。  
+
+### 【镜头4】15-25秒
+- **画面**：便利贴越贴越多，项目单被盖住；随后手停住，不再继续贴。  
+- **台词**：  
+  听着每项都有用，项目越多心里越踏实；可没核对车况，做完也不知道这次解决了什么，更不知道是不是当次需要。  
+- **拍摄/收音要点**：  
+  前半段语速稍快，表现“越加越多”；说到“没核对车况”时停半秒，镜头定住。  
+- **情绪波点**：😓从“安心”转到“没依据”的落差。  
+
+### 【镜头5】25-31秒
+- **画面**：把“全选”一侧的便利贴拿下来，镜头拍手册、车辆和检查工具的组合画面。  
+- **台词**：  
+  但更稳妥的做法，先看保养手册，再看现场检查。  
+- **拍摄/收音要点**：  
+  如有授权且现场有真实保养车辆，可拍静止状态下的检查动作；没有合适车辆时，拍手册和工具即可，不补拍假检查。  
+- **情绪波点**：💡从“全选”转向“先核对”。  
+
+### 【镜头6】31-40秒
+- **画面**：画面依次弹出三个问题，每出现一个问题，手指点一下项目单。  
+- **台词**：  
+  问清：手册要求吗？看到了什么？今天不做有什么影响？  
+- **拍摄/收音要点**：  
+  三句话之间留出停顿，让观众能听清、记住。  
+- **屏幕字幕**：  
+  ① 手册要求吗？  
+  ② 看到了什么？  
+  ③ 今天不做有什么影响？  
+
+### 【镜头7】40-49秒
+- **画面**：镜头依次扫过写有“发动机内部清洗”“喷油嘴清洗”“空调深度清洗”的三张卡片；最后手把三张卡片放到“需要核对”区域。  
+- **台词**：  
+  像发动机内部清洗、喷油嘴清洗、空调深度清洗，别听到名字就默认做。  
+- **拍摄/收音要点**：  
+  只展示项目名称，不对任何具体车辆下结论。  
+
+### 【镜头8】49-54秒
+- **画面**：镜头拍车辆静止状态下可观察的保养区域，或拍检查记录本上“异常、使用情况、现场检查”三个手写关键词。  
+- **台词**：  
+  有没有异常、使用情况怎样、现场看到了什么，都要分开判断。  
+- **拍摄/收音要点**：  
+  没有检查结果时，不展示“故障”“积碳严重”“必须处理”等字幕。  
+- **情绪波点**：⚡核心判断落地。  
+
+### 【镜头9】54-60秒
+- **画面**：回到项目单，画面只留下“该做才做”四个字。出镜人手把笔放在项目单旁。  
+- **台词**：  
+  差别不在省掉该做的，而是不把没依据的项目提前做。  
+  保养前，先把理由问清。  
+  你最常被推荐哪一项？评论区说说。  
+- **拍摄/收音要点**：  
+  最后一句语气放松，给观众留评论空间。  
+- **收尾字幕**：  
+  “不是少做，是先问清依据”  
+
+---
+
+## 第4步：执行与优化建议
+
+1. **先确认可拍素材**  
+   - 【待确认：是否有可公开拍摄的车辆保养手册或保养记录】  
+   - 【待确认：是否有已获车主授权的真实检查画面】  
+   - 没有真实车辆也能拍：用项目单、便利贴、保养手册和工具完成，重点讲“怎么问”，不假装在检查某台车。
+
+2. **项目名称要按店内实际情况调整**  
+   “发动机内部清洗、喷油嘴清洗、空调深度清洗”只保留店里确实会遇到、且能解释判断依据的项目。若店内没有其中某项，就换成实际项目名称。
+
+3. **画面要避免像推销或否定服务**  
+   这条的重点不是说某个项目“没用”，而是说“是否当次需要，要有依据”。  
+   镜头中避免做夸张的“划掉项目”“拒绝项目”动作，改用“需要核对”卡片，表达更稳妥。
+
+4. **剪辑节奏**  
+   - 前八码“全做 / 该做才做”直接出大字。  
+   - 三个提问分别单独卡点出现。  
+   - “别听到名字就默认做”这句可配一次手把卡片移到“需要核对”区域的动作，形成画面记忆点。</pre>
+  <div class="judge">
+    <div class="row"><span class="cn" title="前 3 秒抓不抓人？后面有没有兑现开头的承诺？">S1 钩子兑现</span>
+      <label><input type="radio" name="20-S1" value="合格"> 合格</label>
+      <label><input type="radio" name="20-S1" value="不合格"> 不合格</label>
+      <label><input type="radio" name="20-S1" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="用的结构（某一计、晒过程、教知识、讲故事、聊观点）是不是落在具体发生的事上？">S2 结构落在事件上</span>
+      <label><input type="radio" name="20-S2" value="合格"> 合格</label>
+      <label><input type="radio" name="20-S2" value="不合格"> 不合格</label>
+      <label><input type="radio" name="20-S2" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="读出来像不像出镜人自己在说？说的是不是真事？">S3 像本人说的话</span>
+      <label><input type="radio" name="20-S3" value="合格"> 合格</label>
+      <label><input type="radio" name="20-S3" value="不合格"> 不合格</label>
+      <label><input type="radio" name="20-S3" value="说不清"> 说不清</label></div><div class="row"><span class="cn" title="看完能记住什么？结尾要观众做什么？">S4 有落点</span>
+      <label><input type="radio" name="20-S4" value="合格"> 合格</label>
+      <label><input type="radio" name="20-S4" value="不合格"> 不合格</label>
+      <label><input type="radio" name="20-S4" value="说不清"> 说不清</label></div>
+    <div class="row total"><span class="cn">整体</span>
+      <label><input type="radio" name="20-v" value="合格"> 合格</label>
+      <label><input type="radio" name="20-v" value="不合格"> 不合格</label>
+      <span class="score">分数 <label><input type="radio" name="20-s" value="1"> 1</label> <label><input type="radio" name="20-s" value="2"> 2</label> <label><input type="radio" name="20-s" value="3"> 3</label> <label><input type="radio" name="20-s" value="4"> 4</label> <label><input type="radio" name="20-s" value="5"> 5</label></span></div>
+    <input class="why" name="20-w" placeholder="一句原因：好在哪 / 哪里不行（比 4 条标准更重要的问题也写这里）">
+  </div>
+</section>
+
+<h2>标准卡哪里不对？</h2>
+<p class="note">哪条标准你不同意、哪条该加、哪条该删，写在这里，会一起导出。</p>
+<input class="why" name="rubric-note" placeholder="例如：T2 人设型选题不用爆款元素；脚本还要看节奏……">
+</main>
+<script>
+(function () {
+  var KEY = 'calib-sheet-20261101';
+  var items = [{"no":1,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":2,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":3,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":4,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":5,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":6,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":7,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":8,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":9,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":10,"board":"选题","crits":["T1","T2","T3","T4"]},{"no":11,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":12,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":13,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":14,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":15,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":16,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":17,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":18,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":19,"board":"脚本","crits":["S1","S2","S3","S4"]},{"no":20,"board":"脚本","crits":["S1","S2","S3","S4"]}];
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} }
+  document.querySelectorAll('input').forEach(function (el) {
+    var v = saved[el.name];
+    if (v !== undefined) { if (el.type === 'radio') el.checked = el.value === v; else el.value = v; }
+    var on = function () { if (el.type !== 'radio' || el.checked) { saved[el.name] = el.value; persist(); progress(); } };
+    el.addEventListener('input', on); el.addEventListener('change', on);
+  });
+  function progress() {
+    var done = items.filter(function (x) { return saved[x.no + '-v']; }).length;
+    document.getElementById('progress').textContent = '已判 ' + done + ' / ' + items.length;
+  }
+  progress();
+  document.getElementById('export').addEventListener('click', function () {
+    var lines = ['编号\t板块\t条1\t条2\t条3\t条4\t整体\t分数\t原因'];
+    items.forEach(function (x) {
+      lines.push([x.no, x.board].concat(x.crits.map(function (c) { return c + ':' + (saved[x.no + '-' + c] || '-'); }), [saved[x.no + '-v'] || '未判', saved[x.no + '-s'] || '-', saved[x.no + '-w'] || '']).join('\t'));
+    });
+    lines.push('标准卡意见\t' + (saved['rubric-note'] || ''));
+    var box = document.getElementById('out');
+    box.value = lines.join('\n');
+    box.select();
+    try { navigator.clipboard.writeText(box.value).catch(function () {}); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

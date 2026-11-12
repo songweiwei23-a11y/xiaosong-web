@@ -1,0 +1,27 @@
+{
+  "profile": "万客隆家具城·李国才",
+  "board": "跨行业二创",
+  "status": 200,
+  "firstAnswerMs": 9865,
+  "totalMs": 86999,
+  "errors": [],
+  "promptChars": 7326,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4389,
+      "planCount": 2
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T14:12:51.181Z"
+}

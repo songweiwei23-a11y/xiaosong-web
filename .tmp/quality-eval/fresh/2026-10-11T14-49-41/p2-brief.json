@@ -1,0 +1,26 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "创作简报",
+  "status": 200,
+  "firstAnswerMs": 9525,
+  "totalMs": 70436,
+  "errors": [],
+  "promptChars": 46789,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2931
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T15:50:53.784Z"
+}

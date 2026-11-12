@@ -1,0 +1,25 @@
+{
+  "round": 2,
+  "case": "review",
+  "label": "审稿优化（原稿带未核实说法）",
+  "status": 200,
+  "firstAnswerMs": 6530,
+  "totalMs": 102764,
+  "answerEvents": 1335,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 9163,
+  "auto": {
+    "issues": [
+      "数字无出处：3000串",
+      "疑似编造的顾客原话：顾客反馈、老顾客都说",
+      "宣传词过度：全城"
+    ],
+    "metrics": {
+      "hasScore": true,
+      "hasRewrite": true,
+      "chars": 1271
+    }
+  },
+  "at": "2026-10-11T03:11:25.222Z"
+}

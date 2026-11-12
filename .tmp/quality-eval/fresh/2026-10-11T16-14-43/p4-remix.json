@@ -1,0 +1,27 @@
+{
+  "profile": "锦园地摊串串一元火锅",
+  "board": "跨行业二创",
+  "status": 200,
+  "firstAnswerMs": 12451,
+  "totalMs": 104302,
+  "errors": [],
+  "promptChars": 6992,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5009,
+      "planCount": 2
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T16:39:42.278Z"
+}

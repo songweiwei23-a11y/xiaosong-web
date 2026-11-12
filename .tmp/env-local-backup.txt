@@ -1,0 +1,21 @@
+yyyy# Dify API Configuration
+DIFY_API_KEY=app-1a0uh70hpbumrIVluVxKzZqC
+DIFY_API_URL=https://api.dify.ai/v1
+DIFY_BASE_URL=https://api.dify.ai/v1
+
+# Dify Chatbot API (用于持续对话)
+DIFY_CHATBOT_API_KEY=app-lMnZh9lo4doiamART47Z6xML
+
+# App Configuration
+NEXT_PUBLIC_APP_NAME=小宋编导工作台
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://nxxbzdstmtuyplcwrrhs.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54eGJ6ZHN0bXR1eXBsY3dycmhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNDUxNTYsImV4cCI6MjEwMDcyMTE1Nn0.EMlnujaOx4jIP9PA7SAVxZ8JboCpgGNffpjBaWiU7pA
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54eGJ6ZHN0bXR1eXBsY3dycmhzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTE0NTE1NiwiZXhwIjoyMTAwNzIxMTU2fQ.x-pX1CMLjGlJV-UrgFyDzkhcrGaGBLveHp2bxSsmwew
+
+
+
+DIFY_DATASET_API_KEY=dataset-K7lW9q3izFr36vm4QF6Edz0E
+DIFY_TEST_API_KEY=app-YC7zBJcdkc1jOMGZQ6pIXGIL

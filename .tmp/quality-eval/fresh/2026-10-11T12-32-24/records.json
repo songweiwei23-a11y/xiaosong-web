@@ -1,0 +1,27 @@
+[
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "开篇钩子",
+    "key": "opening",
+    "status": "done",
+    "firstAnswerMs": 15975,
+    "totalMs": 72922,
+    "chars": 1706,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1706
+    },
+    "file": "p1-opening.md"
+  }
+]

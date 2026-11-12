@@ -1,0 +1,3 @@
+{"industry":"A","node":"16-拆解爆款","ok":true,"promptSha256":"2c3a92fb912f1e5d6a62352e42d792afcf79fb4a85ea3a4a3d52d23d6debfd42","promptChars":5602,"outChars":6208,"ms":46193,"undefinedHits":[]}
+{"industry":"B","node":"16-拆解爆款","ok":true,"promptSha256":"df64416e8b25ad6ffdeb529774fa1ed511091bb14fcc071652df62ac320379fb","promptChars":5544,"outChars":8430,"ms":54700,"undefinedHits":[]}
+{"industry":"C","node":"16-拆解爆款","ok":true,"promptSha256":"19c592e7d91faa7c52eecb637ea6b2032142be4085a54764229a83b03e741373","promptChars":5525,"outChars":8764,"ms":178206,"undefinedHits":[]}

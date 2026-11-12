@@ -1,0 +1,33 @@
+﻿========================================
+   同步到腾讯云服务器
+========================================
+
+[1/3] 检查本地更改...
+本地有未提交的更改
+?? .tmp/
+
+[2/3] 检查服务器连接...
+  PM2 运行目录: /var/www/xiaosong-web
+  部署目标目录: /var/www/xiaosong-web
+服务器连接正常，运行目录与部署目录一致
+  swap: 2047MB
+
+[3/3] 同步文件...
+  -Yes：跳过确认
+创建压缩包...
+打包 16 项...
+上传到服务器...
+服务器端部署...
+ssh : Connection closed by 122.51.234.155 port 22
+At E:\小宋\腾讯云生产版同步_20260918\同步到服务器.ps1:208 char:9
++ $prep = ssh -i "$sshKey" ${serverUser}@${serverIP} $prepCmd
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Connection clos...234.155 port 22:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+解压或依赖安装失败，线上服务未变更
+
+脚本异常终止：
+  Windows PowerShell is in NonInteractive mode. Read and Prompt functionality is not available.
+  位置: 第 1 行 -> $null = Read-Host 'Press Enter to continue...'
+

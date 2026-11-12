@@ -1,0 +1,71 @@
+{
+  "rescoredAt": "2026-10-16T15:24:48.938Z",
+  "from": "out-after-fix",
+  "rows": [
+    {
+      "task": "回归:创作方向",
+      "before": false,
+      "after": false,
+      "blockingIssues": [
+        "[mix] 实际 流量 11 / 人设 5 / 变现 4，要求 流量 12 / 人设 5 / 变现 3"
+      ],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:审稿优化",
+      "before": true,
+      "after": true,
+      "blockingIssues": [],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:画布改写",
+      "before": true,
+      "after": true,
+      "blockingIssues": [],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:美甲选题",
+      "before": false,
+      "after": false,
+      "blockingIssues": [
+        "[facts] 顾客见证「谱，但效果还行，客人说下次不许这么玩了\"」资料里没有这段经历"
+      ],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:家具开篇",
+      "before": false,
+      "after": true,
+      "blockingIssues": [],
+      "noteIssues": [
+        "[facts] 模型自称「未编造」——以这里的核对为准，别信这句"
+      ],
+      "error": null
+    },
+    {
+      "task": "回归:无价格引流脚本",
+      "before": false,
+      "after": false,
+      "blockingIssues": [
+        "[facts] 顾客见证「味道你尝得出来。不少客人说，这个价格在南乐能吃」资料里没有这段经历",
+        "[facts] 顾客见证「体顾客故事，用\"不少客人说\"这种泛指表达，未虚」资料里没有这段经历"
+      ],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:只换开头",
+      "before": true,
+      "after": true,
+      "blockingIssues": [],
+      "noteIssues": [],
+      "error": null
+    }
+  ]
+}

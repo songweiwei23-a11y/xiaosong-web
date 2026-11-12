@@ -1,0 +1,26 @@
+{
+  "profile": "测试_青禾家具店_全板块验收20261008",
+  "board": "成交理由",
+  "status": 200,
+  "firstAnswerMs": 7508,
+  "totalMs": 54280,
+  "errors": [],
+  "promptChars": 3950,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1428
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T15:06:12.434Z"
+}

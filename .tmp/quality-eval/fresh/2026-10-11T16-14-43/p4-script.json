@@ -1,0 +1,27 @@
+{
+  "profile": "锦园地摊串串一元火锅",
+  "board": "脚本生成",
+  "status": 200,
+  "firstAnswerMs": 5721,
+  "totalMs": 97920,
+  "errors": [],
+  "promptChars": 6574,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3846,
+      "spokenCjk": 169
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T16:34:31.659Z"
+}

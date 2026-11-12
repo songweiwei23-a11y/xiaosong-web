@@ -1,0 +1,23 @@
+{
+  "round": 2,
+  "case": "topic",
+  "label": "选题策划（10 条）",
+  "status": 200,
+  "firstAnswerMs": 8366,
+  "totalMs": 62528,
+  "answerEvents": 941,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 4290,
+  "auto": {
+    "issues": [
+      "数字无出处：千万、2人、5人",
+      "疑似编造的顾客原话：客人还在问"
+    ],
+    "metrics": {
+      "topicCount": 10,
+      "chars": 2700
+    }
+  },
+  "at": "2026-10-11T03:09:39.314Z"
+}

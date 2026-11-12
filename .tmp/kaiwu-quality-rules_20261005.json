@@ -1,0 +1,65 @@
+{
+  "borrowedNumber": [],
+  "unsupportedPercent": [],
+  "placeFalsePositive": [
+    "地名「指着挂衣区」档案和素材里都没有"
+  ],
+  "angleFalsePositive": {
+    "passed": false,
+    "issues": [
+      {
+        "kind": "taboo",
+        "detail": "「最大」— 广告法红线"
+      }
+    ]
+  },
+  "reviewBodyChars": 927,
+  "nativeQuality": [
+    {
+      "id": "P1",
+      "quality": {
+        "passed": false,
+        "issues": [
+          {
+            "kind": "taboo",
+            "detail": "「最好」— 广告法红线"
+          }
+        ]
+      }
+    },
+    {
+      "id": "R2",
+      "quality": {
+        "passed": true,
+        "issues": []
+      }
+    },
+    {
+      "id": "C1",
+      "quality": {
+        "passed": true,
+        "issues": []
+      }
+    },
+    {
+      "id": "N1",
+      "quality": {
+        "passed": false,
+        "issues": [
+          {
+            "kind": "taboo",
+            "detail": "「最强」— 广告法红线"
+          },
+          {
+            "kind": "taboo",
+            "detail": "「最便宜」— 广告法红线"
+          },
+          {
+            "kind": "years",
+            "detail": "「钩子**：在杭州做了5年美甲，」和事实卡对不上"
+          }
+        ]
+      }
+    }
+  ]
+}

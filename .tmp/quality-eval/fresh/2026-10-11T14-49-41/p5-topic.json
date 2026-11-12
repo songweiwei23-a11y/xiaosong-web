@@ -1,0 +1,27 @@
+{
+  "profile": "万客隆家具城·李国才",
+  "board": "选题策划",
+  "status": 200,
+  "firstAnswerMs": 11487,
+  "totalMs": 104983,
+  "errors": [],
+  "promptChars": 4658,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3123,
+      "topicCount": 10
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T15:19:42.845Z"
+}

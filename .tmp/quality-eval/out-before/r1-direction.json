@@ -1,0 +1,25 @@
+{
+  "round": 1,
+  "case": "direction",
+  "label": "创作方向（复现：想法写了秋天）",
+  "status": 200,
+  "firstAnswerMs": 12840,
+  "totalMs": 192169,
+  "answerEvents": 3120,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 9575,
+  "auto": {
+    "issues": [
+      "数字无出处：一年",
+      "疑似编造的顾客原话：老客说、老客评价"
+    ],
+    "metrics": {
+      "directionCount": 10,
+      "autumnMentions": 60,
+      "winterMentions": 0,
+      "chars": 9182
+    }
+  },
+  "at": "2026-10-11T03:16:42.646Z"
+}

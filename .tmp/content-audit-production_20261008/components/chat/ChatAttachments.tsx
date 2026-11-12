@@ -1,0 +1,122 @@
+"use client";
+
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Paperclip, FileText, Loader2, X, Download } from 'lucide-react';
+import { CHAT_FILE_ACCEPT, MAX_CHAT_FILES, MAX_CHAT_FILE_BYTES, chatFileType, chatFileUrl, chatFileSize, sanitizeAttachments, type ChatAttachment } from '@/lib/chat-attachments';
+import { throwApiError } from '@/lib/api-error';
+import { prepareVisionImage } from '@/lib/chat-image-upload';
+import { uploadFormSafely } from '@/lib/safe-upload';
+
+export function AttachmentList({ files, onRemove }: { files: ChatAttachment[]; onRemove?: (file: ChatAttachment) => void }) {
+  if (!files.length) return null;
+  return <div className="mb-2 flex flex-wrap gap-2">
+    {files.map(file => <div key={file.storagePath} className="flex max-w-full items-center gap-2 rounded-lg border border-border bg-background/50 p-2 text-xs">
+      {file.type === 'image'
+        ? <a href={chatFileUrl(file, true)} title={`下载 ${file.name}`}><img src={chatFileUrl(file)} alt={file.name} className="h-12 w-12 rounded object-cover" /></a>
+        : <FileText className="h-5 w-5 shrink-0 text-primary" />}
+      <div className="min-w-0"><span className="block max-w-44 truncate" title={file.name}>{file.name}</span><span className="text-muted-foreground">{chatFileSize(file.size)}</span></div>
+      {onRemove ? <button type="button" aria-label={`移除 ${file.name}`} onClick={() => onRemove(file)} className="p-1"><X className="h-4 w-4" /></button>
+        : <a href={chatFileUrl(file, true)} aria-label={`下载 ${file.name}`} className="p-1"><Download className="h-4 w-4" /></a>}
+    </div>)}
+  </div>;
+}
+
+/** 上传格式说明：紧凑模式下放到上传按钮的悬停提示里 */
+export const ATTACHMENT_HINT = 'PDF、Word、Excel、PPT、文本和图片 · 每个 10 MB · 最多 6 个 · 可拖到输入框';
+
+/** 紧凑模式下由外面的工具栏按钮打开选择框、或把拖进来的文件交给它 */
+export interface AttachmentComposerHandle { open: () => void; upload: (files: File[]) => void }
+
+/**
+ * 独立草稿作用域由父级 key 决定，切换档案/会话会取消旧上传。
+ * compact（2026-10-04 自由对话一体式输入框）：不画自己那一排上传按钮和说明，只显示已选附件和报错；
+ * 上传按钮在输入框下面的工具栏里，通过 ref 的 open / upload 调用。上传逻辑完全不变。
+ */
+export const AttachmentComposer = forwardRef<AttachmentComposerHandle, {
+  files: ChatAttachment[]; onChange: (files: ChatAttachment[]) => void;
+  onBusy: (busy: boolean) => void; disabled: boolean; compact?: boolean;
+}>(function AttachmentComposer({ files, onChange, onBusy, disabled, compact = false }, ref) {
+  const picker = useRef<HTMLInputElement>(null);
+  const current = useRef(files);
+  current.current = files;
+  const live = useRef(true);
+  const pending = useRef(0);
+  const controllers = useRef(new Set<AbortController>());
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    live.current = true;
+    return () => { live.current = false; controllers.current.forEach(c => c.abort()); onBusy(false); };
+  }, [onBusy]);
+
+  const upload = async (selected: File[]) => {
+    if (disabled || !selected.length) return;
+    setError('');
+    if (selected.length + current.current.length + pending.current > MAX_CHAT_FILES) {
+      setError(`每条消息最多 ${MAX_CHAT_FILES} 个文件`); return;
+    }
+    if (selected.some(f => !chatFileType(f.name) || !f.size || f.size > MAX_CHAT_FILE_BYTES)) {
+      setError('请选择支持的图片或文档，每个文件不能超过 10 MB；旧版 Office 文件请另存为新格式。'); return;
+    }
+    pending.current += selected.length;
+    setUploading(true); onBusy(true);
+    let next = 0;
+    const worker = async () => {
+    while (next < selected.length && live.current) {
+      const file = selected[next++];
+      const controller = new AbortController();
+      controllers.current.add(controller);
+      // 线路差时要分段传，给足时间（整包成功的话几秒就完）
+      const timer = setTimeout(() => controller.abort(), 240_000);
+      try {
+        const vision = chatFileType(file.name) === 'image' ? await prepareVisionImage(file) : null;
+        if (!live.current) continue;
+        // 线路差时整包会被切断：断了自动分段重传（lib/safe-upload）
+        const res = await uploadFormSafely('/api/chat-files', () => {
+          const form = new FormData(); form.append('file', file);
+          if (vision) form.append('vision', vision, 'vision.jpg');
+          return form;
+        }, { signal: controller.signal });
+        if (!res.ok) await throwApiError(res, '文件上传失败');
+        const attachment = sanitizeAttachments([await res.json()])[0];
+        if (!attachment) throw new Error('文件上传返回的信息不完整，请重试');
+        if (live.current) {
+          current.current = [...current.current, attachment];
+          onChange(current.current);
+        }
+      } catch (e) {
+        if (live.current) setError(e instanceof Error && e.name !== 'AbortError' ? e.message : '文件上传超时，请重试');
+      } finally {
+        clearTimeout(timer); controllers.current.delete(controller); pending.current -= 1;
+      }
+    }
+    };
+    // 三个上传通道缩短多附件等待，避免一次解码六张大图。
+    await Promise.all(Array.from({ length: Math.min(3, selected.length) }, () => worker()));
+    if (live.current && pending.current === 0) { setUploading(false); onBusy(false); }
+  };
+
+  useImperativeHandle(ref, () => ({
+    open: () => { if (!disabled && !uploading && files.length < MAX_CHAT_FILES) picker.current?.click(); },
+    upload: (selected: File[]) => { void upload(selected); },
+  }));
+
+  return <div className={compact ? '' : 'mx-auto mb-2 max-w-3xl'}
+    onDragOver={e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
+    onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); void upload(Array.from(e.dataTransfer.files)); } }}>
+    <AttachmentList files={files} onRemove={disabled ? undefined : file => {
+      current.current = current.current.filter(f => f.storagePath !== file.storagePath); onChange(current.current);
+    }} />
+    <input ref={picker} type="file" accept={CHAT_FILE_ACCEPT} multiple className="hidden" aria-label="选择图片或文档"
+      onChange={e => { const selected = Array.from(e.target.files || []); e.target.value = ''; void upload(selected); }} />
+    {!compact && <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+      <button type="button" disabled={disabled || uploading || files.length >= MAX_CHAT_FILES}
+        onClick={() => picker.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 hover:bg-muted disabled:opacity-50">
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+        {uploading ? '正在上传…' : '上传图片 / 文件'}
+      </button>
+      <span>PDF、Word、Excel、PPT、文本和图片 · 每个 10 MB · 最多 6 个 · 可拖到这里</span>
+    </div>}
+    {error && <p role="alert" className={compact ? 'mb-2 text-xs text-destructive' : 'mt-2 text-xs text-destructive'}>{error}</p>}
+  </div>;
+});

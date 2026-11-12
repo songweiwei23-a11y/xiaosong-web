@@ -1,0 +1,24 @@
+{
+  "round": 3,
+  "case": "topic",
+  "label": "选题策划（10 条）",
+  "status": 200,
+  "firstAnswerMs": 10774,
+  "totalMs": 54755,
+  "answerEvents": 747,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 4290,
+  "auto": {
+    "issues": [
+      "数字无出处：100块、一份",
+      "疑似编造的顾客原话：客人吃完说",
+      "选题数量 14，要求 10 条"
+    ],
+    "metrics": {
+      "topicCount": 14,
+      "chars": 1896
+    }
+  },
+  "at": "2026-10-11T03:16:32.824Z"
+}

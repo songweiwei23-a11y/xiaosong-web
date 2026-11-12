@@ -1,0 +1,23 @@
+{
+  "round": 1,
+  "case": "opening",
+  "label": "开篇钩子（复现：局外人口吻）",
+  "status": 200,
+  "firstAnswerMs": 17091,
+  "totalMs": 77255,
+  "answerEvents": 684,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 12220,
+  "auto": {
+    "issues": [
+      "数字无出处：一人"
+    ],
+    "metrics": {
+      "outsiderMarkers": 0,
+      "firstPerson": 22,
+      "chars": 2070
+    }
+  },
+  "at": "2026-10-11T05:08:12.573Z"
+}

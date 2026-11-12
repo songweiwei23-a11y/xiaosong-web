@@ -1,0 +1,29 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "跨行业二创",
+  "status": 200,
+  "firstAnswerMs": 8319,
+  "totalMs": 160459,
+  "errors": [],
+  "promptChars": 6529,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 28 处"
+    ],
+    "metrics": {
+      "chars": 4616,
+      "planCount": 2
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T15:03:58.072Z"
+}

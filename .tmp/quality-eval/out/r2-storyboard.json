@@ -1,0 +1,19 @@
+{
+  "round": 2,
+  "case": "storyboard",
+  "label": "分镜（输入：30 秒脚本）",
+  "status": 200,
+  "firstAnswerMs": 8797,
+  "totalMs": 94688,
+  "answerEvents": 1342,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 12567,
+  "auto": {
+    "issues": [],
+    "metrics": {
+      "chars": 2940
+    }
+  },
+  "at": "2026-10-11T09:09:21.620Z"
+}

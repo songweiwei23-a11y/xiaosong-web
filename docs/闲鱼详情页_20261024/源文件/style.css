@@ -1,0 +1,68 @@
+/* 开物 · 闲鱼商品详情图 统一样式（750px 宽，每张独立高度） */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 750px; background: #0a0c14; }
+body { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif; color: #f3f5ff; -webkit-font-smoothing: antialiased; }
+
+.page {
+  position: relative; width: 750px; overflow: hidden; padding: 64px 56px 56px;
+  background:
+    radial-gradient(ellipse 620px 420px at 90% -5%, rgba(92,110,255,0.32), transparent 70%),
+    radial-gradient(ellipse 520px 380px at -10% 95%, rgba(94,231,199,0.16), transparent 70%),
+    linear-gradient(180deg, #0c0f1a 0%, #090b13 100%);
+}
+.page::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px); background-size: 100% 46px; }
+
+/* 手机竖屏比例 9:16：每张图 750 × 1334 */
+.page.phone { height: 1334px; }
+
+.top { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; margin-bottom: 44px; }
+.brand { font-size: 22px; font-weight: 700; letter-spacing: 6px; color: #aab4ff; }
+.pg { font-size: 18px; color: #6f7898; letter-spacing: 2px; }
+
+.eyebrow { font-size: 19px; letter-spacing: 4px; color: #7c8cff; font-weight: 600; margin-bottom: 18px; }
+.h1 { font-size: 60px; line-height: 1.22; font-weight: 800; letter-spacing: 1px; }
+.h2 { font-size: 42px; line-height: 1.28; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 26px; }
+.lead { font-size: 26px; line-height: 1.7; color: #c3cae6; }
+.body { font-size: 22px; line-height: 1.75; color: #aeb7d6; }
+.small { font-size: 18px; line-height: 1.6; color: #7f88a8; }
+.grad { background: linear-gradient(90deg, #a9b4ff, #6ee7d0); -webkit-background-clip: text; color: transparent; }
+
+.rel { position: relative; z-index: 1; }
+.mt8 { margin-top: 8px; } .mt16 { margin-top: 16px; } .mt24 { margin-top: 24px; } .mt32 { margin-top: 32px; } .mt40 { margin-top: 40px; }
+
+.card {
+  position: relative; z-index: 1; border-radius: 22px; padding: 28px 30px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 18px 40px rgba(0,0,0,0.28);
+}
+.card.hi { border-color: rgba(124,140,255,0.55); background: linear-gradient(180deg, rgba(124,140,255,0.20), rgba(124,140,255,0.05)); }
+.card h3 { font-size: 27px; font-weight: 700; margin-bottom: 12px; color: #f3f5ff; }
+.card p { font-size: 21px; line-height: 1.7; color: #aeb7d6; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.stack { display: flex; flex-direction: column; gap: 18px; }
+
+.pill { display: inline-block; padding: 7px 18px; border-radius: 999px; font-size: 19px; color: #c9d0ff; background: rgba(124,140,255,0.16); border: 1px solid rgba(124,140,255,0.35); margin: 0 10px 10px 0; }
+.pill.g { color: #9ff5e2; background: rgba(94,231,199,0.12); border-color: rgba(94,231,199,0.35); }
+
+.num { font-size: 64px; font-weight: 800; line-height: 1; background: linear-gradient(180deg, #ffffff, #8f9cff); -webkit-background-clip: text; color: transparent; }
+
+.bar { height: 1px; background: linear-gradient(90deg, transparent, rgba(124,140,255,0.5), transparent); margin: 36px 0; }
+
+.flow { display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; gap: 22px; align-items: flex-start; }
+.step .dot { flex: 0 0 auto; width: 58px; height: 58px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #0a0c14; background: linear-gradient(135deg, #a9b4ff, #6ee7d0); }
+.step .txt { flex: 1; padding-bottom: 26px; }
+.step .txt b { display: block; font-size: 25px; color: #f3f5ff; margin-bottom: 6px; }
+.step .txt span { font-size: 20px; color: #9ca6c8; line-height: 1.6; }
+.line { position: absolute; left: 28px; width: 2px; background: linear-gradient(180deg, rgba(124,140,255,0.7), rgba(94,231,199,0.2)); }
+
+.ui { border-radius: 18px; background: #11142a; border: 1px solid rgba(255,255,255,0.10); padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+.ui .bar2 { height: 14px; border-radius: 8px; background: rgba(255,255,255,0.08); margin-bottom: 12px; }
+.ui .bar2.a { background: rgba(124,140,255,0.45); width: 60%; }
+.ui .bar2.b { width: 85%; } .ui .bar2.c { width: 45%; }
+
+.foot { position: absolute; left: 56px; right: 56px; bottom: 36px; display: flex; justify-content: space-between; font-size: 17px; color: #5d6686; letter-spacing: 1px; }
+
+.cross { color: #ff8c8c; } .ok { color: #9ff5e2; }

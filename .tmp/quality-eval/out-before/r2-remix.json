@@ -1,0 +1,22 @@
+{
+  "round": 2,
+  "case": "remix",
+  "label": "跨行业二创（2 个方案）",
+  "status": 200,
+  "firstAnswerMs": 11132,
+  "totalMs": 126056,
+  "answerEvents": 1993,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 6906,
+  "auto": {
+    "issues": [
+      "数字无出处：两串、1人、一份、三串、三份、0.5倍、一人"
+    ],
+    "metrics": {
+      "planCount": 2,
+      "chars": 6079
+    }
+  },
+  "at": "2026-10-11T03:13:34.065Z"
+}

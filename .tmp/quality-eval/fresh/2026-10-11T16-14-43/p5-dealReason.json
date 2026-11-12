@@ -1,0 +1,26 @@
+{
+  "profile": "万客隆家具城·李国才",
+  "board": "成交理由",
+  "status": 200,
+  "firstAnswerMs": 7730,
+  "totalMs": 55366,
+  "errors": [],
+  "promptChars": 4739,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2221
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T16:45:57.031Z"
+}

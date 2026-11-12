@@ -1,0 +1,29 @@
+{
+  "profile": "锦园地摊串串一元火锅",
+  "board": "标题封面",
+  "status": 200,
+  "firstAnswerMs": 8508,
+  "totalMs": 46979,
+  "errors": [],
+  "promptChars": 7767,
+  "judged": {
+    "gates": {
+      "E1": [
+        "最低"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2029,
+      "titleCount": 5
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T10:15:00.301Z"
+}

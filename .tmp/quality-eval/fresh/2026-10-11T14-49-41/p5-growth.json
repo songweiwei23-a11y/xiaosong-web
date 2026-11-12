@@ -1,0 +1,28 @@
+{
+  "profile": "万客隆家具城·李国才",
+  "board": "起号方案",
+  "status": 200,
+  "firstAnswerMs": 10459,
+  "totalMs": 334199,
+  "errors": [],
+  "promptChars": 37599,
+  "judged": {
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 7938
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T16:05:04.219Z"
+}

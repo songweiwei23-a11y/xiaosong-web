@@ -1,0 +1,26 @@
+{
+  "profile": "小张工作号·濮阳本地找工作服务",
+  "board": "创作方向",
+  "status": 200,
+  "firstAnswerMs": 8779,
+  "totalMs": 146980,
+  "errors": [],
+  "promptChars": 9660,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 6442
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T16:18:09.617Z"
+}

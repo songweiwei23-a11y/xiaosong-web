@@ -1,0 +1,29 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "脚本生成",
+  "status": 200,
+  "firstAnswerMs": 10159,
+  "totalMs": 86632,
+  "errors": [],
+  "promptChars": 6243,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [
+        "第 2 步口播 199 字，编导设了 30 秒，超出约 150 字"
+      ],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3674,
+      "spokenCjk": 199
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T11:14:27.927Z"
+}

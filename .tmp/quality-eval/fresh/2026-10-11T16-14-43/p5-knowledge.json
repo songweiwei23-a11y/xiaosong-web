@@ -1,0 +1,26 @@
+{
+  "profile": "万客隆家具城·李国才",
+  "board": "知识库查询",
+  "status": 200,
+  "firstAnswerMs": 8498,
+  "totalMs": 102093,
+  "errors": [],
+  "promptChars": 33,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3133
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T16:46:45.047Z"
+}

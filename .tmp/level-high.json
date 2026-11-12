@@ -1,0 +1,72 @@
+{
+  "label": "high",
+  "at": "2026-10-11T00:29:41.792Z",
+  "results": [
+    {
+      "case": "复杂分析",
+      "round": 1,
+      "ok": true,
+      "ms": 48207,
+      "completionTokens": 2138,
+      "promptTokens": 31803,
+      "hasThink": true,
+      "thinkChars": 395,
+      "visibleChars": 1637
+    },
+    {
+      "case": "复杂分析",
+      "round": 2,
+      "ok": true,
+      "ms": 43881,
+      "completionTokens": 1991,
+      "promptTokens": 31803,
+      "hasThink": true,
+      "thinkChars": 524,
+      "visibleChars": 1382
+    },
+    {
+      "case": "脚本生成",
+      "round": 1,
+      "ok": true,
+      "ms": 32606,
+      "completionTokens": 1421,
+      "promptTokens": 29845,
+      "hasThink": true,
+      "thinkChars": 594,
+      "visibleChars": 742
+    },
+    {
+      "case": "脚本生成",
+      "round": 2,
+      "ok": true,
+      "ms": 33203,
+      "completionTokens": 1496,
+      "promptTokens": 29845,
+      "hasThink": true,
+      "thinkChars": 650,
+      "visibleChars": 753
+    },
+    {
+      "case": "简短修改",
+      "round": 1,
+      "ok": true,
+      "ms": 11948,
+      "completionTokens": 437,
+      "promptTokens": 27270,
+      "hasThink": true,
+      "thinkChars": 383,
+      "visibleChars": 21
+    },
+    {
+      "case": "简短修改",
+      "round": 2,
+      "ok": true,
+      "ms": 20416,
+      "completionTokens": 967,
+      "promptTokens": 27270,
+      "hasThink": true,
+      "thinkChars": 862,
+      "visibleChars": 24
+    }
+  ]
+}

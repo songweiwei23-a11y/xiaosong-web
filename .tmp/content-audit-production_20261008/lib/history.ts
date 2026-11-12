@@ -1,0 +1,152 @@
+import { supabase } from "@/lib/supabase/client";
+import { getPlan, judgeQuota, sumCountedUsage, effectivePlanId, quotaRollover } from '@/lib/config/plans';
+import { notifyGenerated } from '@/lib/upgrade';
+import { getActiveProfileId } from '@/lib/active-profile';
+
+/**
+ * 保存生成历史记录到数据库
+ * @param taskType - 任务类型（脚本生成、选题策划等）
+ * @param inputData - 输入参数
+ * @param result - 生成结果
+ * @param workId - 所属作品。传了才会把这条记录挂到那条内容下，
+ *                 不传就是一条零散记录——两种都合法，用户可能只是
+ *                 拿别处的稿子来审一下，不必为此建作品。
+ * @returns 是否保存成功
+ */
+export async function saveGenerationHistory(
+  taskType: string,
+  inputData: any,
+  result: string,
+  workId?: string | null
+): Promise<boolean> {
+  // 在任何异步等待之前固定归属；显式传入生成开始时的档案优先。
+  const scopedInput = { ...inputData };
+  if (!('profileId' in scopedInput) && !('profile_id' in scopedInput)) {
+    scopedInput.profileId = getActiveProfileId();
+  }
+  try {
+    console.log("💾 保存生成历史记录...");
+
+    // 获取当前用户
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      console.warn("⚠️ 未登录，无法保存历史记录");
+      return false;
+    }
+
+    const userId = session.user.id;
+
+    // 保存到数据库
+    const { error } = await supabase
+      .from("script_history")
+      .insert({
+        user_id: userId,
+        task_type: taskType,
+        input_data: scopedInput,
+        result: result,
+        work_id: workId || null,
+      });
+
+    if (error) {
+      console.error("❌ 保存历史记录失败:", error);
+      return false;
+    }
+
+    console.log("✅ 历史记录已保存");
+    // 生成成功：看看是不是快用完了，要不要轻轻提醒一次（见 lib/upgrade）
+    notifyGenerated();
+    return true;
+  } catch (error) {
+    console.error("❌ 保存历史记录异常:", error);
+    return false;
+  }
+}
+
+/**
+ * 检查用户配额（新系统：使用 user_quotas + subscriptions 表）
+ *
+ * @param feature 功能代码。**必须传**——不传的话按「脚本生成」回答，
+ *   各页面就会拿脚本的剩余次数去判断自己能不能用：免费版在分镜/审稿/
+ *   标题页明明是 0 次却被放行，付费版则会被提前误报额度用完。
+ * @returns 剩余配额数量，null 表示未登录，Infinity 表示无限制
+ */
+export async function checkQuota(feature?: string): Promise<number | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      return null;
+    }
+
+    const userId = session.user.id;
+
+    // end_date 必须一起取，否则下面判不出订阅有没有到期
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('plan, status, end_date')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    // 如果用户被封禁
+    if (subscription?.status === 'inactive') {
+      return 0;
+    }
+
+    /*
+     * 到期判定必须和服务端共用同一个函数。
+     *
+     * 这里原来是 `subscription?.status === 'active' ? subscription.plan : 'free'`，
+     * 只看 status、不看 end_date——而服务端的 requireUserWithQuota 早就换成
+     * effectivePlanId 了。两边结论不一致的后果是：订阅已过期的用户在界面上
+     * 看到"还剩 50 次"，点下去服务端回 402。不报错，只是两个数字对不上，
+     * 用户会以为是系统出问题了。
+     */
+    const planId = effectivePlanId(subscription);
+    const plan = getPlan(planId);
+
+    // 仅配置明确为无限的套餐可跳过计数。
+    if (plan.totalQuota === -1) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    // 获取用户配额使用情况
+    const { data: quota } = await supabase
+      .from('user_quotas')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    // 换期按服务端同一个规则在内存里套一遍：会员新一期满额、过期会员清零、
+    // 免费版一次性不重置。原来是"周期过了就当满额"，免费版和过期会员都会算错
+    const roll = quotaRollover(subscription, quota);
+    const current = quota && roll.kind !== 'none' ? { ...quota, ...roll.patch } : quota;
+
+    // 与服务端 requireUserWithQuota 用的是同一个判定函数，
+    // 此前两边各写一套（前端按总量、服务端按单功能），结论会互相矛盾
+    if (feature) {
+      const verdict = judgeQuota(planId, feature, current);
+      return verdict.remaining === -1 ? Number.POSITIVE_INFINITY : verdict.remaining;
+    }
+
+    // 兜底：没传功能名时按总量算（付费版）或按脚本算（免费版）。
+    // 这条路径不该被走到——走到了说明有调用方忘了传功能名，
+    // 它给出的数字对别的功能没有参考意义。
+    console.warn('[checkQuota] 未传功能名，返回的剩余次数可能不适用于当前功能');
+
+    if (plan.totalQuota !== null) {
+      if (plan.totalQuota === -1) return Number.POSITIVE_INFINITY;
+      if (!current) return plan.totalQuota;
+      return Math.max(0, plan.totalQuota - sumCountedUsage(current));
+    }
+
+    const scriptLimit = plan.quotas.script;
+    if (scriptLimit === -1) return Number.POSITIVE_INFINITY;
+    if (!current) return scriptLimit;
+    return Math.max(0, scriptLimit - (Number(current.script_used) || 0));
+
+  } catch (error) {
+    console.error("检查配额异常:", error);
+    return 0;
+  }
+}

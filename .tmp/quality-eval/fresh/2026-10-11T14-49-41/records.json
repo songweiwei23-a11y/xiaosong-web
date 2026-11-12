@@ -1,0 +1,2666 @@
+[
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "标题封面",
+    "key": "title",
+    "status": "done",
+    "firstAnswerMs": 16834,
+    "totalMs": 44543,
+    "chars": 1587,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1587,
+      "titleCount": 5
+    },
+    "file": "p1-title.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "选题策划",
+    "key": "topic",
+    "status": "done",
+    "firstAnswerMs": 12170,
+    "totalMs": 79431,
+    "chars": 1688,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "地名「上五点的村」档案和素材里都没有",
+        "地名「须提前到村」档案和素材里都没有"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1688,
+      "topicCount": 10
+    },
+    "file": "p1-topic.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "开篇钩子",
+    "key": "opening",
+    "status": "done",
+    "firstAnswerMs": 11234,
+    "totalMs": 48814,
+    "chars": 1713,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "百分比「让你自己去的——十个有九个到了才发」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1713
+    },
+    "file": "p1-opening.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "脚本生成",
+    "key": "script",
+    "status": "done",
+    "firstAnswerMs": 16360,
+    "totalMs": 106350,
+    "chars": 2610,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2610,
+      "spokenCjk": 167
+    },
+    "file": "p1-script.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "成交理由",
+    "key": "dealReason",
+    "status": "done",
+    "firstAnswerMs": 9099,
+    "totalMs": 70189,
+    "chars": 1940,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1940
+    },
+    "file": "p1-dealReason.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "知识库查询",
+    "key": "knowledge",
+    "status": "done",
+    "firstAnswerMs": 8580,
+    "totalMs": 86714,
+    "chars": 2599,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2599
+    },
+    "file": "p1-knowledge.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "拆解爆款",
+    "key": "breakdown",
+    "status": "done",
+    "firstAnswerMs": 11013,
+    "totalMs": 108809,
+    "chars": 4870,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4870
+    },
+    "file": "p1-breakdown.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "创作方向",
+    "key": "direction",
+    "status": "done",
+    "firstAnswerMs": 9443,
+    "totalMs": 242803,
+    "chars": 5985,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "顾客见证「方向4:秋季老客户回访·用结果说话 - **对应目的」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5985
+    },
+    "file": "p1-direction.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "跨行业二创",
+    "key": "remix",
+    "status": "done",
+    "firstAnswerMs": 12675,
+    "totalMs": 185905,
+    "chars": 4785,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4785,
+      "planCount": 2
+    },
+    "file": "p1-remix.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "内容规划",
+    "key": "contentPlan",
+    "status": "done",
+    "firstAnswerMs": 10821,
+    "totalMs": 209522,
+    "chars": 5823,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5823
+    },
+    "file": "p1-contentPlan.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "脚本生成",
+    "key": "script",
+    "status": "done",
+    "firstAnswerMs": 8359,
+    "totalMs": 140605,
+    "chars": 3231,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [
+        "第 2 步口播 532 字，编导设了 30 秒，超出约 150 字"
+      ],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3231,
+      "spokenCjk": 532
+    },
+    "file": "p2-script.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "标题封面",
+    "key": "title",
+    "status": "done",
+    "firstAnswerMs": 7560,
+    "totalMs": 62356,
+    "chars": 1983,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "百分比「3秒」或「这个错90%的人都犯」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1983,
+      "titleCount": 5
+    },
+    "file": "p2-title.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "选题策划",
+    "key": "topic",
+    "status": "done",
+    "firstAnswerMs": 10095,
+    "totalMs": 67238,
+    "chars": 2396,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "百分比「3个错，最后一个90%的人都不」没有出处",
+        "百分比「：反常识钩子（\"90%的人都不」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2396,
+      "topicCount": 10
+    },
+    "file": "p2-topic.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "开篇钩子",
+    "key": "opening",
+    "status": "done",
+    "firstAnswerMs": 12280,
+    "totalMs": 51324,
+    "chars": 1754,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1754
+    },
+    "file": "p2-opening.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "账号定位",
+    "key": "account",
+    "status": "done",
+    "firstAnswerMs": 9930,
+    "totalMs": 611128,
+    "chars": 18457,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "百分比「*怎么重复**：80%的视频都」没有出处",
+        "百分比「*补救方向**：80%的视频都」没有出处",
+        "经营承诺「因带钩子（\"今天送一个大姐去厂」老板没说过要这样做"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 18457
+    },
+    "file": "p1-account.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "成交理由",
+    "key": "dealReason",
+    "status": "done",
+    "firstAnswerMs": 9547,
+    "totalMs": 72478,
+    "chars": 2002,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2002
+    },
+    "file": "p2-dealReason.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "创作方向",
+    "key": "direction",
+    "status": "done",
+    "firstAnswerMs": 10144,
+    "totalMs": 104762,
+    "chars": 4372,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4372
+    },
+    "file": "p2-direction.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "知识库查询",
+    "key": "knowledge",
+    "status": "done",
+    "firstAnswerMs": 7127,
+    "totalMs": 92547,
+    "chars": 3245,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3245
+    },
+    "file": "p2-knowledge.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "拆解爆款",
+    "key": "breakdown",
+    "status": "done",
+    "firstAnswerMs": 10422,
+    "totalMs": 103502,
+    "chars": 4402,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "百分比「体错误——\"南乐90%的火锅店」没有出处",
+        "百分比「句**\"因为网上90%的教程都」没有出处",
+        "百分比「视频还是没人看?90%都栽在这」没有出处",
+        "百分比「词**： \"南乐90%的火锅店」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4402
+    },
+    "file": "p2-breakdown.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "内容规划",
+    "key": "contentPlan",
+    "status": "done",
+    "firstAnswerMs": 8099,
+    "totalMs": 115510,
+    "chars": 6873,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 6873
+    },
+    "file": "p2-contentPlan.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "跨行业二创",
+    "key": "remix",
+    "status": "done",
+    "firstAnswerMs": 8319,
+    "totalMs": 160459,
+    "chars": 4616,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 28 处"
+    ],
+    "metrics": {
+      "chars": 4616,
+      "planCount": 2
+    },
+    "file": "p2-remix.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "账号定位",
+    "key": "account",
+    "status": "done",
+    "firstAnswerMs": 8881,
+    "totalMs": 547545,
+    "chars": 17280,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "全网"
+      ],
+      "E2": [],
+      "E3": [
+        "价格「量 B**：从 24 元素里选*」档案和素材里都没有"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 17280
+    },
+    "file": "p2-account.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "脚本生成",
+    "key": "script",
+    "status": "done",
+    "firstAnswerMs": 7326,
+    "totalMs": 69540,
+    "chars": 2896,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2896,
+      "spokenCjk": 148
+    },
+    "file": "p3-script.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "标题封面",
+    "key": "title",
+    "status": "done",
+    "firstAnswerMs": 7825,
+    "totalMs": 49254,
+    "chars": 2038,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "百分比「配,这个场景覆盖90%以上目标」没有出处",
+        "百分比「10-15平\"\"90%\"等数据」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2038,
+      "titleCount": 5
+    },
+    "file": "p3-title.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "开篇钩子",
+    "key": "opening",
+    "status": "done",
+    "firstAnswerMs": 8220,
+    "totalMs": 43122,
+    "chars": 1626,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1626
+    },
+    "file": "p3-opening.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "选题策划",
+    "key": "topic",
+    "status": "done",
+    "firstAnswerMs": 17366,
+    "totalMs": 74081,
+    "chars": 2778,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [
+        "选题 14 条，要求 10 条"
+      ],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2778,
+      "topicCount": 14
+    },
+    "file": "p3-topic.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "成交理由",
+    "key": "dealReason",
+    "status": "done",
+    "firstAnswerMs": 7508,
+    "totalMs": 54280,
+    "chars": 1428,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1428
+    },
+    "file": "p3-dealReason.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "知识库查询",
+    "key": "knowledge",
+    "status": "done",
+    "firstAnswerMs": 10588,
+    "totalMs": 62573,
+    "chars": 1621,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "客户故事「例：** - \"今天来了个客人，进门第」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "百分比「题能省X块钱——90%的人都没」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1621
+    },
+    "file": "p3-knowledge.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "跨行业二创",
+    "key": "remix",
+    "status": "done",
+    "firstAnswerMs": 8480,
+    "totalMs": 82966,
+    "chars": 4467,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4467,
+      "planCount": 2
+    },
+    "file": "p3-remix.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "拆解爆款",
+    "key": "breakdown",
+    "status": "done",
+    "firstAnswerMs": 12112,
+    "totalMs": 102980,
+    "chars": 4772,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "百分比「（推断）：**\"90% 的人都」没有出处",
+        "百分比「★★☆☆ | \"90%的人都错」没有出处",
+        "百分比「待过XX个客户,十个有九个……\"】」没有出处",
+        "百分比「*：借鉴原片的\"90%的人都不」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4772
+    },
+    "file": "p3-breakdown.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "创作方向",
+    "key": "direction",
+    "status": "done",
+    "firstAnswerMs": 9570,
+    "totalMs": 259469,
+    "chars": 6190,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 6190
+    },
+    "file": "p3-direction.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "账号定位",
+    "key": "account",
+    "status": "done",
+    "firstAnswerMs": 8073,
+    "totalMs": 477924,
+    "chars": 13247,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "价格「B**： 从 24 元素里选」档案和素材里都没有",
+        "经营做法「结构看进货渠道，厂家直供和层层代」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「4. 编造\"厂家直供省三层代」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「编造\"厂家直供省三层代理\"\"低价」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「们的差别**：我不讲价格、不讲」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「\"全城最低价\"\"厂家直供省三层代」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「低价\"\"厂家直供省三层代理\" ——」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「\"全城最低价\"\"厂家直供\"这类会」老板没说过，别替他定（写成【换成你店里的真实做法】）"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 13247
+    },
+    "file": "p3-account.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "内容规划",
+    "key": "contentPlan",
+    "status": "done",
+    "firstAnswerMs": 8925,
+    "totalMs": 196201,
+    "chars": 5789,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5789
+    },
+    "file": "p3-contentPlan.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "标题封面",
+    "key": "title",
+    "status": "done",
+    "firstAnswerMs": 7664,
+    "totalMs": 40046,
+    "chars": 1839,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1839,
+      "titleCount": 5
+    },
+    "file": "p4-title.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "开篇钩子",
+    "key": "opening",
+    "status": "done",
+    "firstAnswerMs": 7435,
+    "totalMs": 50642,
+    "chars": 1865,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1865
+    },
+    "file": "p4-opening.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "脚本生成",
+    "key": "script",
+    "status": "done",
+    "firstAnswerMs": 7952,
+    "totalMs": 195503,
+    "chars": 4031,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "地名「川味或市」档案和素材里都没有"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [
+        "第 2 步口播 376 字，编导设了 30 秒，超出约 150 字"
+      ],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4031,
+      "spokenCjk": 376
+    },
+    "file": "p4-script.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "选题策划",
+    "key": "topic",
+    "status": "done",
+    "firstAnswerMs": 10825,
+    "totalMs": 89854,
+    "chars": 2200,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "全网"
+      ],
+      "E2": [],
+      "E3": [
+        "顾客见证「*选题标题**：客人说\"一块钱的火锅能有多」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2200,
+      "topicCount": 10
+    },
+    "file": "p4-topic.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "成交理由",
+    "key": "dealReason",
+    "status": "done",
+    "firstAnswerMs": 8515,
+    "totalMs": 65700,
+    "chars": 1751,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1751
+    },
+    "file": "p4-dealReason.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "知识库查询",
+    "key": "knowledge",
+    "status": "done",
+    "firstAnswerMs": 8616,
+    "totalMs": 82810,
+    "chars": 2607,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2607
+    },
+    "file": "p4-knowledge.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "跨行业二创",
+    "key": "remix",
+    "status": "done",
+    "firstAnswerMs": 9949,
+    "totalMs": 92817,
+    "chars": 4513,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4513,
+      "planCount": 2
+    },
+    "file": "p4-remix.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "拆解爆款",
+    "key": "breakdown",
+    "status": "done",
+    "firstAnswerMs": 11665,
+    "totalMs": 203302,
+    "chars": 5264,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5264
+    },
+    "file": "p4-breakdown.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "创作方向",
+    "key": "direction",
+    "status": "done",
+    "firstAnswerMs": 12054,
+    "totalMs": 288610,
+    "chars": 6368,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "顾客见证「选这 3. 老客说:秋天降温了,还是得」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 6368
+    },
+    "file": "p4-direction.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "账号定位",
+    "key": "account",
+    "status": "done",
+    "firstAnswerMs": 8383,
+    "totalMs": 560253,
+    "chars": 16150,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "价格「桌,总价150-400元) *」档案和素材里都没有",
+        "百分比「打内容**：流量45%（地域差」没有出处",
+        "百分比「头采访）/ 人设25%（厨子的」没有出处",
+        "百分比「- ✅ 是。45%是最大的」没有出处",
+        "顾客见证「都厨子现场炒料、老客人四川口音说\"这个对头\"**」资料里没有这段经历",
+        "顾客见证「得最难的,是**客人吃了会专门夸、会带朋友来再点一次」资料里没有这段经历",
+        "顾客见证「都厨子现场炒料、老客人四川口音说\"这个对头\"、拍你去」资料里没有这段经历",
+        "顾客见证「排队的画面、或者客人说\"我们单位都知道这家」资料里没有这段经历"
+      ],
+      "E4": [
+        "时令「- **脚本结构·小有成就**:结果钩子\"我在这条街开了半年,现在老客人能认出我」与今天（秋季）不符，改成今天的时令或改写成过去、将来的事"
+      ],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 16150
+    },
+    "file": "p4-account.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "标题封面",
+    "key": "title",
+    "status": "done",
+    "firstAnswerMs": 8142,
+    "totalMs": 42153,
+    "chars": 1839,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1839,
+      "titleCount": 5
+    },
+    "file": "p5-title.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "内容规划",
+    "key": "contentPlan",
+    "status": "done",
+    "firstAnswerMs": 9483,
+    "totalMs": 187438,
+    "chars": 5510,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5510
+    },
+    "file": "p4-contentPlan.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "脚本生成",
+    "key": "script",
+    "status": "done",
+    "firstAnswerMs": 7038,
+    "totalMs": 125564,
+    "chars": 2978,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [
+        "第 2 步口播 503 字，编导设了 30 秒，超出约 150 字"
+      ],
+      "E7": []
+    },
+    "warn": [
+      "占位 13 处"
+    ],
+    "metrics": {
+      "chars": 2978,
+      "spokenCjk": 503
+    },
+    "file": "p5-script.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "选题策划",
+    "key": "topic",
+    "status": "done",
+    "firstAnswerMs": 11487,
+    "totalMs": 104983,
+    "chars": 3123,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3123,
+      "topicCount": 10
+    },
+    "file": "p5-topic.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "开篇钩子",
+    "key": "opening",
+    "status": "done",
+    "firstAnswerMs": 7654,
+    "totalMs": 77847,
+    "chars": 2129,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2129
+    },
+    "file": "p5-opening.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "成交理由",
+    "key": "dealReason",
+    "status": "done",
+    "firstAnswerMs": 7492,
+    "totalMs": 76897,
+    "chars": 2174,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "经营做法「给具体价格政策（厂家直供、省几层」老板没说过，别替他定（写成【换成你店里的真实做法】）"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2174
+    },
+    "file": "p5-dealReason.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "知识库查询",
+    "key": "knowledge",
+    "status": "done",
+    "firstAnswerMs": 7213,
+    "totalMs": 87837,
+    "chars": 2478,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2478
+    },
+    "file": "p5-knowledge.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "拆解爆款",
+    "key": "breakdown",
+    "status": "done",
+    "firstAnswerMs": 15592,
+    "totalMs": 119680,
+    "chars": 5723,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "百分比「预算8万配全屋，90%的人第一」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5723
+    },
+    "file": "p5-breakdown.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "创作方向",
+    "key": "direction",
+    "status": "done",
+    "firstAnswerMs": 11861,
+    "totalMs": 241812,
+    "chars": 5944,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "客户故事「真实客户:比如\"今天来了位父亲,要给儿子准备婚房\"】,然后拍他」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「真实客户:比如\"今天来了位父亲,要给儿子准备婚房,预算不高,但」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "顾客见证「*:晒过程——从客人进店说预算、你带他挑、他犹」资料里没有这段经历",
+        "顾客见证「. 拍完整过程:客人进店说预算→你带他在六大品」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 9 处"
+    ],
+    "metrics": {
+      "chars": 5944
+    },
+    "file": "p5-direction.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "分镜脚本",
+    "key": "storyboard",
+    "status": "done",
+    "firstAnswerMs": 9074,
+    "totalMs": 50374,
+    "chars": 1791,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 1791
+    },
+    "file": "p1-storyboard.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "跨行业二创",
+    "key": "remix",
+    "status": "done",
+    "firstAnswerMs": 10442,
+    "totalMs": 147752,
+    "chars": 4281,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4281,
+      "planCount": 2
+    },
+    "file": "p5-remix.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "分镜脚本",
+    "key": "storyboard",
+    "status": "done",
+    "firstAnswerMs": 8110,
+    "totalMs": 54389,
+    "chars": 2027,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2027
+    },
+    "file": "p2-storyboard.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "审稿优化",
+    "key": "review",
+    "status": "done",
+    "firstAnswerMs": 8425,
+    "totalMs": 132590,
+    "chars": 2633,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [
+        "拒答：未提供档案"
+      ],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2633
+    },
+    "file": "p1-review.md",
+    "steps": [
+      "review_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "账号定位",
+    "key": "account",
+    "status": "done",
+    "firstAnswerMs": 8330,
+    "totalMs": 568152,
+    "chars": 16883,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "经营做法「、成本、工艺(「厂家直供」「无中」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「15 年老店、厂家直供、性价比」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「讲「我们的货源是厂家直供、没有中」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "经营做法「货源是厂家直供、没有中间商」 -」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "顾客见证「板觉得这是专业,顾客看着像说明书,记不住也不转发」资料里没有这段经历",
+        "顾客见证「理一下」(每次帮客人分析需求时都说) - 怎么重复」资料里没有这段经历",
+        "资历/荣誉「、年头、实力(「15 年老店」「万平」档案里没有",
+        "资历/荣誉「同行说\"我们是 15 年老店、厂家直」档案里没有"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 16883
+    },
+    "file": "p5-account.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "审稿优化",
+    "key": "review",
+    "status": "done",
+    "firstAnswerMs": 7236,
+    "totalMs": 177992,
+    "chars": 3942,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 10 处"
+    ],
+    "metrics": {
+      "chars": 3942
+    },
+    "file": "p2-review.md",
+    "steps": [
+      "review_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "内容规划",
+    "key": "contentPlan",
+    "status": "done",
+    "firstAnswerMs": 11141,
+    "totalMs": 394796,
+    "chars": 7777,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 9 处"
+    ],
+    "metrics": {
+      "chars": 7777
+    },
+    "file": "p5-contentPlan.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "商业定位",
+    "key": "business",
+    "status": "done",
+    "firstAnswerMs": 9635,
+    "totalMs": 421633,
+    "chars": 10736,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "地名「你开车到村」档案和素材里都没有"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 10736
+    },
+    "file": "p1-business.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "内容定位",
+    "key": "content",
+    "status": "done",
+    "firstAnswerMs": 8899,
+    "totalMs": 272287,
+    "chars": 14224,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 14224
+    },
+    "file": "p2-content.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "内容定位",
+    "key": "content",
+    "status": "done",
+    "firstAnswerMs": 11679,
+    "totalMs": 477388,
+    "chars": 14792,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "百分比「- **晒过程 50% 是主力」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 14792
+    },
+    "file": "p1-content.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "分镜脚本",
+    "key": "storyboard",
+    "status": "done",
+    "firstAnswerMs": 14205,
+    "totalMs": 70878,
+    "chars": 2249,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2249
+    },
+    "file": "p3-storyboard.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "商业定位",
+    "key": "business",
+    "status": "done",
+    "firstAnswerMs": 9621,
+    "totalMs": 416834,
+    "chars": 11704,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "经营承诺「先拍 1-3 条免费试水（条件」老板没说过要这样做",
+        "经营承诺「500 元/月或免费试水 1-」老板没说过要这样做"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 11704
+    },
+    "file": "p2-business.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "审稿优化",
+    "key": "review",
+    "status": "done",
+    "firstAnswerMs": 5781,
+    "totalMs": 103337,
+    "chars": 2936,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 6 处"
+    ],
+    "metrics": {
+      "chars": 2936
+    },
+    "file": "p3-review.md",
+    "steps": [
+      "review_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "分镜脚本",
+    "key": "storyboard",
+    "status": "done",
+    "firstAnswerMs": 9906,
+    "totalMs": 86785,
+    "chars": 2705,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "100%"
+      ],
+      "E2": [],
+      "E3": [
+        "百分比「器**，手持拉镜100%抖；拉镜」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2705
+    },
+    "file": "p4-storyboard.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "审稿优化",
+    "key": "review",
+    "status": "done",
+    "firstAnswerMs": 6335,
+    "totalMs": 268608,
+    "chars": 4950,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 6 处"
+    ],
+    "metrics": {
+      "chars": 4950
+    },
+    "file": "p4-review.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "商业定位",
+    "key": "business",
+    "status": "done",
+    "firstAnswerMs": 7942,
+    "totalMs": 384777,
+    "chars": 10080,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "全城"
+      ],
+      "E2": [],
+      "E3": [
+        "客户故事「真实客户：比如\"上周来了个客人，量错了」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 17 处"
+    ],
+    "metrics": {
+      "chars": 10080
+    },
+    "file": "p3-business.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "分镜脚本",
+    "key": "storyboard",
+    "status": "done",
+    "firstAnswerMs": 8666,
+    "totalMs": 65322,
+    "chars": 2458,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2458
+    },
+    "file": "p5-storyboard.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "内容定位",
+    "key": "content",
+    "status": "done",
+    "firstAnswerMs": 7241,
+    "totalMs": 483807,
+    "chars": 15872,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "客户故事「：起因带钩子（\"今天展厅来了对夫妻，说要挑」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「人出镜），字幕\"今天来了对夫妻，说要买」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「老板在展厅，说\"前两天来了个客人，说他在」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「或背影），字幕\"今天来了对夫妻，说要买」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「旦被发现编造（\"前两天来了一对夫妻\"实际上根本没来过、\"开了15年」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "顾客见证「=你第10条时的粉丝量×2）——说明内容+人设的组合开」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 6 处"
+    ],
+    "metrics": {
+      "chars": 15872
+    },
+    "file": "p3-content.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "商业定位",
+    "key": "business",
+    "status": "done",
+    "firstAnswerMs": 9491,
+    "totalMs": 457101,
+    "chars": 12345,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "顾客见证「实、口碑 | 拍老客人吃完说\"这个对头\"\"跟成都」资料里没有这段经历",
+        "顾客见证「- 爽感回收：客人吃完说\"没想到这么正宗\"」资料里没有这段经历",
+        "经营承诺「，发新品、活动、优惠券」老板没说过要这样做",
+        "「之后，**砍掉数据差的方向、加大数据好的方向」引用了数据但没给出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 12345
+    },
+    "file": "p4-business.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "审稿优化",
+    "key": "review",
+    "status": "done",
+    "firstAnswerMs": 7716,
+    "totalMs": 178549,
+    "chars": 3900,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 16 处"
+    ],
+    "metrics": {
+      "chars": 3900
+    },
+    "file": "p5-review.md",
+    "steps": [
+      "review_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "创作简报",
+    "key": "brief",
+    "status": "done",
+    "firstAnswerMs": 9748,
+    "totalMs": 85241,
+    "chars": 3208,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 3208
+    },
+    "file": "p1-brief.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "内容定位",
+    "key": "content",
+    "status": "done",
+    "firstAnswerMs": 8654,
+    "totalMs": 532455,
+    "chars": 16481,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "极致",
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "顾客见证「啥不一样\" → 客人说（可能说\"更麻\"\"没这么辣\"」资料里没有这段经历",
+        "顾客见证「带朋友啊\" → 老客人对朋友说\"我跟你说过的那家成」资料里没有这段经历",
+        "顾客见证「老客） 5. 《老客人说：我一周不来，就想这」资料里没有这段经历",
+        "资历/荣誉「如\"每周探访一个30年老店\"\"每天」档案里没有"
+      ],
+      "E4": [
+        "时令「- 哪个老客人从第一次不信到现在一周来三次、哪个老客人带了最多朋友来、哪个四川老」与今天（秋季）不符，改成今天的时令或改写成过去、将来的事"
+      ],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 16481
+    },
+    "file": "p4-content.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "行业建议",
+    "key": "advice",
+    "status": "done",
+    "firstAnswerMs": 9105,
+    "totalMs": 211883,
+    "chars": 9154,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好",
+        "绝对"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 9154
+    },
+    "file": "p1-advice.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "创作简报",
+    "key": "brief",
+    "status": "done",
+    "firstAnswerMs": 9525,
+    "totalMs": 70436,
+    "chars": 2931,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2931
+    },
+    "file": "p2-brief.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "商业定位",
+    "key": "business",
+    "status": "done",
+    "firstAnswerMs": 9150,
+    "totalMs": 549210,
+    "chars": 16580,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "客户故事「/冲突的案例：「上周来了个客人，说他之」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "百分比「率测试仪，超过 12% 就容易」没有出处",
+        "百分比「幅不超过 10-15%），因为」没有出处",
+        "顾客见证「决具体问题**：客人说\"我怕买回去尺寸不合」资料里没有这段经历",
+        "顾客见证「留言截图 - 拍客人回店里、说「我又来了，这次给我」资料里没有这段经历",
+        "顾客见证「*关键画面**：客人主动说\"我推荐了我朋友来找」资料里没有这段经历",
+        "顾客见证「家」 - 拍你和客人的对话：客人说「我家在 X 镇」，」资料里没有这段经历",
+        "顾客见证「上门调整的过程（客人说\"这个柜子摆这儿好像」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 16580
+    },
+    "file": "p5-business.md",
+    "steps": []
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "起号方案",
+    "key": "growth",
+    "status": "done",
+    "firstAnswerMs": 9332,
+    "totalMs": 211823,
+    "chars": 9189,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 9 处"
+    ],
+    "metrics": {
+      "chars": 9189
+    },
+    "file": "p1-growth.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "创作简报",
+    "key": "brief",
+    "status": "done",
+    "firstAnswerMs": 10633,
+    "totalMs": 63831,
+    "chars": 2187,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2187
+    },
+    "file": "p3-brief.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "行业建议",
+    "key": "advice",
+    "status": "done",
+    "firstAnswerMs": 8800,
+    "totalMs": 186860,
+    "chars": 8638,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "全网"
+      ],
+      "E2": [],
+      "E3": [
+        "效果基准「效果基准不写\"完播率低于 40% 就换\"」没有依据，改成和你自己前几条的数据比"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 8638
+    },
+    "file": "p2-advice.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "内容定位",
+    "key": "content",
+    "status": "done",
+    "firstAnswerMs": 7415,
+    "totalMs": 618654,
+    "chars": 22647,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "客户故事「、同一句开场（\"今天来了个客人……\"） - 变」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "经营做法「具爱讲价、外地人不讲价？李老师」老板没说过，别替他定（写成【换成你店里的真实做法】）",
+        "效果基准「比低于 40%、完播率低于 30% → 说」没有依据，改成和你自己前几条的数据比",
+        "百分比「g / 晒过程（35%）**，」没有出处",
+        "顾客见证「帮客人讲明白——很多客人说\"你讲得我听得懂，不」资料里没有这段经历",
+        "顾客见证「怎么拍**： 「客人说：我看了半天家具，越」资料里没有这段经历",
+        "顾客见证「题**： 1. 客人说：我看了半天家具，越」资料里没有这段经历",
+        "顾客见证「量给你看 7. 客人说：我家采光不好、客厅」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 9 处"
+    ],
+    "metrics": {
+      "chars": 22647
+    },
+    "file": "p5-content.md",
+    "steps": []
+  },
+  {
+    "profile": "实体获客编导-不一",
+    "profileId": "b91d9850-d454-4440-8b87-bdc33baac1be",
+    "board": "起号方案",
+    "key": "growth",
+    "status": "done",
+    "firstAnswerMs": 10772,
+    "totalMs": 178188,
+    "chars": 8366,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 8366
+    },
+    "file": "p2-growth.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "创作简报",
+    "key": "brief",
+    "status": "done",
+    "firstAnswerMs": 8022,
+    "totalMs": 94649,
+    "chars": 3748,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 6 处"
+    ],
+    "metrics": {
+      "chars": 3748
+    },
+    "file": "p4-brief.md",
+    "steps": []
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "行业建议",
+    "key": "advice",
+    "status": "done",
+    "firstAnswerMs": 8644,
+    "totalMs": 253719,
+    "chars": 6601,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 6601
+    },
+    "file": "p3-advice.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "行业建议",
+    "key": "advice",
+    "status": "done",
+    "firstAnswerMs": 7469,
+    "totalMs": 277438,
+    "chars": 7524,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 9 处"
+    ],
+    "metrics": {
+      "chars": 7524
+    },
+    "file": "p4-advice.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "创作简报",
+    "key": "brief",
+    "status": "done",
+    "firstAnswerMs": 10495,
+    "totalMs": 89163,
+    "chars": 2346,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2346
+    },
+    "file": "p5-brief.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "测试_青禾家具店_全板块验收20261008",
+    "profileId": "49cc7968-679c-46b2-a9ee-44ea30090372",
+    "board": "起号方案",
+    "key": "growth",
+    "status": "done",
+    "firstAnswerMs": 9388,
+    "totalMs": 441252,
+    "chars": 12367,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "百分比「,第2-5条都在35%-50%」没有出处",
+        "百分比「条25%,第3条20%）——说」没有出处",
+        "百分比「下、完播率一直在20%以下）→」没有出处",
+        "百分比「X,完播率一直在20%以下）」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": [
+        "交稿前"
+      ]
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 12367
+    },
+    "file": "p3-growth.md",
+    "steps": []
+  },
+  {
+    "profile": "锦园地摊串串一元火锅",
+    "profileId": "74586841-e22e-47a8-b0bb-6c51b5eff606",
+    "board": "起号方案",
+    "key": "growth",
+    "status": "done",
+    "firstAnswerMs": 9627,
+    "totalMs": 426883,
+    "chars": 11391,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "「复盘表（哪几条数据好、为什么好、哪几条数据差、为什」引用了数据但没给出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 11391
+    },
+    "file": "p4-growth.md",
+    "steps": []
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "起号方案",
+    "key": "growth",
+    "status": "done",
+    "firstAnswerMs": 10459,
+    "totalMs": 334199,
+    "chars": 7938,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 7938
+    },
+    "file": "p5-growth.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "万客隆家具城·李国才",
+    "profileId": "ac5fc613-c096-4d1d-89b8-6445d28d92bf",
+    "board": "行业建议",
+    "key": "advice",
+    "status": "done",
+    "firstAnswerMs": 10313,
+    "totalMs": 429106,
+    "chars": 11801,
+    "pass": false,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "客户故事「例引入 —— \"昨天来了一对夫妻，上来就」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「人的真实困境（\"今天来了一对夫妻,两个人吵起来了——老婆要新中式」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「：客人的困境（\"今天来了一对夫妻,预算2万,客厅25平,不知道选」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）",
+        "客户故事「须讲清楚原因,\"今天来了一对吵架的夫妻\"就必须讲他们为什么吵、怎」资料里没有这件事，别写成真事（写成【换成你接待的真实客户】）"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 11801
+    },
+    "file": "p5-advice.md",
+    "steps": []
+  }
+]

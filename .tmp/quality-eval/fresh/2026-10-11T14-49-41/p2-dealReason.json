@@ -1,0 +1,26 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "成交理由",
+  "status": 200,
+  "firstAnswerMs": 9547,
+  "totalMs": 72478,
+  "errors": [],
+  "promptChars": 4092,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2002
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T15:00:54.067Z"
+}

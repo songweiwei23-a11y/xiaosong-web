@@ -1,0 +1,91 @@
+{
+  "passed": 21,
+  "database": "isolated PGlite PostgreSQL",
+  "note": "Concurrent requests use one isolated database connection; multi-process lock stress still requires staging PostgreSQL.",
+  "results": [
+    {
+      "name": "parallel submissions cannot reserve beyond free feature limit",
+      "passed": true
+    },
+    {
+      "name": "same id is rejected, different payload is conflict",
+      "passed": true
+    },
+    {
+      "name": "double confirmation increments counter and event once",
+      "passed": true
+    },
+    {
+      "name": "failed generation releases quota without successful event",
+      "passed": true
+    },
+    {
+      "name": "different feature retains independent quota",
+      "passed": true
+    },
+    {
+      "name": "pending request from crashed process expires without blocking forever",
+      "passed": true
+    },
+    {
+      "name": "paid rollover resets once and reserves against new period",
+      "passed": true
+    },
+    {
+      "name": "expired paid plan cannot reuse free trial",
+      "passed": true
+    },
+    {
+      "name": "banned users cannot reserve even with remaining balance",
+      "passed": true
+    },
+    {
+      "name": "transaction rollback restores both event and balance",
+      "passed": true
+    },
+    {
+      "name": "total-pool configuration counts pending requests across features",
+      "passed": true
+    },
+    {
+      "name": "anon and authenticated cannot invoke quota RPCs",
+      "passed": true
+    },
+    {
+      "name": "only valid nonempty hashed terminal evidence is accepted",
+      "passed": true
+    },
+    {
+      "name": "same full completion can be retried; another answer conflicts",
+      "passed": true
+    },
+    {
+      "name": "dry-run defaults preserve quota and usage while logging preview",
+      "passed": true
+    },
+    {
+      "name": "expired unknown reservation is never charged and released request stays released",
+      "passed": true
+    },
+    {
+      "name": "evidence-only reconciliation increments and logs exactly once",
+      "passed": true
+    },
+    {
+      "name": "tampered hash or scope is rejected during reconciliation",
+      "passed": true
+    },
+    {
+      "name": "audit insertion failure rolls back successful quota settlement",
+      "passed": true
+    },
+    {
+      "name": "automatic batch handles only evidenced pending completions, max fifty",
+      "passed": true
+    },
+    {
+      "name": "clients cannot read/write completion evidence or invoke reconciliation",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,369 @@
+{
+  "at": "2026-10-16T17:51:37.987Z",
+  "rows": [
+    {
+      "q": "今天北京天气怎么样",
+      "auto": true,
+      "status": "done",
+      "count": 3,
+      "readCount": 0,
+      "seconds": 2,
+      "sources": [
+        "北京天气预报资讯 | mtianqi.eastday.com",
+        "北京2026年10月份历史天气 | ip.cn",
+        "2026年10月北京天气预报 | m.tianqi.com"
+      ]
+    },
+    {
+      "q": "今天上海有什么新闻",
+      "auto": true,
+      "status": "done",
+      "count": 3,
+      "readCount": 0,
+      "seconds": 2,
+      "sources": [
+        "人民日报记者看上海 | sh.people.com.cn",
+        "上海要闻 | www.shanghai.gov.cn",
+        "上海市人民政府新闻办公室 | en.shio.gov.cn"
+      ]
+    },
+    {
+      "q": "最近国家有什么新的税收政策",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 6,
+      "sources": [
+        "国家税务总局 | guangdong.chinatax.gov.cn",
+        "2026年税费缴纳事项告知书 | m.renrendoc.com",
+        "2026年9月1日个税新政正式落地！ | m.toutiao.com",
+        "增值税、电池消费税等相关税费政策2026年9月1日开始施行 | 3g.swmesh.com",
+        "2026年9月1日起实施的税费政策目录及要点 | www.hqwx.com",
+        "2026年10月征期日历 | m.sohu.com"
+      ]
+    },
+    {
+      "q": "2026年中秋节放假安排",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 1,
+      "seconds": 2,
+      "sources": [
+        "2026年中秋节放假时间安排 | m.qz.bendibao.com",
+        "2026年中秋节几号到几号放假？（放假时间安排） | gz.bendibao.com",
+        "2026年中秋节几号到几号放假？（放假时间安排） | gz.bendibao.com",
+        "2026年中秋节放假安排时间表_中秋节调休与假期安排 | m.php.cn",
+        "根据国务院办公厅发布的《关于 2026 年部分节假日安排的通知》2026 年中秋 | www.toutiao.com",
+        "2026年中秋节放假安排时间表_2026年中秋节是几月几日怎么放假 | www.php.cn"
+      ]
+    },
+    {
+      "q": "特斯拉股价今天多少",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 2,
+      "sources": [
+        "48.65 万辆交付超预期，股价却还在半山腰：特斯拉的故事讲到哪一页了 | caifuhao.eastmoney.com",
+        "特斯拉(NASDAQ:TSLA) | xueqiu.com",
+        "特斯拉(NASDAQ:TSLA) | xueqiu.com",
+        "特斯拉(NASDAQ:TSLA) | xueqiu.com",
+        "Tesla 1.25倍做多(TSL) 股票价格行情 | quote.eastmoney.com",
+        "特斯拉(TSLA) 股票价格行情 | quote.eastmoney.com"
+      ]
+    },
+    {
+      "q": "比特币现在价格多少",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 9,
+      "sources": [
+        "比特币2026年价格走势图 | history.btc126.com",
+        "WELSH | www.120btc.com",
+        "比特币金价格预测 2026年、2027年 - 2029年 | longforecast.net",
+        "$BTC - 比特币2026年9月价格预测 | www.htx.com",
+        "2026年比特币能涨到多少钱？ | www.120btc.com",
+        "2026年比特币能涨到多少钱？2026年比特币价格预测分析 | m.vqs.com"
+      ]
+    },
+    {
+      "q": "最新的 iPhone 16 价格",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 10,
+      "sources": [
+        "2026年iPhone 16系列还值得入手吗?从价格到体验一次说清|双待|ios | www.163.com",
+        "苹果16系列手机的价格大概是多少？ | k.sina.cn",
+        "苹果16系列手机的价格大概是多少？ | 3g.sina.com.cn",
+        "苹果16系列手机的价格大概是多少？ | k.sina.com.cn",
+        "iPhone 16系列手机的价格是多少？ | cj.sina.cn",
+        "苹果iPhone16系列手机的价格大概是多少？ | k.sina.cn"
+      ]
+    },
+    {
+      "q": "抖音本地生活商家入驻条件是什么",
+      "auto": false,
+      "status": "done",
+      "count": 2,
+      "readCount": 1,
+      "seconds": 1,
+      "sources": [
+        "抖音官方：生活服务商家应用概述 | developer.open-douyin.com",
+        "抖音来客 | life.douyin.com"
+      ]
+    },
+    {
+      "q": "小红书最近有什么新规则",
+      "auto": true,
+      "status": "done",
+      "count": 4,
+      "readCount": 0,
+      "seconds": 7,
+      "sources": [
+        "数码玩机娱乐站 | m.toutiao.com",
+        "小红书9月新规来了，别乱发... | m.sohu.com",
+        "小红书新规则!9月1号开始，小心被封啊!-CSDN博客 | blog.csdn.net",
+        "数码玩机娱乐站 | www.toutiao.com"
+      ]
+    },
+    {
+      "q": "郑州地铁2号线今年开通了吗",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 9,
+      "sources": [
+        "一条2号线，半部郑州史！32公里地铁背后，是1260万人的城市密码 | m.toutiao.com",
+        "郑州地铁 | baike.sogou.com",
+        "郑州地铁2号线什么时候通车 | m.cnhuoche.com",
+        "2026哪些郑州地铁线会有实质动作呢？ | m.toutiao.com",
+        "郑州地铁2号线下月开通最高票价不超过5元 | www.cnr.cn",
+        "大河财立方 | www.dahecube.com"
+      ]
+    },
+    {
+      "q": "2026河南高考分数线",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 8,
+      "sources": [
+        "2026年河南高考分数线出炉！附一分一段表位次查询 | m.6617.com",
+        "2026河南高考分数线及一分一段表（含省内大学录取分/位次） | www.6617.com",
+        "河南高考分数线一览表2026汇总（含一本线、二本线、专科线） | m.gk100.com",
+        "2026河南高考分数线查询 | m.ly.bendibao.com",
+        "2026河南高考分数线查询 | m.sq.bendibao.com",
+        "2026河南高考分数线及一分一段表(含省内大学录取分/位次) | k.sina.cn"
+      ]
+    },
+    {
+      "q": "现在的油价是多少",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 1,
+      "seconds": 2,
+      "sources": [
+        "油价调价，2026年9月8日，92号、95号、98号汽油价格一览 | page.sm.cn",
+        "油价调整最新消息：今日(9月16日)油价预计上调635元/吨 | m.cngold.org",
+        "油价一夜大变了？2026年09月6日，国内各地加油站92号汽油、95号汽油、98 | baijiahao.baidu.com",
+        "今日油价格查询 油价调整最新消息 | m.ttfaxing.com",
+        "2026年9月4日国际油价上涨！今日油价格查询_油价调整最新消息 | m.163.com",
+        "2026年10月1日美国原油期货最新行情走势 | energy.cngold.org"
+      ]
+    },
+    {
+      "q": "微信视频号最新功能有哪些",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 5,
+      "sources": [
+        "微信终于大更新，升级8.0.57版，带来4个实用功能 | m.toutiao.com",
+        "微信新版本更新完成，5个新增功能，你都找到入口了吗 | www.toutiao.com",
+        "微信鸿蒙版 App 更新到 8.0.22.34 版本，解决了若干已知问题 | mall.253bw.tyswy.com",
+        "微信鸿蒙版 App 获 8.0.22.34 尝鲜升级，修复了一些已知问题 | www.ithome.com",
+        "微信鸿蒙版 App 开启 8.0.22.34 尝鲜升级，修复已知问题 | aihot.virxact.com",
+        "鸿蒙微信22.35版深度体验：那些“突然出现”的新功能，你被灰度到了吗？ | m.163.com"
+      ]
+    },
+    {
+      "q": "阿里云 联网搜索 计费规则 最新",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 5,
+      "sources": [
+        "网页抓取 | help.aliyun.com",
+        "节省计划与资源包 | help.aliyun.com",
+        "产品计费 | help.aliyun.com",
+        "2026 年阿里云百炼 Token Plan 实战指南：读懂统一 Credits | developer.aliyun.com",
+        "阿里云AI模型收费价格：百炼API按量付费、Token Plan、Coding  | developer.aliyun.com",
+        "查看账单明细 | helpcdn.aliyun.com"
+      ]
+    },
+    {
+      "q": "Dify 工作流 最新版本有什么新功能",
+      "auto": false,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 4,
+      "sources": [
+        "dify 1.17.1更新：知识库、工作流、Agent、服务 API 全面修复， | m.163.com",
+        "dify 1.17.1更新：知识库、工作流、Agent、服务 API 全面修复， | m.toutiao.com",
+        "dify 1.17.1更新：知识库、工作流、Agent、服务 API 全面修复， | moonfdd.blog.csdn.net",
+        "2 - Dify v0.6.9将自定义工作流作为工具 | docs.feishu.cn",
+        "Dify 1.8.0版本重磅发布：异步工作流与多模型配置引领效能革命 | www.ruibaoantu.com",
+        "开源LLM应用平台Dify v1.17.1完整安装与实战指南 | www.jimo.studio"
+      ]
+    },
+    {
+      "q": "南乐县今天有什么通知",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 4,
+      "sources": [
+        "落实省委一号文件，濮阳这样做 | www.puyang.gov.cn",
+        "沃野铺锦迎丰收 ——写在第九个“中国农民丰收节”到来之际 | www.puyang.gov.cn",
+        "行政许可 | xinyong.puyang.gov.cn",
+        "行政许可 | xinyong.puyang.gov.cn",
+        "行政许可 | xinyong.puyang.gov.cn",
+        "点草成金！濮阳秸秆居然能做衣服、酱油、汽车零部件？ | m.sohu.com"
+      ]
+    },
+    {
+      "q": "濮阳最近有什么活动",
+      "auto": false,
+      "status": "done",
+      "count": 5,
+      "readCount": 1,
+      "seconds": 5,
+      "sources": [
+        "民生综合 | www.pyxww.com",
+        "2026年全国消防宣传月活动，主题定了 | www.afzhan.com",
+        "医药卫生报第二版：郑州市开展世界精神卫生日系列宣传活动 | www.zzgx.gov.cn",
+        "国庆假期全国安全形势总体平稳 未发生重大以上灾害事故 | www.afzhan.com",
+        "金秋焕新 乐驾濮阳｜2026濮阳市秋季车展重磅来袭！ | m.163.com"
+      ]
+    },
+    {
+      "q": "知乎热榜今天有什么",
+      "auto": true,
+      "status": "done",
+      "count": 3,
+      "readCount": 2,
+      "seconds": 1,
+      "sources": [
+        "全网热点一站掌握：10个高效信息聚合平台深度推荐 - 知乎 | zhuanlan.zhihu.com",
+        "搜网热搜榜 | www.sowang.com",
+        "热榜介绍 | www.zhihu.com"
+      ]
+    },
+    {
+      "q": "抖音热搜今天有什么",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 1,
+      "seconds": 6,
+      "sources": [
+        "抖音热搜简报（午报）· 2026年10月12日 | m.toutiao.com",
+        "全网热点一站掌握：10个高效信息聚合平台深度推荐 - 知乎 | zhuanlan.zhihu.com",
+        "抖音热门视频榜 | www.46.la",
+        "热榜介绍 | www.zhihu.com",
+        "创作指南 | trendinsight.oceanengine.com",
+        "抖音热榜 | www.douyin.com"
+      ]
+    },
+    {
+      "q": "2026年上半年 GDP 增速",
+      "auto": false,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 4,
+      "sources": [
+        "2026中国经济半年报：稳中向新 成色十足 | www.news.cn",
+        "2026上半年中国GDP增速预测：在“冷”与“热”的交织中寻找答案 | m.toutiao.com",
+        "中国经济半年报出炉|2026年中国经济半年报|2026年上半年中国经济成绩单|g | 3g.sina.com.cn",
+        "4.7%里的中国韧性——2026中国经济“半年报”观察 | china.chinadaily.com.cn",
+        "2026上半年GDP增长4.7%：695704亿如何拆解？ | m.toutiao.com",
+        "我国2026年上半年GDP同比增长4.7% | new.qq.com"
+      ]
+    },
+    {
+      "q": "最近有什么好看的电影",
+      "auto": false,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 6,
+      "sources": [
+        "2026年9月上映电影名单 - 品牌 | www.maigoo.com",
+        "2026国庆档电影怎么选？一文看懂陈思诚张译闫妮新作领衔的多元片单 | k.sina.cn",
+        "2026年9月上映电影名单 | m.maigoo.com",
+        "2026年公映电影汇总 | m.douban.com",
+        "2026国庆档电影推荐 | m.kf.bendibao.com",
+        "#邱阳90秒说电影#【#2026电影票房破286亿#】暑期档余温未退，9月已有超 | page.sm.cn"
+      ]
+    },
+    {
+      "q": "今年的端午节是哪天",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 5,
+      "sources": [
+        "2026年8月有法定节假日吗？国务院放假安排全解读 - Remitly | www.remitly.com",
+        "2026端午节是哪一天几月几日？ | bj.bendibao.com",
+        "2026年端午节是几月几号 2026年端午具体日期【节日】 | m.php.cn",
+        "2026端午节是哪一天几月几日？ | m.bj.bendibao.com",
+        "2026端午节是哪一天 | m.bendibao.com",
+        "2026年端午节是几月几号 | m.rili3.com"
+      ]
+    },
+    {
+      "q": "最近的汇率 美元 人民币",
+      "auto": true,
+      "status": "done",
+      "count": 6,
+      "readCount": 0,
+      "seconds": 2,
+      "sources": [
+        "美元每日汇率 | www.huilv.cc",
+        "1美元还值多少人民币？2026年10月10日人民币兑美元汇率 | baijiahao.baidu.com",
+        "美元每日汇率 | www.huilv.cc",
+        "美元汇率 - 美元兑人民币汇率 - 我查 | chl.cn",
+        "今日美元兑换人民币汇率(2026年9月8日) | m.cngold.org",
+        "2026年9月30日中国外汇交易中心受权公布人民币汇率中间价公告 | guangdong.chinatax.gov.cn"
+      ]
+    },
+    {
+      "q": "南乐 天气 今天",
+      "auto": true,
+      "status": "done",
+      "count": 2,
+      "readCount": 0,
+      "seconds": 2,
+      "sources": [
+        "南乐天气 | www.ip.cn",
+        "南乐天气预报7天 | huifengshipin.com"
+      ]
+    }
+  ]
+}

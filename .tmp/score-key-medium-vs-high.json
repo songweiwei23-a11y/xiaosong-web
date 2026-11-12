@@ -1,0 +1,14 @@
+{
+  "Q1": {
+    "A": "high",
+    "B": "medium"
+  },
+  "Q2": {
+    "A": "medium",
+    "B": "high"
+  },
+  "Q3": {
+    "A": "high",
+    "B": "medium"
+  }
+}

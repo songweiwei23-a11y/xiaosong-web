@@ -1,0 +1,81 @@
+{
+  "rescoredAt": "2026-10-16T15:24:48.835Z",
+  "from": "out",
+  "rows": [
+    {
+      "task": "回归:创作方向",
+      "before": false,
+      "after": false,
+      "blockingIssues": [
+        "[taboo] 「最正宗」— 广告法红线"
+      ],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:审稿优化",
+      "before": true,
+      "after": true,
+      "blockingIssues": [],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:画布改写",
+      "before": true,
+      "after": true,
+      "blockingIssues": [],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:美甲选题",
+      "before": false,
+      "after": false,
+      "blockingIssues": [
+        "[years] 「**：在杭州开美甲店1年，我把」和事实卡对不上",
+        "[years] 「实卡：从业5年、杭州2年、店开」和事实卡对不上",
+        "[facts] 个人经历「我在杭州待了2年，之前在别的店做过，知道很」档案和素材里没有，别写成真事"
+      ],
+      "noteIssues": [
+        "[facts] 模型自称「无编造」——以这里的核对为准，别信这句"
+      ],
+      "error": null
+    },
+    {
+      "task": "回归:家具开篇",
+      "before": false,
+      "after": false,
+      "blockingIssues": [
+        "[generation] 必要交付部分「开篇」缺失或为空"
+      ],
+      "noteIssues": [
+        "[facts] 模型自称「无编造」——以这里的核对为准，别信这句"
+      ],
+      "error": null
+    },
+    {
+      "task": "回归:无价格引流脚本",
+      "before": true,
+      "after": false,
+      "blockingIssues": [
+        "[facts] 顾客见证「不要钱。结果呢？吃完了跟我说，这个价格，在成都都」资料里没有这段经历",
+        "[facts] 顾客见证「。 现在不少人变成了老客，隔三差五就过来，还」资料里没有这段经历",
+        "[facts] 顾客见证「少人变成了老客，隔三差五就过来，还带朋友。我也不玩」资料里没有这段经历",
+        "[facts] 经营承诺「，我说：你先尝，不好吃不要钱。结果呢」老板没说过要这样做"
+      ],
+      "noteIssues": [],
+      "error": null
+    },
+    {
+      "task": "回归:只换开头",
+      "before": false,
+      "after": true,
+      "blockingIssues": [],
+      "noteIssues": [
+        "[facts] 模型自称「自检通过」——以这里的核对为准，别信这句"
+      ],
+      "error": null
+    }
+  ]
+}

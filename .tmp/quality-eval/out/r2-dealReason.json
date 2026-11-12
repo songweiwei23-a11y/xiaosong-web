@@ -1,0 +1,19 @@
+{
+  "round": 2,
+  "case": "dealReason",
+  "label": "成交理由（17 条判断）",
+  "status": 200,
+  "firstAnswerMs": 9735,
+  "totalMs": 53178,
+  "answerEvents": 762,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 4462,
+  "auto": {
+    "issues": [],
+    "metrics": {
+      "chars": 2011
+    }
+  },
+  "at": "2026-10-11T09:10:18.516Z"
+}

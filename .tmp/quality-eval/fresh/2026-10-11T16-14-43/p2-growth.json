@@ -1,0 +1,30 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "起号方案",
+  "status": 200,
+  "firstAnswerMs": 11345,
+  "totalMs": 408766,
+  "errors": [],
+  "promptChars": 27804,
+  "judged": {
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [
+      "占位 9 处"
+    ],
+    "metrics": {
+      "chars": 10382
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T17:26:30.795Z"
+}

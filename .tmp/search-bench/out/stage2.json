@@ -1,0 +1,1535 @@
+[
+  {
+    "cat": "新闻热点",
+    "q": "今天有什么热点新闻",
+    "window": 2,
+    "ms": 8102,
+    "plan": {
+      "intent": "新闻热点",
+      "queries": [
+        "热点新闻",
+        "今日要闻",
+        "热搜榜"
+      ],
+      "recencyDays": 2
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "热点新闻",
+        "ok": true,
+        "ms": 3477,
+        "n": 9,
+        "dated": 9,
+        "inWindow": 9
+      }
+    ],
+    "sources": [
+      {
+        "host": "board.local",
+        "title": "douyin 热榜 50 条",
+        "published": "2026-11-09T06:56:07.729Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "weibo 热榜 50 条",
+        "published": "2026-11-09T06:56:07.730Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "baidu 热榜 50 条",
+        "published": "2026-11-09T06:56:07.734Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "toutiao 热榜 50 条",
+        "published": "2026-11-09T06:56:07.736Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "www.toutiao.com",
+        "title": "盘点11月7日抖音十大热点事件",
+        "published": "2026-11-08T14:35:00+08:00",
+        "ageDays": 1,
+        "read": "搜索返回的正文或片段",
+        "chars": 2078
+      },
+      {
+        "host": "www.toutiao.com",
+        "title": "法国连续第4个周末爆发抗议巴黎部分抗议者与警方冲突法国内政部全法...#全球看点 #法国 #时政热点",
+        "published": "2026-11-08T20:04:00+08:00",
+        "ageDays": 0.8,
+        "read": "搜索返回的正文或片段",
+        "chars": 434
+      },
+      {
+        "host": "ah.huatu.com",
+        "title": "2026时政热点:国内外时事政治汇总(11月9日)",
+        "published": "2026-11-09T10:57:00+08:00",
+        "ageDays": 0.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 1082
+      },
+      {
+        "host": "new.qq.com",
+        "title": "紧急呼叫",
+        "published": "2026-11-09T00:07:15+08:00",
+        "ageDays": 0.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 1071
+      },
+      {
+        "host": "m.toutiao.com",
+        "title": "就在今天，11月9日凌晨5点半前，13分钟看完29条新闻速",
+        "published": "2026-11-09T11:46:00+08:00",
+        "ageDays": 0.1,
+        "read": "搜索返回的正文或片段",
+        "chars": 2639
+      },
+      {
+        "host": "finance.sina.com.cn",
+        "title": "小时全球实时财经新闻",
+        "published": "2026-11-08T15:25:00+08:00",
+        "ageDays": 1,
+        "read": "搜索返回的正文或片段",
+        "chars": 243
+      }
+    ]
+  },
+  {
+    "cat": "新闻热点",
+    "q": "这两天抖音上什么火",
+    "window": 3,
+    "ms": 0,
+    "plan": null,
+    "status": "done",
+    "hotOnly": true,
+    "calls": [],
+    "sources": [
+      {
+        "host": "board.local",
+        "title": "douyin 热榜 50 条",
+        "published": "2026-11-09T06:56:07.729Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      }
+    ]
+  },
+  {
+    "cat": "新闻热点",
+    "q": "最近一周有什么适合服装店蹭的热点",
+    "window": 8,
+    "ms": 12679,
+    "plan": {
+      "intent": "新闻热点",
+      "queries": [
+        "服装行业热点营销",
+        "穿搭热搜话题",
+        "时尚热点事件"
+      ],
+      "recencyDays": 10
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "服装行业热点营销",
+        "ok": true,
+        "ms": 8194,
+        "n": 10,
+        "dated": 10,
+        "inWindow": 8
+      }
+    ],
+    "sources": [
+      {
+        "host": "board.local",
+        "title": "douyin 热榜 50 条",
+        "published": "2026-11-09T06:56:07.729Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "weibo 热榜 50 条",
+        "published": "2026-11-09T06:56:07.730Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "baidu 热榜 50 条",
+        "published": "2026-11-09T06:56:07.734Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "toutiao 热榜 50 条",
+        "published": "2026-11-09T06:56:07.736Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "3g.163.com",
+        "title": "一周营销案例速读VOL.506",
+        "published": "2026-11-08T15:25:00+08:00",
+        "ageDays": 1,
+        "read": "搜索返回的正文或片段",
+        "chars": 2789
+      },
+      {
+        "host": "z-vita.com",
+        "title": "品牌跨界组“衣食CP”？抖音电商818服饰特色日玩出新花样",
+        "published": "2026-11-08T18:59:21+08:00",
+        "ageDays": 0.8,
+        "read": "搜索返回的正文或片段",
+        "chars": 3215
+      },
+      {
+        "host": "m.shhbwhcb.com",
+        "title": "3-4月度营销洞察：营销玩梗，易如反掌",
+        "published": "2026-11-02T20:18:18+08:00",
+        "ageDays": 6.8,
+        "read": "搜索返回的正文或片段",
+        "chars": 3154
+      },
+      {
+        "host": "www.cacn.cc",
+        "title": "设计更灵 生产更精 消费更新——衣：智造“织”就服装新篇",
+        "published": "2026-10-28T02:38:00+08:00",
+        "ageDays": 12.5,
+        "read": "搜索返回的正文或片段",
+        "chars": 3138
+      },
+      {
+        "host": "m.163.com",
+        "title": "四度相约，双向奔赴！IP授权赋能服装家纺迈入深水区",
+        "published": "2026-11-04T16:34:00+08:00",
+        "ageDays": 4.9,
+        "read": "已补读公开网页正文，以下",
+        "chars": 2234
+      },
+      {
+        "host": "m.sjfzxm.cn",
+        "title": "世界服装鞋帽网",
+        "published": "2026-11-06T17:54:00+08:00",
+        "ageDays": 2.9,
+        "read": "搜索返回的正文或片段",
+        "chars": 3708
+      }
+    ]
+  },
+  {
+    "cat": "新闻热点",
+    "q": "今天微博热搜前几名是什么",
+    "window": 2,
+    "ms": 0,
+    "plan": null,
+    "status": "done",
+    "hotOnly": true,
+    "calls": [],
+    "sources": [
+      {
+        "host": "board.local",
+        "title": "weibo 热榜 50 条",
+        "published": "2026-11-09T06:56:07.730Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      }
+    ]
+  },
+  {
+    "cat": "本地新闻",
+    "q": "濮阳最近一周有什么新闻",
+    "window": 8,
+    "ms": 5144,
+    "plan": {
+      "intent": "新闻热点",
+      "queries": [
+        "濮阳 新闻",
+        "濮阳 最新"
+      ],
+      "recencyDays": 10
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "濮阳 新闻",
+        "ok": true,
+        "ms": 231,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "site:www.nanle.gov.cn 濮阳 新闻",
+        "ok": true,
+        "ms": 743,
+        "n": 2,
+        "dated": 2,
+        "inWindow": 0
+      },
+      {
+        "query": "site:www.puyang.gov.cn 濮阳 新闻",
+        "ok": true,
+        "ms": 847,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      }
+    ],
+    "sources": [
+      {
+        "host": "www.nanle.gov.cn",
+        "title": "走进南乐",
+        "published": "2026-10-24T11:47:15+08:00",
+        "ageDays": 16.1,
+        "read": "搜索返回的正文或片段",
+        "chars": 650
+      }
+    ]
+  },
+  {
+    "cat": "本地新闻",
+    "q": "南乐县今天发生了什么",
+    "window": 3,
+    "ms": 9231,
+    "plan": {
+      "intent": "新闻热点",
+      "queries": [
+        "南乐县"
+      ],
+      "recencyDays": 2
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "site:www.nanle.gov.cn 南乐 新闻",
+        "ok": true,
+        "ms": 327,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "site:www.puyang.gov.cn 南乐 新闻",
+        "ok": true,
+        "ms": 329,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "南乐县",
+        "ok": true,
+        "ms": 6019,
+        "n": 4,
+        "dated": 4,
+        "inWindow": 4
+      }
+    ],
+    "sources": [
+      {
+        "host": "m.toutiao.com",
+        "title": "濮上新风，凭什么吹散旧俗——濮阳市深入推进移风易俗一线观察",
+        "published": "2026-11-09T08:28:00+08:00",
+        "ageDays": 0.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 6220
+      }
+    ]
+  },
+  {
+    "cat": "本地新闻",
+    "q": "郑州这周有什么大事",
+    "window": 8,
+    "ms": 7655,
+    "plan": {
+      "intent": "新闻热点",
+      "queries": [
+        "郑州 新闻 大事",
+        "郑州 本周"
+      ],
+      "recencyDays": 10
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "郑州 新闻 大事",
+        "ok": true,
+        "ms": 3120,
+        "n": 10,
+        "dated": 10,
+        "inWindow": 7
+      }
+    ],
+    "sources": [
+      {
+        "host": "board.local",
+        "title": "douyin 热榜 50 条",
+        "published": "2026-11-09T06:56:07.729Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "weibo 热榜 50 条",
+        "published": "2026-11-09T06:56:07.730Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "baidu 热榜 50 条",
+        "published": "2026-11-09T06:56:07.734Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "board.local",
+        "title": "toutiao 热榜 50 条",
+        "published": "2026-11-09T06:56:07.736Z",
+        "ageDays": 0,
+        "read": "已读榜单",
+        "chars": 2000
+      },
+      {
+        "host": "www.zhengzhou.gov.cn",
+        "title": "郑州新闻-郑州市人民政府",
+        "published": "2026-11-05T00:00:00+08:00",
+        "ageDays": 4.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 442
+      }
+    ]
+  },
+  {
+    "cat": "本地新闻",
+    "q": "县城餐饮最近有什么新变化",
+    "window": 40,
+    "ms": 8948,
+    "plan": {
+      "intent": "行业数据",
+      "queries": [
+        "县城餐饮 趋势 变化",
+        "小县城餐饮 消费",
+        "河南县城 餐饮"
+      ],
+      "recencyDays": 40
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "县城餐饮 趋势 变化",
+        "ok": true,
+        "ms": 4130,
+        "n": 9,
+        "dated": 9,
+        "inWindow": 9
+      },
+      {
+        "query": "小县城餐饮 消费",
+        "ok": true,
+        "ms": 4661,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      }
+    ],
+    "sources": [
+      {
+        "host": "baijiahao.baidu.com",
+        "title": "农村收入涨 6.3% 竟超城里 4.5%，消费增量正悄悄跑向县城？",
+        "published": "2026-10-20T02:05:00+08:00",
+        "ageDays": 20.5,
+        "read": "搜索返回的正文或片段",
+        "chars": 2592
+      },
+      {
+        "host": "m.sohu.com",
+        "title": "县城消费逆袭：大城市砍单，小县城反而热闹，钱的流向变了",
+        "published": "2026-10-28T07:05:00+08:00",
+        "ageDays": 12.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 1369
+      },
+      {
+        "host": "m.toutiao.com",
+        "title": "消费奔“县”",
+        "published": "2026-11-03T15:28:00+08:00",
+        "ageDays": 6,
+        "read": "搜索返回的正文或片段",
+        "chars": 5190
+      },
+      {
+        "host": "m.toutiao.com",
+        "title": "不再是“低配版城市”！县城消费强势崛起，内需大变革正在发生",
+        "published": "2026-11-08T11:24:00+08:00",
+        "ageDays": 1.1,
+        "read": "搜索返回的正文或片段",
+        "chars": 2638
+      },
+      {
+        "host": "www.toutiao.com",
+        "title": "县城消费崛起，不再是大城市的“低配版”，内需新主场来了",
+        "published": "2026-11-08T14:46:00+08:00",
+        "ageDays": 1,
+        "read": "搜索返回的正文或片段",
+        "chars": 2052
+      },
+      {
+        "host": "bondawn.com",
+        "title": "一杯奶茶，喝出县城消费真相",
+        "published": "2026-11-07T09:19:11+08:00",
+        "ageDays": 2.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 3094
+      }
+    ]
+  },
+  {
+    "cat": "平台规则",
+    "q": "今年双十一抖音商家活动规则",
+    "window": 60,
+    "ms": 5625,
+    "plan": {
+      "intent": "平台规则",
+      "queries": [
+        "2026双十一抖音商家活动规则",
+        "抖音双11商家玩法",
+        "抖音电商双十一报名条件"
+      ],
+      "recencyDays": 40
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "site:life.douyin.com 今年双十一抖音商家活动规则",
+        "ok": true,
+        "ms": 30,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "2026双十一抖音商家活动规则",
+        "ok": true,
+        "ms": 435,
+        "n": 10,
+        "dated": 10,
+        "inWindow": 10
+      }
+    ],
+    "sources": [
+      {
+        "host": "developer.open-douyin.com",
+        "title": "抖音官方：生活服务商家应用概述",
+        "published": "",
+        "ageDays": null,
+        "read": "已读取对应官方文档正文，",
+        "chars": 311
+      },
+      {
+        "host": "m.redhongan.com",
+        "title": "抖音商城双十一优惠券怎么推广？2026 GEO渠道选择全攻略",
+        "published": "2026-11-03T09:30:00+08:00",
+        "ageDays": 6.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 1600
+      },
+      {
+        "host": "school.jinritemai.com",
+        "title": "【已失效】《2026年抖音商城双11招商规则》(20260914版本于20260928失效)",
+        "published": "2026-09-14T14:00:00+08:00",
+        "ageDays": 56,
+        "read": "搜索返回的正文或片段",
+        "chars": 3226
+      },
+      {
+        "host": "school.jinritemai.com",
+        "title": "2026年抖音商城双11招商规则",
+        "published": "2026-09-14T14:00:01+08:00",
+        "ageDays": 56,
+        "read": "搜索返回的正文或片段",
+        "chars": 3273
+      },
+      {
+        "host": "www.onlinedown.net",
+        "title": "2026抖音双十一什么时候开始？双11好物节活动时间及优惠玩法详解",
+        "published": "2026-10-12T00:00:00+08:00",
+        "ageDays": 28.6,
+        "read": "已补读公开网页正文，以下",
+        "chars": 901
+      },
+      {
+        "host": "www.139y.com",
+        "title": "2026双十一抖音商城活动入口 抖音商城2026双十一大促消费券领取入口",
+        "published": "2026-10-16T13:36:00+08:00",
+        "ageDays": 24.1,
+        "read": "搜索返回的正文或片段",
+        "chars": 679
+      }
+    ]
+  },
+  {
+    "cat": "平台规则",
+    "q": "抖音本地生活商家入驻需要什么资质和费用",
+    "window": 0,
+    "ms": 5091,
+    "plan": {
+      "intent": "平台规则",
+      "queries": [
+        "抖音本地生活商家入驻资质费用",
+        "抖音本地生活入驻条件",
+        "抖音团购商家入驻流程"
+      ],
+      "recencyDays": 40
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "site:life.douyin.com 抖音本地生活商家入驻需要什么资质和费用",
+        "ok": true,
+        "ms": 179,
+        "n": 2,
+        "dated": 2,
+        "inWindow": 2
+      },
+      {
+        "query": "抖音本地生活商家入驻资质费用",
+        "ok": true,
+        "ms": 448,
+        "n": 10,
+        "dated": 9,
+        "inWindow": 9
+      }
+    ],
+    "sources": [
+      {
+        "host": "developer.open-douyin.com",
+        "title": "抖音官方：生活服务商家应用概述",
+        "published": "",
+        "ageDays": null,
+        "read": "已读取对应官方文档正文，",
+        "chars": 311
+      },
+      {
+        "host": "m.douyin.com",
+        "title": "抖音本地生活服务商入驻条件及费用",
+        "published": "2025-04-16T12:47:00+08:00",
+        "ageDays": 572.1,
+        "read": "搜索返回的正文或片段",
+        "chars": 1899
+      },
+      {
+        "host": "www.shuohenglaw.com",
+        "title": "如何入驻抖音本地生活服务商",
+        "published": "2025-04-29T00:11:29+08:00",
+        "ageDays": 559.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 1413
+      },
+      {
+        "host": "baijiahao.baidu.com",
+        "title": "抖音本地生活新政策：餐饮/酒旅/零售商家怎么抓住红利？",
+        "published": "2026-08-06T10:17:00+08:00",
+        "ageDays": 95.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 3627
+      },
+      {
+        "host": "m.renrendoc.com",
+        "title": "抖音本地生活服务商家入驻攻略",
+        "published": "2026-01-16T00:00:00+08:00",
+        "ageDays": 297.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 3822
+      },
+      {
+        "host": "m.11467.com",
+        "title": "怎么成为抖音本地生活服务商家？需要哪些资质条件？",
+        "published": "2026-03-31T07:55:00+08:00",
+        "ageDays": 223.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 2445
+      }
+    ]
+  },
+  {
+    "cat": "平台规则",
+    "q": "抖音最近对团购视频有什么新规定",
+    "window": 40,
+    "ms": 18384,
+    "plan": {
+      "intent": "平台规则",
+      "queries": [
+        "抖音团购视频新规",
+        "抖音本地生活团购规则",
+        "抖音餐饮团购政策"
+      ],
+      "recencyDays": 40
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "site:cac.gov.cn 抖音最近对团购视频有什么新规定",
+        "ok": true,
+        "ms": 28,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "site:life.douyin.com 抖音最近对团购视频有什么新规定",
+        "ok": true,
+        "ms": 77,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "抖音团购视频新规",
+        "ok": true,
+        "ms": 6587,
+        "n": 9,
+        "dated": 9,
+        "inWindow": 9
+      }
+    ],
+    "sources": [
+      {
+        "host": "iikij.com",
+        "title": "抖音更新短剧有什么要求(抖音短剧更新新规深度解析，创作者必知的六大核心要求与运营策略) - 短剧 -",
+        "published": "2026-11-07T04:56:00+08:00",
+        "ageDays": 2.4,
+        "read": "搜索返回的正文或片段",
+        "chars": 2254
+      },
+      {
+        "host": "mparticle.uc.cn",
+        "title": "抖音视频号相继发布新规,严打“挖主播”",
+        "published": "2026-11-06T09:54:58.797+08:00",
+        "ageDays": 3.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 2242
+      },
+      {
+        "host": "school.jinritemai.com",
+        "title": "规则中心-抖音电商学习中心",
+        "published": "2026-11-07T03:55:34+08:00",
+        "ageDays": 2.5,
+        "read": "搜索返回的正文或片段",
+        "chars": 2018
+      },
+      {
+        "host": "wap.shuaishou.com",
+        "title": "如何在抖音开店,抖音小店入驻教程,抖音开店经验分享-甩手网",
+        "published": "2026-11-06T02:44:14+08:00",
+        "ageDays": 3.5,
+        "read": "搜索返回的正文或片段",
+        "chars": 1560
+      },
+      {
+        "host": "rswne.zpsdd.cn",
+        "title": "抖音账号转卖抖音团购是怎么弄的？抖音团购套餐是怎么放上去的",
+        "published": "2026-10-26T10:23:19+08:00",
+        "ageDays": 14.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 5464
+      }
+    ]
+  },
+  {
+    "cat": "平台规则",
+    "q": "视频号最新的流量扶持政策",
+    "window": 40,
+    "ms": 5112,
+    "plan": {
+      "intent": "平台规则",
+      "queries": [
+        "视频号流量扶持政策",
+        "视频号官方扶持计划",
+        "微信视频号创作者激励"
+      ],
+      "recencyDays": 40
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "视频号流量扶持政策",
+        "ok": true,
+        "ms": 315,
+        "n": 9,
+        "dated": 9,
+        "inWindow": 9
+      }
+    ],
+    "sources": [
+      {
+        "host": "www.jzl.com",
+        "title": "视频号发布最新扶持计划：新号流量、长视频分发与现金激励全解读",
+        "published": "2026-11-02T09:57:40+08:00",
+        "ageDays": 7.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 1991
+      },
+      {
+        "host": "www.opp2.com",
+        "title": "视频号最新扶持计划来了 | 青瓜传媒",
+        "published": "2026-10-28T13:35:00+08:00",
+        "ageDays": 12.1,
+        "read": "已补读公开网页正文，以下",
+        "chars": 1114
+      },
+      {
+        "host": "www.ximalaya.com",
+        "title": "视频号最新扶持计划来了_【见实】品牌流量运营库_免费在线阅读收听下载 - 喜马拉雅",
+        "published": "2026-10-27T13:30:00+08:00",
+        "ageDays": 13.1,
+        "read": "搜索返回的正文或片段",
+        "chars": 1401
+      },
+      {
+        "host": "www.yunyingpai.com",
+        "title": "视频号最新扶持计划来了",
+        "published": "2026-10-27T00:00:00+08:00",
+        "ageDays": 13.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 1119
+      },
+      {
+        "host": "www.shangyexinzhi.com",
+        "title": "视频号最新扶持计划来了_见实-商业新知",
+        "published": "2026-10-27T12:04:00+08:00",
+        "ageDays": 13.1,
+        "read": "已补读公开网页正文，以下",
+        "chars": 1738
+      },
+      {
+        "host": "k.sina.cn",
+        "title": "原创流量占比98%!视频号亮“底牌”:好内容给“长期饭票”|微信|WorkBuddy|广州市|短视频",
+        "published": "2026-10-23T19:52:00+08:00",
+        "ageDays": 16.8,
+        "read": "搜索返回的正文或片段",
+        "chars": 741
+      }
+    ]
+  },
+  {
+    "cat": "行业数据",
+    "q": "2026年餐饮行业的最新数据",
+    "window": 370,
+    "ms": 12875,
+    "plan": {
+      "intent": "行业数据",
+      "queries": [
+        "2026 餐饮行业 数据报告",
+        "餐饮市场 规模 增长率",
+        "中国餐饮 消费趋势"
+      ],
+      "recencyDays": 40
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "餐饮市场 规模 增长率",
+        "ok": true,
+        "ms": 3363,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      },
+      {
+        "query": "2026 餐饮行业 数据报告",
+        "ok": true,
+        "ms": 8561,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      }
+    ],
+    "sources": [
+      {
+        "host": "www.iimedia.cn",
+        "title": "2016-2027年中国餐饮市场规模及预测分析：市场整体呈恢复增长态势",
+        "published": "2026-10-30T00:00:00+08:00",
+        "ageDays": 10.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 7160
+      },
+      {
+        "host": "m.sohu.com",
+        "title": "连锁化与数字化双轮驱动 预计2027年中国餐饮行业市场规模约6.9万亿元",
+        "published": "2026-11-04T14:30:00+08:00",
+        "ageDays": 5,
+        "read": "搜索返回的正文或片段",
+        "chars": 5298
+      },
+      {
+        "host": "report.iimedia.cn",
+        "title": "艾媒咨询 | 2025年中国餐饮行业发展状况及消费行为调查数据",
+        "published": "2026-11-05T04:44:26+08:00",
+        "ageDays": 4.4,
+        "read": "搜索返回的正文或片段",
+        "chars": 5011
+      },
+      {
+        "host": "m.toutiao.com",
+        "title": "2026 全国餐饮行业现状",
+        "published": "2026-10-16T22:17:00+08:00",
+        "ageDays": 23.7,
+        "read": "搜索返回的正文或片段",
+        "chars": 2018
+      },
+      {
+        "host": "bg.sgpjbg.com",
+        "title": "2026餐饮行业报告/白皮书合集（共53套打包）",
+        "published": "2026-10-29T00:00:00+08:00",
+        "ageDays": 11.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 2595
+      },
+      {
+        "host": "m.163.com",
+        "title": "《2026线上餐饮行业观察》报告：行业日均订单量增幅进入稳态",
+        "published": "2026-11-02T19:44:00+08:00",
+        "ageDays": 6.8,
+        "read": "搜索返回的正文或片段",
+        "chars": 1193
+      }
+    ]
+  },
+  {
+    "cat": "行业数据",
+    "q": "大码女装市场规模有多大",
+    "window": 0,
+    "ms": 12193,
+    "plan": {
+      "intent": "行业数据",
+      "queries": [
+        "大码女装市场规模",
+        "大码女装行业报告 市场容量",
+        "胖MM服装 市场份额"
+      ],
+      "recencyDays": 0
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "大码女装行业报告 市场容量",
+        "ok": true,
+        "ms": 4748,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      },
+      {
+        "query": "大码女装市场规模",
+        "ok": true,
+        "ms": 6770,
+        "n": 10,
+        "dated": 10,
+        "inWindow": 10
+      }
+    ],
+    "sources": [
+      {
+        "host": "m.renrendoc.com",
+        "title": "2025年大码女装行业分析：全球大码女装市场规模将增至9649亿美元",
+        "published": "2025-06-30T00:00:00+08:00",
+        "ageDays": 497.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 3684
+      },
+      {
+        "host": "www.chanmofang.com",
+        "title": "2025年大码女装行业现状分析：大码女装市场规模已超3000亿美元",
+        "published": "2025-02-24T00:00:00+08:00",
+        "ageDays": 623.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 1598
+      },
+      {
+        "host": "m.book118.com",
+        "title": "2025年大码女装行业分析：市场规模约3080亿美元中档价位女装占比44.9%[图].docx",
+        "published": "2025-01-18T00:00:00+08:00",
+        "ageDays": 660.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 892
+      },
+      {
+        "host": "www.360doc.cn",
+        "title": "2025年大码女装行业分析：市场规模约3080亿美元中档价位女装占比44.9%[图]",
+        "published": "2025-01-20T00:00:00+08:00",
+        "ageDays": 658.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 846
+      },
+      {
+        "host": "m.chinabgao.com",
+        "title": "2026-2031年中国大码女装行业发展趋势及竞争策略研究报告",
+        "published": "2026-03-10T10:53:46+08:00",
+        "ageDays": 244.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 2585
+      },
+      {
+        "host": "zh.accio.com",
+        "title": "年年女装流行",
+        "published": "2026-10-28T00:00:00+08:00",
+        "ageDays": 12.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 4259
+      }
+    ]
+  },
+  {
+    "cat": "行业数据",
+    "q": "最近金价多少钱一克",
+    "window": 3,
+    "ms": 8150,
+    "plan": {
+      "intent": "产品价格",
+      "queries": [
+        "金价多少钱一克",
+        "黄金价格实时"
+      ],
+      "recencyDays": 10
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "金价多少钱一克",
+        "ok": true,
+        "ms": 985,
+        "n": 10,
+        "dated": 10,
+        "inWindow": 7
+      },
+      {
+        "query": "黄金价格实时",
+        "ok": true,
+        "ms": 1119,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 4
+      }
+    ],
+    "sources": [
+      {
+        "host": "chl.cn",
+        "title": "今日金价，黄金价格多少钱1克",
+        "published": "2026-11-08T00:00:00+08:00",
+        "ageDays": 1.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 2155
+      },
+      {
+        "host": "www.huangjinjiage.cn",
+        "title": "今日的黄金价格是多少钱一克_金价查询网",
+        "published": "2026-10-16T00:00:00+08:00",
+        "ageDays": 24.6,
+        "read": "已补读公开网页正文，以下",
+        "chars": 1128
+      },
+      {
+        "host": "www.huangjinjiage.cn",
+        "title": "今日金价",
+        "published": "2026-11-09T00:00:00+08:00",
+        "ageDays": 0.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 3148
+      },
+      {
+        "host": "www.91jinshu.com",
+        "title": "今日国内金价",
+        "published": "2026-11-08T07:32:00+08:00",
+        "ageDays": 1.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 3559
+      },
+      {
+        "host": "metalorix.com",
+        "title": "今日黄金价格",
+        "published": "2026-11-05T17:02:40+08:00",
+        "ageDays": 3.9,
+        "read": "搜索返回的正文或片段",
+        "chars": 942
+      },
+      {
+        "host": "www.5waihui.com",
+        "title": "黄金价格行情走势国际金价",
+        "published": "2026-11-09T08:05:01+08:00",
+        "ageDays": 0.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 626
+      }
+    ]
+  },
+  {
+    "cat": "行业数据",
+    "q": "今年家具行业生意好不好",
+    "window": 370,
+    "ms": 11291,
+    "plan": null,
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "2026年 家具行业生意好不好",
+        "ok": true,
+        "ms": 2912,
+        "n": 9,
+        "dated": 9,
+        "inWindow": 9
+      }
+    ],
+    "sources": [
+      {
+        "host": "m.jia400.com",
+        "title": "金牌家居丨行业利润下滑52.7%，为什么说现在反而是加盟的好时机？",
+        "published": "2026-10-21T14:36:57+08:00",
+        "ageDays": 19,
+        "read": "搜索返回的正文或片段",
+        "chars": 6088
+      },
+      {
+        "host": "www.163.com",
+        "title": "订单一跌再跌！又一24年老牌大厂跌落神坛，负债1.21亿，无力偿还",
+        "published": "2026-10-13T00:59:00+08:00",
+        "ageDays": 27.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 3181
+      },
+      {
+        "host": "m.sohu.com",
+        "title": "家居周十条 | 1-9月家具制造业利润总额87亿元、搜狐焦点家居团队走进FBC展会、以旧换新成效凸显",
+        "published": "2026-11-02T15:17:00+08:00",
+        "ageDays": 7,
+        "read": "搜索返回的正文或片段",
+        "chars": 2416
+      },
+      {
+        "host": "data.eastmoney.com",
+        "title": "终端消费偏弱，26Q3业绩承压",
+        "published": "2026-11-03T00:00:00+08:00",
+        "ageDays": 6.6,
+        "read": "已补读公开网页正文，以下",
+        "chars": 1756
+      },
+      {
+        "host": "www.docin.com",
+        "title": "2026我国家具家居行业市场现状供需分析及投资评估规划分析研究报告",
+        "published": "2026-02-01T00:00:00+08:00",
+        "ageDays": 281.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 1025
+      },
+      {
+        "host": "news.sohu.com",
+        "title": "年度预测!2026中国家居业十大趋势 ",
+        "published": "2026-02-11T14:06:00+08:00",
+        "ageDays": 271,
+        "read": "搜索返回的正文或片段",
+        "chars": 974
+      }
+    ]
+  },
+  {
+    "cat": "同行案例",
+    "q": "县城理发店怎么做抖音获客，有没有真实案例",
+    "window": 0,
+    "ms": 7970,
+    "plan": {
+      "intent": "同行案例",
+      "queries": [
+        "县城理发店 抖音获客 案例",
+        "小城市理发店 抖音引流 方法",
+        "理发店 抖音同城 获客"
+      ],
+      "recencyDays": 0
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "site:life.douyin.com 县城理发店怎么做抖音获客，有没有真实案例",
+        "ok": true,
+        "ms": 415,
+        "n": 2,
+        "dated": 2,
+        "inWindow": 2
+      },
+      {
+        "query": "小城市理发店 抖音引流 方法",
+        "ok": true,
+        "ms": 870,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      },
+      {
+        "query": "县城理发店 抖音获客 案例",
+        "ok": true,
+        "ms": 3889,
+        "n": 9,
+        "dated": 9,
+        "inWindow": 9
+      }
+    ],
+    "sources": [
+      {
+        "host": "developer.open-douyin.com",
+        "title": "抖音官方：生活服务商家应用概述",
+        "published": "",
+        "ageDays": null,
+        "read": "已读取对应官方文档正文，",
+        "chars": 311
+      },
+      {
+        "host": "tv.sohu.com",
+        "title": "美发店做抖音一个月就起飞的方法 微微烫 美发 同城流量 同城获客",
+        "published": "2026-10-02T08:49:17+08:00",
+        "ageDays": 38.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 700
+      },
+      {
+        "host": "www.toutiao.com",
+        "title": "剪头发没法线上搞 生意却断崖式下滑？4个真问题 把理发店逼到墙角",
+        "published": "2025-11-30T14:46:00+08:00",
+        "ageDays": 344,
+        "read": "搜索返回的正文或片段",
+        "chars": 3036
+      },
+      {
+        "host": "m.toutiao.com",
+        "title": "七言谈",
+        "published": "2026-05-27T07:40:39+08:00",
+        "ageDays": 166.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 3007
+      },
+      {
+        "host": "tv.sohu.com",
+        "title": "理发店应该怎么拍视频呢 短视频运营 个人ip 自媒体",
+        "published": "2025-10-21T00:32:20+08:00",
+        "ageDays": 384.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 599
+      },
+      {
+        "host": "qjwb.thehour.cn",
+        "title": "钱江晚报 数字报纸",
+        "published": "2025-12-02T17:58:48+08:00",
+        "ageDays": 341.9,
+        "read": "搜索返回的正文或片段",
+        "chars": 1643
+      }
+    ]
+  },
+  {
+    "cat": "同行案例",
+    "q": "火锅店抖音爆款视频案例",
+    "window": 0,
+    "ms": 12355,
+    "plan": {
+      "intent": "同行案例",
+      "queries": [
+        "火锅店抖音爆款视频",
+        "火锅抖音案例",
+        "火锅店短视频营销案例"
+      ],
+      "recencyDays": 0
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "site:life.douyin.com 火锅店抖音爆款视频案例",
+        "ok": true,
+        "ms": 31,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "火锅抖音案例",
+        "ok": true,
+        "ms": 3053,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      },
+      {
+        "query": "火锅店抖音爆款视频",
+        "ok": true,
+        "ms": 6032,
+        "n": 9,
+        "dated": 8,
+        "inWindow": 8
+      }
+    ],
+    "sources": [
+      {
+        "host": "sxvote.cn",
+        "title": "宣传火锅店怎么拍抖音热门？人像拍照怎么引导表情？自然不僵硬",
+        "published": "2026-04-15T14:51:25+08:00",
+        "ageDays": 208,
+        "read": "搜索返回的正文或片段",
+        "chars": 2870
+      },
+      {
+        "host": "www.yunyingpai.com",
+        "title": "用好45秒，让短视频成为火锅店的引流神器！",
+        "published": "2021-07-29T00:00:00+08:00",
+        "ageDays": 1929.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 2618
+      },
+      {
+        "host": "city.sina.cn",
+        "title": "门店爆火、老板出圈，在抖音，火锅生意的玩法变了",
+        "published": "2025-12-25T15:41:15+08:00",
+        "ageDays": 319,
+        "read": "搜索返回的正文或片段",
+        "chars": 3854
+      },
+      {
+        "host": "www.jiajutu.com",
+        "title": "抖音餐馆拍摄秘籍，3招让你的美食视频轻松上热门! - 熊猫网",
+        "published": "2026-11-04T00:00:00+08:00",
+        "ageDays": 5.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 1899
+      },
+      {
+        "host": "www.tuodu.com.cn",
+        "title": "与朋友吃火锅怎么拍抖音？后期处理的尺度如何把握？",
+        "published": "2026-04-25T16:49:39+08:00",
+        "ageDays": 197.9,
+        "read": "搜索返回的正文或片段",
+        "chars": 1610
+      },
+      {
+        "host": "m.meishichina.com",
+        "title": "巴奴毛肚火锅在抖音开创慢直播新表达，实现“产品主义”破圈",
+        "published": "2026-10-13T11:09:09+08:00",
+        "ageDays": 27.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 3579
+      }
+    ]
+  },
+  {
+    "cat": "同行案例",
+    "q": "服装店老板娘做抖音起号的真实故事",
+    "window": 0,
+    "ms": 10175,
+    "plan": {
+      "intent": "同行案例",
+      "queries": [
+        "大码女装 抖音起号 案例",
+        "服装店老板娘 抖音 成功故事",
+        "女装实体店 抖音运营 经验"
+      ],
+      "recencyDays": 0
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "site:life.douyin.com 服装店老板娘做抖音起号的真实故事",
+        "ok": true,
+        "ms": 33,
+        "n": 0,
+        "dated": 0,
+        "inWindow": 0
+      },
+      {
+        "query": "服装店老板娘 抖音 成功故事",
+        "ok": true,
+        "ms": 645,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      },
+      {
+        "query": "大码女装 抖音起号 案例",
+        "ok": true,
+        "ms": 5279,
+        "n": 9,
+        "dated": 5,
+        "inWindow": 5
+      }
+    ],
+    "sources": [
+      {
+        "host": "www.soitgo.com",
+        "title": "抖音 AI 视频带货大码女装玩法，直接吸粉3w+ 成交量稳涨_搜购技术博客",
+        "published": "",
+        "ageDays": null,
+        "read": "搜索返回的正文或片段",
+        "chars": 1015
+      },
+      {
+        "host": "m.blog.csdn.net",
+        "title": "巨量引擎：中小商家如何在抖音上活下来？这9条经验不要错过！",
+        "published": "2024-08-08T13:55:17+08:00",
+        "ageDays": 823,
+        "read": "搜索返回的正文或片段",
+        "chars": 3033
+      },
+      {
+        "host": "m.toutiao.com",
+        "title": "中小商家如何在抖音上活下来，活得久？整理了9条经验",
+        "published": "2022-11-16T08:38:00+08:00",
+        "ageDays": 1454.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 3029
+      },
+      {
+        "host": "biz.ifeng.com",
+        "title": "实体店老板娘转型主播，毛衣姐姐在抖音开启事业新篇章",
+        "published": "2020-12-30T09:49:37+08:00",
+        "ageDays": 2140.2,
+        "read": "搜索返回的正文或片段",
+        "chars": 2069
+      },
+      {
+        "host": "www.36kr.com",
+        "title": "看了300个抖音服装号，总结了15条短视频带货经验-36氪",
+        "published": "",
+        "ageDays": null,
+        "read": "搜索返回的正文或片段",
+        "chars": 5061
+      },
+      {
+        "host": "zhuanlan.zhihu.com",
+        "title": "看了300个抖音服装号，总结了15条短视频带货经验 - 知乎",
+        "published": "",
+        "ageDays": null,
+        "read": "搜索返回的正文或片段",
+        "chars": 4951
+      }
+    ]
+  },
+  {
+    "cat": "同行案例",
+    "q": "家具店短视频怎么拍才有人看",
+    "window": 0,
+    "ms": 16159,
+    "plan": {
+      "intent": "方法做法",
+      "queries": [
+        "家具店短视频拍摄技巧",
+        "家具行业短视频爆款案例",
+        "家具店抖音内容策划"
+      ],
+      "recencyDays": 0
+    },
+    "status": "done",
+    "hotOnly": false,
+    "calls": [
+      {
+        "query": "家具行业短视频爆款案例",
+        "ok": true,
+        "ms": 3276,
+        "n": 6,
+        "dated": 6,
+        "inWindow": 6
+      },
+      {
+        "query": "家具店短视频拍摄技巧",
+        "ok": true,
+        "ms": 3638,
+        "n": 10,
+        "dated": 9,
+        "inWindow": 9
+      }
+    ],
+    "sources": [
+      {
+        "host": "xx.sdnews.com.cn",
+        "title": "靠2人团队月销上百万：这个临沂产业带家居商家藏着哪些生意经？",
+        "published": "2026-10-31T16:57:50+08:00",
+        "ageDays": 8.9,
+        "read": "搜索返回的正文或片段",
+        "chars": 4125
+      },
+      {
+        "host": "www.mzgirl.com.cn",
+        "title": "家具抖音剧情怎么拍才好看？手机拍照放大后模糊怎么办？替代方法",
+        "published": "2026-04-07T16:57:32+08:00",
+        "ageDays": 215.9,
+        "read": "搜索返回的正文或片段",
+        "chars": 2185
+      },
+      {
+        "host": "www.dawen360.com",
+        "title": "怎么拍家居行业的短视频(家居建材行业视频拍摄解读)",
+        "published": "2022-05-22T23:50:14+08:00",
+        "ageDays": 1631.6,
+        "read": "搜索返回的正文或片段",
+        "chars": 2170
+      },
+      {
+        "host": "m.toutiao.com",
+        "title": "家居门店短视频应该怎么拍呢？一步步拆解。",
+        "published": "2023-08-13T07:39:00+08:00",
+        "ageDays": 1184.3,
+        "read": "搜索返回的正文或片段",
+        "chars": 1909
+      },
+      {
+        "host": "news.kuyin.cn",
+        "title": "家具用品短视频怎么拍的更出彩？",
+        "published": "2022-10-13T18:22:01+08:00",
+        "ageDays": 1487.9,
+        "read": "搜索返回的正文或片段",
+        "chars": 580
+      },
+      {
+        "host": "post.m.smzdm.com",
+        "title": "家具行业这样拍短视频。拍摄步骤：1️⃣手机打开0.5倍广角模式，首先使用横._什么值得买",
+        "published": "2025-07-25T03:32:39+08:00",
+        "ageDays": 472.5,
+        "read": "搜索返回的正文或片段",
+        "chars": 314
+      }
+    ]
+  }
+]

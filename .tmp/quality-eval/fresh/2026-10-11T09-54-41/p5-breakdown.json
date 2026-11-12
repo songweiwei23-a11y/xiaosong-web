@@ -1,0 +1,28 @@
+{
+  "profile": "万客隆家具城·李国才",
+  "board": "拆解爆款",
+  "status": 200,
+  "firstAnswerMs": 10678,
+  "totalMs": 131243,
+  "errors": [],
+  "promptChars": 4157,
+  "judged": {
+    "gates": {
+      "E1": [
+        "最值"
+      ],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 5977
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T10:26:03.016Z"
+}

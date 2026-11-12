@@ -1,0 +1,22 @@
+{
+  "round": 1,
+  "case": "dealReason",
+  "label": "成交理由（17 条判断）",
+  "status": 200,
+  "firstAnswerMs": 7274,
+  "totalMs": 58736,
+  "answerEvents": 914,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 4462,
+  "auto": {
+    "issues": [
+      "数字无出处：一份、一倍、一家",
+      "宣传词过度：第一家"
+    ],
+    "metrics": {
+      "chars": 2297
+    }
+  },
+  "at": "2026-10-11T09:07:43.889Z"
+}

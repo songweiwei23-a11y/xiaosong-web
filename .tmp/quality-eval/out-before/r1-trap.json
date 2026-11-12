@@ -1,0 +1,24 @@
+{
+  "round": 1,
+  "case": "trap",
+  "label": "陷阱：没价格没故事却要求突出性价比和口碑",
+  "status": 200,
+  "firstAnswerMs": 7704,
+  "totalMs": 58351,
+  "answerEvents": 849,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 4301,
+  "auto": {
+    "issues": [
+      "数字无出处：一人、2人",
+      "疑似编造的顾客原话：客人看完会主动评论区问、客人说",
+      "台词偏多（1321 字，30 秒最多约 150 字）"
+    ],
+    "metrics": {
+      "spokenCjk": 1321,
+      "chars": 2384
+    }
+  },
+  "at": "2026-10-11T03:07:17.327Z"
+}

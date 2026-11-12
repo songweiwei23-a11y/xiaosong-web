@@ -1,0 +1,23 @@
+{
+  "round": 2,
+  "case": "scriptPlan30",
+  "label": "脚本（编导设了 30 秒）",
+  "status": 200,
+  "firstAnswerMs": 5749,
+  "totalMs": 79140,
+  "answerEvents": 1244,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 6504,
+  "auto": {
+    "issues": [
+      "疑似编造的顾客原话：老板说"
+    ],
+    "metrics": {
+      "spokenCjk": 142,
+      "step2Found": true,
+      "chars": 3305
+    }
+  },
+  "at": "2026-10-11T05:22:48.513Z"
+}

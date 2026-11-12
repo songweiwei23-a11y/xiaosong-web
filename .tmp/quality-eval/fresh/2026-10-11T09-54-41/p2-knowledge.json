@@ -1,0 +1,31 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "知识库查询",
+  "status": 200,
+  "firstAnswerMs": 8923,
+  "totalMs": 64240,
+  "errors": [],
+  "promptChars": 32,
+  "judged": {
+    "gates": {
+      "E1": [
+        "最高",
+        "保证"
+      ],
+      "E2": [
+        "内幕"
+      ],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2259
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T10:05:04.643Z"
+}

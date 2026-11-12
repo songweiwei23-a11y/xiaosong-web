@@ -1,0 +1,25 @@
+{
+  "round": 2,
+  "case": "direction",
+  "label": "创作方向（复现：想法写了秋天）",
+  "status": 200,
+  "firstAnswerMs": 10374,
+  "totalMs": 181165,
+  "answerEvents": 3031,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 9575,
+  "auto": {
+    "issues": [
+      "疑似编造的顾客原话：老板自己说、老客人说、老客评价比老板自己说、老客的真实评价、老客试了清汤羊肉锅说、老客评价、老板说",
+      "用户写了秋天，输出里出现冬天 6 处"
+    ],
+    "metrics": {
+      "directionCount": 10,
+      "autumnMentions": 56,
+      "winterMentions": 6,
+      "chars": 8518
+    }
+  },
+  "at": "2026-10-11T03:19:46.535Z"
+}

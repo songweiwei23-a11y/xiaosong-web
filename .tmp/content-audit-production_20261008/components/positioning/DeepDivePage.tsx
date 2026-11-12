@@ -1,0 +1,404 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { notify } from '@/components/ui/feedback'
+import { throwApiError, fetchGeneration } from '@/lib/api-error'
+import { readDifyStream } from '@/lib/sse-stream'
+import { saveGenerationHistory } from '@/lib/history'
+import { getActiveProfileId, onActiveProfileChange } from '@/lib/active-profile'
+import { buildPositioningPrompt, type PositioningFocus } from '@/lib/positioning-standards'
+import { Markdown } from '@/components/markdown'
+import { asText, buildProfileSummary, profileSearchHints } from '@/lib/profile-summary'
+import ContinuousDialog from '@/components/ContinuousDialog'
+import { CreationLinks } from '@/components/workspace/CreationLinks'
+import { useCreationBridge } from '@/hooks/useCreationBridge'
+import { incomingNote } from '@/lib/creation-flow'
+import { postSafely } from '@/lib/safe-post'
+import { resolveMix, mixPromptBlock, type MixSetting } from '@/lib/content-mix'
+import { taboosPromptBlock } from '@/lib/taboos'
+import { ContentMixBar } from '@/components/workspace/ContentMix'
+
+/**
+ * 商业定位 / 内容定位 的共用页面。
+ *
+ * 这两块本来就是六维地基里的「变现定位」和「内容定位」两维，
+ * 所以不另起炉灶：先读这个档案已有的账号定位当地基，再往下深挖一层。
+ * 这样用户不用重填信息，两份产出也不会互相打架。
+ *
+ * 没有地基时不拦着生成——只提示一句，因为有的用户就想先看变现思路。
+ * 但会在提示词里说明"没有已确定的定位"，让模型自己把话说圆。
+ */
+
+interface Props {
+  focus: Exclude<PositioningFocus, 'full'>
+  /** Dify 侧的任务类型，决定知识库检索词与会话隔离 */
+  taskType: string
+  title: string
+  subtitle: string
+  /** 这一页解决什么问题，写给用户看 */
+  bullets: string[]
+  generatingHint: string
+}
+
+interface Profile {
+  id: string
+  profile_name?: string
+  [k: string]: unknown
+}
+
+/** 档案摘要和账号定位页是同一份，见 lib/profile-summary.ts */
+const profileSummary = (p: Profile) => buildProfileSummary(p)
+
+export function DeepDivePage({ focus, taskType, title, subtitle, bullets, generatingHint }: Props) {
+  const router = useRouter()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [baseline, setBaseline] = useState<string>('')
+  const [loadingCtx, setLoadingCtx] = useState(true)
+  const [notes, setNotes] = useState('')
+  // 内容配比：这次临时改的（null = 跟档案 / 系统推荐）
+  const [mixOverride, setMixOverride] = useState<MixSetting | null>(null)
+  const [result, setResult] = useState('')
+  /** 上次生成的时间，界面上标一句，让用户知道看到的是存档不是刚跑的 */
+  const [savedAt, setSavedAt] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [showDialog, setShowDialog] = useState(false)
+  const [conversationId, setConversationId] = useState<string | undefined>()
+  /*
+   * 已经跑了多少秒。
+   *
+   * 这条提示词一万多字、产出也上万字，Dify 还要先跑 5 个知识库检索节点，
+   * 首个字返回之前有很长一段静默——用户看到的是一个不动的按钮，
+   * 会以为"点击没反应"又点一次。所以把时间显式摆出来。
+   */
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (!isGenerating) return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [isGenerating])
+
+  const loadedScope = useRef<string | null | undefined>(undefined)
+  const load = async () => {
+    setLoadingCtx(true)
+    try {
+      const id = getActiveProfileId()
+      if (loadedScope.current !== undefined && loadedScope.current !== id) {
+        setResult(''); setNotes(''); setConversationId(undefined); setHandoffFrom('')
+      }
+      loadedScope.current = id
+      const profRes = await fetch('/api/profiles')
+      const list = profRes.ok ? await profRes.json() : []
+      if (getActiveProfileId() !== id) return
+      const p: Profile | null = Array.isArray(list) && list.length
+        ? list.find((x: Profile) => x.id === id) || list[0]
+        : null
+      setProfile(p)
+
+      if (p) {
+        const get = (t: string) =>
+          fetch(`/api/positioning?profileId=${p.id}&type=${encodeURIComponent(t)}`)
+        /*
+         * 两件事一起取：
+         *   1. 六维地基，当这次深挖的基础
+         *   2. **上次生成的结果**——原来没取，切走再回来内容就空了，
+         *      用户以为丢了，其实一直在库里躺着。别的生成页都有恢复，
+         *      只有这两个深挖页漏了。
+         */
+        const [baseRes, mineRes] = await Promise.all([get('账号定位'), get(title)])
+        const first = async (r: Response) => {
+          if (!r.ok) return null
+          const j = await r.json().catch(() => null)
+          return Array.isArray(j) && j[0] ? j[0] : null
+        }
+        setBaseline((await first(baseRes))?.full_content || '')
+
+        const mine = await first(mineRes)
+        if (getActiveProfileId() !== id) return
+        setSavedAt(mine?.created_at || '')
+        // 只在当前为空时回填，别把用户正在看或刚生成的内容盖掉
+        if (mine?.full_content) setResult((cur) => cur || mine.full_content)
+      } else {
+        setBaseline('')
+        setSavedAt('')
+      }
+    } catch (e) {
+      console.error('加载上下文失败:', e)
+    } finally {
+      setLoadingCtx(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+    return onActiveProfileChange(load)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 别的板块「继续创作」带过来的内容：填进补充说明，点生成就纳入分析（2026-10-02）
+  const [handoffFrom, setHandoffFrom] = useState('')
+  const bridge = useCreationBridge(taskType, focus === 'business' ? 'business-positioning' : 'content-positioning', profile?.id, loadingCtx)
+  useEffect(() => {
+    const data = bridge.payload
+    if (!data?.sourceContent) return
+    setNotes(incomingNote(data))
+    setHandoffFrom(data.from || '其他板块')
+  }, [bridge.payload])
+
+  const generate = async () => {
+    if (!profile) {
+      notify('请先创建一份账号档案')
+      router.push('/dashboard/profiles/new')
+      return
+    }
+
+    setIsGenerating(true)
+    setResult('')
+    let full = ''
+    let convId = ''
+
+    const summary = profileSummary(profile)
+    const query = buildPositioningPrompt({
+      profileSummary: summary,
+      additionalNotes: notes,
+      platform: Array.isArray(profile.account_platform)
+        ? (profile.account_platform[0] as string)
+        : (profile.account_platform as string) || undefined,
+      restrictions: (profile.content_restrictions as string) || undefined,
+      focus,
+      baseline: baseline || undefined,
+      mixBlock: mixPromptBlock(resolveMix(profile, mixOverride, notes)),
+      taboos: taboosPromptBlock(profile),
+    }) + bridge.prompt
+
+    try {
+      const res = await fetchGeneration('/api/dify/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskType,
+          // 记忆按档案隔离，避免代运营多个账号时串台
+          profileId: profile.id,
+          query,
+          creationSettings: bridge.creationSettings,
+          profileInfo: summary,
+          // 赛道、地域进检索词：联网搜索才能搜到这个号相关的行情，不是通用文章
+          ...profileSearchHints(profile),
+          additionalNotes: notes || '无补充说明',
+        }),
+      })
+
+      // 带出服务端文案，额度用完才不会被显示成「生成失败」
+      if (!res.ok) await throwApiError(res)
+
+      full = await readDifyStream(res, {
+        onChunk: (_p, all) => setResult(all),
+        onConversationId: (id) => {
+          convId = id
+        },
+        onRecovering: () => notify('网络断了一下，AI 那边还在写，写完会自动取回，请别关页面'),
+      })
+
+      if (full) {
+        await save(full)
+        const historyInput = { profileSummary: summary, notes, profileId: profile.id, creationSettings: bridge.creationSettings, originContent: bridge.originContent || notes }
+        await saveGenerationHistory(taskType, historyInput, full)
+        bridge.rememberResult(full, historyInput)
+        setConversationId(convId || undefined)
+        setShowDialog(true)
+      }
+    } catch (e: unknown) {
+      console.error('生成失败:', e)
+      notify((e as Error)?.message || '生成失败，请重试')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const save = async (content: string) => {
+    if (!profile) return
+    try {
+      const firstLine = content.split('\n').find((l) => l.trim())?.replace(/^#+\s*/, '').trim() || ''
+      const res = await postSafely('/api/positioning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id: profile.id,
+          positioning_type: title,
+          positioning_name: firstLine.slice(0, 50) || `${asText(profile.profile_name, '账号')}的${title}`,
+          full_content: content,
+          // is_active 只用来标记当前生效的六维地基，深挖结果不参与
+          is_active: false,
+        }),
+      })
+      if (res.ok) {
+        const row = await res.json().catch(() => null)
+        setSavedAt(row?.created_at || new Date().toISOString())
+      }
+    } catch (e) {
+      console.error('保存失败:', e)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background py-8">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+          <p className="mt-2 text-[13px] text-muted-foreground">{subtitle}</p>
+        </div>
+
+        <div className="glass-panel mb-6 rounded-2xl p-4 sm:p-6">
+          <ul className="mb-5 space-y-1.5">
+            {bullets.map((b) => (
+              <li key={b} className="text-[13px] text-muted-foreground">
+                · {b}
+              </li>
+            ))}
+          </ul>
+
+          {/* 用哪个档案、有没有地基，必须让用户一眼看见——
+              否则生成完才发现用错了档案，白等三分钟 */}
+          <div className="mb-5 space-y-2 rounded-xl border border-border bg-foreground/[0.03] p-4 text-[12.5px]">
+            {loadingCtx ? (
+              <p className="text-muted-foreground">正在读取档案…</p>
+            ) : !profile ? (
+              <p className="text-destructive">
+                还没有账号档案。
+                <button onClick={() => router.push('/dashboard/profiles/new')} className="ml-1 underline">
+                  去创建
+                </button>
+              </p>
+            ) : (
+              <>
+                <p className="text-foreground">
+                  当前档案：<span className="font-medium">{asText(profile.profile_name, '未命名')}</span>
+                  <button
+                    onClick={() => router.push(`/dashboard/profiles/${profile.id}/edit`)}
+                    className="ml-2 text-primary underline"
+                  >
+                    编辑档案
+                  </button>
+                </p>
+                {baseline ? (
+                  <p className="text-emerald-500">
+                    已读到这个号的账号定位，会在它的基础上往下深挖 ✓
+                  </p>
+                ) : (
+                  <p className="text-amber-500">
+                    还没有生成过账号定位。可以直接做，但先出一份六维地基会更准。
+                    <button
+                      onClick={() => router.push('/dashboard/positioning')}
+                      className="ml-1 underline"
+                    >
+                      去生成
+                    </button>
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          <label className="mb-2 block text-[13px] font-medium text-foreground">补充说明（选填）</label>
+          {handoffFrom && <p className="mb-2 text-[12px] text-primary">已带入来自「{handoffFrom}」的内容，直接点生成就会一并纳入分析</p>}
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="这次特别想解决什么？比如：想把客单价提上去、只做同城、想先跑通团购"
+            className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          {/* 方案里的内容配比按它写 */}
+          <ContentMixBar className="mt-3" profile={profile} override={mixOverride} onOverride={setMixOverride} goal={notes} />
+
+          <button
+            onClick={generate}
+            disabled={isGenerating || loadingCtx}
+            className="mt-4 w-full rounded-xl bg-primary py-2.5 text-[13.5px] font-medium text-primary-foreground disabled:opacity-50"
+          >
+            {isGenerating
+              ? `${generatingHint} 已用 ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`
+              : `生成${title}方案`}
+          </button>
+
+          {isGenerating && (
+            <p className="mt-2 text-center text-[12px] text-muted-foreground">
+              {/* 实测：首字约 16 秒，全文约 5 分钟。数字别拍脑袋写，之前写成 40 秒是错的 */}
+              这份方案要过一遍知识库再逐段写，全文大约 5 分钟。
+              {elapsed < 20 ? '开头十几秒在检索知识库，屏幕上还不出字，是正常的。' : '已经在逐段写了，可以边看边等。'}
+            </p>
+          )}
+        </div>
+
+        {(result || isGenerating) && (
+          <div className="glass-panel rounded-2xl px-7 py-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold text-foreground">
+                {title}方案
+                {/* 标明这是存档，否则用户分不清看到的是刚跑的还是上次的 */}
+                {savedAt && !isGenerating && (
+                  <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                    {new Date(savedAt).toLocaleString('zh-CN', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                    生成
+                  </span>
+                )}
+              </h2>
+              {result && !isGenerating && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(result)
+                      notify('已复制')
+                    }}
+                    className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"
+                  >
+                    复制
+                  </button>
+                  <button
+                    onClick={() => setShowDialog(true)}
+                    className="glass-panel rounded-lg px-3 py-1.5 text-[12px] text-foreground"
+                  >
+                    继续对话
+                  </button>
+                </div>
+              )}
+            </div>
+            <div
+              className="prose prose-slate dark:prose-invert max-w-none
+                         prose-headings:tracking-tight prose-headings:font-semibold
+                         prose-h1:text-xl prose-h2:text-[17px] prose-h3:text-[15px]
+                         prose-p:text-[14px] prose-p:leading-[1.85] prose-li:text-[14px]
+                         prose-strong:text-foreground prose-hr:border-border/60"
+            >
+              <Markdown>{result}</Markdown>
+            </div>
+            {isGenerating && (
+              <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />
+            )}
+            {/* 原来生成完只能「继续对话」，是断头路：内容定位里的选题方向、系列规划带不去出选题 */}
+            {result && !isGenerating && <div className="mt-5"><CreationLinks body={result} context={bridge.flowContext(result)} /></div>}
+          </div>
+        )}
+      </div>
+
+      {showDialog && (
+        <ContinuousDialog
+          isOpen={showDialog}
+          onClose={() => setShowDialog(false)}
+          taskType={taskType}
+          initialContent={result}
+          conversationId={conversationId}
+        />
+      )}
+    </div>
+  )
+}
+
+export default DeepDivePage

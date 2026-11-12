@@ -1,0 +1,24 @@
+{
+  "round": 2,
+  "case": "opening",
+  "label": "开篇钩子（复现：局外人口吻）",
+  "status": 200,
+  "firstAnswerMs": 7829,
+  "totalMs": 36367,
+  "answerEvents": 476,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 12220,
+  "auto": {
+    "issues": [
+      "数字无出处：一人",
+      "旁观者口吻 1 处（如「老板干了」）"
+    ],
+    "metrics": {
+      "outsiderMarkers": 1,
+      "firstPerson": 11,
+      "chars": 1355
+    }
+  },
+  "at": "2026-10-11T05:08:52.426Z"
+}

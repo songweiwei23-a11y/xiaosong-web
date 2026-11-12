@@ -1,0 +1,24 @@
+{
+  "round": 1,
+  "case": "scriptPlanAI",
+  "label": "脚本（AI 推荐，未设时长）",
+  "status": 200,
+  "firstAnswerMs": 8026,
+  "totalMs": 184686,
+  "answerEvents": 1653,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 6135,
+  "auto": {
+    "issues": [
+      "疑似编造的顾客原话：客人评价",
+      "元信息或套话：以下是"
+    ],
+    "metrics": {
+      "spokenCjk": 321,
+      "step2Found": true,
+      "chars": 4764
+    }
+  },
+  "at": "2026-10-11T05:21:26.173Z"
+}

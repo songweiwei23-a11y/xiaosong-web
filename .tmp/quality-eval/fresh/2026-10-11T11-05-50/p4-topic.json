@@ -1,0 +1,30 @@
+{
+  "profile": "锦园地摊串串一元火锅",
+  "board": "选题策划",
+  "status": 200,
+  "firstAnswerMs": 12479,
+  "totalMs": 115731,
+  "errors": [],
+  "promptChars": 4290,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": [
+        "36计",
+        "第15计"
+      ]
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2932,
+      "topicCount": 10
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T11:30:36.530Z"
+}

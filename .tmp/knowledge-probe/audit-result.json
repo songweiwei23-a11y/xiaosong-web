@@ -1,0 +1,67 @@
+{
+  "days": 7,
+  "at": "2026-10-22T05:10:38.658Z",
+  "requestsTotal": 83,
+  "requestsByStatus": {
+    "committed": 81,
+    "pending": 1,
+    "released": 1
+  },
+  "requestsByFeatureStatus": {
+    "freeChat|committed": 40,
+    "direction|committed": 3,
+    "topic|committed": 10,
+    "script|committed": 12,
+    "positioning|committed": 7,
+    "remix|committed": 2,
+    "review|committed": 4,
+    "remix|pending": 1,
+    "freeChat|released": 1,
+    "knowledge|committed": 2,
+    "breakdown|committed": 1
+  },
+  "pendingTotal": 1,
+  "pendingExpired": 1,
+  "pendingOldestCreated": "2026-10-18T14:41:27.369405+00:00",
+  "usageEventsByFeature": {
+    "positioning": 7,
+    "freeChat": 40,
+    "script": 12,
+    "breakdown": 1,
+    "knowledge": 2,
+    "topic": 10,
+    "direction": 3,
+    "review": 4,
+    "remix": 2
+  },
+  "evidenceTotal": 56,
+  "evidenceByTerminal": {
+    "workflow_finished": 56
+  },
+  "subscriptionsByPlanStatus": {
+    "enterprise|active": 2,
+    "free|active": 3,
+    "free|inactive": 1,
+    "pro|active": 1
+  },
+  "activeButExpired": 0,
+  "paidWithoutEndDate": 2,
+  "paidWithoutEndDateByPlan": {
+    "enterprise": 2
+  },
+  "evidenceWithoutRequestInWindow": 0,
+  "evidenceForCommitted": 56,
+  "evidenceForReleased": 0,
+  "evidenceForPending": 0,
+  "settledNonPendingByFeature": {
+    "freeChat": 41,
+    "direction": 3,
+    "topic": 10,
+    "script": 12,
+    "positioning": 7,
+    "remix": 2,
+    "review": 4,
+    "knowledge": 2,
+    "breakdown": 1
+  }
+}

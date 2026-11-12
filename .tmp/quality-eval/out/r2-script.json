@@ -1,0 +1,23 @@
+{
+  "round": 2,
+  "case": "script",
+  "label": "脚本生成（30 秒）",
+  "status": 200,
+  "firstAnswerMs": 7240,
+  "totalMs": 49965,
+  "answerEvents": 731,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 4276,
+  "auto": {
+    "issues": [
+      "数字无出处：二人、3串",
+      "台词偏多（879 字，30 秒最多约 150 字）"
+    ],
+    "metrics": {
+      "spokenCjk": 879,
+      "chars": 1463
+    }
+  },
+  "at": "2026-10-11T03:47:22.632Z"
+}

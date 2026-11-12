@@ -1,0 +1,23 @@
+{
+  "round": 2,
+  "case": "topic",
+  "label": "选题策划（10 条）",
+  "status": 200,
+  "firstAnswerMs": 8918,
+  "totalMs": 95900,
+  "answerEvents": 1097,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 4290,
+  "auto": {
+    "issues": [
+      "数字无出处：两串、一份、两人",
+      "疑似编造的顾客原话：客人说"
+    ],
+    "metrics": {
+      "topicCount": 10,
+      "chars": 2373
+    }
+  },
+  "at": "2026-10-11T03:49:01.429Z"
+}

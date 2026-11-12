@@ -1,0 +1,390 @@
+<!doctype html><meta charset="utf-8"><title>开物待执行迁移</title><textarea aria-label="Release SQL" style="width:98vw;height:90vh">-- Deploy before generation routes. Does not reset existing balances or touch web-search quotas.
+BEGIN;
+CREATE TABLE IF NOT EXISTS public.creation_requests (
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  request_id text NOT NULL,
+  feature text NOT NULL,
+  used_column text NOT NULL,
+  fingerprint text NOT NULL,
+  period_start timestamptz,
+  status text NOT NULL DEFAULT &#39;pending&#39; CHECK (status IN (&#39;pending&#39;,&#39;committed&#39;,&#39;released&#39;)),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval &#39;2 hours&#39;),
+  settled_at timestamptz,
+  PRIMARY KEY (user_id, request_id)
+);
+CREATE INDEX IF NOT EXISTS creation_requests_pending ON public.creation_requests(user_id, period_start, feature) WHERE status=&#39;pending&#39;;
+ALTER TABLE public.creation_requests ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.creation_requests FROM anon, authenticated;
+GRANT SELECT ON public.creation_requests TO service_role;
+-- Legacy RLS allowed owners to UPDATE their balance. Clients only need SELECT.
+REVOKE INSERT, UPDATE, DELETE ON public.user_quotas FROM anon, authenticated;
+ALTER TABLE public.usage_events ADD COLUMN IF NOT EXISTS detail jsonb;
+
+CREATE OR REPLACE FUNCTION public.kaiwu_reserve_creation(
+  p_user_id uuid, p_request_id text, p_feature text, p_fingerprint text, p_plans jsonb, p_features jsonb
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE
+  q public.user_quotas%ROWTYPE; s record; r public.creation_requests%ROWTYPE;
+  v_plan text := &#39;free&#39;; v_column text; v_limit integer; v_used integer := 0; v_pending integer;
+  v_expired boolean := false; v_roll boolean := false; v_period_end timestamptz;
+  f jsonb; v_count integer; v_free integer;
+BEGIN
+  -- All generation reservations and settlements for one user use the same lock order.
+  PERFORM pg_advisory_xact_lock(hashtextextended(&#39;creation:&#39; || p_user_id::text,0));
+  SELECT * INTO s FROM public.subscriptions WHERE user_id=p_user_id FOR SHARE;
+  IF FOUND THEN
+    IF s.status=&#39;inactive&#39; THEN RETURN jsonb_build_object(&#39;allowed&#39;,false,&#39;reason&#39;,&#39;banned&#39;); END IF;
+    v_expired := s.status=&#39;active&#39; AND s.plan &lt;&gt; &#39;free&#39; AND s.end_date IS NOT NULL AND s.end_date&lt;=now();
+    IF s.status=&#39;active&#39; AND (s.end_date IS NULL OR s.end_date&gt;now()) AND p_plans ? s.plan THEN v_plan:=s.plan; END IF;
+  END IF;
+  SELECT value-&gt;&gt;&#39;column&#39; INTO v_column FROM jsonb_array_elements(p_features) WHERE value-&gt;&gt;&#39;key&#39;=p_feature;
+  IF v_column IS NULL OR v_column NOT IN (&#39;knowledge_used&#39;,&#39;positioning_used&#39;,&#39;topic_used&#39;,&#39;script_used&#39;,&#39;free_chat_used&#39;,&#39;storyboard_used&#39;,&#39;review_used&#39;,&#39;title_used&#39;,&#39;deal_reason_used&#39;,&#39;interview_used&#39;,&#39;breakdown_used&#39;,&#39;remix_used&#39;,&#39;direction_used&#39;) THEN
+    RAISE EXCEPTION &#39;invalid feature&#39;;
+  END IF;
+  SELECT * INTO r FROM public.creation_requests WHERE user_id=p_user_id AND request_id=p_request_id;
+  IF FOUND THEN
+    RETURN jsonb_build_object(&#39;allowed&#39;,false,&#39;reason&#39;,CASE WHEN r.fingerprint=p_fingerprint AND r.feature=p_feature THEN &#39;duplicate&#39; ELSE &#39;conflict&#39; END,&#39;state&#39;,r.status);
+  END IF;
+  INSERT INTO public.user_quotas(user_id) VALUES(p_user_id) ON CONFLICT(user_id) DO NOTHING;
+  SELECT * INTO q FROM public.user_quotas WHERE user_id=p_user_id FOR UPDATE;
+  IF v_plan&lt;&gt;&#39;free&#39; AND (q.current_period_end IS NULL OR q.current_period_end&lt;now()) THEN
+    v_roll:=true;
+    -- Match existing plans.ts Date.setMonth rollover, including month-end overflow.
+    v_period_end:=date_trunc(&#39;month&#39;,now())+interval &#39;1 month&#39;
+      +(extract(day from now())::integer-1)*interval &#39;1 day&#39;+(now()-date_trunc(&#39;day&#39;,now()));
+    IF s.end_date IS NOT NULL THEN v_period_end:=least(v_period_end,s.end_date); END IF;
+    UPDATE public.user_quotas SET current_period_start=now(),current_period_end=v_period_end,updated_at=now() WHERE user_id=p_user_id;
+  END IF;
+  -- Dynamic column names are quoted and restricted to the allowlist above; function callable only by service_role.
+  FOR f IN SELECT value FROM jsonb_array_elements(p_features) LOOP
+    IF f-&gt;&gt;&#39;column&#39; NOT IN (&#39;knowledge_used&#39;,&#39;positioning_used&#39;,&#39;topic_used&#39;,&#39;script_used&#39;,&#39;free_chat_used&#39;,&#39;storyboard_used&#39;,&#39;review_used&#39;,&#39;title_used&#39;,&#39;deal_reason_used&#39;,&#39;interview_used&#39;,&#39;breakdown_used&#39;,&#39;remix_used&#39;,&#39;direction_used&#39;) THEN RAISE EXCEPTION &#39;invalid column&#39;; END IF;
+    IF v_roll THEN
+      EXECUTE format(&#39;UPDATE public.user_quotas SET %I=0 WHERE user_id=$1&#39;,f-&gt;&gt;&#39;column&#39;) USING p_user_id;
+    ELSIF v_expired THEN
+      v_free:=(p_plans-&gt;&#39;free&#39;-&gt;&#39;quotas&#39;-&gt;&gt;(f-&gt;&gt;&#39;key&#39;))::integer;
+      EXECUTE format(&#39;UPDATE public.user_quotas SET %I=greatest(coalesce(%I,0),$2) WHERE user_id=$1&#39;,f-&gt;&gt;&#39;column&#39;,f-&gt;&gt;&#39;column&#39;) USING p_user_id,v_free;
+    END IF;
+  END LOOP;
+  SELECT * INTO q FROM public.user_quotas WHERE user_id=p_user_id;
+  IF p_request_id IS NULL THEN RETURN jsonb_build_object(&#39;allowed&#39;,true,&#39;reason&#39;,&#39;period_ready&#39;); END IF;
+  v_limit:=(p_plans-&gt;v_plan-&gt;&#39;quotas&#39;-&gt;&gt;p_feature)::integer;
+  IF p_plans-&gt;v_plan-&gt;&gt;&#39;totalQuota&#39; IS NOT NULL THEN
+    v_limit:=(p_plans-&gt;v_plan-&gt;&gt;&#39;totalQuota&#39;)::integer;
+    FOR f IN SELECT value FROM jsonb_array_elements(p_features) LOOP
+      v_used:=v_used+coalesce((to_jsonb(q)-&gt;&gt;(f-&gt;&gt;&#39;column&#39;))::integer,0);
+    END LOOP;
+    SELECT count(*) INTO v_pending FROM public.creation_requests WHERE user_id=p_user_id AND status=&#39;pending&#39; AND expires_at&gt;now() AND period_start IS NOT DISTINCT FROM q.current_period_start;
+  ELSE
+    v_used:=coalesce((to_jsonb(q)-&gt;&gt;v_column)::integer,0);
+    SELECT count(*) INTO v_pending FROM public.creation_requests WHERE user_id=p_user_id AND feature=p_feature AND status=&#39;pending&#39; AND expires_at&gt;now() AND period_start IS NOT DISTINCT FROM q.current_period_start;
+  END IF;
+  IF v_limit IS NULL THEN RAISE EXCEPTION &#39;missing plan configuration&#39;; END IF;
+  IF v_limit&lt;&gt;-1 AND v_used+v_pending&gt;=v_limit THEN RETURN jsonb_build_object(&#39;allowed&#39;,false,&#39;reason&#39;,&#39;quota&#39;,&#39;used&#39;,v_used+v_pending,&#39;limit&#39;,v_limit); END IF;
+  INSERT INTO public.creation_requests(user_id,request_id,feature,used_column,fingerprint,period_start) VALUES(p_user_id,p_request_id,p_feature,v_column,p_fingerprint,q.current_period_start);
+  RETURN jsonb_build_object(&#39;allowed&#39;,true,&#39;request_id&#39;,p_request_id);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.kaiwu_settle_creation(p_user_id uuid,p_request_id text,p_success boolean,p_task_type text DEFAULT NULL,p_detail jsonb DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE r public.creation_requests%ROWTYPE; q public.user_quotas%ROWTYPE;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended(&#39;creation:&#39; || p_user_id::text,0));
+  SELECT * INTO q FROM public.user_quotas WHERE user_id=p_user_id FOR UPDATE;
+  SELECT * INTO r FROM public.creation_requests WHERE user_id=p_user_id AND request_id=p_request_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object(&#39;settled&#39;,false); END IF;
+  IF r.status&lt;&gt;&#39;pending&#39; THEN
+    RETURN jsonb_build_object(&#39;settled&#39;,(r.status=&#39;committed&#39; AND p_success) OR (r.status=&#39;released&#39; AND NOT p_success),&#39;state&#39;,r.status);
+  END IF;
+  IF p_success THEN
+    -- Late results from an earlier paid period still create usage events, without consuming the new period.
+    IF r.period_start IS NOT DISTINCT FROM q.current_period_start THEN
+      EXECUTE format(&#39;UPDATE public.user_quotas SET %I=coalesce(%I,0)+1,updated_at=now() WHERE user_id=$1&#39;,r.used_column,r.used_column) USING p_user_id;
+    END IF;
+    INSERT INTO public.usage_events(user_id,feature,task_type,detail)
+      VALUES(p_user_id,r.feature,p_task_type,coalesce(p_detail,&#39;{}&#39;::jsonb)||jsonb_build_object(&#39;generation_request_id&#39;,p_request_id));
+  END IF;
+  UPDATE public.creation_requests SET status=CASE WHEN p_success THEN &#39;committed&#39; ELSE &#39;released&#39; END,settled_at=now() WHERE user_id=p_user_id AND request_id=p_request_id;
+  RETURN jsonb_build_object(&#39;settled&#39;,true);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.kaiwu_reserve_creation(uuid,text,text,text,jsonb,jsonb) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.kaiwu_settle_creation(uuid,text,boolean,text,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.kaiwu_reserve_creation(uuid,text,text,text,jsonb,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.kaiwu_settle_creation(uuid,text,boolean,text,jsonb) TO service_role;
+NOTIFY pgrst,&#39;reload schema&#39;;
+COMMIT;
+
+
+-- Server-authenticated completion proof and evidence-only quota reconciliation.
+BEGIN;
+CREATE TABLE IF NOT EXISTS public.creation_completion_evidence (
+  user_id uuid NOT NULL,
+  request_id text NOT NULL,
+  feature text NOT NULL,
+  request_fingerprint text NOT NULL,
+  task_type text,
+  result text NOT NULL CHECK (length(btrim(result))&gt;0),
+  result_sha256 text NOT NULL,
+  content_chars integer NOT NULL CHECK (content_chars&gt;0),
+  terminal text NOT NULL CHECK (terminal IN (&#39;message_end&#39;,&#39;workflow_finished&#39;,&#39;recovered_message&#39;,&#39;structured_result&#39;)),
+  dify_conversation_id text,
+  dify_message_id text,
+  usage_metadata jsonb NOT NULL DEFAULT &#39;{}&#39;::jsonb,
+  completed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(user_id,request_id),
+  FOREIGN KEY(user_id,request_id) REFERENCES public.creation_requests(user_id,request_id) ON DELETE CASCADE
+);
+ALTER TABLE public.creation_completion_evidence ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.creation_completion_evidence FROM anon,authenticated;
+GRANT SELECT ON public.creation_completion_evidence TO service_role;
+
+CREATE OR REPLACE FUNCTION public.kaiwu_record_creation_completion(
+  p_user_id uuid,p_request_id text,p_result text,p_result_sha256 text,p_terminal text,
+  p_task_type text DEFAULT NULL,p_conversation_id text DEFAULT NULL,p_message_id text DEFAULT NULL,p_usage jsonb DEFAULT &#39;{}&#39;::jsonb
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE r public.creation_requests%ROWTYPE; old public.creation_completion_evidence%ROWTYPE;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended(&#39;creation:&#39; || p_user_id::text,0));
+  SELECT * INTO r FROM public.creation_requests WHERE user_id=p_user_id AND request_id=p_request_id FOR UPDATE;
+  IF NOT FOUND OR r.status=&#39;released&#39; THEN RAISE EXCEPTION &#39;invalid generation reservation&#39;; END IF;
+  IF p_result IS NULL OR length(btrim(p_result))=0 OR octet_length(p_result)&gt;1600000 THEN RAISE EXCEPTION &#39;invalid completion result&#39;; END IF;
+  IF p_terminal NOT IN (&#39;message_end&#39;,&#39;workflow_finished&#39;,&#39;recovered_message&#39;,&#39;structured_result&#39;) OR p_terminal IS NULL THEN RAISE EXCEPTION &#39;invalid completion terminal&#39;; END IF;
+  IF p_result_sha256 IS DISTINCT FROM encode(sha256(convert_to(p_result,&#39;UTF8&#39;)),&#39;hex&#39;) THEN RAISE EXCEPTION &#39;completion hash mismatch&#39;; END IF;
+  SELECT * INTO old FROM public.creation_completion_evidence WHERE user_id=p_user_id AND request_id=p_request_id;
+  IF FOUND THEN
+    IF old.result_sha256&lt;&gt;p_result_sha256 THEN RAISE EXCEPTION &#39;completion evidence conflict&#39;; END IF;
+    RETURN jsonb_build_object(&#39;recorded&#39;,true);
+  END IF;
+  INSERT INTO public.creation_completion_evidence(user_id,request_id,feature,request_fingerprint,task_type,result,result_sha256,content_chars,terminal,dify_conversation_id,dify_message_id,usage_metadata)
+    VALUES(p_user_id,p_request_id,r.feature,r.fingerprint,p_task_type,p_result,p_result_sha256,char_length(p_result),p_terminal,p_conversation_id,p_message_id,coalesce(p_usage,&#39;{}&#39;::jsonb));
+  RETURN jsonb_build_object(&#39;recorded&#39;,true);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.kaiwu_reconcile_creation(p_actor uuid,p_requests jsonb DEFAULT NULL,p_dry_run boolean DEFAULT true)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE ids jsonb; item jsonb; r public.creation_requests%ROWTYPE; e public.creation_completion_evidence%ROWTYPE;
+  findings jsonb := &#39;[]&#39;::jsonb; state text; counted integer := 0; settled jsonb;
+BEGIN
+  IF p_actor IS NULL THEN RAISE EXCEPTION &#39;admin actor required&#39;; END IF;
+  p_dry_run:=coalesce(p_dry_run,true);
+  IF p_requests IS NULL THEN
+    SELECT coalesce(jsonb_agg(jsonb_build_object(&#39;userId&#39;,user_id,&#39;requestId&#39;,request_id)),&#39;[]&#39;::jsonb) INTO ids
+      FROM (SELECT candidate.user_id,candidate.request_id FROM public.creation_requests candidate JOIN public.creation_completion_evidence proof USING(user_id,request_id)
+        WHERE candidate.status=&#39;pending&#39; ORDER BY proof.completed_at LIMIT 50) candidates;
+  ELSE
+    ids:=p_requests;
+  END IF;
+  IF jsonb_typeof(ids) IS DISTINCT FROM &#39;array&#39; OR jsonb_array_length(ids)&gt;50 THEN RAISE EXCEPTION &#39;at most 50 requests&#39;; END IF;
+  FOR item IN SELECT value FROM jsonb_array_elements(ids) ORDER BY value-&gt;&gt;&#39;userId&#39;,value-&gt;&gt;&#39;requestId&#39; LOOP
+    -- Same user lock serializes settlement, preventing duplicate counter/event increments.
+    PERFORM pg_advisory_xact_lock(hashtextextended(&#39;creation:&#39; || (item-&gt;&gt;&#39;userId&#39;),0));
+    SELECT * INTO r FROM public.creation_requests WHERE user_id=(item-&gt;&gt;&#39;userId&#39;)::uuid AND request_id=item-&gt;&gt;&#39;requestId&#39; FOR UPDATE;
+    IF NOT FOUND THEN state:=&#39;not_found&#39;;
+    ELSIF r.status&lt;&gt;&#39;pending&#39; THEN state:=r.status;
+    ELSE
+      SELECT * INTO e FROM public.creation_completion_evidence WHERE user_id=r.user_id AND request_id=r.request_id;
+      IF NOT FOUND THEN state:=&#39;unknown&#39;;
+      ELSIF e.feature&lt;&gt;r.feature OR e.request_fingerprint&lt;&gt;r.fingerprint OR e.content_chars&lt;&gt;char_length(e.result)
+        OR e.terminal NOT IN (&#39;message_end&#39;,&#39;workflow_finished&#39;,&#39;recovered_message&#39;,&#39;structured_result&#39;)
+        OR length(btrim(e.result))=0 OR e.result_sha256&lt;&gt;encode(sha256(convert_to(e.result,&#39;UTF8&#39;)),&#39;hex&#39;) THEN state:=&#39;invalid_evidence&#39;;
+      ELSIF p_dry_run THEN state:=&#39;ready&#39;;
+      ELSE
+        settled:=public.kaiwu_settle_creation(r.user_id,r.request_id,true,e.task_type,
+          jsonb_build_object(&#39;generation_request_id&#39;,r.request_id,&#39;result_sha256&#39;,e.result_sha256,&#39;content_chars&#39;,e.content_chars,
+            &#39;reconciled&#39;,true,&#39;terminal&#39;,e.terminal,&#39;usage&#39;,e.usage_metadata));
+        IF coalesce((settled-&gt;&gt;&#39;settled&#39;)::boolean,false) THEN state:=&#39;committed&#39;;counted:=counted+1; ELSE state:=&#39;not_settled&#39;; END IF;
+      END IF;
+    END IF;
+    findings:=findings||jsonb_build_array(jsonb_build_object(&#39;userId&#39;,item-&gt;&gt;&#39;userId&#39;,&#39;requestId&#39;,item-&gt;&gt;&#39;requestId&#39;,&#39;state&#39;,state));
+  END LOOP;
+  -- Audit and quota reconciliation commit together. Log failure rolls back the operation.
+  INSERT INTO public.admin_logs(admin_id,action,target_type,details)
+    VALUES(p_actor,&#39;quota_reconcile&#39;,&#39;creation_requests&#39;,jsonb_build_object(&#39;dryRun&#39;,p_dry_run,&#39;counted&#39;,counted,&#39;results&#39;,findings));
+  RETURN jsonb_build_object(&#39;dryRun&#39;,p_dry_run,&#39;counted&#39;,counted,&#39;results&#39;,findings);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.kaiwu_record_creation_completion(uuid,text,text,text,text,text,text,text,jsonb) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.kaiwu_reconcile_creation(uuid,jsonb,boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.kaiwu_record_creation_completion(uuid,text,text,text,text,text,text,text,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.kaiwu_reconcile_creation(uuid,jsonb,boolean) TO service_role;
+NOTIFY pgrst,&#39;reload schema&#39;;
+COMMIT;
+
+
+-- Durable per-work intent and immutable handoff versions. No existing history is removed.
+BEGIN;
+ALTER TABLE public.works ADD COLUMN IF NOT EXISTS creation_brief jsonb NOT NULL DEFAULT &#39;{}&#39;::jsonb;
+CREATE TABLE IF NOT EXISTS public.creation_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  profile_id uuid,
+  work_id uuid REFERENCES public.works(id) ON DELETE SET NULL,
+  payload jsonb NOT NULL,
+  request_input jsonb NOT NULL DEFAULT &#39;{}&#39;::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.creation_sessions ADD COLUMN IF NOT EXISTS request_input jsonb NOT NULL DEFAULT &#39;{}&#39;::jsonb;
+CREATE INDEX IF NOT EXISTS creation_sessions_owner ON public.creation_sessions(user_id, created_at DESC);
+ALTER TABLE public.creation_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS own_creation_sessions ON public.creation_sessions;
+DROP POLICY IF EXISTS insert_own_creation_sessions ON public.creation_sessions;
+CREATE POLICY own_creation_sessions ON public.creation_sessions FOR SELECT TO authenticated
+  USING (user_id = auth.uid());
+CREATE POLICY insert_own_creation_sessions ON public.creation_sessions FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = auth.uid()
+    AND (profile_id IS NULL OR EXISTS (SELECT 1 FROM public.user_profiles p WHERE p.id=profile_id AND p.user_id=auth.uid()))
+    AND (work_id IS NULL OR EXISTS (SELECT 1 FROM public.works w WHERE w.id=work_id AND w.user_id=auth.uid() AND w.profile_id IS NOT DISTINCT FROM creation_sessions.profile_id))
+  );
+REVOKE ALL ON public.creation_sessions FROM authenticated;
+GRANT SELECT, INSERT ON public.creation_sessions TO authenticated;
+REVOKE ALL ON public.creation_sessions FROM anon;
+
+CREATE OR REPLACE FUNCTION public.save_creation_session(p_id uuid, p_payload jsonb, p_branch boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
+DECLARE
+  owner uuid := auth.uid(); profile uuid := NULLIF(p_payload-&gt;&gt;&#39;profileId&#39;, &#39;&#39;)::uuid;
+  work uuid := NULLIF(p_payload-&gt;&gt;&#39;workId&#39;, &#39;&#39;)::uuid;
+  brief jsonb; saved jsonb; title text; prior public.creation_sessions%ROWTYPE;
+  request_input jsonb := jsonb_build_object(&#39;payload&#39;,p_payload,&#39;branch&#39;,coalesce(p_branch,false));
+BEGIN
+  IF owner IS NULL THEN RAISE EXCEPTION &#39;permission denied&#39;; END IF;
+  IF jsonb_typeof(p_payload) IS DISTINCT FROM &#39;object&#39; THEN RAISE EXCEPTION &#39;invalid payload&#39;; END IF;
+  -- Serialize retries of one ID before creating a branch/work. A lost response is safe to retry.
+  PERFORM pg_advisory_xact_lock(hashtextextended(&#39;creation-session:&#39; || p_id::text,0));
+  SELECT * INTO prior FROM public.creation_sessions WHERE id=p_id;
+  IF FOUND THEN
+    IF prior.user_id&lt;&gt;owner OR prior.request_input&lt;&gt;request_input THEN RAISE EXCEPTION &#39;creation request id conflict&#39;; END IF;
+    RETURN jsonb_build_object(&#39;id&#39;,p_id,&#39;payload&#39;,prior.payload);
+  END IF;
+  IF profile IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = profile AND user_id = owner) THEN
+    RAISE EXCEPTION &#39;profile ownership mismatch&#39;;
+  END IF;
+  IF octet_length(p_payload::text) &gt; 1600000 THEN RAISE EXCEPTION &#39;payload too large&#39;; END IF;
+  -- Validate even when branching: a forged parent ID must never be silently ignored.
+  IF work IS NOT NULL THEN
+    SELECT creation_brief INTO brief FROM public.works WHERE id = work AND user_id = owner AND profile_id IS NOT DISTINCT FROM profile FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION &#39;work profile ownership mismatch&#39;; END IF;
+  END IF;
+  IF p_branch OR p_payload-&gt;&gt;&#39;target&#39;=&#39;/dashboard/topic&#39; THEN work := NULL; END IF;
+  IF work IS NULL AND p_payload-&gt;&gt;&#39;target&#39;&lt;&gt;&#39;/dashboard/topic&#39; AND coalesce(jsonb_array_length(p_payload-&gt;&#39;topicOptions&#39;), 0) &lt;= 1 THEN
+    title := left(coalesce(nullif(p_payload-&gt;&gt;&#39;topic&#39;,&#39;&#39;), nullif(p_payload-&gt;&gt;&#39;sourceTitle&#39;,&#39;&#39;), &#39;创作作品&#39;), 60);
+    INSERT INTO public.works(user_id, profile_id, title) VALUES(owner, profile, title) RETURNING id INTO work;
+  END IF;
+  -- Merge nested settings before overwriting the previous object; each hop inherits omitted fields.
+  saved := coalesce(brief, &#39;{}&#39;::jsonb) || p_payload;
+  saved := jsonb_set(saved, &#39;{settings}&#39;, coalesce(brief-&gt;&#39;settings&#39;,&#39;{}&#39;::jsonb) || coalesce(p_payload-&gt;&#39;settings&#39;,&#39;{}&#39;::jsonb));
+  saved := jsonb_set(saved, &#39;{originContent}&#39;, to_jsonb(coalesce(nullif(brief-&gt;&gt;&#39;originContent&#39;,&#39;&#39;), nullif(p_payload-&gt;&gt;&#39;originContent&#39;,&#39;&#39;), p_payload-&gt;&gt;&#39;sourceContent&#39;, &#39;&#39;)));
+  saved := saved - &#39;workId&#39;;
+  IF work IS NOT NULL THEN
+    saved := saved || jsonb_build_object(&#39;workId&#39;, work);
+    UPDATE public.works SET creation_brief = saved, updated_at = now() WHERE id = work AND user_id = owner;
+  END IF;
+  INSERT INTO public.creation_sessions(id, user_id, profile_id, work_id, payload, request_input) VALUES(p_id, owner, profile, work, saved, request_input);
+  RETURN jsonb_build_object(&#39;id&#39;, p_id, &#39;payload&#39;, saved);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.save_creation_session(uuid,jsonb,boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.save_creation_session(uuid,jsonb,boolean) TO authenticated;
+NOTIFY pgrst, &#39;reload schema&#39;;
+COMMIT;
+
+
+-- 素材库：真实素材、认可的好稿、选题索引（2026-10-03）
+-- 只加结构，不删、不改已有数据；可以重复执行。
+-- 依赖 20261002_library_and_progress.sql（material_library 表）。
+
+-- ---------- 素材来源 ----------
+-- ai       AI 生成后收藏的（默认，已有的收藏都算这一类）
+-- real     用户自己记录的真实素材：客户问题、原话、做了什么、过程、真实结果、可拍画面、使用许可
+-- approved 用户点了「认可为好稿」的：可以拿去当风格示例（creator_presets 只认这一类）
+alter table public.material_library add column if not exists kind text not null default &#39;ai&#39;;
+-- 真实素材的结构化字段（客户问题、原话……），正文 content 由这些字段拼出来，方便搜索和继续创作
+alter table public.material_library add column if not exists fields jsonb;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = &#39;material_library_kind_check&#39;) then
+    alter table public.material_library
+      add constraint material_library_kind_check check (kind in (&#39;ai&#39;, &#39;real&#39;, &#39;approved&#39;));
+  end if;
+end $$;
+
+create index if not exists material_library_kind on public.material_library (user_id, kind, created_at desc);
+
+-- ---------- 选题索引 ----------
+-- 选题一批出十几条，素材库按一条一条列。原来每次打开都把最近 300 批的全文拿出来拆，
+-- 300 批以前的看不到，数量也少算。这里给每一批存一份拆好的标题、预览和可搜索文字：
+-- 只在批次新出现、或者删过其中几条（input_data.deletedTopics 变了）时重拆一次。
+-- 历史记录删了，索引跟着删（on delete cascade）。
+create table if not exists public.library_topic_index (
+  history_id uuid primary key references public.script_history(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- 档案：uuid 字符串；没有档案的旧记录记 &#39;default&#39;（和 lib/profile-history 的范围一致）
+  profile_key text not null default &#39;default&#39;,
+  created_at timestamptz not null,
+  work_id uuid,
+  -- 这一批拆出几条
+  item_count int not null default 0,
+  -- [{ t: 标题, p: 预览, s: 用来搜索的纯文字 }]
+  items jsonb not null default &#39;[]&#39;::jsonb,
+  -- 整批的纯文字，先用它筛出可能命中的批次，再逐条筛
+  search_text text not null default &#39;&#39;,
+  -- input_data.deletedTopics 的条数：删过选题后和这里对不上就重拆
+  version int not null default 0,
+  indexed_at timestamptz not null default now()
+);
+
+create index if not exists library_topic_index_list on public.library_topic_index (user_id, profile_key, created_at desc);
+
+alter table public.library_topic_index enable row level security;
+drop policy if exists &quot;own topic index&quot; on public.library_topic_index;
+-- 接口用登录用户的身份读写（lib/admin-auth 的 getServerSupabase），只能动自己的行
+create policy &quot;own topic index&quot; on public.library_topic_index for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+notify pgrst, &#39;reload schema&#39;;
+
+-- ---------- 回填 ----------
+-- 不需要手动回填：素材库「全部产出」每次打开都会把还没索引的批次补上（每次最多 120 批），
+-- 旧数据多时页面会显示「还在整理 N 批旧选题」并自动接着整理，直到全部补齐。
+-- 想一次补完，可以反复打开素材库「全部产出」，或调用 GET /api/library/outputs 直到返回的 indexing 为 0。
+
+
+-- 个人风格预设（2026-10-03）：只加表，不动已有数据；可以重复执行。
+-- 用法见 lib/creator-presets.ts，接口 app/api/creator-presets/route.ts。
+-- 示例只来自用户认可的好稿（material_library.kind = &#39;approved&#39;，见 20261003_library_assets.sql）或用户自己贴的稿子。
+
+create table if not exists public.creator_presets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- 适用档案；为空 = 全部档案通用。
+  -- 故意不加外键：档案删了预设照样留着（不丢用户写的东西），页面上显示「档案已删除」，用户自己决定改到哪个档案。
+  -- 若用 on delete set null，在用的那份会和「全部档案」的在用预设撞唯一索引，反而把删档案卡住。
+  profile_id uuid,
+  name text not null,
+  -- 表达风格：语气、用词、节奏
+  style text not null default &#39;&#39;,
+  -- 结构：开头、展开、收尾
+  structure text not null default &#39;&#39;,
+  -- [{ title, content, libraryId? }]，最多 3 条
+  examples jsonb not null default &#39;[]&#39;::jsonb,
+  -- 正在采用：同一账号同一档案（或「全部档案」）最多一份
+  is_active boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists creator_presets_list on public.creator_presets (user_id, profile_id, updated_at desc);
+create unique index if not exists creator_presets_one_active
+  on public.creator_presets (user_id, coalesce(profile_id::text, &#39;all&#39;))
+  where is_active;
+
+alter table public.creator_presets enable row level security;
+drop policy if exists &quot;own presets&quot; on public.creator_presets;
+create policy &quot;own presets&quot; on public.creator_presets for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+notify pgrst, &#39;reload schema&#39;;
+</textarea>

@@ -1,0 +1,26 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "内容规划",
+  "status": 200,
+  "firstAnswerMs": 8099,
+  "totalMs": 115510,
+  "errors": [],
+  "promptChars": 6198,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 6873
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T15:03:25.182Z"
+}

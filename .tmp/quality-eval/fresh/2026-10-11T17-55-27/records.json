@@ -1,0 +1,95 @@
+[
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "账号定位",
+    "key": "account",
+    "status": "done",
+    "firstAnswerMs": 18175,
+    "totalMs": 548944,
+    "chars": 16207,
+    "pass": false,
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "地名「开车到村」档案和素材里都没有",
+        "地名「是开车到村」档案和素材里都没有",
+        "地名「隔壁村」档案和素材里都没有",
+        "地名「介开车到村」档案和素材里都没有",
+        "地名「的开车到村」档案和素材里都没有",
+        "地名「天肯定到村」档案和素材里都没有"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 16207
+    },
+    "file": "p1-account.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "商业定位",
+    "key": "business",
+    "status": "done",
+    "firstAnswerMs": 19527,
+    "totalMs": 261008,
+    "chars": 10553,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 10553
+    },
+    "file": "p1-business.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  },
+  {
+    "profile": "小张工作号·濮阳本地找工作服务",
+    "profileId": "38437e4f-9386-487f-a30b-72e66ffb1aec",
+    "board": "内容定位",
+    "key": "content",
+    "status": "done",
+    "firstAnswerMs": 18337,
+    "totalMs": 355574,
+    "chars": 15034,
+    "pass": true,
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 15034
+    },
+    "file": "p1-content.md",
+    "steps": [
+      "fact_fix_steps"
+    ]
+  }
+]

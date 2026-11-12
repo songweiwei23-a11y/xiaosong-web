@@ -1,0 +1,29 @@
+{
+  "profile": "锦园地摊串串一元火锅",
+  "board": "选题策划",
+  "status": 200,
+  "firstAnswerMs": 10902,
+  "totalMs": 84199,
+  "errors": [],
+  "promptChars": 4290,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [
+        "顾客见证「### 8. 客人说在地摊吃火锅，得是这」资料里没有这段经历"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2950,
+      "topicCount": 10
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T14:03:05.544Z"
+}

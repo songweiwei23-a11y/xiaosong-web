@@ -1,0 +1,26 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "分镜脚本",
+  "status": 200,
+  "firstAnswerMs": 10036,
+  "totalMs": 71204,
+  "errors": [],
+  "promptChars": 11785,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 2514
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T11:46:17.084Z"
+}

@@ -1,0 +1,1136 @@
+{
+  "at": "2026-10-11T09:26:00.743Z",
+  "profile": "b账号-锦园",
+  "ownRecords": 71,
+  "unattributedRecords": 103,
+  "summary": {
+    "脚本生成": {
+      "n": 5,
+      "pass": 0,
+      "E1": 4,
+      "E2": 1,
+      "E3": 4,
+      "E5": 0,
+      "E7": 3,
+      "warnings": 2
+    },
+    "选题策划": {
+      "n": 5,
+      "pass": 0,
+      "E1": 3,
+      "E2": 2,
+      "E3": 4,
+      "E5": 0,
+      "E7": 5,
+      "warnings": 0
+    },
+    "标题封面": {
+      "n": 2,
+      "pass": 2,
+      "E1": 0,
+      "E2": 0,
+      "E3": 0,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 0
+    },
+    "开篇钩子": {
+      "n": 5,
+      "pass": 1,
+      "E1": 4,
+      "E2": 0,
+      "E3": 2,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 0
+    },
+    "分镜脚本": {
+      "n": 2,
+      "pass": 0,
+      "E1": 1,
+      "E2": 0,
+      "E3": 1,
+      "E5": 0,
+      "E7": 2,
+      "warnings": 0
+    },
+    "跨行业二创": {
+      "n": 3,
+      "pass": 0,
+      "E1": 3,
+      "E2": 0,
+      "E3": 2,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 1
+    },
+    "审稿优化": {
+      "n": 5,
+      "pass": 0,
+      "E1": 2,
+      "E2": 0,
+      "E3": 5,
+      "E5": 0,
+      "E7": 2,
+      "warnings": 2
+    },
+    "创作方向": {
+      "n": 5,
+      "pass": 0,
+      "E1": 5,
+      "E2": 0,
+      "E3": 4,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 0
+    },
+    "成交理由": {
+      "n": 1,
+      "pass": 0,
+      "E1": 1,
+      "E2": 0,
+      "E3": 0,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 0
+    },
+    "内容规划": {
+      "n": 1,
+      "pass": 0,
+      "E1": 1,
+      "E2": 0,
+      "E3": 0,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 0
+    },
+    "行业建议": {
+      "n": 1,
+      "pass": 0,
+      "E1": 1,
+      "E2": 0,
+      "E3": 1,
+      "E5": 1,
+      "E7": 0,
+      "warnings": 0
+    },
+    "拆解爆款": {
+      "n": 3,
+      "pass": 0,
+      "E1": 3,
+      "E2": 2,
+      "E3": 0,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 0
+    },
+    "自由对话(free_chat)": {
+      "n": 7,
+      "pass": 2,
+      "E1": 3,
+      "E2": 0,
+      "E3": 4,
+      "E5": 0,
+      "E7": 0,
+      "warnings": 0
+    }
+  },
+  "records": [
+    {
+      "board": "脚本生成",
+      "at": "2026-10-11T04:52",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3043,
+      "E1_absolute": [
+        "最值"
+      ],
+      "E2_platform": [
+        "加微信"
+      ],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [
+        "第26计"
+      ],
+      "placeholders": 0,
+      "warn": [
+        "私信引导 1 处（平台规则与内容限制需统一）"
+      ],
+      "pass": false
+    },
+    {
+      "board": "脚本生成",
+      "at": "2026-10-11T02:42",
+      "source": "script_history",
+      "facing": true,
+      "chars": 4382,
+      "E1_absolute": [
+        "第一",
+        "最好"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「八度\"需核实)、客人具体说的话 - 不可编造:」资料里没有这段经历",
+        "顾客见证「台词) - 如果客人真的说了类似的话,可以收真」资料里没有这段经历",
+        "顾客见证「度数) - 如果客人吃完真的说了什么,记得收同期声」资料里没有这段经历",
+        "顾客见证「,就说平时怎么和客人介绍就怎么说,拍10条选1条自然」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "【本轮"
+      ],
+      "placeholders": 2,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "脚本生成",
+      "at": "2026-10-11T02:38",
+      "source": "script_history",
+      "facing": true,
+      "chars": 4195,
+      "E1_absolute": [
+        "第一",
+        "最值"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "模型自称「无编造」——以这里的核对为准，别信这句",
+        "顾客见证「征得客人同意，若客人不愿出镜或说话,改拍背影侧面和动」资料里没有这段经历",
+        "顾客见证「\"\"暖和\"等,若客人不愿说话则删除此句,用动作」资料里没有这段经历",
+        "顾客见证「表情,不摆拍。若客人愿意说话,保留真实反应;若」资料里没有这段经历",
+        "顾客见证「\"\"暖和\"等。若客人不愿说话则删除此镜头,直接」资料里没有这段经历",
+        "顾客见证「动作,最真实。若客人不愿说话,就别勉强,用动作」资料里没有这段经历",
+        "顾客见证「温\") - **客人是否愿意出镜说话**:提前和客人沟」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 4,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "脚本生成",
+      "at": "2026-10-11T02:35",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3348,
+      "E1_absolute": [
+        "第一"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「） 第五层（客人评价）：如果客人同意出镜」资料里没有这段经历",
+        "顾客见证「客人评价）：如果客人同意出镜说一句\"冬天就该这么吃」资料里没有这段经历",
+        "顾客见证「口下去 【如果客人同意出镜说话：冬天就该这么吃】」资料里没有这段经历",
+        "顾客见证「果客人同意出镜】客人说话的画面；【如果不同」资料里没有这段经历",
+        "顾客见证「**台词**：【客人出镜说：冬天就该这么吃】」资料里没有这段经历",
+        "顾客见证「点**：提前沟通客人是否愿意说这句话，如果不愿意就」资料里没有这段经历",
+        "顾客见证「(风声、炭火声、客人说话声),音乐不要盖过」资料里没有这段经历",
+        "顾客见证「音 - 如果客人不愿意出镜说话,就删掉镜头7,用」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 4,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "脚本生成",
+      "at": "2026-10-09T13:24",
+      "source": "script_history",
+      "facing": true,
+      "chars": 4421,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「- 自然收束：客人说\"冬天就该这么吃\"（」资料里没有这段经历",
+        "顾客见证「过吗 昨天一桌客人说,冬天在地摊吃火锅,」资料里没有这段经历",
+        "顾客见证「的这个表情 【客人说,按现场真实回答】」资料里没有这段经历",
+        "顾客见证「词**：昨天一桌客人说,冬天在地摊吃火锅,」资料里没有这段经历",
+        "顾客见证「8-33秒 | 客人真实评价(按现场回答)**」资料里没有这段经历",
+        "顾客见证「**画面**：客人说话(可背影、侧面或打」资料里没有这段经历",
+        "顾客见证「**台词**：【客人说,按现场真实回答】」资料里没有这段经历",
+        "顾客见证「情的自然反应,若客人说了话就录下来,没说就」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "第10计"
+      ],
+      "placeholders": 7,
+      "warn": [
+        "占位过多 7 处，直接念不了"
+      ],
+      "pass": false
+    },
+    {
+      "board": "选题策划",
+      "at": "2026-10-11T04:47",
+      "source": "script_history",
+      "facing": true,
+      "chars": 6121,
+      "E1_absolute": [
+        "必吃"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [
+        "36计",
+        "第26计"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "选题策划",
+      "at": "2026-10-11T02:53",
+      "source": "script_history",
+      "facing": true,
+      "chars": 7532,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "模型自称「没有编造」——以这里的核对为准，别信这句",
+        "顾客见证「验) → 结果(客人脱外套说暖和) **1️⃣」资料里没有这段经历",
+        "顾客见证「肉蘸料吃的表情→客人说的话(保留现场原话)」资料里没有这段经历",
+        "顾客见证「表情需现场拍到;客人具体说什么保留原话,可能是」资料里没有这段经历",
+        "顾客见证「都如实呈现。如果客人没主动说,配音就只讲\"你看他」资料里没有这段经历",
+        "顾客见证「(3-5秒) ⑤客人说话瞬间或棚内全景(炭」资料里没有这段经历",
+        "顾客见证「应) → 结果(客人说暖和或配音总结\"你看」资料里没有这段经历",
+        "顾客见证「那句话要录清楚;客人说的话如果环境音嘈杂,」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "36计",
+        "第10计",
+        "自检"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "选题策划",
+      "at": "2026-10-02T12:11",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3697,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「- 第2秒：有个客人当面说\"你这川菜一点都不辣」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "36计",
+        "第31计",
+        "第27计",
+        "第7计"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "选题策划",
+      "at": "2026-10-02T11:00",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3339,
+      "E1_absolute": [
+        "保证"
+      ],
+      "E2_platform": [
+        "揭秘"
+      ],
+      "E3_unsupported": [
+        "顾客见证「* 解题型：客人有次说吃出杂味 → 师傅从」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "36计",
+        "第15计",
+        "自检",
+        "第7计",
+        "第8计"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "选题策划",
+      "at": "2026-10-02T10:53",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3740,
+      "E1_absolute": [
+        "第一"
+      ],
+      "E2_platform": [
+        "揭秘",
+        "内幕"
+      ],
+      "E3_unsupported": [
+        "模型自称「未编造」——以这里的核对为准，别信这句",
+        "百分比「- 第3秒：但99%的地摊都」没有出处"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "36计",
+        "第32计",
+        "第31计",
+        "第20计",
+        "自检"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "标题封面",
+      "at": "2026-10-01T03:59",
+      "source": "script_history",
+      "facing": true,
+      "chars": 1206,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": true
+    },
+    {
+      "board": "标题封面",
+      "at": "2026-10-01T03:30",
+      "source": "script_history",
+      "facing": true,
+      "chars": 1216,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": true
+    },
+    {
+      "board": "开篇钩子",
+      "at": "2026-10-11T04:49",
+      "source": "script_history",
+      "facing": true,
+      "chars": 1620,
+      "E1_absolute": [
+        "第一",
+        "最好"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 1,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "开篇钩子",
+      "at": "2026-10-09T13:19",
+      "source": "script_history",
+      "facing": true,
+      "chars": 1777,
+      "E1_absolute": [
+        "最高"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「) > 昨天一桌客人说,冬天在地摊吃火锅,」资料里没有这段经历",
+        "顾客见证「险**:需要真实客人说过类似的话,或者拍摄」资料里没有这段经历",
+        "顾客见证「,或者拍摄时引导客人说出来;如果没有,改成」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "开篇钩子",
+      "at": "2026-10-02T09:29",
+      "source": "script_history",
+      "facing": true,
+      "chars": 2251,
+      "E1_absolute": [
+        "绝对"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "开篇钩子",
+      "at": "2026-10-01T05:12",
+      "source": "script_history",
+      "facing": true,
+      "chars": 883,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": true
+    },
+    {
+      "board": "开篇钩子",
+      "at": "2026-10-01T04:08",
+      "source": "script_history",
+      "facing": true,
+      "chars": 1990,
+      "E1_absolute": [
+        "最值",
+        "最划算",
+        "第一"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "百分比「了九年火锅,发现90%的人点菜」没有出处",
+        "百分比「这群人**：用\"90%的人都在」没有出处",
+        "百分比「们担心\"我也是那90%\"——同」没有出处",
+        "百分比「条),也不会说\"90%的人\"这」没有出处"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "分镜脚本",
+      "at": "2026-10-01T05:35",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3002,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [
+        "自检"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "分镜脚本",
+      "at": "2026-10-01T03:28",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3397,
+      "E1_absolute": [
+        "最新鲜",
+        "保证"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "地名「底部遮挡区」档案和素材里都没有"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "自检"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "跨行业二创",
+      "at": "2026-09-30T18:22",
+      "source": "script_history",
+      "facing": true,
+      "chars": 14234,
+      "E1_absolute": [
+        "最值",
+        "最划算",
+        "第一",
+        "最新鲜",
+        "最好",
+        "第一家"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「你还是老样子？\"客人说\"对，就爱吃你这个味」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 2,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "跨行业二创",
+      "at": "2026-09-30T09:14",
+      "source": "script_history",
+      "facing": true,
+      "chars": 20251,
+      "E1_absolute": [
+        "第一",
+        "最划算",
+        "最正宗",
+        "最值",
+        "保证",
+        "最好",
+        "最好吃",
+        "最低"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 2,
+      "warn": [
+        "私信引导 2 处（平台规则与内容限制需统一）"
+      ],
+      "pass": false
+    },
+    {
+      "board": "跨行业二创",
+      "at": "2026-09-30T06:51",
+      "source": "script_history",
+      "facing": true,
+      "chars": 16060,
+      "E1_absolute": [
+        "第一",
+        "最好",
+        "最高"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「人的挑战。比如有客人说\"老板给我来最辣的\"」资料里没有这段经历",
+        "顾客见证「满意的表情、或者客人说的话\"老板你这手艺真」资料里没有这段经历",
+        "经营承诺「\"今天进店的宝妈免费领试用装\"」老板没说过要这样做",
+        "地名「身房器械区」档案和素材里都没有",
+        "地名「器械区」档案和素材里都没有",
+        "地名「你从器械区」档案和素材里都没有",
+        "地名「洗澡区」档案和素材里都没有",
+        "地名「台或咨询区」档案和素材里都没有"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 5,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "审稿优化",
+      "at": "2026-10-11T02:15",
+      "source": "script_history",
+      "facing": true,
+      "chars": 3133,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「句 | 昨天一桌客人说，冬天在地摊吃火锅，」资料里没有这段经历",
+        "顾客见证「| 中段 | 【客人说，按现场真实回答】」资料里没有这段经历",
+        "顾客见证「实回答】 | 【客人说，按现场真实回答】」资料里没有这段经历",
+        "顾客见证「火锅** 【客人说，按现场真实回答】」资料里没有这段经历",
+        "顾客见证「（可选） - 如客人不愿出镜或说话，可只拍手部、背影」资料里没有这段经历",
+        "顾客见证「影动作，删掉\"【客人说】\"占位 ---」资料里没有这段经历",
+        "顾客见证「起来这么厚 【客人说，按现场真实回答】」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 6,
+      "warn": [
+        "占位过多 6 处，直接念不了"
+      ],
+      "pass": false
+    },
+    {
+      "board": "审稿优化",
+      "at": "2026-10-11T02:12",
+      "source": "script_history",
+      "facing": true,
+      "chars": 4087,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「问题】\"昨天一桌客人说,冬天在地摊吃火锅,」资料里没有这段经历",
+        "顾客见证「原文客人说什么没有具体原话」资料里没有这段经历",
+        "顾客见证「句 | 昨天一桌客人说,冬天在地摊吃火锅,」资料里没有这段经历",
+        "顾客见证「这个表情 【客人说，按现场真实回答】」资料里没有这段经历",
+        "顾客见证「话——当前占位【客人说，按现场真实回答】」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 3,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "审稿优化",
+      "at": "2026-10-11T02:08",
+      "source": "script_history",
+      "facing": true,
+      "chars": 5190,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「套 - 昨天一桌客人的评价 - 降温、进棚前搓」资料里没有这段经历",
+        "顾客见证「刚把新棚子装好，昨天客人说...\" | | 信」资料里没有这段经历",
+        "顾客见证「题2】\"昨天一桌客人说\"开场偏平**」资料里没有这段经历",
+        "顾客见证「原文：昨天一桌客人说,冬天在地摊吃火锅,」资料里没有这段经历",
+        "顾客见证「具体场景，或者把客人评价后置 **【问题3」资料里没有这段经历",
+        "顾客见证「句 | 昨天一桌客人说,冬天在地摊吃火锅,」资料里没有这段经历",
+        "顾客见证「们吃的这个表情【客人说,按现场真实回答】」资料里没有这段经历",
+        "顾客见证「的这个表情 【客人说，按现场真实回答】」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "校对"
+      ],
+      "placeholders": 6,
+      "warn": [
+        "占位过多 6 处，直接念不了"
+      ],
+      "pass": false
+    },
+    {
+      "board": "审稿优化",
+      "at": "2026-10-02T12:26",
+      "source": "script_history",
+      "facing": true,
+      "chars": 6449,
+      "E1_absolute": [
+        "最高"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「继续工作,偶尔和客人说笑,不刻意看镜头」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "审稿优化",
+      "at": "2026-10-02T11:34",
+      "source": "script_history",
+      "facing": true,
+      "chars": 6242,
+      "E1_absolute": [
+        "第一"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「或者辣椒不够香,客人不一定说出来,但我自己得知道」资料里没有这段经历",
+        "顾客见证「**字幕**：\"客人不一定说出来,但我自己得知道」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [
+        "自检"
+      ],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "创作方向",
+      "at": "2026-10-11T04:46",
+      "source": "script_history",
+      "facing": false,
+      "chars": 8041,
+      "E1_absolute": [
+        "第一",
+        "必吃",
+        "最强",
+        "最值"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 5,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "创作方向",
+      "at": "2026-10-11T04:43",
+      "source": "script_history",
+      "facing": false,
+      "chars": 8033,
+      "E1_absolute": [
+        "第一",
+        "必吃",
+        "最强",
+        "最值"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「;最后补一个棚内客人用餐的全景,说\"所以秋天来正合适\"」资料里没有这段经历",
+        "顾客见证「### 方向8:老客说秋天还是得来这家吃」资料里没有这段经历",
+        "顾客见证「了实话 - 老客说这家秋天比夏天还值得」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 5,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "创作方向",
+      "at": "2026-10-11T03:00",
+      "source": "script_history",
+      "facing": false,
+      "chars": 11353,
+      "E1_absolute": [
+        "第一",
+        "最值",
+        "最暖和"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「是什么 - 客人说冬天在地摊吃火锅，得」资料里没有这段经历",
+        "顾客见证「自然产生信任\"连老客都说好肯定错不了\"，对应」资料里没有这段经历",
+        "顾客见证「傅笑了 - 客人说我吃你家这么久，冬天」资料里没有这段经历",
+        "顾客见证「、评论区有没有\"老客都说好\"\"想去\"\"真实\"」资料里没有这段经历",
+        "顾客见证「是什么 - 客人说冬天就该在地摊棚子里」资料里没有这段经历",
+        "顾客见证「不想走 - 客人说冬天在地摊吃火锅，得」资料里没有这段经历",
+        "顾客见证「得多香 - 客人说下雨天在地摊棚子里吃」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 8,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "创作方向",
+      "at": "2026-10-11T02:51",
+      "source": "script_history",
+      "facing": false,
+      "chars": 10911,
+      "E1_absolute": [
+        "最值",
+        "最划算",
+        "第一"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「是什么 - 客人说冬天在地摊吃火锅，得」资料里没有这段经历",
+        "顾客见证「、蘸料、表情）→客人说\"真暖和\"或\"这个好」资料里没有这段经历",
+        "顾客见证「会觉得\"老板在乎客人不是说说而已\"，自然产生信任」资料里没有这段经历",
+        "顾客见证「### 方向3：老客说冬天还是得来这（用熟」资料里没有这段经历",
+        "顾客见证「夹羊肉、表情）→老客说\"这个冬天吃正好\"或」资料里没有这段经历",
+        "顾客见证「慢炖X小时)→等客人来→配音说\"师傅说冬天开地摊比」资料里没有这段经历",
+        "顾客见证「你\"的理由(真实客人体验比自己说管用)+拍摄难度可控」资料里没有这段经历",
+        "顾客见证「、蘸料、表情)→客人说\"暖和\"或\"好\"的瞬」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 6,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "创作方向",
+      "at": "2026-10-11T02:47",
+      "source": "script_history",
+      "facing": false,
+      "chars": 10889,
+      "E1_absolute": [
+        "最值",
+        "最划算",
+        "第一"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「是什么 - 客人说冬天在地摊吃火锅，得」资料里没有这段经历",
+        "顾客见证「、蘸料、表情）→客人说\"真暖和\"或\"这个好」资料里没有这段经历",
+        "顾客见证「会觉得\"老板在乎客人不是说说而已\"，自然产生信任」资料里没有这段经历",
+        "顾客见证「### 方向3：老客说冬天还是得来这（用熟」资料里没有这段经历",
+        "顾客见证「夹羊肉、表情）→老客说\"这个冬天吃正好\"或」资料里没有这段经历",
+        "顾客见证「、喝汤、表情)→客人说\"确实够\"或\"这个配」资料里没有这段经历",
+        "顾客见证「慢炖X小时)→等客人来→配音说\"师傅说冬天开地摊比」资料里没有这段经历",
+        "顾客见证「你\"的理由(真实客人体验比自己说管用)+拍摄难度可控」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 1,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "成交理由",
+      "at": "2026-09-30T12:02",
+      "source": "script_history",
+      "facing": false,
+      "chars": 1956,
+      "E1_absolute": [
+        "最划算",
+        "最实惠"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "内容规划",
+      "at": "2026-10-09T12:10",
+      "source": "script_history",
+      "facing": false,
+      "chars": 5996,
+      "E1_absolute": [
+        "最值",
+        "最强"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "行业建议",
+      "at": "2026-10-09T12:08",
+      "source": "script_history",
+      "facing": false,
+      "chars": 10934,
+      "E1_absolute": [
+        "第一",
+        "最便宜",
+        "最好吃",
+        "最值",
+        "最划算",
+        "最省",
+        "最强",
+        "最正宗",
+        "100%"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "百分比「:开头抛出一个\"99%的人不知」没有出处",
+        "百分比「*:起号期的观众100%是陌生人」没有出处",
+        "百分比「**:现在的观众100%是陌生人」没有出处",
+        "顾客见证「是这样穿的\"）、客人吃完的评价（\"没想到地摊能吃到」资料里没有这段经历",
+        "顾客见证「么调整的\"\"现在老顾客都说,这是南乐最正宗的川」资料里没有这段经历",
+        "地名「南省濮阳市」档案和素材里都没有"
+      ],
+      "E5_complete": [
+        "疑似截断"
+      ],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "拆解爆款",
+      "at": "2026-10-01T05:37",
+      "source": "script_history",
+      "facing": false,
+      "chars": 5897,
+      "E1_absolute": [
+        "第一",
+        "保证"
+      ],
+      "E2_platform": [
+        "揭秘"
+      ],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "拆解爆款",
+      "at": "2026-09-30T18:14",
+      "source": "script_history",
+      "facing": false,
+      "chars": 10271,
+      "E1_absolute": [
+        "最高",
+        "最值"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "拆解爆款",
+      "at": "2026-09-30T06:14",
+      "source": "script_history",
+      "facing": false,
+      "chars": 11356,
+      "E1_absolute": [
+        "第一"
+      ],
+      "E2_platform": [
+        "加微信"
+      ],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "自由对话(free_chat)",
+      "at": "2026-10-02T05:33",
+      "source": "chat_conversations",
+      "facing": false,
+      "chars": 5852,
+      "E1_absolute": [
+        "第一",
+        "最好"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "百分比「脸,可以吗?\"(90%的客人会」没有出处",
+        "顾客见证「头\",让他自然和客人说话 - 拍10-」资料里没有这段经历",
+        "顾客见证「- 动作:客人可能会说\"嗯,这个味对\"或者」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "自由对话(free_chat)",
+      "at": "2026-10-02T05:33",
+      "source": "chat_conversations",
+      "facing": false,
+      "chars": 7561,
+      "E1_absolute": [
+        "第一"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "顾客见证「到 - 如果客人说了什么(\"嗯,这个味」资料里没有这段经历",
+        "顾客见证「,淋在口水鸡上,客人吃第一口,说,'这个味对,就是成」资料里没有这段经历",
+        "顾客见证「进嘴里 - 客人点头,说话(如果拍到原声更好」资料里没有这段经历",
+        "顾客见证「应 - 如果客人不愿意说话,表情(满足、点头」资料里没有这段经历"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "自由对话(free_chat)",
+      "at": "2026-10-01T04:23",
+      "source": "chat_conversations",
+      "facing": false,
+      "chars": 2330,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "价格「天天这个价，锅底6块，蘸料2」档案和素材里都没有",
+        "价格「个人，点个锅底，6块钱，一人摊」档案和素材里都没有",
+        "价格「摊1块5。 蘸料2块，随便加」档案和素材里都没有",
+        "价格「20串，80串，40块钱。 再点」档案和素材里都没有",
+        "价格「串5毛一串，锅底6块，蘸料2」档案和素材里都没有",
+        "经营承诺「我从里面抽一个，送一份烤鱼片，」老板没说过要这样做"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "自由对话(free_chat)",
+      "at": "2026-10-01T04:23",
+      "source": "chat_conversations",
+      "facing": false,
+      "chars": 842,
+      "E1_absolute": [
+        "第一"
+      ],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    },
+    {
+      "board": "自由对话(free_chat)",
+      "at": "2026-10-01T03:35",
+      "source": "chat_conversations",
+      "facing": false,
+      "chars": 1721,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": true
+    },
+    {
+      "board": "自由对话(free_chat)",
+      "at": "2026-09-30T15:44",
+      "source": "chat_conversations",
+      "facing": false,
+      "chars": 96,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": true
+    },
+    {
+      "board": "自由对话(free_chat)",
+      "at": "2026-09-30T15:44",
+      "source": "chat_conversations",
+      "facing": false,
+      "chars": 724,
+      "E1_absolute": [],
+      "E2_platform": [],
+      "E3_unsupported": [
+        "价格「：详细算账（锅底6块、蘸料2」档案和素材里都没有",
+        "价格「（锅底6块、蘸料2块、串串5」档案和素材里都没有"
+      ],
+      "E5_complete": [],
+      "E7_meta": [],
+      "placeholders": 0,
+      "warn": [],
+      "pass": false
+    }
+  ]
+}

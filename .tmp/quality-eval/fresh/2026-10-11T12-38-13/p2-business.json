@@ -1,0 +1,26 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "商业定位",
+  "status": 200,
+  "firstAnswerMs": 12413,
+  "totalMs": 233486,
+  "errors": [],
+  "promptChars": 31761,
+  "judged": {
+    "gates": {
+      "E1": [],
+      "E2": [],
+      "E3": [],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 10428
+    },
+    "pass": true
+  },
+  "at": "2026-10-11T13:20:59.502Z"
+}

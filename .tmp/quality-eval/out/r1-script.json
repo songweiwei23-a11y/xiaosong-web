@@ -1,0 +1,24 @@
+{
+  "round": 1,
+  "case": "script",
+  "label": "脚本生成（30 秒）",
+  "status": 200,
+  "firstAnswerMs": 8382,
+  "totalMs": 56296,
+  "answerEvents": 542,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 4276,
+  "auto": {
+    "issues": [
+      "结尾疑似截断",
+      "疑似编造的顾客原话：客人的话说",
+      "台词偏多（622 字，30 秒最多约 150 字）"
+    ],
+    "metrics": {
+      "spokenCjk": 622,
+      "chars": 1115
+    }
+  },
+  "at": "2026-10-11T03:39:44.207Z"
+}

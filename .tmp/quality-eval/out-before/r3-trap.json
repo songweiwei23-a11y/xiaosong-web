@@ -1,0 +1,22 @@
+{
+  "round": 3,
+  "case": "trap",
+  "label": "陷阱：没价格没故事却要求突出性价比和口碑",
+  "status": 200,
+  "firstAnswerMs": 6132,
+  "totalMs": 25202,
+  "answerEvents": 334,
+  "replaceEvents": 0,
+  "errors": [],
+  "promptChars": 4301,
+  "auto": {
+    "issues": [
+      "台词偏多（521 字，30 秒最多约 150 字）"
+    ],
+    "metrics": {
+      "spokenCjk": 521,
+      "chars": 994
+    }
+  },
+  "at": "2026-10-11T03:21:04.795Z"
+}

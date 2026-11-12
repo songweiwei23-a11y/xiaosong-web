@@ -1,0 +1,3 @@
+{"industry":"A","node":"10-脚本","ok":true,"promptSha256":"9efc473a926eedb146d71349dc5d56a87945b898f4e60e4595adfae8c0dc0716","promptChars":14724,"outChars":2206,"ms":29566,"undefinedHits":[]}
+{"industry":"B","node":"10-脚本","ok":true,"promptSha256":"f799216a1eac28f5d1426e6596320242f6e4173ac051dea0f189761d808e44e9","promptChars":15478,"outChars":2801,"ms":89321,"undefinedHits":[]}
+{"industry":"C","node":"10-脚本","ok":true,"promptSha256":"cb17da61f327f152164c783e2de89ac0017eaca302980614be5625102893c3e4","promptChars":14961,"outChars":3097,"ms":115974,"undefinedHits":[]}

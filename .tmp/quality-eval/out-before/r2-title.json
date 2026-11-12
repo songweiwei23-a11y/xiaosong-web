@@ -1,0 +1,29 @@
+{
+  "round": 2,
+  "case": "title",
+  "label": "标题封面（5 个）",
+  "status": 200,
+  "firstAnswerMs": 6960,
+  "totalMs": 37562,
+  "answerEvents": 545,
+  "replaceEvents": 1,
+  "errors": [],
+  "promptChars": 7752,
+  "auto": {
+    "issues": [
+      "数字无出处：千万、20块、30块"
+    ],
+    "metrics": {
+      "titleCount": 5,
+      "titleLengths": [
+        21,
+        22,
+        20,
+        19,
+        21
+      ],
+      "chars": 1685
+    }
+  },
+  "at": "2026-10-11T03:07:56.990Z"
+}

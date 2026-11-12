@@ -1,0 +1,79 @@
+{
+  "passed": 18,
+  "database": "isolated PGlite PostgreSQL",
+  "roles": "real SET ROLE authenticated/anon with RLS and auth.uid fixtures",
+  "results": [
+    {
+      "name": "saves full settings and original content to snapshot and work",
+      "passed": true
+    },
+    {
+      "name": "partial settings update inherits audience, structure and duration while changing purpose",
+      "passed": true
+    },
+    {
+      "name": "old snapshot remains immutable after later hop",
+      "passed": true
+    },
+    {
+      "name": "foreign account profile or work id is denied, even for branch",
+      "passed": true
+    },
+    {
+      "name": "same account different profile work is denied, including branch and null-profile",
+      "passed": true
+    },
+    {
+      "name": "branch creates separate work and inherits prior intent without changing parent",
+      "passed": true
+    },
+    {
+      "name": "multi-selection snapshot creates no phantom work",
+      "passed": true
+    },
+    {
+      "name": "topic planning target never reuses or precreates work, including single input",
+      "passed": true
+    },
+    {
+      "name": "multi-selection branch strips original work id and leaves parent unchanged",
+      "passed": true
+    },
+    {
+      "name": "duplicate session id rolls back attempted work update atomically",
+      "passed": true
+    },
+    {
+      "name": "lost branch response retry returns same snapshot without creating another work",
+      "passed": true
+    },
+    {
+      "name": "other account cannot reuse a global snapshot id to create orphan work",
+      "passed": true
+    },
+    {
+      "name": "explicit transaction rollback removes new work and snapshot together",
+      "passed": true
+    },
+    {
+      "name": "direct table insert cannot attach foreign work/profile or forge owner",
+      "passed": true
+    },
+    {
+      "name": "cross-account reads are hidden; RPC cannot update owner A work",
+      "passed": true
+    },
+    {
+      "name": "oversized payload and malformed payload are rejected without work changes",
+      "passed": true
+    },
+    {
+      "name": "anon has no snapshot or RPC privileges",
+      "passed": true
+    },
+    {
+      "name": "migration rerun preserves works, snapshots and historical data",
+      "passed": true
+    }
+  ]
+}

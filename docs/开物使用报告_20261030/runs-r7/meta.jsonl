@@ -1,0 +1,6 @@
+{"industry":"A","node":"06-起号方案","ok":true,"promptSha256":"f629d5e7e75b388a9b615499766e2b530e3f5919cbf3e4f10bc3fed27f2e3800","promptChars":22571,"outChars":2247,"ms":44319,"undefinedHits":[]}
+{"industry":"C","node":"06-起号方案","ok":true,"promptSha256":"0eeed3df0e884d909faecd10aeb15e7538225e128473057c9558e835bdf6b8da","promptChars":20969,"outChars":2900,"ms":100105,"undefinedHits":[]}
+{"industry":"B","node":"06-起号方案","ok":true,"promptSha256":"dc9669103c80cde5879dec26f1fce843e4a90a2db50a86ddf33b9eb98bfabba2","promptChars":21979,"outChars":2881,"ms":101904,"undefinedHits":[]}
+{"industry":"A","node":"10-脚本","ok":true,"promptSha256":"619a10b044fc09ec7693b8c4f51248169d7762e511e4e47261fedff9c9a5cfdb","promptChars":14580,"outChars":3325,"ms":112763,"undefinedHits":[]}
+{"industry":"C","node":"10-脚本","ok":true,"promptSha256":"45e62a929c1f70fc6d683b5ee62b55cdc07b98cb896eb81cb934c6c436e65075","promptChars":14817,"outChars":2708,"ms":143384,"undefinedHits":[]}
+{"industry":"B","node":"10-脚本","ok":true,"promptSha256":"97cf14b95ccc8c8d414260f15c2d1d02069bfba19fd715cd59de95ae384cab3b","promptChars":15334,"outChars":3056,"ms":146448,"undefinedHits":[]}

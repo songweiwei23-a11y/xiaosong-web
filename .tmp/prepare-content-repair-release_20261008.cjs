@@ -1,0 +1,13 @@
+const fs=require('fs');
+const crypto=require('crypto');
+const {spawnSync}=require('child_process');
+const files=['lib/result-reconciliation.ts','lib/remark-autolink-boundary.ts','lib/bounded-result-check.ts','lib/review-verification.ts','lib/dify-task.ts','components/markdown.tsx','app/api/dify/stream/route.ts','lib/creation-items.ts','lib/profile-summary.ts','app/dashboard/creative-brief/page.tsx','app/dashboard/title/page.tsx'];
+const root='docs/全板块质量修复_20261008';
+const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const entries=files.map(file=>({file,sha256:sha(file),beforeSha256:fs.existsSync(`${root}/修改前备份/${file}.bak`)?sha(`${root}/修改前备份/${file}.bak`):null}));
+fs.writeFileSync(`${root}/上线文件清单.json`,JSON.stringify({time:new Date().toISOString(),scope:'11项源码文件：原10文件及网页复测补齐的标题页状态传递；输出规则、上下文、简报生成和二创提示词候选不发布；Dify不发布',files:entries},null,2));
+fs.writeFileSync('.tmp/content-repair-before_20261008.sha256',entries.filter(x=>x.beforeSha256).map(x=>`${x.beforeSha256}  ${x.file}`).join('\n')+'\n');
+fs.writeFileSync('.tmp/content-repair-after_20261008.sha256',entries.map(x=>`${x.sha256}  ${x.file}`).join('\n')+'\n');
+const r=spawnSync('tar',['-czf','.tmp/kaiwu-content-repair_20261008.tar.gz',...files],{stdio:'inherit'});
+if(r.status!==0)throw Error('Packaging failed');
+console.log(JSON.stringify({files:files.length,archiveBytes:fs.statSync('.tmp/kaiwu-content-repair_20261008.tar.gz').size}));

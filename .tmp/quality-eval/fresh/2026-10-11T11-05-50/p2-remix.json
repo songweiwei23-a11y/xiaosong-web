@@ -1,0 +1,31 @@
+{
+  "profile": "实体获客编导-不一",
+  "board": "跨行业二创",
+  "status": 200,
+  "firstAnswerMs": 9763,
+  "totalMs": 92866,
+  "errors": [],
+  "promptChars": 6529,
+  "judged": {
+    "gates": {
+      "E1": [
+        "最好"
+      ],
+      "E2": [],
+      "E3": [
+        "百分比「*：南乐本地商家90%都在犯这」没有出处"
+      ],
+      "E4": [],
+      "E5": [],
+      "E6": [],
+      "E7": []
+    },
+    "warn": [],
+    "metrics": {
+      "chars": 4570,
+      "planCount": 2
+    },
+    "pass": false
+  },
+  "at": "2026-10-11T11:19:21.351Z"
+}
