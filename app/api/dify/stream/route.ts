@@ -480,14 +480,13 @@ export async function POST(req: NextRequest) {
                   if (totalChunks === 1) {
                     console.log('✅ 开始接收内容，事件类型:', data.event);
                   }
-                  if (!topicTask) {
-                    shownText += text;
-                    send({
-                      answer: text,
-                      conversation_id: capturedConversationId || data.conversation_id,
-                      message_id: capturedMessageId || undefined,
-                    });
-                  }
+                  // 选题也要流式输出，不能等全部完成才显示
+                  shownText += text;
+                  send({
+                    answer: text,
+                    conversation_id: capturedConversationId || data.conversation_id,
+                    message_id: capturedMessageId || undefined,
+                  });
                 }
               }
               if (done) return totalChunks > 0 && !receivedEnd ? { kind: 'broken', error: new Error('上游缺少完成标记') } : { kind: 'done' };
