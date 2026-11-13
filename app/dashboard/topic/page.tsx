@@ -555,10 +555,7 @@ export default function TopicPage() {
         return readDifyStream(response, {
           onChunk: (_piece, full) => { 
             if (isCurrent()) {
-              // 强制立即同步更新，不等React批处理
-              flushSync(() => {
-                setResult(full);
-              });
+              setResult(full);  // 立即显示，不等待后续处理
             }
           },
           onStatus: (message) => { if (isCurrent()) setFinishing(message); },
@@ -566,7 +563,13 @@ export default function TopicPage() {
         });
       };
       const first = await generateOnce();
+      // 立即显示第一批结果，不等待后续处理
+      if (isCurrent() && first) setResult(first);
+      
       const accumulatedText = batch ? first : await completeBatch(first, topicCount, generateOnce);
+      // 补写完成后立即更新
+      if (isCurrent() && accumulatedText !== first) setResult(accumulatedText);
+      
       const batchNotice = batch ? topicBatchNotice(batch) : '';
       if (batchNotice && isCurrent()) notify(batchNotice, undefined, 7000);
       // 条数够了、不用再补写，按钮停转；下面的润色和保存照常做完，期间结果下面一行小字（这页会补写，所以不用 onDraftDone）
@@ -574,6 +577,7 @@ export default function TopicPage() {
 
       // 撞题（标题重复）、模板标题、不符合现实的句子：精准小改后再显示和保存（lib/title-dedupe、lib/title-polish）
       const polishedText = accumulatedText && !batch ? await polishTitlesRemote(accumulatedText) : accumulatedText;
+      // 润色完成后再更新一次
       if (isCurrent() && polishedText !== accumulatedText) setResult(polishedText);
 
       // 保存到历史记录

@@ -61,6 +61,8 @@ export default function RootLayout({
           <FeedbackHost />
           {/* http 访问没有剪贴板接口，不补的话全站复制按钮都失效 */}
           <ClipboardFallback />
+          {/* 版本更新提示：检测到新版本时提示用户刷新 */}
+          <VersionChecker />
           {/* 部署后旧标签页的版本错配，给一条明确的刷新提示 */}
           <VersionRefreshNotice />
         </ThemeProvider>
