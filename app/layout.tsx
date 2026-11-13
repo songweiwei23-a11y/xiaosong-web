@@ -8,6 +8,7 @@ import { AmbientBackground } from '@/components/theme/AmbientBackground';
 import { FeedbackHost } from '@/components/ui/feedback';
 import { ClipboardFallback } from '@/components/ui/ClipboardFallback';
 import { VersionRefreshNotice } from '@/components/ui/VersionRefreshNotice';
+import { VersionChecker } from '@/components/VersionChecker';
 
 export const metadata: Metadata = {
   title: '开物 - 懂编导的 AI 短视频搭档',
