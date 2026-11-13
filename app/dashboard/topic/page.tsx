@@ -1,4 +1,5 @@
 "use client";
+import { flushSync } from 'react-dom';
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -552,7 +553,14 @@ export default function TopicPage() {
         // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
         // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
         return readDifyStream(response, {
-          onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
+          onChunk: (_piece, full) => { 
+            if (isCurrent()) {
+              // 强制立即同步更新，不等React批处理
+              flushSync(() => {
+                setResult(full);
+              });
+            }
+          },
           onStatus: (message) => { if (isCurrent()) setFinishing(message); },
           onTopicBatch: (status) => { batch = status; },
         });

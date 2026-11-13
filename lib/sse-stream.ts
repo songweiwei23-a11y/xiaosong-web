@@ -173,6 +173,7 @@ export async function readDifyStream(
         const piece: string = data.answer ?? data.text ?? '';
         if (piece) {
           full += piece;
+          // 强制立即触发React状态更新
           options.onChunk?.(piece, full);
         }
       }
