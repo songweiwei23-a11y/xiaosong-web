@@ -302,7 +302,24 @@ export function parseReviewJson(raw: string): Omit<MonthlyReview, 'month' | 'gen
   const end = raw.lastIndexOf('}');
   if (start < 0 || end <= start) return null;
   let d: Record<string, unknown>;
-  try { d = JSON.parse(raw.slice(start, end + 1)); } catch { return null; }
+  try { 
+    d = JSON.parse(raw.slice(start, end + 1)); 
+  } catch (e) {
+    // 尝试修复常见的JSON格式问题
+    try {
+      // 移除可能的markdown代码块标记
+      let cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      const start2 = cleaned.indexOf('{');
+      const end2 = cleaned.lastIndexOf('}');
+      if (start2 >= 0 && end2 > start2) {
+        d = JSON.parse(cleaned.slice(start2, end2 + 1));
+      } else {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+  }
   if (!d || typeof d !== 'object') return null;
   const strategy = readStrategy(d.strategy);
   if (!strategy.focus) return null;
