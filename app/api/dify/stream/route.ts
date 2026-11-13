@@ -26,6 +26,7 @@ import {
 } from '@/lib/topic-library';
 import { loadLatestTopicCompletion, loadPriorTopicSections } from '@/lib/topic-library-server';
 import { continueTopicPrompt, finalizeTopicBatch, prepareTopicDraft, topicRefillPrompt, TOPIC_BATCH_MAX } from '@/lib/topic-delivery';
+import { isTopicDirectionSource } from '@/lib/creation-continuation';
 import { loadDoneList } from '@/lib/work-insight-load';
 import { difyErrorCode, difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
 import { waitForDifyMessage } from '@/lib/dify-recover';
@@ -165,12 +166,16 @@ export async function POST(req: NextRequest) {
 
     // 知识库检索用的短查询，与发给模型的长指令分离，
     // 由 Dify 工作流的 5 个知识检索节点消费（start.search_query）
-    const searchQuery = buildSearchQuery(body.taskType, body, originalQuery);
     const creationSettings = mergeCreationSettings(body.creationSettings || body.historyInput?.creationSettings);
     const explicitCreation = hasExplicitCreationContext(creationSettings);
     const profileId = body.profileId || body.profile_id || null;
     const creativeWindow = CREATIVE_WINDOW_TASKS.has(body.taskType);
     const topicTask = NO_REPEAT_TASKS.has(body.taskType);
+    const directionSeed = topicTask && !creationSettings.workingScript && isTopicDirectionSource(
+      typeof body.inputs?.sourceFrom === 'string' ? body.inputs.sourceFrom : undefined,
+      typeof body.inputs?.sourceReference === 'string' ? body.inputs.sourceReference : '',
+    );
+    const searchQuery = directionSeed ? '选题策划 内容选题来源 真实素材 现场观察' : buildSearchQuery(body.taskType, body, originalQuery);
     const topicCount = typeof body.inputs?.topicCount === 'number' ? body.inputs.topicCount : 0;
     const requestedTopics = Number.isInteger(topicCount) && topicCount > 0 ? Math.min(topicCount, TOPIC_BATCH_MAX) : undefined;
     const priorTopics = topicTask ? await loadPriorTopicSections(guard.userId!, profileId) : [];
@@ -196,13 +201,13 @@ export async function POST(req: NextRequest) {
       // 按档案取：只防这个号自己出过的，别的号的选题不相干
       const prior = priorTopics.map((topic) => topic.title);
       const source = body.inputs?.sourceReference;
-      const developSelected = typeof source === 'string' && !!source.trim()
+      const developSelected = !directionSeed && typeof source === 'string' && !!source.trim()
         && !wantsNewTopics(typeof body.inputs?.personalRequirement === 'string' ? body.inputs.personalRequirement : '');
       query += buildNoRepeatBlock(prior, { developSelected });
       console.log(`[no-repeat] ${body.taskType}：${developSelected ? '落实已选方向' : `附上已出过的选题 ${Math.min(prior.length, NO_REPEAT_LIMIT)} 条`}`);
     }
 
-    const settingsBlock = creationSettingsBlock(creationSettings);
+    const settingsBlock = creationSettingsBlock(creationSettings, directionSeed ? 'topic' : 'chain');
     if (Object.keys(creationSettings).length && !query.includes(settingsBlock.trim())) query += settingsBlock + '\n本轮以当前带入的原稿、当前版本和这些设置为准；历史中的其他选题、方案、人群和时长不得替换本轮选择。旧 AI 稿不是已核实经营事实。';
     // 今天的日期与季节（lib/time-anchor）。模型自己不知道今天几号；自带日期的板块（内容规划）不重复加
     if (!/今天是\s*\d{4}\s*年/.test(query)) query += '\n\n' + timeAnchor();
@@ -327,7 +332,7 @@ export async function POST(req: NextRequest) {
     if (topicTask && existingConversationId) {
       continuedWithSameSettings = !!requestedTopics && !!previousTopic
         && previousTopic.fingerprint === creationRequestFingerprint(body);
-      const nextQuery = continueTopicPrompt(previousTopic?.topics ?? [], requestedTopics ?? 0, continuedWithSameSettings ? undefined : query);
+      const nextQuery = continueTopicPrompt(previousTopic?.topics ?? [], requestedTopics ?? 0, continuedWithSameSettings ? undefined : query, directionSeed);
       difyRequestBody.query = nextQuery;
       difyRequestBody.inputs.query = nextQuery;
     }
@@ -413,7 +418,7 @@ export async function POST(req: NextRequest) {
         /** 把页面上的全文整篇换成 answer（页面端按 message_replace 整篇替换，见 lib/sse-stream.ts） */
         const showFullText = (answer: string) => {
           shownText = answer;
-          send({ event: 'message_replace', answer, ...(topicTask ? {} : { conversation_id: capturedConversationId, message_id: capturedMessageId }) });
+          send({ event: 'message_replace', answer, ...(topicTask ? { topic_draft: true } : { conversation_id: capturedConversationId, message_id: capturedMessageId }) });
         };
 
         /*
@@ -480,12 +485,14 @@ export async function POST(req: NextRequest) {
                   if (totalChunks === 1) {
                     console.log('✅ 开始接收内容，事件类型:', data.event);
                   }
-                  // 选题也要流式输出，不能等全部完成才显示
                   shownText += text;
                   send({
                     answer: text,
-                    conversation_id: capturedConversationId || data.conversation_id,
-                    message_id: capturedMessageId || undefined,
+                    // 草稿可实时看。断线恢复不能直接把 Dify 的未查重原稿当成最终结果。
+                    ...(topicTask ? { topic_draft: true } : {
+                      conversation_id: capturedConversationId || data.conversation_id,
+                      message_id: capturedMessageId || undefined,
+                    }),
                   });
                 }
               }
@@ -537,7 +544,7 @@ export async function POST(req: NextRequest) {
             if (got.status === 'done') {
               fullResponse = got.answer;
               totalChunks = Math.max(totalChunks, 1);
-              if (!topicTask) showFullText(got.answer);
+              showFullText(got.answer);
               outcome = { kind: 'done' };
               completionTerminal = 'recovered_message';
             } else if (got.status === 'error') {
@@ -794,13 +801,14 @@ export async function POST(req: NextRequest) {
             const prior = freshTopics.length ? freshTopics : priorTopics;
             const result = await finalizeTopicBatch(draft, [...(previousTopic?.topics ?? []), ...prior, ...done.map(({ title }) => ({ title, body: '' }))], requestedTopics, async (refill) => {
               if (!generationConversationId) return '';
-              const repair = await traced('topic_refill', () => askDify(topicRefillPrompt(refill), userId, searchQuery, {
+              const prompt = topicRefillPrompt(refill, directionSeed);
+              const repair = await traced('topic_refill', () => askDify(prompt, userId, searchQuery, {
                 conversationId: generationConversationId, signal: AbortSignal.timeout(120_000),
               }));
               if (!repair.ok) return '';
               usageMetadata = combinedReviewUsage(usageMetadata, repair.completion.usage ?? {}, 'topic_refill_steps');
               return holdUnsupported(tidy(repair.text), factIssues).text;
-            });
+            }, { directionSeed });
             if (result.requested) {
               const { text, ...batch } = result;
               if (result.count) {
@@ -877,6 +885,12 @@ export async function POST(req: NextRequest) {
           if (!generationCompleted) await releaseCreation(reservation);
           releaseSlot();
           console.error('Stream error:', err);
+          if (topicTask && !generationCompleted) {
+            showFullText('');
+            send({ event: 'error', message: '选题核对未完成，请重试' });
+            if (!clientGone) controller.close();
+            return;
+          }
           try {
             controller.error(err);
           } catch {

@@ -116,6 +116,7 @@ export async function readDifyStream(
   let conversationId = '';
   let messageId = '';
   let ended = false;
+  let topicDraft = false;
   let broken: unknown = null;
 
   try {
@@ -144,6 +145,7 @@ export async function readDifyStream(
           options.onConversationId?.(data.conversation_id);
         }
         if (!messageId && data.message_id) messageId = data.message_id;
+        if (data.topic_draft === true) topicDraft = true;
 
         if (data.event === 'error') {
           throw new DifyStreamError(String(data.message || '生成失败，请稍后重试'), typeof data.code === 'string' ? data.code : undefined);
@@ -173,9 +175,6 @@ export async function readDifyStream(
         const piece: string = data.answer ?? data.text ?? '';
         if (piece) {
           full += piece;
-          // 调试日志：查看每次收到的数据
-          console.log('[SSE] Received chunk, length:', piece.length, 'total:', full.length);
-          // 强制立即触发React状态更新
           options.onChunk?.(piece, full);
         }
       }
@@ -192,6 +191,9 @@ export async function readDifyStream(
    * 只在拿到过消息 id 时这样判断：说明对面是会发结束标记的新接口，
    * 老接口不发 message_id，照旧按"流结束就是写完"处理。
    */
+  if (!ended && topicDraft) {
+    throw new DifyStreamError('选题尚未完成核对，连接已中断。可稍后查看历史或重试。');
+  }
   if (!ended && messageId && conversationId) {
     options.onRecovering?.();
     const answer = await recoverDifyAnswer(conversationId, messageId);

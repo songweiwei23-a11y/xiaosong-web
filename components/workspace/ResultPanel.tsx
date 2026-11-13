@@ -350,10 +350,10 @@ export function ResultPanel({
             </button>
           )}
 
-          {isGenerating && (
+          {isGenerating && !finishing && (
             <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle" />
           )}
-          {!isGenerating && finishing && (
+          {finishing && (
             <p role="status" className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3 text-[12px] text-muted-foreground">
               <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary" />
               {finishing}

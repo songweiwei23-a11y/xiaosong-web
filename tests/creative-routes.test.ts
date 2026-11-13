@@ -144,7 +144,7 @@ describe('页面', () => {
     const src = readTopicBoardCode();
     expect(src).toMatch(/useState<CreativeRoute>\('两种都出'\)/);
     expect(src).toContain('🅰 打法');
-    expect(src).toMatch(/topicRoutePrompt\(\{ route, count: topicCount, sourced, explicit: routeExplicit \}\)/);
+    expect(src).toMatch(/topicRoutePrompt\(\{ route, count: topicCount, sourced, explicit: routeExplicit, directionSeed \}\)/);
     expect(src).toMatch(/tacticIndex\(/);
     expect(src).toMatch(/topicRoutes: /);
   });

@@ -10,7 +10,7 @@ import { GeneratingIndicator } from '@/components/ui/generating-indicator';
 import { useRouter } from "next/navigation";
 import { takeHandoff, parseTopicOptions } from "@/lib/handoff";
 import { openCreationSafely } from "@/lib/creation-session";
-import { topicReference, carriedIntent, originForResult } from '@/lib/creation-continuation';
+import { topicReference, carriedIntent, originForResult, isTopicDirectionSource } from '@/lib/creation-continuation';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { GROWTH_TACTICS } from "@/lib/growth-tactics";
 import { VIRAL_ELEMENTS, viralElementById, industryKeysOf, elementFitNote, elementsPerTopic } from "@/lib/viral-elements";
@@ -57,7 +57,7 @@ import type { Profile, Positioning } from './types';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { postSafely } from '@/lib/safe-post';
-import { buildTopicBoardQuery, topicCreationSettings } from '@/lib/boards/topic-query';
+import { buildTopicBoardQuery, topicCreationSettings, topicSettingsFromDirection } from '@/lib/boards/topic-query';
 import { completeBatch } from '@/lib/topic-batch';
 
 export default function TopicPage() {
@@ -318,7 +318,7 @@ export default function TopicPage() {
     const handed = takeHandoff();
     if (handed) setIncomingSetup(handed);
     if (handed) setOriginContent(handed.originContent || handed.sourceContent || '');
-    if (handed?.tactic) setTactic(handed.tactic);
+    if (handed?.tactic && !isTopicDirectionSource(handed.from, handed.sourceContent)) setTactic(handed.tactic);
     if (handed?.sourceContent) {
       setSourceReference(topicReference(handed));
       setSourceFrom(handed.from);
@@ -326,13 +326,16 @@ export default function TopicPage() {
     }
     // 用户在侧边栏切了档案，这一页不刷新也要跟上
     return onActiveProfileChange(() => {
-      setSourceReference(''); setSourceFrom(''); setOriginContent('');
+      setSourceReference(''); setSourceFrom(''); setOriginContent(''); setIncomingSetup(null);
+      setTactic(''); setRouteExplicit(false);
       const id = getActiveProfileId();
       if (id) setSelectedProfileId(id);
     });
   }, []);
 
-  const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, s => {
+  const directionSeed = isTopicDirectionSource(sourceFrom || incomingSetup?.from, sourceReference);
+  const autoSetup = useAutoCreationSetup(incomingSetup, creatorContext, contextLoading, inherited => {
+    const s = directionSeed ? topicSettingsFromDirection(inherited) : inherited;
     setMode('quick'); setAccountStage(creatorContext.profile?.account_stage || '有定位，需要内容方向');
     // 只填原内容写明的和档案里有的；没写的保持页面默认（目的「按配比」、类型和元素空着），不猜（2026-10-03）
     setFansLevel(creatorContext.profile?.fans_level || '0-1000'); setSelectedPlatforms([s.platform!]);
@@ -350,7 +353,7 @@ export default function TopicPage() {
       setMixOverride({ preset: 'custom', custom: { 流量型: 0, 人设型: 0, 变现型: 0, ...Object.fromEntries(roles.map((r, i) => [r, i === 0 ? 100 - share * (roles.length - 1) : share])) } });
     } else setTopicRole(roles[0] ?? s.purpose ?? '按配比');
     setTopicCount(Math.min(30, Math.max(1, s.topicCount || 5)));
-    setSelectedElements(s.elements || []); if (s.tactic) setTactic(s.tactic);
+    setSelectedElements(s.elements || []); if (s.tactic || directionSeed) setTactic(s.tactic || '');
     setSelectedDealReasons(topicReasonIds(s.dealReasons || []));
     setKeyword1(s.topic ?? '');
     // 带来的方向不再填进「个人要求」（2026-10-29）：那里写着「所有选题必须围绕」，方向的「范围」原话一填进去，
@@ -361,7 +364,7 @@ export default function TopicPage() {
   // 和助理共用同一个算法（lib/boards/topic-query），同样的输入得到同样的创作设置
   const currentSettings = topicCreationSettings({
     keyword1, personalRequirement, sourceReference, selectedPlatforms, selectedTracks, selectedContentTypes, selectedStyles,
-    selectedElements, selectedDealReasons, topicRole, topicCount, tactic, autoSettings: autoSetup.settings, creatorContext,
+    selectedElements, selectedDealReasons, topicRole, topicCount, tactic, autoSettings: autoSetup.settings, creatorContext, directionSeed,
   });
 
   // 配比按哪个档案算：快速模式选的那个，没有就用侧边栏当前档案
@@ -553,12 +556,7 @@ export default function TopicPage() {
         // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
         // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
         return readDifyStream(response, {
-          onChunk: (_piece, full) => { 
-            if (isCurrent()) {
-              console.log('[Topic] onChunk called, content length:', full.length);
-              setResult(full);  // 立即显示，不等待后续处理
-            }
-          },
+          onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
           onStatus: (message) => { if (isCurrent()) setFinishing(message); },
           onTopicBatch: (status) => { batch = status; },
         });
@@ -569,7 +567,7 @@ export default function TopicPage() {
       
       const accumulatedText = batch ? first : await completeBatch(first, topicCount, generateOnce);
       // 补写完成后立即更新
-      if (isCurrent() && accumulatedText !== first) setResult(accumulatedText);
+      if (isCurrent()) setResult(accumulatedText);
       
       const batchNotice = batch ? topicBatchNotice(batch) : '';
       if (batchNotice && isCurrent()) notify(batchNotice, undefined, 7000);
@@ -753,7 +751,7 @@ export default function TopicPage() {
             <Field
               label="用哪套打法"
               stacked
-              hint={tactic ? `已指定第 ${GROWTH_TACTICS.find((t) => t.name === tactic)?.no} 计，整批都按它拍` : sourceReference && !routeExplicit ? '按原方向自动选最合适的拍法；点击下面选项可手动指定' : ROUTE_HINTS[route]}
+              hint={tactic ? `已指定第 ${GROWTH_TACTICS.find((t) => t.name === tactic)?.no} 计` : directionSeed && !routeExplicit ? '按每条选题的素材和看点自动选择拍法' : ROUTE_HINTS[route]}
             >
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {ROUTE_LIST.map((r) => {

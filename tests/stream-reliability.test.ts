@@ -186,7 +186,7 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     expect(getDifyConversationId).toHaveBeenCalledWith('u1', 'p1', 'creation');
   });
 
-  it('选题接口只发核对后的正文，历史撞题没有进入完成记录', async () => {
+  it('选题先流出草稿，历史撞题没有进入最终正文和完成记录', async () => {
     vi.stubEnv('ASSISTANT_API_KEY', '');
     vi.mocked(loadPriorTopicSections).mockResolvedValueOnce([]).mockResolvedValueOnce([{ title: '柜门开合测试', body: '展示铰链开合' }]);
     const raw = '## 选题1：柜门开合测试\n展示铰链开合\n\n## 选题2：抽屉满载对比\n对比不同承重时的抽拉动作';
@@ -195,12 +195,35 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
       method: 'POST',
       body: JSON.stringify({ taskType: '选题策划', query: '出一条选题', profileId: 'p1', inputs: { topicCount: 1 } }),
     }) as any);
-    const stream = await response.text();
-    expect(stream).toContain('topic_batch');
-    expect(stream).toContain('抽屉满载对比');
-    expect(stream).not.toContain('柜门开合测试');
+    const onChunk = vi.fn();
+    const onTopicBatch = vi.fn();
+    const result = await readDifyStream(response, { onChunk, onTopicBatch });
+    expect(onChunk.mock.calls[0][1]).toContain('柜门开合测试');
+    expect(onTopicBatch).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
+    expect(result).toContain('抽屉满载对比');
+    expect(result).not.toContain('柜门开合测试');
     expect(recordCreationCompletion).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ result: expect.stringContaining('抽屉满载对比') }), '选题策划');
     expect(incrementUsageServer).toHaveBeenCalledTimes(1);
+  });
+
+  it('上游仍在写时就能收到选题正文，断线的未核对草稿不算成稿', async () => {
+    let upstream!: ReadableStreamDefaultController<Uint8Array>;
+    const encoder = new TextEncoder();
+    mockDify(new Response(new ReadableStream({ start(controller) { upstream = controller; } })));
+    const res = await call('选题策划');
+    const reader = res.body!.getReader();
+    try {
+      upstream.enqueue(encoder.encode(msg('## 选题1：第一段')));
+      const chunk = await reader.read();
+      expect(new TextDecoder().decode(chunk.value)).toContain('第一段');
+      expect(incrementUsageServer).not.toHaveBeenCalled();
+    } finally {
+      upstream.enqueue(encoder.encode(ev({ event: 'message_end', conversation_id: 'c1' })));
+      upstream.close();
+      while (!(await reader.read()).done) { /* drain */ }
+    }
+    const partial = difyStream([ev({ answer: '未核对草稿', topic_draft: true })]);
+    await expect(readDifyStream(partial)).rejects.toThrow('选题尚未完成核对');
   });
 
   it('相同设置同时提交时等首轮存好，第二轮在同一 Dify 对话里续写', async () => {

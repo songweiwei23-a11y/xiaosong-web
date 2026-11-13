@@ -197,9 +197,10 @@ export function viralElementPrompt1021(ids: string[]): string {
 /**
  * 36 计清单（10-21 原文，标【最适合的目的】）。只按禁忌（exclude）拿掉，不再按目的筛：37 计全部保留（2026-10-31）。
  */
-export function tacticIndex1021(opts: { exclude?: string[] } = {}): string {
+export function tacticIndex1021(opts: { exclude?: string[]; namesOnly?: boolean } = {}): string {
   const exclude = new Set(opts.exclude ?? []);
   const lines = GROWTH_TACTICS.filter((t) => !exclude.has(t.name))
-    .map((t) => `- 第${t.no}计 **${t.name}**【${roleOfTactic(t.name) ?? '流量型'}】：${t.formula}（适合：${t.fit}）`);
+    .map((t) => `- 第${t.no}计 **${t.name}**【${roleOfTactic(t.name) ?? '流量型'}】${opts.namesOnly ? '' : `：${t.formula}（适合：${t.fit}）`}`);
+  if (opts.namesOnly) return '#### 可参考的起号打法名称\n' + lines.join('\n');
   return `#### 起号 36 计清单（计名【最适合的目的】：结构公式）\n\n${lines.join('\n')}`;
 }

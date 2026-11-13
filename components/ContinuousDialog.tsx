@@ -70,6 +70,7 @@ export default function ContinuousDialog({
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [streamStatus, setStreamStatus] = useState('')
   const [conversationId, setConversationId] = useState<string>('')
   const [isMinimized, setIsMinimized] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
@@ -101,6 +102,7 @@ export default function ContinuousDialog({
     const restore = async () => {
       setIsRestoring(true)
       setIsLoading(false)
+      setStreamStatus('')
       // 先摆上生成结果，网络慢时也不至于是一片空白
       setMessages([{ role: 'assistant', content: initialContent, timestamp: new Date() }])
       setConversationId(initialConversationId || '')
@@ -264,6 +266,7 @@ export default function ContinuousDialog({
       // 统一走 readDifyStream：原先手写的 decode(value) 未开 stream 模式，
       // 中文被拆在数据块边界上会解码成乱码，且半行 JSON 会被整行丢弃。
       assistantText = await readDifyStream(response, {
+        onStatus: (status) => { if (isCurrent()) setStreamStatus(status) },
         onTopicBatch: (batch) => {
           const notice = topicBatchNotice(batch)
           if (notice && isCurrent()) notify(notice, undefined, 7000)
@@ -314,6 +317,7 @@ export default function ContinuousDialog({
     } finally {
       clearTimeout(timeoutId)
       if (isCurrent()) {
+        setStreamStatus('')
         abortRef.current = null
         setIsLoading(false)
       }
@@ -425,8 +429,9 @@ export default function ContinuousDialog({
               
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-card border-2 border-border rounded-2xl px-4 py-3">
+                  <div role="status" className="flex items-center gap-2 bg-card border-2 border-border rounded-2xl px-4 py-3 text-xs text-muted-foreground">
                     <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                    {streamStatus}
                   </div>
                 </div>
               )}

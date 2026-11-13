@@ -120,11 +120,11 @@ describe('选题页接线', () => {
   });
 
   it('原方向的方向、目的、思路放进提示词；带方向和带脚本说法不同', () => {
-    expect(page).toMatch(/const intent = intentBlock\(carriedIntent\(incomingSetup\)\)/);
+    expect(page).toMatch(/const intent = directionSeed \? '' : intentBlock\(carriedIntent\(incomingSetup\)\)/);
     expect(page).toMatch(/if \(intent\) query \+= `\$\{intent\}\\n`/);
     expect(page).toMatch(/必须按它的方向、核心思路和目的来设计/);
     // 示例是待落实的方案；深化取材而非强迫换方向，未知数字仍不可编。
-    expect(page).toMatch(/topicSourceRules\(carriesScript\(incomingSetup\)\)/);
+    expect(page).toMatch(/topicSourceRules\(hasScript, directionSeed\)/);
     const sourceRules = readCode('lib/topic-design.ts');
     expect(sourceRules).toContain('不是已经拍完或必须避开的内容');
     expect(sourceRules).toContain('示例和待确认数字不是事实');
@@ -148,8 +148,8 @@ describe('选题页接线', () => {
   });
 
   it('带着内容来的：不去追热点，每条写「承接」，交稿前逐条查出处', () => {
-    expect(page).toMatch(/sourced \? `- 💡 新角度在带来的内容范围里找/);
-    expect(page).toMatch(/if \(sourced\) query \+= `\*\*承接\*\*/);
-    expect(page).toMatch(/if \(sourced\) query \+= `🔗 交稿前逐条检查/);
+    expect(page).toContain('新角度在带来的内容范围里找');
+    expect(page).toContain('**承接**');
+    expect(page).toMatch(/if \(sourced && !directionSeed\) query \+=/);
   });
 });

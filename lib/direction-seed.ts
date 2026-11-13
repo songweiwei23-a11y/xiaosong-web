@@ -5,15 +5,18 @@
  * 每条选题从题眼池里分到一个题眼（lib/topic-slots），题眼不同，选题才不同。
  */
 
-/** 是不是一条「方向」：有「### 方向N」标题，并且写了内容方向 */
+import { splitCreationItems } from './creation-items';
+
+/** 兼容内容规划和早期创作方向卡。 */
 export function isDirectionBlock(text: string): boolean {
-  return /^###\s*方向\s*\d+/m.test(text) && /内容方向\**\s*[：:]/.test(text);
+  return /^\s*#{2,4}\s*方向\s*[\d一二三四五六七八九十]+/m.test(text)
+    && /(?:内容方向|核心思路|核心角度)\**\s*[：:]/.test(text);
 }
 
 /** 取一行「**标签**：值」的值，标签前后的加粗符号忽略 */
 function fieldOf(text: string, label: string): string {
-  const m = text.match(new RegExp(`(?:^|\\n)\\s*[-*]?\\s*\\**${label}\\**\\s*[：:]\\s*([^\\n]+)`));
-  return m ? m[1].replace(/\*\*/g, '').trim() : '';
+  const m = text.match(new RegExp(`(?:^|\\n)[\\t ]*[-*]?[\\t ]*\\**${label}\\**[\\t ]*[：:][\\t ]*([^\\n]*)`));
+  return m?.[1].replace(/\*\*/g, '').trim() || '';
 }
 
 /**
@@ -40,11 +43,12 @@ function listUnder(text: string, label: string): string[] {
  * 只取方向的种子：名字、核心目的、范围、切入角度、题眼池。
  * 不是方向原文就返回 null。
  */
-export function directionSeedOf(text: string): string | null {
+function directionCardSeed(text: string): string | null {
   if (!isDirectionBlock(text)) return null;
-  const name = text.match(/^###\s*方向\s*\d+[：:]\s*(.+?)\s*$/m)?.[1]?.replace(/\*\*/g, '').trim() ?? '';
+  const name = text.match(/^\s*#{2,4}\s*方向\s*[\d一二三四五六七八九十]+\s*[：:、.]\s*(.+?)\s*$/m)?.[1]?.replace(/\*\*/g, '').trim() ?? '';
   const purpose = fieldOf(text, '核心目的') || fieldOf(text, '视频目的') || fieldOf(text, '对应目的');
-  const scope = fieldOf(text, '内容方向');
+  const scope = fieldOf(text, '内容方向') || fieldOf(text, '核心思路') || fieldOf(text, '核心角度');
+  const count = fieldOf(text, '本月条数');
   // 出发点（2026-10-29）：方向定好的流量方向、爆款元素或成交理由，选题沿用，不再另配。原来种子不带，选题只能让代码重新分元素
   const origin = listUnder(text, '出发点').join('；');
   // 所属系列（2026-10-29）：方向归到内容定位的哪个系列，选题沿用，不另起
@@ -53,6 +57,7 @@ export function directionSeedOf(text: string): string | null {
     name && `方向：${name}`,
     series && `所属系列（参考，不限制）：${series}`,
     purpose && `核心目的（不能改）：${purpose}`,
+    count && `规划条数：${count}`,
     origin && `出发点：${origin}`,
     scope && `范围：${scope}`,
     ...listUnder(text, '切入角度').map((a) => `角度：${a}`),
@@ -60,6 +65,13 @@ export function directionSeedOf(text: string): string | null {
     ...listUnder(text, '思路提示').map((h) => `思路：${h}`),
   ].filter(Boolean) as string[];
   return lines.length ? lines.join('\n') : null;
+}
+
+export function directionSeedOf(text: string): string | null {
+  if (!isDirectionBlock(text)) return null;
+  const cards = splitCreationItems(text).items.filter((item) => item.kind === 'direction');
+  if (cards.length <= 1) return directionCardSeed(cards[0]?.body ?? text);
+  return cards.map((item) => directionCardSeed(item.body) || item.label).join('\n\n');
 }
 
 /** 种子里的题眼，按原来的顺序；选题层用它给每条分配一个题眼 */
@@ -84,4 +96,4 @@ export function elementsOfSeed(seed: string, names: string[]): string[] {
 }
 
 /** 选题页用的标题：种子的说明文字，告诉选题层哪些是它自己定的 */
-export const DIRECTION_SEED_HEAD = '【方向种子（核心目的不能改；出发点写了的照它来；赛道和目标人群是锚点，切口由选题层在思路里找，每条选题不同）】';
+export const DIRECTION_SEED_HEAD = '【方向种子】以下是选题的共同范围和创作目的。切口、素材、形式和开头由每条选题各自决定。';

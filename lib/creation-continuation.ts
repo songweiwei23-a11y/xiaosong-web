@@ -1,12 +1,14 @@
 import type { HandoffPayload } from './handoff';
 import { findHistoryRecord } from './history-match';
+import { DIRECTION_SEED_HEAD, directionSeedOf, isDirectionBlock } from './direction-seed';
+import { splitCreationItems } from './creation-items';
 
 export type ContinuationTask = 'review' | 'storyboard' | 'topic' | 'script' | 'title' | 'growth' | 'free-chat';
 
 const TASK_RULES: Record<ContinuationTask, string> = {
   review: '审稿：保留原稿的主题、核心观点、事实和叙事关系，优化表达与节奏。指出具体改动及理由，不另编一个无关故事。',
   storyboard: '分镜：以当前脚本为执行稿，把原台词按顺序拆入镜头，台词不要改写；原始方案只帮助理解意图。时长放不下时明确指出并建议删改，不悄悄换稿。',
-  topic: '选题：方向是裂变的地基，不是固定模板。从原方向的核心出发，裂变出多样化的表现形式、不同的人物场景、独特的切入角度。每条选题都要有自己的灵魂，避免只改几个词的同质化。承接方向的精神，而非复制公式。',
+  topic: '选题：守住原来的方向、核心思路和视频目的。方向给出范围，从这次带来的内容里找到不同的问题和证据，逐条说明承接了原文哪一处。不能只沿用方向或系列名另编。带来具体脚本时，以原稿可用素材为依据。',
   script: '脚本：执行选题的具体方案，把选题定下的人物、事件、拍法写成完整脚本。保留选题的核心创意、目的、拍摄思路，不另起炉灶。选题方案中的「拍摄思路」是执行提示，直接照它做。',
   title: '标题：提炼脚本内容，不增加脚本没有的数量、情节或效果承诺。一条脚本可以起多个不同角度的标题，但都要能被内容兑现。',
   growth: '起号：对照用户团队条件与资源，定位里不适合的说明为什么，给一个对准现状的「可落地」方案。有其他地基时先用其他地基。',
@@ -68,18 +70,22 @@ export function creationReference(data: Pick<HandoffPayload, 'sourceContent' | '
  * 现在：有脚本正文（审稿后的完整脚本、脚本页的脚本）就拿它当选题的出发点，审稿报告不带；
  * 最初的方向放后面，只作背景。
  */
-export function topicReference(data: Pick<HandoffPayload, 'sourceContent' | 'originContent' | 'settings'>): string {
+export function topicReference(data: Pick<HandoffPayload, 'sourceContent' | 'originContent' | 'settings'> & { from?: string }): string {
   const script = data.settings?.workingScript?.trim() || '';
   const current = script || data.sourceContent?.trim() || '';
   const origin = data.originContent?.trim() || '';
   // 方向只给选题种子（范围、切入角度），人群、讲法、标题、镜头不带，否则每条选题都照抄它（lib/direction-seed）
   if (!script) {
-    const seed = directionSeedOf(current || origin);
+    const seed = directionSeedOf(current) || (!current ? directionSeedOf(origin) : null);
     if (seed) {
       // 用户最初的想法（他自己写的目的、想法、要求）必须接上，选题守的是它（2026-10-26 修复：之前只剩种子，原意丢了）
       // origin 如果是方向原文本身，就不重复带（种子已经有它的范围和角度）
       const intent = origin && origin !== current && !isDirectionBlock(origin) ? `\n\n【最初的想法（选题必须守住它的意图、人群面和大众方向）】\n${origin}` : '';
-      return `${DIRECTION_SEED_HEAD}\n${seed}${intent}`;
+      const boundaries = splitCreationItems(current).footer.trim();
+      return [DIRECTION_SEED_HEAD + '\n' + seed + intent, /先别做|不要做|限制|禁忌/.test(boundaries) ? boundaries : ''].filter(Boolean).join('\n\n');
+    }
+    if (current && isTopicDirectionSource(data.from, current)) {
+      return `${DIRECTION_SEED_HEAD}\n${current}`;
     }
   }
   if (!current) return origin;
@@ -88,7 +94,11 @@ export function topicReference(data: Pick<HandoffPayload, 'sourceContent' | 'ori
   return origin && origin !== current && !current.includes(origin) ? `${head}\n\n【最初的方向（选题要守住它的方向、思路和目的）】\n${origin}` : head;
 }
 
-import { DIRECTION_SEED_HEAD, directionSeedOf, isDirectionBlock } from './direction-seed';
+export function isTopicDirectionSource(from?: string, reference = ''): boolean {
+  return /^(?:素材库[·・])?(?:创作方向(?:与思路)?|(?:当月)?内容规划|内容策划)$/.test(from?.trim() || '')
+    || reference.trimStart().startsWith('【方向种子')
+    || (!reference.trimStart().startsWith('【这次带来的内容') && isDirectionBlock(reference));
+}
 
 type Role = '流量型' | '人设型' | '变现型';
 const ROLES: Role[] = ['流量型', '人设型', '变现型'];
@@ -125,7 +135,7 @@ export function carriedIntent(data: Pick<HandoffPayload, 'sourceContent' | 'orig
   const lines = text.split('\n');
   const heading = lines.find((l) => ITEM_HEADING.test(l)) || lines.find((l) => /^\s*#{1,4}\s/.test(l)) || '';
   const title = heading.replace(/^\s*#{1,4}\s*/, '').replace(/^(?:方向|方案|选题)\s*[0-9一二三四五六七八九十]+\s*[：:.、]\s*/, '').trim();
-  const purpose = data.settings?.purpose || data.settings?.purposeText || field(text, ['视频目的', '对应目的', '内容目的']);
+  const purpose = data.settings?.purpose || data.settings?.purposeText || field(text, ['视频目的', '核心目的', '对应目的', '内容目的']);
   const roleSource = data.settings?.purpose || data.settings?.purposeText || `${title} ${purpose}`;
   const typed = ROLES.filter((r) => roleSource.includes(r));
   const roles = typed.length ? typed : ([

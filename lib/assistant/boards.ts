@@ -1,5 +1,5 @@
 import type { HandoffPayload } from '@/lib/handoff';
-import { topicReference } from '@/lib/creation-continuation';
+import { isTopicDirectionSource, topicReference } from '@/lib/creation-continuation';
 import { loadBoardContext } from './board-context';
 import { pageHandoff } from '@/lib/assistant/carry-consume';
 import { VIRAL_ELEMENTS } from '@/lib/viral-elements';
@@ -191,6 +191,7 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
   const sourceReference = incoming ? topicReference(incoming) : '';
   const currentSettings = topicCreationSettings({
     keyword1: keywords[0] ?? '', personalRequirement: requirement, sourceReference,
+    directionSeed: isTopicDirectionSource(incoming?.from, sourceReference),
     selectedPlatforms: platform ? [platform] : [], selectedTracks: tracks, selectedContentTypes: [], selectedStyles: styles,
     selectedElements: elementIds, selectedDealReasons: [], topicRole: input.role, topicCount, tactic: '',
     autoSettings: page?.settings ?? {}, creatorContext,
@@ -249,6 +250,8 @@ export async function runTopicBoard(ctx: BoardContext, input: TopicInput): Promi
           topicType,
           topicRole: input.role,
           personalRequirement: requirement,
+          sourceFrom: incoming?.from,
+          sourceReference,
         },
       }),
       cache: 'no-store',

@@ -45,12 +45,22 @@ describe('选题交付前查重', () => {
 
   it('补写还撞本批时只交付已通过的题', async () => {
     vi.mocked(callAssistantLlm)
-      .mockResolvedValueOnce(decision('{"duplicates":[{"candidate":2,"sameAs":"B1"}]}'))
+      .mockResolvedValueOnce(decision('{"duplicates":[{"candidate":"B2","sameAs":"B1"}]}'))
       .mockResolvedValueOnce(decision('{"duplicates":[{"candidate":1,"sameAs":"H1"}]}'));
     const refill = vi.fn(async () => batch(replacement));
     const result = await finalizeTopicBatch(batch(fresh, rewrite), [history], 2, refill);
     expect(splitTopicSections(result.text)).toEqual([fresh]);
     expect(result).toMatchObject({ count: 1, requested: 2, removed: 1, replaced: 0 });
+  });
+
+  it('按方向出题时向查重模型提供具体取材动作和脚本推进', async () => {
+    const a = topic('菜单上少了一个字', '**🅰 打法**\n用菜单遮住配料，按实物核对。\n**核心问题与观众价值**：店员从哪看出差别？\n**取材与内容推进**：\n- 先展示菜单，再拍打开保温桶。\n**4️⃣ 脚本结构**\n从柜台特写转到锅边实录。');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[]}'));
+    await finalizeTopicBatch(batch(a, fresh), [], 2, async () => '', { directionSeed: true });
+    const input = String(vi.mocked(callAssistantLlm).mock.calls[0][1].messages[0].content);
+    expect(input).toContain('用菜单遮住配料');
+    expect(input).toContain('先展示菜单，再拍打开保温桶');
+    expect(input).toContain('从柜台特写转到锅边实录');
   });
 
   it('内容查重不可用时仍剔除标点变化的重复，并如实标注核对状态', async () => {
@@ -59,5 +69,6 @@ describe('选题交付前查重', () => {
     expect(splitTopicSections(result.text)).toEqual([fresh]);
     expect(result.checked).toBe(false);
     expect(parseTopicOverlap('{"duplicates":[{"candidate":1,"sameAs":"B2"}]}', 2, 0)).toBeNull();
+    expect(parseTopicOverlap('{"duplicates":[{"candidate":"B3","sameAs":"B1"}]}', 2, 0)).toBeNull();
   });
 });

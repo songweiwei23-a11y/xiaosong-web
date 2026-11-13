@@ -28,10 +28,14 @@ describe('自由对话将附件与联网状态传给页面', () => {
       method: 'POST',
       body: JSON.stringify({ taskType: '选题策划', query: '再来一条', initialContent: '## 选题1：柜门开合测试\n展示铰链开合' }),
     }) as any);
-    const stream = await response.text();
-    expect(stream).toContain('topic_batch');
-    expect(stream).toContain('抽屉满载对比');
-    expect(stream).not.toContain('柜门开合测试');
+    const { readDifyStream } = await import('@/lib/sse-stream');
+    const onChunk = vi.fn();
+    const onTopicBatch = vi.fn();
+    const result = await readDifyStream(response, { onChunk, onTopicBatch });
+    expect(onChunk.mock.calls[0][1]).toContain('柜门开合测试');
+    expect(onTopicBatch).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
+    expect(result).toContain('抽屉满载对比');
+    expect(result).not.toContain('柜门开合测试');
     expect(saveFollowUpTopics).toHaveBeenCalledWith(userId, '再来一条', expect.stringContaining('抽屉满载对比'), null);
     expect(state.usage).toHaveBeenCalledTimes(1);
   });

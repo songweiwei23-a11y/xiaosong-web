@@ -57,7 +57,7 @@ describe('页面：按钮停转、小字提示、润色和保存不动', () => {
   it('结果面板：finishing 时显示小字；体检和自动修正等最终版', () => {
     const panel = readCode('components/workspace/ResultPanel.tsx');
     expect(panel).toMatch(/const pending = isGenerating \|\| !!finishing/);
-    expect(panel).toMatch(/!isGenerating && finishing && \(/);
+    expect(panel).toMatch(/\{finishing && \(\s*<p role="status"/);
     expect(panel).toMatch(/body && !pending && \(\s*<FactCheckNotice/);
     expect(FINISHING_NOTE).toMatch(/正在核对/);
   });

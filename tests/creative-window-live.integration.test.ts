@@ -6,6 +6,11 @@ import { messagesUrl } from '@/lib/assistant/llm';
 import { readDifyStream, type TopicBatchStatus } from '@/lib/sse-stream';
 import { finalizeTopicBatch } from '@/lib/topic-delivery';
 import { splitTopicSections } from '@/lib/topic-library';
+import { buildCreationHandoff } from '@/lib/creation-flow';
+import { topicReference } from '@/lib/creation-continuation';
+import { buildTopicBoardQuery } from '@/lib/boards/topic-query';
+import { resolveMix } from '@/lib/content-mix';
+import type { CreatorContext } from '@/lib/creator-context';
 
 const state = vi.hoisted(() => ({
   userId: '',
@@ -84,7 +89,19 @@ vi.mock('@/lib/admin-auth', () => ({
   }),
 }));
 
-it.skipIf(process.env.KAIWU_TOPIC_LIVE_PROBE !== '1')('真实 Dify 三轮创作沿用会话并交付九条不同选题', async () => {
+const probes = [
+  { name: '三轮创作沿用会话', source: null },
+  { name: '创作方向裂变选题', source: 'direction' },
+  { name: '内容规划裂变选题', source: 'content-plan' },
+] as const;
+
+const probeMode = process.env.KAIWU_TOPIC_LIVE_PROBE;
+it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
+  probes.filter(({ source }) => probeMode === 'diversity' ? !!source : !source),
+)('真实 Dify：$name', async ({ source }) => {
+  state.tables.clear();
+  state.reservations.clear();
+  state.completed = 0;
   state.userId = randomUUID();
   const profileId = randomUUID();
   state.tables.set('user_profiles', [{ user_id: state.userId, id: profileId, profile_name: '虚构自行车工作室' }]);
@@ -104,11 +121,24 @@ it.skipIf(process.env.KAIWU_TOPIC_LIVE_PROBE !== '1')('真实 Dify 三轮创作�
       const body = JSON.parse(String(init?.body));
       expect(body.user).toBe(state.userId);
       upstream.push(body);
+    } else if (url.startsWith(difyBase.href.replace(/\/$/, '') + '/messages?')) {
+      expect(new URL(url).searchParams.get('user')).toBe(state.userId);
+      expect(init?.method ?? 'GET').toBe('GET');
     } else if (url !== judgeUrl) {
       throw new Error('Unexpected network destination during synthetic verification');
     }
-    const timeout = AbortSignal.timeout(125_000);
-    return realFetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+    const timeout = AbortSignal.timeout(url === difyUrl ? 300_000 : 30_000);
+    const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+    if (!source || url !== judgeUrl) return realFetch(input, { ...init, signal });
+    const start = Date.now();
+    try {
+      const response = await realFetch(input, { ...init, signal });
+      console.log('语义核对响应', { status: response.status, ms: Date.now() - start });
+      return response;
+    } catch (error) {
+      console.log('语义核对异常', { name: (error as Error).name, ms: Date.now() - start });
+      throw error;
+    }
   });
 
   try {
@@ -124,13 +154,56 @@ it.skipIf(process.env.KAIWU_TOPIC_LIVE_PROBE !== '1')('真实 Dify 三轮创作�
       method: 'POST', headers: { 'content-type': 'application/json', 'x-generation-id': randomUUID() },
       body: JSON.stringify(payload),
     }) as NextRequest;
-    async function deliver(response: Response) {
+    async function deliver(response: Response, count = 3) {
       expect(response.ok).toBe(true);
       let batch: TopicBatchStatus | undefined;
-      const text = await readDifyStream(response, { onTopicBatch: (event) => { batch = event; } });
-      expect(batch).toMatchObject({ requested: 3, count: 3, checked: true });
-      expect(splitTopicSections(text)).toHaveLength(3);
+      let previewChunks = 0;
+      const text = await readDifyStream(response, {
+        onChunk: (piece) => { if (piece && !batch) previewChunks++; },
+        onTopicBatch: (event) => { batch = event; },
+      });
+      if (source) {
+        console.log('流式验收', { source, previewChunks, batch });
+        for (const topic of splitTopicSections(text)) {
+          console.log('合成选题：' + topic.title);
+          console.log(topic.body.split('\n').filter((line) => /承接|核心问题|取材与内容推进|脚本结构|打法/.test(line)).slice(0, 6).join('\n'));
+        }
+      }
+      expect(batch).toMatchObject({ requested: count, count, checked: true });
+      expect(splitTopicSections(text)).toHaveLength(count);
+      if (source) expect(previewChunks).toBeGreaterThan(1);
       return text;
+    }
+    if (source) {
+      const direction = [
+        '### 方向1：本地早餐里的地域差异',
+        '- **视频目的**：流量型，帮助本地人与外地人理解不同的饮食习惯',
+        '- **内容类型**：36计·第35计 街头采访',
+        '- **内容方向**：围绕早餐的口味、称呼、制作过程和点单习惯，观察人们在生活中遇到的具体差别。',
+        '- **怎么拍**：每期都让外地人提问，老板给出两地对比。',
+        '- **开头示范**：南乐XXX，郑州XXX。',
+      ].join('\n');
+      const incomingSetup = buildCreationHandoff(source, 'topic', direction, {});
+      const sourceReference = topicReference(incomingSetup);
+      const topicCount = 5;
+      const personalRequirement = '虚构的早餐店档案，只能用现有早餐样品、菜单、制作台和一名可出镜店员。可策划如何观察或验证，不填写两地真实习惯、经营数据、客户经历或尚未取得的采访结果。';
+      const creatorContext = { profile: null, positioning: null, dealReasons: [] } as unknown as CreatorContext;
+      const { query } = buildTopicBoardQuery({
+        creatorContext, selectedProfile: null, positioningForCtx: null, topicCount, topicType: '流量型选题',
+        topicRole: '流量型', mode: 'custom', sourceReference, sourceFrom: incomingSetup.from, incomingSetup,
+        keyword1: '', keyword2: '', keyword3: '', personalRequirement, currentSettings: {}, accountStage: '',
+        fansLevel: '', avgViewsInput: '', selectedPlatforms: [], selectedTracks: [], selectedContentTypes: [],
+        selectedStyles: [], positioningExtra: '', selectedElements: [], dealReasonLabels: [],
+        benchmarkAccounts: '', viralCases: '', difficulty: '中等创意', withHook: true, tactic: '',
+        route: '两种都出', routeExplicit: false, resolvedMix: resolveMix(null, null, ''), quickTopics: false,
+      });
+      await deliver(await generate(request('/api/dify/stream', {
+        taskType: '选题策划', profileId, query, webSearchMode: 'off',
+        inputs: { topicCount, sourceFrom: incomingSetup.from, sourceReference, personalRequirement },
+      })), topicCount);
+      expect(upstream[0].query).not.toContain('南乐XXX，郑州XXX');
+      expect(upstream[0].query).not.toContain('每期都让外地人提问');
+      return;
     }
     const first = await deliver(await generate(request('/api/dify/stream', body)));
     const nativeId = state.tables.get('dify_conversations')?.[0]?.conversation_id;

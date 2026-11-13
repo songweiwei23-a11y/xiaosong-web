@@ -5,7 +5,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildTopicBoardQuery, extractRelevantPositioningInfo, type TopicBoardInput } from '@/lib/boards/topic-query';
+import { buildTopicBoardQuery, extractRelevantPositioningInfo, topicSettingsFromDirection, type TopicBoardInput } from '@/lib/boards/topic-query';
+import { buildCreationHandoff } from '@/lib/creation-flow';
+import { topicReference } from '@/lib/creation-continuation';
 import { createAssistantTools } from '@/lib/assistant/tools';
 import { runTopicBoard, type TopicInput } from '@/lib/assistant/boards';
 import { resolveMix } from '@/lib/content-mix';
@@ -93,6 +95,36 @@ describe('选题提示词的共用拼装', () => {
     const { query } = buildTopicBoardQuery(baseInput({ sourceReference: '上一条脚本：今天去菜市场问摊主', sourceFrom: '脚本生成' }));
     expect(query).toContain('【这批选题从带来的内容出发】');
     expect(query).toContain('上一条脚本：今天去菜市场问摊主');
+  });
+
+  it.each(['direction', 'content-plan'])('%s 的方向只带目的和范围，选题按不同问题和素材拓展', (source) => {
+    const material = [
+      '### 方向1：本地饮食的地域差异',
+      '- **视频目的**：流量型',
+      '- **内容方向**：观察本地早餐的口味、叫法、做法和购买习惯',
+      '- **本月条数**：6 条',
+      '- **内容类型**：36计·第35计 街头采访',
+      '- **怎么拍**：每条都按同一套外地人提问和老板回答',
+      '- **开头示范**：南乐XXX，郑州XXX',
+      '### 方向2：回头客为什么来',
+      '- **视频目的**：人设型',
+      '- **内容方向**：从熟客实际行为观察信任从哪来',
+    ].join('\n');
+    const incomingSetup = buildCreationHandoff(source, 'topic', material, {});
+    const sourceReference = topicReference(incomingSetup);
+    const currentSettings = topicSettingsFromDirection({ tactic: '街头采访', openingLine: '南乐XXX，郑州XXX', purpose: '流量型', focusContent: material });
+    expect(currentSettings).toEqual({ purpose: '流量型' });
+    const input = baseInput({ sourceReference, sourceFrom: incomingSetup.from, incomingSetup, currentSettings });
+    const { query } = buildTopicBoardQuery(input);
+    expect(query).toContain('观察本地早餐的口味、叫法、做法和购买习惯');
+    expect(query).toContain('规划条数：6 条');
+    expect(query).toContain('从熟客实际行为观察信任从哪来');
+    expect(query).toContain('先给每条选题一个独立的观众问题');
+    expect(query).toContain('同一场地、同一产品、同一出镜人也能拍不同内容');
+    for (const constraint of ['南乐XXX，郑州XXX', '同一套外地人提问', '每条都保留向受访者提问', '可套句式', '照公式拍', '拍法照它写的来']) {
+      expect(query).not.toContain(constraint);
+    }
+    expect(buildTopicBoardQuery({ ...input, tactic: '街头采访', routeExplicit: true }).query).toContain('【本批选题的拍法】');
   });
 
   it.skip('成交理由写进变现型的要求里', () => {

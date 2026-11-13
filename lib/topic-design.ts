@@ -8,8 +8,18 @@ export function topicPreferredTactic(p: { source: string; direction?: string; ex
   return /采访|访谈|街访|问.{0,8}(?:老板|店主|商家)|(?:老板|店主).{0,8}(?:真实感受|真实反应)/.test(material) ? '街头采访' : undefined;
 }
 
-/** A direction is a brief to execute, not a record of already filmed episodes. */
-export function topicSourceRules(hasScript: boolean): string {
+/** 方向卡和具体原稿分别限定可用素材。 */
+export const DIRECTION_TOPIC_DIVERSITY = [
+  '先给每条选题一个独立的观众问题和能回答它的具体素材，再按素材决定怎么拍。',
+  '动笔前先横向看整批的观众问题。大方向下有多个能拍的子议题时，先把它们铺开；别把同一个看点拆成好几个近义问题。题与题各自成立，不需要安排成统一栏目。',
+  '让整批在观察对象、矛盾或看点、证据和推进方式上拉开差异。素材适合时可以用亲手验证、过程记录、现场观察、人物交流等不同形式。',
+  '同一场地、同一产品、同一出镜人也能拍不同内容。只换地名、人名、产品、标题句式，或给同一套动作换个打法名，都不能算新题。',
+  '如果方向涉及地域、前后或人群差异，可以选一条做直接对照。其余优先各自从一个现场动作、具体物件、制作环节或待解问题展开。避免连续使用“两边各怎样”作为标题、钩子和整条片子的组织方式。',
+  '参考卡上的拍法、示例和开头供启发；用户本轮明确指定的拍法、禁忌和真实资源继续生效。',
+].join('\n');
+
+export function topicSourceRules(hasScript: boolean, directionSeed = false): string {
+  if (directionSeed) return DIRECTION_TOPIC_DIVERSITY;
   return (hasScript ? [
     '- 从当前稿件的具体人物、事件、细节或观点提炼更有价值的切口；同一件事可以深化问题、补证据、换观察维度，不另编一段人生经历。',
     '- 原稿里的采访、前后对比、过程记录等核心取材方式继续保留，不能只保留话题词就换成另一种节目。',
@@ -22,7 +32,10 @@ export function topicSourceRules(hasScript: boolean): string {
   ]).join('\n');
 }
 
-export function topicRoutePrompt(p: { route: CreativeRoute; count: number; sourced: boolean; explicit: boolean }): string {
+export function topicRoutePrompt(p: { route: CreativeRoute; count: number; sourced: boolean; explicit: boolean; directionSeed?: boolean }): string {
+  if (p.directionSeed && !p.explicit) {
+    return '【表现形式逐条选择】先定每条的内容和取材，再决定怎样让观众看懂。适合时选用四大脚本或36计的名称辅助交接，整批无须统一打法或凑两套配比。';
+  }
   if (!p.sourced || p.explicit) return routeAssignment(p.route, p.count);
   return [
     '【本批拍法按已选方向自动决定】',
@@ -33,8 +46,8 @@ export function topicRoutePrompt(p: { route: CreativeRoute; count: number; sourc
 }
 
 /** Give the director an executable editorial question, not a decorated title. */
-export function topicDesignStandards(p: { source: string; direction?: string; userIntent?: string }): string {
-  const material = [p.direction, p.userIntent, p.source].filter(Boolean).join('\n');
+export function topicDesignStandards(p: { source: string; direction?: string; userIntent?: string; directionSeed?: boolean }): string {
+  const material = [p.direction, p.userIntent, p.directionSeed ? '' : p.source].filter(Boolean).join('\n');
   const interview = /采访|访谈|问.{0,8}(?:老板|店主|商家)|(?:老板|店主).{0,8}(?:真实感受|真实反应)|你问一句.{0,8}答一句/.test(material);
   const comparison = /前后|前.{0,12}后|期间.{0,15}节后|国庆.{0,15}(?:过后|后)|对比|比较/.test(material);
   const lines = [
@@ -45,13 +58,15 @@ export function topicDesignStandards(p: { source: string; direction?: string; us
     '- 区分拟拍方案与已完成报道。未知结果写成问题或待验证方向；没有素材不要写「我发现一半店关了」「他的话让我眼眶红了」等预设发现。',
     '- 统计比例、技术尺寸、价格、节省金额和普遍经营规律必须有当前材料依据。没有依据就用问题、演示或待测量项，不造「90%的人」「补货频次就是生意硬指标」来撑权威。',
     '- 内容推进要落到具体问题、动作、证据和剪辑关系，不用「制造共鸣→引发讨论」当故事骨架；不能为了十字限制省掉关键步骤。',
-    '- 首条优先把用户明确要拍的那一期做扎实，不能因它不够新奇而只给旁支。其余选题保持同一核心对象和拍法，分别深入不同问题；不得为求新奇牺牲原目的。',
+    p.directionSeed
+      ? '- 守住方向的范围和目的，把不同的问题分别设计成能独立拍摄的一期。用户明确要拍的那一期可以优先，其余题各自取材。'
+      : '- 首条优先把用户明确要拍的那一期做扎实，不能因它不够新奇而只给旁支。其余选题保持同一核心对象和拍法，分别深入不同问题；不得为求新奇牺牲原目的。',
     '- 保留八大爆款元素、四大脚本与36计的编导方法，但方法服务真实问题，不让模板替用户决定要拍什么。',
   ];
   if (/测量|尺寸|开合空间/.test(material)) lines.push(
     '本轮若用实物测量教学：手机用于拍照、记录，真实尺寸由合适工具测量；不把手机大小当柜门尺寸、不冒充可靠测距工具。用当前样品实测的开合范围演示，再核对现场障碍与通道，不编统一预留厘米数或技术标准，不用假返工价制造焦虑。',
   );
-  if (interview) lines.push(
+  if (interview && (!p.directionSeed || /(?:必须|只做|全都|每条都|全部都).{0,8}(?:采访|访谈|街访)/.test(material))) lines.push(
     '\n【真实采访型选题的取材要求】',
     '每条给一组能实际问出口的主问题和2～3个追问，写明访问哪些对象、如何选择，不替受访者预写答案。',
     '本轮核心行动是采访，每条都保留向受访者提问并采集真实回答的主体。四大脚本可辅助组织回答，不能改成主播讲知识、泛行业观点或用关门时间猜经营趋势。',
@@ -78,7 +93,13 @@ export function topicDesignStandards(p: { source: string; direction?: string; us
 }
 
 /** Keep the execution criteria near the point where the model begins its answer. */
-export function topicDesignFinalCheck(): string {
+export function topicDesignFinalCheck(directionSeed = false): string {
+  if (directionSeed) return [
+    '【整批交付前核对】',
+    '- 每条都要说得清承接的是哪个方向、在回答什么问题、能拍到什么独有的素材。',
+    '- 横向比较：去掉标题后，如果两条仍是同一个问题、同样的素材或同一套推进步骤，重做其中一条，直到观众看到的内容确实不同。',
+    '- 采访、演示和对照都以可取得的真实素材为依据，缺少结果时写待验证的行动，别写成已经发生。',
+  ].join('\n');
   return [
     '【交付前最后核对：选题必须能直接指导真实创作】',
     '- 逐条检查：问的仍是不是用户最初那个核心问题？只是背景相同、换成另一种节目，不算承接。',

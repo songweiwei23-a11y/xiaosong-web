@@ -413,6 +413,7 @@ export async function POST(request: NextRequest) {
                   });
                 if (!result.count) {
                   upstreamFailed = true;
+                  sendEvent({ event: 'message_replace', answer: '', topic_draft: true });
                   sendEvent({ event: 'error', message: '这次没有生成可交付的新选题，请调整要求后再试' });
                 } else {
                   const { text, ...batch } = result;
@@ -520,6 +521,7 @@ export async function POST(request: NextRequest) {
                 ) {
                   await clearAttemptedConversation()
                 }
+                if (askingNewTopics) sendEvent({ event: 'message_replace', answer: '', topic_draft: true });
                 send(
                   encoder.encode(`data: ${JSON.stringify({ event: 'error', message: friendlyDifyError(failure) })}\n\n`)
                 )
@@ -532,6 +534,9 @@ export async function POST(request: NextRequest) {
               }
 
               if (!askingNewTopics) send(encoder.encode(`data: ${jsonStr}\n\n`))
+              else if (typeof data.answer === 'string' && !['message_end', 'workflow_finished'].includes(data.event)) {
+                sendEvent({ event: data.event, answer: data.answer, topic_draft: true });
+              }
             }
           }
         } catch (error) {
