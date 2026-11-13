@@ -11,6 +11,9 @@ import { TopBarSlotProvider, TopBarSlotTarget, useTopBarSlotClaimed } from '@/co
 import { InProgressStrip } from '@/components/dashboard/InProgressStrip';
 import { GuideChip } from '@/components/guide/GuideChip';
 import { AssistantWidget } from '@/components/assistant/AssistantWidget';
+import { FloatingAssistantSmart } from '@/components/assistant/FloatingAssistant';
+import { AssistantOnboarding } from '@/components/assistant/AssistantOnboarding';
+import { SmartAssistantPrompt } from '@/components/assistant/SmartAssistantPrompt';
 import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate';
 import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
 import { PresenceBeat } from '@/components/dashboard/PresenceBeat';
@@ -79,6 +82,12 @@ export default function DashboardLayout({
           <FoundationSetup />
           {/* 开物助理：右下角一直在，告诉它遇到什么事，它自己查、自己判断，结果回到窗口里（见 lib/assistant） */}
           <AssistantWidget />
+          {/* 新用户引导：首次登录时介绍助理功能 */}
+          <AssistantOnboarding />
+          {/* 悬浮助手：每个页面右下角的助手按钮，智能提示 */}
+          <FloatingAssistantSmart />
+          {/* 智能提示：用户停留时主动弹出帮助 */}
+          <SmartAssistantPrompt />
           {/* 连接保活：闲几分钟后线路掐掉空闲连接，再点保存、带去下一步就发不出去 */}
           <ConnectionKeepAlive />
           {/* 在线心跳：后台「实时监控」里的在线人数靠它（见 lib/presence） */}
