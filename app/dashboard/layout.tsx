@@ -14,6 +14,7 @@ import { AssistantWidget } from '@/components/assistant/AssistantWidget';
 import { FloatingAssistantSmart } from '@/components/assistant/FloatingAssistant';
 import { AssistantOnboarding } from '@/components/assistant/AssistantOnboarding';
 import { SmartAssistantPrompt } from '@/components/assistant/SmartAssistantPrompt';
+import { ProactiveSuggestions } from '@/components/assistant/ProactiveSuggestions';
 import { CreationRestoreGate } from '@/components/workspace/CreationRestoreGate';
 import { ConnectionKeepAlive } from '@/components/dashboard/ConnectionKeepAlive';
 import { PresenceBeat } from '@/components/dashboard/PresenceBeat';
@@ -88,6 +89,8 @@ export default function DashboardLayout({
           <FloatingAssistantSmart />
           {/* 智能提示：用户停留时主动弹出帮助 */}
           <SmartAssistantPrompt />
+          {/* 主动建议：根据用户状态智能推荐下一步 */}
+          <ProactiveSuggestions />
           {/* 连接保活：闲几分钟后线路掐掉空闲连接，再点保存、带去下一步就发不出去 */}
           <ConnectionKeepAlive />
           {/* 在线心跳：后台「实时监控」里的在线人数靠它（见 lib/presence） */}
