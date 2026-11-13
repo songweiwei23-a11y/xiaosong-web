@@ -173,6 +173,8 @@ export async function readDifyStream(
         const piece: string = data.answer ?? data.text ?? '';
         if (piece) {
           full += piece;
+          // 调试日志：查看每次收到的数据
+          console.log('[SSE] Received chunk, length:', piece.length, 'total:', full.length);
           // 强制立即触发React状态更新
           options.onChunk?.(piece, full);
         }

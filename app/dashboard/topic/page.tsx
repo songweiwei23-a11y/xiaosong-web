@@ -555,6 +555,7 @@ export default function TopicPage() {
         return readDifyStream(response, {
           onChunk: (_piece, full) => { 
             if (isCurrent()) {
+              console.log('[Topic] onChunk called, content length:', full.length);
               setResult(full);  // 立即显示，不等待后续处理
             }
           },
