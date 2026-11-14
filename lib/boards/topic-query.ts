@@ -4,6 +4,7 @@ import { VIRAL_ELEMENTS, viralElementById, elementsFitting, elementsPerTopic, in
 import { viralElementPrompt1021 as viralElementPrompt } from '@/lib/tool-first-1021';
 import { businessLines } from '@/lib/profile-summary';
 import { tacticBrief, tacticsBlockedBy } from '@/lib/growth-standards';
+import { tacticByName } from '@/lib/growth-tactics';
 import { type ContentRole } from '@/lib/content-roles';
 import { mixPromptBlock, type ResolvedMix } from '@/lib/content-mix';
 import { taboosPromptBlock } from '@/lib/taboos';
@@ -341,6 +342,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       const sourced = Boolean(sourceReference.trim());
       const hasScript = carriesScript(incomingSetup);
       const directionSeed = sourced && !hasScript && isTopicDirectionSource(sourceFrom || incomingSetup?.from, sourceReference);
+      const fromDirection = directionSeed || (!hasScript && !sourced && Boolean(tacticByName(tactic)));
       if (sourced) {
         const intent = directionSeed ? '' : intentBlock(carriedIntent(incomingSetup));
         query += `【这批选题从带来的内容出发】🚨 最重要，压过下面所有设置\n`;
@@ -435,8 +437,8 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       const fitNames = fit.ids.map((id) => viralElementById(id)?.name.replace(/选题$/, '') ?? id);
       const droppedNames = fit.dropped.map((id) => viralElementById(id)?.name ?? id);
       const perTopic = Math.min(elementsPerTopic(difficulty), fit.ids.length);
-      const elementBlock = directionSeed
-        ? (fitNames.length ? `【可用的爆款元素】${fitNames.join('、')}。先定内容，标题按每条能拍到的证据表达。` : '')
+      const elementBlock = fromDirection
+        ? (fitNames.length ? `【可用的爆款元素】${fitNames.join('、')}。每条选择一个能用实际素材兑现的主元素。先找观众值得看的具体问题与动作，再写标题。整批素材允许时用至少三类主元素。` : '')
         : viralElementPrompt(fit.ids);
       if (elementBlock) {
         query += `${elementBlock}\n\n`;
@@ -511,50 +513,10 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
         const brief = tacticBrief(tactic);
         if (brief) {
           query += `【本批选题的拍法】🎬 方向参考\n\n`;
-          query += `${brief}\n\n`;
-          query += `\n【🌱 方向裂变法则】这个方向是"地基"，不是"模板"\n\n`;
-          query += `⚠️ 方向 = 底层机制，爆款来自不同元素的组合裂变\n\n`;
-
-          query += `**第一步：理解方向的底层机制**\n`;
-          query += `上面给的公式，揭示的是"为什么这个方向有流量"的底层逻辑。这是地基，所有选题都要守住这个机制。\n\n`;
-
-          query += `**第二步：从地基裂变出不同的爆款元素组合**\n`;
-          query += `每条选题必须从以下维度裂变，确保每条都有独特的爆款元素组合：\n\n`;
-
-          query += `1️⃣ **认知维度**（每条换一个让人意外的点）\n`;
-          query += `   认知缺口/反认知/冷知识/身份反差——不能所有选题都用同一种\n\n`;
-
-          query += `2️⃣ **情绪维度**（每条换一种情绪钩子）\n`;
-          query += `   好奇/震惊/共鸣/焦虑/爽感——不能10条都是"震惊"或"好奇"\n\n`;
-
-          query += `3️⃣ **冲突维度**（每条换一种戏剧性）\n`;
-          query += `   文化冲突/认知冲突/身份冲突/利益冲突——变换冲突类型\n\n`;
-
-          query += `4️⃣ **场景维度**（每条换一个具体场景）\n`;
-          query += `   市场/餐厅/交通/工作/节日...不同场景+不同人物组合+不同时间节点\n\n`;
-
-          query += `5️⃣ **价值维度**（每条换一种观众收获）\n`;
-          query += `   实用避坑/谈资/认同/情感治愈/知识增量——明确且不重复\n\n`;
-
-          query += `**第三步：强制裂变自检（生成后必查）**\n`;
-          query += `✅ 每条的爆款元素组合是否不同？（不能都是"震惊"）\n`;
-          query += `✅ 每条的场景是否具体且不重复？（不能都是"去XX被XX震惊"）\n`;
-          query += `✅ 每条的人物身份是否有变化？（不能都是"外地人"或"本地人"）\n`;
-          query += `✅ 标题结构是否多样？如果有3条以上标题句式相同→立即重写！\n\n`;
-
-          query += `**📌 地域差异方向的正确裂变示范**\n`;
-          query += `❌ 错误（模板化）：10条都是"XX人去XX被XX震惊" → 只换词不是裂变！\n`;
-          query += `✅ 正确（真裂变）：\n`;
-          query += `1. 南方人逛北方澡堂被搓澡文化震撼【反认知+震惊+文化体验】\n`;
-          query += `2. 外地人菜市场不懂"行话"被宰全记录【实用+避坑+痛点】\n`;
-          query += `3. 老板娘用方言欺负顾客，没想到对方也是本地人【身份反转+爽感】\n`;
-          query += `4. 两地人对同一道菜的称呼差异引发笑话【方言梗+共鸣+谈资】\n`;
-          query += `5. 100块钱两地购买力对比实测【数据反差+好奇+冷知识】\n`;
-          query += `6. 打工人吃到家乡菜瞬间破防【情感共鸣+治愈】\n`;
-          query += `→ 看到了吗？同一地基，但每条的元素组合、场景、人物、价值完全不同！\n\n`;
-
-          query += `🎯 核心原则：方向是地基，爆款元素是砖，用不同的砖搭出不同的房子！\n`;
-          query += `⚠️ 上面的「边界」是红线，但在边界内要大胆裂变创新\n\n`;
+          const method = tacticByName(tactic);
+          query += fromDirection && method
+            ? `本轮方向参考：${method.name}。执行边界：${method.limit}。围绕它找可拍素材，各条独立设计看点和内容推进。\n\n`
+            : `${brief}\n\n`;
         }
       } else {
         // 没整批指定某一计：按用户选的路子分配，36 计连公式一起给，只给计名模型不知道怎么拍
@@ -571,6 +533,26 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
           query += `${tacticIndex({ exclude: blocked, namesOnly: directionSeed })}\n\n`;
           if (blocked.length) query += `⛔ 这几计和账号禁忌冲突，已从清单拿掉，不要用：${blocked.join('、')}\n\n`;
         }
+      }
+
+      // 裂变法则：无论走哪个分支都要加
+      if (!tactic) {
+        query += `\n【🌱 方向裂变法则】从同一个地基裂变出完全不同的选题\n\n`;
+        query += `⚠️ 每条选题必须从不同维度裂变，避免模板化：\n\n`;
+
+        query += `1️⃣ **认知维度** - 每条换一个意外点：认知缺口/反认知/冷知识/身份反差\n`;
+        query += `2️⃣ **情绪维度** - 每条换一种钩子：好奇/震惊/共鸣/焦虑/爽感（不能10条都是"震惊"）\n`;
+        query += `3️⃣ **冲突维度** - 每条换一种戏剧性：文化冲突/认知冲突/身份冲突/利益冲突\n`;
+        query += `4️⃣ **场景维度** - 每条换一个具体场景：不同场景+人物组合+时间节点\n`;
+        query += `5️⃣ **价值维度** - 每条换一种收获：实用避坑/谈资/认同/情感治愈/知识增量\n\n`;
+
+        query += `🔍 **强制自检**（生成后必查）：\n`;
+        query += `- 每条的爆款元素组合是否不同？\n`;
+        query += `- 每条的场景是否具体且不重复？\n`;
+        query += `- 标题结构是否多样？如果有3条以上标题句式相同→立即重写！\n\n`;
+
+        query += `❌ **禁止**：10条都是"XX人去XX被XX震惊"这种只换词的模板\n`;
+        query += `✅ **正确**：同一方向，但每条的元素组合、场景、人物、价值完全不同\n\n`;
       }
 
       query += '【选题变化】按每条真实可拍的素材设计切口。让观众看到不同的问题和证据，标题、开头和推进随内容变化。\n';
@@ -590,25 +572,22 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       query += `一句话，写清这条视频要让观众做到什么（停下来、信你、点关注、来店等），要和上面的视频目的一致\n\n`;
       // 这一行的写法固定，页面要从它认出用的哪一计，带到脚本页
       query += `**🅰 打法**\n`;
-      query += directionSeed && !routeExplicit && !tactic
+      query += fromDirection && !routeExplicit
         ? '一句话说明如何用这一条的实际素材回答观众的问题。贴合时可以标出36计或四大脚本的标准名称。\n\n'
         : `格式：36计·第N计 计名，或 四大脚本·结构（${SCRIPT_STRUCTURE_NAMES.join(' / ')}，写全名）。写清本题里的具体动作。\n\n`;
-      query += `**1️⃣ 爆款元素**\n`;
-      if (selectedElements.length > 0) {
+      if (fromDirection) {
+        query += '**爆款元素**：主元素名｜可拍证据与观众看点。可选辅助元素放后面。写出观众能从内容看到什么。\n\n';
+      } else if (selectedElements.length > 0) {
         // 用全名（「最差选题」而不是「最差」），和上面那段句式对得上
         const elementsText = selectedElements
           .map((id) => viralElementById(id)?.name ?? id)
           .join('、');
-        query += directionSeed
-          ? `如有用到，从 ${elementsText} 中挑适合本题的元素，说明它如何帮助表达内容。\n\n`
-          : `注明用了哪个元素（限 ${elementsText}）以及套的是哪一条句式\n\n`;
+        query += `**1️⃣ 爆款元素**\n注明用了哪个元素（限 ${elementsText}）以及套的是哪一条句式\n\n`;
       } else {
-        query += directionSeed
-          ? '有贴合内容的元素就写明如何用。没有则写「无」。\n\n'
-          : '四大脚本的选题用2-3个元素及应用方式；36计的选题叠1个就够，不叠写"无"\n\n';
+        query += '**1️⃣ 爆款元素**\n四大脚本的选题用2-3个元素及应用方式；36计的选题叠1个就够，不叠写"无"\n\n';
       }
       query += `**2️⃣ 开篇钩子**\n`;
-      if (withHook && directionSeed) {
+      if (withHook && fromDirection) {
         query += '从本题的真实问题、物件、动作或可取得的原话起笔，写一句自然开头。未知的事实以待观察、待验证的方式写。\n\n';
       } else if (withHook) {
         query += '结合知识库设计一句能实际说出口的开头，尽快进入这条的真实问题。尚未采访时写「今天去问/到底有没有变化」的提问型开头，不能写「我问过/发现/没想到」的结果型开头。只写文案，不拆成三个每秒一句的口号。\n\n';
@@ -630,7 +609,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
        * 时间线/问答/情景剧/测评/挑战/教程/反转/盘点/采访/观察——大半是知识库里没有的
        * 通用词，而且跟这条视频的目的无关。现在从目的对应的结构里挑（知识库原文）。
        */
-      query += directionSeed
+      query += fromDirection
         ? '写清从哪条素材开始、下一步发生什么、怎样给出能支撑结尾的证据。顺序随本题的素材变化。\n\n'
         : '从这条目的对应的结构里挑1个最合适的（见上面「三种视频」），把每步对应的具体问题、动作或证据写清楚，能直接指导拍摄和剪辑。结构标签不能替代内容。\n用 36 计的：计的公式管事件怎么走，这里的结构管话怎么讲，两者叠加；纯按计的公式拍、不另套结构的，写"按计的公式走"\n\n';
       query += `**5️⃣ 结尾行动指令**\n`;
@@ -653,9 +632,12 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       query += `- 贴合现实：基于真实场景，不能太夸张\n\n`;
       if (sourced && !directionSeed) query += `🔗 交稿前逐条检查：这条能在带来的内容里找到出处吗？找不到就换成找得到的\n\n`;
       query += `📋 具体要求：\n`;
-      query += withHook ? `1. 开篇钩子只写文案，结合知识库优化，不能先编出现场结论\n` : `1. 用户不需要开头文案，本批不生成开篇钩子\n`;
+      if (withHook) query += fromDirection
+        ? '1. 开头直接呈现这一条的看点，或提出要用实拍回答的问题。\n'
+        : '1. 开篇钩子只写文案，结合知识库优化，不能先编出现场结论\n';
+      else query += '1. 用户不需要开头文案，本批不生成开篇钩子\n';
       query += `2. 内容方向及目的是重中之重：核心方向一句话，用户价值要明确\n`;
-      query += directionSeed
+      query += fromDirection
         ? '3. 每条都写「🅰 打法」，先说清这条怎么拍。使用四大脚本或36计时，保留标准名称供下一步读取。\n'
         : '3. 每条都写「🅰 打法」；用 36 计的，计名和清单一字不差，公式要落在事件上，不是只在标题提一句\n';
       query += `4. 每条只担一个目的；脚本结构和结尾行动指令都按目的来，结尾指令只要一个\n`;
@@ -663,7 +645,7 @@ export function buildTopicBoardQuery(input: TopicBoardInput): TopicBoardQuery {
       // 原来「严格控制在220字以内」：把选题的内容方向、关键画面压得太薄（2026-10-06 产品方：不框死上限，先保证质量）
       query += `6. 每条把上面各项写清楚、写具体，去废话、不注水；不用为了凑短省掉关键画面和内容方向。最后不用再写总览表和「自检确认」清单（页面会自动核对），篇幅留给选题本身\n`;
       if (quickTopics && topicCount <= 3) query += `7. 用户选的是「快速 3 条」：每条只写视频目的、打法、开篇钩子、脚本结构（三四行）、结尾行动指令，每项一两句；爆款元素、执行要点、成交理由合成一句写在结构后面。每条 500 字以内\n`;
-      query += `\n${topicDesignFinalCheck(directionSeed)}\n`;
+      query += `\n${topicDesignFinalCheck(fromDirection)}\n`;
 
-  return { query: query + creationSettingsBlock(currentSettings, directionSeed ? 'topic' : 'chain'), mixUsed };
+  return { query: query + creationSettingsBlock(currentSettings, fromDirection ? 'topic' : 'chain'), mixUsed };
 }
