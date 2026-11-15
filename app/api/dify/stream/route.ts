@@ -175,9 +175,19 @@ export async function POST(req: NextRequest) {
     const topicTask = NO_REPEAT_TASKS.has(body.taskType);
     const textInput = (value: unknown) => typeof value === 'string' ? value.trim() : '';
     const sourceReference = textInput(body.inputs?.sourceReference);
-    const directionReference = isTopicDirectionSource(textInput(body.inputs?.sourceFrom), sourceReference);
-    const topicTactic = !sourceReference || directionReference ? textInput(body.inputs?.tactic) || creationSettings.tactic : undefined;
-    const directionSeed = topicTask && !creationSettings.workingScript && (directionReference || Boolean(topicTactic));
+    const sourceFrom = textInput(body.inputs?.sourceFrom);
+    const directionReference = isTopicDirectionSource(sourceFrom, sourceReference);
+    const requestedTopicTactic = textInput(body.inputs?.tactic) || creationSettings.tactic;
+    const topicTactic = !sourceReference || directionReference ? requestedTopicTactic : undefined;
+    /*
+     * 前端历史版本曾丢掉 sourceFrom；此时若只靠来源标签，方向请求会静默退回
+     * 普通选题链路，既不生成角度策划也不经过方向交付验收。方向正文和已选策略
+     * 都是同一层地基信号，任一存在都要走方向链路。带具体脚本时仍保持原来的
+     * 优先级，不能把脚本续写误判成方向选题。
+     */
+    const carriesDirectionSeed = /(?:【方向种子|(?:创作方向(?:与思路)?|(?:当月)?内容规划|内容策划)|南北\s*\/\s*地域差异|地域差异)/.test(`${sourceFrom}\n${sourceReference}\n${requestedTopicTactic}`);
+    const directionSeed = topicTask && !creationSettings.workingScript
+      && (directionReference || Boolean(topicTactic) || carriesDirectionSeed);
     const searchQuery = directionSeed ? '' : buildSearchQuery(body.taskType, body, originalQuery);
     const topicCount = typeof body.inputs?.topicCount === 'number' ? body.inputs.topicCount : 0;
     const requestedTopics = Number.isInteger(topicCount) && topicCount > 0 ? Math.min(topicCount, TOPIC_BATCH_MAX) : undefined;
@@ -344,8 +354,14 @@ export async function POST(req: NextRequest) {
     const existingConversationId = creativeWindow
       ? await getDifyConversationId(guard.userId!, profileId, 'creation')
       : isolated ? null : await getDifyConversationId(guard.userId!, profileId);
-    if (existingConversationId) difyRequestBody.conversation_id = existingConversationId;
-    const previousTopic = topicTask && existingConversationId
+    /*
+     * 方向选题的约束必须由本轮角度策划完整控制。旧创作窗口可能记住了已经废弃的
+     * “两地老板轮流做事”示例；即使 query 覆盖，Dify 仍会把它当对话上下文续写。
+     * 因此方向地基每次从新 Dify 会话起笔，但不丢本地历史：priorTopics 继续负责避重。
+     */
+    const directionIsolated = topicTask && directionSeed;
+    if (existingConversationId && !directionIsolated) difyRequestBody.conversation_id = existingConversationId;
+    const previousTopic = topicTask && existingConversationId && !directionIsolated
       ? await loadLatestTopicCompletion(guard.userId!, existingConversationId)
       : null;
     const mixAllocation = query.match(/^这 \d+ 条按：\*\*[^\n]+/m)?.[0] ?? '';
@@ -906,7 +922,7 @@ export async function POST(req: NextRequest) {
             try {
               const telemetry = {
                 stages, main_calls: mainCalls, extra_calls: stages.filter((s) => s.stage !== 'generate').length, post_changed: rawResponse !== fullResponse,
-                ...(creativeWindow ? { creation_window: { mode: windowRestart ? 'recovered' : existingConversationId ? 'continued' : 'started', restart: windowRestart, same_settings: !windowRestart && continuedWithSameSettings } } : {}),
+                ...(creativeWindow ? { creation_window: { mode: windowRestart ? 'recovered' : directionIsolated ? 'direction_isolated' : existingConversationId ? 'continued' : 'started', restart: windowRestart, same_settings: !windowRestart && continuedWithSameSettings } } : {}),
               };
               await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: { ...usageMetadata, ...telemetry, ...(topicContext ? { direction_topic: topicContext } : {}) } }, body.taskType);
               await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation);

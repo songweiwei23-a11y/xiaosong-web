@@ -196,14 +196,14 @@ describe('选题交付前查重', () => {
 
   it('同一地基下爆款元素不同、内容各自成立时可以同时交付', async () => {
     const a = topic('旧招牌背面还留着哪个街名', '**爆款元素**：怀旧｜翻看旧招牌背面逐字记录街名');
-    const b = topic('本地早餐的叫法从哪来', '**爆款元素**：好奇｜采访一位店员讲一道菜名的来历');
-    const c = topic('同一制作台上的关键动作是什么', '**爆款元素**：冷知识｜实拍一道本地做法并请师傅解释一个动作');
+    const b = topic('本地早餐的叫法从哪来', '**爆款元素**：奇葩｜采访一位店员讲一道菜名的来历');
+    const c = topic('同一制作台上的关键动作是什么', '**爆款元素**：成本｜实拍一道本地做法并记录一个动作要花多久');
     const context = directionTopicContext('地域差异：本地生活用词和做法', '南北/地域差异', '旧招牌、店员、制作台与师傅均可拍')!;
     expect(context.foundation).toContain('用户没有明确要求两地实测/直接对照');
     vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
     const result = await finalizeTopicBatch(batch(a, b, c), [], 3, async () => '', { directionSeed: true, topicContext: context });
     expect(result.checked).toBe(true);
-    expect(splitTopicSections(result.text)).toEqual([a]);
+    expect(splitTopicSections(result.text)).toEqual([a, b, c]);
   });
   it('只有本轮明确要求两地实测/对照时才允许一个平行角度', () => {
     expect(directionTopicContext('地域差异方向', '南北/地域差异', '用户只要地域方向，没有指定两地实测')?.allowParallelComparison).toBe(false);

@@ -186,6 +186,30 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     expect(getDifyConversationId).toHaveBeenCalledWith('u1', 'p1', 'creation');
   });
 
+  it('方向地基选题不续接旧会话，确保旧模板不能从 Dify 历史带回', async () => {
+    vi.mocked(getDifyConversationId).mockResolvedValueOnce('old-direction-window');
+    const raw = '## 选题1：翻旧招牌背面的街名\n**爆款元素**：怀旧｜翻转旧招牌逐字拍清街名\n\n## 选题2：预约本怎么记\n**爆款元素**：人群｜手部跟拍店主填写一笔预约\n\n## 选题3：旧照片里留下什么\n**爆款元素**：奇葩｜放大开店照片逐处看门口细节';
+    mockDify(difyStream([msg(raw), ev({ event: 'message_end', conversation_id: 'fresh-direction-window', message_id: 'm1' })]));
+    const response = await POST(new Request('http://x/api/dify/stream', {
+      method: 'POST',
+      body: JSON.stringify({
+        taskType: '选题策划', profileId: 'p1', query: '旧版页面未传来源标签的方向选题',
+        inputs: {
+          topicCount: 3, tactic: '南北/地域差异',
+          sourceReference: '方向资料：南乐旧招牌和郑州现店的搬店经历。',
+          personalRequirement: '只有旧招牌、预约本和开店照片可拍；用户没有要求两地实测或直接对照。',
+        },
+      }),
+    }) as any);
+    await expect(readDifyStream(response)).rejects.toThrow('这次没有生成可交付的新选题');
+    // 本测试没有接入语义规划模型，故到交付环节会明确拒绝空策划；
+    // 这里验的是旧页面漏传 sourceFrom 时仍进入方向专用提示词与会话隔离。
+    expect(difyCalls[0].body.conversation_id).toBeUndefined();
+    expect(difyCalls[0].body.query).toContain('未授权，禁止任何两地老板分别做事');
+    expect(difyCalls[0].body.query).toContain('不同主元素要对应不同看点、证据与镜头动作');
+    expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '选题策划', 'creation');
+  });
+
   it('选题先流出草稿，历史撞题没有进入最终正文和完成记录', async () => {
     vi.stubEnv('ASSISTANT_API_KEY', '');
     vi.mocked(loadPriorTopicSections).mockResolvedValueOnce([]).mockResolvedValueOnce([{ title: '柜门开合测试', body: '展示铰链开合' }]);
