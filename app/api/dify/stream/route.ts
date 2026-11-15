@@ -255,6 +255,7 @@ export async function POST(req: NextRequest) {
     const topicContext = directionSeed ? directionTopicContext(
       sourceReference, topicTactic,
       [textInput(body.inputs?.personalRequirement), creationSettings.userIntent, creationSettings.notes,
+        textInput(body.inputs?.sourceReference),
         body.inputs?.withHook === false ? '关闭开篇钩子。' : '',
         textInput(body.inputs?.topicRole) && `本轮视频目的：${textInput(body.inputs?.topicRole)}`, topicProfileFacts].filter(Boolean).join('\n'),
       creationSettings.elements ?? textInput(body.inputs?.elements).split(/[、,，]/),

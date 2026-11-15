@@ -132,25 +132,29 @@ function templateDuplicateIndices(topics: TopicSection[]): Set<number> {
   return duplicate;
 }
 
-/** 识别用两地的同一类人物做平行开场的套法。 */
+/** 识别在文本任意位置出现的两地同角色并列，以及明确的双城节目骨架。 */
 function parallelPlaceOpening(title: string): boolean {
   const normalized = title.normalize('NFKC');
-  for (const separator of [/;/, /[;,。!?、:]/]) {
-    const subjects = normalized.split(separator).flatMap((clause) => {
-      const match = clause.trim().match(/^(?:走在|在)?([\p{Script=Han}]{2,8}?)(?:市|县|区)?(?:这边|那边)?(?:的)?(老板|店主|店员|员工|顾客|客人|街上)/u);
-      return match ? [{ place: match[1], role: match[2].replace(/店主/g, '老板').replace(/员工/g, '店员').replace(/客人/g, '顾客') }] : [];
-    });
-    for (const [index, first] of subjects.entries()) {
-      const second = subjects.slice(index + 1).find((subject) => subject.role === first.role && subject.place !== first.place);
-      if (second) return true;
-    }
-  }
-  return false;
+  const placeRole = /(?:((?:南乐|郑州|甲地|乙地|A地|B地)|[\p{Script=Han}]{2,8}(?:市|县|区|镇|村)))(?:这边|那边)?(?:的)?(老板|店主|店长|掌柜|主理人|摊主|老板娘|店员|员工|顾客|客人)/gu;
+  const subjects = [...normalized.matchAll(placeRole)].map((match) => ({
+    place: match[1],
+    role: match[2].replace(/店主|店长|掌柜|主理人|摊主|老板娘/g, '经营者').replace(/员工/g, '店员').replace(/客人/g, '顾客'),
+  }));
+  return subjects.some((first, index) => subjects.slice(index + 1).some((next) => next.role === first.role && next.place !== first.place));
 }
 
-function topicPlaceOpening({ title, body }: TopicSection): boolean {
-  const opening = directionBrief({ title, body }).body.split('\n').find((line) => /^(开篇|开头)/.test(line));
-  return parallelPlaceOpening(title) || parallelPlaceOpening(opening?.replace(/^[^：]*：/, '') || '');
+function containsExplicitParallelLanguage(text: string): boolean {
+  return /(?:分别|各自|一边.{0,10}另一边|两边|两地|双城|A地.{0,12}B地|B地.{0,12}A地).{0,30}(?:老板|店主|店长|掌柜|主理人|摊主|老板娘|店员|员工|顾客|客人)|(?:老板|店主|店长|掌柜|主理人|摊主|老板娘|店员|员工|顾客|客人).{0,30}(?:分别|各自|一边.{0,10}另一边|两边|两地|双城|A地.{0,12}B地|B地.{0,12}A地)/u.test(text);
+}
+
+function hasParallelPlacePattern(topic: TopicSection): boolean {
+  const parsed = directionBrief(topic).body;
+  const content = `${topic.title}\n${parsed}`;
+  return parallelPlaceOpening(content) || containsExplicitParallelLanguage(content);
+}
+
+function topicHasUnauthorizedParallel(topic: TopicSection, allowParallel: boolean): boolean {
+  return !allowParallel && hasParallelPlacePattern(topic);
 }
 
 export function parseTopicOverlap(raw: string, candidates: number, references: number, inspectContent = false): number[] | null {
@@ -193,12 +197,17 @@ async function compare(topics: TopicSection[], references: TopicSection[], direc
   }
   if (context) {
     const known = context.constraints.normalize('NFKC').replace(/\s/g, '');
+    const parallelUsage = { count: 0 };
     for (const [index, topic] of topics.entries()) {
+      const hasParallel = hasParallelPlacePattern(topic);
+      const unauthorizedParallel = hasParallel && !context.allowParallelComparison;
+      const overParallelQuota = hasParallel && context.allowParallelComparison && parallelUsage.count >= 1;
+      if (hasParallel && !unauthorizedParallel && !overParallelQuota) parallelUsage.count++;
       const publicLines = [topic.title, ...directionBrief(topic).body.split('\n').filter((line) => /^开篇|^开头/.test(line))].join('\n');
       // 一百元挑战、计划测量等可以是创作动作。菜单年限是原有事实，需要已确认素材。
       const yearClaims = publicLines.normalize('NFKC').matchAll(/(?<![\d一二两三四五六七八九十百千万])(?:\d{1,4}|[一二两三四五六七八九十百千万]{1,7})\s*年前/g);
       const unsupportedNumber = [...yearClaims].some(([claim]) => !known.includes(claim.replace(/\s/g, '')));
-      if (unsupportedNumber || /【待确认[：:]/.test(topic.body) || !context.elements.includes(primaryTopicElement(topic) || '') || topicPlaceOpening(topic)) blocked.add(index);
+      if (unauthorizedParallel || overParallelQuota || unsupportedNumber || /【待确认[：:]/.test(topic.body) || !context.elements.includes(primaryTopicElement(topic) || '')) blocked.add(index);
     }
   }
   if (!topics.length || (!context && topics.length === 1 && !references.length)) return { blocked, checked: true };

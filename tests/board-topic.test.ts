@@ -120,7 +120,8 @@ describe('选题提示词的共用拼装', () => {
     expect(query).toContain('规划条数：6 条');
     expect(query).toContain('从熟客实际行为观察信任从哪来');
     expect(query).toContain('先给每条选题一个独立的观众问题');
-    expect(query).toContain('同一场地、同一产品、同一出镜人也能拍不同内容');
+    expect(query).toContain('地域、前后或人群差异不是每条必须重复的节目形式');
+    expect(query).toContain('只有用户本轮明确要求同标准的两地实测/直接对照时，最多保留一条对照题');
     for (const constraint of ['南乐XXX，郑州XXX', '同一套外地人提问', '每条都保留向受访者提问', '可套句式', '照公式拍', '拍法照它写的来']) {
       expect(query).not.toContain(constraint);
     }

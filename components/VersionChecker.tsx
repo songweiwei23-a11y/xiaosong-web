@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 
 /**
@@ -11,39 +11,46 @@ import { RefreshCw, X } from 'lucide-react';
 export function VersionChecker() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [currentBuildId, setCurrentBuildId] = useState<string | null>(null);
+  const baselineRef = useRef<string | null>(null);
+  const promptedRef = useRef(false);
 
   useEffect(() => {
-    // 首次加载，记录当前版本
-    const initVersion = async () => {
+    let checking = false;
+    let mounted = true;
+    let interval: ReturnType<typeof setInterval> | undefined;
+
+    const checkVersion = async () => {
+      if (checking || promptedRef.current) return;
+      checking = true;
       try {
         const res = await fetch('/api/build-id', { cache: 'no-store' });
-        const data = await res.json();
-        setCurrentBuildId(data.buildId);
+        if (!res.ok) return;
+        const data = await res.json() as { buildId?: unknown };
+        if (typeof data.buildId !== 'string' || !data.buildId) return;
+        if (!baselineRef.current) {
+          baselineRef.current = data.buildId;
+          if (mounted) setCurrentBuildId(data.buildId);
+          return;
+        }
+        if (data.buildId !== baselineRef.current) {
+          promptedRef.current = true;
+          if (mounted) setShowPrompt(true);
+          if (interval) clearInterval(interval);
+        }
       } catch {
-        // 忽略错误
+        // 网络错误不改变基准版本，继续等待下一次成功检查。
+      } finally {
+        checking = false;
       }
     };
 
-    initVersion();
-
-    // 每30秒检查一次
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/build-id', { cache: 'no-store' });
-        const data = await res.json();
-        
-        // 如果版本号变了，说明有新版本
-        if (currentBuildId && data.buildId !== currentBuildId) {
-          setShowPrompt(true);
-          clearInterval(interval); // 停止检查
-        }
-      } catch {
-        // 网络错误，继续下次检查
-      }
-    }, 30000); // 30秒
-
-    return () => clearInterval(interval);
-  }, [currentBuildId]);
+    void checkVersion();
+    interval = setInterval(() => { void checkVersion(); }, 30_000);
+    return () => {
+      mounted = false;
+      if (interval) clearInterval(interval);
+    };
+  }, []);
 
   if (!showPrompt) return null;
 

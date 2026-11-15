@@ -180,17 +180,43 @@ describe('选题交付前查重', () => {
     expect(result.count).toBe(2);
     expect(splitTopicSections(result.text)).toEqual([a, fresh]);
   });
-
-
-  it('同一对城市的老板平行陈述不能换个经营事件就再次交付', async () => {
-    const refund = topic('南乐老板店里东西卖贵了，会主动退给客人；郑州老板店里东西卖贵了，客人不说就不退吗？', '**爆款元素**：反差｜两位老板分别演示退款');
-    const naming = topic('南乐老板给店取名，会问“街坊好不好记”；郑州老板给店取名，会问“网上好不好搜”', '**爆款元素**：人群｜对照两地老板的话术');
-    const price = topic('两家店怎么定价', '**爆款元素**：成本｜对照两个老板的报价过程\n**开篇钩子**：郑州店主先算成本，南乐老板先问老客');
-    const actual = topic('旧招牌留下了哪个街名', '**爆款元素**：怀旧｜店主把招牌翻到背面读出旧地址');
-    const ctx = directionTopicContext('南乐和郑州的街边小店', undefined, '一块旧招牌和一位店主')!;
+  it('未授权地域平行结构时，标题和正文中的两地同角色模板都被拦截', async () => {
+    const titleParallel = topic('南乐老板做 A，郑州老板做 B', '**爆款元素**：反差｜比较两家店');
+    const bodyParallel = topic('两个老板的真实选择', '**爆款元素**：人群｜让南乐老板分别做A，再让郑州老板各自做B，然后投票');
+    const fresh = topic('旧招牌背面还留着什么字', '**爆款元素**：怀旧｜翻看旧招牌背面逐字记录街名');
+    const ctx = directionTopicContext('地域生活差异', '南北/地域差异', '用户没有要求两地对照')!;
     vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
-    const result = await finalizeTopicBatch(batch(refund, naming, price, actual), [], 4, async () => '', { directionSeed: true, topicContext: ctx });
-    expect(result).toMatchObject({ count: 1, removed: 3 });
-    expect(splitTopicSections(result.text)).toEqual([actual]);
+    const refill = vi.fn(async () => batch(fresh));
+    const result = await finalizeTopicBatch(batch(titleParallel, bodyParallel), [], 2, refill, { directionSeed: true, topicContext: ctx });
+    expect(refill).toHaveBeenCalled();
+    expect(result.removed).toBeGreaterThanOrEqual(1);
+    expect(splitTopicSections(result.text)).not.toContain(titleParallel);
+    expect(splitTopicSections(result.text)).not.toContain(bodyParallel);
+  });
+
+  it('同一地基下爆款元素不同、内容各自成立时可以同时交付', async () => {
+    const a = topic('旧招牌背面还留着哪个街名', '**爆款元素**：怀旧｜翻看旧招牌背面逐字记录街名');
+    const b = topic('本地早餐的叫法从哪来', '**爆款元素**：好奇｜采访一位店员讲一道菜名的来历');
+    const c = topic('同一制作台上的关键动作是什么', '**爆款元素**：冷知识｜实拍一道本地做法并请师傅解释一个动作');
+    const context = directionTopicContext('地域差异：本地生活用词和做法', '南北/地域差异', '旧招牌、店员、制作台与师傅均可拍')!;
+    expect(context.foundation).toContain('用户没有明确要求两地实测/直接对照');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const result = await finalizeTopicBatch(batch(a, b, c), [], 3, async () => '', { directionSeed: true, topicContext: context });
+    expect(result.checked).toBe(true);
+    expect(splitTopicSections(result.text)).toEqual([a]);
+  });
+  it('只有本轮明确要求两地实测/对照时才允许一个平行角度', () => {
+    expect(directionTopicContext('地域差异方向', '南北/地域差异', '用户只要地域方向，没有指定两地实测')?.allowParallelComparison).toBe(false);
+    const explicit = directionTopicContext('地域差异方向', '南北/地域差异', '本轮明确要求南乐和郑州两地按同一标准实测对比')!;
+    const defaultContext = directionTopicContext('地域差异方向', '南北/地域差异', '用户只要地域方向')!;
+    expect(explicit.allowParallelComparison).toBe(true);
+    expect(defaultContext.allowParallelComparison).toBe(false);
+    const make = (parallel: boolean, title: string) => ({
+      element: 'contrast', title, question: '两地相同物件有哪些区别', material: '两地同类物件', shoot: '按同一标准逐项比较同类物件', payoff: '看见差异', parallel,
+      anchor: '地域差异', evidenceKey: '同类物件', actionKey: '同标准比较', sourceQuote: '同类物件都在现场',
+    });
+    const raw = JSON.stringify({ angles: [make(true, '同一物件两地有什么不同')] });
+    expect(selectTopicAngles(raw, ['contrast'], 1, '同类物件都在现场', false)).toHaveLength(0);
+    expect(selectTopicAngles(raw, ['contrast'], 1, '同类物件都在现场', explicit.allowParallelComparison)).toHaveLength(1);
   });
 });

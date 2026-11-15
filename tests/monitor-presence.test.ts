@@ -191,6 +191,16 @@ describe('系统状态：助理进行中的任务数', () => {
 });
 
 describe('接线：版本号从构建注入，页面和服务器用同一个值比较', () => {
+  it('全局版本检查器在服务器 build-id 变化后显示刷新提示，且不因首次加载或请求失败误报', () => {
+    const checker = read('components/VersionChecker.tsx');
+    expect(read('app/layout.tsx')).toContain('<VersionChecker />');
+    expect(checker).toContain("fetch('/api/build-id', { cache: 'no-store' })");
+    expect(checker).toContain('baselineRef.current');
+    expect(checker).toContain('data.buildId !== baselineRef.current');
+    expect(checker).toContain('res.ok');
+    expect(checker).toContain('🎉 有新版本可用');
+    expect(checker).toContain('window.location.reload()');
+  });
   it('部署脚本的构建命令注入版本号（和 buildTag 同一个值）', () => {
     const deploy = read('同步到服务器.ps1');
     expect(deploy).toContain('NEXT_PUBLIC_APP_BUILD=$buildTag');
