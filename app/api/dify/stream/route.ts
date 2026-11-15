@@ -27,6 +27,8 @@ import {
 import { loadLatestTopicCompletion, loadPriorTopicSections } from '@/lib/topic-library-server';
 import { continueTopicPrompt, finalizeTopicBatch, prepareTopicDraft, topicRefillPrompt, TOPIC_BATCH_MAX } from '@/lib/topic-delivery';
 import { isTopicDirectionSource } from '@/lib/creation-continuation';
+import { DIRECTION_TOPIC_DELIVERY, anchorDirectionDraft, directionAnglesPrompt, directionTopicContext, planDirectionTopics } from '@/lib/direction-topic-plan';
+import { industryKeysOf } from '@/lib/viral-elements';
 import { loadDoneList } from '@/lib/work-insight-load';
 import { difyErrorCode, difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
 import { waitForDifyMessage } from '@/lib/dify-recover';
@@ -171,11 +173,12 @@ export async function POST(req: NextRequest) {
     const profileId = body.profileId || body.profile_id || null;
     const creativeWindow = CREATIVE_WINDOW_TASKS.has(body.taskType);
     const topicTask = NO_REPEAT_TASKS.has(body.taskType);
-    const directionSeed = topicTask && !creationSettings.workingScript && isTopicDirectionSource(
-      typeof body.inputs?.sourceFrom === 'string' ? body.inputs.sourceFrom : undefined,
-      typeof body.inputs?.sourceReference === 'string' ? body.inputs.sourceReference : '',
-    );
-    const searchQuery = directionSeed ? '选题策划 内容选题来源 真实素材 现场观察' : buildSearchQuery(body.taskType, body, originalQuery);
+    const textInput = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+    const sourceReference = textInput(body.inputs?.sourceReference);
+    const directionReference = isTopicDirectionSource(textInput(body.inputs?.sourceFrom), sourceReference);
+    const topicTactic = !sourceReference || directionReference ? textInput(body.inputs?.tactic) || creationSettings.tactic : undefined;
+    const directionSeed = topicTask && !creationSettings.workingScript && (directionReference || Boolean(topicTactic));
+    const searchQuery = directionSeed ? '' : buildSearchQuery(body.taskType, body, originalQuery);
     const topicCount = typeof body.inputs?.topicCount === 'number' ? body.inputs.topicCount : 0;
     const requestedTopics = Number.isInteger(topicCount) && topicCount > 0 ? Math.min(topicCount, TOPIC_BATCH_MAX) : undefined;
     const priorTopics = topicTask ? await loadPriorTopicSections(guard.userId!, profileId) : [];
@@ -216,12 +219,15 @@ export async function POST(req: NextRequest) {
      * 事实护栏（lib/fact-guard，2026-10-09 全板块实测）：档案关键事实原话 + 拼在最末尾的「别把设想写成真事」。
      * 只给生成内容的板块；只读这个用户自己的档案
      */
+    let profileIndustryKeys: string[] = [];
+    let topicProfileFacts = '';
     if (!NO_FACT_GUARD_TASKS.has(body.taskType)) {
       const pid = body.profileId || body.profile_id || historyProfileId;
       let profileRow: Record<string, unknown> | null = null;
       if (typeof pid === 'string' && PROFILE_UUID.test(pid)) {
         const { data } = await getServiceSupabase().from('user_profiles').select('product_category,account_track,competitive_advantage,unique_selling_point,team_structure').eq('id', pid).eq('user_id', guard.userId!).maybeSingle();
         profileRow = data as Record<string, unknown> | null;
+        profileIndustryKeys = industryKeysOf(profileRow);
         // 事实核对的已知素材：档案全文 + 这个号的账号定位和创作简报（访谈在档案里）
         const db = getServiceSupabase();
         const [{ data: full }, { data: positioning }] = await Promise.all([
@@ -232,6 +238,12 @@ export async function POST(req: NextRequest) {
         const active = pos.find((x) => x.is_active && x.positioning_type === '账号定位')?.full_content ?? '';
         const brief = pos.find((x) => x.positioning_type === '创作简报')?.full_content ?? '';
         factMaterial = [JSON.stringify(full ?? {}), active, brief].join('\n');
+        const profile = full as Record<string, unknown> | null;
+        if (profile) {
+          const facts = ['product_category', 'account_track', 'competitive_advantage', 'unique_selling_point', 'team_structure', 'content_restrictions', 'avoid_content', 'persona_facts']
+            .map((key) => [key, profile[key]]).filter(([, value]) => Boolean(value));
+          topicProfileFacts = JSON.stringify(Object.fromEntries(facts));
+        }
         personaFacts = (full as { persona_facts?: unknown } | null)?.persona_facts ?? null;
       }
       query += profileFactsBlock(profileRow);
@@ -240,6 +252,14 @@ export async function POST(req: NextRequest) {
       query += factGuardTail(userDonts([creationSettings.userIntent, creationSettings.notes, said(body.inputs?.personalRequirement), said(body.inputs?.originContent), said(body.historyInput?.originContent)]));
     }
 
+    const topicContext = directionSeed ? directionTopicContext(
+      sourceReference, topicTactic,
+      [textInput(body.inputs?.personalRequirement), creationSettings.userIntent, creationSettings.notes,
+        body.inputs?.withHook === false ? '关闭开篇钩子。' : '',
+        textInput(body.inputs?.topicRole) && `本轮视频目的：${textInput(body.inputs?.topicRole)}`, topicProfileFacts].filter(Boolean).join('\n'),
+      creationSettings.elements ?? textInput(body.inputs?.elements).split(/[、,，]/),
+      profileIndustryKeys,
+    ) : null;
     // 【方案6：工作流 + 手动记忆】
     // 构建 Dify 请求体：query 在顶层，conversation_history 在 inputs
     const difyRequestBody: any = {
@@ -327,19 +347,41 @@ export async function POST(req: NextRequest) {
     const previousTopic = topicTask && existingConversationId
       ? await loadLatestTopicCompletion(guard.userId!, existingConversationId)
       : null;
+    const mixAllocation = query.match(/^这 \d+ 条按：\*\*[^\n]+/m)?.[0] ?? '';
+    const candidateCount = Math.min(TOPIC_BATCH_MAX, (requestedTopics ?? 5) + (mixAllocation ? 0 : 2));
+    const topicPlan = topicContext
+      ? await traced('topic_plan', async () => {
+        const angles = await planDirectionTopics(topicContext, candidateCount, [...(previousTopic?.topics ?? []), ...priorTopics], req.signal);
+        return { ok: Boolean(angles.length), angles };
+      })
+      : null;
+    if (topicContext && topicPlan) {
+      const scope = [textInput(body.inputs?.contentTypes), textInput(body.inputs?.styles), textInput(body.inputs?.keywords)]
+        .filter(Boolean).join('、');
+      query = [
+        directionAnglesPrompt(topicContext, topicPlan.angles, candidateCount, requestedTopics ?? 5),
+        scope ? '本轮显式选择的创作要求：' + scope : '',
+        mixAllocation,
+        settingsBlock,
+        '历史只用于避重。本轮只写以下策划对应的内容。',
+        DIRECTION_TOPIC_DELIVERY,
+      ].filter(Boolean).join('\n\n');
+    }
+    difyRequestBody.query = query;
+    difyRequestBody.inputs.query = query;
     let continuedWithSameSettings = false;
     let windowRestart: 'expired' | 'context' | undefined;
     if (topicTask && existingConversationId) {
       continuedWithSameSettings = !!requestedTopics && !!previousTopic
         && previousTopic.fingerprint === creationRequestFingerprint(body);
-      const nextQuery = continueTopicPrompt(previousTopic?.topics ?? [], requestedTopics ?? 0, continuedWithSameSettings ? undefined : query, directionSeed);
+      const nextQuery = topicContext ? query : continueTopicPrompt(previousTopic?.topics ?? [], requestedTopics ?? 0, continuedWithSameSettings ? undefined : query, directionSeed);
       difyRequestBody.query = nextQuery;
       difyRequestBody.inputs.query = nextQuery;
     }
     const restartWindow = (reason: 'expired' | 'context') => {
       windowRestart = reason;
       delete difyRequestBody.conversation_id;
-      const recoveredQuery = previousTopic
+      const recoveredQuery = previousTopic && !topicContext
         ? query + buildNoRepeatBlock(previousTopic.topics.map((topic) => topic.title))
         : query;
       difyRequestBody.query = recoveredQuery;
@@ -563,6 +605,9 @@ export async function POST(req: NextRequest) {
           if (outcome.kind === 'done' && !needsCheck && fullResponse.trim()) send({ event: 'draft_done' });
           // 模型原始输出：后面的整理可能把结构块改坏，拆解要拿它来还原（见 keepStructureBlock）
           const rawResponse = fullResponse;
+          if (outcome.kind === 'done' && topicPlan?.angles.length) {
+            fullResponse = anchorDirectionDraft(fullResponse, topicPlan.angles);
+          }
           if (outcome.kind === 'done' && sourceForReview && fullResponse.trim()) {
             const requirements = typeof body.personalRequirements === 'string' ? body.personalRequirements : '';
             // 本轮材料（档案、相关方案参考）是事实依据；原稿不是（2026-10-19）
@@ -637,7 +682,8 @@ export async function POST(req: NextRequest) {
           // 已知素材 = 档案全文、这个号的定位和简报、用户自己给的原话（不含提示词本身：提示词里的示例数字不算出处，2026-10-12）
           const userSaid = [creationSettings.userIntent, creationSettings.notes, body.inputs?.personalRequirement, body.inputs?.originContent, body.historyInput?.originContent, sourceForReview, JSON.stringify(creationSettings)]
             .filter((x) => typeof x === 'string' && x.trim()).join('\n');
-          const factKnown = factMaterial ? `${factMaterial}\n${userSaid}` : sourceForReview ? `${query}\n${sourceForReview}` : query;
+          const factKnown = topicContext ? `${topicContext.constraints}\n${userSaid}`
+            : factMaterial ? `${factMaterial}\n${userSaid}` : sourceForReview ? `${query}\n${sourceForReview}` : query;
           // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）
           const factIssues = (t: string) => [...unsupportedFacts(t, factKnown), ...seasonMisstatements(t, Date.now(), factKnown)]
             .filter((i) => pendingInterview(boundedIntent) || !/^采访(?:经历|结果)/.test(i));
@@ -784,7 +830,7 @@ export async function POST(req: NextRequest) {
               fullResponse = reconciled;
             }
           }
-          if (outcome.kind === 'done' && topicTask && fullResponse.trim()) {
+          if (outcome.kind === 'done' && topicTask && (fullResponse.trim() || topicPlan?.angles.length)) {
             send({ event: 'status', message: '正在逐条核对选题，撞题会自动补写' });
             const polishSignal = AbortSignal.timeout(35_000);
             const polish = (text: string) => prepareTopicDraft(text, async (prompt) => {
@@ -796,26 +842,33 @@ export async function POST(req: NextRequest) {
             const [freshTopics, done, draft] = await Promise.all([
               loadPriorTopicSections(userId, profileId),
               profileId ? loadDoneList(userId, profileId) : [],
-              polish(fullResponse),
+              topicContext ? Promise.resolve(topicPlan?.angles.length ? fullResponse : '') : polish(fullResponse),
             ]);
             const prior = freshTopics.length ? freshTopics : priorTopics;
             const result = await finalizeTopicBatch(draft, [...(previousTopic?.topics ?? []), ...prior, ...done.map(({ title }) => ({ title, body: '' }))], requestedTopics, async (refill) => {
               if (!generationConversationId) return '';
-              const prompt = topicRefillPrompt(refill, directionSeed);
+              const angles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements) : [];
+              if (topicContext && !angles.length) return '';
+              const prompt = topicContext
+                ? directionAnglesPrompt(topicContext, angles, refill.count) + '\n\n' + DIRECTION_TOPIC_DELIVERY
+                : topicRefillPrompt(refill, directionSeed);
               const repair = await traced('topic_refill', () => askDify(prompt, userId, searchQuery, {
                 conversationId: generationConversationId, signal: AbortSignal.timeout(120_000),
               }));
               if (!repair.ok) return '';
               usageMetadata = combinedReviewUsage(usageMetadata, repair.completion.usage ?? {}, 'topic_refill_steps');
-              return holdUnsupported(tidy(repair.text), factIssues).text;
-            }, { directionSeed });
+              return holdUnsupported(tidy(anchorDirectionDraft(repair.text, angles)), factIssues).text;
+            }, { directionSeed, topicContext });
             if (result.requested) {
               const { text, ...batch } = result;
               if (result.count) {
                 fullResponse = text;
                 send({ event: 'topic_batch', ...batch });
               } else {
-                outcome = { kind: 'error', message: '这次没有生成可交付的新选题，请调整要求后再试' };
+                if (creativeWindow && generationConversationId) {
+                  await saveDifyConversationId(userId, generationConversationId, profileId, body.taskType, 'creation');
+                }
+                outcome = { kind: 'error', message: result.checked ? '这次没有生成可交付的新选题，请调整要求后再试' : '选题核对暂未完成，请重试' };
               }
             }
           }
@@ -823,7 +876,7 @@ export async function POST(req: NextRequest) {
           if (outcome.kind !== 'done' && needsCheck && shownText) showFullText('');
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
-            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
+            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试','选题核对暂未完成，请重试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
             else send({ event: 'error', message: friendlyDifyError(outcome.message), code: difyErrorCode(outcome.message) });
           } else if (outcome.kind === 'broken') {
             console.error('Stream error:', outcome.error);
@@ -854,7 +907,7 @@ export async function POST(req: NextRequest) {
                 stages, main_calls: mainCalls, extra_calls: stages.filter((s) => s.stage !== 'generate').length, post_changed: rawResponse !== fullResponse,
                 ...(creativeWindow ? { creation_window: { mode: windowRestart ? 'recovered' : existingConversationId ? 'continued' : 'started', restart: windowRestart, same_settings: !windowRestart && continuedWithSameSettings } } : {}),
               };
-              await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: { ...usageMetadata, ...telemetry } }, body.taskType);
+              await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: { ...usageMetadata, ...telemetry, ...(topicContext ? { direction_topic: topicContext } : {}) } }, body.taskType);
               await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation);
               // 学习信号：这次生成是不是对照组、结果开头的指纹（尽力而为，不影响结果）
               void recordGenerationSignal({ userId: userId!, profileId: profileId ?? null, board: getFeatureFromTaskType(body.taskType), result: fullResponse }); }

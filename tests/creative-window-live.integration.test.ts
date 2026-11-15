@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 import { readAssistantConfig } from '@/lib/assistant/config';
 import { messagesUrl } from '@/lib/assistant/llm';
 import { readDifyStream, type TopicBatchStatus } from '@/lib/sse-stream';
-import { finalizeTopicBatch } from '@/lib/topic-delivery';
+import { finalizeTopicBatch, primaryTopicElement } from '@/lib/topic-delivery';
 import { splitTopicSections } from '@/lib/topic-library';
 import { buildCreationHandoff } from '@/lib/creation-flow';
 import { topicReference } from '@/lib/creation-continuation';
@@ -78,7 +78,7 @@ vi.mock('@/lib/admin-auth', () => ({
         rows.push({
           user_id: args.p_user_id, task_type: args.p_task_type, dify_conversation_id: args.p_conversation_id,
           result: args.p_result, request_fingerprint: state.reservations.get(args.p_request_id),
-          completed_at: rows.length + 1, usage: args.p_usage,
+          completed_at: rows.length + 1, usage: args.p_usage, usage_metadata: args.p_usage,
         });
         state.tables.set('creation_completion_evidence', rows);
         return { data: { recorded: true }, error: null };
@@ -93,6 +93,8 @@ const probes = [
   { name: '三轮创作沿用会话', source: null },
   { name: '创作方向裂变选题', source: 'direction' },
   { name: '内容规划裂变选题', source: 'content-plan' },
+  { name: '直选地域差异裂变选题', source: 'tactic' },
+  { name: '截图双城老板模板回归', source: 'screenshot' },
 ] as const;
 
 const probeMode = process.env.KAIWU_TOPIC_LIVE_PROBE;
@@ -114,7 +116,7 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
   const judgeUrl = messagesUrl(assistant.baseUrl);
   expect(new URL(judgeUrl).protocol).toBe('https:');
   const realFetch = globalThis.fetch;
-  const upstream: { query: string; conversation_id?: string }[] = [];
+  const upstream: { query: string; conversation_id?: string; inputs: { search_query: string } }[] = [];
   vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     if (url === difyUrl) {
@@ -127,13 +129,18 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
     } else if (url !== judgeUrl) {
       throw new Error('Unexpected network destination during synthetic verification');
     }
-    const timeout = AbortSignal.timeout(url === difyUrl ? 300_000 : 30_000);
+    const timeout = AbortSignal.timeout(url === difyUrl ? 300_000 : 60_000);
     const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
     if (!source || url !== judgeUrl) return realFetch(input, { ...init, signal });
     const start = Date.now();
     try {
       const response = await realFetch(input, { ...init, signal });
-      console.log('语义核对响应', { status: response.status, ms: Date.now() - start });
+      const payload = JSON.parse(String(init?.body));
+      const system = typeof payload.system === 'string' ? payload.system : payload.system.map(({ text }: { text: string }) => text).join('\n');
+      const kind = system.includes('审核编辑') ? 'audit' : 'plan';
+      const reply = await response.clone().json().catch(() => null);
+      const content = reply?.content?.filter((block: { type: string }) => block.type === 'text').map((block: { text: string }) => block.text).join('');
+      console.log('语义核对响应', { kind, status: response.status, ms: Date.now() - start, ...(kind === 'audit' ? { decision: content?.slice(0, 900) } : {}) });
       return response;
     } catch (error) {
       console.log('语义核对异常', { name: (error as Error).name, ms: Date.now() - start });
@@ -158,24 +165,47 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
       expect(response.ok).toBe(true);
       let batch: TopicBatchStatus | undefined;
       let previewChunks = 0;
+      let firstDraft = '';
       const text = await readDifyStream(response, {
-        onChunk: (piece) => { if (piece && !batch) previewChunks++; },
+        onChunk: (piece, full) => {
+          if (piece && !batch) previewChunks++;
+          if (full.length > firstDraft.length) firstDraft = full;
+        },
         onTopicBatch: (event) => { batch = event; },
+      }).catch((error) => {
+        if (source) console.log('未交付的流式草稿', splitTopicSections(firstDraft).map((topic) => ({
+          title: topic.title, element: primaryTopicElement(topic),
+          excerpt: topic.body.split('\n').filter((line) => /爆款元素|承接|取材与内容推进/.test(line)).slice(0, 4),
+        })));
+        throw error;
       });
       if (source) {
         console.log('流式验收', { source, previewChunks, batch });
         for (const topic of splitTopicSections(text)) {
           console.log('合成选题：' + topic.title);
-          console.log(topic.body.split('\n').filter((line) => /承接|核心问题|取材与内容推进|脚本结构|打法/.test(line)).slice(0, 6).join('\n'));
+          const lines = topic.body.split('\n');
+          console.log(lines.flatMap((line, index) => /承接|爆款元素|取材与内容推进|脚本结构/.test(line)
+            ? [line, ...(/[:：]$|\*\*$/.test(line.trim()) && lines[index + 1] ? [lines[index + 1]] : [])] : []).slice(0, 8).join('\n'));
         }
       }
       expect(batch).toMatchObject({ requested: count, count, checked: true });
       expect(splitTopicSections(text)).toHaveLength(count);
-      if (source) expect(previewChunks).toBeGreaterThan(1);
+      if (source) {
+        expect(previewChunks).toBeGreaterThan(1);
+        const elements = splitTopicSections(text).map(primaryTopicElement);
+        expect(elements.every(Boolean)).toBe(true);
+        expect(new Set(elements).size).toBeGreaterThanOrEqual(3);
+        console.log('实际主爆款元素', elements);
+      }
       return text;
     }
     if (source) {
-      const direction = [
+      const screenshot = source === 'screenshot';
+      const direction = screenshot ? [
+        '### 方向1：南乐和郑州的街边小店',
+        '- **内容方向**：小店与当地生活的关系，包括招牌、熟客、进货和门店日常。',
+        '- **怎么拍**：南乐老板做 A，郑州老板做 B，然后让两地老板解释。',
+      ].join('\n') : [
         '### 方向1：本地早餐里的地域差异',
         '- **视频目的**：流量型，帮助本地人与外地人理解不同的饮食习惯',
         '- **内容类型**：36计·第35计 街头采访',
@@ -183,26 +213,48 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
         '- **怎么拍**：每期都让外地人提问，老板给出两地对比。',
         '- **开头示范**：南乐XXX，郑州XXX。',
       ].join('\n');
-      const incomingSetup = buildCreationHandoff(source, 'topic', direction, {});
-      const sourceReference = topicReference(incomingSetup);
+      const tactic = source === 'tactic' ? '南北/地域差异' : '';
+      const incomingSetup = source === 'tactic' ? null : buildCreationHandoff(screenshot ? 'direction' : source, 'topic', direction, {});
+      const sourceReference = incomingSetup ? topicReference(incomingSetup) : '';
       const topicCount = 5;
-      const personalRequirement = '虚构的早餐店档案，只能用现有早餐样品、菜单、制作台和一名可出镜店员。可策划如何观察或验证，不填写两地真实习惯、经营数据、客户经历或尚未取得的采访结果。';
+      const personalRequirement = screenshot ? [
+        '以下是虚构测试档案里的已知素材。一位店主先在南乐开店，后把店搬到郑州，旧木招牌背面还有南乐街名，现用招牌印着郑州门牌。两块招牌可拍。',
+        '店主可演示在南乐店里用纸本记下预约取货、在郑州店里用标签夹给预订袋排序的实际动作。留有一页遮住姓名的预约本和旧标签夹。',
+        '有一张开店当天店主拍的南乐店门口的照片，拍到门口的取货小桌。店主可以讲搬店时留下这张照片的经过，答案须等采访。',
+        '只有店主、现店柜台、上述旧物、一只空预订袋和手机可拍。没有顾客可采访，也没有已知价格或两地普遍习惯。',
+      ].join('\n') : [
+        '虚构的早餐店档案，以下是本轮已知拍摄素材。店员曾在甲地和乙地的两家店工作。甲店菜单曾把甜浆配点心印在一起，乙店旧菜单把咸浆和点心分开写。这只代表两家店。',
+        '现在在同一个制作台能拍两款样品：甲店做法的甜浆和乙店做法的咸浆。店里留有甲店使用过的模具和两张菜单。只有这名店员、制作台、两款现成样品、模具、菜单和手机可用。',
+        '可演示两家店曾用的实际操作，记录过程并做可重复小测试。可以拍店员本人对两家店的记忆，访谈结果须留待拍摄。没有已知的年代、价钱、涨幅、顾客反应或全地区普遍习惯。',
+      ].join('\n');
       const creatorContext = { profile: null, positioning: null, dealReasons: [] } as unknown as CreatorContext;
       const { query } = buildTopicBoardQuery({
         creatorContext, selectedProfile: null, positioningForCtx: null, topicCount, topicType: '流量型选题',
-        topicRole: '流量型', mode: 'custom', sourceReference, sourceFrom: incomingSetup.from, incomingSetup,
+        topicRole: '流量型', mode: 'custom', sourceReference, sourceFrom: incomingSetup?.from ?? '', incomingSetup,
         keyword1: '', keyword2: '', keyword3: '', personalRequirement, currentSettings: {}, accountStage: '',
         fansLevel: '', avgViewsInput: '', selectedPlatforms: [], selectedTracks: [], selectedContentTypes: [],
         selectedStyles: [], positioningExtra: '', selectedElements: [], dealReasonLabels: [],
-        benchmarkAccounts: '', viralCases: '', difficulty: '中等创意', withHook: true, tactic: '',
+        benchmarkAccounts: '', viralCases: '', difficulty: '中等创意', withHook: true, tactic,
         route: '两种都出', routeExplicit: false, resolvedMix: resolveMix(null, null, ''), quickTopics: false,
       });
-      await deliver(await generate(request('/api/dify/stream', {
+      if (screenshot) state.tables.set('script_history', [{
+        id: randomUUID(), user_id: state.userId, task_type: '选题策划', input_data: { profile_id: profileId },
+        result: '## 选题1：南乐老板给店取名，会问街坊好不好记；郑州老板给店取名，会问网上好不好搜\n拍两地老板对答并让评论区投票。\n\n' +
+          '## 选题2：南乐老板店里东西卖贵了会主动退；郑州老板店里东西卖贵了，客人不说就不退吗？\n拍两地老板对答并让评论区投票。',
+      }]);
+      const delivered = await deliver(await generate(request('/api/dify/stream', {
         taskType: '选题策划', profileId, query, webSearchMode: 'off',
-        inputs: { topicCount, sourceFrom: incomingSetup.from, sourceReference, personalRequirement },
+        inputs: { topicCount, tactic, sourceFrom: incomingSetup?.from, sourceReference, personalRequirement },
       })), topicCount);
+      expect(delivered).not.toMatch(/奇怪凹槽|透明杯|加醋|凝固时间|顾客当场|颜色不一样|这行字现在没了|倒[^\n]{0,10}手背|【待确认[：:]/);
+      if (screenshot) {
+        expect(upstream[0].query).not.toContain('南乐老板做 A');
+        expect(delivered).not.toMatch(/南乐老板[^\n]*[；;][^\n]*郑州老板|郑州老板[^\n]*[；;][^\n]*南乐老板|评论区投票|标签夹[^\n]{0,16}(?:分颜色|不同颜色|颜色规则)|只带走一张/);
+      }
       expect(upstream[0].query).not.toContain('南乐XXX，郑州XXX');
       expect(upstream[0].query).not.toContain('每期都让外地人提问');
+      expect(upstream[0].inputs.search_query).toBe('');
+      expect(upstream[0].query).toContain('保留每条自己的证据、镜头动作和看点');
       return;
     }
     const first = await deliver(await generate(request('/api/dify/stream', body)));

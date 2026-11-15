@@ -24,6 +24,7 @@ import {
 } from '@/lib/topic-library'
 import { loadLatestTopicCompletion, loadPriorTopicSections, saveFollowUpTopics } from '@/lib/topic-library-server'
 import { finalizeTopicBatch, topicCountInRequest, topicRefillPrompt } from '@/lib/topic-delivery'
+import { DIRECTION_TOPIC_DELIVERY, anchorDirectionDraft, directionAnglesPrompt, planDirectionTopics } from '@/lib/direction-topic-plan'
 import { loadDoneList } from '@/lib/work-insight-load'
 import { askDify } from '@/lib/dify-task'
 import { combinedReviewUsage } from '@/lib/review-verification'
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       : freshWindow || isolated ? null : await getDifyConversationId(guard.userId!, profileId)
     const useConversationId = (creativeWindow ? sharedConversationId : conversationId || sharedConversationId) || ''
     const previousTopic = askingNewTopics && sharedConversationId
-      ? await loadLatestTopicCompletion(guard.userId!, sharedConversationId)
+      ? await loadLatestTopicCompletion(guard.userId!, sharedConversationId, typeof initialContent === 'string' ? initialContent : undefined)
       : null;
     let windowRestart: 'expired' | 'context' | undefined;
     const clearAttemptedConversation = () => creativeWindow
@@ -323,6 +324,18 @@ export async function POST(request: NextRequest) {
       return reserved.response;
     }
     reservation = reserved.reservation
+    const topicContext = previousTopic?.direction && {
+      ...previousTopic.direction,
+      constraints: `本轮追问要求：${query.slice(0, 1200)}\n${previousTopic.direction.constraints}`.slice(0, 7000),
+    };
+    const topicRequestCount = askingNewTopics ? topicCountInRequest(query) : undefined;
+    const angles = topicContext
+      ? await planDirectionTopics(topicContext, topicRequestCount ?? 3, [...(previousTopic?.topics ?? []), ...priorTopics], request.signal)
+      : [];
+    if (topicContext) {
+      fullQuery = '【用户本轮追问】\n' + question + '\n\n' + directionAnglesPrompt(topicContext, angles, topicRequestCount ?? 3) + '\n\n' + DIRECTION_TOPIC_DELIVERY;
+      difyPayload.inputs.search_query = '';
+    }
     let response = await callDify()
 
     // 会话可能因过期、被删或应用重建而失效。不处理的话，存着的旧 id
@@ -400,21 +413,27 @@ export async function POST(request: NextRequest) {
                 sendEvent({ event: 'status', message: '正在逐条核对选题，撞题会自动补写' });
                 const done = profileId ? await loadDoneList(guard.userId, profileId) : [];
                 const current = typeof initialContent === 'string' ? splitTopicSections(initialContent.slice(0, 16_000)) : [];
-                const result = await finalizeTopicBatch(answerText, [...current, ...(previousTopic?.topics ?? []), ...priorTopics, ...done.map(({ title }) => ({ title, body: '' }))],
-                  topicCountInRequest(query) ?? (splitTopicSections(answerText).length || 3), async (refill) => {
+                const draft = topicContext && !angles.length ? '' : anchorDirectionDraft(answerText, angles);
+                const result = await finalizeTopicBatch(draft, [...current, ...(previousTopic?.topics ?? []), ...priorTopics, ...done.map(({ title }) => ({ title, body: '' }))],
+                  topicRequestCount ?? (splitTopicSections(answerText).length || 3), async (refill) => {
                     const conversationId = conversationIdFromResponse || difyPayload.conversation_id;
                     if (!conversationId) return '';
-                    const reply = await askDify(topicRefillPrompt(refill), guard.userId!, searchQuery, {
+                    const freshAngles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements) : [];
+                    if (topicContext && !freshAngles.length) return '';
+                    const prompt = topicContext
+                      ? directionAnglesPrompt(topicContext, freshAngles, refill.count) + '\n\n' + DIRECTION_TOPIC_DELIVERY
+                      : topicRefillPrompt(refill);
+                    const reply = await askDify(prompt, guard.userId!, topicContext ? '' : searchQuery, {
                       conversationId, signal: AbortSignal.timeout(120_000),
                     });
                     if (!reply.ok) return '';
                     usageMetadata = combinedReviewUsage(usageMetadata, reply.completion.usage ?? {}, 'topic_refill_steps');
-                    return reply.text;
-                  });
+                    return anchorDirectionDraft(reply.text, freshAngles);
+                  }, { directionSeed: !!topicContext, topicContext });
                 if (!result.count) {
                   upstreamFailed = true;
                   sendEvent({ event: 'message_replace', answer: '', topic_draft: true });
-                  sendEvent({ event: 'error', message: '这次没有生成可交付的新选题，请调整要求后再试' });
+                  sendEvent({ event: 'error', message: !result.checked ? '选题核对暂未完成，请重试' : '这次没有生成可交付的新选题，请调整要求后再试' });
                 } else {
                   const { text, ...batch } = result;
                   answerText = text;
@@ -432,7 +451,7 @@ export async function POST(request: NextRequest) {
                     ...usageMetadata,
                     creation_window: { task: taskType, mode: windowRestart ? 'recovered' : sharedConversationId ? 'continued' : 'started', restart: windowRestart },
                   } : usageMetadata;
-                  await recordCreationCompletion(reservation!, { result: answerText, terminal: completionTerminal!, conversationId: conversationIdFromResponse || difyPayload.conversation_id, messageId: upstreamMessageId, usage }, '自由对话')
+                  await recordCreationCompletion(reservation!, { result: answerText, terminal: completionTerminal!, conversationId: conversationIdFromResponse || difyPayload.conversation_id, messageId: upstreamMessageId, usage: { ...usage, ...(previousTopic?.direction ? { direction_topic: previousTopic.direction } : {}) } }, askingNewTopics ? '选题策划' : '自由对话')
                   void recordGenerationSignal({ userId: guard.userId!, profileId: profileId ?? null, board: 'freeChat', result: answerText })
                   await incrementUsageServer(guard.userId, 'freeChat', '自由对话', {
                   question: (query || '').slice(0, 2000),

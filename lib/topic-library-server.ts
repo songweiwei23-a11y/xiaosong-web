@@ -1,20 +1,26 @@
 import { getServiceSupabase } from '@/lib/admin-auth';
 import { batchBelongsToProfile, collectTopics, deletedTopicsOf, NO_REPEAT_LIMIT, splitTopicSections, topicKey, type TopicSection } from '@/lib/topic-library';
 import { historyProfileFilter } from '@/lib/profile-history';
+import type { DirectionTopicContext } from '@/lib/direction-topic-plan';
 
 /** 只读取同用户、同一个原生会话上一次实际交付的内容。 */
-export async function loadLatestTopicCompletion(userId: string, conversationId: string): Promise<{ fingerprint: string; topics: TopicSection[] } | null> {
+export async function loadLatestTopicCompletion(userId: string, conversationId: string, viewedResult?: string): Promise<{ fingerprint: string; topics: TopicSection[]; direction?: DirectionTopicContext } | null> {
   try {
     const { data, error } = await getServiceSupabase().from('creation_completion_evidence')
-      .select('task_type,request_fingerprint,result')
+      .select('task_type,request_fingerprint,result,usage_metadata')
       .eq('user_id', userId)
       .eq('dify_conversation_id', conversationId)
+      .eq('task_type', '选题策划')
       .order('completed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error || data?.task_type !== '选题策划' || !data.request_fingerprint) return null;
-    const topics = splitTopicSections(data.result || '');
-    return topics.length ? { fingerprint: data.request_fingerprint, topics } : null;
+      .limit(viewedResult ? 20 : 1);
+    const selected = viewedResult ? data?.find((row) => row.result?.slice(0, 16000) === viewedResult.slice(0, 16000)) : data?.[0];
+    if (error || !selected?.request_fingerprint) return null;
+    const topics = splitTopicSections(selected.result || '');
+    const direction = selected.usage_metadata?.direction_topic as DirectionTopicContext | undefined;
+    return topics.length ? {
+      fingerprint: selected.request_fingerprint, topics,
+      ...(direction && typeof direction.foundation === 'string' && typeof direction.constraints === 'string' && Array.isArray(direction.elements) ? { direction } : {}),
+    } : null;
   } catch {
     return null;
   }

@@ -3,6 +3,10 @@
  * 方向名、核心目的（不能改）、范围、切入角度、题眼池。人群、讲法、标题、第一秒、镜头一概不带，
  * 否则方向原文里写死的人群和写法会被每条选题照抄。
  * 每条选题从题眼池里分到一个题眼（lib/topic-slots），题眼不同，选题才不同。
+ *
+ * 2026-11-14 素材保留：方向卡里的具体素材（物件、人物、场景、案例、知识点）保留在种子里。
+ * 这些是素材层信息（模型可以裂变出不同选题的"种子"），和展示层（人群、讲法、标题）不同。
+ * 不带素材 → 模型只拿到抽象方向 → 每条选题只能套模板公式 → 同质化。
  */
 
 import { splitCreationItems } from './creation-items';
@@ -40,7 +44,7 @@ function listUnder(text: string, label: string): string[] {
 }
 
 /**
- * 只取方向的种子：名字、核心目的、范围、切入角度、题眼池。
+ * 只取方向的种子：名字、核心目的、范围、切入角度、题眼池、具体素材。
  * 不是方向原文就返回 null。
  */
 function directionCardSeed(text: string): string | null {
@@ -53,6 +57,19 @@ function directionCardSeed(text: string): string | null {
   const origin = listUnder(text, '出发点').join('；');
   // 所属系列（2026-10-29）：方向归到内容定位的哪个系列，选题沿用，不另起
   const series = fieldOf(text, '所属系列');
+
+  // 2026-11-14 素材保留：提取方向卡里的具体素材信息（物件、人物、场景、案例、知识点）
+  // 这些是裂变选题的种子——没有具体素材，模型只能在同一个抽象方向上反复套模板
+  const materialLabels = ['可拍素材', '素材清单', '拍摄素材', '具体素材', '素材', '拍摄对象', '观察对象', '可拍物件', '具体物件'];
+  const caseLabels = ['真实案例', '案例', '素材故事', '真实故事'];
+  const knowledgeLabels = ['知识点', '冷知识', '行业知识', '行业冷知识'];
+  const sceneLabels = ['可拍场景', '拍摄场景', '场景'];
+
+  const materials = materialLabels.flatMap((label) => listUnder(text, label));
+  const cases = caseLabels.flatMap((label) => listUnder(text, label));
+  const knowledge = knowledgeLabels.flatMap((label) => listUnder(text, label));
+  const scenes = sceneLabels.flatMap((label) => listUnder(text, label));
+
   const lines = [
     name && `方向：${name}`,
     series && `所属系列（参考，不限制）：${series}`,
@@ -63,8 +80,24 @@ function directionCardSeed(text: string): string | null {
     ...listUnder(text, '切入角度').map((a) => `角度：${a}`),
     // 思路提示只给方向性的想法，不是题眼（2026-10-26：题眼会误导选题，去掉了）
     ...listUnder(text, '思路提示').map((h) => `思路：${h}`),
+    // 2026-11-14 素材层信息：让每条选题能从不同的素材切入，产生差异化
+    ...dedupe(materials).map((m) => `素材：${m}`),
+    ...dedupe(cases).map((c) => `案例：${c}`),
+    ...dedupe(knowledge).map((k) => `知识：${k}`),
+    ...dedupe(scenes).map((s) => `场景：${s}`),
   ].filter(Boolean) as string[];
   return lines.length ? lines.join('\n') : null;
+}
+
+/** 去重：多个标签可能取到同一行 */
+function dedupe(arr: string[]): string[] {
+  const seen = new Set<string>();
+  return arr.filter((item) => {
+    const key = item.trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function directionSeedOf(text: string): string | null {

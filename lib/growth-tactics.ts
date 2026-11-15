@@ -501,5 +501,5 @@ export const TEST_RULE = `**一次只改一个核心变量。** 每种打法至�
 判断时同时看目标用户质量，而非只看播放量。`;
 
 const BY_NAME = new Map(GROWTH_TACTICS.map((t) => [t.name, t]));
-export const tacticByName = (name: string) => BY_NAME.get(name);
+export const tacticByName = (name: string) => BY_NAME.get(name === '地域差异' ? '南北/地域差异' : name);
 export const tacticByNo = (no: number) => GROWTH_TACTICS.find((t) => t.no === no);

@@ -124,7 +124,11 @@ describe('选题提示词的共用拼装', () => {
     for (const constraint of ['南乐XXX，郑州XXX', '同一套外地人提问', '每条都保留向受访者提问', '可套句式', '照公式拍', '拍法照它写的来']) {
       expect(query).not.toContain(constraint);
     }
-    expect(buildTopicBoardQuery({ ...input, tactic: '街头采访', routeExplicit: true }).query).toContain('【本批选题的拍法】');
+    const fromTactic = buildTopicBoardQuery({ ...input, tactic: '地域差异', routeExplicit: true }).query;
+    expect(fromTactic).toContain('本轮方向参考：南北/地域差异');
+    expect(fromTactic).toContain('主元素名｜可拍证据与观众看点');
+    expect(fromTactic).not.toContain('南方人逛北方澡堂');
+    expect(fromTactic).not.toContain('A地的做法 → B地的做法');
   });
 
   it.skip('成交理由写进变现型的要求里', () => {
