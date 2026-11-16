@@ -164,7 +164,9 @@ $manifestLocal = Join-Path $env:TEMP "deploy-manifest-$timestamp.txt"
 $tarPkg = Join-Path $projectPath $pkgName
 Push-Location $projectPath
 try {
-    tar -czf $tarPkg $existing
+    # Git Bash 的 tar 仍会把 PowerShell 的 Windows 路径参数转成 MSYS 路径；
+    # 直接使用当前目录下的相对文件名，避免 C:/... 被当成远程归档语法。
+    tar -czf $pkgName $existing
 } finally {
     Pop-Location
 }
