@@ -194,6 +194,60 @@ describe('选题交付前查重', () => {
     expect(splitTopicSections(result.text)).not.toContain(bodyParallel);
   });
 
+  it('混合经营者称呼仍识别为同一地域平行骨架', async () => {
+    const variants = [
+      topic('南乐店主怎么招呼熟客，郑州老板怎么招呼熟客', '**爆款元素**：人群｜南乐店主做A，郑州老板做B'),
+      topic('南乐主理人怎么记单，郑州摊主怎么记单', '**爆款元素**：成本｜两地经营者分别演示'),
+    ];
+    const ctx = directionTopicContext('地域生活差异', '南北/地域差异', '没有要求两地直接对照')!;
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const refill = vi.fn(async () => batch(topic('翻看旧招牌背面', '**爆款元素**：怀旧｜记录旧物细节')));
+    const result = await finalizeTopicBatch(batch(...variants), [], 2, refill, { directionSeed: true, topicContext: ctx });
+    expect(result.removed).toBe(2);
+    expect(splitTopicSections(result.text)).not.toEqual(expect.arrayContaining(variants));
+  });
+
+  it('明确否定两地对照时不会误开授权', () => {
+    for (const text of [
+      '本轮未要求南乐和郑州两地实测对比',
+      '本轮不要做南乐和郑州的直接对照',
+      '用户明确不需要双城比较',
+    ]) {
+      expect(directionTopicContext('地域差异方向', '南北/地域差异', text)?.allowParallelComparison).toBe(false);
+    }
+  });
+
+  it('方向上下文缺失时仍 fail-closed 拦截窄定义地域平行题', async () => {
+    const parallel = topic('南乐老板A郑州老板B', '**爆款元素**：反差｜两地老板分别演示');
+    const fresh = topic('旧招牌背面有什么字', '**爆款元素**：怀旧｜逐字记录旧物');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[]}'));
+    const refill = vi.fn(async () => batch(fresh));
+    const result = await finalizeTopicBatch(batch(parallel), [], 1, refill, { directionSeed: true });
+    expect(refill).toHaveBeenCalled();
+    expect(splitTopicSections(result.text)).toEqual([fresh]);
+  });
+
+  it('明确授权时五条最多保留一条地域平行题，第二条必须补成独立题', async () => {
+    const ctx = directionTopicContext('地域差异方向', '南北/地域差异', '本轮明确要求南乐和郑州两地按同一标准实测对比')!;
+    const parallelA = topic('南乐老板A郑州老板B', '**爆款元素**：反差｜按同一标准拍两地老板');
+    const parallelB = topic('南乐店主A郑州老板B', '**爆款元素**：反差｜两地经营者分别做事');
+    const independent = [
+      topic('翻看旧招牌背面', '**爆款元素**：怀旧｜记录旧招牌上的字'),
+      topic('预约本一笔怎么记', '**爆款元素**：人群｜跟拍填写一笔预约'),
+      topic('旧照片里有什么细节', '**爆款元素**：奇葩｜放大照片逐处观察'),
+    ];
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const replacement = topic('制作台一个动作花多久', '**爆款元素**：成本｜记录一次动作耗时');
+    const refill = vi.fn(async () => batch(replacement));
+    const result = await finalizeTopicBatch(batch(parallelA, parallelB, ...independent), [], 5, refill, { directionSeed: true, topicContext: ctx });
+    const delivered = splitTopicSections(result.text);
+    expect(result.checked).toBe(true);
+    expect(result.count).toBe(5);
+    expect(delivered.filter((item) => /南乐.*(?:老板|店主).*郑州.*(?:老板|店主)/.test(item.title)).length).toBe(1);
+    expect(delivered.some((item) => item.title === parallelA.title)).toBe(true);
+    expect(refill).toHaveBeenCalled();
+  });
+
   it('同一地基下爆款元素不同、内容各自成立时可以同时交付', async () => {
     const a = topic('旧招牌背面还留着哪个街名', '**爆款元素**：怀旧｜翻看旧招牌背面逐字记录街名');
     const b = topic('本地早餐的叫法从哪来', '**爆款元素**：奇葩｜采访一位店员讲一道菜名的来历');
@@ -206,7 +260,7 @@ describe('选题交付前查重', () => {
     expect(splitTopicSections(result.text)).toEqual([a, b, c]);
   });
   it('只有本轮明确要求两地实测/对照时才允许一个平行角度', () => {
-    expect(directionTopicContext('地域差异方向', '南北/地域差异', '用户只要地域方向，没有指定两地实测')?.allowParallelComparison).toBe(false);
+    expect(directionTopicContext('地域差异方向', '南北/地域差异', '用两个城市的真实资料，但不需要两地实测对比')?.allowParallelComparison).toBe(false);
     const explicit = directionTopicContext('地域差异方向', '南北/地域差异', '本轮明确要求南乐和郑州两地按同一标准实测对比')!;
     const defaultContext = directionTopicContext('地域差异方向', '南北/地域差异', '用户只要地域方向')!;
     expect(explicit.allowParallelComparison).toBe(true);

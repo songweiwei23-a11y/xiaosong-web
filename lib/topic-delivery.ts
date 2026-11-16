@@ -135,12 +135,19 @@ function templateDuplicateIndices(topics: TopicSection[]): Set<number> {
 /** 识别在文本任意位置出现的两地同角色并列，以及明确的双城节目骨架。 */
 function parallelPlaceOpening(title: string): boolean {
   const normalized = title.normalize('NFKC');
-  const placeRole = /(?:((?:南乐|郑州|甲地|乙地|A地|B地)|[\p{Script=Han}]{2,8}(?:市|县|区|镇|村)))(?:这边|那边)?(?:的)?(老板|店主|店长|掌柜|主理人|摊主|老板娘|店员|员工|顾客|客人)/gu;
+  const placeRole = /(?:((?:南乐|郑州|甲地|乙地|A地|B地)|[\p{Script=Han}]{2,8}(?:市|县|区|镇|村)))(?:这边|那边)?(?:的)?(?:[\p{Script=Han}]{0,8})?(老板娘?|店主|店长|掌柜|主理人|摊主|店员|员工|顾客|客人)/gu;
   const subjects = [...normalized.matchAll(placeRole)].map((match) => ({
     place: match[1],
-    role: match[2].replace(/店主|店长|掌柜|主理人|摊主|老板娘/g, '经营者').replace(/员工/g, '店员').replace(/客人/g, '顾客'),
+    role: normalizePlaceRole(match[2]),
   }));
   return subjects.some((first, index) => subjects.slice(index + 1).some((next) => next.role === first.role && next.place !== first.place));
+}
+
+function normalizePlaceRole(role: string): string {
+  if (/老板娘?|店主|店长|掌柜|主理人|摊主/.test(role)) return '经营者';
+  if (/员工|店员/.test(role)) return '店员';
+  if (/客人|顾客/.test(role)) return '顾客';
+  return role;
 }
 
 function containsExplicitParallelLanguage(text: string): boolean {
@@ -194,6 +201,13 @@ async function compare(topics: TopicSection[], references: TopicSection[], direc
   const blocked = exactDuplicates(topics, references);
   if (directionSeed) {
     for (const index of templateDuplicateIndices(topics)) blocked.add(index);
+    // 方向流程上下文构建失败时也要 fail-closed：只拦截窄定义的两地同角色并列，
+    // 不把普通选题里的地域素材一并禁掉。
+    if (!context) {
+      for (const [index, topic] of topics.entries()) {
+        if (hasParallelPlacePattern(topic)) blocked.add(index);
+      }
+    }
   }
   if (context) {
     const known = context.constraints.normalize('NFKC').replace(/\s/g, '');
@@ -289,6 +303,7 @@ export async function finalizeTopicBatch(markdown: string, references: TopicSect
   const keep = topics.filter((_, index) => !first.blocked.has(index)).slice(0, wanted);
   const blocked = topics.filter((_, index) => first.blocked.has(index));
   const replacements: TopicSection[] = [];
+  const rejectedCandidates: TopicSection[] = [];
   let checked = first.checked;
   for (let pass = 0; pass < (topicContext ? 2 : 1); pass++) {
     const need = wanted - keep.length - replacements.length;
@@ -296,10 +311,14 @@ export async function finalizeTopicBatch(markdown: string, references: TopicSect
     const refillCount = directionSeed ? Math.min(need + (topicContext ? 2 : 1), TOPIC_BATCH_MAX) : need;
     const preferredElements = topicContext?.elements.filter((element) => (elementUsage.get(element) ?? 0) < elementLimit)
       .sort((a, b) => (elementUsage.get(a) ?? 0) - (elementUsage.get(b) ?? 0));
-    const avoid = topicContext ? [...keep, ...replacements, ...references] : [...topics, ...references];
+    const avoid = topicContext
+      ? [...keep, ...replacements, ...rejectedCandidates, ...references]
+      : [...topics, ...rejectedCandidates, ...references];
     const draft = await refill({ count: refillCount, blocked, avoid, ...(preferredElements ? { preferredElements } : {}) }).catch(() => '');
     const candidates = splitTopicSections(draft).slice(0, refillCount).filter((topic) => topic.body.trim());
     const review = await compare(candidates, avoid, directionSeed, topicContext);
+    const blockedThisRound = candidates.filter((_, index) => review.blocked.has(index));
+    rejectedCandidates.push(...blockedThisRound);
     if (review.checked) {
       for (const [index, topic] of candidates.entries()) {
         if (replacements.length + keep.length === wanted) break;

@@ -13,10 +13,14 @@ export interface DirectionTopicContext {
 }
 
 export function explicitParallelComparison(text: string): boolean {
-  const explicitScope = /(?:本轮|用户(?:明确|本次)|明确要求)/.test(text);
-  const regionPair = /(?:两地|双城|南乐.{0,12}郑州|郑州.{0,12}南乐|A地.{0,12}B地|B地.{0,12}A地)/u;
-  const comparisonAction = /(?:实测|直接对照|对比(?:一下|测试)?|比较(?:一下)?|同一标准)/u;
-  return explicitScope && regionPair.test(text) && comparisonAction.test(text);
+  const normalized = text.normalize('NFKC');
+  // 约束里常同时带着“不要/未要求……两地对比”的说明；先否定，避免关键词共现误开闸。
+  const denied = /(?:不要|禁止|未要求|没有(?:明确)?要求|不需要|不做|不得|不能|避免|绕开)[^。\n]{0,50}(?:两地|双城|南乐.{0,16}郑州|郑州.{0,16}南乐|A地.{0,16}B地|B地.{0,16}A地|实测|直接对照|对比|比较|平行)/u;
+  if (denied.test(normalized)) return false;
+  const explicitScope = /(?:本轮|本次|用户(?:明确|本次)?|明确要求|指定)/u.test(normalized);
+  const regionPair = /(?:两地|双城|南乐.{0,16}郑州|郑州.{0,16}南乐|A地.{0,16}B地|B地.{0,16}A地)/u;
+  const comparisonAction = /(?:实测|直接对照|对比(?:一下|测试)?|比较(?:一下)?|同一标准|各自|分别)/u;
+  return explicitScope && regionPair.test(normalized) && comparisonAction.test(normalized);
 }
 export function directionTopicContext(
   reference: string,
