@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowRight, BellRing, Bot, Brain, Check, ChevronDown, Copy, FileDown, Globe, History, Loader2, Plus, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Undo2, X } from "lucide-react";
 import { getActiveProfileId } from "@/lib/active-profile";
 import { memoryEnabled } from "@/lib/settings-memory";
-import { ASSISTANT_ASK_EVENT } from "@/lib/assistant/ask";
+import { ASSISTANT_ASK_EVENT, ASSISTANT_OPEN_EVENT } from "@/lib/assistant/ask";
 import { runClientAction } from "@/components/assistant/clientActions";
 import { OPEN_PAGES } from "@/lib/assistant/client-action-spec";
 import type { ActionReceipt, UndoSpec } from "@/lib/assistant/receipts";
@@ -729,6 +729,13 @@ export function AssistantWidget() {
     };
     window.addEventListener(ASSISTANT_ASK_EVENT, onAsk);
     return () => window.removeEventListener(ASSISTANT_ASK_EVENT, onAsk);
+  }, []);
+
+  // 旧提示和新手引导只负责把真正的开物助理面板展开，不能误跳到自由对话。
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(ASSISTANT_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(ASSISTANT_OPEN_EVENT, onOpen);
   }, []);
 
   if (!enabled) return null;

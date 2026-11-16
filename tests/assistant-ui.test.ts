@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ASSISTANT_ASK_EVENT, askAssistant } from '@/lib/assistant/ask';
+import { ASSISTANT_ASK_EVENT, ASSISTANT_OPEN_EVENT, askAssistant, openAssistant } from '@/lib/assistant/ask';
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
 
@@ -30,6 +30,28 @@ describe('首页对话框的「让助理去做」和右下角的助理通过同�
     expect(dispatched).toHaveLength(1);
     expect(dispatched[0].type).toBe(ASSISTANT_ASK_EVENT);
     expect(dispatched[0].detail).toEqual({ message: '帮我选题' });
+  });
+
+  it('仅打开事件不携带任务，旧提示入口委托真正的开物助理而不跳自由对话', () => {
+    const dispatched: { type: string; detail?: unknown }[] = [];
+    const fakeWindow = { dispatchEvent: (e: { type: string; detail?: unknown }) => dispatched.push({ type: e.type, detail: e.detail }) };
+    const original = (globalThis as { window?: unknown }).window;
+    (globalThis as { window?: unknown }).window = fakeWindow;
+    try {
+      openAssistant();
+    } finally {
+      (globalThis as { window?: unknown }).window = original;
+    }
+    expect(ASSISTANT_OPEN_EVENT).toBe('kaiwu:assistant-open');
+    expect(dispatched).toEqual([{ type: ASSISTANT_OPEN_EVENT }]);
+    const widget = read('components/assistant/AssistantWidget.tsx');
+    expect(widget).toContain('ASSISTANT_OPEN_EVENT');
+    expect(widget).toContain('const onOpen = () => setOpen(true);');
+    for (const file of ['components/assistant/FloatingAssistant.tsx', 'components/assistant/SmartAssistantPrompt.tsx', 'components/assistant/AssistantOnboarding.tsx']) {
+      const source = read(file);
+      expect(source).toContain('openAssistant()');
+      expect(source).not.toContain("router.push('/dashboard/free-chat')");
+    }
   });
 
   it('首页对话框放在问候区下面、第一张卡片之前（首屏第一眼就能看到）', () => {

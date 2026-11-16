@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { Bot, X, Minimize2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { openAssistant } from '@/lib/assistant/ask';
 
 interface FloatingAssistantProps {
   /**
@@ -26,7 +26,6 @@ export function FloatingAssistant({
   showTip = false,
   tipText 
 }: FloatingAssistantProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [hasUsedBefore, setHasUsedBefore] = useState(true);
@@ -42,8 +41,8 @@ export function FloatingAssistant({
     localStorage.setItem('kaiwu:assistant-used', 'true');
     setHasUsedBefore(true);
     
-    // 跳转到助理页面
-    router.push('/dashboard/free-chat');
+    // 打开同页真正的开物助理面板，不能跳到另一套自由对话。
+    openAssistant();
   };
 
   const handleDismissTip = () => {

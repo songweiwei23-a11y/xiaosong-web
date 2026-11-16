@@ -3,6 +3,13 @@
  * 只在浏览器里用（页面上的组件之间通信），所以这里不引用任何服务端的东西。
  */
 export const ASSISTANT_ASK_EVENT = "kaiwu:assistant-ask";
+/** 只展开右下角开物助理，不预填或提交任务。 */
+export const ASSISTANT_OPEN_EVENT = "kaiwu:assistant-open";
+
+export function openAssistant(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(ASSISTANT_OPEN_EVENT));
+}
 
 export function askAssistant(message: string): void {
   const text = message.trim();

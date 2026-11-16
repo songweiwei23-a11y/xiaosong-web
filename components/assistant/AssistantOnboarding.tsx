@@ -7,10 +7,9 @@
 
 import { useState, useEffect } from 'react';
 import { Bot, Sparkles, X, ArrowRight } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { openAssistant } from '@/lib/assistant/ask';
 
 export function AssistantOnboarding() {
-  const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -36,7 +35,8 @@ export function AssistantOnboarding() {
   const handleTryIt = () => {
     localStorage.setItem('kaiwu:assistant-onboarding-seen', 'true');
     localStorage.setItem('kaiwu:assistant-used', 'true');
-    router.push('/dashboard/free-chat');
+    setIsVisible(false);
+    openAssistant();
   };
 
   const examples = [

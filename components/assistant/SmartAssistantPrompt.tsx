@@ -7,7 +7,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Bot, X, Sparkles } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { openAssistant } from '@/lib/assistant/ask';
 
 interface SmartPromptConfig {
   // 页面路径匹配
@@ -71,7 +72,6 @@ const PROMPT_CONFIGS: SmartPromptConfig[] = [
 ];
 
 export function SmartAssistantPrompt() {
-  const router = useRouter();
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
   const [config, setConfig] = useState<SmartPromptConfig | null>(null);
@@ -120,8 +120,8 @@ export function SmartAssistantPrompt() {
   const handleOpenAssistant = useCallback(() => {
     localStorage.setItem('kaiwu:assistant-last-used', Date.now().toString());
     handleClose();
-    router.push('/dashboard/free-chat');
-  }, [router, handleClose]);
+    openAssistant();
+  }, [handleClose]);
 
   if (!isVisible || !config || dismissed) return null;
 
