@@ -159,16 +159,23 @@ $manifestLocal = Join-Path $env:TEMP "deploy-manifest-$timestamp.txt"
 # 必须是 LF：WriteAllLines 在 Windows 上会写 CRLF，服务器比对时行尾对不上，删除就静默失效
 [System.IO.File]::WriteAllText($manifestLocal, (($manifestLines -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
-# 使用 tar 而非 Compress-Archive。
-# PowerShell 5.1 的 Compress-Archive 会用反斜杠写 zip 条目路径(app\api\route.ts)，
-# 这违反 ZIP 规范，Linux 端 unzip 会把整串当成单个文件名，目录结构直接塌掉。
-# tar (Windows 10 1803+ 自带 bsdtar) 输出标准正斜杠路径，且原生保留 UTF-8 文件名。
-tar -czf $tempPkg $existing
+# tar 在 Git Bash/MSYS 环境下会把 Windows C:\ 路径误当成远程归档路径；
+# 先切到项目根目录，用相对路径创建压缩包，再把压缩包移回临时目录。
+$tarPkg = Join-Path $projectPath $pkgName
+Push-Location $projectPath
+try {
+    tar -czf $tarPkg $existing
+} finally {
+    Pop-Location
+}
 if ($LASTEXITCODE -ne 0) {
     Write-Host "打包失败，已中止部署" -ForegroundColor Red
+    Remove-Item $tarPkg -Force -ErrorAction SilentlyContinue
     pause
     exit 1
 }
+$tempPkg = Join-Path $env:TEMP $pkgName
+Move-Item -LiteralPath $tarPkg -Destination $tempPkg -Force
 
 Write-Host "上传到服务器..." -ForegroundColor Yellow
 scp -i "$sshKey" $tempPkg "${serverUser}@${serverIP}:/tmp/$pkgName"
