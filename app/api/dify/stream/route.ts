@@ -474,6 +474,7 @@ export async function POST(req: NextRequest) {
           }
         };
         const send = (obj: Record<string, unknown>) => write(`data: ${JSON.stringify(obj)}\n\n`);
+        const sendProgress = (message: string) => send({ event: 'status', message });
         /** 把页面上的全文整篇换成 answer（页面端按 message_replace 整篇替换，见 lib/sse-stream.ts） */
         const showFullText = (answer: string) => {
           shownText = answer;
@@ -619,9 +620,20 @@ export async function POST(req: NextRequest) {
            * 做完有改动会用 message_replace 整篇换掉，最后照常发 message_end。
            * 审稿这类要校对通过才算数的（needsCheck）不发：没通过时草稿会被清掉，不能先当成写完。
            */
-          if (outcome.kind === 'done' && !needsCheck && fullResponse.trim()) send({ event: 'draft_done' });
+          if (outcome.kind === 'done' && !needsCheck && fullResponse.trim()) {
+            send({ event: 'draft_done' });
+            sendProgress('正文已生成，正在保存并核对细节，页面可以继续查看当前结果');
+          }
           // 模型原始输出：后面的整理可能把结构块改坏，拆解要拿它来还原（见 keepStructureBlock）
           const rawResponse = fullResponse;
+          if (outcome.kind === 'done' && fullResponse.trim() && historyDb && durableHistory) {
+            sendProgress('正在保存刚生成的正文，避免页面切换后丢失');
+            await persistCreativeHistory(historyDb, userId, {
+              id: body.historyId, taskType: body.taskType, profileId: historyProfileId,
+              inputData: body.historyInput && typeof body.historyInput === 'object' && !Array.isArray(body.historyInput) ? body.historyInput : {},
+              result: fullResponse,
+            });
+          }
           if (outcome.kind === 'done' && topicPlan?.angles.length) {
             fullResponse = anchorDirectionDraft(fullResponse, topicPlan.angles);
           }

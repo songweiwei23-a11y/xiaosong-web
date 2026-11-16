@@ -46,7 +46,7 @@ describe('服务端：正文写完先发 draft_done，核对一道不少', () =>
     expect(at).toBeGreaterThan(route.indexOf("stages.push({ stage: 'generate'"));
     expect(at).toBeLessThan(route.indexOf("traced('review_verify'"));
     expect(at).toBeLessThan(route.indexOf("traced('detail_check'"));
-    expect(route).toMatch(/if \(outcome\.kind === 'done' && !needsCheck && fullResponse\.trim\(\)\) send\(\{ event: 'draft_done' \}\)/);
+    expect(route).toMatch(/if \(outcome\.kind === 'done' && !needsCheck && fullResponse\.trim\(\)\) \{[\s\S]*?send\(\{ event: 'draft_done' \}\);[\s\S]*?sendProgress\('正文已生成/);
   });
   it('核对、修正、结束标记都还在', () => {
     for (const s of ["traced('detail_check'", "traced('fact_fix'", 'repairYears(', 'repairReality(', "event: 'message_end'"]) expect(route).toContain(s);
