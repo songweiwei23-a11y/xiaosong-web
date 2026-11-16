@@ -272,6 +272,11 @@ export async function finalizeTopicBatch(markdown: string, references: TopicSect
   const topics = parsed.slice(0, TOPIC_BATCH_MAX);
   const wanted = Math.min(requested ?? topics.length, TOPIC_BATCH_MAX);
   const first = await compare(topics, references, directionSeed, topicContext);
+  // 语义审核暂时不可用时，不得把刚生成的内容清空；确定性硬规则仍已在 first.blocked 中生效。
+  // 只要没有命中明确的确定性严重问题，就保留本轮原文，并把 checked 标成 false 供前端提示。
+  if (topicContext && !first.checked && first.blocked.size === 0) {
+    return { text: markdown, requested: wanted, count: topics.length, checked: false, removed: 0, replaced: 0 };
+  }
   if (topicContext && !first.checked) return { text: '', requested: wanted, count: 0, checked: false, removed: 0, replaced: 0 };
   const elementUsage = new Map<string, number>();
   const targetTypes = Math.max(1, Math.min(3, topicContext?.elements.length ?? 1, wanted));

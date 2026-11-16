@@ -431,9 +431,16 @@ export async function POST(request: NextRequest) {
                     return anchorDirectionDraft(reply.text, freshAngles);
                   }, { directionSeed: !!topicContext, topicContext });
                 if (!result.count) {
-                  upstreamFailed = true;
-                  sendEvent({ event: 'message_replace', answer: '', topic_draft: true });
-                  sendEvent({ event: 'error', message: !result.checked ? '选题核对暂未完成，请重试' : '这次没有生成可交付的新选题，请调整要求后再试' });
+                  // 自动核对失败时保留刚生成的原文，不把用户内容清空。
+                  if (answerText.trim()) {
+                    sendEvent({ event: 'topic_batch', requested: result.requested, count: splitTopicSections(answerText).length, checked: false, removed: 0, replaced: 0 });
+                    sendEvent({ event: 'message_replace', answer: answerText });
+                    sendEvent({ event: 'message_end', conversation_id: conversationIdFromResponse });
+                  } else {
+                    upstreamFailed = true;
+                    sendEvent({ event: 'message_replace', answer: '', topic_draft: true });
+                    sendEvent({ event: 'error', message: !result.checked ? '选题核对暂未完成，请重试' : '这次没有生成可交付的新选题，请调整要求后再试' });
+                  }
                 } else {
                   const { text, ...batch } = result;
                   answerText = text;
