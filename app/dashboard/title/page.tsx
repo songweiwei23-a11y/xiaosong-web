@@ -107,7 +107,7 @@ export default function TitlePage() {
   const [abTestCount, setAbTestCount] = useState(5);
 
   // 历史记录相关
-  const { history: titleHistory, loadHistory: loadTitleHistory, lastResult, resultScope } = useGenerationPage({ taskType: '标题封面', historyApiPath: '/api/titles' });
+  const { history: titleHistory, loadHistory: loadTitleHistory, lastResult, resultScope, historyError } = useGenerationPage({ taskType: '标题封面', historyApiPath: '/api/titles' });
   useRestoreLastResult(lastResult, setResult, resultScope, () => { setWorkId(null); setOriginContent(''); setOpeningCards([]); setSelectedHistory(null); });
   const [selectedHistory, setSelectedHistory] = useState<any>(null);
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
@@ -299,6 +299,7 @@ export default function TitlePage() {
       sidebar={
         <>
           <PageHeader title="标题封面" subtitle="生成高点击率的爆款标题，一次给出多个方案做对比" />
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadTitleHistory()}>重试读取</button></p>}
 
           {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
           <ContextBadge board="title" className="mb-4" />

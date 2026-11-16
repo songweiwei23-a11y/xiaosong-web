@@ -62,7 +62,7 @@ function ChoiceGrid({ items, isOn, onToggle, cols = 2 }: { items: Choice[]; isOn
  */
 export default function DirectionPage() {
   const beginProfileRequest = useProfileRequestGuard();
-  const { history, loadHistory, deleteHistory, lastResult, resultScope } = useGenerationPage({ taskType: DIRECTION_TASK_TYPE });
+  const { history, loadHistory, deleteHistory, lastResult, resultScope, historyError } = useGenerationPage({ taskType: DIRECTION_TASK_TYPE });
   const { context, loading: ctxLoading } = useCreatorContext();
   const { saveCreativeHistory, saveError, retrySave, getHistoryOwner } = useCreativeHistory(loadHistory);
   const profile = context.profile as Record<string, unknown> | null;
@@ -211,6 +211,7 @@ export default function DirectionPage() {
         <>
           <PageHeader title="创作方向" subtitle="告诉 AI 你拍视频是为了什么，它按你的档案把方向和思路铺开，再推荐一个最好的" />
 
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
           {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
           <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
             {history.length === 0 && <p className="mb-2 text-[12px] text-muted-foreground">当前档案还没有记录，生成成功后会自动保存。</p>}

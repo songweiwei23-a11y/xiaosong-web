@@ -79,6 +79,7 @@ export default function TopicPage() {
     downloadAsFile,
     lastResult,
     resultScope,
+    historyError,
   } = useGenerationPage({ taskType: '选题策划', historyApiPath: '/api/topics' });
 
   const router = useRouter();
@@ -612,6 +613,7 @@ export default function TopicPage() {
       sidebar={
         <>
           <PageHeader title="选题策划" subtitle="结合账号定位与爆款元素，一次给出多条可直接拍的选题" />
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
           {sourceReference && <CollapsibleSection title={`来自${sourceFrom}的参考内容`} defaultOpen>
             <textarea aria-label="创作参考内容" value={sourceReference} onChange={e => setSourceReference(e.target.value)} rows={5} className={TEXTAREA_CLS} />
             <button onClick={() => setSourceReference('')} className="mt-2 text-xs text-muted-foreground hover:text-foreground">清除参考内容</button>

@@ -40,6 +40,12 @@ export interface ReadDifyStreamOptions {
   /** 生成完以后服务端还在处理（比如脚本打磨：体检、第几轮打磨）时调用，message 是给用户看的一句话 */
   onStatus?: (message: string) => void;
   onTopicBatch?: (batch: TopicBatchStatus) => void;
+  /** 服务端已经尝试保存正文草稿；saved=false 时正文仍然保留在页面 */
+  onDraftSaved?: (saved: boolean) => void;
+  /** 后处理失败但页面仍保留可复制的草稿 */
+  onPartialSaved?: (message: string) => void;
+  /** 最终版本已经保存 */
+  onFinalSaved?: (saved: boolean) => void;
   /**
    * 正文写完了、服务端开始核对修正时调用（2026-11-03）：页面据此停转圈，改成一行「正在核对」的小字。
    * 流还会继续读，核对改了稿会整篇替换，读到结束标记才返回。
@@ -152,6 +158,18 @@ export async function readDifyStream(
         }
         if (data.event === 'message_end') {
           ended = true;
+          continue;
+        }
+        if (data.event === 'draft_saved') {
+          options.onDraftSaved?.(data.saved === true);
+          continue;
+        }
+        if (data.event === 'partial_saved') {
+          options.onPartialSaved?.(typeof data.message === 'string' ? data.message : '后续核对暂未完成，当前草稿已保留');
+          continue;
+        }
+        if (data.event === 'history_saved') {
+          options.onFinalSaved?.(data.saved === true);
           continue;
         }
         if (data.event === 'draft_done') {

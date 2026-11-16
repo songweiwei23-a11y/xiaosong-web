@@ -92,7 +92,7 @@ const NUM_FIELDS: { key: keyof VideoMeta; label: string }[] = [
 export default function BreakdownPage() {
   const beginProfileRequest = useProfileRequestGuard();
   const router = useRouter();
-  const { history, loadHistory, deleteHistory, lastResult, resultScope } = useGenerationPage({ taskType: BREAKDOWN_TASK_TYPE });
+  const { history, loadHistory, deleteHistory, lastResult, resultScope, historyError } = useGenerationPage({ taskType: BREAKDOWN_TASK_TYPE });
   const { context, loading: ctxLoading } = useCreatorContext();
   const { saveCreativeHistory, saveError, retrySave, getHistoryOwner } = useCreativeHistory(loadHistory);
   const profile = context.profile as Record<string, unknown> | null;
@@ -376,6 +376,7 @@ export default function BreakdownPage() {
           </div>
           {textMode && <p className="mb-3 text-[12px] text-muted-foreground">文字已承接，点击开始拆解即可。画面与声音需上传视频后分析。</p>}
 
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
           {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
           <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
             <p className="mb-2 text-[11.5px] text-muted-foreground">当前档案：{String(profile?.profile_name || '未关联档案')}。报告保存在当前账号的云端，不主动删除就一直保留，点击记录可恢复完整报告。</p>

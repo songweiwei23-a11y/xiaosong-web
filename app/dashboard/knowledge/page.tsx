@@ -52,7 +52,7 @@ export default function KnowledgePage() {
   const [result, setResult] = useState("");
   const { context: creatorContext } = useCreatorContext();
 
-  const { history, loadHistory, lastResult, resultScope } = useGenerationPage({ taskType: HISTORY_TASK_TYPE });
+  const { history, loadHistory, lastResult, resultScope, historyError } = useGenerationPage({ taskType: HISTORY_TASK_TYPE });
   useRestoreLastResult(lastResult, setResult, resultScope);
 
   const handleSearch = async () => {
@@ -129,6 +129,7 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
       sidebar={
         <>
           <PageHeader title="知识库" subtitle="查询编导专业知识与方法" />
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
 
           <CollapsibleSection title="提问" defaultOpen>
             <Field label="你的问题" required stacked hint="按 Enter 搜索，Shift + Enter 换行">

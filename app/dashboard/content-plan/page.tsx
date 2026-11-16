@@ -51,7 +51,7 @@ function PlanCheckLine({ text, resolved, count }: { text: string; resolved: Reso
  */
 export default function ContentPlanPage() {
   const beginProfileRequest = useProfileRequestGuard();
-  const { history, loadHistory, deleteHistory, lastResult, resultScope } = useGenerationPage({ taskType: CONTENT_PLAN_TASK_TYPE });
+  const { history, loadHistory, deleteHistory, lastResult, resultScope, historyError } = useGenerationPage({ taskType: CONTENT_PLAN_TASK_TYPE });
   const { context, loading: ctxLoading } = useCreatorContext();
   const { saveCreativeHistory, saveError, retrySave, getHistoryOwner } = useCreativeHistory(loadHistory);
   const profile = context.profile as Record<string, unknown> | null;
@@ -187,6 +187,7 @@ export default function ContentPlanPage() {
         <>
           <PageHeader title="当月内容规划" subtitle="定这个月发几条、怎么配比、分哪几个方向；勾选方向，接着去出方向思路、选题或脚本" />
 
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
           {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
           <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
             {history.length === 0 && <p className="mb-2 text-[12px] text-muted-foreground">当前档案还没有记录，生成成功后会自动保存。</p>}

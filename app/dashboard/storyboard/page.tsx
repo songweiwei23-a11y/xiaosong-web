@@ -66,6 +66,7 @@ export default function StoryboardPage() {
     downloadAsFile,
     lastResult,
     resultScope,
+    historyError,
   // 原来指向 /api/storyboards——那个路由根本不存在，请求一直 404，
   // 所以这一页从上线起就没有历史、也不会恢复上次的结果
   } = useGenerationPage({ taskType: '分镜脚本', historyApiPath: '/api/script-history' });
@@ -336,6 +337,7 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
               </button>
             }
           />
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
 
           {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
           <ContextBadge board="storyboard" className="mb-4" />

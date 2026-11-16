@@ -72,6 +72,7 @@ export async function loadPriorTopicSections(userId: string, profileId?: string 
       .select('id, result, input_data, created_at')
       .eq('user_id', userId)
       .eq('task_type', '选题策划')
+      .or('input_data->>_kaiwuStatus.is.null,input_data->>_kaiwuStatus.eq.completed')
       .or(historyProfileFilter(profileId || 'default') + (profileId ? ',and(input_data->>profile_id.is.null,input_data->>profileId.is.null)' : ''))
       .order('created_at', { ascending: false })
       .order('id')

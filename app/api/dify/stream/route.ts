@@ -628,11 +628,19 @@ export async function POST(req: NextRequest) {
           const rawResponse = fullResponse;
           if (outcome.kind === 'done' && fullResponse.trim() && historyDb && durableHistory) {
             sendProgress('正在保存刚生成的正文，避免页面切换后丢失');
-            await persistCreativeHistory(historyDb, userId, {
-              id: body.historyId, taskType: body.taskType, profileId: historyProfileId,
-              inputData: body.historyInput && typeof body.historyInput === 'object' && !Array.isArray(body.historyInput) ? body.historyInput : {},
-              result: fullResponse,
-            });
+            let draftSaved = false;
+            try {
+              draftSaved = await persistCreativeHistory(historyDb, userId, {
+                id: body.historyId, taskType: body.taskType, profileId: historyProfileId,
+                inputData: body.historyInput && typeof body.historyInput === 'object' && !Array.isArray(body.historyInput) ? body.historyInput : {},
+                result: fullResponse,
+                status: 'draft',
+              });
+            } catch (error) {
+              // 草稿保存是防丢保护，不能因为数据库暂时异常把已经生成的正文判成失败。
+              console.error('[creative-history] 草稿存档异常', error instanceof Error ? error.message : 'unknown');
+            }
+            send({ event: 'draft_saved', saved: draftSaved });
           }
           if (outcome.kind === 'done' && topicPlan?.angles.length) {
             fullResponse = anchorDirectionDraft(fullResponse, topicPlan.angles);
@@ -901,8 +909,10 @@ export async function POST(req: NextRequest) {
               }
             }
           }
-          // 需要校对的任务：没通过校对的草稿不能留在页面上，先清掉再报错
-          if (outcome.kind !== 'done' && needsCheck && shownText) showFullText('');
+          // 失败时保留已经生成的正文：用户可以复制、刷新后从历史恢复，不能因为后处理暂时失败而把整批清空。
+          if (outcome.kind !== 'done' && needsCheck && shownText) {
+            send({ event: 'partial_saved', message: '后续核对暂未完成，已保留当前草稿，可先复制或稍后重试' });
+          }
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
             if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试','选题核对暂未完成，请重试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
@@ -925,6 +935,7 @@ export async function POST(req: NextRequest) {
                   id: body.historyId, taskType: body.taskType, profileId: historyProfileId,
                   inputData: body.historyInput && typeof body.historyInput === 'object' && !Array.isArray(body.historyInput) ? body.historyInput : {},
                   result: fullResponse,
+                  status: 'completed',
                 });
               } catch (error) { console.error('[creative-history] 存档异常', error instanceof Error ? error.message : 'unknown'); }
               send({ event: 'history_saved', saved });

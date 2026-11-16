@@ -57,6 +57,7 @@ export default function ReviewPage() {
     downloadAsFile,
     lastResult,
     resultScope,
+    historyError,
   // 同分镜页：/api/reviews 不存在，请求 404，历史和恢复都是空的
   } = useGenerationPage({ taskType: '审稿优化', historyApiPath: '/api/script-history' });
 
@@ -333,6 +334,7 @@ export default function ReviewPage() {
       sidebar={
         <>
           <PageHeader title="审稿优化" subtitle="逐条指出问题并给出改写建议，可对照标杆脚本做差距分析" />
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
 
           {/* 档案和创作简报自动带上，这里只告诉用户带了什么 */}
           <ContextBadge board="review" className="mb-4" />

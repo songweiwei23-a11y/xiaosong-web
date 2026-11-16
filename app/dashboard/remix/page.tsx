@@ -112,7 +112,7 @@ function ChoiceGrid<T extends string>({
 export default function RemixPage() {
   const beginProfileRequest = useProfileRequestGuard();
   const [incomingSetup, setIncomingSetup] = useState<HandoffPayload | null>(null);
-  const { history, loadHistory, deleteHistory, lastResult, resultScope } = useGenerationPage({ taskType: REMIX_TASK_TYPE });
+  const { history, loadHistory, deleteHistory, lastResult, resultScope, historyError } = useGenerationPage({ taskType: REMIX_TASK_TYPE });
   const { context, loading: ctxLoading } = useCreatorContext();
   const { saveCreativeHistory, saveError, retrySave, getHistoryOwner } = useCreativeHistory(loadHistory);
   const profile = context.profile as Record<string, unknown> | null;
@@ -329,6 +329,7 @@ export default function RemixPage() {
           <PageHeader title="跨行业二创" subtitle="借别的行业爆款的开篇、结构、拍法，换成你自己的行业来拍" />
           <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
 
+          {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
           {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
           <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
             <p className="mb-2 text-[11.5px] text-muted-foreground">当前档案：{String(profile?.profile_name || '未关联档案')}。结果保存在当前账号的云端，不主动删除就一直保留，点击记录可恢复正文和当时的设置。</p>

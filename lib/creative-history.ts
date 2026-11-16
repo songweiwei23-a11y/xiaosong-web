@@ -8,6 +8,8 @@ export type CreativeHistoryInput = {
   id: string; taskType: string; profileId: string | null;
   ownerId?: string;
   inputData: Record<string, unknown>; result: string;
+  /** 草稿先存时标记为 draft；最终保存会把同一条记录升级为 completed。 */
+  status?: 'draft' | 'completed';
 };
 
 /**
@@ -63,7 +65,7 @@ export async function ownsCreativeProfile(db: SupabaseClient, userId: string, pr
 export async function persistCreativeHistory(db: SupabaseClient, userId: string, input: CreativeHistoryInput): Promise<boolean> {
   const { error } = await db.from('script_history').insert({
     id: input.id, user_id: userId, task_type: input.taskType,
-    input_data: { ...input.inputData, profile_id: input.profileId, profileId: input.profileId },
+    input_data: { ...input.inputData, profile_id: input.profileId, profileId: input.profileId, _kaiwuStatus: input.status ?? 'completed' },
     result: input.result, work_id: null,
   });
   if (!error) return true;
@@ -72,9 +74,22 @@ export async function persistCreativeHistory(db: SupabaseClient, userId: string,
     const same = !existing.error && !!existing.data && existing.data.task_type === input.taskType &&
       (existing.data.input_data?.profileId ?? existing.data.input_data?.profile_id ?? null) === input.profileId;
     if (!same) return false;
+    const nextInputData = {
+      ...(existing.data!.input_data ?? {}),
+      ...input.inputData,
+      profile_id: input.profileId,
+      profileId: input.profileId,
+      _kaiwuStatus: input.status ?? 'completed',
+    };
     if (input.result.trim() && existing.data!.result !== input.result) {
-      const { error: updateError } = await db.from('script_history').update({ result: input.result }).eq('id', input.id).eq('user_id', userId);
+      const { error: updateError } = await db.from('script_history').update({
+        result: input.result,
+        input_data: nextInputData,
+      }).eq('id', input.id).eq('user_id', userId);
       if (updateError) { console.error('[creative-history] 更新最终稿失败', updateError.code); return false; }
+    } else {
+      const { error: statusError } = await db.from('script_history').update({ input_data: nextInputData }).eq('id', input.id).eq('user_id', userId);
+      if (statusError) { console.error('[creative-history] 更新存档状态失败', statusError.code); return false; }
     }
     return true;
   }

@@ -13,7 +13,7 @@ vi.mock('@/lib/dify-conversation', () => ({ getDifyConversationId: vi.fn(async (
 vi.mock('@/lib/admin-auth', () => ({ getServiceSupabase: () => ({
   from: (table: string) => {
     const query: any = {
-      select: () => query, eq: () => query, order: () => query, limit: () => query, or: () => query,
+      select: () => query, eq: () => query, order: () => query, limit: () => query, or: () => query, update: async () => ({ error: null }),
       maybeSingle: async () => ({ data: { id: '11111111-1111-4111-8111-111111111111' }, error: null }),
       then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
       // 只记历史记录本身的写入；学习信号（user_signals）是另一张表，这里不算
@@ -75,15 +75,15 @@ describe('生成由服务端存档', () => {
     expect(askDify).not.toHaveBeenCalled();
     expect(recordCreationCompletion).toHaveBeenCalledTimes(1);
   });
-  it('标题校对仍不合格，页面上的草稿被清掉、不扣成功次数', async () => {
+  it('标题校对仍不合格，保留页面草稿并提示可重试、不扣成功次数', async () => {
     vi.mocked(askDify).mockClear();
     vi.mocked(recordCreationCompletion).mockClear();vi.mocked(releaseCreation).mockClear();
     const answer='### 1. 我问了三家店';
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(`data: {"event":"message","answer":${JSON.stringify(answer)}}\n\ndata: {"event":"message_end"}\n\n`)));
     const req=new Request('https://local/api/dify/stream',{method:'POST',body:JSON.stringify({taskType:'标题封面',query:'采访标题',creationSettings:{titleCount:1,userIntent:'尚未采访'}})}) as NextRequest;
     const stream=await (await POST(req)).text();
-    expect(shownAfterStream(stream)).toBe('');
-    expect(stream).toContain('结果未满足本轮数量或事实状态要求');
+    expect(shownAfterStream(stream)).toContain(answer);
+    expect(stream).toContain('partial_saved');
     expect(askDify).toHaveBeenCalledTimes(1);
     expect(recordCreationCompletion).not.toHaveBeenCalled();
     expect(releaseCreation).toHaveBeenCalledTimes(1);
@@ -130,14 +130,14 @@ describe('生成由服务端存档', () => {
     expect(askDify).toHaveBeenCalledWith(expect.stringContaining('她在揉面，手上全是白。'), 'owner', '审稿 原稿事实校对', expect.any(Object));
     expect(recordCreationCompletion).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ result: '## 纯文字文案\n她在揉面，手上全是白。', conversationId: 'verified-review', usage: expect.objectContaining({ total_tokens: 20 }) }), '审稿优化');
   });
-  it('事实校对失败：页面上的草稿被清掉、不确认次数，并释放本次预占', async () => {
+  it('事实校对失败：保留页面草稿并提示未完成，不确认次数，并释放本次预占', async () => {
     state.auditFails = true;
     vi.mocked(recordCreationCompletion).mockClear(); vi.mocked(releaseCreation).mockClear();
     vi.stubGlobal('fetch', vi.fn(async () => new Response(complete)));
     const stream = await (await POST(new Request('https://local/api/dify/stream', { method: 'POST', body: JSON.stringify({ taskType: '审稿优化', query: '审稿', draftContent: '她在揉面。' }) }) as NextRequest)).text();
     expect(stream).toContain('审稿校对未完成');
-    expect(shownAfterStream(stream)).toBe('');
-    expect(recordCreationCompletion).not.toHaveBeenCalled();
+    expect(shownAfterStream(stream)).toContain('完整二创方案');
+    expect(stream).toContain('partial_saved');
     expect(releaseCreation).toHaveBeenCalledTimes(1);
   });
   it('当前创作设置在附加历史记忆后锁定，实际发送给 Dify 并随历史保存', async () => {
@@ -167,7 +167,8 @@ describe('生成由服务端存档', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(complete)));
     const response = await POST(request());
     const stream = await response.text();
-    expect(state.inserted).toHaveLength(1);
+    expect(state.inserted).toHaveLength(2);
+    expect(stream.indexOf('draft_saved')).toBeLessThan(stream.indexOf('history_saved'));
     expect(stream.indexOf('history_saved')).toBeLessThan(stream.indexOf('message_end'));
     expect(stream).toContain('"saved":true');
   });

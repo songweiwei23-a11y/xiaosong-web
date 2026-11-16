@@ -31,6 +31,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
   const requestRef = useRef(0);
 
   const [history, setHistory] = useState<GenerationHistory[]>([]);
+  const [historyError, setHistoryError] = useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [dialogInitialContent, setDialogInitialContent] = useState("");
   const [quota, setQuota] = useState<number | null>(null);
@@ -66,17 +67,25 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
       setShowDialog(false);
       setDialogInitialContent('');
       setHistory([]);
+      setHistoryError('');
     }
     const request = ++requestRef.current;
     try {
       const response = await fetch(listUrl);
-      // 404 也走这里。分镜页和审稿页就是这么栽的：它们指向
-      // /api/storyboards 和 /api/reviews，而这两个路由根本不存在——
-      // 请求 404、这里直接 return，历史和上次结果都不会恢复，
-      // 控制台干净、页面也不报错，只表现为"换页回来内容没了"。
-      if (!response.ok) return;
+      // 历史读取失败必须与“确实没有历史”区分，不能静默显示为空。
+      if (!response.ok) {
+        if (request === requestRef.current) {
+          setHistoryError(response.status === 401 || response.status === 403
+            ? '当前登录状态已失效，请重新登录后恢复历史记录。'
+            : response.status === 404
+              ? '当前板块的历史接口暂不可用，结果仍可继续生成。'
+              : '历史记录暂时读取失败，请稍后重试。');
+        }
+        return;
+      }
       const data = await response.json();
       if (request !== requestRef.current) return;
+      setHistoryError('');
       if (Array.isArray(data)) {
         const mine = data.filter((item: any) => item.task_type === taskType);
         setHistory(mine);
@@ -88,6 +97,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
       }
     } catch (error) {
       console.error("加载历史记录失败:", error);
+      if (request === requestRef.current) setHistoryError('历史记录暂时读取失败，请检查网络后重试。');
     }
   }, [listUrl, taskType, resultScope]);
 
@@ -159,6 +169,7 @@ export function useGenerationPage(options: UseGenerationPageOptions) {
 
   return {
     history: scopeRef.current === resultScope ? history : [],
+    historyError,
     loadHistory,
     deleteHistory,
     showDialog,
