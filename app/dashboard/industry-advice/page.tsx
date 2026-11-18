@@ -1,5 +1,7 @@
 'use client'
 
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
@@ -81,6 +83,7 @@ export default function IndustryAdvicePage() {
   const [contentBaseline, setContentBaseline] = useState('')
   const [choice, setChoice] = useState<Choice>(DEFAULT_CHOICE)
   const [result, setResult] = useState('')
+  const generation = useGenerationTask(ADVICE_TYPE, (text, previous) => setResult(current => !current || current === previous ? text : current), (profile?.id as string | undefined) || null);
   const [saved, setSaved] = useState<Row | null>(null)
   /** 三份上游定位的生成时间，用来判断药方是不是已经过期 */
   const [upstreamAt, setUpstreamAt] = useState<Record<string, string | null>>({})
@@ -186,6 +189,8 @@ export default function IndustryAdvicePage() {
       if (!res.ok) await throwApiError(res)
 
       full = await readDifyStream(res, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_p, all) => setResult(all),
         onDraftDone: () => { setIsGenerating(false); setFinishing(FINISHING_NOTE) },
       })
@@ -249,6 +254,7 @@ export default function IndustryAdvicePage() {
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <GenerationTaskNotice state={generation} />
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">行业建议</h1>
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">

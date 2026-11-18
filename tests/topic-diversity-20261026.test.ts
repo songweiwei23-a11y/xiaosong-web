@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { directionSeedOf, isDirectionBlock } from '@/lib/direction-seed';
+import { cleanTopicReference } from '@/lib/direction-topic-plan';
 import { topicReference } from '@/lib/creation-continuation';
 import { creationSettingsBlock } from '@/lib/creation-settings';
 import { assignTopicSlots, audiencePool, topicSlotsBlock } from '@/lib/topic-slots';
@@ -50,6 +51,16 @@ describe('P1 方向只给种子：范围和切入角度，不给人群、讲法�
     expect(ref).toContain('【方向种子');
     expect(ref).not.toContain('第一秒画面');
     expect(ref).not.toContain('出镜者站在试穿镜前');
+  });
+  it('月度规划写进范围行的拍法不能传给选题，拍法后的素材和独立拍摄限制仍保留', () => {
+    const scope = '研究县城与省会的选址和经营。拍法：采访本地老板 + 另一地老板素材 + 出镜解释。素材有当地店招。';
+    const card = '### 方向1：县城开店差异\n- **内容方向**：' + scope;
+    const seed = topicReference({ sourceContent: card, originContent: card, settings: {} });
+    for (const reference of [seed, cleanTopicReference('范围：' + scope)]) {
+      expect(reference).toContain('选址和经营');
+      expect(reference).toContain('素材有当地店招');
+      expect(reference).not.toContain('出镜解释');
+    }
   });
   it('非方向的参考原文保持原样（不影响脚本等其他来源）', () => {
     const ref = topicReference({ sourceContent: '一段普通的脚本正文', originContent: '一段普通的脚本正文', settings: {} });

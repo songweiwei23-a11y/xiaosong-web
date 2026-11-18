@@ -1,5 +1,7 @@
 'use client'
 
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
@@ -67,6 +69,7 @@ export default function CreativeBriefPage() {
   const [business, setBusiness] = useState<Row | null>(null)
   const [contentPos, setContentPos] = useState<Row | null>(null)
   const [values, setValues] = useState<Record<string, string>>({})
+  const generation = useGenerationTask('创作简报', text => setValues(current => Object.keys(current).length ? current : parseBrief(text)), profileId || null);
   const [dirty, setDirty] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -207,6 +210,8 @@ export default function CreativeBriefPage() {
       if (!res.ok) await throwApiError(res)
 
       full = await readDifyStream(res, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_p, all) => setValues(parseBrief(all)),
         onDraftDone: () => { setIsGenerating(false); setFinishing(FINISHING_NOTE) },
       })
@@ -281,6 +286,7 @@ export default function CreativeBriefPage() {
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <GenerationTaskNotice state={generation} />
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">创作简报</h1>
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">

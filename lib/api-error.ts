@@ -40,6 +40,11 @@ export async function fetchGeneration(url: string, init: RequestInit): Promise<R
    * 用户线路差的时候超过约 8KB 的 POST 一律被切断。所以发送统一走 postSafely：大了先压缩、再大就分块
    */
   // 秒失败重发一次现在在 postSafely 里做（2026-10-05 推广到所有写请求），这里不再套一层，免得重发次数翻倍
+  if (url === '/api/dify/stream' || url === '/api/dify/chat') {
+    const headers = new Headers(init.headers);
+    headers.set('x-generation-resume', '1');
+    init = { ...init, headers };
+  }
   return postSafely(url, init);
 }
 

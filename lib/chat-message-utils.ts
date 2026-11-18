@@ -17,6 +17,7 @@ export interface ChatMessage {
   content: string
   /** 存储时可能是数字或 ISO 字符串，读回后统一成数字 */
   timestamp: number
+  generationRequestId?: string
   attachments?: ChatAttachment[]
   webSearch?: WebSearchStatus
   creationSettings?: CreationSettings
@@ -53,6 +54,7 @@ type IncomingMessage = {
   role?: unknown
   content?: unknown
   timestamp?: unknown
+  generationRequestId?: unknown
   attachments?: unknown
   webSearch?: unknown
   creationSettings?: unknown
@@ -69,6 +71,7 @@ export function sanitizeMessages(input: unknown): Array<{
   role: ChatRole
   content: string
   timestamp: number | string
+  generationRequestId?: string
   attachments?: ChatAttachment[]
   webSearch?: WebSearchStatus
   creationSettings?: CreationSettings
@@ -84,6 +87,7 @@ export function sanitizeMessages(input: unknown): Array<{
     .map((m) => ({
       role: m.role as ChatRole,
       content: typeof m.content === 'string' ? m.content : '',
+      ...(typeof m.generationRequestId === 'string' && /^[a-zA-Z0-9_-]{16,128}$/.test(m.generationRequestId) ? { generationRequestId: m.generationRequestId } : {}),
       ...(m.creationSettings && typeof m.creationSettings === 'object' ? { creationSettings: mergeCreationSettings(m.creationSettings) } : {}),
       ...(sanitizeAttachments(m.attachments).length ? { attachments: sanitizeAttachments(m.attachments) } : {}),
       ...(sanitizeCanvasVersions(m.canvas).length ? { canvas: sanitizeCanvasVersions(m.canvas) } : {}),

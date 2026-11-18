@@ -7,6 +7,8 @@ import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { buildContextBlock } from "@/lib/creator-context";
 import { fetchGeneration, isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
 import { readDifyStream } from "@/lib/sse-stream";
+import { useGenerationTask } from "@/hooks/useGenerationTask";
+import { GenerationTaskNotice } from "@/components/workspace/GenerationTaskNotice";
 import { postSafely } from "@/lib/safe-post";
 import { prepareVideo, extractAudio, audioSegments } from "@/lib/video-frames";
 import { transcribeSegments, uploadSheets } from "@/lib/breakdown-client";
@@ -59,7 +61,7 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
    */
   incoming?: { files: File[]; collected?: Collection | null; nonce: number };
 }) {
-  const { context } = useCreatorContext();
+  const { context, loading } = useCreatorContext();
   const [pasted, setPasted] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [collected, setCollected] = useState<Collection | null>(null);
@@ -70,12 +72,18 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
   // 本地草稿（lib/report-draft）：生成中随时存，存服务器成功才清；刷新、关页面、保存失败都不丢
   const draftKey = `benchmark:${accountId}`;
   const [draftNote, setDraftNote] = useState("");
+  const [recovered, setRecovered] = useState(false);
+  const recoveryScope = `benchmark:${accountId}`;
+  const generation = useGenerationTask(BENCHMARK_TASK_TYPE, (text) => {
+    setReport(text);
+    setRecovered(true);
+  }, loading ? undefined : (context.profile?.id as string | undefined) || null, recoveryScope);
   const lastDraftAt = useRef(0);
-  const saveReport = async (full: string, materials: string[]) => {
+  const saveReport = async (full: string, materials: string[], reportId?: string) => {
     const saved = await postSafely("/api/benchmark", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "saveAnalysis", accountId, report: full, materials }),
+      body: JSON.stringify({ action: "saveAnalysis", accountId, report: full, materials, reportId }),
     });
     if (!saved.ok) await throwApiError(saved, "拆解结果没保存上，报告先留在页面上，也存在了这台电脑的浏览器里，下次打开会自动再存");
     clearDraft(draftKey);
@@ -91,8 +99,8 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
       return;
     }
     setDraftNote("上次拆完没存上，正在补存……");
-    saveReport(d.report, d.materials)
-      .then(() => { setReport(""); setDraftNote("上次没存上的拆解已经补存好了，在下面「已保存的拆解」里（最新一份已展开）"); onSaved(); })
+    saveReport(d.report, d.materials, d.taskId)
+      .then(() => { generation.forgetTask(); setRecovered(false); setReport(""); setDraftNote("上次没存上的拆解已经补存好了，在下面「已保存的拆解」里（最新一份已展开）"); onSaved(); })
       .catch(() => setDraftNote("上次拆完没存上，报告在下面；这台电脑上留着，下次打开会再试着保存"));
   }, [draftKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const handled = useRef(0); // 同一批只处理一次（开发模式下 effect 会跑两遍，不能拆两次）
@@ -184,11 +192,13 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
       });
 
       setProgress("AI 拆解中");
+      setRecovered(false);
       const res = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: BENCHMARK_TASK_TYPE,
+          recoveryScope,
           query,
           imageFileIds: imageIds,
           profileId: context.profile?.id ?? null,
@@ -196,21 +206,25 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
       });
       if (!res.ok) await throwApiError(res, "拆解失败");
       setDraftNote("");
+      let taskId: string | undefined;
       const full = await readDifyStream(res, {
+        onTaskAccepted: (next) => { taskId = next.taskId; generation.acceptTask(next); },
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_p, text) => {
           setReport(text);
           // 边写边存草稿（隔 2 秒存一次）：中途刷新、关页面也留得住
           if (Date.now() - lastDraftAt.current >= DRAFT_THROTTLE_MS) {
             lastDraftAt.current = Date.now();
-            saveDraft(draftKey, { report: text, done: false, materials: materialLines });
+            saveDraft(draftKey, { report: text, done: false, materials: materialLines, taskId });
           }
         },
       });
       if (!full.trim()) throw new Error("这次没拆出内容，可以再试一次");
       setReport(full);
-      saveDraft(draftKey, { report: full, done: true, materials: materialLines });
+      saveDraft(draftKey, { report: full, done: true, materials: materialLines, taskId });
 
-      await saveReport(full, materialLines);
+      await saveReport(full, materialLines, taskId);
+      generation.forgetTask();
       // 存好了：这份就是下面「已保存的拆解」里展开的最新一份，这里不再重复摆一份
       setReport("");
       notify("拆解完成，已保存到这个对标账号下面（最新一份已展开）");
@@ -287,6 +301,19 @@ export function BenchmarkAnalyzer({ accountId, accountName, platform, onSaved, i
       </button>
 
       {draftNote && <p className="rounded-lg border border-primary/30 px-3 py-2 text-[12.5px] text-foreground">{draftNote}</p>}
+      <GenerationTaskNotice state={generation} />
+      {recovered && report && generation.task?.status === 'completed' && <button type="button" disabled={running} className="text-sm text-primary underline" onClick={async () => {
+        setRunning(true);
+        try {
+          const original = readDraft(draftKey);
+          await saveReport(report, original?.taskId === generation.task?.id ? original?.materials ?? [] : [], generation.task?.id);
+          generation.forgetTask();
+          setRecovered(false);
+          setReport("");
+          onSaved();
+        } catch (error) { notify((error as Error).message, "error"); }
+        finally { setRunning(false); }
+      }}>保存恢复的拆解报告</button>}
       {report && <BenchmarkReport report={report} streaming={running} />}
     </div>
   );

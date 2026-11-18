@@ -1,5 +1,7 @@
 "use client";
 
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { TEXTAREA_CLS, GENERATE_BTN } from "@/components/form/controls";
@@ -51,6 +53,7 @@ export default function KnowledgePage() {
   const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
   const { context: creatorContext } = useCreatorContext();
+  const generation = useGenerationTask(HISTORY_TASK_TYPE, (text, previous) => setResult(current => !current || current === previous ? text : current), (creatorContext.profile?.id as string | undefined) || null);
 
   const { history, loadHistory, lastResult, resultScope, historyError } = useGenerationPage({ taskType: HISTORY_TASK_TYPE });
   useRestoreLastResult(lastResult, setResult, resultScope);
@@ -98,6 +101,8 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer，
       // 否则页面上显示的会是满屏 data: {...} 而不是检索结果正文
       const full = await readDifyStream(response, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_piece, text) => { if (isCurrent()) setResult(text); },
         onDraftDone: () => { if (isCurrent()) { setIsSearching(false); setFinishing(FINISHING_NOTE); } },
       });
@@ -128,6 +133,7 @@ ${accountBlock ? `\n【提问的是这个账号】（举例、给建议时用它
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
           <PageHeader title="知识库" subtitle="查询编导专业知识与方法" />
           {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
 

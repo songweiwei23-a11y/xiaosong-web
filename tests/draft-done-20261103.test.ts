@@ -41,15 +41,17 @@ describe('readDifyStream：draft_done', () => {
 
 describe('服务端：正文写完先发 draft_done，核对一道不少', () => {
   const route = readCode('app/api/dify/stream/route.ts');
+  const processing = readCode('lib/generation-processing.ts');
   it('在主生成结束、核对开始之前发；要校对通过才算数的任务不发', () => {
     const at = route.indexOf("send({ event: 'draft_done' })");
     expect(at).toBeGreaterThan(route.indexOf("stages.push({ stage: 'generate'"));
-    expect(at).toBeLessThan(route.indexOf("traced('review_verify'"));
-    expect(at).toBeLessThan(route.indexOf("traced('detail_check'"));
+    expect(at).toBeLessThan(route.indexOf('await processGeneration('));
+    expect(at).toBeLessThan(route.indexOf('await queueGenerationWork('));
     expect(route).toMatch(/if \(outcome\.kind === 'done' && !needsCheck && fullResponse\.trim\(\)\) \{[\s\S]*?send\(\{ event: 'draft_done' \}\);[\s\S]*?sendProgress\('正文已生成/);
   });
   it('核对、修正、结束标记都还在', () => {
-    for (const s of ["traced('detail_check'", "traced('fact_fix'", 'repairYears(', 'repairReality(', "event: 'message_end'"]) expect(route).toContain(s);
+    for (const s of ["traced('review_verify'", "traced('detail_check'", "traced('fact_fix'", 'repairYears(', 'repairReality(']) expect(processing).toContain(s);
+    expect(route).toContain("event: 'message_end'");
   });
 });
 

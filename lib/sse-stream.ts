@@ -108,6 +108,53 @@ export async function recoverDifyAnswer(
   return null;
 }
 
+const processingLabels: Record<string, string> = {
+  editorial_review: '正在校对正文', script_repair: '正在检查脚本结构', script_polish: '正在润色脚本',
+  fact_check: '正在核对事实', detail_check: '正在核对细节', speaker_check: '正在核对说话人',
+  years_repair: '正在核对年限', reality_repair: '正在核对现实依据', structure_check: '正在检查结构',
+  topic_review: '正在检查重复选题并补题', worker_finalize: '正在保存最终稿', worker_ready: '草稿已保存，等待后处理',
+};
+
+export function generationStageLabel(stage: string) {
+  return processingLabels[stage.replace(/^running_/, '')] || '正在处理已保存的草稿';
+}
+
+async function finishSavedTask(taskId: string, options: ReadDifyStreamOptions): Promise<string> {
+  const deadline = Date.now() + 20 * 60_000;
+  let version = 0;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch('/api/generation-tasks/' + encodeURIComponent(taskId), { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+      if ([401, 403, 404].includes(response.status)) throw new DifyStreamError('无法读取当前任务，请确认登录账号并重新打开页面');
+      if (response.ok) {
+        const task = await response.json();
+        if (task.id !== taskId) throw new DifyStreamError('返回的任务编号不匹配');
+        options.onTaskStage?.({ taskId, stage: task.stage, status: task.status, message: task.error_message || undefined });
+        if (task.status === 'post_processing') options.onStatus?.(generationStageLabel(task.stage));
+        if (task.latest?.result && task.latest.version > version) {
+          version = task.latest.version;
+          options.onChunk?.('', task.latest.result);
+        }
+        if (task.status === 'completed' && task.latest?.kind === 'final') {
+          if (task.latest.metadata?.topicBatch) options.onTopicBatch?.(task.latest.metadata.topicBatch);
+          options.onFinalSaved?.(true);
+          return task.latest.result;
+        }
+        if (['partial_saved', 'recoverable_failed', 'permanent_failed', 'canceled'].includes(task.status)) {
+          const message = task.error_message || '后处理未完成，可以重新查看已保存的草稿';
+          options.onPartialSaved?.(message);
+          throw new DifyStreamError(message);
+        }
+        options.onStatus?.(generationStageLabel(task.stage));
+      }
+    } catch (error) {
+      if (error instanceof DifyStreamError) throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  throw new DifyStreamError('后台处理尚未完成，可稍后返回本页查看已保存的版本');
+}
+
 /**
  * 读取 Dify 流式响应，返回拼接后的完整文本。
  * 解析失败的行会被跳过而不是中断整个流——流末尾常有不完整的残块。
@@ -127,6 +174,8 @@ export async function readDifyStream(
   let messageId = '';
   let ended = false;
   let topicDraft = false;
+  let detachedId = '';
+  let acceptedId = '';
   let broken: unknown = null;
 
   try {
@@ -165,12 +214,25 @@ export async function readDifyStream(
           continue;
         }
         if (data.event === 'task_accepted' && typeof data.taskId === 'string') {
+          acceptedId = data.taskId;
           options.onTaskAccepted?.({ taskId: data.taskId, requestId: typeof data.requestId === 'string' ? data.requestId : undefined, status: String(data.status || 'accepted'), stage: String(data.stage || 'accepted') });
+          continue;
+        }
+        if (data.event === 'processing_detached' && data.taskId === acceptedId && acceptedId) {
+          detachedId = acceptedId;
+          options.onDraftDone?.(full);
           continue;
         }
         if (data.event === 'stage' && typeof data.taskId === 'string') {
           options.onTaskStage?.({ taskId: data.taskId, status: String(data.status || 'post_processing'), stage: String(data.stage || 'post_processing'), ...(typeof data.message === 'string' ? { message: data.message } : {}) });
           continue;
+        }
+        if (typeof data.taskId === 'string') {
+          let status: string | undefined;
+          if (data.event === 'final_saved' && data.saved) status = 'completed';
+          if (data.event === 'draft_saved' && data.saved) status = 'draft_saved';
+          if (data.event === 'partial_saved' || data.event === 'recoverable_failed') status = data.event;
+          if (status) options.onTaskStage?.({ taskId: data.taskId, status, stage: data.stage || status, message: data.message });
         }
         if (data.event === 'draft_saved') {
           options.onDraftSaved?.(data.saved === true);
@@ -180,7 +242,7 @@ export async function readDifyStream(
           options.onPartialSaved?.(typeof data.message === 'string' ? data.message : '后续核对暂未完成，当前草稿已保留');
           continue;
         }
-        if (data.event === 'history_saved' || data.event === 'final_saved') {
+        if ((!data.taskId && data.event === 'history_saved') || data.event === 'final_saved') {
           options.onFinalSaved?.(data.saved === true);
           continue;
         }
@@ -221,6 +283,7 @@ export async function readDifyStream(
    * 只在拿到过消息 id 时这样判断：说明对面是会发结束标记的新接口，
    * 老接口不发 message_id，照旧按"流结束就是写完"处理。
    */
+  if (detachedId || (!ended && acceptedId)) return finishSavedTask(detachedId || acceptedId, options);
   if (!ended && topicDraft) {
     throw new DifyStreamError('选题尚未完成核对，连接已中断。可稍后查看历史或重试。');
   }

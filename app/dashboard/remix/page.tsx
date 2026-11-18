@@ -1,4 +1,6 @@
 "use client";
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -165,6 +167,7 @@ export default function RemixPage() {
     setQuickMode((v) => !v);
   };
   const [result, setResult] = useState("");
+  const generation = useGenerationTask(REMIX_TASK_TYPE, (text, previous) => setResult(current => !current || current === previous ? text : current), (profile?.id as string | undefined) || null);
   const breakdownScopeRef = useRef<string>();
   const restoredInputScope = useRef<string>();
   const incomingHandoff = useRef(false);
@@ -307,6 +310,8 @@ export default function RemixPage() {
       });
       if (!res.ok) await throwApiError(res, "二创失败");
       const full = await readDifyStream(res, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
         onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
@@ -326,6 +331,7 @@ export default function RemixPage() {
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
           <PageHeader title="跨行业二创" subtitle="借别的行业爆款的开篇、结构、拍法，换成你自己的行业来拍" />
           <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
 

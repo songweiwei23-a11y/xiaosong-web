@@ -94,7 +94,8 @@ describe('作品按档案隔离（档案 1 的作品档案 2 看不到）', () =
   it('切换档案后各处重新取：顶栏进行中、创作进度、首页、历史、素材库、选题页', () => {
     expect(readCode('components/dashboard/InProgressStrip.tsx')).toMatch(/onActiveProfileChange\(\(\) => setProfileTick/);
     expect(readCode('app/dashboard/works/page.tsx')).toMatch(/onActiveProfileChange\(\(\) => \{ refreshCounts\(\); setProfileTick/);
-    expect(readCode('app/dashboard/page.tsx')).toMatch(/loadProfileWork\(\)\.catch/);
+    const dashboard = readCode('app/dashboard/page.tsx');
+    expect(dashboard).toMatch(/await loadProfileWork\(\);\s*\};\s*const offProfile = onActiveProfileChange\(refresh\)/);
     expect(readCode('app/history/page.tsx')).toMatch(/profileHistoryQuery\(getActiveProfileId\(\)\)/);
     const lib = readCode('app/dashboard/library/page.tsx');
     expect(lib).not.toMatch(/全部档案/);

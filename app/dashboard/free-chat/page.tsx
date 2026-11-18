@@ -17,6 +17,7 @@ import { WebSearchQuota } from '@/components/chat/WebSearchQuota';
 import { applyChatAnswer } from '@/lib/chat-stream-answer';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
 import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { buildContextBlock } from '@/lib/creator-context';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
@@ -181,7 +182,6 @@ export default function FreeChatPage() {
   const [input, setInput] = useState("");
   const [webSearchMode, setWebSearchMode] = useState<'auto' | 'on' | 'off'>('auto');
   const [isStreaming, setIsStreaming] = useState(false);
-  const { task, taskError, acceptTask, updateTaskStage } = useGenerationTask();
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const sending = useRef(false);
@@ -231,6 +231,9 @@ export default function FreeChatPage() {
   }, [input]);
 
   const activeConv = conversations.find((c) => c.id === activeId) || null;
+  const recoveryRequestId = activeConv?.messages.findLast(message => message.role === 'user')?.generationRequestId;
+  const generation = useGenerationTask('自由对话', undefined, profile?.id || null, activeId ? activeId.replace(/^pending-/, '') : null, recoveryRequestId);
+  const restoredAnswer = useRef<{ request: string; content: string } | null>(null);
 
   // 载入云端会话；首次打开时把旧的浏览器本地会话一次性搬上去
   useEffect(() => {
@@ -405,6 +408,33 @@ export default function FreeChatPage() {
     setConversations((prev) => prev.map((c) => (c.id === id ? updater(c) : c)));
   }, []);
 
+  useEffect(() => {
+    const task = generation.task;
+    if (isStreaming || !activeConv || !task?.latest?.result || task.task_type !== '自由对话#' + activeConv.id.replace(/^pending-/, '')) return;
+    const index = activeConv.messages.findLastIndex(msg => msg.role === 'user');
+    const question = activeConv.messages[index];
+    if (question?.generationRequestId !== task.request_id) return;
+    const answer = activeConv.messages[index + 1];
+    const sameDraft = restoredAnswer.current?.request === task.request_id && restoredAnswer.current.content === answer?.content;
+    if (answer?.content && !sameDraft && !answer.content.includes('⚠️')) return;
+    const restored = stripSelfCert(task.latest.result);
+    if (!restored.trim()) return;
+    if (restored === answer?.content && !(sameDraft && task.status === 'completed')) return;
+    const metadataId = task.latest.metadata?.conversationId;
+    const difyConversationId = typeof metadataId === 'string' && metadataId ? metadataId : activeConv.difyConversationId;
+    const messages: ChatMessage[] = [
+      ...activeConv.messages.slice(0, index + 1),
+      { ...answer, role: 'assistant', content: restored, timestamp: answer?.timestamp ?? question.timestamp + 1 },
+    ];
+    if (task.status === 'completed') {
+      restoredAnswer.current = null;
+      void syncQueue.current?.enqueue({ ...activeConv, messages, difyConversationId });
+    } else {
+      restoredAnswer.current = { request: task.request_id, content: restored };
+    }
+    patchConv(activeConv.id, c => ({ ...c, messages, difyConversationId }));
+  }, [activeConv, generation.task, isStreaming, patchConv]);
+
   /**
    * @param opts.replaceLast 换掉最后一轮（重新生成、改了提问再问）：把最后一个提问和它的回答拿掉，用这一轮替代
    * @param opts.regenerate  重新生成：同一个问题，要求换个角度答
@@ -435,7 +465,8 @@ export default function FreeChatPage() {
     const creationSettings = resolveCreationSettings({ from: '自由对话', sourceContent: content, settings: inherited }, creatorContext);
     // 出方案（lib/plan-builder）：对话里显示短的说明，真正发给模型的是 opts.prompt；提问和回答都记下 plan，刷新后大纲编辑器还在
     const planTag = opts.plan ? { plan: opts.plan } : {};
-    const userMsg: ChatMessage = { role: "user", content, timestamp: Date.now(), creationSettings, ...(selectedFiles.length ? { attachments: selectedFiles } : {}), ...planTag };
+    const generationRequestId = createHistoryId();
+    const userMsg: ChatMessage = { role: "user", content, timestamp: Date.now(), generationRequestId, creationSettings, ...(selectedFiles.length ? { attachments: selectedFiles } : {}), ...planTag };
     pendingCreation.current = null;
     const title = isFirstMessage ? content.slice(0, 18) : conv.title;
     // 发送前的消息快照。保存时以它为基准拼出完整记录，
@@ -490,7 +521,7 @@ export default function FreeChatPage() {
     try {
       const res = await fetchGeneration("/api/dify/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Generation-Id": generationRequestId },
         signal: controller.signal,
         body: JSON.stringify({
           query,
@@ -498,6 +529,7 @@ export default function FreeChatPage() {
           // 联网前读懂需求要用：最近两轮（追问「那客单价呢」时补全指代），每条只取开头，整段不超过 1200 字
           searchContext: keep.slice(-2).map((m) => `${m.role === "user" ? "用户" : "回答"}：${String(m.content ?? "").replace(/\s+/g, " ").slice(0, 500)}`).join("\n").slice(0, 1200),
           freeChat: true,
+          recoveryScope: convId.replace(/^pending-/, ''),
           webSearchMode,
           creationSettings,
           files: conversationAttachments(baseMessages, selectedFiles),
@@ -531,11 +563,19 @@ export default function FreeChatPage() {
           let data;
           try { data = JSON.parse(trimmed.slice(6)); } catch { continue; }
             if (data.event === 'task_accepted' && data.taskId) {
-              acceptTask({ taskId: data.taskId, requestId: data.requestId, status: data.status || 'generating', stage: data.stage || 'generate' });
+              generation.acceptTask({ taskId: data.taskId, requestId: data.requestId, status: data.status || 'generating', stage: data.stage || 'generate' });
               continue;
             }
             if (data.event === 'stage' && data.taskId) {
-              updateTaskStage({ taskId: data.taskId, status: data.status || 'post_processing', stage: data.stage || 'post_processing', message: data.message });
+              generation.updateTaskStage({ taskId: data.taskId, status: data.status || 'post_processing', stage: data.stage || 'post_processing', message: data.message });
+              continue;
+            }
+            if (data.taskId && data.event === 'draft_saved' && data.saved) {
+              generation.updateTaskStage({ taskId: data.taskId, status: 'draft_saved', stage: 'draft_save' });
+              continue;
+            }
+            if (data.taskId && data.event === 'final_saved' && data.saved) {
+              generation.updateTaskStage({ taskId: data.taskId, status: 'completed', stage: 'final_save' });
               continue;
             }
             if (data.event === 'partial_saved') {
@@ -947,8 +987,7 @@ export default function FreeChatPage() {
           <span>{historyError}</span>
           <button type="button" onClick={() => { loadedScopeRef.current = undefined; setLoadRevision(v => v + 1); }} className="shrink-0 underline">重试读取</button>
         </div>}
-        {taskError && <div role="alert" className="border-b bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">{taskError}</div>}
-        {task && <div role="status" className="border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">生成任务：{task.stage === 'final_save' ? '最终版本已保存' : task.stage === 'draft_save' ? '草稿已保存' : `正在${task.stage}`}</div>}
+        <GenerationTaskNotice state={generation} />
         {/* 同步失败：手机上顶栏放不下状态字，失败时单独一条；失败原因也在这里 */}
         {activeConv && syncStatuses[activeConv.id]?.state === 'failed' && (
           <div role="alert" className="border-b bg-amber-500/10 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-300">

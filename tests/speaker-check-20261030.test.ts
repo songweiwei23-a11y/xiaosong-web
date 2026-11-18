@@ -99,7 +99,7 @@ describe('修正只改标出的几句，超标不采用（和事实修正同一�
 
 describe('接进生成路由', () => {
   it('路由在编造细节检查之后、待确认占位之前，检查并修正说话人', () => {
-    const route = readFileSync(join(process.cwd(), 'app/api/dify/stream/route.ts'), 'utf8');
+    const route = readFileSync(join(process.cwd(), 'lib/generation-processing.ts'), 'utf8');
     expect(route).toContain("from '@/lib/speaker-check'");
     expect(route).toContain("'speaker_check_steps'");
     expect(route).toContain("'speaker_fix_steps'");

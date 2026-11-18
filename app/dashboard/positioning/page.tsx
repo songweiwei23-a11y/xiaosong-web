@@ -1,5 +1,7 @@
 "use client";
 
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { formatRelativeTime } from "@/lib/script-result-utils";
 import { diagnosisPromptBlock } from "@/lib/account-diagnosis";
 import { fetchDiagnosis } from "@/lib/diagnosis-client";
@@ -105,6 +107,7 @@ export default function PositioningPage() {
    */
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState("");
+  const generation = useGenerationTask('账号定位', (text, previous) => setResult(current => !current || current === previous ? text : current), activeProfile?.id || null);
   const [showDialog, setShowDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'full' | 'summary'>('full'); // 查看模式：完整版或选题摘要
 
@@ -308,6 +311,8 @@ export default function PositioningPage() {
       // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
       // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
       fullResult += await readDifyStream(response, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_piece, full) => setResult(full),
         onConversationId: (id) => { conversationId = id; },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
@@ -451,6 +456,7 @@ export default function PositioningPage() {
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
           <PageHeader title="账号定位" subtitle="基于账号档案，生成一份可执行的定位方案" />
 
           {staleFacts && (

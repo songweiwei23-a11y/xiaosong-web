@@ -1,4 +1,6 @@
 'use client'
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -82,6 +84,8 @@ export default function GrowthPage() {
   const [currentOpening, setCurrentOpening] = useState('')
   const [pickedCards, setPickedCards] = useState<string[]>([])
   const [openingResult, setOpeningResult] = useState('')
+  const generation = useGenerationTask('起号方案', (text, previous) => setPlanResult(current => !current || current === previous ? text : current), (context.profile?.id as string | undefined) || null);
+  const openingGeneration = useGenerationTask('开篇钩子', (text, previous) => setOpeningResult(current => !current || current === previous ? text : current), (context.profile?.id as string | undefined) || null);
 
   const [busy, setBusy] = useState(false)
   /** 正文已写完、还在核对润色和保存 */
@@ -96,6 +100,7 @@ export default function GrowthPage() {
    * 方向对不对，不对还得重来；而且方案是"给"的不是"选"的，执行意愿差一截。
    */
   const [candidates, setCandidates] = useState<TacticCandidate[]>([])
+  const tacticsGeneration = useGenerationTask('起号方案', text => setCandidates(parseTacticCandidates(text)), contextLoading ? undefined : (context.profile?.id as string | undefined) || null, 'tactic-candidates');
   const [picking, setPicking] = useState(false)
 
   /** 可以直接拿来用的选题和脚本 */
@@ -344,6 +349,8 @@ export default function GrowthPage() {
       })
       if (!res.ok) await throwApiError(res)
       const full = await readDifyStream(res, {
+        onTaskAccepted: (taskType === '开篇钩子' ? openingGeneration : generation).acceptTask,
+        onTaskStage: (taskType === '开篇钩子' ? openingGeneration : generation).updateTaskStage,
         onChunk: (_p, all) => { if (isCurrent()) setResult(all); },
         onDraftDone: () => { if (isCurrent()) { setBusy(false); setFinishing(FINISHING_NOTE); } },
       })
@@ -373,6 +380,7 @@ export default function GrowthPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           taskType: '起号方案',
+          recoveryScope: 'tactic-candidates',
           profileId: context.profile?.id || null,
           ...profileSearchHints(context.profile),
           query: buildTacticPickPrompt({
@@ -387,6 +395,8 @@ export default function GrowthPage() {
       })
       if (!res.ok) await throwApiError(res)
       const full = await readDifyStream(res, {
+        onTaskAccepted: tacticsGeneration.acceptTask,
+        onTaskStage: tacticsGeneration.updateTaskStage,
         onChunk: (_p, all) => { if (isCurrent()) setCandidates(parseTacticCandidates(all)); },
       })
       const parsed = parseTacticCandidates(full)
@@ -504,6 +514,7 @@ export default function GrowthPage() {
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <GenerationTaskNotice state={tab === 'plan' ? generation : openingGeneration} />
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">起号</h1>
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
@@ -591,6 +602,7 @@ export default function GrowthPage() {
               </div>
             )}
 
+            <GenerationTaskNotice state={tacticsGeneration} />
             {/* AI 推荐候选 → 用户自己选 → 再出完整方案。
                 直接出方案要跑三分钟才知道方向对不对，而且方案是"给"的不是"选"的 */}
             <button

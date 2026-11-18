@@ -107,11 +107,20 @@ export async function POST(request: Request) {
       const { data: acc } = await supabase.from('benchmark_accounts').select('id').eq('id', accountId).eq('user_id', uid).maybeSingle();
       if (!acc) return NextResponse.json({ error: '这个对标账号不存在' }, { status: 404 });
       const materials = Array.isArray(body.materials) ? body.materials.filter((m): m is string => typeof m === 'string').slice(0, 30).map((m) => m.slice(0, 200)) : [];
+      const reportId: string | null = typeof body.reportId === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(body.reportId) ? body.reportId : null;
+      const savedReport = report.slice(0, 60_000);
       const { data, error } = await supabase
         .from('benchmark_analyses')
-        .insert({ user_id: uid, account_id: accountId, materials, report: report.slice(0, 60_000) })
+        .insert({ ...(reportId ? { id: reportId } : {}), user_id: uid, account_id: accountId, materials, report: savedReport })
         .select()
         .single();
+      if (reportId && error?.code === '23505') {
+        const { data: existing, error: readError } = await supabase.from('benchmark_analyses').select('*')
+          .eq('id', reportId).eq('user_id', uid).eq('account_id', accountId).maybeSingle();
+        if (readError) return dbError(readError.message);
+        if (existing?.report === savedReport) return NextResponse.json(existing);
+        return NextResponse.json({ error: '报告保存编号已使用，请刷新后查看已有报告' }, { status: 409 });
+      }
       if (error) return dbError(error.message);
       return NextResponse.json(data);
     }

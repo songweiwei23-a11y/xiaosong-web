@@ -16,6 +16,8 @@ import { useProfileRequestGuard } from '@/hooks/useProfileRequestGuard';
 import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile";
 import { saveGenerationHistory, checkQuota } from '@/lib/history';
 import { readDifyStream, FINISHING_NOTE } from '@/lib/sse-stream';
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 
 import { useState, useEffect, useRef, useMemo } from "react";
 // 复制/下载/历史相关的图标已随结果区一起移入 ResultPanel 与 HistoryPanel
@@ -336,6 +338,10 @@ export default function ScriptPage() {
   // 档案关联（脚本不带定位：lib/boards/script-query 里 10-19 方案 D）
   const [profiles, setProfiles] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState("");
+  const generation = useGenerationTask('脚本生成',
+    (text, previous) => setResult(current => !current || current === previous ? text : current),
+    selectedProfileId || null
+  );
 
   // 额度快用完 / 用完的提醒改由全站统一的付费引导负责（lib/upgrade + 工作台框架里的 UpgradePrompt）。
   // 这一页原来单独有一套：进页面就查、"任何一个功能用完"都说成"脚本额度用完了"。
@@ -562,6 +568,7 @@ export default function ScriptPage() {
           taskType: "脚本生成",
           creationSettings: currentSettings,
           profileId: selectedProfileId || null,
+          requestId: crypto.randomUUID(),
           query: query + scriptPageTail(query, { hasOrigin: !!originContent, autoPurpose: !!incomingSetup && scriptRole === '自动', autoScriptType }),
         }),
       });
@@ -575,6 +582,9 @@ export default function ScriptPage() {
       const accumulated = await readDifyStream(response, {
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
         onStatus: (message) => { if (isCurrent()) setPolishStatus(message); },
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
+        onPartialSaved: (message) => { if (isCurrent()) notify(message); },
         onDraftDone: () => { if (isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); } },
       });
       fullResult += accumulated;
@@ -1343,6 +1353,7 @@ export default function ScriptPage() {
 
       {/* Right Panel - Result */}
       <div id="workspace-result" className="min-w-0 flex-1 scroll-mt-4 px-4 py-6 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7">
+        <GenerationTaskNotice state={generation} />
         <div className="mx-auto max-w-4xl space-y-5">
 
       {/* 结果区在上、历史在下：原先历史卡片占着顶部，每次进页面先看到的

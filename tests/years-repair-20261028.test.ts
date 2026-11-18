@@ -154,13 +154,15 @@ describe('提示词：事实卡逐条列给模型，只认这里的年数', () =
 
 describe('接线：线上和每晚回归都接着年限修复，并且和现实修复同一个闸门', () => {
   it('线上流水线：年限修复在现实修复之前，用同一个板块闸门和额度', () => {
-    const src = readFileSync(join(process.cwd(), 'app/api/dify/stream/route.ts'), 'utf8');
+    const src = readFileSync(join(process.cwd(), 'lib/generation-processing.ts'), 'utf8');
     expect(src).toContain("from '@/lib/years-repair'");
     expect(src.indexOf('repairYears(')).toBeGreaterThan(0);
     expect(src.indexOf('repairYears(')).toBeLessThan(src.indexOf('repairReality('));
     expect(src.match(/needsSentenceRepair\(body\.taskType\)/g)?.length).toBe(2);
     expect(src).toContain('() => !sentenceRepairLimited(userId)');
-    expect(src).toContain('personaFacts = (full as');
+    const route = readFileSync(join(process.cwd(), 'app/api/dify/stream/route.ts'), 'utf8');
+    expect(route).toContain('personaFacts = (full as');
+    expect(route).toContain('personaFacts, topicTask');
   });
 
   it('每晚回归的修复：年限修复在现实修复之前，和线上顺序一致', () => {

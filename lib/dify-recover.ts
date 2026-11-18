@@ -9,6 +9,8 @@
  * 只在服务端用（要带 Dify 密钥）。
  */
 
+import { setTimeout as delay } from 'node:timers/promises';
+
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1';
 
 export type DifyMessageState =
@@ -25,13 +27,18 @@ export type DifyMessageState =
 export async function fetchDifyMessage(
   conversationId: string,
   messageId: string,
-  userId: string
+  userId: string,
+  signal?: AbortSignal,
 ): Promise<DifyMessageState> {
   try {
     const url =
       `${DIFY_BASE_URL}/messages?conversation_id=${encodeURIComponent(conversationId)}` +
       `&user=${encodeURIComponent(userId)}&limit=20`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${process.env.DIFY_API_KEY}` } });
+    const deadline = AbortSignal.timeout(8_000);
+    const res = await fetch(url, {
+      signal: signal ? AbortSignal.any([signal, deadline]) : deadline,
+      headers: { Authorization: `Bearer ${process.env.DIFY_API_KEY}` },
+    });
     if (!res.ok) return { status: 'missing' };
     const j = await res.json();
     const m = (j?.data ?? []).find((x: any) => x?.id === messageId);
@@ -49,15 +56,15 @@ export async function waitForDifyMessage(
   conversationId: string,
   messageId: string,
   userId: string,
-  { timeoutMs = 6 * 60_000, intervalMs = 4000, onTick }: { timeoutMs?: number; intervalMs?: number; onTick?: () => void } = {}
+  { timeoutMs = 6 * 60_000, intervalMs = 4000, onTick, signal }: { timeoutMs?: number; intervalMs?: number; onTick?: () => void; signal?: AbortSignal } = {}
 ): Promise<DifyMessageState> {
   const deadline = Date.now() + timeoutMs;
   let last: DifyMessageState = { status: 'pending' };
-  while (Date.now() < deadline) {
-    last = await fetchDifyMessage(conversationId, messageId, userId);
+  while (Date.now() < deadline && !signal?.aborted) {
+    last = await fetchDifyMessage(conversationId, messageId, userId, signal);
     if (last.status === 'done' || last.status === 'error') return last;
     onTick?.();
-    await new Promise((r) => setTimeout(r, intervalMs));
+    await delay(Math.min(intervalMs, Math.max(0, deadline - Date.now())), undefined, { signal }).catch(() => {});
   }
   return last.status === 'missing' ? last : { status: 'pending' };
 }

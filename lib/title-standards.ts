@@ -315,6 +315,7 @@ export function buildTitlePrompt(p: TitlePromptParams): string {
   parts.push('5. **是否命中风险词**');
   parts.push('6. **钩子卡是真用上了，还是只贴了个名字**——机制要能在标题里看出来');
   parts.push('7. **标题里的数字、结果、身份是否都有材料或档案支持**——没有就改成材料能证明的说法，或标注「待核实」，不写成既定事实');
+  parts.push('没有已确认数字时，改用有出处的场景或动作作锚点；成稿中不要编数字，也不要留「X 个、XX 元」等占位符。');
   parts.push('');
 
   parts.push('## 📤 输出格式');

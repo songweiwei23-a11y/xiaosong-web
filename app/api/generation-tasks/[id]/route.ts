@@ -13,7 +13,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!guard.ok) return guard.response!;
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: '生成任务编号不正确' }, { status: 400 });
-  const task = await readGenerationTask(guard.userId!, id);
-  if (!task) return NextResponse.json({ error: '没有找到这项生成任务，或当前账号无权限' }, { status: 404 });
-  return NextResponse.json(task, { headers: { 'Cache-Control': 'private, no-store' } });
+  try {
+    const task = await readGenerationTask(guard.userId!, id);
+    if (!task) return NextResponse.json({ error: '没有找到这项生成任务，或当前账号无权限' }, { status: 404 });
+    return NextResponse.json(task, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch {
+    return NextResponse.json({ error: '读取任务失败，已保存的结果可稍后重试' }, { status: 503 });
+  }
 }

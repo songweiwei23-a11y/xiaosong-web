@@ -155,13 +155,18 @@ describe('生成由服务端存档', () => {
     let upstream!: ReadableStreamDefaultController<Uint8Array>;
     const body = new ReadableStream<Uint8Array>({ start(controller) { upstream = controller; } });
     vi.stubGlobal('fetch', vi.fn(async () => new Response(body)));
-    const saved = new Promise<void>((resolve) => { state.onPersist = resolve; });
+    const saved = new Promise<void>((resolve) => {
+      state.onPersist = () => {
+        if (state.inserted.at(-1)?.input_data._kaiwuStatus === 'completed') resolve();
+      };
+    });
     const response = await POST(request());
     await response.body!.cancel();
     upstream.enqueue(encoder.encode(complete)); upstream.close();
     await saved;
-    expect(state.inserted).toHaveLength(1);
+    expect(state.inserted).toHaveLength(2);
     expect(state.inserted[0]).toMatchObject({ id: H, user_id: 'owner', task_type: '跨行业二创', result: '完整二创方案', input_data: { profileId: A, profile_id: A } });
+    expect(state.inserted[1]).toMatchObject({ id: H, input_data: { _kaiwuStatus: 'completed' } });
   });
   it('完成标记发给浏览器之前，云端保存已经完成', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(complete)));

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { stripComments } from './helpers/source';
+import { readSource, stripComments } from './helpers/source';
 
 /**
  * 全仓库的缺陷模式扫描。
@@ -145,11 +145,11 @@ describe('全仓库缺陷模式扫描', () => {
       const name = rel(file).replace('app/api/', '/api/').replace('/route.ts', '');
       // 公开入口：站点统计、注册（注册本身靠邀请码把关）、
       // 转化漏斗的匿名事件（记的就是还没登录的访客；白名单 + 格式 + 限速，见 tests/funnel.test.ts）
-      // 健康检查（/api/health）只回 ok 与时间，给监控用
+      // 健康检查与构建编号都是公开的部署探针，不读取账号数据
       // 首页门票入口（/api/gate/claim）：门票原文才能进门，错了只回原因类别，有限流，成功只发一个设备通行（见 lib/gate-tickets）
       // 首页应急登录（/api/gate/admin-login）：邮箱 + 密码 + 验证器码，默认关，只认绑了验证器的管理员，两层限流（见 lib/gate-admin-login）
       // 退出时作废这台设备的首页通行（/api/gate/logout）：不读写账号数据，跨站的 POST 带不上 Cookie
-      if (/\/api\/(public|auth\/register|funnel$|health$|gate\/claim$|gate\/admin-login$|gate\/logout$)/.test(name)) continue;
+      if (/\/api\/(public|auth\/register|funnel$|health$|build-id$|gate\/claim$|gate\/admin-login$|gate\/logout$)/.test(name)) continue;
       // requireAgent（2026-10-28）：代理身份，同样从会话取用户（lib/agent-auth）
       if (!/requireAdmin|requireAgent|requireUserWithQuota|requireUser\b|getUser\(\)/.test(code)) {
         bad.push(name);
@@ -171,12 +171,13 @@ describe('全仓库缺陷模式扫描', () => {
     }
 
     const missing = [...called].filter(
-      (c) => !existing.includes(c) && !existing.some((e) => c.startsWith(e + '/'))
+        (c) => !existing.includes(c) && !existing.some((e) => c.startsWith(e + '/') || e.startsWith(c + '/['))
     );
     expect(missing, `这些接口被调用但不存在：\n${missing.join('\n')}`).toEqual([]);
   });
 
   it('没有从未被引用的 lib / hooks 模块', () => {
+    const entrypoint = readSource('instrumentation.ts');
     const others = (self: string) =>
       sources.filter((s) => s.file !== self).map((s) => s.code).join('\n') +
       walk(path.join(process.cwd(), 'tests')).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
@@ -189,7 +190,7 @@ describe('全仓库缺陷模式扫描', () => {
       const spec = `@/${m[1]}/${m[2].replace(/\/index$/, '')}`;
       // 结尾要卡住，否则 @/lib/admin 会误匹配 @/lib/admin-auth
       const re = new RegExp(spec.replace(/[/\-.]/g, '\\$&') + `['"]`);
-      if (!re.test(others(file))) bad.push(r);
+      if (!re.test(others(file)) && !entrypoint.includes(`import('./${r.replace(/\.tsx?$/, '')}')`)) bad.push(r);
     }
     expect(bad, `这些模块没有任何地方引用：\n${bad.join('\n')}`).toEqual([]);
   });

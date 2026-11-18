@@ -8,6 +8,7 @@ import { completionUsage, type CreationCompletion } from './creation-quota';
 import { toDifyFiles } from './chat-attachments-server';
 import type { ChatAttachment } from './chat-attachments';
 import { hasObviousCutoff } from './result-reconciliation';
+import { waitForDifyMessage } from './dify-recover';
 
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1';
 
@@ -72,7 +73,18 @@ export async function askDify(
       if ((data.event === 'message' || data.event === 'text_chunk') && chunk) text += chunk;
     }
     if (done) break;
-  } } finally { reader.releaseLock(); }
+  } } catch (error) {
+    if (!conversationId || !messageId || options.signal?.aborted) throw error;
+  } finally { reader.releaseLock(); }
+  if (!terminal && conversationId && messageId && !options.signal?.aborted) {
+    const recovered = await waitForDifyMessage(conversationId, messageId, userId, { timeoutMs: 60_000, signal: options.signal });
+    if (recovered.status === 'done') {
+      text = recovered.answer;
+      terminal = 'recovered_message';
+    } else if (recovered.status === 'error') {
+      return { ok: false, message: friendlyDifyError(recovered.message) };
+    }
+  }
   if (!text.trim()) return { ok:false,message:'这次没读出结果，请重试' };
   if (!terminal) return { ok:false,message:'回答没有完整结束，请重试' };
   if (hasObviousCutoff(text)) return { ok:false,message:'回答在结构标签处中断，请重试' };

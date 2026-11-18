@@ -1,6 +1,9 @@
+import { queueGenerationWork } from '@/lib/generation-worker';
+import { streamAcceptedGeneration, UPSTREAM_GENERATION_TIMEOUT_MS } from '@/lib/generation-response';
+import { scopedGenerationTaskType } from '@/lib/generation-scope';
+import { processGeneration, type ProcessingInput, type ProcessingState } from '@/lib/generation-processing';
 import { NextRequest } from 'next/server';
-import { askDify } from '@/lib/dify-task';
-import { reviewSource, reviewVerificationPrompt, combinedReviewUsage, reconcileReviewSpeechStats } from '@/lib/review-verification';
+import { reviewSource } from '@/lib/review-verification';
 import { reserveCreation, releaseCreation, recordCreationCompletion, completionUsage, creationRequestFingerprint, type CreationCompletion, type CreationReservation } from '@/lib/creation-quota';
 import { acquireSlot, slotOptionsFromEnv } from '@/lib/generation-slots';
 import { acquireCreationWindow } from '@/lib/creation-window-lock';
@@ -25,11 +28,10 @@ import {
   wantsNewTopics,
 } from '@/lib/topic-library';
 import { loadLatestTopicCompletion, loadPriorTopicSections } from '@/lib/topic-library-server';
-import { continueTopicPrompt, finalizeTopicBatch, prepareTopicDraft, topicRefillPrompt, TOPIC_BATCH_MAX } from '@/lib/topic-delivery';
+import { continueTopicPrompt, TOPIC_BATCH_MAX } from '@/lib/topic-delivery';
 import { isTopicDirectionSource } from '@/lib/creation-continuation';
-import { DIRECTION_TOPIC_DELIVERY, anchorDirectionDraft, directionAnglesPrompt, directionTopicContext, planDirectionTopics } from '@/lib/direction-topic-plan';
+import { DIRECTION_TOPIC_DELIVERY, directionAnglesPrompt, directionTopicContext, planDirectionTopics } from '@/lib/direction-topic-plan';
 import { industryKeysOf } from '@/lib/viral-elements';
-import { loadDoneList } from '@/lib/work-insight-load';
 import { difyErrorCode, difyEventError, friendlyDifyError, isContextOverflowError } from '@/lib/dify-errors';
 import { waitForDifyMessage } from '@/lib/dify-recover';
 import { getServiceSupabase } from '@/lib/admin-auth';
@@ -39,13 +41,9 @@ import { PROFILE_UUID } from '@/lib/profile-history';
 import { prepareWebSearch } from '@/lib/web-search-quota';
 import { difyWebStatus } from '@/lib/dify-web-status';
 import { mergeCreationSettings, creationSettingsBlock, hasExplicitCreationContext } from '@/lib/creation-settings';
-import { timeAnchor, seasonMisstatements } from '@/lib/time-anchor';
+import { timeAnchor } from '@/lib/time-anchor';
 import { profileFactsBlock, factGuardTail, userDonts } from '@/lib/fact-guard';
-import { sanitizeOutput, stripInternalLeaks } from '@/lib/output-guard';
 import { keepStructureBlock } from '@/lib/breakdown-templates';
-import { CHUNK_TRIGGER_CHARS, fixInChunks, mergeUsage } from '@/lib/fact-fix-chunks';
-import { scriptRepairReason, buildScriptRepairPrompt, acceptScriptRepair, scriptRepairLimited, spokenStep, explicitBudget, trimSpokenStep } from '@/lib/script-repair';
-import { holdUnsupported } from '@/lib/evidence-guard';
 import { foundationGate, foundationNeedOf } from '@/lib/foundation-gate';
 
 /** 不是生成给用户拿去用的内容：分镜参数推荐只回一段配置，前采提取有自己的规则 */
@@ -55,17 +53,7 @@ const NO_FACT_GUARD_TASKS = new Set(['AI推荐', '前采建档']);
  * 其余创作任务，只要这个用户已经有档案，就必须带上档案 id（见下面的 profileId 检查）。
  */
 const PROFILE_OPTIONAL_TASKS = new Set(['知识库查询', '自由对话', '前采建档', 'AI推荐']);
-import { reconcileTitleCounts, hasObviousCutoff } from '@/lib/result-reconciliation';
-import { unsupportedFacts } from '@/lib/quality-checks';
-import { FACT_AUTO_FIX_TASKS, autoFactFixLimited, buildFactFixPrompt, fixTooBig } from '@/lib/fact-fix';
-import { needsSentenceRepair, repairReality, sentenceRepairLimited } from '@/lib/reality-repair';
-import { polishScript, scriptPolishLimited, SCRIPT_POLISH_ENABLED } from '@/lib/script-polish';
-import { repairYears } from '@/lib/years-repair';
-import { cleanRewriteOutput } from '@/lib/canvas';
-import { DETAIL_CHECK_TASKS, buildDetailCheckPrompt, parseDetailCheck } from '@/lib/detail-check';
-import { SPEAKER_CHECK_TASKS, needsSpeakerCheck, buildSpeakerCheckPrompt, parseSpeakerCheck, buildSpeakerFixPrompt } from '@/lib/speaker-check';
-import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
-import { ensureGenerationTask, saveGenerationVersion, updateGenerationTask, type GenerationTask } from '@/lib/generation-task';
+import { ensureGenerationTask, refreshGenerationHeartbeat, saveGenerationVersion, updateGenerationTask } from '@/lib/generation-task';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -266,11 +254,11 @@ export async function POST(req: NextRequest) {
     const topicContext = directionSeed ? directionTopicContext(
       sourceReference, topicTactic,
       [textInput(body.inputs?.personalRequirement), creationSettings.userIntent, creationSettings.notes,
-        textInput(body.inputs?.sourceReference),
         body.inputs?.withHook === false ? '关闭开篇钩子。' : '',
         textInput(body.inputs?.topicRole) && `本轮视频目的：${textInput(body.inputs?.topicRole)}`, topicProfileFacts].filter(Boolean).join('\n'),
       creationSettings.elements ?? textInput(body.inputs?.elements).split(/[、,，]/),
       profileIndustryKeys,
+      [textInput(body.inputs?.personalRequirement), creationSettings.userIntent, creationSettings.notes].filter(Boolean).join('\n'),
     ) : null;
     // 【方案6：工作流 + 手动记忆】
     // 构建 Dify 请求体：query 在顶层，conversation_history 在 inputs
@@ -326,6 +314,7 @@ export async function POST(req: NextRequest) {
       Object.assign(difyRequestBody.inputs, webSession.inputs);
       const result = await fetch(`${process.env.DIFY_BASE_URL || 'https://api.dify.ai/v1'}/chat-messages`, {
         method: 'POST',
+        signal: AbortSignal.timeout(UPSTREAM_GENERATION_TIMEOUT_MS),
         headers: {
           'Authorization': 'Bearer ' + process.env.DIFY_API_KEY,
           'Content-Type': 'application/json'
@@ -345,7 +334,7 @@ export async function POST(req: NextRequest) {
       requestId: reservation.requestId,
       profileId,
       feature: getFeatureFromTaskType(body.taskType),
-      taskType: body.taskType,
+      taskType: scopedGenerationTaskType(body.taskType, body.recoveryScope),
       payload: {
         taskType: body.taskType,
         profileId,
@@ -363,15 +352,19 @@ export async function POST(req: NextRequest) {
         status: generationTask.status,
       }), { status: 409, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
     }
+    const early = generationTask && req.headers.get('x-generation-resume') === '1' ? generationTask : null;
+    const generationSignal = early ? new AbortController().signal : req.signal;
+    const run = async () => {
     if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'queued', stage: 'queue' });
     // 排队等名额：等太久或队列满就明确失败（额度同步释放），不让请求无限挂着
     try {
-      if (creativeWindow) releaseWindow = await acquireCreationWindow(guard.userId!, profileId, req.signal);
+      if (creativeWindow) releaseWindow = await acquireCreationWindow(guard.userId!, profileId, generationSignal);
       releaseSlot = await acquireSlot(guard.userId!, slotOptionsFromEnv(), 0);
     } catch (err) {
       await releaseCreation(reservation);
       releaseWindow();
       const code = (err as { code?: string }).code;
+      if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'recoverable_failed', stage: 'queue', errorCode: code || 'QUEUE_FAILED', errorMessage: '生成排队未完成，可重新提交。' });
       return new Response(JSON.stringify({ error: err instanceof Error ? err.message : '生成排队失败', code }), {
         status: 503,
         headers: { 'Content-Type': 'application/json', 'Retry-After': '30' },
@@ -380,21 +373,15 @@ export async function POST(req: NextRequest) {
     const existingConversationId = creativeWindow
       ? await getDifyConversationId(guard.userId!, profileId, 'creation')
       : isolated ? null : await getDifyConversationId(guard.userId!, profileId);
-    /*
-     * 方向选题的约束必须由本轮角度策划完整控制。旧创作窗口可能记住了已经废弃的
-     * “两地老板轮流做事”示例；即使 query 覆盖，Dify 仍会把它当对话上下文续写。
-     * 因此方向地基每次从新 Dify 会话起笔，但不丢本地历史：priorTopics 继续负责避重。
-     */
-    const directionIsolated = topicTask && directionSeed;
-    if (existingConversationId && !directionIsolated) difyRequestBody.conversation_id = existingConversationId;
-    const previousTopic = topicTask && existingConversationId && !directionIsolated
+    if (existingConversationId) difyRequestBody.conversation_id = existingConversationId;
+    const previousTopic = topicTask && existingConversationId
       ? await loadLatestTopicCompletion(guard.userId!, existingConversationId)
       : null;
     const mixAllocation = query.match(/^这 \d+ 条按：\*\*[^\n]+/m)?.[0] ?? '';
     const candidateCount = Math.min(TOPIC_BATCH_MAX, (requestedTopics ?? 5) + (mixAllocation ? 0 : 2));
     const topicPlan = topicContext
       ? await traced('topic_plan', async () => {
-        const angles = await planDirectionTopics(topicContext, candidateCount, [...(previousTopic?.topics ?? []), ...priorTopics], req.signal);
+        const angles = await planDirectionTopics(topicContext, candidateCount, [...(previousTopic?.topics ?? []), ...priorTopics], generationSignal);
         return { ok: Boolean(angles.length), angles };
       })
       : null;
@@ -406,7 +393,7 @@ export async function POST(req: NextRequest) {
         scope ? '本轮显式选择的创作要求：' + scope : '',
         mixAllocation,
         settingsBlock,
-        '历史只用于避重。本轮只写以下策划对应的内容。',
+        '历史只用于避重。补充候选也必须逐条经过同样的事实和拍法核对。',
         DIRECTION_TOPIC_DELIVERY,
       ].filter(Boolean).join('\n\n');
     }
@@ -455,6 +442,7 @@ export async function POST(req: NextRequest) {
       await releaseCreation(reservation);
       releaseSlot();
       releaseWindow();
+      if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'recoverable_failed', stage: 'generate', errorCode: 'UPSTREAM_HTTP_' + response.status, errorMessage: '生成服务暂时不可用，可稍后重试。' });
       const err = await response.text();
       console.error('Dify Error:', err);
       return new Response(JSON.stringify({ error: 'API调用失败' }), {
@@ -505,9 +493,9 @@ export async function POST(req: NextRequest) {
         const sendProgress = (message: string, stage = 'post_processing') => {
           sendTask({ event: 'status', message });
           sendTask({ event: 'stage', stage, status: stage === 'generate' ? 'generating' : 'post_processing', message });
-          if (generationTask) void updateGenerationTask({ taskId: generationTask.id, status: stage === 'generate' ? 'generating' : 'post_processing', stage });
         };
-        if (generationTask) sendTask({ event: 'task_accepted', status: 'generating', stage: 'generate' });
+        if (early) sendTask({ event: 'stage', status: 'generating', stage: 'generate' });
+        else if (generationTask) sendTask({ event: 'task_accepted', status: 'generating', stage: 'generate' });
         /** 把页面上的全文整篇换成 answer（页面端按 message_replace 整篇替换，见 lib/sse-stream.ts） */
         const showFullText = (answer: string) => {
           shownText = answer;
@@ -520,8 +508,13 @@ export async function POST(req: NextRequest) {
          * Dify 自己会发 ping，原来被这里过滤掉了，所以这边自己补。
          * 以冒号开头的是 SSE 注释行，页面解析时直接跳过。
          */
+        let lastTaskHeartbeat = Date.now();
         const heartbeat = setInterval(() => {
-          if (Date.now() - lastSent >= 10_000) write(': ping\n\n');
+          if (Date.now() - lastSent >= 8_000) write(': ping\n\n');
+          if (generationTask && Date.now() - lastTaskHeartbeat >= 45_000) {
+            lastTaskHeartbeat = Date.now();
+            void updateGenerationTask({ taskId: generationTask.id, status: 'generating', stage: 'generate', expectedStatus: 'generating' });
+          }
         }, 5_000);
 
         /** 读一次上游。返回：正常结束 / Dify 报错 / 连接断了 */
@@ -598,10 +591,11 @@ export async function POST(req: NextRequest) {
           }
         };
 
+        let draftVersionSaved = false;
         try {
           if (webSession.initialEvent) send(webSession.initialEvent);
+          if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'generating', stage: 'generate', expectedStatus: 'queued' });
           let outcome = await pump(response);
-          if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'generating', stage: 'generate' });
           await webSession.finish();
 
           /*
@@ -660,305 +654,84 @@ export async function POST(req: NextRequest) {
           }
           // 模型原始输出：后面的整理可能把结构块改坏，拆解要拿它来还原（见 keepStructureBlock）
           const rawResponse = fullResponse;
-          if (outcome.kind === 'done' && fullResponse.trim() && historyDb && durableHistory) {
+          if (outcome.kind === 'done' && fullResponse.trim() && (generationTask || (historyDb && durableHistory))) {
             sendProgress('正在保存刚生成的正文，避免页面切换后丢失');
-            let draftSaved = false;
-            try {
-              draftSaved = await persistCreativeHistory(historyDb, userId, {
+            const historySave = historyDb && durableHistory ? persistCreativeHistory(historyDb, userId, {
                 id: body.historyId, taskType: body.taskType, profileId: historyProfileId,
                 inputData: body.historyInput && typeof body.historyInput === 'object' && !Array.isArray(body.historyInput) ? body.historyInput : {},
                 result: fullResponse,
                 status: 'draft',
-              });
-            } catch (error) {
+              }).catch((error) => {
               // 草稿保存是防丢保护，不能因为数据库暂时异常把已经生成的正文判成失败。
               console.error('[creative-history] 草稿存档异常', error instanceof Error ? error.message : 'unknown');
+              return false;
+            }) : Promise.resolve(false);
+            const version = generationTask ? await saveGenerationVersion({
+              taskId: generationTask.id, kind: 'draft', stage: 'draft_save', result: fullResponse,
+            }) : null;
+            sendTask({ event: 'draft_saved', saved: generationTask ? version !== null : await historySave, version, stage: 'draft_save' });
+            if (generationTask && version !== null) {
+              draftVersionSaved = await updateGenerationTask({ taskId: generationTask.id, status: 'draft_saved', stage: 'draft_save' });
             }
-            sendTask({ event: 'draft_saved', saved: draftSaved, ...(generationTask ? { version: 0, stage: 'draft_save' } : {}) });
-            if (generationTask && draftSaved) {
-              const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'draft', stage: 'draft_save', result: fullResponse });
-              if (version !== null) {
-                await updateGenerationTask({ taskId: generationTask.id, status: 'draft_saved', stage: 'draft_save' });
-                sendTask({ event: 'version_saved', version, saved: true, stage: 'draft_save' });
+            await historySave;
+          }
+          if (outcome.kind === 'done' && rawResponse.trim()) {
+            const input: ProcessingInput = {
+              body: { taskType: body.taskType, personalRequirements: body.personalRequirements, reviewMaterial: body.reviewMaterial,
+                inputs: { personalRequirement: body.inputs?.personalRequirement, originContent: body.inputs?.originContent },
+                historyInput: { originContent: body.historyInput?.originContent } },
+              userId, profileId, query, searchQuery, creationSettings, expectedCount, boundedIntent,
+              boundedTask, sourceForReview, factMaterial, personaFacts, topicTask, topicPlan, topicContext,
+              priorTopics, previousTopic, requestedTopics, directionSeed, generationConversationId: generationConversationId || '', creativeWindow, rawResponse,
+            };
+            const state: ProcessingState = { fullResponse, capturedConversationId, capturedMessageId, completionTerminal, usageMetadata, outcome, nextStep: 0 };
+            if (generationTask && draftVersionSaved && req.headers.get('x-generation-resume') === '1') {
+              const freeSlot = releaseSlot;
+              const freeWindow = releaseWindow;
+              const release = () => { freeSlot(); freeWindow(); };
+              releaseSlot = () => {};
+              releaseWindow = () => {};
+              try {
+                await queueGenerationWork(generationTask.id, {
+                  input, state, reservation: reservation!, timings: stages,
+                  history: durableHistory && historyDb ? { id: body.historyId, taskType: body.taskType, profileId: historyProfileId,
+                    inputData: body.historyInput && typeof body.historyInput === 'object' ? body.historyInput : {} } : undefined,
+                  conversationScope: creativeWindow ? 'creation' : (!isolated || CURRENT_CREATIVE_TASKS.has(body.taskType)) ? 'shared' : undefined,
+                  telemetry: { main_calls: mainCalls, ...(creativeWindow ? { creation_window: {
+                    mode: windowRestart ? 'recovered' : existingConversationId ? 'continued' : 'started',
+                    restart: windowRestart, same_settings: !windowRestart && continuedWithSameSettings } } : {}) },
+                }, release);
+                sendTask({ event: 'processing_detached', status: 'post_processing', stage: 'worker_ready' });
+              } catch {
+                release();
+                sendTask({ event: 'error', message: '后台交接未确认，草稿已保存，请重新查看任务。' });
+              } finally {
+                clearInterval(heartbeat);
+                if (!clientGone) { try { controller.close(); } catch { /* disconnected */ } }
               }
+              return;
             }
-          }
-          if (outcome.kind === 'done' && topicPlan?.angles.length) {
-            fullResponse = anchorDirectionDraft(fullResponse, topicPlan.angles);
-          }
-          if (outcome.kind === 'done' && sourceForReview && fullResponse.trim()) {
-            const requirements = typeof body.personalRequirements === 'string' ? body.personalRequirements : '';
-            // 本轮材料（档案、相关方案参考）是事实依据；原稿不是（2026-10-19）
-            const material = typeof body.reviewMaterial === 'string' ? body.reviewMaterial : '';
-            const verified = await traced('review_verify', () => askDify(reviewVerificationPrompt(sourceForReview, requirements, fullResponse, material), userId, '审稿 原稿事实校对', { signal: AbortSignal.timeout(180_000) })
-              .catch(() => ({ ok: false as const, message: '审稿校对未完成' })));
-            if (!verified.ok) {
-              outcome = { kind: 'error', message: '审稿校对未完成，请重试' };
-            } else {
-              fullResponse = reconcileReviewSpeechStats(verified.text);
-              usageMetadata = combinedReviewUsage(usageMetadata, verified.completion.usage ?? {});
-              capturedConversationId = verified.completion.conversationId || capturedConversationId;
-              capturedMessageId = verified.completion.messageId || capturedMessageId;
-              completionTerminal = verified.completion.terminal;
-            }
-          }
-
-          if (outcome.kind === 'done' && boundedTask && fullResponse.trim()) {
-            const issues = boundedResultIssues(fullResponse, body.taskType, expectedCount, boundedIntent);
-            if (issues.length) {
-              const corrected = await traced('result_check', () => askDify(boundedRepairPrompt(query, fullResponse, issues, boundedIntent), userId, searchQuery, {signal:AbortSignal.timeout(180_000)})
-                .catch(() => ({ok:false as const,message:'交付校对未完成'})));
-              if (!corrected.ok || boundedResultIssues(corrected.text, body.taskType, expectedCount, boundedIntent).length) {
-                outcome = {kind:'error',message:'结果未满足本轮数量或事实状态要求，请重试'};
-              } else {
-                usageMetadata = combinedReviewUsage(usageMetadata, corrected.completion.usage ?? {}, 'result_check_steps');
-                fullResponse = corrected.text;
-                capturedConversationId = corrected.completion.conversationId || capturedConversationId;
-                capturedMessageId = corrected.completion.messageId || capturedMessageId;
-                completionTerminal = corrected.completion.terminal;
-              }
-            }
-          }
-          /*
-           * 生成后整理（lib/output-guard）：
-           * 1. 去掉内部提示词痕迹（「校对编辑」「本轮校对指令」「节奏自检」）和模型写的自检清单；换掉平台敏感词与绝对化用语。
-           *    审稿优化只去提示词痕迹：它的原稿要被引用、比对，不能改动原稿用语。
-           * 2. 查出没有出处的价格、顾客见证、经营做法、客户故事、作息，以及时令错配，按 lib/fact-fix 的同一套提示词修正一次。
-           *    页面上「这几处请核对」只提醒、不改；这里直接改掉编出来的说法。和「按资料修正」共用每人每天 20 次的额度。
-           *    审稿优化的已知素材 = 查询 + 原稿：原稿里写过的说法不算编的。
-           */
-          const tidy = (t: string) => (body.taskType === '审稿优化' ? stripInternalLeaks(t, body.taskType) : sanitizeOutput(t, body.taskType));
-          if (outcome.kind === 'done' && fullResponse.trim()) {
-            const tidied = tidy(fullResponse);
-            if (tidied.trim()) fullResponse = tidied;
-          }
-          /*
-           * 脚本的口播修复（lib/script-repair）：没交出「纯文字文案」一步、口播超过上限的 1.1 倍，或不到目标下限（2026-11-08：字数要真的够），
-           * 就让模型按原稿修一次。没设时长或 AI 推荐按默认 1分30秒～1分40秒算。
-           * 修复稿要过同样的检查才采用，否则保留原稿。额度单独计。
-           */
-          const repairReason = body.taskType === '脚本生成' && outcome.kind === 'done' && fullResponse.trim() ? scriptRepairReason(fullResponse, creationSettings.duration) : null;
-          if (repairReason && !scriptRepairLimited(userId)) {
-            console.log('[script-repair] 触发:', repairReason, '口播字数:', spokenStep(fullResponse), '时长:', creationSettings.duration || '（未设）');
-            const repaired = await traced('script_repair', () => askDify(buildScriptRepairPrompt({ text: fullResponse, reason: repairReason, spoken: spokenStep(fullResponse), duration: creationSettings.duration }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-              .catch(() => ({ ok: false as const, message: '脚本修复未完成' })));
-            const text = repaired.ok ? tidy(cleanRewriteOutput(repaired.text)) : '';
-            const accepted = !!text && acceptScriptRepair(text, creationSettings.duration, spokenStep(fullResponse));
-            console.log('[script-repair] 结果:', repaired.ok ? '返回' : `失败（${repaired.message}）`, '口播字数:', text ? spokenStep(text) : null, '采用:', accepted);
-            if (accepted && repaired.ok) {
-              usageMetadata = combinedReviewUsage(usageMetadata, repaired.completion.usage ?? {}, 'script_repair_steps');
-              fullResponse = text;
-            }
-          }
-          // 修复后口播仍超上限：本地按句裁到预算以内（只删句子，不改字，不新增事实）
-          const budgetNow = explicitBudget(creationSettings.duration);
-          const spokenNow = body.taskType === '脚本生成' && fullResponse.trim() ? spokenStep(fullResponse) : null;
-          if (budgetNow && spokenNow !== null && spokenNow > budgetNow * 1.1) {
-            fullResponse = trimSpokenStep(fullResponse, budgetNow);
-            console.log('[script-trim] 口播', spokenNow, '字，裁到', budgetNow, '字以内，现为', spokenStep(fullResponse));
-          }
-          // 已知素材 = 档案全文、这个号的定位和简报、用户自己给的原话（不含提示词本身：提示词里的示例数字不算出处，2026-10-12）
-          const userSaid = [creationSettings.userIntent, creationSettings.notes, body.inputs?.personalRequirement, body.inputs?.originContent, body.historyInput?.originContent, sourceForReview, JSON.stringify(creationSettings)]
-            .filter((x) => typeof x === 'string' && x.trim()).join('\n');
-          const factKnown = topicContext ? `${topicContext.constraints}\n${userSaid}`
-            : factMaterial ? `${factMaterial}\n${userSaid}` : sourceForReview ? `${query}\n${sourceForReview}` : query;
-          // 采访类的问题只在用户确实还没采访时才算（同上面的 boundedIntent：通用规则里的「尚未采访」不能当成用户状态）
-          const factIssues = (t: string) => [...unsupportedFacts(t, factKnown), ...seasonMisstatements(t, Date.now(), factKnown)]
-            .filter((i) => pendingInterview(boundedIntent) || !/^采访(?:经历|结果)/.test(i));
-          /*
-           * 脚本打磨（2026-11-01 产品方，lib/script-polish）：体检（确定性 + 一次按 9 条逐条点名的审稿）→ 只改被点名的句子 → 复检，
-           * 最多两轮，只升不降。放在事实修正之前：润色要是带进了新说法，后面的事实、细节、年限、现实几道照样兜住。
-           * 检索词传空：体检和润色不查知识库（省时间，也不被知识库示例带偏）。
-           */
-          if (outcome.kind === 'done' && body.taskType === '脚本生成' && SCRIPT_POLISH_ENABLED && fullResponse.trim() && !scriptPolishLimited(userId)) {
-            const polish = await polishScript({
-              draft: fullResponse,
-              query,
-              known: factKnown,
-              ask: async (prompt) => {
-                const r = await traced('script_polish', () => askDify(prompt, userId, '', { signal: AbortSignal.timeout(180_000) })).catch(() => null);
-                if (!r || !r.ok) return null;
-                usageMetadata = combinedReviewUsage(usageMetadata, r.completion.usage ?? {}, 'script_polish_steps');
-                return r.text;
-              },
-              onStatus: (message) => send({ event: 'status', message }),
-              retryDelayMs: 8000,
-            });
-            console.log('[script-polish]', '调用', polish.calls, '次；', polish.reviewFailed ? '体检没出结果；' : `体检问题 ${polish.firstIssues.length} 条；`, polish.rounds.map((r) => `第${r.round}轮 ${r.applied}/${r.replacements} 处 ${r.scoreBefore}→${r.scoreAfter ?? '-'} ${r.accepted ? '采用' : '未采用'}（${r.reason}）`).join('；'));
-            if (polish.changed) fullResponse = tidy(polish.text);
-          }
-          if (outcome.kind === 'done' && FACT_AUTO_FIX_TASKS.has(body.taskType) && fullResponse.trim()) {
-            const found = factIssues(fullResponse);
-            // 限额只计一次：长文分段修正（lib/fact-fix-chunks），短稿整篇修正（原来的做法）
-            const may = found.length > 0 && !autoFactFixLimited(userId);
-            if (may && fullResponse.length > CHUNK_TRIGGER_CHARS) {
-              let chunkUsage: Record<string, unknown> = {};
-              const r = await fixInChunks(fullResponse, factIssues, async (prompt) => {
-                const f = await traced('fact_fix_chunk', () => askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
-                if (!f || !f.ok) return null;
-                chunkUsage = mergeUsage(chunkUsage, f.completion.usage ?? {});
-                return tidy(cleanRewriteOutput(f.text));
-              }, query);
-              console.log('[fact-fix 分段]', body.taskType, '需修段', r.tried, '采用', r.accepted);
-              if (r.accepted) {
-                usageMetadata = combinedReviewUsage(usageMetadata, chunkUsage, 'fact_fix_steps');
-                fullResponse = tidy(r.text);
-              }
-            } else if (may) {
-              const fixed = await traced('fact_fix', () => askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-                .catch(() => ({ ok: false as const, message: '按资料修正未完成' })));
-              const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
-              console.log('[fact-fix]', body.taskType, '问题', found.length, '返回', fixed.ok, '修正后问题', text ? factIssues(text).length : '-', '过度改写', text ? fixTooBig(fullResponse, text, found) : '-');
-              // 只采用真的少了问题、又没有借机重写全文的版本
-              if (fixed.ok && text && !fixTooBig(fullResponse, text, found) && factIssues(text).length < found.length) {
-                usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'fact_fix_steps');
-                fullResponse = text;
-              }
-            }
-          }
-          /*
-           * 编造的具体细节（2026-10-29，lib/detail-check）：道具、动作、时间场景这类素材里找不到出处的说法。
-           * 找到了就交给「按资料修正」只改这几处，改动超标就不采用。和事实修正共用每人每天 20 次的额度。
-           */
-          if (outcome.kind === 'done' && DETAIL_CHECK_TASKS.has(body.taskType) && fullResponse.trim()) {
-            const detail = await traced('detail_check', () => askDify(buildDetailCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
-            if (detail && detail.ok) usageMetadata = combinedReviewUsage(usageMetadata, detail.completion?.usage ?? {}, 'detail_check_steps');
-            const found = detail && detail.ok ? parseDetailCheck(detail.text) : [];
-            const may = found.length > 0 && !autoFactFixLimited(userId);
-            if (may) {
-              const fixed = await traced('detail_fix', () => askDify(buildFactFixPrompt({ text: fullResponse, issues: found, context: query }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-                .catch(() => ({ ok: false as const, message: '按资料修正未完成' })));
-              const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
-              const accepted = !!text && !fixTooBig(fullResponse, text, found);
-              console.log('[detail-check]', body.taskType, '找到', found.length, '采用', accepted);
-              if (accepted && fixed.ok) {
-                usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'detail_fix_steps');
-                fullResponse = text;
-              }
-            }
-          }
-          /*
-           * 出镜人本人的台词里用身份称呼指自己（2026-10-30，lib/speaker-check）：「师傅说这道菜……」。
-           * 找到了就交给修正只改这几句，改动超标就不采用。和上面的修正共用每人每天 20 次的额度。
-           */
-          if (outcome.kind === 'done' && SPEAKER_CHECK_TASKS.has(body.taskType) && needsSpeakerCheck(fullResponse)) {
-            const speaker = await traced('speaker_check', () => askDify(buildSpeakerCheckPrompt(fullResponse, factKnown), userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
-            if (speaker && speaker.ok) usageMetadata = combinedReviewUsage(usageMetadata, speaker.completion?.usage ?? {}, 'speaker_check_steps');
-            const found = speaker && speaker.ok ? parseSpeakerCheck(speaker.text) : [];
-            const may = found.length > 0 && !autoFactFixLimited(userId);
-            if (may) {
-              const fixed = await traced('speaker_fix', () => askDify(buildSpeakerFixPrompt({ text: fullResponse, issues: found }), userId, searchQuery, { signal: AbortSignal.timeout(180_000) })
-                .catch(() => ({ ok: false as const, message: '说话人修正未完成' })));
-              const text = fixed.ok ? tidy(cleanRewriteOutput(fixed.text)) : '';
-              const accepted = !!text && !fixTooBig(fullResponse, text, found);
-              console.log('[speaker-check]', body.taskType, '找到', found.length, '采用', accepted);
-              if (accepted && fixed.ok) {
-                usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'speaker_fix_steps');
-                fullResponse = text;
-              }
-            }
-          }
-          // 仍然没有出处的句子直接换成【待确认】占位（确定性，不再让模型改写；标准 E3 允许这种写法）
-          if (outcome.kind === 'done' && FACT_AUTO_FIX_TASKS.has(body.taskType) && fullResponse.trim()) {
-            const held = holdUnsupported(fullResponse, factIssues);
-            if (held.held) {
-              console.log('[evidence] 占位', body.taskType, '句数', held.held);
-              fullResponse = held.text;
-            }
-          }
-          /*
-           * 年限修复（2026-10-28，lib/years-repair）：结果里的从业、本地、店龄年数对不上事实卡，只让模型改写那一句。
-           * 和现实修复同一个做法、同一个额度、同一个板块闸门；放在现实修复之前，现实修复看到的已是年限对齐后的稿子。
-           */
-          if (outcome.kind === 'done' && needsSentenceRepair(body.taskType) && fullResponse.trim()) {
-            const years = await repairYears(fullResponse, async (prompt) => {
-              const f = await traced('years_repair', () => askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
-              if (!f || !f.ok) return null;
-              usageMetadata = combinedReviewUsage(usageMetadata, f.completion?.usage ?? {}, 'years_repair_steps');
-              return f.text;
-            }, personaFacts, `${body.taskType}；用户原意：${(creationSettings.userIntent ?? '').slice(0, 200)}`, () => !sentenceRepairLimited(userId));
-            console.log('[years-repair]', body.taskType, '尝试', years.tried, '采用', years.accepted);
-            if (years.accepted) fullResponse = years.text;
-          }
-          /*
-           * 现实修复（2026-10-28，lib/reality-repair）：放在年限修复和事实修正之后，改的是交付前的最终稿。
-           * 一个小变量推大结论、一次反应推成普遍道理这类说法，只让模型改写那一句，别的一字不动；
-           * 先由正则和模型审阅找出句子，只有真的要改时才计额度，改完不合格就保留原句。
-           */
-          if (outcome.kind === 'done' && needsSentenceRepair(body.taskType) && fullResponse.trim()) {
-            const reality = await repairReality(fullResponse, async (prompt) => {
-              const f = await traced('reality_repair', () => askDify(prompt, userId, searchQuery, { signal: AbortSignal.timeout(180_000) }).catch(() => null));
-              if (!f || !f.ok) return null;
-              usageMetadata = combinedReviewUsage(usageMetadata, f.completion?.usage ?? {}, 'reality_repair_steps');
-              return f.text;
-            }, `${body.taskType}；用户原意：${(creationSettings.userIntent ?? '').slice(0, 200)}`, () => !sentenceRepairLimited(userId));
-            console.log('[reality-repair]', body.taskType, '尝试', reality.tried, '采用', reality.accepted);
-            if (reality.accepted) fullResponse = reality.text;
-          }
-          // 拆解的变现方向是 JSON：按行的整理改坏了就换回模型原文里的结构块（2026-10-15）
-          if (outcome.kind === 'done' && body.taskType === '拆解爆款' && fullResponse.trim()) {
-            fullResponse = keepStructureBlock(rawResponse, fullResponse);
-          }
-          if (outcome.kind === 'done' && hasObviousCutoff(fullResponse)) {
-            outcome = { kind: 'error', message: '回答在结构标签处中断，请重试' };
-          }
-          if (outcome.kind === 'done' && body.taskType === '标题封面') {
-            const reconciled = reconcileTitleCounts(fullResponse);
-            if (reconciled !== fullResponse) {
-              fullResponse = reconciled;
-            }
-          }
-          if (outcome.kind === 'done' && topicTask && (fullResponse.trim() || topicPlan?.angles.length)) {
-            send({ event: 'status', message: '正在逐条核对选题，撞题会自动补写' });
-            const polishSignal = AbortSignal.timeout(35_000);
-            const polish = (text: string) => prepareTopicDraft(text, async (prompt) => {
-              const reply = await traced('topic_polish', () => askDify(prompt, userId, '', { signal: polishSignal })).catch(() => null);
-              if (!reply?.ok) return null;
-              usageMetadata = combinedReviewUsage(usageMetadata, reply.completion.usage ?? {}, 'topic_polish_steps');
-              return reply.text;
-            });
-            const [freshTopics, done, draft] = await Promise.all([
-              loadPriorTopicSections(userId, profileId),
-              profileId ? loadDoneList(userId, profileId) : [],
-              topicContext ? Promise.resolve(topicPlan?.angles.length ? fullResponse : '') : polish(fullResponse),
-            ]);
-            const prior = freshTopics.length ? freshTopics : priorTopics;
-            const result = await finalizeTopicBatch(draft, [...(previousTopic?.topics ?? []), ...prior, ...done.map(({ title }) => ({ title, body: '' }))], requestedTopics, async (refill) => {
-              if (!generationConversationId) return '';
-              const angles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements) : [];
-              if (topicContext && !angles.length) return '';
-              const prompt = topicContext
-                ? directionAnglesPrompt(topicContext, angles, refill.count) + '\n\n' + DIRECTION_TOPIC_DELIVERY
-                : topicRefillPrompt(refill, directionSeed);
-              const repair = await traced('topic_refill', () => askDify(prompt, userId, searchQuery, {
-                conversationId: generationConversationId, signal: AbortSignal.timeout(120_000),
-              }));
-              if (!repair.ok) return '';
-              usageMetadata = combinedReviewUsage(usageMetadata, repair.completion.usage ?? {}, 'topic_refill_steps');
-              return holdUnsupported(tidy(anchorDirectionDraft(repair.text, angles)), factIssues).text;
-            }, { directionSeed, topicContext });
-            if (result.requested) {
-              const { text, ...batch } = result;
-              if (result.count) {
-                fullResponse = text;
-                send({ event: 'topic_batch', ...batch });
-              } else {
-                if (creativeWindow && generationConversationId) {
-                  await saveDifyConversationId(userId, generationConversationId, profileId, body.taskType, 'creation');
-                }
-                outcome = { kind: 'error', message: result.checked ? '这次没有生成可交付的新选题，请调整要求后再试' : '选题核对暂未完成，请重试' };
-              }
-            }
+            const processed = await processGeneration(input, state, traced, send);
+            ({ fullResponse, capturedConversationId, capturedMessageId, completionTerminal, usageMetadata, outcome } = processed);
           }
           // 失败时保留已经生成的正文：用户可以复制、刷新后从历史恢复，不能因为后处理暂时失败而把整批清空。
           if (outcome.kind !== 'done' && needsCheck && shownText) {
-            const message = '后续核对暂未完成，已保留当前草稿，可先复制或稍后重试';
+            if (topicTask && fullResponse.trim() && fullResponse !== shownText) showFullText(fullResponse);
+            const message = draftVersionSaved
+              ? '后续核对暂未完成，已保存草稿，可稍后恢复'
+              : '生成或核对未完成，可先复制页面上已显示的正文';
             sendTask({ event: 'partial_saved', message });
-            if (generationTask) void updateGenerationTask({ taskId: generationTask.id, status: 'partial_saved', stage: 'post_processing', errorCode: 'POST_PROCESSING_INCOMPLETE', errorMessage: message });
+            if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: draftVersionSaved ? 'partial_saved' : 'recoverable_failed', stage: draftVersionSaved ? 'post_processing' : 'generate', errorCode: 'GENERATION_INCOMPLETE', errorMessage: message });
+          } else if (generationTask && (outcome.kind !== 'done' || totalChunks === 0 || !fullResponse.trim())) {
+            await updateGenerationTask({
+              taskId: generationTask.id, status: draftVersionSaved ? 'partial_saved' : 'recoverable_failed',
+              stage: draftVersionSaved ? 'post_processing' : 'generate', errorCode: 'GENERATION_INCOMPLETE',
+              errorMessage: draftVersionSaved ? '处理未完成，已保存草稿。' : '正文未完整生成，可重新提交。',
+            });
           }
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
-            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试','选题核对暂未完成，请重试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
+            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试','选题核对暂未完成，请重试','选题核对暂未完成，已保留可用草稿'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
             else send({ event: 'error', message: friendlyDifyError(outcome.message), code: difyErrorCode(outcome.message) });
           } else if (outcome.kind === 'broken') {
             console.error('Stream error:', outcome.error);
@@ -998,7 +771,7 @@ export async function POST(req: NextRequest) {
             try {
               const telemetry = {
                 stages, main_calls: mainCalls, extra_calls: stages.filter((s) => s.stage !== 'generate').length, post_changed: rawResponse !== fullResponse,
-                ...(creativeWindow ? { creation_window: { mode: windowRestart ? 'recovered' : directionIsolated ? 'direction_isolated' : existingConversationId ? 'continued' : 'started', restart: windowRestart, same_settings: !windowRestart && continuedWithSameSettings } } : {}),
+                ...(creativeWindow ? { creation_window: { mode: windowRestart ? 'recovered' : existingConversationId ? 'continued' : 'started', restart: windowRestart, same_settings: !windowRestart && continuedWithSameSettings } } : {}),
               };
               await recordCreationCompletion(reservation!, { result: fullResponse, terminal: completionTerminal!, conversationId: capturedConversationId, messageId: capturedMessageId, usage: { ...usageMetadata, ...telemetry, ...(topicContext ? { direction_topic: topicContext } : {}) } }, body.taskType);
               await incrementUsageServer(userId, getFeatureFromTaskType(body.taskType), body.taskType, undefined, reservation);
@@ -1031,17 +804,15 @@ export async function POST(req: NextRequest) {
           if (!generationCompleted) await releaseCreation(reservation);
           releaseSlot();
           console.error('Stream error:', err);
-          if (topicTask && !generationCompleted) {
-            showFullText('');
-            send({ event: 'error', message: '选题核对未完成，请重试' });
-            if (!clientGone) controller.close();
-            return;
+          if (!generationCompleted && generationTask) {
+            await updateGenerationTask({
+              taskId: generationTask.id, status: draftVersionSaved ? 'partial_saved' : 'recoverable_failed',
+              stage: draftVersionSaved ? 'post_processing' : 'generate', errorCode: 'STREAM_INTERRUPTED',
+              errorMessage: draftVersionSaved ? '核对未完成，已保存草稿。' : '生成连接中断，可重新提交。',
+            });
           }
-          try {
-            controller.error(err);
-          } catch {
-            /* 对面已经关了 */
-          }
+          sendTask({ event: 'error', message: fullResponse.trim() ? '处理未完成，页面上已生成的正文可以先保留' : '生成连接中断，请重试' });
+          if (!clientGone) controller.close();
         } finally {
           releaseWindow();
         }
@@ -1059,6 +830,20 @@ export async function POST(req: NextRequest) {
         'X-Generation-Id': reservation!.requestId,
       }
     });
+    };
+    if (!early) return await run();
+    return streamAcceptedGeneration(early, reservation.requestId, async () => {
+      try {
+        return await run();
+      } catch (error) {
+        await releaseCreation(reservation);
+        releaseSlot();
+        releaseWindow();
+        await updateGenerationTask({ taskId: early.id, status: 'recoverable_failed', stage: 'generate', errorCode: 'GENERATION_START_FAILED', errorMessage: '生成未能启动，请稍后重试。' });
+        console.error('[dify/stream] 生成启动失败', error instanceof Error ? error.name : 'unknown');
+        throw error;
+      }
+    }, () => { void refreshGenerationHeartbeat(early.id); });
   } catch (error) {
     if (!generationCompleted) await releaseCreation(reservation);
     releaseSlot();

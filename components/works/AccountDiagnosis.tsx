@@ -8,6 +8,8 @@ import { invalidateCreatorContext, useCreatorContext } from "@/hooks/useCreatorC
 import { buildContextBlock } from "@/lib/creator-context";
 import { fetchGeneration, isNetworkError, NETWORK_ERROR_HINT, throwApiError } from "@/lib/api-error";
 import { readDifyStream } from "@/lib/sse-stream";
+import { useGenerationTask } from "@/hooks/useGenerationTask";
+import { GenerationTaskNotice } from "@/components/workspace/GenerationTaskNotice";
 import { postSafely } from "@/lib/safe-post";
 import { collectionSummary, coverageEstimate, formatCollection, sanitizeCollection, type Collection } from "@/lib/benchmark-collection";
 import { buildDiagnosisQuery, DIAGNOSIS_TASK_TYPE, type AccountDiagnosis as Diagnosis } from "@/lib/account-diagnosis";
@@ -48,6 +50,11 @@ export function AccountDiagnosis() {
   const [report, setReport] = useState("");
   const [saved, setSaved] = useState<Diagnosis | null>(null);
   const [draftNote, setDraftNote] = useState("");
+  const [recovered, setRecovered] = useState(false);
+  const generation = useGenerationTask(DIAGNOSIS_TASK_TYPE, (text) => {
+    setReport(text);
+    setRecovered(true);
+  }, profileId, profileId ? 'account-diagnosis' : null);
   const lastBatch = useRef("");
   const [tick, setTick] = useState(0);
   const runRef = useRef<(collected: Collection | null, images: File[]) => Promise<void>>(async () => {});
@@ -142,15 +149,18 @@ export function AccountDiagnosis() {
       });
 
       setProgress("AI 诊断中");
+      setRecovered(false);
       const res = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskType: DIAGNOSIS_TASK_TYPE, query, imageFileIds: imageIds, profileId: pid }),
+        body: JSON.stringify({ taskType: DIAGNOSIS_TASK_TYPE, recoveryScope: 'account-diagnosis', query, imageFileIds: imageIds, profileId: pid }),
       });
       if (!res.ok) await throwApiError(res, "诊断失败");
       setDraftNote("");
       let lastAt = 0;
       const full = await readDifyStream(res, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_p, text) => {
           setReport(text);
           // 边写边存草稿（隔 2 秒存一次）：中途刷新、关页面也留得住
@@ -165,6 +175,7 @@ export function AccountDiagnosis() {
       saveDraft(DRAFT_KEY(pid), { report: full, done: true, materials: materialLines });
 
       await persist(pid, full, materialLines);
+      generation.forgetTask();
       // 存好了：下面显示的就是存下的这份
       setReport("");
       notify("诊断完成，已同步给选题、方向、内容规划、起号、脚本、地基板块和开物助理");
@@ -265,6 +276,17 @@ export function AccountDiagnosis() {
       </p>
       {msg && <p className="text-[12.5px] text-foreground">{msg}</p>}
       {draftNote && <p className="rounded-lg border border-primary/30 px-3 py-2 text-[12.5px] text-foreground">{draftNote}</p>}
+      <GenerationTaskNotice state={generation} />
+      {recovered && profileId && report && saved?.report !== report && generation.task?.status === 'completed' && <button type="button" disabled={running} className="text-sm text-primary underline" onClick={async () => {
+        setRunning(true);
+        try {
+          await persist(profileId, report, readDraft(DRAFT_KEY(profileId))?.materials || []);
+          generation.forgetTask();
+          setRecovered(false);
+          setReport("");
+        } catch (error) { notify((error as Error).message, "error"); }
+        finally { setRunning(false); }
+      }}>保存恢复的账号诊断</button>}
       {running && <p className="flex items-center gap-1.5 text-[12.5px] text-primary"><Loader2 className="h-3.5 w-3.5 animate-spin" />{progress || "诊断中…"}</p>}
       {shown && (
         <div className="space-y-1.5">

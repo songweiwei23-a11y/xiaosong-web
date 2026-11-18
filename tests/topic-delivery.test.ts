@@ -3,7 +3,7 @@ import { readAssistantConfig } from '@/lib/assistant/config';
 import { callAssistantLlm } from '@/lib/assistant/llm';
 import { finalizeTopicBatch, parseTopicOverlap, primaryTopicElement, topicCountInRequest } from '@/lib/topic-delivery';
 import { splitTopicSections, type TopicSection } from '@/lib/topic-library';
-import { anchorDirectionDraft, directionTopicContext, selectTopicAngles } from '@/lib/direction-topic-plan';
+import { anchorDirectionDraft, directionAnglesPrompt, directionTopicContext, planDirectionTopics, selectTopicAngles } from '@/lib/direction-topic-plan';
 
 vi.mock('@/lib/assistant/config', () => ({ readAssistantConfig: vi.fn() }));
 vi.mock('@/lib/assistant/llm', () => ({ callAssistantLlm: vi.fn() }));
@@ -27,6 +27,44 @@ describe('选题交付前查重', () => {
     expect(topicCountInRequest('再给我二十条')).toBe(20);
     expect(topicCountInRequest('再来１２条')).toBe(12);
     expect(topicCountInRequest('这版有3条，我想换一批')).toBeUndefined();
+  });
+
+  it('成稿只能扩写入选的策划，擅自补写的内容不能绕过取材核对', async () => {
+    const ctx = directionTopicContext('修书工作室', undefined, '仅有一本旧书、一把尺和一张步骤卡')!;
+    const plan = { title: '看旧书的装线', element: 'nostalgia', material: '旧书', question: '这本书怎么装线', shoot: '镜头跟着装线走', payoff: '看清实际装线' };
+    expect(directionAnglesPrompt(ctx, [plan], 5)).toContain('本轮写 1 条');
+    const draft = anchorDirectionDraft(batch(topic('【P1】看旧书的装线', '**视频目的**：了解装线'), topic('【补】用尺看裂口', '**爆款元素**：成本｜测量裂口'), topic('【补】怎么按步骤卡检查', '**爆款元素**：人群｜翻步骤卡。\n**执行要点**：顾客全都欢呼。')), [plan]);
+    vi.mocked(callAssistantLlm).mockImplementation(async (_cfg, req) => {
+      if (req.system.includes('事实审核')) {
+        expect(String(req.messages[0].content)).not.toContain('顾客全都欢呼');
+        return decision('{"duplicates":[],"invalid":[]}');
+      }
+      return decision('{"duplicates":[]}');
+    });
+    const result = await finalizeTopicBatch(draft, [], 2, async () => '', { directionSeed: true, topicContext: ctx });
+    expect(splitTopicSections(result.text).map(t => t.title)).toEqual(['看旧书的装线']);
+    expect(result.checked).toBe(true);
+  });
+
+  it('较早的失实稿不能占用后来合格版本的同一标题或拍法', async () => {
+    const ctx = directionTopicContext('纸本预约', undefined, '店主留着一页纸本预约')!;
+    const rejected = topic('预约怎样记在纸上', '**爆款元素**：人群｜先拍预约本。\n**执行要点**：店主拿出修过三百本的证明。');
+    const valid = topic(rejected.title, '**爆款元素**：人群｜请店主现场演示一笔预约。');
+    vi.mocked(callAssistantLlm).mockImplementation(async (_cfg, req) => decision(req.system.includes('事实审核')
+      ? '{"duplicates":[],"invalid":["B1"]}' : '{"duplicates":[{"candidate":"B2","sameAs":"B1"}]}'));
+    const result = await finalizeTopicBatch(batch(rejected, valid), [], 1, async () => '', { directionSeed: true, topicContext: ctx });
+    expect(splitTopicSections(result.text)).toEqual([valid]);
+  });
+
+  it('本轮被退稿的题允许在补稿中纠错，已交付的历史仍参与查重', async () => {
+    const rejected = topic('旧书怎么量', '**爆款元素**：成本｜我修过三百本');
+    const valid = topic(rejected.title, '**爆款元素**：成本｜用尺量旧书的裂口，现场记录。');
+    const ctx = directionTopicContext('旧书', undefined, '有尺和旧书')!;
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const refill = vi.fn(async () => batch(valid));
+    const result = await finalizeTopicBatch(batch(rejected), [history], 1, refill, { directionSeed: true, topicContext: ctx });
+    expect(refill).toHaveBeenCalledWith(expect.objectContaining({ avoid: [history], blocked: [rejected] }));
+    expect(splitTopicSections(result.text)).toEqual([valid]);
   });
 
   it('用正文识别换标题的历史撞题，只补写撞题位置，保留新角度', async () => {
@@ -98,6 +136,38 @@ describe('选题交付前查重', () => {
     expect(splitTopicSections(anchorDirectionDraft('模型写了未匹配的标题', angles))).toEqual(splitTopicSections(anchorDirectionDraft('', angles)));
   });
 
+  it('同一张照片可以支撑不同的可见细节和当事人的独立采访', () => {
+    const sourceQuote = '有开店照片，店主可讲保存照片的经过';
+    const common = { anchor: '搬店经历', material: '开店照片', evidenceKey: '开店照片', element: 'nostalgia', sourceQuote, parallel: false };
+    const angles = [
+      { ...common, title: '照片里的取货桌在哪', question: '当时在哪取货', shoot: '放大照片找到桌子', actionKey: '放大照片', payoff: '看清取货桌的位置' },
+      { ...common, title: '这张照片是怎么留下的', question: '搬店时怎么留下的', shoot: '请店主讲保存经过', actionKey: '采访店主', payoff: '听到保存照片的亲历' },
+    ];
+    expect(selectTopicAngles(JSON.stringify({ angles }), ['nostalgia'], 2, sourceQuote).map(a => a.title)).toEqual(angles.map(a => a.title));
+  });
+
+  it('策划复核可以修正标题前提，淘汰整条双城拍法后才进入成稿', async () => {
+    const context = directionTopicContext('开店经历', undefined, '店主搬店时留下一张开业照片。店主可演示当时记单的动作')!;
+    const base = { element: 'nostalgia', anchor: '搬店时留下的物件', question: '开业照片拍了什么', material: '店主的开业照片', shoot: '实拍并看照片上的细节', payoff: '看清开业时的门店', sourceId: 'S1', evidenceKey: '开业照片', actionKey: '看照片', parallel: false };
+    vi.mocked(callAssistantLlm)
+      .mockResolvedValueOnce(decision(JSON.stringify({ angles: [
+        { ...base, title: '搬店时唯一带走的照片' },
+        { ...base, title: '同一个人怎么记两次单', sourceId: 'S2', question: '两家店如何各记一次', shoot: '分别演示两家店的记单动作', evidenceKey: '记单', actionKey: '演示记单' },
+      ] })))
+      .mockResolvedValueOnce(decision('{"edits":[{"id":1,"title":"开店照片里拍到了什么"},{"id":2,"drop":true}]}'));
+    const angles = await planDirectionTopics(context, 2, []);
+    expect(angles.map(({ title, sourceQuote }) => ({ title, sourceQuote }))).toEqual([{ title: '开店照片里拍到了什么', sourceQuote: '店主搬店时留下一张开业照片' }]);
+  });
+
+  it('两地工作经历可作为单人背景，只有一张照片的说法需要事实依据', async () => {
+    const context = directionTopicContext('小店搬迁', undefined, '这位店员在两地工作过，有一张开店照片可以拍。')!;
+    const valid = topic('照片里的取货桌在哪', '**爆款元素**：怀旧｜请在两地工作过的店员指出照片中的位置');
+    const unsupported = topic('搬店时唯一带走的旧照片', '**爆款元素**：反差｜请店员拿出照片');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const result = await finalizeTopicBatch(batch(valid, unsupported), [], 2, async () => '', { directionSeed: true, topicContext: context });
+    expect(splitTopicSections(result.text)).toEqual([valid]);
+  });
+
   it('先选能独立成片的实物与动作，再选仍有新证据的对照', () => {
     const material = '店里保留了旧招牌、纸本预约记录和开业照片。';
     const base = { anchor: '搬店前后的门店日常', payoff: '让观众看到物件原样', sourceQuote: '店里保留了旧招牌' };
@@ -154,6 +224,30 @@ describe('选题交付前查重', () => {
     expect(parseTopicOverlap('```json\n{"duplicates":[],"invalid":["B2"]}\n```\n说明：{仅供核对}', 2, 0, true)).toEqual([1]);
   });
 
+  it('方向题审核报错时只剔除禁用的两地模板，保留独立题作草稿', async () => {
+    const invalid = topic('南乐老板怎么记单，郑州店主怎么记单', '**爆款元素**：反差｜让两地老板分别演示');
+    const safe = topic('翻到招牌背面找街名', '**爆款元素**：怀旧｜拍一块实际在场的旧木招牌');
+    const ctx = directionTopicContext('地方门店留下的老物件', undefined, '店里保留一块写有街名的旧木招牌。')!;
+    vi.mocked(callAssistantLlm).mockRejectedValue(new Error('timeout'));
+    const refill = vi.fn(async () => '');
+    const result = await finalizeTopicBatch(batch(invalid, safe), [], 2, refill, { directionSeed: true, topicContext: ctx });
+    expect(result).toMatchObject({ count: 1, checked: false, removed: 1 });
+    expect(splitTopicSections(result.text)).toEqual([safe]);
+    expect(refill).not.toHaveBeenCalled();
+  });
+
+  it('历史双城模板不误杀基于单件现有物料的独立题', async () => {
+    const old = topic('南乐老板怎么记单，郑州店主怎么记单', '拍两地老板分别演示记单。');
+    const next = topic('翻开纸本预约的第一页', '**爆款元素**：怀旧｜实拍遮住姓名的旧预约本');
+    const ctx = directionTopicContext('门店记单习惯', undefined, '现店有一页遮住姓名的旧预约本。')!;
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const result = await finalizeTopicBatch(batch(next), [old], 1, async () => '', { directionSeed: true, topicContext: ctx });
+    expect(result).toMatchObject({ count: 1, checked: true });
+    for (const call of vi.mocked(callAssistantLlm).mock.calls) {
+      expect(String(call[1].messages[0].content)).not.toContain(old.title);
+    }
+  });
+
   it('第二轮补题避开上一轮已经接受的素材和动作', async () => {
     const a = topic('模具怎么放进制作台', '**爆款元素**：奇葩｜实拍旧模具的位置和用法');
     const b = topic('旧菜单上的点单写法', '**爆款元素**：怀旧｜读出菜单原字');
@@ -165,6 +259,27 @@ describe('选题交付前查重', () => {
     expect(refill).toHaveBeenNthCalledWith(2, expect.objectContaining({ avoid: [a, b] }));
     expect(result).toMatchObject({ checked: true, count: 3, replaced: 2 });
     expect(splitTopicSections(result.text)).toEqual([a, b, c]);
+  });
+
+  it('原稿和各轮补题合计只留一条有授权的双城对照', async () => {
+    const ctx = directionTopicContext('地域差异方向', '南北/地域差异', '本轮明确要求南乐和郑州两地按同一标准实测对比')!;
+    const original = topic('南乐老板怎么记单，郑州老板怎么记单', '**爆款元素**：反差｜按同一标准拍两地老板');
+    const extra = topic('南乐店主怎么摆货，郑州店主怎么摆货', '**爆款元素**：人群｜记录两地店主分别演示');
+    const independent = topic('旧招牌背面写的是什么', '**爆款元素**：怀旧｜翻看旧招牌');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const refill = vi.fn().mockResolvedValueOnce(batch(extra)).mockResolvedValueOnce(batch(independent));
+    const result = await finalizeTopicBatch(batch(original), [], 2, refill, { directionSeed: true, topicContext: ctx });
+    expect(splitTopicSections(result.text)).toEqual([original, independent]);
+  });
+
+  it('已发生的从业年限和成交数量须有素材，现场计时仍然可做', async () => {
+    const ctx = directionTopicContext('修复前如何观察旧书', undefined, '只提供两本旧书、装订步骤卡和计时器，没有年份或历史修复量')!;
+    const experience = topic('这本书怎么修？我修了20年都看这一步', '**爆款元素**：头牌｜翻看步骤卡');
+    const volume = topic('修过三百本，才知道旧书第一眼看哪', '**爆款元素**：怀旧｜展示旧书');
+    const measured = topic('穿线要多久？把计时器打开再看', '**爆款元素**：成本｜现场计时，结果以现场为准');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const result = await finalizeTopicBatch(batch(experience, volume, measured), [], 3, async () => '', { directionSeed: true, topicContext: ctx });
+    expect(splitTopicSections(result.text)).toEqual([measured]);
   });
 
   it('方向批次里三条同句式只换名词时，确定性拦截模板重复', async () => {
@@ -215,6 +330,13 @@ describe('选题交付前查重', () => {
     ]) {
       expect(directionTopicContext('地域差异方向', '南北/地域差异', text)?.allowParallelComparison).toBe(false);
     }
+  });
+
+  it('档案和引用中的旧授权不生效，只有当前输入可开启双城对照', () => {
+    const facts = '参考历史：本次明确要求南乐与郑州两地直接对照。现店留着两张旧照片。';
+    const setup = (current: string) => directionTopicContext('旧物和门店变化', undefined, facts, [], [], current);
+    expect(setup('再来两个有关旧照片的新选题')?.allowParallelComparison).toBe(false);
+    expect(setup('本轮明确要求做一条南乐和郑州两地实测对照')?.allowParallelComparison).toBe(true);
   });
 
   it('方向上下文缺失时仍 fail-closed 拦截窄定义地域平行题', async () => {

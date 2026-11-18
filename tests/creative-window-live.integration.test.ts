@@ -95,6 +95,7 @@ const probes = [
   { name: '内容规划裂变选题', source: 'content-plan' },
   { name: '直选地域差异裂变选题', source: 'tactic' },
   { name: '截图双城老板模板回归', source: 'screenshot' },
+  { name: '月度规划内嵌拍法连续两批', source: 'monthly' },
 ] as const;
 
 const probeMode = process.env.KAIWU_TOPIC_LIVE_PROBE;
@@ -201,7 +202,14 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
     }
     if (source) {
       const screenshot = source === 'screenshot';
-      const direction = screenshot ? [
+      const monthly = source === 'monthly';
+      const direction = monthly ? [
+        '### 方向1：南乐 vs 大城市开店差异（地域对比）',
+        '- **视频目的**：流量型',
+        '- **内容类型**：地域差异（）',
+        '- **内容方向**：对比南乐/濮阳老板和郑州/北京老板在开店、经营、做短视频等方面的不同做法和想法，用地域反差制造看点。可以从老板怎么对待客人、怎么选址、怎么定价、怎么处理关系等不同角度切入，每条问一件事。拍法：采访南乐老板（保留现场原话）+ 郑州老板网络素材或采访 + 出镜解释差异原因',
+        '- **本月条数**：5 条',
+      ].join('\n') : screenshot ? [
         '### 方向1：南乐和郑州的街边小店',
         '- **内容方向**：小店与当地生活的关系，包括招牌、熟客、进货和门店日常。',
         '- **怎么拍**：南乐老板做 A，郑州老板做 B，然后让两地老板解释。',
@@ -214,10 +222,10 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
         '- **开头示范**：南乐XXX，郑州XXX。',
       ].join('\n');
       const tactic = source === 'tactic' ? '南北/地域差异' : '';
-      const incomingSetup = source === 'tactic' ? null : buildCreationHandoff(screenshot ? 'direction' : source, 'topic', direction, {});
+      const incomingSetup = source === 'tactic' ? null : buildCreationHandoff(monthly ? 'content-plan' : screenshot ? 'direction' : source, 'topic', direction, {});
       const sourceReference = incomingSetup ? topicReference(incomingSetup) : '';
       const topicCount = 5;
-      const personalRequirement = screenshot ? [
+      const personalRequirement = monthly ? '主攻涨粉曝光和建立本地认知，让南乐县实体老板认识本地编导，让外地人看懂县城做生意。一人全包，挤空档拍。可以街头采访或自己出镜。不做纯方法论、不晒数据截图、不做需要多人配合或长时间拍摄的内容。' : screenshot ? [
         '以下是虚构测试档案里的已知素材。一位店主先在南乐开店，后把店搬到郑州，旧木招牌背面还有南乐街名，现用招牌印着郑州门牌。两块招牌可拍。',
         '店主可演示在南乐店里用纸本记下预约取货、在郑州店里用标签夹给预订袋排序的实际动作。留有一页遮住姓名的预约本和旧标签夹。',
         '有一张开店当天店主拍的南乐店门口的照片，拍到门口的取货小桌。店主可以讲搬店时留下这张照片的经过，答案须等采访。',
@@ -242,19 +250,36 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
         result: '## 选题1：南乐老板给店取名，会问街坊好不好记；郑州老板给店取名，会问网上好不好搜\n拍两地老板对答并让评论区投票。\n\n' +
           '## 选题2：南乐老板店里东西卖贵了会主动退；郑州老板店里东西卖贵了，客人不说就不退吗？\n拍两地老板对答并让评论区投票。',
       }]);
-      const delivered = await deliver(await generate(request('/api/dify/stream', {
+      const consecutive = monthly || source === 'direction' || source === 'content-plan';
+      const additionalMaterials = '另有已脱敏的乙店点单小票，店员能演示如何核对漏点；甲店打包用的纸套可实拍折法；两店共用的勺子可拍如何控制分量；乙店柜台的取餐号牌可演示发号；甲店的收摊清洗顺序卡可演示；开店准备清单可展示逐项确认；店员可以讲第一次独自开档的实际经过，答案待访谈。以上同属本测试允许使用的素材。';
+      const payload = {
         taskType: '选题策划', profileId, query, webSearchMode: 'off',
-        inputs: { topicCount, tactic, sourceFrom: incomingSetup?.from, sourceReference, personalRequirement },
-      })), topicCount);
+        inputs: { topicCount, tactic, sourceFrom: incomingSetup?.from, sourceReference, personalRequirement: consecutive && !monthly ? personalRequirement + '\n' + additionalMaterials : personalRequirement },
+      };
+      const delivered = await deliver(await generate(request('/api/dify/stream', payload)), topicCount);
       expect(delivered).not.toMatch(/奇怪凹槽|透明杯|加醋|凝固时间|顾客当场|颜色不一样|这行字现在没了|倒[^\n]{0,10}手背|【待确认[：:]/);
       if (screenshot) {
-        expect(upstream[0].query).not.toContain('南乐老板做 A');
+        expect(upstream[0].query).not.toMatch(/南乐老板做\s*A/);
         expect(delivered).not.toMatch(/南乐老板[^\n]*[；;][^\n]*郑州老板|郑州老板[^\n]*[；;][^\n]*南乐老板|评论区投票|标签夹[^\n]{0,16}(?:分颜色|不同颜色|颜色规则)|只带走一张/);
+        expect(delivered).not.toMatch(/同一个老板在两个城市怎么记预约|唯一带走的旧照片|为什么不换新的|特写使用痕迹[（(]磨损、褪色/);
       }
       expect(upstream[0].query).not.toContain('南乐XXX，郑州XXX');
       expect(upstream[0].query).not.toContain('每期都让外地人提问');
+      if (monthly) {
+        expect(sourceReference).toContain('怎么选址');
+        expect(sourceReference).not.toContain('出镜解释差异原因');
+        expect(upstream[0].query).not.toContain('郑州老板网络素材或采访');
+      }
       expect(upstream[0].inputs.search_query).toBe('');
       expect(upstream[0].query).toContain('保留每条自己的证据、镜头动作和看点');
+      if (consecutive) {
+        const nativeId = state.tables.get('dify_conversations')?.[0]?.conversation_id;
+        expect(nativeId).toBeTruthy();
+        const next = await deliver(await generate(request('/api/dify/stream', payload)), topicCount);
+        expect(upstream.slice(1).every(call => call.conversation_id === nativeId)).toBe(true);
+        const titles = [...splitTopicSections(delivered), ...splitTopicSections(next)].map(t => t.title);
+        expect(new Set(titles).size).toBe(2 * topicCount);
+      }
       return;
     }
     const first = await deliver(await generate(request('/api/dify/stream', body)));

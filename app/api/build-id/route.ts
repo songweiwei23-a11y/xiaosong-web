@@ -14,15 +14,13 @@ export async function GET() {
     const buildIdPath = join(process.cwd(), '.next', 'BUILD_ID');
     const buildId = readFileSync(buildIdPath, 'utf-8').trim();
     
-    return NextResponse.json({ 
+    return NextResponse.json({
       buildId,
-      timestamp: Date.now()
-    });
-  } catch (error) {
-    // 如果读取失败，返回当前时间戳作为版本号
-    return NextResponse.json({ 
-      buildId: Date.now().toString(),
-      timestamp: Date.now()
-    });
+      // Next 在构建时内联公开变量，实际执行的 bundle 必须带着本次发布标记。
+      release: process.env.NEXT_PUBLIC_APP_BUILD || null,
+      timestamp: Date.now(),
+    }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch {
+    return NextResponse.json({ error: '当前构建编号不可用' }, { status: 503 });
   }
 }

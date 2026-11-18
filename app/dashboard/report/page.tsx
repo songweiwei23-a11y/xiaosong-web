@@ -8,6 +8,7 @@ import { getActiveProfileId, onActiveProfileChange } from "@/lib/active-profile"
 import Link from "next/link";
 import { CONTENT_ROLE_LIST } from "@/lib/content-roles";
 import { reviewMonthLabel, type MonthlyReview } from "@/lib/monthly-review";
+import { throwApiError } from "@/lib/api-error";
 
 /**
  * 月报（体检 F3）：一个月做了什么、效果怎样、下个月计划。可以打印，或者「存为 PDF」发给客户。
@@ -47,24 +48,32 @@ export default function ReportPage() {
 
   // 那个月的复盘（第三步：月报和复盘合成一页）：先在当前卡和最近 6 版里找，找不到再去永久存档里找全文
   const [reviewOf, setReviewOf] = useState<{ month: string; review: MonthlyReview | null; archived: string } | null>(null);
+  const [reviewError, setReviewError] = useState("");
+  const [reviewAttempt, setReviewAttempt] = useState(0);
   useEffect(() => {
     const pid = getActiveProfileId();
     let off = false;
     setReviewOf(null);
+    setReviewError("");
     if (!pid) return;
     (async () => {
-      const d = await fetch(`/api/monthly-review?profileId=${encodeURIComponent(pid)}&month=${month}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const readReview = async (query: string) => {
+        const response = await fetch(`/api/monthly-review?profileId=${encodeURIComponent(pid)}&${query}`, { cache: "no-store" });
+        if (!response.ok) await throwApiError(response, "复盘读取失败");
+        return response.json();
+      };
+      const d = await readReview(`month=${month}`);
       const all = [d?.review, ...(d?.history ?? [])].filter(Boolean) as MonthlyReview[];
       const hit = all.filter((r) => r.month === month).sort((a, b) => b.generatedAt.localeCompare(a.generatedAt))[0] ?? null;
       let archived = "";
       if (!hit) {
-        const a = await fetch(`/api/monthly-review?profileId=${encodeURIComponent(pid)}&archive=review`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        const a = await readReview("archive=review");
         archived = ((a?.items ?? []) as { month?: string | null; result: string }[]).find((x) => x.month === month)?.result ?? "";
       }
       if (!off) setReviewOf({ month, review: hit, archived });
-    })();
+    })().catch(() => { if (!off) setReviewError("暂时读不到这个月的复盘，请重试。"); });
     return () => { off = true; };
-  }, [month, loadKey]);
+  }, [month, loadKey, reviewAttempt]);
   const rv = reviewOf?.month === month ? reviewOf : null;
 
   return (
@@ -149,7 +158,10 @@ export default function ReportPage() {
               );
             })()}
             {rv && !rv.review && rv.archived && <div className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">{rv.archived.replace(/\*\*/g, "")}</div>}
-            {rv && !rv.review && !rv.archived && (
+            {reviewError && <p role="alert" className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+              {reviewError} <button type="button" className="underline" onClick={() => setReviewAttempt(n => n + 1)}>重试读取</button>
+            </p>}
+            {rv && !reviewError && !rv.review && !rv.archived && (
               <p className="mt-2 text-[13px] text-muted-foreground no-print">这个月还没复盘。<Link href="/dashboard/works" className="text-primary underline">去创作进度复盘</Link>（每月 1 号也会自动复盘上个月）</p>
             )}
           </section>

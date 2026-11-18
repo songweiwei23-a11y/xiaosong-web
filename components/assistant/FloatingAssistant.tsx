@@ -113,7 +113,7 @@ export function FloatingAssistant({
         )}
 
         {/* Hover 提示 */}
-        <span className="absolute bottom-full mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+        <span aria-hidden="true" className="absolute bottom-full mb-2 hidden whitespace-nowrap rounded bg-gray-900 px-3 py-1 text-xs text-white transition-opacity md:block md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100">
           开物助理
         </span>
       </button>

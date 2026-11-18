@@ -1,4 +1,6 @@
 "use client";
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -99,6 +101,7 @@ export default function ReviewPage() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState("");
+  const generation = useGenerationTask('审稿优化', (text, previous) => setResult(current => !current || current === previous ? text : current), (creatorContext.profile?.id as string | undefined) || null);
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
   const [workId, setWorkId] = useState<string | null>(null);
   const [originContent, setOriginContent] = useState('');
@@ -300,6 +303,8 @@ export default function ReviewPage() {
       // 响应是 SSE（data: {"answer":"..."}），必须解析后取 answer，
       // 直接累加原始字节会把 data: {...} 一起显示给用户
       fullResult = await readDifyStream(response, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
       });
     } catch (error: any) {
@@ -333,6 +338,7 @@ export default function ReviewPage() {
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
           <PageHeader title="审稿优化" subtitle="逐条指出问题并给出改写建议，可对照标杆脚本做差距分析" />
           {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
 

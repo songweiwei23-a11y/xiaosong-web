@@ -1,5 +1,7 @@
 'use client'
 
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/components/ui/feedback'
@@ -63,6 +65,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
   // 内容配比：这次临时改的（null = 跟档案 / 系统推荐）
   const [mixOverride, setMixOverride] = useState<MixSetting | null>(null)
   const [result, setResult] = useState('')
+  const generation = useGenerationTask(taskType, (text, previous) => setResult(current => !current || current === previous ? text : current), (profile?.id as string | undefined) || null);
   /** 上次生成的时间，界面上标一句，让用户知道看到的是存档不是刚跑的 */
   const [savedAt, setSavedAt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -201,6 +204,8 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
       if (!res.ok) await throwApiError(res)
 
       full = await readDifyStream(res, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_p, all) => setResult(all),
         onConversationId: (id) => {
           convId = id
@@ -253,6 +258,7 @@ export function DeepDivePage({ focus, taskType, title, subtitle, bullets, genera
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <GenerationTaskNotice state={generation} />
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
           <p className="mt-2 text-[13px] text-muted-foreground">{subtitle}</p>

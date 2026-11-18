@@ -11,6 +11,7 @@
 
 export interface ReportDraft {
   report: string;
+  taskId?: string;
   /** 生成写完了（只是没存上）；false 是写到一半断了 */
   done: boolean;
   materials: string[];
@@ -47,7 +48,10 @@ export function readDraft(key: string, now = Date.now()): ReportDraft | null {
       clearDraft(key);
       return null;
     }
-    return { report: d.report, done: d.done === true, materials: Array.isArray(d.materials) ? d.materials.filter((x): x is string => typeof x === 'string') : [], at: d.at };
+    return {
+      report: d.report, ...(typeof d.taskId === 'string' ? { taskId: d.taskId } : {}), done: d.done === true,
+      materials: Array.isArray(d.materials) ? d.materials.filter((x): x is string => typeof x === 'string') : [], at: d.at,
+    };
   } catch {
     return null;
   }

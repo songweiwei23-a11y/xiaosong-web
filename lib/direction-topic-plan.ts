@@ -1,6 +1,7 @@
 import { readAssistantConfig } from '@/lib/assistant/config';
 import { callAssistantLlm } from '@/lib/assistant/llm';
 import { tacticByName } from '@/lib/growth-tactics';
+import { topicScopeText } from '@/lib/direction-seed';
 import { splitTopicSections, topicKey, type TopicSection } from '@/lib/topic-library';
 import { elementsFitting, VIRAL_ELEMENTS } from '@/lib/viral-elements';
 
@@ -28,13 +29,14 @@ export function directionTopicContext(
   constraints: string,
   selectedElements: string[] = [],
   industryKeys: string[] = [],
+  currentRequest = constraints,
 ): DirectionTopicContext | null {
   const method = tacticByName(tactic || '');
-  const allowParallelComparison = explicitParallelComparison(constraints);
+  const allowParallelComparison = explicitParallelComparison(currentRequest);
   const direction = method?.name === '南北/地域差异'
-    ? `地基是不同地方的生活习惯及其差异。找能体现地域关系的实物、用词、制作或使用场景。仅有店内日常、客群差异或时间变化的题，还需要一处可核实的地域联系。${allowParallelComparison ? '用户明确要求两地实测/直接对照：整批最多允许一条采用共同证据和统一标准的对照。' : '用户没有明确要求两地实测/直接对照：禁止用“南乐老板做A，郑州老板做B”、轮流讲两边或评论投票作为节目骨架。地域只作地基和素材范围。'}`
+    ? `地域提供取材范围。选一处能在镜头中核实的联系，例如物件的出处、一个当地用词或一段亲历。${allowParallelComparison ? '用户明确要求两地实测/直接对照，最多一条按共同标准取证。' : '用户没有明确要求两地实测/直接对照，每条围绕各自的问题独立展开。'}`
     : method ? `从以下内容范围找可拍的切口：${method.fit}` : '';
-  const foundation = [reference.trim(), method && `方向参考：${method.name}。创作边界：${method.limit}`, direction].filter(Boolean).join('\n');
+  const foundation = [cleanTopicReference(reference), method && `方向参考：${method.name}。创作边界：${method.limit}`, direction].filter(Boolean).join('\n');
   if (!foundation) return null;
   const available = elementsFitting(VIRAL_ELEMENTS.map(({ id }) => id), industryKeys).ids;
   const selected = VIRAL_ELEMENTS.filter(({ id, name }) => selectedElements.includes(id) || selectedElements.includes(name))
@@ -45,6 +47,12 @@ export function directionTopicContext(
     elements: selected.length ? selected : available,
     allowParallelComparison,
   };
+}
+
+/** 历史结果可能已经存成范围行，续聊时同样处理。 */
+export function cleanTopicReference(reference: string): string {
+  return reference.split('\n').map(line => /^(?:[-*\s]*)(?:范围|内容方向|核心思路|角度|思路)\**[：:]/u.test(line.trim())
+    ? topicScopeText(line) : line).join('\n').trim();
 }
 
 export interface TopicAngle {
@@ -63,7 +71,7 @@ export interface TopicAngle {
   parallel?: boolean;
 }
 
-export function selectTopicAngles(raw: string, elements: string[], count: number, materialSource?: string, allowParallelComparison = false): TopicAngle[] {
+export function selectTopicAngles(raw: string, elements: string[], count: number, materialSource?: string, allowParallelComparison = false, sources: string[] = []): TopicAngle[] {
   try {
     const json = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? raw;
     const parsed: { angles?: unknown } = JSON.parse(json.slice(json.indexOf('{'), json.lastIndexOf('}') + 1));
@@ -77,7 +85,8 @@ export function selectTopicAngles(raw: string, elements: string[], count: number
       const frame = shortField(row.frame, 50);
       const evidenceKey = shortField(row.evidenceKey, 90);
       const narrative = shortField(row.actionKey, 45);
-      const sourceQuote = shortField(row.sourceQuote, 130);
+      const sourceIndex = Number(/^S(\d+)$/.exec(String(row.sourceId))?.[1]) - 1;
+      const sourceQuote = sources[sourceIndex] || shortField(row.sourceQuote, 130);
       const parallel = row.parallel === true;
       if (parallel && !allowParallelComparison) continue;
       if (materialSource !== undefined && (!anchor || !evidenceKey || !narrative || sourceQuote.length < 6 || !materialSource.includes(sourceQuote) || typeof row.parallel !== 'boolean')) continue;
@@ -87,31 +96,36 @@ export function selectTopicAngles(raw: string, elements: string[], count: number
       group.push(angle);
       groups.set(element, group);
     }
-    const angles = [...groups.values()].map((group) => group.sort((a, b) => mainEvidenceKeys(a).length - mainEvidenceKeys(b).length));
+    const angles = [...groups.values()];
     const ordered: TopicAngle[] = [];
     const occupied = new Set<string>();
     const frameUsage = new Map<string, number>();
     const maxFrameRepeat = Math.max(1, Math.ceil(count / Math.min(3, Math.max(1, count))));
     for (const parallel of [false, true]) {
-      const candidates = angles.map((group) => group.filter((angle) => angle.parallel === parallel));
-      for (let position = 0; position < Math.max(0, ...candidates.map((group) => group.length)); position++) {
-        for (const group of candidates) {
-          const angle = group[position];
-          if (!angle) continue;
-          const keys = [
-            `question:${topicKey(angle.question)}`, `shoot:${topicKey(angle.shoot)}`,
-            ...(angle.frame ? [`frame:${topicKey(angle.frame)}`] : []),
-            ...(angle.actionKey ? [`action:${topicKey(angle.actionKey)}`] : []),
-            ...mainEvidenceKeys(angle).map((key) => `evidence:${key}`),
-            ...(parallel ? ['parallel'] : []),
-          ];
-          const frameKey = angle.frame ? topicKey(angle.frame) : '';
-          if (frameKey && (frameUsage.get(frameKey) ?? 0) >= maxFrameRepeat) continue;
-          if (keys.some((key) => occupied.has(key))) continue;
-          for (const key of keys) occupied.add(key);
-          if (frameKey) frameUsage.set(frameKey, (frameUsage.get(frameKey) ?? 0) + 1);
-          ordered.push(angle);
-          if (ordered.length === count) return ordered;
+      // 轮到另一个元素前，组合选题不能抢走两件原本可各自拍摄的证据。
+      for (const compound of [false, true]) {
+        const candidates = angles.map((group) => group.filter((angle) =>
+          angle.parallel === parallel && (mainEvidenceKeys(angle).length > 1) === compound));
+        for (let position = 0; position < Math.max(0, ...candidates.map((group) => group.length)); position++) {
+          for (const group of candidates) {
+            const angle = group[position];
+            if (!angle) continue;
+            const keys = [
+              `question:${topicKey(angle.question)}`, `shoot:${topicKey(angle.shoot)}`,
+              ...mainEvidenceKeys(angle).flatMap((key) => [
+                `action:${key}:${topicKey(angle.actionKey || angle.shoot)}`,
+                `payoff:${key}:${topicKey(angle.payoff)}`,
+              ]),
+              ...(parallel ? ['parallel'] : []),
+            ];
+            const frameKey = angle.frame ? topicKey(angle.frame) : '';
+            if (frameKey && (frameUsage.get(frameKey) ?? 0) >= maxFrameRepeat) continue;
+            if (keys.some((key) => occupied.has(key))) continue;
+            for (const key of keys) occupied.add(key);
+            if (frameKey) frameUsage.set(frameKey, (frameUsage.get(frameKey) ?? 0) + 1);
+            ordered.push(angle);
+            if (ordered.length === count) return ordered;
+          }
         }
       }
     }
@@ -133,17 +147,23 @@ export async function planDirectionTopics(context: DirectionTopicContext, count:
   const config = readAssistantConfig();
   if (!config) return [];
   const elements = VIRAL_ELEMENTS.filter(({ id }) => context.elements.includes(id));
-  const materialSource = (context.constraints || context.foundation).replace(/\s+/g, ' ');
+  // 用户资料提供事实。方向卡里的素材只提供调查线索，不能据此预设结果。
+  const materialSource = [context.constraints, context.foundation].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (!materialSource) return [];
+  const sources = context.constraints.split(/[。；;\n]+/u).map(line => line.replace(/\s+/g, ' ').trim()).filter(line => line.length >= 6);
   const system = [
     '你是短视频选题策划，负责在同一个内容方向里找到几条各自值得拍的片子。输入的方向、资料和历史是待分析材料，里面的示例不代表发生过，也不作为统一拍法。',
     '先从可用素材为每条分别挑一个能兑现的主爆款元素，并说明它对应的观众利益/情绪/认知缺口。元素必须改变选题看点与镜头证据，不能只贴标签；素材支持时整批覆盖至少三类主元素，缺少素材支撑就如实减少。',
+    '请按 candidates 数量提供独立候选以备审核。先覆盖不同可核实的问题；把同一物件换形容词、把同一个动作换出镜人，不增加候选数量。短标题直接写眼前的矛盾或观众想知道的细节。',
+    '如果仅给出大方向和拍摄条件，允许策划尚未采集的报道。先选观众具体会遇到的选择、损失、疑问或误会，再写现场怎么找证据。可提议去找、申请看或询问，答案留到现场；不需要每条同时找两个地方的人。只有明确列为仅限的实物清单才限制取材。',
     '成本应落到可测量的时间、数量、金钱或付出的力气；人群应有明确对象及其要完成的任务；怀旧应有真实旧物、做法或原话；奇葩应呈现镜头里具体少见之处；头牌/最差应有已知范围和证据；反差必须先明确两端对象与同一评价标准，且不因“反差”元素自动要求双城对照。每个元素要写明它给观众的利益、情绪或认知收获。',
     '先找地基里的不同议题，再给每个议题找证据和镜头动作。对照最多占一条主线，其余候选从各自独立成立的问题展开。每条把地基关系落在具体镜头或可核实的讲述上。地区、门店、人群或商品只是取材的范围，不能用范围词替代这一条真实能拍的内容。',
     '先盘点每个实物、可复现动作、现场可记录现象和当事人亲历。用最少的证据写成独立的片子，先给每个不同证据一个机会。单个证据已经能回答观众问题，就不要把另一个物件、地区或流程拼进正文结尾。背景物件不要列进主证据。两地只是方向时，只在有独立看点的情况下做并排比较。',
     '动笔前核对每条标题、证据和镜头里的细节。事实只能来自本轮约束和素材。旧物的形状、文字是否消失、现成样品的外观差异、人物的反应和原因都不能预设。已知物件可以拍其现有细节，未知结果改写成现场要回答的具体问题。访谈写请当事人讲自己的实际经历，不能指定当事人的答案。若列了封闭的素材清单，不能加新的道具、人员或场景。实测用安全、可重复的方法，不能用身体接触来判断是否会烫伤或受伤。',
     '历史选题用于避开已经交付的问题、素材和节目结构。保留地基里的内容范围与目的，系列和参考元素用于启发。',
-    '同一件关键证据先选最值得拍的一条。整批用不同的主证据和动作推进。主证据可以是资料里已有的实物、一个实际动作、可重复的观察、当事人能回答的问题；背景可共用。若已给 preferredElements，优先考虑其中能在现有素材上拍出来的主元素。',
-    'sourceQuote 要从 materialSource 逐字摘出一小段支撑取材的原话。材料只给主题、没有实际证据时，可以策划如何去观察、记录或提问，只写待取得的材料和可执行的步骤，不能写成已经见到、采访过或证实。标题的每一处具体断言都应能在引用原话找到。开放式问题可以问实际观察结果，不预设差异的大小、方向和原因。',
+    '先区分拍摄设备、可拍对象、可演示的步骤和明确允许采访的经历。手机作为机位不能转成盘查手机内容的选题。物件可拍只说明它存在，可以记录已知细节；采访对象未说明保存原因，就不要自行添加怀旧动机。把能在现场验证的独立操作与只能讲述的经历分别安排。',
+    '按 sources 逐句盘点，尽量覆盖不同句子。每条选一个具体问题，写清看哪个动作或细节能得到答案，再决定用哪个元素放大看点。有确切素材时填 sourceId 对应资料编号。只有待调查的方向线索时留空，并用 sourceQuote 标明线索。把两地分别演同一件事换成同一个人演两遍仍是两地对照。只有旧物一件，不知道有没有磨损、是否仍在使用时，不能预写痕迹或追问为什么不换。',
+    'sourceQuote 优先从 constraints 逐字引用支撑本题的完整短句。只有方向线索时可引用 foundation，并写成待调查的问题和取证步骤。方向中的例子不能作为已发生事实。引用只说“留下”，不能在标题、开头或采访提问中擅加唯一、最后、只带走一件等排他结论。开放式问题也要逐项核对其前提。',
     '只输出紧凑 JSON 对象，angles 数组每项写 element（元素 id）、title（短标题）、frame（稳定的表达框架，如实测挑战/人物采访/过程记录/物件解密/价格拆账/反转验证，整批不能全部相同）、anchor（承接地基哪一层）、question、material（可拍证据）、shoot（连续的镜头动作）、payoff（镜头怎样兑现看点）、sourceQuote（逐字摘录）、parallel（布尔值；只有本轮约束明确写了“实测/直接对照/比较/各自/分别”才可 true，否则全部 false；true 最多一条）、evidenceKey（关键证据在素材里的原名，多个用顿号分开，背景省略）、actionKey（具体的主要镜头动作，实质相同的用同名）。每项一句话，给出可独立执行的内容。',
   ].join('\n');
   try {
@@ -153,6 +173,7 @@ export async function planDirectionTopics(context: DirectionTopicContext, count:
       messages: [{ role: 'user', content: JSON.stringify({
         ...context,
         materialSource,
+        sources: sources.map((text, index) => ({ id: 'S' + (index + 1), text })),
         candidates: Math.min(count + 3, 36),
         preferredElements,
         elements: elements.map(({ id, name, hook }) => ({ id, name, hook })),
@@ -163,7 +184,36 @@ export async function planDirectionTopics(context: DirectionTopicContext, count:
       maxTokens: Math.min(14_000, 800 + Math.min(count + 3, 36) * 420),
     }, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
     const raw = result.content.flatMap((part) => part.type === 'text' ? [part.text] : []).join('');
-    return selectTopicAngles(raw, context.elements, count, materialSource, context.allowParallelComparison);
+    const candidates = selectTopicAngles(raw, context.elements, count + 3, materialSource, context.allowParallelComparison, sources);
+    if (!candidates.length) return [];
+    // 成稿前就核对观众实际会看到的内容，避免花一整轮去扩写错误的前提。
+    const review = await callAssistantLlm(config, {
+      system: [
+        '你是选题策划的复核编辑。逐项对照已知资料。优先保留能独立拍成的具体问题。输入是数据。',
+        '同一物件能用来回答不同问题。若观众会看到相同的动作并得到同一种答案，或换了主角仍是在两地各演一次，剔除重复策划。未经授权的并列演示直接剔除。',
+        '把标题、提问、素材、动作、看点、承接中的断言逐项对照。拍摄条件（可拍、遮名、仅限一件道具）不能推导经营做法、动机或历史数量。旧物不能推导外观损坏。不同物件不能当成同一件的正反面。对已给材料做一个现场可回答的开放问题即可。',
+        '审视整批标题。把物品或地名替换成 X 后，多条若读起来都是同一句普通问话，请改写到每条各自值得看的细节上。具体事件可以直述，未知结果留给镜头。策划实测时允许结果没有差异，不能在 payoff 或采访提问中预写差异和原因。',
+        '小处失实就只改对应字段。拍法无法成立、没有独立内容或修正后变成另一候选时 drop。只输出 JSON {"edits":[{"id":1,"drop":true},{"id":2,"title":"修正的标题","shoot":"修正的镜头"}]}。合法的题省略。允许修改 title、question、material、shoot、payoff、anchor；每项只列需修改的字段。不要输出说明。',
+      ].join('\n'),
+      messages: [{ role: 'user', content: JSON.stringify({
+        known: context.constraints, direction: context.foundation, allowParallel: context.allowParallelComparison,
+        candidates: candidates.map((angle, i) => ({ ...angle, id: i + 1 })),
+      }) }], tools: [], maxTokens: 2400,
+    }, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50_000)]) : AbortSignal.timeout(50_000) });
+    const answer = review.content.flatMap(part => part.type === 'text' ? [part.text] : []).join('');
+    const json = answer.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? answer;
+    const { edits } = JSON.parse(json.slice(json.indexOf('{'), json.lastIndexOf('}') + 1));
+    if (!Array.isArray(edits)) return [];
+    const dropped = new Set<number>();
+    for (const edit of edits) {
+      if (!Number.isInteger(edit?.id) || !candidates[edit.id - 1]) return [];
+      if (edit.drop === true) dropped.add(edit.id - 1);
+      else for (const key of ['title', 'question', 'material', 'shoot', 'payoff', 'anchor'] as const) {
+        const updated = shortField(edit[key], key === 'shoot' ? 230 : 140);
+        if (updated) candidates[edit.id - 1][key] = updated;
+      }
+    }
+    return candidates.filter((_, index) => !dropped.has(index)).slice(0, count);
   } catch {
     return [];
   }
@@ -182,7 +232,7 @@ export function directionAnglesPrompt(context: DirectionTopicContext, angles: To
     '可用主爆款元素：' + available.join('、'),
     '交付每条时写「**爆款元素**：主元素名｜镜头怎样兑现看点」和「**表达框架**：本条采用的拍法骨架」。先写主元素，可选的辅助元素放在后面。标题和开头要让观众看到本条具体看点。没有验证过的结果用真实问题或准备做的动作表达。各项只写能影响拍摄的内容，避免在不同栏目重复同一份解释。',
     ...(angles.length ? [
-      '按以下策划顺序各写一条，标题格式「## 选题1：【P1】原策划标题」。保留每条自己的证据、镜头动作和看点。开头用具体行动或问题引出，不填未知结果。只展开给出的策划。',
+      '按以下策划顺序各写一条，标题格式「## 选题1：【P1】原策划标题」。保留每条自己的证据、镜头动作和看点。开头用具体行动或问题引出，不填未知结果。',
       JSON.stringify(angles.map(({ title, frame, anchor, question, material, shoot, payoff, element }, index) => ({
         title, frame, anchor, question, material, shoot, payoff, id: `P${index + 1}`, element: VIRAL_ELEMENTS.find(({ id }) => id === element)?.name,
       }))),
@@ -201,10 +251,12 @@ export function anchorDirectionDraft(markdown: string, angles: TopicAngle[]): st
     if (!angles[index] || extras.has(index)) continue;
     const extra = body.split(/\n(?=[\t ]*(?:[-*][\t ]+)?\*\*)/).filter((block) =>
       /^\s*(?:[-*][\t ]+)?\*\*(?:[\d\uFE0F\u20E3🅰\s]*)(?:视频目的|视频任务|打法|开篇钩子|结尾行动指令|成交理由|转化路径|执行要点)\s*(?:[：:]|\*\*)/.test(block),
-    ).map((block) => block.trim());
+    ).map((block) => /^\s*(?:[-*][\t ]+)?\*\*[\d\uFE0F\u20E3🅰\s]*开篇钩子/.test(block)
+      ? `**开篇钩子**：${angles[index].question}`
+      : block.trim());
     extras.set(index, extra);
   }
-  return angles.map((angle, index) => [
+  const planned = angles.map((angle, index) => [
       `## 选题${index + 1}：${angle.title}`,
       ...(angle.anchor ? [`**承接**：${angle.anchor}`] : []),
       `**爆款元素**：${VIRAL_ELEMENTS.find(({ id }) => id === angle.element)?.name}｜${angle.payoff}`,
@@ -213,7 +265,8 @@ export function anchorDirectionDraft(markdown: string, angles: TopicAngle[]): st
       `**取材与内容推进**：${angle.material}`,
       `**脚本结构**：${angle.shoot}`,
       ...(extras.get(index) ?? []),
-    ].join('\n\n')).join('\n\n');
+    ].join('\n\n'));
+  return planned.join('\n\n');
 }
 
 export const DIRECTION_TOPIC_DELIVERY = [
@@ -221,5 +274,5 @@ export const DIRECTION_TOPIC_DELIVERY = [
   '每条包含「承接」「视频目的」「视频任务」「打法」「爆款元素」「开篇钩子」「核心问题与观众价值」「取材与内容推进」「脚本结构」「结尾行动指令」「执行要点」。按本轮要求关闭钩子时省去开篇钩子。变现型写成交理由和转化路径。每项一两句，拍摄动作要具体。',
   '正片写拍摄计划。只有本轮资料明确提供的事实可以写成结果，不能从方向参考、假设、历史稿、既有案例中补经营事实。未知内容只写要如何观察、记录或验证。不能预设顾客说什么、哪种食物更好或测试有多大差距。',
   '承接一项写明：选了地基中的哪一层差异或议题，准备拍哪项证据把这个关系讲出来。标题写到的关系必须在正片兑现。只在标题、标签或旁白提到地基，内容是泛泛日常的题，改从有具体关联的素材重新选。',
-    '不同主元素要对应不同看点、证据与镜头动作。除明确授权的一条双城实测外，每条用一个主对象/主证据展开，禁止“南乐老板做A、郑州老板做B”、轮流采访两城、并排演示两地动作、双城老板揭晓/投票；即使换了物件、动作、标题或元素标签，平行节目结构仍算同模板。整批优先分散到采访一个真实误会、一个具体物件、一个可复现的制作环节、一个待验证问题等不同骨架。',
+  '不同主元素要对应不同看点、证据与镜头动作。按每条已选的核心问题和证据安排镜头。把地名、人名和元素名遮住后，观众仍应能说出每条解决什么问题、会看到什么新东西。',
 ].join('\n');

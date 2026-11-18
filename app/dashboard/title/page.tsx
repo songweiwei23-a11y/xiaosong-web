@@ -1,4 +1,6 @@
 "use client";
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -99,6 +101,7 @@ export default function TitlePage() {
   /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
   const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
+  const generation = useGenerationTask('标题封面', (text, previous) => setResult(current => !current || current === previous ? text : current), (creatorContext.profile?.id as string | undefined) || null);
 
   // 专业版状态
   const [titleType, setTitleType] = useState("auto");
@@ -275,6 +278,8 @@ export default function TitlePage() {
       // 统一走 readDifyStream：原手写解析未开 stream 解码模式，中文被拆在
       // 数据块边界时会变成乱码；且缺少行缓冲，半行 JSON 会被整行丢弃。
       fullResult += await readDifyStream(response, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
         onDraftDone: () => { if (isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); } },
       });
@@ -298,6 +303,7 @@ export default function TitlePage() {
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
           <PageHeader title="标题封面" subtitle="生成高点击率的爆款标题，一次给出多个方案做对比" />
           {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadTitleHistory()}>重试读取</button></p>}
 

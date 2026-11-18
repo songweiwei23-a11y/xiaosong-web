@@ -4,6 +4,12 @@ vi.mock('@/lib/foundation-gate', async (importOriginal) => ({
   foundationGate: async () => null,
 }));
 vi.mock('@/lib/creation-quota', () => ({ reserveCreation: vi.fn(async () => ({ ok: true, reservation: { userId: 'test-user', feature: 'script', requestId: 'test-request-id-12345' } })), releaseCreation: vi.fn(async () => {}), recordCreationCompletion: vi.fn(async () => {}), completionUsage: vi.fn(() => ({})), creationRequestFingerprint: (body: unknown) => JSON.stringify(body) }));
+vi.mock('@/lib/generation-task', async (original) => ({
+  ...(await original<typeof import('@/lib/generation-task')>()),
+  ensureGenerationTask: vi.fn(async () => null),
+  updateGenerationTask: vi.fn(async () => false),
+  saveGenerationVersion: vi.fn(async () => null),
+}));
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
@@ -49,6 +55,7 @@ import { loadLatestTopicCompletion, loadPriorTopicSections } from '@/lib/topic-l
 import { readDifyStream, recoverDifyAnswer, DifyStreamError } from '@/lib/sse-stream';
 import { isContextOverflowError, difyEventError, friendlyDifyError } from '@/lib/dify-errors';
 import { readCode } from './helpers/source';
+import { ensureGenerationTask, saveGenerationVersion } from '@/lib/generation-task';
 
 /** 线上那条报错的原文开头 */
 const OVERFLOW = `Run failed: req_id: 4c543e8c61 PluginInvokeError: {"args":{"description":"[models] Error: API request failed with status code 400: {\\"error\\":{\\"message\\":\\"Input exceeds the model's context window. Please reduce`;
@@ -90,10 +97,11 @@ function mockDify(...responses: Response[]) {
   );
 }
 
-const call = (taskType: string) =>
+const call = (taskType: string, headers?: HeadersInit) =>
   POST(
     new Request('http://x/api/dify/stream', {
       method: 'POST',
+      headers,
       body: JSON.stringify({ taskType, query: '写点东西', profileId: 'p1' }),
     }) as any
   );
@@ -102,6 +110,33 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('流式接口：报错要说出来，不能一声不吭', () => {
+  it('恢复协议先发任务，模型完成后再发草稿保存状态', async () => {
+    vi.mocked(ensureGenerationTask).mockResolvedValueOnce({
+      id: 'saved-task', existing: false, status: 'accepted', stage: 'accepted',
+    });
+    vi.mocked(saveGenerationVersion).mockResolvedValueOnce(1).mockResolvedValueOnce(2);
+    let resume!: (response: Response) => void;
+    const upstream = new Promise<Response>(resolve => { resume = resolve; });
+    vi.stubGlobal('fetch', vi.fn(async () => upstream));
+    const started = performance.now();
+    const response = await call('成交理由', { 'x-generation-resume': '1' });
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    expect(decoder.decode((await reader.read()).value)).toContain('"event":"task_accepted"');
+    expect(performance.now() - started).toBeLessThan(3_000);
+    const done = performance.now();
+    resume(difyStream([msg('本轮真实材料'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]));
+    let output = '';
+    while (!output.includes('"event":"draft_saved"')) {
+      const next = await reader.read();
+      if (next.done) break;
+      output += decoder.decode(next.value);
+    }
+    expect(output).toContain('"event":"draft_saved"');
+    expect(performance.now() - done).toBeLessThan(2_000);
+    while (!(await reader.read()).done) { /* finish the simulated request */ }
+  });
+
   it('预占失败时没有付费模型请求', async () => {
     vi.mocked(reserveCreation).mockResolvedValueOnce({ ok: false, response: Response.json({ error: 'busy' }, { status: 503 }) });
     mockDify();
@@ -186,10 +221,11 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     expect(getDifyConversationId).toHaveBeenCalledWith('u1', 'p1', 'creation');
   });
 
-  it('方向地基选题不续接旧会话，确保旧模板不能从 Dify 历史带回', async () => {
+  it('方向选题续接原会话，并按本轮地基约束审核流式草稿', async () => {
+    vi.stubEnv('ASSISTANT_API_KEY', '');
     vi.mocked(getDifyConversationId).mockResolvedValueOnce('old-direction-window');
     const raw = '## 选题1：翻旧招牌背面的街名\n**爆款元素**：怀旧｜翻转旧招牌逐字拍清街名\n\n## 选题2：预约本怎么记\n**爆款元素**：人群｜手部跟拍店主填写一笔预约\n\n## 选题3：旧照片里留下什么\n**爆款元素**：奇葩｜放大开店照片逐处看门口细节';
-    mockDify(difyStream([msg(raw), ev({ event: 'message_end', conversation_id: 'fresh-direction-window', message_id: 'm1' })]));
+    mockDify(difyStream([msg(raw), ev({ event: 'message_end', conversation_id: 'old-direction-window', message_id: 'm1' })]));
     const response = await POST(new Request('http://x/api/dify/stream', {
       method: 'POST',
       body: JSON.stringify({
@@ -201,13 +237,15 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
         },
       }),
     }) as any);
-    await expect(readDifyStream(response)).rejects.toThrow('这次没有生成可交付的新选题');
-    // 本测试没有接入语义规划模型，故到交付环节会明确拒绝空策划；
-    // 这里验的是旧页面漏传 sourceFrom 时仍进入方向专用提示词与会话隔离。
-    expect(difyCalls[0].body.conversation_id).toBeUndefined();
+    const onChunk = vi.fn();
+    await expect(readDifyStream(response, { onChunk })).rejects.toThrow('选题核对暂未完成，已保留可用草稿');
+    expect(onChunk).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('翻旧招牌背面的街名'));
+    // The fallback leaves the draft visible and never bills it as an audited final delivery.
+    expect(difyCalls[0].body.conversation_id).toBe('old-direction-window');
     expect(difyCalls[0].body.query).toContain('未授权，禁止任何两地老板分别做事');
     expect(difyCalls[0].body.query).toContain('不同主元素要对应不同看点、证据与镜头动作');
-    expect(saveDifyConversationId).toHaveBeenCalledWith('u1', 'c1', 'p1', '选题策划', 'creation');
+    expect(recordCreationCompletion).not.toHaveBeenCalled();
+    expect(incrementUsageServer).not.toHaveBeenCalled();
   });
 
   it('选题先流出草稿，历史撞题没有进入最终正文和完成记录', async () => {
@@ -353,6 +391,32 @@ function pageStream(parts: string[], { breakAfter = false } = {}) {
 }
 
 describe('页面读流：和服务器之间断了，也能取回', () => {
+  it('后台已完成时按任务取最终稿，并保留选题批次元数据', async () => {
+    const taskId = 'a-task';
+    const topicBatch = { requested: 3, count: 2, checked: true, removed: 1, replaced: 0 };
+    const getTask = vi.fn(async () => Response.json({ id: taskId, stage: 'final_save', status: 'completed',
+      latest: { kind: 'final', version: 2, result: '核对后的正文', metadata: { topicBatch } } }));
+    vi.stubGlobal('fetch', getTask);
+    const onTopicBatch = vi.fn();
+    const onFinalSaved = vi.fn();
+    const stream = difyStream([ev({ event: 'task_accepted', taskId }), msg('草稿'), ev({ event: 'processing_detached', taskId })]);
+    await expect(readDifyStream(stream, { onTopicBatch, onFinalSaved })).resolves.toBe('核对后的正文');
+    expect(getTask).toHaveBeenCalledWith('/api/generation-tasks/a-task', expect.objectContaining({ cache: 'no-store' }));
+    expect(onTopicBatch).toHaveBeenCalledWith(topicBatch);
+    expect(onFinalSaved).toHaveBeenCalledWith(true);
+  });
+
+  it('后台失败时展示已存草稿，且不报完成', async () => {
+    const taskId = 'a-task';
+    const onChunk = vi.fn();
+    const onFinalSaved = vi.fn();
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ id: taskId, stage: 'post_processing', status: 'partial_saved',
+      latest: { kind: 'draft', version: 1, result: '已保存的草稿' }, error_message: '核对未完成' })));
+    const stream = difyStream([ev({ event: 'task_accepted', taskId }), ev({ event: 'processing_detached', taskId })]);
+    await expect(readDifyStream(stream, { onChunk, onFinalSaved })).rejects.toThrow('核对未完成');
+    expect(onChunk).toHaveBeenCalledWith('', '已保存的草稿');
+    expect(onFinalSaved).not.toHaveBeenCalled();
+  });
   it('心跳行跳过，正文照常拼', async () => {
     const got = await readDifyStream(pageStream([': ping\n\n', msg('甲'), ': ping\n\n', msg('乙'), ev({ event: 'message_end' })]));
     expect(got).toBe('甲乙');

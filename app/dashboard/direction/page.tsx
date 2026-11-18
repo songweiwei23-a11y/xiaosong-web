@@ -16,6 +16,7 @@ import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { useCreativeHistory } from "@/hooks/useCreativeHistory";
 import { useGenerationTask } from "@/hooks/useGenerationTask";
+import { GenerationTaskNotice } from "@/components/workspace/GenerationTaskNotice";
 import { useProfileRequestGuard } from "@/hooks/useProfileRequestGuard";
 import { checkQuota } from "@/lib/history";
 import { createHistoryId } from "@/lib/history-id";
@@ -110,7 +111,8 @@ export default function DirectionPage() {
   /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
   const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
-  const { task, taskError, acceptTask, updateTaskStage } = useGenerationTask((text) => setResult((current) => current || text), (profile?.id as string) || null);
+  const generation = useGenerationTask(DIRECTION_TASK_TYPE, (text, previous) => setResult(current => !current || current === previous ? text : current), ctxLoading ? undefined : (profile?.id as string) || null);
+  const { acceptTask, updateTaskStage } = generation;
   const restoredScope = useRef<string>();
   const incoming = useRef(false);
 
@@ -218,8 +220,7 @@ export default function DirectionPage() {
           <PageHeader title="创作方向" subtitle="告诉 AI 你拍视频是为了什么，它按你的档案把方向和思路铺开，再推荐一个最好的" />
 
           {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
-          {taskError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{taskError}</p>}
-          {task && <p role="status" className="mb-2 text-[12px] text-muted-foreground">生成任务：{task.stage === 'final_save' ? '最终稿已保存' : task.stage === 'draft_save' ? '草稿已保存' : '正在' + task.stage}</p>}
+          <GenerationTaskNotice state={generation} />
           {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
           <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
             {history.length === 0 && <p className="mb-2 text-[12px] text-muted-foreground">当前档案还没有记录，生成成功后会自动保存。</p>}

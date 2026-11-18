@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useGenerationTask } from '@/hooks/useGenerationTask'
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice'
 import { notify } from '@/components/ui/feedback'
 import { throwApiError, fetchGeneration } from '@/lib/api-error'
 import { readDifyStream } from '@/lib/sse-stream'
@@ -42,6 +44,18 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<'save' | 'regen' | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  const draftSectionKey = 'kaiwu:active-positioning-section:' + (profileId ?? '')
+  const generation = useGenerationTask('账号定位', (text, previous) => {
+    setDraft(current => !current || current === parsed[open || ''] || current === previous ? text : current)
+  }, profileId, open ? 'section:' + open : null)
+  useEffect(() => {
+    try {
+      const section = sessionStorage.getItem(draftSectionKey)
+      setOpen(SECTIONS.some(def => def.key === section) ? section : null)
+      setDraft('')
+      setNote('')
+    } catch { setOpen(null) }
+  }, [draftSectionKey])
 
   const present = SECTIONS.filter((s) => parsed[s.key]?.trim())
   if (present.length === 0) return null
@@ -53,16 +67,19 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
   }
 
   const save = async (body: string) => {
-    if (!open) return
+    if (!open) return false
     setBusy('save')
     try {
       const ok = await onSave(replaceSection(content, open, body))
       if (ok) {
         notify('已保存')
+        generation.forgetTask()
+        try { sessionStorage.removeItem(draftSectionKey) } catch { /* optional local backup */ }
         setOpen(null)
       } else {
         notify('保存失败，请重试')
       }
+      return ok
     } finally {
       setBusy(null)
     }
@@ -72,6 +89,7 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
     if (!open) return
     const def = SECTIONS.find((s) => s.key === open)!
     setBusy('regen')
+    try { sessionStorage.setItem(draftSectionKey, open) } catch { /* task can still be restored by opening the section */ }
     setElapsed(0)
     const timer = setInterval(() => setElapsed((n) => n + 1), 1000)
     try {
@@ -80,6 +98,7 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           taskType: '账号定位',
+          recoveryScope: 'section:' + open,
           profileId,
           query: buildSectionPrompt({
             sectionKey: open,
@@ -93,9 +112,12 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
       if (!res.ok) await throwApiError(res)
 
       // 边生成边显示在编辑框里，改完直接就能存
-      const full = await readDifyStream(res, { onChunk: (_p, all) => setDraft(all) })
-      if (full.trim()) {
-        await save(full.trim())
+      const full = await readDifyStream(res, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
+        onChunk: (_p, all) => setDraft(all),
+      })
+      if (full.trim() && await save(full.trim())) {
         notify(`「${def.label}」已重写，其余各节未改动`)
       }
     } catch (e: unknown) {
@@ -109,6 +131,7 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
 
   return (
     <div className="glass-panel mt-6 rounded-2xl p-4 sm:p-6">
+      <GenerationTaskNotice state={generation} />
       <div className="mb-4">
         <h2 className="text-[15px] font-semibold text-foreground">逐节调整</h2>
         <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
@@ -124,6 +147,8 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
             <div key={s.key} className="rounded-xl border border-border">
               <button
                 type="button"
+                aria-expanded={editing}
+                disabled={busy !== null}
                 onClick={() => (editing ? setOpen(null) : start(s.key))}
                 className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-foreground/[0.04]"
               >
@@ -139,6 +164,7 @@ export function SectionEditor({ content, profileId, profileSummary, userDirectio
               {editing && (
                 <div className="space-y-3 border-t border-border px-4 py-4">
                   <textarea
+                    aria-label={s.label + '正文'}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     rows={Math.min(18, Math.max(5, draft.split('\n').length + 1))}

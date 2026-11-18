@@ -269,7 +269,10 @@ describe('订单状态机', () => {
   });
 
   it('付款审核：先校验套餐再动订单；只抢占「审核中」的订单，重复点击/并发只开通一次', () => {
-    expect(review.indexOf("!(planId in SUBSCRIPTION_PLANS)")).toBeLessThan(review.indexOf(".from('payment_orders')\n      .update"));
+    const validation = review.indexOf("!(planId in SUBSCRIPTION_PLANS)");
+    const claim = review.search(/\.from\('payment_orders'\)\s*\.update/);
+    expect(validation).toBeGreaterThanOrEqual(0);
+    expect(claim).toBeGreaterThan(validation);
     expect(review).toMatch(/\.eq\('id', orderId\)\s*\.eq\('status', 'reviewing'\)\s*\.select\('id'\)/);
     expect(review).toMatch(/if \(!claimed\?\.length\)[\s\S]{0,200}status: 409/);
   });

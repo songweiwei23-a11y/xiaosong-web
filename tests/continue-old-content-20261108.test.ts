@@ -55,7 +55,7 @@ describe('保存历史：同一条再存时换成最终显示的版本', () => {
   it('服务端先存了润色前的：页面润色完再存同一条，正文更新成润色后的', async () => {
     const { db, updates } = fakeDb({ task_type: '创作方向', input_data: { profileId: 'p1' }, result: OLD });
     expect(await persistCreativeHistory(db, 'u1', input)).toBe(true);
-    expect(updates).toEqual([{ result: POLISHED }]);
+    expect(updates).toEqual([{ result: POLISHED, input_data: { _kaiwuStatus: 'completed', profileId: 'p1', profile_id: 'p1' } }]);
   });
 
   it('别的板块、别的档案的同编号记录：不动', async () => {

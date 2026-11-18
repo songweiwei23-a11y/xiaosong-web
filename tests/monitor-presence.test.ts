@@ -202,8 +202,8 @@ describe('接线：版本号从构建注入，页面和服务器用同一个值�
     expect(checker).toContain('window.location.reload()');
   });
   it('部署脚本的构建命令注入版本号（和 buildTag 同一个值）', () => {
-    const deploy = read('同步到服务器.ps1');
-    expect(deploy).toContain('NEXT_PUBLIC_APP_BUILD=$buildTag');
+    const deploy = read('scripts/deploy-kaiwu-release.sh');
+    expect(deploy).toContain('NEXT_PUBLIC_APP_BUILD=$tag');
   });
 
   it('接口请求的鉴权处会记在线；心跳接口回传服务器版本', () => {

@@ -128,7 +128,7 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 ### 方向1：[方向名，10 个字左右，说的是一类内容，不是一条选题]
 - **视频目的**：流量型 / 人设型 / 变现型 选一个
 - **内容类型**：${planRouteRule({ share: p.scriptsShare, picked: p.pickedRoutes })} 36 计按目的挑：${CONTENT_TYPE_PURPOSE_RULE}。四大脚本的结构名只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}
-- **内容方向**：一两句话说清这一类拍什么范围、可以从哪些不同问题和素材切入（不写具体哪一期、不写标题）
+- **内容方向**：一两句话说清一类值得调查的生意问题、涉及的人与可取材的范围。每条的采访安排、镜头顺序、标题和结论留到选题阶段。
 - **本月条数**：N 条
 - **为什么**：一两句，和这个号的档案、数据或这个月的节点挂上
 - **节奏**：放在第几周

@@ -1,4 +1,6 @@
 "use client";
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import type { HandoffPayload } from '@/lib/handoff';
 import { useAutoCreationSetup } from '@/hooks/useAutoCreationSetup';
 import { CreationSetupNotice } from '@/components/workspace/CreationSetupNotice';
@@ -90,7 +92,10 @@ export default function StoryboardPage() {
   /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
   const [finishing, setFinishing] = useState("");
   const [isRecommending, setIsRecommending] = useState(false);
+  const [restoredRecommendation, setRestoredRecommendation] = useState('');
+  const recommendation = useGenerationTask('AI推荐', text => setRestoredRecommendation(text), contextLoading ? undefined : (creatorContext.profile?.id as string | undefined) || null);
   const [result, setResult] = useState("");
+  const generation = useGenerationTask('分镜脚本', (text, previous) => setResult(current => !current || current === previous ? text : current), (creatorContext.profile?.id as string | undefined) || null);
   // 所属作品：由脚本页带过来，保存时挂到同一条内容下
   const [workId, setWorkId] = useState<string | null>(null);
   const [originContent, setOriginContent] = useState('');
@@ -160,12 +165,14 @@ export default function StoryboardPage() {
     }
 
     setIsRecommending(true);
+    setRestoredRecommendation('');
     try {
       const response = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskType: "AI推荐",
+          profileId: creatorContext.profile?.id || null,
           query: `根据以下脚本内容,推荐最佳配置:
           
 脚本: ${scriptContent}
@@ -189,8 +196,20 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
       // 必须先从 SSE 中解析出 answer 文本。若直接累加原始字节，
       // 下面提取 JSON 的正则会命中 SSE 自身的 {"answer":...}，
       // 而不是模型返回的推荐配置。
-      const accumulated = await readDifyStream(response);
+      const accumulated = await readDifyStream(response, {
+        onTaskAccepted: recommendation.acceptTask,
+        onTaskStage: recommendation.updateTaskStage,
+      });
+      applyRecommendation(accumulated);
+      recommendation.forgetTask();
+    } catch (error: any) {
+      notify(error.message || "推荐失败");
+    } finally {
+      setIsRecommending(false);
+    }
+  };
 
+  const applyRecommendation = (accumulated: string) => {
       // 解析JSON
       try {
         const jsonMatch = accumulated.match(/\{[\s\S]*\}/);
@@ -223,11 +242,6 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
       } catch {
         notify("AI推荐解析失败");
       }
-    } catch (error: any) {
-      notify(error.message || "推荐失败");
-    } finally {
-      setIsRecommending(false);
-    }
   };
 
   const handleGenerate = async () => {
@@ -298,6 +312,8 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
 
       // 响应是 SSE（data: {"answer":"..."}），需解析后取 answer
       fullResult = await readDifyStream(response, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
         onDraftDone: () => { if (isCurrent()) { setIsGenerating(false); setFinishing(FINISHING_NOTE); } },
       });
@@ -328,6 +344,15 @@ ${CONTENT_TYPES.map((t) => `- ${t.value}：${t.label}，${t.desc}`).join("\n")}
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
+          <GenerationTaskNotice state={recommendation} />
+          {restoredRecommendation && recommendation.task?.status === 'completed' && (
+            <button type="button" className="text-sm text-primary underline" onClick={() => {
+              applyRecommendation(restoredRecommendation);
+              setRestoredRecommendation('');
+              recommendation.forgetTask();
+            }}>应用已保存的 AI 推荐参数</button>
+          )}
           <PageHeader
             title="分镜脚本"
             subtitle="把口播脚本拆成可执行的分镜：景别、运镜、画面与时长"

@@ -24,7 +24,7 @@ import {
 } from '@/lib/topic-library'
 import { loadLatestTopicCompletion, loadPriorTopicSections, saveFollowUpTopics } from '@/lib/topic-library-server'
 import { finalizeTopicBatch, topicCountInRequest, topicRefillPrompt } from '@/lib/topic-delivery'
-import { DIRECTION_TOPIC_DELIVERY, anchorDirectionDraft, directionAnglesPrompt, planDirectionTopics } from '@/lib/direction-topic-plan'
+import { DIRECTION_TOPIC_DELIVERY, anchorDirectionDraft, cleanTopicReference, directionAnglesPrompt, explicitParallelComparison, planDirectionTopics } from '@/lib/direction-topic-plan'
 import { loadDoneList } from '@/lib/work-insight-load'
 import { askDify } from '@/lib/dify-task'
 import { combinedReviewUsage } from '@/lib/review-verification'
@@ -51,7 +51,9 @@ import { localNewsSearches } from '@/lib/local-news-sources'
 import { newsPlace } from '@/lib/search-quality'
 import { searchProfileHint } from '@/lib/search-profile-hint'
 import { CREATIVE_WINDOW_RULES, loadCreativeWindowHistory, loadLatestCreativeResult } from '@/lib/creative-window'
-import { ensureGenerationTask, saveGenerationVersion, updateGenerationTask } from '@/lib/generation-task'
+import { ensureGenerationTask, refreshGenerationHeartbeat, saveGenerationVersion, updateGenerationTask } from '@/lib/generation-task'
+import { streamAcceptedGeneration, UPSTREAM_GENERATION_TIMEOUT_MS } from '@/lib/generation-response'
+import { scopedGenerationTaskType } from '@/lib/generation-scope'
 
 /*
  * 自由对话与所有「追问」都走这个路由。
@@ -287,7 +289,7 @@ export async function POST(request: NextRequest) {
           + `\n\n【本轮用户原话与输出约束，请逐项回应】\n${question}`
         : fullQuery;
       // 首次追问以页面所见的最终稿为准。正常续聊复用会话，换窗口时重新带上成稿。
-      if (typeof initialContent === 'string' && initialContent &&
+      if (!(askingNewTopics && previousTopic?.direction) && typeof initialContent === 'string' && initialContent &&
         (!difyPayload.conversation_id || (creativeWindow && (body.anchorCurrentResult === true || conversationId !== difyPayload.conversation_id)))) {
         const limit = creativeWindow ? 16000 : isolated ? 8000 : 1500;
         const recent = creativeWindow && typeof body.recentDialog === 'string'
@@ -309,6 +311,7 @@ export async function POST(request: NextRequest) {
       if (serverWeb && body.freeChat === true) difyPayload.inputs.search_query = '';
       const result = await fetch(`${DIFY_BASE_URL}/chat-messages`, {
         method: 'POST',
+        signal: AbortSignal.timeout(UPSTREAM_GENERATION_TIMEOUT_MS),
         headers: {
           'Authorization': `Bearer ${DIFY_API_KEY}`,
           'Content-Type': 'application/json',
@@ -330,17 +333,21 @@ export async function POST(request: NextRequest) {
       requestId: reservation.requestId,
       profileId,
       feature: 'freeChat',
-      taskType: askingNewTopics ? '选题策划追问' : '自由对话',
+      taskType: scopedGenerationTaskType(freeChatThread ? '自由对话' : askingNewTopics ? '选题策划追问' : '自由对话', body.recoveryScope),
       payload: { query, profileId, taskType: taskType || '自由对话', freeChat: freeChatThread, initialContent: typeof initialContent === 'string' ? initialContent.slice(0, 16_000) : '' },
     });
     if (generationTask?.existing && ['completed', 'partial_saved', 'recoverable_failed', 'permanent_failed', 'canceled'].includes(generationTask.status)) {
       await releaseCreation(reservation);
       return new Response(JSON.stringify({ error: '这次对话已处理，请恢复原来的任务结果', code: 'GENERATION_TASK_EXISTS', taskId: generationTask.id, status: generationTask.status }), { status: 409, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
     }
+    const early = generationTask && request.headers.get('x-generation-resume') === '1' ? generationTask : null;
+    const run = async () => {
     if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'queued', stage: 'queue' });
     const topicContext = previousTopic?.direction && {
       ...previousTopic.direction,
+      foundation: cleanTopicReference(previousTopic.direction.foundation),
       constraints: `本轮追问要求：${query.slice(0, 1200)}\n${previousTopic.direction.constraints}`.slice(0, 7000),
+      allowParallelComparison: explicitParallelComparison(query),
     };
     const topicRequestCount = askingNewTopics ? topicCountInRequest(query) : undefined;
     const angles = topicContext
@@ -371,6 +378,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       await releaseCreation(reservation)
       releaseWindow();
+      if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'recoverable_failed', stage: 'generate', errorCode: 'UPSTREAM_HTTP_' + response.status, errorMessage: '对话服务暂时不可用，可稍后重试。' });
       const errorText = await response.text()
       console.error('Dify Error:', errorText)
       return new Response(JSON.stringify({ error: '对话服务暂时不可用，请稍后重试' }), {
@@ -387,6 +395,7 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         let heartbeat: ReturnType<typeof setInterval> | undefined;
+        let draftSaved = false;
         try {
           let conversationIdFromResponse = ''
           let hasContent = false
@@ -402,8 +411,14 @@ export async function POST(request: NextRequest) {
           }
           const sendEvent = (data: Record<string, unknown>) => send(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
           const sendTask = (data: Record<string, unknown>) => sendEvent(generationTask ? { ...data, taskId: generationTask.id, requestId: reservation!.requestId } : data);
-          if (generationTask) sendTask({ event: 'task_accepted', status: 'generating', stage: 'generate' });
-          if (askingNewTopics) heartbeat = setInterval(() => send(encoder.encode(': ping\n\n')), 8_000);
+          if (early) sendTask({ event: 'stage', status: 'generating', stage: 'generate' });
+          else if (generationTask) sendTask({ event: 'task_accepted', status: 'generating', stage: 'generate' });
+          if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'generating', stage: 'generate', expectedStatus: 'queued' });
+          let beats = 0;
+          heartbeat = setInterval(() => {
+            send(encoder.encode(': ping\n\n'));
+            if (generationTask && ++beats % 5 === 0) void refreshGenerationHeartbeat(generationTask.id);
+          }, 8_000);
           let answerText = ''
           /*
            * 跨数据块的行缓冲。
@@ -425,6 +440,15 @@ export async function POST(request: NextRequest) {
               await webSession.finish();
               console.log('✅ 对话流结束，有内容:', hasContent)
               if (!receivedEnd && !upstreamFailed) send(encoder.encode(`data: ${JSON.stringify({ event: 'error', message: '回答没有完整结束，请保留已生成的内容后重试' })}\n\n`))
+              if (generationTask && hasContent && answerText.trim() && receivedEnd && !upstreamFailed) {
+                const version = await saveGenerationVersion({
+                  taskId: generationTask.id, kind: 'draft', stage: 'draft_save', result: answerText,
+                  metadata: { conversationId: conversationIdFromResponse || difyPayload.conversation_id },
+                });
+                draftSaved = version !== null;
+                if (draftSaved) await updateGenerationTask({ taskId: generationTask.id, status: 'draft_saved', stage: 'draft_save' });
+                sendTask({ event: 'draft_saved', version, saved: version !== null, stage: 'draft_save' });
+              }
               if (askingNewTopics && hasContent && receivedEnd && !upstreamFailed && guard.userId) {
                 sendEvent({ event: 'status', message: '正在逐条核对选题，撞题会自动补写' });
                 const done = profileId ? await loadDoneList(guard.userId, profileId) : [];
@@ -437,42 +461,31 @@ export async function POST(request: NextRequest) {
                     const freshAngles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements) : [];
                     if (topicContext && !freshAngles.length) return '';
                     const prompt = topicContext
-                      ? directionAnglesPrompt(topicContext, freshAngles, refill.count) + '\n\n' + DIRECTION_TOPIC_DELIVERY
+                      ? [directionAnglesPrompt(topicContext, freshAngles, refill.count), topicRefillPrompt(refill, true), DIRECTION_TOPIC_DELIVERY].join('\n\n')
                       : topicRefillPrompt(refill);
                     const reply = await askDify(prompt, guard.userId!, topicContext ? '' : searchQuery, {
-                      conversationId, signal: AbortSignal.timeout(120_000),
+                      conversationId, signal: AbortSignal.timeout(150_000),
                     });
                     if (!reply.ok) return '';
                     usageMetadata = combinedReviewUsage(usageMetadata, reply.completion.usage ?? {}, 'topic_refill_steps');
                     return anchorDirectionDraft(reply.text, freshAngles);
                   }, { directionSeed: !!topicContext, topicContext });
-                if (!result.count) {
-                  // 自动核对失败时保留刚生成的原文，不把用户内容清空。
-                  if (answerText.trim()) {
-                    sendEvent({ event: 'topic_batch', requested: result.requested, count: splitTopicSections(answerText).length, checked: false, removed: 0, replaced: 0 });
-                    sendEvent({ event: 'message_replace', answer: answerText });
-                    sendEvent({ event: 'message_end', conversation_id: conversationIdFromResponse });
-                  } else {
-                    upstreamFailed = true;
-                    sendEvent({ event: 'message_replace', answer: '', topic_draft: true });
-                    sendEvent({ event: 'error', message: !result.checked ? '选题核对暂未完成，请重试' : '这次没有生成可交付的新选题，请调整要求后再试' });
-                  }
-                } else {
-                  const { text, ...batch } = result;
+                const { text, ...batch } = result;
+                sendEvent({ event: 'topic_batch', ...batch });
+                if (text) sendEvent({ event: 'message_replace', answer: text, topic_draft: !result.checked });
+                if (result.count) {
                   answerText = text;
-                  sendEvent({ event: 'topic_batch', ...batch });
-                  sendEvent({ event: 'message_replace', answer: text });
-                  sendEvent({ event: 'message_end', conversation_id: conversationIdFromResponse });
+                }
+                if (!result.count || (topicContext && !result.checked)) {
+                  upstreamFailed = true;
+                  if (generationTask && result.count) {
+                    const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'processed', stage: 'topic_review', result: text });
+                    draftSaved ||= version !== null;
+                  }
+                  sendEvent({ event: 'error', message: !result.checked ? '选题核对暂未完成，请稍后重试' : '这次没有生成可交付的新选题，请调整要求后再试' });
                 }
               }
               if (hasContent && answerText.trim() && receivedEnd && !upstreamFailed && guard.userId) {
-                if (generationTask) {
-                  const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'draft', stage: 'draft_save', result: answerText });
-                  if (version !== null) {
-                    await updateGenerationTask({ taskId: generationTask.id, status: 'draft_saved', stage: 'draft_save' });
-                    sendTask({ event: 'draft_saved', version, saved: true, stage: 'draft_save' });
-                  }
-                }
                 generationCompleted = true
                 // key 必须与 api-guard 的 featureMap 完全一致（驼峰 freeChat）。
                 // 此处曾传 'chat'，映射不到列名，扣减被静默跳过，用了不计次。
@@ -492,7 +505,10 @@ export async function POST(request: NextRequest) {
                 }
 
                 if (generationTask) {
-                  const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'final', stage: 'final_save', result: answerText });
+                  const version = await saveGenerationVersion({
+                    taskId: generationTask.id, kind: 'final', stage: 'final_save', result: answerText,
+                    metadata: { conversationId: conversationIdFromResponse || difyPayload.conversation_id },
+                  });
                   if (version !== null) {
                     await updateGenerationTask({ taskId: generationTask.id, status: 'completed', stage: 'final_save', completed: true });
                     sendTask({ event: 'final_saved', version, saved: true, stage: 'final_save' });
@@ -517,11 +533,12 @@ export async function POST(request: NextRequest) {
                   )
                 }
                 if (claimsSharedWindow) await claimSharedWindow(guard.userId, profileId, sharedConversationId!)
+                sendEvent({ event: 'message_end', conversation_id: conversationIdFromResponse, message_id: upstreamMessageId });
               }
-              if (!generationCompleted && hasContent && answerText.trim() && generationTask) {
-                const message = '对话后续处理未完成，已保留当前正文，可稍后恢复或重试';
-                await updateGenerationTask({ taskId: generationTask.id, status: 'partial_saved', stage: 'post_processing', errorCode: 'CHAT_INCOMPLETE', errorMessage: message });
-                sendTask({ event: 'partial_saved', message });
+              if (!generationCompleted && generationTask) {
+                const message = draftSaved ? '对话后续处理未完成，已保存草稿，可稍后恢复' : '对话未完成，可重新提交';
+                await updateGenerationTask({ taskId: generationTask.id, status: draftSaved ? 'partial_saved' : 'recoverable_failed', stage: draftSaved ? 'post_processing' : 'generate', errorCode: 'CHAT_INCOMPLETE', errorMessage: message });
+                sendTask({ event: draftSaved ? 'partial_saved' : 'recoverable_failed', message });
               }
               if (!generationCompleted) await releaseCreation(reservation)
               if (!clientGone) { try { controller.close() } catch { clientGone = true } }
@@ -597,18 +614,29 @@ export async function POST(request: NextRequest) {
                 answerText = applyChatAnswer(answerText, data)
               }
 
-              if (!askingNewTopics) send(encoder.encode(`data: ${jsonStr}\n\n`))
-              else if (typeof data.answer === 'string' && !['message_end', 'workflow_finished'].includes(data.event)) {
-                sendEvent({ event: data.event, answer: data.answer, topic_draft: true });
+              if (!['message_end', 'workflow_finished'].includes(data.event)) {
+                if (!askingNewTopics) send(encoder.encode(`data: ${jsonStr}\n\n`));
+                else if (typeof data.answer === 'string') sendEvent({ event: data.event, answer: data.answer, topic_draft: true });
               }
             }
           }
         } catch (error) {
           if (!generationCompleted) await releaseCreation(reservation)
+          if (!generationCompleted && generationTask) {
+            await updateGenerationTask({
+              taskId: generationTask.id, status: draftSaved ? 'partial_saved' : 'recoverable_failed',
+              stage: draftSaved ? 'post_processing' : 'generate', errorCode: 'CHAT_STREAM_INTERRUPTED',
+              errorMessage: draftSaved ? '回答已保留为草稿，可稍后取回。' : '回答连接中断，请重试。',
+            });
+          }
           console.error('流处理错误:', error)
-          try { controller.error(error) } catch { /* client closed */ }
+          try {
+            controller.enqueue(encoder.encode('data: {"event":"error","message":"回答连接中断，页面上已有内容可以先保留"}\n\n'));
+            controller.close();
+          } catch { /* client closed */ }
         } finally {
           clearInterval(heartbeat);
+          reader?.releaseLock();
           releaseWindow();
         }
       },
@@ -624,6 +652,19 @@ export async function POST(request: NextRequest) {
         'X-Generation-Id': reservation!.requestId,
       },
     })
+    };
+    if (!early) return await run();
+    return streamAcceptedGeneration(early, reservation.requestId, async () => {
+      try {
+        return await run();
+      } catch (error) {
+        releaseWindow();
+        await releaseCreation(reservation);
+        await updateGenerationTask({ taskId: early.id, status: 'recoverable_failed', stage: 'generate', errorCode: 'CHAT_START_FAILED', errorMessage: '对话生成未能启动，请稍后重试。' });
+        console.error('[dify/chat] 生成启动失败', error instanceof Error ? error.name : 'unknown');
+        throw error;
+      }
+    }, () => { void refreshGenerationHeartbeat(early.id); });
   } catch (error) {
     releaseWindow();
     if (!generationCompleted) await releaseCreation(reservation)

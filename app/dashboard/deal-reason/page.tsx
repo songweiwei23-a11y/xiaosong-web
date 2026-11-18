@@ -1,5 +1,7 @@
 "use client";
 
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { Field } from "@/components/form/Field";
 import { CollapsibleSection } from "@/components/form/CollapsibleSection";
 import { INPUT_CLS, SELECT_CLS, TEXTAREA_CLS, GENERATE_BTN, SECONDARY_BTN } from "@/components/form/controls";
@@ -73,6 +75,7 @@ export default function DealReasonPage() {
   /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
   const [finishing, setFinishing] = useState("");
   const [analysisResult, setAnalysisResult] = useState("");
+  const generation = useGenerationTask(HISTORY_TASK_TYPE, (text, previous) => setAnalysisResult(current => !current || current === previous ? text : current), profileId || null);
   /** 勾选的理由，存中文名 */
   const [selected, setSelected] = useState<string[]>([]);
   const [showOthers, setShowOthers] = useState(false);
@@ -206,6 +209,8 @@ export default function DealReasonPage() {
       if (!response.ok) await throwApiError(response, "分析失败");
 
       const full = await readDifyStream(response, {
+        onTaskAccepted: generation.acceptTask,
+        onTaskStage: generation.updateTaskStage,
         onChunk: (_piece, text) => { if (isCurrent()) setAnalysisResult(text); },
         onDraftDone: () => { if (isCurrent()) { setIsAnalyzing(false); setFinishing(FINISHING_NOTE); } },
       });
@@ -298,6 +303,7 @@ export default function DealReasonPage() {
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
           <PageHeader
             title="成交理由"
             subtitle="AI 判断 17 个成交理由哪些适用；按账号档案分别保存，并同步进档案，各板块自动带上"

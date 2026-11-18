@@ -1,5 +1,7 @@
 "use client";
 
+import { useGenerationTask } from '@/hooks/useGenerationTask';
+import { GenerationTaskNotice } from '@/components/workspace/GenerationTaskNotice';
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Clapperboard, FileVideo, Loader2, ScanSearch, Shuffle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -110,6 +112,7 @@ export default function BreakdownPage() {
   const [stage, setStage] = useState<Stage | null>(null);
   const [progress, setProgress] = useState("");
   const [result, setResult] = useState("");
+  const generation = useGenerationTask(BREAKDOWN_TASK_TYPE, (text, previous) => setResult(current => !current || current === previous ? text : current), (profile?.id as string | undefined) || null);
   const [sheetUrls, setSheetUrls] = useState<string[]>([]);
   const [showSheets, setShowSheets] = useState(false);
   const [notice, setNotice] = useState("");
@@ -283,6 +286,8 @@ export default function BreakdownPage() {
     });
     if (!res.ok) await throwApiError(res, "拆解失败");
     const full = await readDifyStream(res, {
+      onTaskAccepted: generation.acceptTask,
+      onTaskStage: generation.updateTaskStage,
       onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
       onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
       onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
@@ -305,6 +310,8 @@ export default function BreakdownPage() {
     }) });
     if (!res.ok) await throwApiError(res, '拆解失败');
     const full = await readDifyStream(res, {
+      onTaskAccepted: generation.acceptTask,
+      onTaskStage: generation.updateTaskStage,
       onChunk: (_p, all) => { if (isCurrent()) setResult(all); },
       onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
     });
@@ -368,6 +375,7 @@ export default function BreakdownPage() {
     <WorkspaceLayout
       sidebar={
         <>
+          <GenerationTaskNotice state={generation} />
           <PageHeader title="拆解爆款" subtitle={textMode ? "拆解已有文案与创作方案，找出值得保留的表达和可优化的部分" : "传一条爆款视频，逐镜头拆出它为什么火、你能学走什么"} />
           <CreationSetupNotice settings={autoSetup.settings} preparing={autoSetup.preparing} />
           <div className="mb-4 flex gap-2">
