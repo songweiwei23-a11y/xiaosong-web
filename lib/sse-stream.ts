@@ -40,6 +40,10 @@ export interface ReadDifyStreamOptions {
   /** 生成完以后服务端还在处理（比如脚本打磨：体检、第几轮打磨）时调用，message 是给用户看的一句话 */
   onStatus?: (message: string) => void;
   onTopicBatch?: (batch: TopicBatchStatus) => void;
+  /** 服务端创建或恢复了可查询的生成任务。 */
+  onTaskAccepted?: (task: { taskId: string; requestId?: string; status: string; stage: string }) => void;
+  /** 任务进入新的执行阶段。 */
+  onTaskStage?: (task: { taskId: string; status: string; stage: string; message?: string }) => void;
   /** 服务端已经尝试保存正文草稿；saved=false 时正文仍然保留在页面 */
   onDraftSaved?: (saved: boolean) => void;
   /** 后处理失败但页面仍保留可复制的草稿 */
@@ -160,6 +164,14 @@ export async function readDifyStream(
           ended = true;
           continue;
         }
+        if (data.event === 'task_accepted' && typeof data.taskId === 'string') {
+          options.onTaskAccepted?.({ taskId: data.taskId, requestId: typeof data.requestId === 'string' ? data.requestId : undefined, status: String(data.status || 'accepted'), stage: String(data.stage || 'accepted') });
+          continue;
+        }
+        if (data.event === 'stage' && typeof data.taskId === 'string') {
+          options.onTaskStage?.({ taskId: data.taskId, status: String(data.status || 'post_processing'), stage: String(data.stage || 'post_processing'), ...(typeof data.message === 'string' ? { message: data.message } : {}) });
+          continue;
+        }
         if (data.event === 'draft_saved') {
           options.onDraftSaved?.(data.saved === true);
           continue;
@@ -168,7 +180,7 @@ export async function readDifyStream(
           options.onPartialSaved?.(typeof data.message === 'string' ? data.message : '后续核对暂未完成，当前草稿已保留');
           continue;
         }
-        if (data.event === 'history_saved') {
+        if (data.event === 'history_saved' || data.event === 'final_saved') {
           options.onFinalSaved?.(data.saved === true);
           continue;
         }

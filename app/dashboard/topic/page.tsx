@@ -55,10 +55,12 @@ import { appendTranscript } from '@/lib/voice-input';
 import { ALL_DEAL_REASONS } from './constants';
 import type { Profile, Positioning } from './types';
 import { useGenerationPage } from '@/hooks/useGenerationPage';
+import { useGenerationTask } from '@/hooks/useGenerationTask';
 import { useRestoreLastResult } from '@/hooks/useRestoreLastResult';
 import { postSafely } from '@/lib/safe-post';
 import { buildTopicBoardQuery, topicCreationSettings, topicSettingsFromDirection } from '@/lib/boards/topic-query';
 import { completeBatch } from '@/lib/topic-batch';
+import { createHistoryId } from '@/lib/history-id';
 
 export default function TopicPage() {
   const beginProfileRequest = useProfileRequestGuard();
@@ -200,6 +202,7 @@ export default function TopicPage() {
   /** 选题已写完、还在润色标题和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
   const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
+  const { task, taskError, acceptTask, updateTaskStage } = useGenerationTask((text) => setResult((current) => current || text), selectedProfileId || null);
   // 打法认不出结构的选题：带去脚本页会要手选，这里先明示（2026-10-31）
   const unreadTopics = useMemo(
     () => parseTopicOptions(result).map((title) => ({ title, reading: readTopicContract(result, title) })).filter((x) => !x.reading.node),
@@ -535,6 +538,7 @@ export default function TopicPage() {
       // 所以直接拆掉——该过滤的在源头过滤，不该拿整条提示词去冒险。
 
       let batch: TopicBatchStatus | undefined;
+      const requestId = createHistoryId();
       const generateOnce = async () => {
         const response = await fetchGeneration("/api/dify/stream", {
           method: "POST",
@@ -543,6 +547,7 @@ export default function TopicPage() {
             // 见 script 页同处说明：taskType 决定检索提示词、会话隔离与用量归属。
             // 后端检测到已有 query 时会沿用这里拼好的完整提示词，不再自行拼装。
             taskType: "选题策划",
+            requestId,
             creationSettings: currentSettings,
             // 记忆按档案隔离，避免代运营时多个账号的上下文互相串台。
             profileId: selectedProfileId || null,
@@ -559,6 +564,9 @@ export default function TopicPage() {
         return readDifyStream(response, {
           onChunk: (_piece, full) => { if (isCurrent()) setResult(full); },
           onStatus: (message) => { if (isCurrent()) setFinishing(message); },
+          onTaskAccepted: acceptTask,
+          onTaskStage: (next) => { updateTaskStage(next); if (isCurrent() && next.message) setFinishing(next.message); },
+          onPartialSaved: (message) => { if (isCurrent()) setFinishing(message); },
           onTopicBatch: (status) => { batch = status; },
         });
       };
@@ -613,6 +621,8 @@ export default function TopicPage() {
       sidebar={
         <>
           <PageHeader title="选题策划" subtitle="结合账号定位与爆款元素，一次给出多条可直接拍的选题" />
+          {taskError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{taskError}</p>}
+          {task && <p role="status" className="mb-2 text-[12px] text-muted-foreground">生成任务：{task.stage === 'final_save' ? '最终稿已保存' : task.stage === 'draft_save' ? '草稿已保存' : '正在' + task.stage}</p>}
           {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
           {sourceReference && <CollapsibleSection title={`来自${sourceFrom}的参考内容`} defaultOpen>
             <textarea aria-label="创作参考内容" value={sourceReference} onChange={e => setSourceReference(e.target.value)} rows={5} className={TEXTAREA_CLS} />

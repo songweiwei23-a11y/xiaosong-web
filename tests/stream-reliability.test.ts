@@ -500,7 +500,7 @@ describe('需要校对的任务也边生成边显示', () => {
     expect(evs.findIndex((e) => e.event === 'message_replace')).toBeLessThan(evs.findIndex((e) => e.event === 'message_end'));
   });
 
-  it('审稿优化：校对没通过，先清掉未核对的草稿再报错', async () => {
+  it('审稿优化：校对没通过，保留可复制草稿并标记后处理未完成', async () => {
     mockDify(
       difyStream([msg('未核对的审稿草稿'), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]),
       new Response('boom', { status: 500 })
@@ -510,9 +510,10 @@ describe('需要校对的任务也边生成边显示', () => {
       body: JSON.stringify({ taskType: '审稿优化', query: '请审稿', profileId: 'p1', draftContent: '原稿内容' }),
     });
     const evs = await sseEvents(await POST(req as any));
-    expect(evs.filter((e) => e.event === 'message_replace').map((e) => e.answer)).toEqual(['']);
+    expect(evs.some((e) => e.event === 'message_replace' && e.answer === '')).toBe(false);
+    expect(evs.some((e) => e.event === 'partial_saved')).toBe(true);
     expect(evs.some((e) => e.event === 'error')).toBe(true);
-    expect(evs.findIndex((e) => e.event === 'message_replace')).toBeLessThan(evs.findIndex((e) => e.event === 'error'));
+    expect(evs.findIndex((e) => e.event === 'partial_saved')).toBeLessThan(evs.findIndex((e) => e.event === 'error'));
   });
 });
 

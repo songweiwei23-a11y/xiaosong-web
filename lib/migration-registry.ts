@@ -372,6 +372,11 @@ export const MIGRATION_REGISTRY: MigrationEntry[] = [
     columns: [{"table":"invitation_codes","column":"agent_id"}],
   },
   {
+    file: "20261118_generation_tasks.sql",
+    tables: ["generation_result_versions","generation_tasks"],
+    columns: [],
+  },
+  {
     file: "admin_logs.sql",
     tables: ["admin_logs"],
     columns: [],

@@ -17,6 +17,7 @@ import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
 import { useCreatorContext } from "@/hooks/useCreatorContext";
 import { useCreativeHistory } from "@/hooks/useCreativeHistory";
+import { useGenerationTask } from "@/hooks/useGenerationTask";
 import { useProfileRequestGuard } from "@/hooks/useProfileRequestGuard";
 import { checkQuota } from "@/lib/history";
 import { createHistoryId } from "@/lib/history-id";
@@ -81,6 +82,7 @@ export default function ContentPlanPage() {
   /** 正文已写完、还在核对润色和保存（2026-11-03 产品方选 A：按钮不转，结果下面一行小字） */
   const [finishing, setFinishing] = useState("");
   const [result, setResult] = useState("");
+  const { task, taskError, acceptTask, updateTaskStage } = useGenerationTask((text) => setResult((current) => current || text), (profile?.id as string) || null);
   const restoredScope = useRef<string>();
 
   // 系统里录过的上个月已发布作品：有就帮他勾上对应的区间（他可以改）
@@ -148,6 +150,7 @@ export default function ContentPlanPage() {
     const historyInput = { lastMonth, recordedLastMonth: recorded, count, focus, events, notes, mixOverride, month: monthLabel(), profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: resolvedMix.mix, scriptsShare };
     try {
       const historyId = createHistoryId();
+      const requestId = createHistoryId();
       const query = buildContentPlanPrompt({
         lastMonth, recordedLastMonth: recorded, count, focus, events, notes, resolved: resolvedMix, scriptsShare: routeManual ? 0 : scriptsShare, pickedRoutes: routeManual ? pickedRoutes : [],
         profileSummary: profile ? buildProfileSummary(profile) : undefined,
@@ -160,13 +163,16 @@ export default function ContentPlanPage() {
       const res = await fetchGeneration("/api/dify/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskType: CONTENT_PLAN_TASK_TYPE, query, profileId: profile ? (profile.id as string) : null, historyId, historyInput, historyOwnerId, creationSettings: userIntent ? { userIntent, notes } : {} }),
+        body: JSON.stringify({ requestId, taskType: CONTENT_PLAN_TASK_TYPE, query, profileId: profile ? (profile.id as string) : null, historyId, historyInput, historyOwnerId, creationSettings: userIntent ? { userIntent, notes } : {} }),
       });
       if (!res.ok) await throwApiError(res, "生成失败");
       const full = await readDifyStream(res, {
         onChunk: (_p, text) => { if (isCurrent()) setResult(text); },
         onRecovering: () => notify("网络断了一下，AI 那边还在写，写完会自动取回，请别关页面"),
         onDraftDone: () => { if (isCurrent()) { setRunning(false); setFinishing(FINISHING_NOTE); } },
+        onTaskAccepted: acceptTask,
+        onTaskStage: (next) => { updateTaskStage(next); if (isCurrent() && next.message) setFinishing(next.message); },
+        onPartialSaved: (message) => { if (isCurrent()) setFinishing(message); },
       });
       if (full.trim()) {
         await saveCreativeHistory({ id: historyId, taskType: CONTENT_PLAN_TASK_TYPE, profileId: (profile?.id as string) || null, ownerId: historyOwnerId, inputData: historyInput, result: full });
@@ -188,6 +194,8 @@ export default function ContentPlanPage() {
           <PageHeader title="当月内容规划" subtitle="定这个月发几条、怎么配比、分哪几个方向；勾选方向，接着去出方向思路、选题或脚本" />
 
           {historyError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{historyError} <button type="button" className="underline" onClick={() => void loadHistory()}>重试读取</button></p>}
+          {taskError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{taskError}</p>}
+          {task && <p role="status" className="mb-2 text-[12px] text-muted-foreground">生成任务：{task.stage === 'final_save' ? '最终稿已保存' : task.stage === 'draft_save' ? '草稿已保存' : '正在' + task.stage}</p>}
           {saveError && <p role="alert" className="mb-2 text-[12px] text-amber-600">{saveError} <button type="button" className="underline" onClick={() => void retrySave()}>重试保存</button></p>}
           <CollapsibleSection title={`历史记录（${history.length}）`} defaultOpen={false}>
             {history.length === 0 && <p className="mb-2 text-[12px] text-muted-foreground">当前档案还没有记录，生成成功后会自动保存。</p>}

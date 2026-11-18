@@ -65,6 +65,7 @@ import { cleanRewriteOutput } from '@/lib/canvas';
 import { DETAIL_CHECK_TASKS, buildDetailCheckPrompt, parseDetailCheck } from '@/lib/detail-check';
 import { SPEAKER_CHECK_TASKS, needsSpeakerCheck, buildSpeakerCheckPrompt, parseSpeakerCheck, buildSpeakerFixPrompt } from '@/lib/speaker-check';
 import { boundedResultIssues, boundedRepairPrompt, pendingInterview } from '@/lib/bounded-result-check';
+import { ensureGenerationTask, saveGenerationVersion, updateGenerationTask, type GenerationTask } from '@/lib/generation-task';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -338,6 +339,31 @@ export async function POST(req: NextRequest) {
     const reserved = await reserveCreation(guard.userId!, getFeatureFromTaskType(body.taskType), req, body);
     if (!reserved.ok) return reserved.response;
     reservation = reserved.reservation;
+    // 生成任务是恢复与版本的事实来源。迁移尚未执行时静默退回旧链路，不能阻断用户生成。
+    const generationTask = await ensureGenerationTask({
+      userId: guard.userId!,
+      requestId: reservation.requestId,
+      profileId,
+      feature: getFeatureFromTaskType(body.taskType),
+      taskType: body.taskType,
+      payload: {
+        taskType: body.taskType,
+        profileId,
+        historyId: durableHistory ? body.historyId : null,
+        historyInput: durableHistory && body.historyInput && typeof body.historyInput === 'object' && !Array.isArray(body.historyInput) ? body.historyInput : {},
+      },
+    });
+    // 同一请求被网络重试时，已经有终态任务就让页面恢复它，绝不重复调用 Dify 或扣费。
+    if (generationTask?.existing && ['completed', 'partial_saved', 'recoverable_failed', 'permanent_failed', 'canceled'].includes(generationTask.status)) {
+      await releaseCreation(reservation);
+      return new Response(JSON.stringify({
+        error: '这次生成已处理，请恢复原来的任务结果',
+        code: 'GENERATION_TASK_EXISTS',
+        taskId: generationTask.id,
+        status: generationTask.status,
+      }), { status: 409, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
+    if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'queued', stage: 'queue' });
     // 排队等名额：等太久或队列满就明确失败（额度同步释放），不让请求无限挂着
     try {
       if (creativeWindow) releaseWindow = await acquireCreationWindow(guard.userId!, profileId, req.signal);
@@ -474,7 +500,14 @@ export async function POST(req: NextRequest) {
           }
         };
         const send = (obj: Record<string, unknown>) => write(`data: ${JSON.stringify(obj)}\n\n`);
-        const sendProgress = (message: string) => send({ event: 'status', message });
+        const taskEvent = (obj: Record<string, unknown>) => generationTask ? { ...obj, taskId: generationTask.id, requestId: reservation!.requestId } : obj;
+        const sendTask = (obj: Record<string, unknown>) => send(taskEvent(obj));
+        const sendProgress = (message: string, stage = 'post_processing') => {
+          sendTask({ event: 'status', message });
+          sendTask({ event: 'stage', stage, status: stage === 'generate' ? 'generating' : 'post_processing', message });
+          if (generationTask) void updateGenerationTask({ taskId: generationTask.id, status: stage === 'generate' ? 'generating' : 'post_processing', stage });
+        };
+        if (generationTask) sendTask({ event: 'task_accepted', status: 'generating', stage: 'generate' });
         /** 把页面上的全文整篇换成 answer（页面端按 message_replace 整篇替换，见 lib/sse-stream.ts） */
         const showFullText = (answer: string) => {
           shownText = answer;
@@ -568,6 +601,7 @@ export async function POST(req: NextRequest) {
         try {
           if (webSession.initialEvent) send(webSession.initialEvent);
           let outcome = await pump(response);
+          if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'generating', stage: 'generate' });
           await webSession.finish();
 
           /*
@@ -640,7 +674,14 @@ export async function POST(req: NextRequest) {
               // 草稿保存是防丢保护，不能因为数据库暂时异常把已经生成的正文判成失败。
               console.error('[creative-history] 草稿存档异常', error instanceof Error ? error.message : 'unknown');
             }
-            send({ event: 'draft_saved', saved: draftSaved });
+            sendTask({ event: 'draft_saved', saved: draftSaved, ...(generationTask ? { version: 0, stage: 'draft_save' } : {}) });
+            if (generationTask && draftSaved) {
+              const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'draft', stage: 'draft_save', result: fullResponse });
+              if (version !== null) {
+                await updateGenerationTask({ taskId: generationTask.id, status: 'draft_saved', stage: 'draft_save' });
+                sendTask({ event: 'version_saved', version, saved: true, stage: 'draft_save' });
+              }
+            }
           }
           if (outcome.kind === 'done' && topicPlan?.angles.length) {
             fullResponse = anchorDirectionDraft(fullResponse, topicPlan.angles);
@@ -911,7 +952,9 @@ export async function POST(req: NextRequest) {
           }
           // 失败时保留已经生成的正文：用户可以复制、刷新后从历史恢复，不能因为后处理暂时失败而把整批清空。
           if (outcome.kind !== 'done' && needsCheck && shownText) {
-            send({ event: 'partial_saved', message: '后续核对暂未完成，已保留当前草稿，可先复制或稍后重试' });
+            const message = '后续核对暂未完成，已保留当前草稿，可先复制或稍后重试';
+            sendTask({ event: 'partial_saved', message });
+            if (generationTask) void updateGenerationTask({ taskId: generationTask.id, status: 'partial_saved', stage: 'post_processing', errorCode: 'POST_PROCESSING_INCOMPLETE', errorMessage: message });
           }
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
@@ -938,7 +981,17 @@ export async function POST(req: NextRequest) {
                   status: 'completed',
                 });
               } catch (error) { console.error('[creative-history] 存档异常', error instanceof Error ? error.message : 'unknown'); }
-              send({ event: 'history_saved', saved });
+              sendTask({ event: 'history_saved', saved });
+            }
+            if (generationTask) {
+              const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'final', stage: 'final_save', result: fullResponse, metadata: { postChanged: rawResponse !== fullResponse } });
+              if (version !== null) {
+                await updateGenerationTask({ taskId: generationTask.id, status: 'completed', stage: 'final_save', completed: true });
+                sendTask({ event: 'final_saved', version, saved: true, stage: 'final_save' });
+              } else {
+                await updateGenerationTask({ taskId: generationTask.id, status: 'partial_saved', stage: 'final_save', errorCode: 'VERSION_SAVE_FAILED', errorMessage: '最终版本暂未同步，草稿仍可使用' });
+                sendTask({ event: 'partial_saved', message: '最终版本暂未同步，草稿仍可使用' });
+              }
             }
             // Commit before completion: ambiguous commit failure must not release a successful generation.
             generationCompleted = true;
