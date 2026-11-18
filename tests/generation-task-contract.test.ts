@@ -24,6 +24,15 @@ describe('统一生成任务契约', () => {
     expect(route).toContain("status: 'completed'");
   });
 
+  it('陈旧任务恢复只标记可恢复状态，不重放模型或重新结算额度', () => {
+    const runner = readCode('lib/generation-task-runner.ts');
+    const instrumentation = readCode('instrumentation.ts');
+    expect(runner).toContain("status: 'recoverable_failed'");
+    expect(runner).not.toContain('askDify');
+    expect(runner).not.toContain('incrementUsageServer');
+    expect(instrumentation).toContain('startGenerationTaskRecovery()');
+  });
+
   it('任务恢复接口按用户隔离并返回最新版本', () => {
     const route = readCode('app/api/generation-tasks/[id]/route.ts');
     expect(route).toContain('requireUser');
