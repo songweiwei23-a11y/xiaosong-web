@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // 安全升级策略：构建发现已知漏洞时提示并升级到同渠道安全版本。
+    agentUpgrade: 'security',
+  },
   compiler: {
     // 生产构建移除 console，保留 error/warn 便于线上排查
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
