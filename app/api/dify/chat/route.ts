@@ -51,6 +51,7 @@ import { localNewsSearches } from '@/lib/local-news-sources'
 import { newsPlace } from '@/lib/search-quality'
 import { searchProfileHint } from '@/lib/search-profile-hint'
 import { CREATIVE_WINDOW_RULES, loadCreativeWindowHistory, loadLatestCreativeResult } from '@/lib/creative-window'
+import { ensureGenerationTask, saveGenerationVersion, updateGenerationTask } from '@/lib/generation-task'
 
 /*
  * 自由对话与所有「追问」都走这个路由。
@@ -324,6 +325,19 @@ export async function POST(request: NextRequest) {
       return reserved.response;
     }
     reservation = reserved.reservation
+    const generationTask = await ensureGenerationTask({
+      userId: guard.userId!,
+      requestId: reservation.requestId,
+      profileId,
+      feature: 'freeChat',
+      taskType: askingNewTopics ? '选题策划追问' : '自由对话',
+      payload: { query, profileId, taskType: taskType || '自由对话', freeChat: freeChatThread, initialContent: typeof initialContent === 'string' ? initialContent.slice(0, 16_000) : '' },
+    });
+    if (generationTask?.existing && ['completed', 'partial_saved', 'recoverable_failed', 'permanent_failed', 'canceled'].includes(generationTask.status)) {
+      await releaseCreation(reservation);
+      return new Response(JSON.stringify({ error: '这次对话已处理，请恢复原来的任务结果', code: 'GENERATION_TASK_EXISTS', taskId: generationTask.id, status: generationTask.status }), { status: 409, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
+    if (generationTask) await updateGenerationTask({ taskId: generationTask.id, status: 'queued', stage: 'queue' });
     const topicContext = previousTopic?.direction && {
       ...previousTopic.direction,
       constraints: `本轮追问要求：${query.slice(0, 1200)}\n${previousTopic.direction.constraints}`.slice(0, 7000),
@@ -387,6 +401,8 @@ export async function POST(request: NextRequest) {
             try { controller.enqueue(chunk) } catch { clientGone = true }
           }
           const sendEvent = (data: Record<string, unknown>) => send(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          const sendTask = (data: Record<string, unknown>) => sendEvent(generationTask ? { ...data, taskId: generationTask.id, requestId: reservation!.requestId } : data);
+          if (generationTask) sendTask({ event: 'task_accepted', status: 'generating', stage: 'generate' });
           if (askingNewTopics) heartbeat = setInterval(() => send(encoder.encode(': ping\n\n')), 8_000);
           let answerText = ''
           /*
@@ -450,6 +466,13 @@ export async function POST(request: NextRequest) {
                 }
               }
               if (hasContent && answerText.trim() && receivedEnd && !upstreamFailed && guard.userId) {
+                if (generationTask) {
+                  const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'draft', stage: 'draft_save', result: answerText });
+                  if (version !== null) {
+                    await updateGenerationTask({ taskId: generationTask.id, status: 'draft_saved', stage: 'draft_save' });
+                    sendTask({ event: 'draft_saved', version, saved: true, stage: 'draft_save' });
+                  }
+                }
                 generationCompleted = true
                 // key 必须与 api-guard 的 featureMap 完全一致（驼峰 freeChat）。
                 // 此处曾传 'chat'，映射不到列名，扣减被静默跳过，用了不计次。
@@ -468,6 +491,16 @@ export async function POST(request: NextRequest) {
                   send(encoder.encode(`data: ${JSON.stringify({ event: 'quota_warning', message: '内容已生成，额度同步稍有延迟，请保留结果' })}\n\n`))
                 }
 
+                if (generationTask) {
+                  const version = await saveGenerationVersion({ taskId: generationTask.id, kind: 'final', stage: 'final_save', result: answerText });
+                  if (version !== null) {
+                    await updateGenerationTask({ taskId: generationTask.id, status: 'completed', stage: 'final_save', completed: true });
+                    sendTask({ event: 'final_saved', version, saved: true, stage: 'final_save' });
+                  } else {
+                    await updateGenerationTask({ taskId: generationTask.id, status: 'partial_saved', stage: 'final_save', errorCode: 'VERSION_SAVE_FAILED', errorMessage: '最终版本暂未同步，当前正文仍可使用' });
+                    sendTask({ event: 'partial_saved', message: '最终版本暂未同步，当前正文仍可使用' });
+                  }
+                }
                 // 追问出的新一批选题存进选题库：能单独拿去写脚本，下次也不会再出
                 if (askingNewTopics) {
                   await saveFollowUpTopics(guard.userId, query || '', answerText, profileId)
@@ -484,6 +517,11 @@ export async function POST(request: NextRequest) {
                   )
                 }
                 if (claimsSharedWindow) await claimSharedWindow(guard.userId, profileId, sharedConversationId!)
+              }
+              if (!generationCompleted && hasContent && answerText.trim() && generationTask) {
+                const message = '对话后续处理未完成，已保留当前正文，可稍后恢复或重试';
+                await updateGenerationTask({ taskId: generationTask.id, status: 'partial_saved', stage: 'post_processing', errorCode: 'CHAT_INCOMPLETE', errorMessage: message });
+                sendTask({ event: 'partial_saved', message });
               }
               if (!generationCompleted) await releaseCreation(reservation)
               if (!clientGone) { try { controller.close() } catch { clientGone = true } }

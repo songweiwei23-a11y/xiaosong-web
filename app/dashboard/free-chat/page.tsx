@@ -16,6 +16,7 @@ import { type WebSearchStatus } from '@/lib/dify-web-status';
 import { WebSearchQuota } from '@/components/chat/WebSearchQuota';
 import { applyChatAnswer } from '@/lib/chat-stream-answer';
 import { useCreatorContext } from '@/hooks/useCreatorContext';
+import { useGenerationTask } from '@/hooks/useGenerationTask';
 import { buildContextBlock } from '@/lib/creator-context';
 import {
   Sparkles, Send, Loader2, Plus, Trash2, MessageSquare,
@@ -180,6 +181,7 @@ export default function FreeChatPage() {
   const [input, setInput] = useState("");
   const [webSearchMode, setWebSearchMode] = useState<'auto' | 'on' | 'off'>('auto');
   const [isStreaming, setIsStreaming] = useState(false);
+  const { task, taskError, acceptTask, updateTaskStage } = useGenerationTask();
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const sending = useRef(false);
@@ -528,6 +530,18 @@ export default function FreeChatPage() {
           if (!trimmed.startsWith("data: ")) continue;
           let data;
           try { data = JSON.parse(trimmed.slice(6)); } catch { continue; }
+            if (data.event === 'task_accepted' && data.taskId) {
+              acceptTask({ taskId: data.taskId, requestId: data.requestId, status: data.status || 'generating', stage: data.stage || 'generate' });
+              continue;
+            }
+            if (data.event === 'stage' && data.taskId) {
+              updateTaskStage({ taskId: data.taskId, status: data.status || 'post_processing', stage: data.stage || 'post_processing', message: data.message });
+              continue;
+            }
+            if (data.event === 'partial_saved') {
+              notify(data.message || '后续处理未完成，当前正文已保留');
+              continue;
+            }
             if (data.event === 'error') throw new Error(data.message || data.error || '生成失败，请重试');
             if (data.event === 'web_search') {
               webSearch = { status: data.status, sources: data.sources || [], ...(data.message ? { message: data.message } : {}) };
@@ -933,6 +947,8 @@ export default function FreeChatPage() {
           <span>{historyError}</span>
           <button type="button" onClick={() => { loadedScopeRef.current = undefined; setLoadRevision(v => v + 1); }} className="shrink-0 underline">重试读取</button>
         </div>}
+        {taskError && <div role="alert" className="border-b bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">{taskError}</div>}
+        {task && <div role="status" className="border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">生成任务：{task.stage === 'final_save' ? '最终版本已保存' : task.stage === 'draft_save' ? '草稿已保存' : `正在${task.stage}`}</div>}
         {/* 同步失败：手机上顶栏放不下状态字，失败时单独一条；失败原因也在这里 */}
         {activeConv && syncStatuses[activeConv.id]?.state === 'failed' && (
           <div role="alert" className="border-b bg-amber-500/10 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-300">
