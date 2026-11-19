@@ -1,14 +1,15 @@
 'use client'
 
-import { SCRIPT_SHARE_STEP, TACTIC_MIX_PRESETS, normalizeScriptShare, tacticSplit } from '@/lib/tactic-mix'
+import { SCRIPT_SHARE_STEP, TACTIC_MIX_PRESETS, normalizeScriptShare, routeCounts, tacticSplit } from '@/lib/tactic-mix'
 
 /**
  * 36 计与四大脚本的搭配比例（规则都在 lib/tactic-mix）。
  * 对所有目的生效：36 计和四大脚本都是拍法的形式，大流量由出发点（人货场、三有、爆款元素）决定。
  */
-export function TacticMixBar({ value, onChange, className = '' }: { value: number; onChange: (share: number) => void; className?: string }) {
+export function TacticMixBar({ value, onChange, count, monthly, className = '' }: { value: number; onChange: (share: number) => void; count?: number; monthly?: boolean; className?: string }) {
   const share = normalizeScriptShare(value)
   const split = tacticSplit(share)
+  const slots = count ? routeCounts(count, share) : null
   return (
     <div className={`rounded-xl border border-border bg-foreground/[0.03] px-3.5 py-2.5 text-[12px] ${className}`}>
       <div className="mb-2 text-foreground">
@@ -45,7 +46,8 @@ export function TacticMixBar({ value, onChange, className = '' }: { value: numbe
         />
         <span className="w-10 shrink-0 text-right tabular-nums">{share}%</span>
       </label>
-      <p className="mt-2 text-[11px] text-muted-foreground">两种形式都能拍大流量，比例不分目的；大流量看人货场、三有和爆款元素，不看用了哪套形式。</p>
+      {slots && <p aria-live="polite" className="mt-2 text-[12px] text-foreground">本次 {count} {monthly ? '条排期' : '个方向'}中，四大脚本 {slots.scripts}，36 计 {slots.tactics}。</p>}
+      <p className="mt-1 text-[11px] text-muted-foreground">比例不分目的。{monthly ? '按本月实际发布条数计算，备选另列。' : '按方向个数计算。'}</p>
     </div>
   )
 }

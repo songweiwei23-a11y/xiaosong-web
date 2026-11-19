@@ -13,7 +13,10 @@ import { splitCreationItems } from './creation-items';
 
 /** 老方向会把拍法写进范围的同一行。保留范围和后续素材句。 */
 export function topicScopeText(text: string): string {
-  return text.replace(/(?:^|[。！？；;\s])(?:\*\*)?(?:建议拍法|拍法|怎么拍|叙事结构|脚本结构|结构|开头示范|标题公式)(?:\*\*)?\s*[：:]\s*[^。！？\n]*/gu, ' ').trim();
+  return text
+    .replace(/(?:^|[。！？；;\s])(?:\*\*)?(?:建议拍法|拍法|怎么拍|叙事结构|脚本结构|结构|开头示范|标题公式)(?:\*\*)?\s*[：:]\s*[^。！？\n]*/gu, ' ')
+    .replace(/[，,；;]?\s*(?:每条|每期)(?:视频)?(?:都|统一|固定|只)?(?:问(?:一件事|一个问题|同一个问题)|按同一(?:句式|结构)|以同一[^。，,；;\n]{0,8}(?:开场|开头))[^。，,；;\n]*/gu, '')
+    .replace(/[，,]?\s*用(?:地域|两地|双城)(?:反差|对比|差异)(?:来)?制造看点/gu, '').trim();
 }
 
 /** 兼容内容规划和早期创作方向卡。 */
@@ -58,6 +61,8 @@ function directionCardSeed(text: string): string | null {
   const purpose = fieldOf(text, '核心目的') || fieldOf(text, '视频目的') || fieldOf(text, '对应目的');
   const scope = topicScopeText(fieldOf(text, '内容方向') || fieldOf(text, '核心思路') || fieldOf(text, '核心角度'));
   const count = fieldOf(text, '本月条数');
+  const contentType = fieldOf(text, '内容类型');
+  const scriptFamily = contentType.match(/教知识|晒过程|讲故事|聊观点/)?.[0];
   // 出发点（2026-10-29）：方向定好的流量方向、爆款元素或成交理由，选题沿用，不再另配。原来种子不带，选题只能让代码重新分元素
   const origin = listUnder(text, '出发点').join('；');
   // 所属系列（2026-10-29）：方向归到内容定位的哪个系列，选题沿用，不另起
@@ -79,6 +84,7 @@ function directionCardSeed(text: string): string | null {
     name && `方向：${name}`,
     series && `所属系列（参考，不限制）：${series}`,
     purpose && `核心目的（不能改）：${purpose}`,
+    scriptFamily && `表达参考：四大脚本·${scriptFamily}。逐题按素材选择看点与具体结构。`,
     count && `规划条数：${count}`,
     origin && `出发点：${origin}`,
     scope && `范围：${scope}`,

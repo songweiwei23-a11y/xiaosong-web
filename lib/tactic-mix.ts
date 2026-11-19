@@ -10,11 +10,17 @@
 
 /** 滑条的步长：每 10 个点一档 */
 export const SCRIPT_SHARE_STEP = 10;
+export const DEFAULT_SCRIPT_SHARE = 80;
+
+export function routeCounts(total: number, share = DEFAULT_SCRIPT_SHARE) {
+  const scripts = Math.round(total * normalizeScriptShare(share) / 100);
+  return { scripts, tactics: total - scripts };
+}
 
 export const TACTIC_MIX_PRESETS = [
-  { id: 'tactic', label: '36计为主', share: 0, hint: '内容类型全从 36 计挑，四大脚本只管话怎么讲' },
+  { id: 'tactic', label: '全用36计', share: 0, hint: '本次全部方向使用 36 计' },
   { id: 'balanced', label: '均衡', share: 50, hint: '一半内容类型用四大脚本的结构，一半用 36 计' },
-  { id: 'scripts', label: '四大脚本为主', share: 100, hint: '内容类型全用四大脚本的结构' },
+  { id: 'scripts', label: '全用四大脚本', share: 100, hint: '本次全部方向使用四大脚本搭配爆款元素' },
 ] as const;
 
 /**

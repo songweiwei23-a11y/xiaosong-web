@@ -173,12 +173,13 @@ export async function runDirectionBoard(ctx: BoardContext, input: DirectionInput
   const profile = creatorContext.profile;
   const page = input.carry ? pageHandoff(input.carry, 'direction', creatorContext) : null;
   const expandContent = page?.reference?.trim() ?? '';
+  const count = clampCount(input.count, 5, 3, 8);
   const query = buildDirectionPrompt({
     purposes: [],
     customGoal: withNote(input.goal.trim(), input.extraNote),
     ideas: input.ideas?.trim() || undefined,
     formats: [],
-    count: clampCount(input.count, 5, 3, 8),
+    count,
     depth: 'quick',
     profileSummary: profile ? buildProfileSummary(profile as never) : '',
     contextBlock: buildContextBlock(creatorContext, 'direction'),
@@ -193,6 +194,7 @@ export async function runDirectionBoard(ctx: BoardContext, input: DirectionInput
   }) + (page ? `${page.bridgePrompt}${creationSettingsBlock(page.settings)}` : '');
   return callBoardStream(ctx, {
     taskType: '创作方向',
+    inputs: { count },
     creationSettings: page?.settings ?? {},
     query,
     profileId: profile?.id ?? null,
@@ -204,20 +206,23 @@ export async function runContentPlanBoard(ctx: BoardContext, input: ContentPlanI
   const creatorContext = await loadContext(ctx);
   const profile = creatorContext.profile;
   const goal = withNote(input.goal.trim(), input.extraNote);
+  const count = clampCount(input.count, 12, 4, 30);
+  const resolved = resolveMix(profile as never, null, goal);
   const query = buildContentPlanPrompt({
     lastMonth: '',
     recordedLastMonth: null,
-    count: clampCount(input.count, 12, 4, 30),
+    count,
     focus: [],
     events: input.events?.trim() ?? '',
     notes: goal,
-    resolved: resolveMix(profile as never, null, goal),
+    resolved,
     profileSummary: profile ? buildProfileSummary(profile as never) : '',
     contextBlock: buildContextBlock(creatorContext, 'direction'),
     industry: input.industry?.trim() || undefined,
   });
   return callBoardStream(ctx, {
     taskType: '内容规划',
+    inputs: { count, contentMix: resolved.mix },
     creationSettings: {},
     query,
     profileId: profile?.id ?? null,

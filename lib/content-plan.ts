@@ -13,17 +13,17 @@
 import { CONTENT_ROLE_LIST, type ContentRole } from './content-roles';
 import { formatMix, mixToCounts, type ResolvedMix } from './content-mix';
 import type { Work } from './works';
-import { KEPT_RULES_1021 } from './tool-first-1021';
-import { planRouteRule } from './script-route';
-import { SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
+import { KEPT_RULES_1021, tacticIndex1021 } from './tool-first-1021';
+import { tacticsBlockedBy } from './creative-routes';
+import { planRouteRule, routeAllocationRule, routeOptions, unverifiedPlanOutcome } from './script-route';
+import { routeCounts, SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
+import { VIRAL_ELEMENTS } from './viral-elements';
 
 export const CONTENT_PLAN_TASK_TYPE = '内容规划';
 
-/** 内容类型怎么选：内容规划和创作方向共用，流量里不许出现教知识 */
-// 2026-10-29 回到 10-21 原文，只把「教知识不是流量，只放变现型」换成产品方后来定的「任何脚本结构配上爆款元素都是大流量」
-/** 36 计按目的怎么挑（内容规划和创作方向共用） */
-export const CONTENT_TYPE_PURPOSE_RULE = '流量型可参考反向操作、冷知识、借势、地域差异、街头采访等创意机制，但每个方向必须回到具体素材和爆款元素重新设计，公式只是灵感不能变成每期固定模板；人设型可参考个人成就、贵人相助、世俗偏见等机制；变现型可参考案例引入、痛点、推荐、晒过程。任何脚本结构配上爆款元素都可以服务大流量';
-export const CONTENT_TYPE_RULE = `按小黄的结构与爆款元素规划，但公式只作灵感，不能成为方向卡的固定节目模板。${CONTENT_TYPE_PURPOSE_RULE}`;
+/** 视频目的和内容类型各自分配，以用户的排期设置为准。 */
+export const CONTENT_TYPE_PURPOSE_RULE = '任何脚本结构配上爆款元素都可以服务大流量。各个方向根据账号目标和真实素材分别选择看点。';
+export const CONTENT_TYPE_RULE = `按本轮选择的四大脚本与36计比例规划。${CONTENT_TYPE_PURPOSE_RULE}`;
 
 /** 上个月发了多少条（勾一个区间；代表值用来推荐这个月的条数） */
 export const LAST_MONTH_OPTIONS = [
@@ -91,6 +91,107 @@ export interface ContentPlanInput {
   pickedRoutes?: string[];
 }
 
+function monthSlots(counts: Record<ContentRole, number>, count: number, scripts: number) {
+  const roles = CONTENT_ROLE_LIST.map(role => {
+    const exact = counts[role] * scripts / count;
+    return { role, four: Math.floor(exact), remainder: exact % 1 };
+  }).sort((a, b) => b.remainder - a.remainder);
+  const left = scripts - roles.reduce((sum, r) => sum + r.four, 0);
+  const slots = roles.flatMap(({ role, four }, i) => {
+    const n = four + Number(i < left);
+    return [{ role, family: '四大脚本', n }, { role, family: '36计', n: counts[role] - n }].filter(slot => slot.n > 0);
+  });
+  while (slots.length < Math.min(count, 15)) {
+    const largest = slots.reduce((a, b) => a.n >= b.n ? a : b);
+    const n = Math.floor(largest.n / 2);
+    largest.n -= n;
+    slots.push({ ...largest, n });
+  }
+  return slots;
+}
+
+/** 让同一会话专心策划每个已分配的名额，由程序生成条数、周表及汇总。 */
+export function monthlyRepairPlan(total: number, mix: ResolvedMix['mix'], share: number, picked: string[], query: string) {
+  const counts = mixToCounts(mix, total);
+  const slots = monthSlots(counts, total, routeCounts(total, share).scripts);
+  const allowed = routeOptions().filter(o => !picked.length || picked.includes(o.key));
+  while (slots.length < 15) slots.push({ ...slots[slots.length % Math.min(total, 15)], n: 0 });
+  slots.sort((a, b) => Number(!a.n) - Number(!b.n) || Number(b.family === '四大脚本') - Number(a.family === '四大脚本'));
+  const options = slots.map(s => allowed.filter(o => picked.length || (o.school === 'four') === (s.family === '四大脚本')));
+  const slotLabel = (i: number) => [i + 1, slots[i].role, picked.length ? '手选' : slots[i].family, slots[i].n + '条'].join(' ');
+  const catalog = [...new Set(options.flat().map(o => o.title))].join('、');
+  const elements = VIRAL_ELEMENTS.map(e => e.name);
+  const prompt = [
+    '请在本会话校正上一次月度内容规划。输出一个 JSON 对象。条数、周表与 Markdown 由程序根据以下固定排期生成。',
+    '沿用用户的行业、素材、目标和禁忌。每行独立策划一类可延展的内容。具体拍什么证据、观众为什么关心，要和所选打法一致。不要替尚未开始的采访写答案或把假设写成经营事实。优先让各方向的人、问题、看点和取材方式各有区别。',
+    '每个名额给一张方向卡，形如 {"slot":1,"title":"议题范围","route":"晒过程·事件体验","element":"成本","hook":"观众会关心的具体问题和取证办法","scope":"围绕什么人和问题，可以从哪找素材","why":"和用户目标或资源的联系"}。slot 填名额序号。route 写此名额所属派别的完整结构名或计名。每行 element 只填 ' + elements.join('、') + ' 中的一个。每行都写具体的 hook，包括人设与变现方向。',
+    '方向要足以延展多条选题。用户没提供的经营结果、人物经历和时间数字留待取材。把可能发生的情况写成要调查的问题。',
+    '顶层还要有 strategy（一段简洁的本月思路），avoid（结合用户约束的两三条建议，字符串数组）。不要输出其他文字。',
+    '可选完整名称：' + catalog, slots.map((_, i) => slotLabel(i)).join('\n'),
+    '用户的档案、目标和本月条件：\n' + query.split('## 📊 内容配比（硬性要求）')[0],
+    '本次仅返回 {"strategy":"…","avoid":["…"],"cards":[…]}，共 ' + slots.length + ' 张卡。title、hook、scope、why 各用一句短句，每个字段控制在40字内。直接用给定的英文字段名，按名额顺序填写。',
+  ].join('\n\n');
+  const plain = (v: unknown) => typeof v === 'string' ? v.replace(/[\r\n]+/g, ' ').trim() : '';
+  type Card = { slot: number; title: string; route: string; element: string; hook: string; scope: string; why: string };
+  const accepted = new Map<number, Card>();
+  let strategy = '';
+  let avoid: string[] = [];
+  function render(raw: string): string | null {
+    try {
+      const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+      if (!Array.isArray(data.cards)) return null;
+      strategy ||= plain(data.strategy);
+      if (!avoid.length && Array.isArray(data.avoid)) avoid = data.avoid.map(plain).filter(Boolean);
+      const titles = new Set([...accepted.values()].map(c => c.title));
+      for (const c of data.cards) {
+        const id = Number(c?.slot);
+        if (!Number.isInteger(id) || !options[id - 1] || accepted.has(id)) continue;
+        const label = plain(c.route).replace(/^(?:四大脚本|36\s*计)\s*[·：:]\s*/, '');
+        const route = options[id - 1].find(o => o.title === label || (o.school === 'tactic' && o.key === 'tactic:' + label));
+        if (!route || !elements.includes(c.element) || !plain(c.title) || titles.has(plain(c.title)) || !plain(c.scope) || !plain(c.why) || plain(c.hook).length < 6) continue;
+        if (unverifiedPlanOutcome([c.title, c.hook, c.scope, c.why].join('\n'), query)) continue;
+        accepted.set(id, { ...c, slot: id, title: plain(c.title), route: route.title });
+        titles.add(plain(c.title));
+      }
+      if (accepted.size !== slots.length || !strategy || !avoid.length) return null;
+      const byRole = new Map<ContentRole, Set<string>>();
+      const weeks: number[][] = [[], [], [], []];
+      const cards: string[] = [];
+      let turn = 0;
+      for (const [i, s] of slots.entries()) {
+        const c = accepted.get(i + 1)!;
+        const route = options[i].find(o => o.title === c.route)!;
+        const assigned: string[] = [];
+        for (let j = 0; j < s.n; ++j) {
+          const week = turn++ % weeks.length;
+          weeks[week].push(i + 1);
+          assigned.push('第' + (week + 1) + '周');
+        }
+        if (s.n) {
+          const names = byRole.get(s.role) ?? new Set<string>();
+          names.add(route.title);
+          byRole.set(s.role, names);
+        }
+        const type = (route.school === 'four' ? '四大脚本·' : '36计·') + route.title;
+        cards.push(['### 方向' + (i + 1) + '：' + plain(c.title), '- **视频目的**：' + s.role, '- **内容类型**：' + type,
+          '- **内容方向**：' + plain(c.scope), '- **爆款元素**：' + c.element + '｜' + plain(c.hook),
+          '- **本月条数**：' + s.n + ' 条', '- **为什么**：' + plain(c.why), '- **节奏**：' + (assigned.join('、') || '备选，本月先不拍')].join('\n'));
+      }
+      const month = query.match(/\d{4}年\d{1,2}月/)?.[0] ?? '本月';
+      return ['# ' + month + '内容规划（共 ' + total + ' 条）', '## 📌 这个月的思路\n' + strategy,
+        ['## 📊 配比一览', '| 目的 | 条数 | 主要用什么类型 |', '|---|---:|---|', ...CONTENT_ROLE_LIST.map(r => '| ' + r + ' | ' + counts[r] + ' | ' + ([...(byRole.get(r) ?? [])].join('、') || '—') + ' |')].join('\n'),
+        '## 🧭 内容方向', ...cards, ['## 🗓 四周节奏', '| 周 | 发几条 | 来自哪些方向 |', '|---|---:|---|', ...weeks.map((nums, i) => '| 第' + (i + 1) + '周 | ' + nums.length + ' | ' + (nums.map(n => '方向' + n).join('、') || '—') + ' |')].join('\n'),
+        '## 这个月先别做的\n' + avoid.map(v => '- ' + v).join('\n')].join('\n\n');
+    } catch { return null; }
+  }
+  function remainingPrompt() {
+    const missing = slots.map((_, i) => i).filter(i => !accepted.has(i + 1));
+    return [prompt, '仅补充这些缺失名额。每张卡按该行列出的一个完整打法名重新策划内容。返回相同 JSON 格式。其他卡已保留。', ...missing.map(i => slotLabel(i) + '，可选：' + options[i].map(o => o.title).join('、')),
+      '已采用的方向：' + [...accepted.values()].map(c => c.title).join('、')].join('\n');
+  }
+  return { prompt, render, remainingPrompt };
+}
+
 export function buildContentPlanPrompt(p: ContentPlanInput): string {
   const today = p.today ?? new Date();
   const month = monthLabel(today);
@@ -112,6 +213,15 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 这 ${p.count} 条按：**${countLine}**（配比 ${formatMix(p.resolved.mix)}，${p.resolved.label}）。
 - 每个方向只担一个目的；同一目的可以分成几个方向
 - 所有方向的「本月条数」加起来必须正好 ${p.count} 条，每种目的的条数也必须和上面对上`);
+  parts.push(routeAllocationRule(p.count, p.scriptsShare, true, p.pickedRoutes));
+  if (!p.pickedRoutes?.length) {
+    const { scripts } = routeCounts(p.count, p.scriptsShare);
+    // 先分出台数，模型负责每张卡的内容。两个维度的四舍五入不能分别丢掉尾数。
+    const slots = monthSlots(counts, p.count, scripts);
+    parts.push('本月排期表。每一行对应一张方向卡，按行填写目的、派别、本月条数并独立策划，之后的备选统一填0条。\n' +
+      slots.map((s, i) => `方向${i + 1}　${s.role}　${s.family}　${s.n}条`).join('\n'));
+  }
+  if (!p.pickedRoutes?.length && p.scriptsShare !== 100) parts.push(tacticIndex1021({ exclude: tacticsBlockedBy(p.contextBlock), namesOnly: true }));
   parts.push(`## 📤 输出格式（标题和字段名原样保留）
 
 # ${month}内容规划（共 ${p.count} 条）
@@ -121,14 +231,15 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 
 ## 📊 配比一览
 | 目的 | 条数 | 主要用什么类型 |
-三行，流量型 / 人设型 / 变现型。**流量型那一行以流量打法为主**（反向操作、冷知识、借势、地域差异、街头采访、整蛊等）；任何脚本结构配上爆款元素都是大流量。
+三行，流量型 / 人设型 / 变现型。表格按排期中实际使用的类型汇总。流量型也可以用四大脚本结合爆款元素。
 
 ## 🧭 内容方向（勾选想做的方向，带去创作方向、选题或脚本接着做）
 
 ### 方向1：[方向名，10 个字左右，说的是一类内容，不是一条选题]
 - **视频目的**：流量型 / 人设型 / 变现型 选一个
-- **内容类型**：${planRouteRule({ share: p.scriptsShare, picked: p.pickedRoutes })} 36 计按目的挑：${CONTENT_TYPE_PURPOSE_RULE}。四大脚本的结构名只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}
+- **内容类型**：${planRouteRule({ share: p.scriptsShare, picked: p.pickedRoutes })} 写成「四大脚本·结构名」或「36计·第N计 计名」。四大脚本的结构名只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}
 - **内容方向**：一两句话说清一类值得调查的生意问题、涉及的人与可取材的范围。每条的采访安排、镜头顺序、标题和结论留到选题阶段。
+- **爆款元素**：一个元素名及观众会看到的具体内容
 - **本月条数**：N 条
 - **为什么**：一两句，和这个号的档案、数据或这个月的节点挂上
 - **节奏**：放在第几周
@@ -143,7 +254,7 @@ export function buildContentPlanPrompt(p: ContentPlanInput): string {
 两三条，说清为什么（结合档案里的禁忌、资源和上个月的数据）。`);
   parts.push(`## 要求
 - 方向必须写满 15～20 个，少于 15 个不算完成；每个方向只写一类内容，不要把几类合成一个方向
-- 流量型方向的内容类型以流量打法为主（反向操作、冷知识、借势、地域差异、街头采访、整蛊、反认知）
+- 两派都能做流量型。按本次打法整数配额安排，采用36计的方向分散到适合的拍法。
 - ${KEPT_RULES_1021}
 - 方向名和内容方向写的是"一类内容"（例如「装修避坑知识」），不是一条选题（例如「买沙发前一定要问的三个问题」）
 - 内容类型给出策划参考。每个方向要能容纳多种素材和表达，让下一步逐条决定选题切口和拍法。

@@ -462,8 +462,9 @@ export async function POST(req: NextRequest) {
     const sourceForReview = body.taskType === '审稿优化' ? reviewSource(body) : '';
     const boundedTask = body.taskType === '标题封面' || body.taskType === '跨行业二创';
     // 需要事后校对/修复的任务：正文照样边生成边显示，结束后若被改过，用 message_replace 整篇替换
-    const needsCheck = !!sourceForReview || boundedTask || topicTask;
-    const expectedCount = body.taskType === '标题封面' ? creationSettings.titleCount : body.historyInput?.count;
+    const needsCheck = !!sourceForReview || boundedTask || topicTask ||
+      (['内容规划', '创作方向'].includes(body.taskType) && !!(body.historyInput?.count || body.inputs?.count));
+    const expectedCount = body.taskType === '标题封面' ? creationSettings.titleCount : body.historyInput?.count ?? body.inputs?.count;
     // 兼容尚未刷新页面的旧客户端：主题是用户直接输入，不能扫描含通用规则的query。
     const boundedIntent = creationSettings.userIntent || creationSettings.topic || '';
     const encoder = new TextEncoder();
@@ -679,7 +680,9 @@ export async function POST(req: NextRequest) {
             const input: ProcessingInput = {
               body: { taskType: body.taskType, personalRequirements: body.personalRequirements, reviewMaterial: body.reviewMaterial,
                 inputs: { personalRequirement: body.inputs?.personalRequirement, originContent: body.inputs?.originContent },
-                historyInput: { originContent: body.historyInput?.originContent } },
+                historyInput: { originContent: body.historyInput?.originContent, count: body.historyInput?.count ?? body.inputs?.count,
+                  contentMix: body.historyInput?.contentMix ?? body.inputs?.contentMix, scriptsShare: body.historyInput?.scriptsShare ?? body.inputs?.scriptsShare,
+                  pickedRoutes: body.historyInput?.pickedRoutes, routeManual: body.historyInput?.routeManual } },
               userId, profileId, query, searchQuery, creationSettings, expectedCount, boundedIntent,
               boundedTask, sourceForReview, factMaterial, personaFacts, topicTask, topicPlan, topicContext,
               priorTopics, previousTopic, requestedTopics, directionSeed, generationConversationId: generationConversationId || '', creativeWindow, rawResponse,
@@ -731,7 +734,7 @@ export async function POST(req: NextRequest) {
           }
           if (outcome.kind === 'error') {
             console.error('Dify 生成失败:', outcome.message.slice(0, 300));
-            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试','选题核对暂未完成，请重试','选题核对暂未完成，已保留可用草稿'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
+            if (['审稿校对未完成，请重试','回答在结构标签处中断，请重试','结果未满足本轮数量或事实状态要求，请重试','这次没有生成可交付的新选题，请调整要求后再试','选题核对暂未完成，请重试','选题核对暂未完成，已保留可用草稿','脚本打法配比未达标，已保留草稿，请重试'].includes(outcome.message)) send({ event: 'error', message: outcome.message });
             else send({ event: 'error', message: friendlyDifyError(outcome.message), code: difyErrorCode(outcome.message) });
           } else if (outcome.kind === 'broken') {
             console.error('Stream error:', outcome.error);

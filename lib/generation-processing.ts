@@ -1,4 +1,9 @@
 import { askDify } from '@/lib/dify-task';
+import { planHookRepair, planRouteIssue } from '@/lib/script-route';
+import { DEFAULT_SCRIPT_SHARE, normalizeScriptShare } from '@/lib/tactic-mix';
+import { checkPlan, monthlyRepairPlan } from '@/lib/content-plan';
+import { CONTENT_ROLE_LIST } from '@/lib/content-roles';
+import type { ContentMix } from '@/lib/content-mix';
 import { reviewVerificationPrompt, combinedReviewUsage, reconcileReviewSpeechStats } from '@/lib/review-verification';
 import { saveDifyConversationId } from '@/lib/dify-conversation';
 import { loadPriorTopicSections } from '@/lib/topic-library-server';
@@ -310,7 +315,7 @@ export async function processGeneration(
         const prior = freshTopics.length ? freshTopics : priorTopics;
         const result = await finalizeTopicBatch(draft, [...(previousTopic?.topics ?? []), ...prior, ...done.map(({ title }) => ({ title, body: '' }))], requestedTopics, async (refill) => {
           if (!generationConversationId) return '';
-          const angles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements) : [];
+          const angles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements, refill.blocked) : [];
           if (topicContext && !angles.length) return '';
           const refillInstructions = topicRefillPrompt(refill, directionSeed);
           const prompt = topicContext
@@ -339,6 +344,68 @@ export async function processGeneration(
         }
       }
     }, topicTask],
+    ['plan_route_check', async () => {
+      const settings = body.historyInput ?? body.inputs ?? {};
+      const total = Number(settings.count);
+      if (!Number.isSafeInteger(total) || total <= 0) return;
+      const monthly = body.taskType === '内容规划';
+      const share = normalizeScriptShare(settings.scriptsShare ?? DEFAULT_SCRIPT_SHARE);
+      const picked = settings.routeManual && Array.isArray(settings.pickedRoutes)
+        ? settings.pickedRoutes.filter((key: unknown): key is string => typeof key === 'string') : [];
+      const mix = settings.contentMix as ContentMix | undefined;
+      const check = (text: string) => {
+        const issue = planRouteIssue(text, total, share, monthly, picked, factKnown);
+        if (issue || !monthly || !mix || !CONTENT_ROLE_LIST.every(role => Number.isFinite(mix[role]))) return issue;
+        const purpose = checkPlan(text, { mix, source: 'override', label: '本轮设置' }, total);
+        return purpose.ok ? '' : '按视频目的核对，本月需要' + purpose.expected + '，实际为' + purpose.summary;
+      };
+      const issue = check(fullResponse);
+      if (!issue) return;
+      send({ event: 'status', message: '正在按所选脚本打法核对条数并调整内容' });
+      const fillHooks = async (text: string) => {
+        const hooks = planHookRepair(text);
+        if (!hooks) return text;
+        const fill = await traced('plan_hook_repair', () => askDify(hooks.prompt, userId, '', {
+          conversationId: generationConversationId || undefined, signal: AbortSignal.timeout(120_000),
+        })).catch(() => null);
+        if (!fill?.ok) return text;
+        usageMetadata = combinedReviewUsage(usageMetadata, fill.completion.usage ?? {}, 'plan_route_repair');
+        return tidy(holdUnsupported(hooks.apply(fill.text), factIssues).text);
+      };
+      if (issue.includes('缺少爆款元素')) {
+        const patched = await fillHooks(fullResponse);
+        if (!check(patched)) { fullResponse = patched; return; }
+      }
+      const monthlyRepair = monthly && total <= 100 && mix && CONTENT_ROLE_LIST.every(r => Number.isFinite(mix[r]) && mix[r] >= 0) &&
+        CONTENT_ROLE_LIST.reduce((sum, r) => sum + mix[r], 0) === 100 ? monthlyRepairPlan(total, mix, share, picked, query) : null;
+      const prompt = monthlyRepair?.prompt ?? [query, '校正刚才的完整方案。' + issue,
+        '同步改写受影响方向的内容、爆款元素、拍摄建议及汇总。保留用户的目的配比、事实与拍摄限制。输出整份可直接使用的修正版。',
+        fullResponse].join('\n\n');
+      const fixed = await traced('plan_route_repair', () => askDify(prompt, userId, '', {
+        conversationId: generationConversationId || undefined, signal: AbortSignal.timeout(300_000),
+      })).catch(() => null);
+      if (fixed?.ok) {
+        usageMetadata = combinedReviewUsage(usageMetadata, fixed.completion.usage ?? {}, 'plan_route_repair');
+        let candidate = monthlyRepair?.render(fixed.text) ?? fixed.text;
+        if (monthlyRepair && candidate === fixed.text && check(candidate)) {
+          const missing = await traced('plan_route_missing', () => askDify(monthlyRepair.remainingPrompt(), userId, '', {
+            conversationId: generationConversationId || undefined, signal: AbortSignal.timeout(180_000),
+          })).catch(() => null);
+          if (missing?.ok) {
+            usageMetadata = combinedReviewUsage(usageMetadata, missing.completion.usage ?? {}, 'plan_route_repair');
+            candidate = monthlyRepair.render(missing.text) ?? candidate;
+          }
+        }
+        candidate = tidy(holdUnsupported(candidate, factIssues).text);
+        if (check(candidate).includes('缺少爆款元素')) candidate = await fillHooks(candidate);
+        const remaining = check(candidate);
+        if (!remaining) { fullResponse = candidate; return; }
+        console.warn('[plan-route]', body.taskType, '修正后', remaining.split('。')[0]);
+      } else {
+        console.warn('[plan-route]', body.taskType, '修正返回', fixed?.message ?? '调用失败');
+      }
+      outcome = { kind: 'error', message: '脚本打法配比未达标，已保留草稿，请重试' };
+    }, body.taskType === '内容规划' || body.taskType === '创作方向'],
   ];
   for (let i = state.nextStep; i < steps.length && outcome.kind === 'done'; i++) {
     const [name, run, applicable = true] = steps[i];

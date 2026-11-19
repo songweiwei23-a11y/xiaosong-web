@@ -10,6 +10,10 @@ import { buildCreationHandoff } from '@/lib/creation-flow';
 import { topicReference } from '@/lib/creation-continuation';
 import { buildTopicBoardQuery } from '@/lib/boards/topic-query';
 import { resolveMix } from '@/lib/content-mix';
+import { buildDirectionPrompt } from '@/lib/direction';
+import { buildContentPlanPrompt, checkPlan } from '@/lib/content-plan';
+import { planRouteIssue } from '@/lib/script-route';
+import { interviewLed } from '@/lib/direction-topic-plan';
 import type { CreatorContext } from '@/lib/creator-context';
 
 const state = vi.hoisted(() => ({
@@ -96,6 +100,8 @@ const probes = [
   { name: '直选地域差异裂变选题', source: 'tactic' },
   { name: '截图双城老板模板回归', source: 'screenshot' },
   { name: '月度规划内嵌拍法连续两批', source: 'monthly' },
+  { name: '方向配比60实测', source: 'mix-direction' },
+  { name: '月度配比80实测', source: 'mix-plan' },
 ] as const;
 
 const probeMode = process.env.KAIWU_TOPIC_LIVE_PROBE;
@@ -162,6 +168,22 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
       method: 'POST', headers: { 'content-type': 'application/json', 'x-generation-id': randomUUID() },
       body: JSON.stringify(payload),
     }) as NextRequest;
+    if (source === 'mix-direction' || source === 'mix-plan') {
+      const monthly = source === 'mix-plan';
+      const count = monthly ? 15 : 5;
+      const scriptsShare = monthly ? 80 : 60;
+      const goal = '本地编导一个人做号，让南乐县的实体老板认识我。可以街采和自己出镜，不预设采访回答。一个人挤空档拍，不做纯方法论，不晒数据截图，不做多人演绎或跟拍一整天。';
+      const resolved = resolveMix(null, null, goal);
+      const query = monthly
+        ? buildContentPlanPrompt({ lastMonth: '1-4', recordedLastMonth: null, count, scriptsShare, focus: [], events: '', notes: goal, resolved })
+        : buildDirectionPrompt({ purposes: ['traffic'], customGoal: goal, formats: ['any'], depth: 'quick', count, scriptsShare });
+      const response = await generate(request('/api/dify/stream', { query, taskType: monthly ? '内容规划' : '创作方向', profileId, webSearchMode: 'off', historyInput: { scriptsShare, count, contentMix: monthly ? resolved.mix : null, routeManual: false } }));
+      const result = await readDifyStream(response);
+      console.log('实际打法', result.split('\n').filter(line => /内容类型|本月条数|爆款元素/.test(line)).join('\n'));
+      expect(planRouteIssue(result, count, scriptsShare, monthly, [], goal)).toBe('');
+      if (monthly) expect(checkPlan(result, resolved, count).ok).toBe(true);
+      return;
+    }
     async function deliver(response: Response, count = 3) {
       expect(response.ok).toBe(true);
       let batch: TopicBatchStatus | undefined;
@@ -196,6 +218,10 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
         const elements = splitTopicSections(text).map(primaryTopicElement);
         expect(elements.every(Boolean)).toBe(true);
         expect(new Set(elements).size).toBeGreaterThanOrEqual(3);
+        if (source === 'monthly') {
+          const interviews = splitTopicSections(text).filter(t => interviewLed(t.body.match(/脚本结构\*\*[：:]([^\n]+)/)?.[1] ?? ''));
+          expect(interviews.length).toBeLessThanOrEqual(Math.floor(count / 2));
+        }
         console.log('实际主爆款元素', elements);
       }
       return text;
@@ -262,6 +288,7 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
         expect(upstream[0].query).not.toMatch(/南乐老板做\s*A/);
         expect(delivered).not.toMatch(/南乐老板[^\n]*[；;][^\n]*郑州老板|郑州老板[^\n]*[；;][^\n]*南乐老板|评论区投票|标签夹[^\n]{0,16}(?:分颜色|不同颜色|颜色规则)|只带走一张/);
         expect(delivered).not.toMatch(/同一个老板在两个城市怎么记预约|唯一带走的旧照片|为什么不换新的|特写使用痕迹[（(]磨损、褪色/);
+        expect(delivered).not.toMatch(/只(?:带走|留下|保留)了?[这那]张照片|逐个挂空预订袋|遮住的那一栏写了什么/);
       }
       expect(upstream[0].query).not.toContain('南乐XXX，郑州XXX');
       expect(upstream[0].query).not.toContain('每期都让外地人提问');
@@ -275,8 +302,10 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
       if (consecutive) {
         const nativeId = state.tables.get('dify_conversations')?.[0]?.conversation_id;
         expect(nativeId).toBeTruthy();
+        const nextStart = upstream.length;
         const next = await deliver(await generate(request('/api/dify/stream', payload)), topicCount);
-        expect(upstream.slice(1).every(call => call.conversation_id === nativeId)).toBe(true);
+        expect(upstream[nextStart].conversation_id).toBe(nativeId);
+        expect(upstream.slice(1).filter(call => call.query.startsWith('【本轮选题从这个地基展开】')).every(call => call.conversation_id === nativeId)).toBe(true);
         const titles = [...splitTopicSections(delivered), ...splitTopicSections(next)].map(t => t.title);
         expect(new Set(titles).size).toBe(2 * topicCount);
       }
@@ -316,4 +345,4 @@ it.skipIf(!['1', 'diversity'].includes(probeMode || '')).each(
   } finally {
     vi.unstubAllGlobals();
   }
-}, 600_000);
+}, 1_200_000);

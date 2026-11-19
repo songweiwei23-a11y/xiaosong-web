@@ -5,7 +5,7 @@ import { polishSmooth, polishTitles } from '@/lib/title-polish';
 import { polishReality } from '@/lib/reality-check';
 import { cnToInt } from '@/lib/noise-check';
 import { DIRECTION_TOPIC_DIVERSITY } from '@/lib/topic-design';
-import type { DirectionTopicContext } from '@/lib/direction-topic-plan';
+import { interviewLed, type DirectionTopicContext } from '@/lib/direction-topic-plan';
 import { VIRAL_ELEMENTS } from '@/lib/viral-elements';
 
 export const TOPIC_BATCH_MAX = 30;
@@ -87,6 +87,16 @@ function exactDuplicates(topics: TopicSection[], references: TopicSection[]): Se
   return duplicate;
 }
 
+/** 完整的长镜头指令原样复用，即使调换镜头顺序或元素标签，观众仍会看到同一段。 */
+function repeatedShootClause(topic: TopicSection): string[] {
+  const brief = directionBrief(topic).body;
+  const shoot = brief.match(/^脚本结构：(.+)$/m)?.[1] ?? '';
+  const material = brief.match(/^取材与内容推进：(.+)$/m)?.[1] ?? '';
+  const evidence = [...material.matchAll(/(?=([\p{L}\p{N}]{5}))/gu)].map(m => m[1]);
+  return shoot.split(/[，,、。；;→]/u).map(s => s.trim()).filter(s => s.length >= 10 && /(?:采访|讲述|演示|实测|测量|核对)/u.test(s))
+    .flatMap(action => evidence.map(detail => action + ':' + detail));
+}
+
 /**
  * 识别“只换名词、保留同一句式”的批量模板。
  *
@@ -158,7 +168,8 @@ function hasParallelPlacePattern(topic: TopicSection): boolean {
   const parsed = directionBrief(topic).body;
   const content = `${topic.title}\n${parsed}`;
   const restaged = /(?:拍|演示)[^。\n]{0,22}在(南乐|郑州|甲地|乙地|甲店|乙店)[^。\n]{0,45}(?:再|接着|然后)(?:拍|演示)[^。\n]{0,18}在(南乐|郑州|甲地|乙地|甲店|乙店)/u.exec(content);
-  return parallelPlaceOpening(content) || containsExplicitParallelLanguage(content) || Boolean(restaged && restaged[1] !== restaged[2]);
+  const travel = /(?:先拍|先到|先去|走访|实地在)(南乐|郑州|北京|濮阳|甲地|乙地|[\p{Script=Han}]{2,6}市)[^。\n]{0,100}(?:再|随后|然后)(?:赶|前)?(?:到|去|往)(南乐|郑州|北京|濮阳|甲地|乙地|[\p{Script=Han}]{2,6}市)/u.exec(content);
+  return parallelPlaceOpening(content) || containsExplicitParallelLanguage(content) || Boolean(restaged && restaged[1] !== restaged[2]) || Boolean(travel && travel[1] !== travel[2]);
 }
 
 function topicHasUnauthorizedParallel(topic: TopicSection, allowParallel: boolean): boolean {
@@ -209,6 +220,15 @@ async function compare(topics: TopicSection[], references: TopicSection[], direc
   const applyExact = () => {
     const eligible = topics.map((topic, index) => ({ topic, index })).filter(row => !blocked.has(row.index));
     for (const index of exactDuplicates(eligible.map(row => row.topic), references)) blocked.add(eligible[index].index);
+    if (context) {
+      const usedShots = new Set(references.flatMap(repeatedShootClause));
+      for (const { topic, index } of eligible) {
+        if (blocked.has(index)) continue;
+        const actions = repeatedShootClause(topic);
+        if (actions.some(action => usedShots.has(action))) blocked.add(index);
+        else for (const action of actions) usedShots.add(action);
+      }
+    }
   };
   if (directionSeed) {
     for (const index of templateDuplicateIndices(topics)) blocked.add(index);
@@ -222,6 +242,7 @@ async function compare(topics: TopicSection[], references: TopicSection[], direc
   }
   if (context) {
     const known = context.constraints.normalize('NFKC').replace(/\s/g, '');
+    const singleProps = [...known.matchAll(/(?:只有|仅有|仅限|[、，,与和及])一[只个件把套瓶台块]([^，,。；、与和及可\n]{2,12})/gu)].map(m => m[1].replace(/^[空旧新]/, ''));
     for (const [index, topic] of topics.entries()) {
       const hasParallel = hasParallelPlacePattern(topic);
       const unauthorizedParallel = hasParallel && !context.allowParallelComparison;
@@ -235,9 +256,13 @@ async function compare(topics: TopicSection[], references: TopicSection[], direc
       ];
       const unsupportedNumber = factualNumbers.some(pattern =>
         [...normalized.matchAll(pattern)].some(([claim]) => !known.includes(claim.replace(/\s/g, ''))));
-      const exclusiveHistory = /(?:唯一(?:一[张件块本只页])?[^，。？！\n]{0,10}(?:带走|留下|保留|留存)|只(?:带走|留下|保留)了?一[张件块本只页])/.test(topic.title);
+      const exclusiveHistory = /(?:唯一(?:一[张件块本只页])?[^，。？！\n]{0,10}(?:带走|留下|保留|留存)|(?:只|仅)(?:带走|留下|保留|留存)了?(?:一|这|那)[张件块本只页])/.test(topic.title);
       const unsupportedExclusivity = exclusiveHistory && !/(?:唯一|仅(?:有|剩|带走|留下)|只(?:带走|留下|保留|剩))/.test(known);
-      if (unauthorizedParallel || unsupportedNumber || unsupportedExclusivity || /【待确认[：:]/.test(topic.body) || !context.elements.includes(primaryTopicElement(topic) || '')) blocked.add(index);
+      const shoot = directionBrief(topic).body.match(/^脚本结构：(.+)$/m)?.[1] ?? '';
+      const capacityTest = /(?:逐个|逐一|依次|不断|一个接一个).{0,35}(?:挂满|装满|放满|塞满|掉落|装不下|放不下)/u.test(shoot);
+      const insufficientProps = capacityTest && singleProps.some(prop => prop.length >= 2 && shoot.includes(prop));
+      const uncoverMasked = /(?:遮住|遮掉|打码|脱敏)/.test(known) && /(?:遮住|遮掉|打码)的(?:那一?栏|部分|文字|名字)[^，。？！\n]{0,5}(?:写了什么|是什么字|到底是谁)|(?:辨认|还原)(?:被遮住|已打码)的(?:姓名|号码)/.test(topic.title + '\n' + shoot);
+      if (unauthorizedParallel || unsupportedNumber || unsupportedExclusivity || insufficientProps || uncoverMasked || /【待确认[：:]/.test(topic.body) || !context.elements.includes(primaryTopicElement(topic) || '')) blocked.add(index);
     }
   }
   if (!topics.length || (!context && topics.length === 1 && !references.length)) return { blocked, checked: true };
@@ -308,12 +333,26 @@ export async function finalizeTopicBatch(markdown: string, references: TopicSect
   const elementUsage = new Map<string, number>();
   const targetTypes = Math.max(1, Math.min(3, topicContext?.elements.length ?? 1, wanted));
   const elementLimit = Math.ceil(wanted / targetTypes);
+  const limitInterview = !!topicContext && wanted >= 3 && !/(?:只(?:能|做|要)|必须|指定|全部|每条都)[^。\n]{0,10}(?:采访|街采|访谈)/.test(topicContext.constraints);
+  const interviewLimit = Math.max(1, Math.floor(wanted / 2));
+  let interviews = 0;
+  let priceQuestions = 0;
+  const limitPrices = !!topicContext && wanted >= 3 && !/(?:只做|只要|专门|全部|每条都)[^。\n]{0,12}(?:查价|价格|费用|开销|成本|报价)/.test(topicContext.constraints);
   const keepsElement = (topic: TopicSection, enoughVariety = false) => {
     if (!topicContext) return true;
     const element = primaryTopicElement(topic) || '';
     const used = elementUsage.get(element) ?? 0;
     if (!enoughVariety && used >= elementLimit) return false;
+    const shoot = directionBrief(topic).body.match(/脚本结构：([^\n]*)/)?.[1] ?? '';
+    // 工资、房租、电费只换了被报价的东西，观众都在等同一种答案。
+    const price = limitPrices && /(?:多少钱|(?:价格|报价|月租|房租|电费|工资|租金|花费|开销|费用)[^。？！\n]{0,10}(?:多少|几块|几元)|多少[^。？！\n]{0,8}(?:电费|房租|租金|工资|块钱))/.test(topic.title);
+    if (price && priceQuestions >= interviewLimit) return false;
+    if (limitInterview && interviewLed(shoot)) {
+      if (interviews >= interviewLimit) return false;
+      interviews++;
+    }
     elementUsage.set(element, used + 1);
+    if (price) priceQuestions++;
     return true;
   };
   if (topicContext) {
@@ -337,6 +376,7 @@ export async function finalizeTopicBatch(markdown: string, references: TopicSect
   }
   const keep = topics.filter((_, index) => !first.blocked.has(index)).slice(0, wanted);
   const blocked = topics.filter((_, index) => first.blocked.has(index));
+  const rejected = [...blocked];
   const replacements: TopicSection[] = [];
   let checked = first.checked;
   let parallelUsed = Boolean(topicContext?.allowParallelComparison && keep.some(topic => hasParallelPlacePattern(topic)));
@@ -347,14 +387,14 @@ export async function finalizeTopicBatch(markdown: string, references: TopicSect
     const preferredElements = topicContext?.elements.filter((element) => (elementUsage.get(element) ?? 0) < elementLimit)
       .sort((a, b) => (elementUsage.get(a) ?? 0) - (elementUsage.get(b) ?? 0));
     const avoid = topicContext ? [...keep, ...replacements, ...references] : [...topics, ...references];
-    const draft = await refill({ count: refillCount, blocked, avoid, ...(preferredElements ? { preferredElements } : {}) }).catch(() => '');
+    const draft = await refill({ count: refillCount, blocked: rejected, avoid, ...(preferredElements ? { preferredElements } : {}) }).catch(() => '');
     const candidates = splitTopicSections(draft).slice(0, refillCount).filter((topic) => topic.body.trim());
     const review = await compare(candidates, avoid, directionSeed, topicContext);
     if (review.checked) {
       for (const [index, topic] of candidates.entries()) {
         if (replacements.length + keep.length === wanted) break;
         const parallel = directionSeed && hasParallelPlacePattern(topic);
-        if (review.blocked.has(index) || (parallel && parallelUsed) || !keepsElement(topic, elementUsage.size >= targetTypes)) continue;
+        if (review.blocked.has(index) || (parallel && parallelUsed) || !keepsElement(topic, elementUsage.size >= targetTypes)) { rejected.push(topic); continue; }
         replacements.push(topic);
         if (parallel) parallelUsed = true;
       }

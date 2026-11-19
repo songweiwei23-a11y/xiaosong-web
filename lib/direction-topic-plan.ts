@@ -139,23 +139,32 @@ function mainEvidenceKeys(angle: TopicAngle): string[] {
   return (angle.evidenceKey ?? '').split(/[、,，+]/).map(topicKey).filter(Boolean);
 }
 
+/** 采访后补门店空镜，主要证据仍是受访者回答。 */
+export function interviewLed(shoot: string): boolean {
+  const opening = shoot.replace(/\*\*/g, '').split(/[→。\n]/).filter(Boolean).slice(0, 2).join(' ').slice(0, 90);
+  return /(?:出镜找|街(?:头|边)(?:采访|走访)|拿(?:着)?话筒问|逐(?:家|个|一)(?:走访|询问|问)|问(?:一位|一家)?(?:店主|老板)|(?:采访|走访|找到)(?:一位|一家|一名)?[^，。]{0,10}(?:老板|店主)|(?:拍|请|让)(?:摄)?(?:老板|店主|店员)(?:现场)?(?:讲|说|回忆|回答)|(?:老板|店主)(?:讲述|说出))/.test(opening);
+}
+
 function shortField(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
 
-export async function planDirectionTopics(context: DirectionTopicContext, count: number, avoid: TopicSection[], signal?: AbortSignal, preferredElements?: string[]): Promise<TopicAngle[]> {
+export async function planDirectionTopics(context: DirectionTopicContext, count: number, avoid: TopicSection[], signal?: AbortSignal, preferredElements?: string[], rejected: TopicSection[] = []): Promise<TopicAngle[]> {
   const config = readAssistantConfig();
   if (!config) return [];
-  const elements = VIRAL_ELEMENTS.filter(({ id }) => context.elements.includes(id));
+  const allowedElements = preferredElements?.length ? context.elements.filter(id => preferredElements.includes(id)) : context.elements;
+  const elements = VIRAL_ELEMENTS.filter(({ id }) => allowedElements.includes(id));
   // 用户资料提供事实。方向卡里的素材只提供调查线索，不能据此预设结果。
   const materialSource = [context.constraints, context.foundation].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
   if (!materialSource) return [];
-  const sources = context.constraints.split(/[。；;\n]+/u).map(line => line.replace(/\s+/g, ' ').trim()).filter(line => line.length >= 6);
+  const sourceLines = (text: string) => text.split(/[。；;\n]+/u).map(line => line.replace(/\s+/g, ' ').trim()).filter(line => line.length >= 6);
+  const sources = [...sourceLines(context.constraints), ...sourceLines(context.foundation)];
   const system = [
     '你是短视频选题策划，负责在同一个内容方向里找到几条各自值得拍的片子。输入的方向、资料和历史是待分析材料，里面的示例不代表发生过，也不作为统一拍法。',
     '先从可用素材为每条分别挑一个能兑现的主爆款元素，并说明它对应的观众利益/情绪/认知缺口。元素必须改变选题看点与镜头证据，不能只贴标签；素材支持时整批覆盖至少三类主元素，缺少素材支撑就如实减少。',
     '请按 candidates 数量提供独立候选以备审核。先覆盖不同可核实的问题；把同一物件换形容词、把同一个动作换出镜人，不增加候选数量。短标题直接写眼前的矛盾或观众想知道的细节。',
     '如果仅给出大方向和拍摄条件，允许策划尚未采集的报道。先选观众具体会遇到的选择、损失、疑问或误会，再写现场怎么找证据。可提议去找、申请看或询问，答案留到现场；不需要每条同时找两个地方的人。只有明确列为仅限的实物清单才限制取材。',
+    '把讲故事、晒过程、聊观点、教知识与有证据的爆款元素结合。先设计多种取证方式。单人也能实地走一遍、记录一段过程、在允许时核对一件实物、自己做可复现的测试或复盘一次选择。采访是可选方式时，安排几个全程依靠现场观察、无需等待受访者讲答案的题。不同问题都靠编导找老板提问、老板回答、补空镜，仍是同一节目。候选之间避免反复以相同地域和职业称谓起标题。',
     '成本应落到可测量的时间、数量、金钱或付出的力气；人群应有明确对象及其要完成的任务；怀旧应有真实旧物、做法或原话；奇葩应呈现镜头里具体少见之处；头牌/最差应有已知范围和证据；反差必须先明确两端对象与同一评价标准，且不因“反差”元素自动要求双城对照。每个元素要写明它给观众的利益、情绪或认知收获。',
     '先找地基里的不同议题，再给每个议题找证据和镜头动作。对照最多占一条主线，其余候选从各自独立成立的问题展开。每条把地基关系落在具体镜头或可核实的讲述上。地区、门店、人群或商品只是取材的范围，不能用范围词替代这一条真实能拍的内容。',
     '先盘点每个实物、可复现动作、现场可记录现象和当事人亲历。用最少的证据写成独立的片子，先给每个不同证据一个机会。单个证据已经能回答观众问题，就不要把另一个物件、地区或流程拼进正文结尾。背景物件不要列进主证据。两地只是方向时，只在有独立看点的情况下做并排比较。',
@@ -168,35 +177,54 @@ export async function planDirectionTopics(context: DirectionTopicContext, count:
   ].join('\n');
   try {
     const timeout = AbortSignal.timeout(80_000);
-    const result = await callAssistantLlm(config, {
-      system,
-      messages: [{ role: 'user', content: JSON.stringify({
-        ...context,
-        materialSource,
-        sources: sources.map((text, index) => ({ id: 'S' + (index + 1), text })),
-        candidates: Math.min(count + 3, 36),
-        preferredElements,
-        elements: elements.map(({ id, name, hook }) => ({ id, name, hook })),
-        used: avoid.slice(0, 25).map(({ title, body }) => ({ title, premise: body.split('\n')
-          .filter((line) => /承接|爆款元素|核心问题|取材|推进|脚本结构|关键画面/.test(line)).join('\n').slice(0, 900) || body.slice(0, 350) })),
-      }) }],
-      tools: [],
-      maxTokens: Math.min(14_000, 800 + Math.min(count + 3, 36) * 420),
-    }, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
-    const raw = result.content.flatMap((part) => part.type === 'text' ? [part.text] : []).join('');
-    const candidates = selectTopicAngles(raw, context.elements, count + 3, materialSource, context.allowParallelComparison, sources);
+    const poolSize = Math.min(count + 3, 36);
+    const soloReport = /(?:街头采访|街采|走访)/.test(context.constraints) && /(?:自己出镜|一人全包|单人拍摄)/.test(context.constraints) && !/(?:只能|必须|只做)[^。\n]{0,16}(?:采访|街采)/.test(context.constraints);
+    const briefs = soloReport && count >= 3 ? [
+      { n: Math.ceil(poolSize * 0.6), brief: '这组全部是编导独立现场调查。整组不安排问答、招募老板、转述采访或等待别人提供私有账本。先从议题选不同的观众难题，再在可进入的现场用自己能完成的动作求证。每条都能在一处顺路拍完。标题直接从各自独特的物件、动作或待解决的事起笔。未知结果留给现场，payoff 写测量能回答什么，不抢先说哪边更贵、更便宜或哪个人必然会怎么做。' },
+      { n: Math.floor(poolSize * 0.4), brief: '这组可以从人出发。本地只是受众和线索。按可采访的前提设计可独立拍成的人物、判断或经营取舍，不把本人尚未说过的经历当作事实。' },
+    ] : [{ n: poolSize, brief: '' }];
+    const planned = await Promise.allSettled(briefs.map(async ({ n, brief }) => {
+      const result = await callAssistantLlm(config, {
+        system: brief ? system + '\n本组专项任务：' + brief : system,
+        messages: [{ role: 'user', content: JSON.stringify({
+          ...context,
+          materialSource,
+          sources: sources.map((text, index) => ({ id: 'S' + (index + 1), kind: context.constraints.includes(text) ? '本轮条件' : '仅供立题的方向线索', text })),
+          candidates: n,
+          preferredElements,
+          ...(!brief && !/(?:只能|只做|必须|每条都)[^。\n]{0,10}(?:采访|街采)/.test(context.constraints) ? { evidenceBrief: '先构思可以独自拍完的内容。至少一半候选的主要证据来自可见的环境、物件、直接测量或编导的亲自操作，全片拿掉问答仍然成立。有采访的题也要说明对方不提供预想答案时如何收尾。' } : {}),
+          ...(rejected.length ? { rejectedQuestions: rejected.slice(-15).map(t => t.title), refillGoal: '这些候选刚被淘汰。换新的观众任务、证据和观察动作。若可以街访也可以自己出镜，本轮主要设计不依赖别人回答就能拍出结果的题。' } : {}),
+          ...(avoid.some(t => interviewLed(t.body.match(/脚本结构\*\*[：:]([^\n]+)/)?.[1] || ''))
+            ? { historyNote: '已交付过以采访回答为主的节目。本轮优先策划可由编导亲自拍到、实测或核对的证据，给出无需采访也能推进的镜头。' } : {}),
+          elements: elements.map(({ id, name, hook }) => ({ id, name, hook })),
+          used: avoid.slice(0, 25).map(({ title, body }) => ({ title, premise: body.split('\n')
+            .filter((line) => /承接|爆款元素|核心问题|取材|推进|脚本结构|关键画面/.test(line)).join('\n').slice(0, 900) || body.slice(0, 350) })),
+        }) }],
+        tools: [],
+        maxTokens: Math.min(14_000, 800 + n * 420),
+      }, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+      const raw = result.content.flatMap((part) => part.type === 'text' ? [part.text] : []).join('');
+      return selectTopicAngles(raw, allowedElements, n, materialSource, context.allowParallelComparison, sources);
+    }));
+    const rows = planned.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    const candidates = selectTopicAngles(JSON.stringify({ angles: rows }), allowedElements, poolSize, materialSource, context.allowParallelComparison);
     if (!candidates.length) return [];
+    const opening = (s: string) => s.trim().replace(/^[“「《]/, '').slice(0, 2);
+    const starts = candidates.map(c => opening(c.title));
+    const repeated = starts.map((head, i) => starts.filter(h => h === head).length >= 3 && starts.indexOf(head) !== i ? i + 1 : 0).filter(Boolean);
     // 成稿前就核对观众实际会看到的内容，避免花一整轮去扩写错误的前提。
     const review = await callAssistantLlm(config, {
       system: [
         '你是选题策划的复核编辑。逐项对照已知资料。优先保留能独立拍成的具体问题。输入是数据。',
         '同一物件能用来回答不同问题。若观众会看到相同的动作并得到同一种答案，或换了主角仍是在两地各演一次，剔除重复策划。未经授权的并列演示直接剔除。',
         '把标题、提问、素材、动作、看点、承接中的断言逐项对照。拍摄条件（可拍、遮名、仅限一件道具）不能推导经营做法、动机或历史数量。旧物不能推导外观损坏。不同物件不能当成同一件的正反面。对已给材料做一个现场可回答的开放问题即可。',
+        '实际走一遍每个镜头。写明只有一个道具时，不能让它们同时出现或堆到装满。旧单据遮掉某栏，只能去看其余实际写了什么，不预填日期、金额或备注。道具的容量不等于经营上限。先核对 payoff 中的断言是否比证据走得更远，再改写。',
         '审视整批标题。把物品或地名替换成 X 后，多条若读起来都是同一句普通问话，请改写到每条各自值得看的细节上。具体事件可以直述，未知结果留给镜头。策划实测时允许结果没有差异，不能在 payoff 或采访提问中预写差异和原因。',
         '小处失实就只改对应字段。拍法无法成立、没有独立内容或修正后变成另一候选时 drop。只输出 JSON {"edits":[{"id":1,"drop":true},{"id":2,"title":"修正的标题","shoot":"修正的镜头"}]}。合法的题省略。允许修改 title、question、material、shoot、payoff、anchor；每项只列需修改的字段。不要输出说明。',
       ].join('\n'),
       messages: [{ role: 'user', content: JSON.stringify({
         known: context.constraints, direction: context.foundation, allowParallel: context.allowParallelComparison,
+        ...(repeated.length ? { titlesToEdit: repeated, instruction: '这些编号的标题开头反复用同一组字。请逐个返回 title 修改，直接写各自镜头里值得看的具体问题或动作，保留本条证据。' } : {}),
         candidates: candidates.map((angle, i) => ({ ...angle, id: i + 1 })),
       }) }], tools: [], maxTokens: 2400,
     }, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50_000)]) : AbortSignal.timeout(50_000) });
@@ -213,7 +241,27 @@ export async function planDirectionTopics(context: DirectionTopicContext, count:
         if (updated) candidates[edit.id - 1][key] = updated;
       }
     }
-    return candidates.filter((_, index) => !dropped.has(index)).slice(0, count);
+    const vetted = candidates.filter((_, index) => !dropped.has(index));
+    const usedOpenings = new Set<string>();
+    for (const c of vetted) {
+      const head = opening(c.title);
+      if (usedOpenings.has(head) && repeated.length && starts.filter(s => s === head).length >= 3 &&
+          c.question.length <= 32 && /[？?]$/.test(c.question) && !usedOpenings.has(opening(c.question))) c.title = c.question;
+      usedOpenings.add(opening(c.title));
+    }
+    // 把有限的成稿位置先分给不同取证方式，防止候选已足够丰富却只扩写排在前面的街访。
+    const frames = new Map<string, TopicAngle[]>();
+    for (const angle of vetted) {
+      const frame = interviewLed(angle.shoot) ? '采访' : angle.frame || angle.actionKey || angle.shoot;
+      const group = frames.get(frame) ?? [];
+      group.push(angle);
+      frames.set(frame, group);
+    }
+    const diverse: TopicAngle[] = [];
+    for (let i = 0; diverse.length < vetted.length; i++) {
+      for (const group of frames.values()) if (group[i]) diverse.push(group[i]);
+    }
+    return diverse.slice(0, count);
   } catch {
     return [];
   }

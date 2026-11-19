@@ -110,6 +110,20 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('流式接口：报错要说出来，不能一声不吭', () => {
+  it('方向按用户选的派别交付，偏离配比时在同一会话重写并核对修正版', async () => {
+    vi.spyOn(await import('@/lib/admin-auth'), 'getServiceSupabase').mockReturnValueOnce(null as never);
+    const wrong = '### 方向1：店招怎么认\n- **内容类型**：36计·第35计 街头采访\n- **内容方向**：找人说说看招牌的经验。';
+    const right = '### 方向1：找店要走几步\n- **内容类型**：四大脚本·晒过程·过程展示\n- **爆款元素**：成本｜实走从街口到门口的一段路\n- **内容方向**：跟随第一次到店的步行路线。';
+    expect(right).toContain('四大脚本·晒过程·过程展示');
+    const stream = (answer: string) => difyStream([msg(answer), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]);
+    mockDify(stream(wrong), stream('{"unsupported":[]}'), stream(right));
+    const res = await POST(new Request('http://x/api/dify/stream', { method: 'POST', body: JSON.stringify({
+      taskType: '创作方向', profileId: 'p1', query: '出一个方向', historyInput: { count: 1, scriptsShare: 100, routeManual: false },
+    }) }) as any);
+    expect(await readDifyStream(res)).toContain('跟随第一次到店的步行路线');
+    expect(difyCalls.some(call => call.body.query.includes('校正刚才的完整方案') && call.body.conversation_id === 'c1')).toBe(true);
+    expect(recordCreationCompletion).toHaveBeenCalled();
+  });
   it('恢复协议先发任务，模型完成后再发草稿保存状态', async () => {
     vi.mocked(ensureGenerationTask).mockResolvedValueOnce({
       id: 'saved-task', existing: false, status: 'accepted', stage: 'accepted',

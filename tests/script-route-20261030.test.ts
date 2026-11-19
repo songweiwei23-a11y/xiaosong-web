@@ -128,10 +128,10 @@ describe('内容规划、创作方向：手选优先，其次比例，都没有�
     expect(r).toContain('两派只选一派，不叠加');
   });
 
-  it('默认：全用 36 计，不写四大脚本的结构名', () => {
+  it('未设置时以四大脚本为主，显式零仍全部用36计', () => {
     const r = planRouteRule({});
-    expect(r).toContain('全部用 36 计');
-    expect(r).toContain('不用四大脚本的结构名');
+    expect(r).toContain('80%');
+    expect(planRouteRule({ share: 0 })).toContain('全部用 36 计');
   });
 
   it('规则文字：两派只选一派的说明统一', () => {
@@ -144,7 +144,7 @@ describe('内容规划、创作方向：手选优先，其次比例，都没有�
       resolved: resolveMix(null, null, ''), profileSummary: '- 档案名称：测试', industry: '测试行业',
     } as never;
     const plain = buildContentPlanPrompt(base);
-    expect(plain).toContain('全部用 36 计');
+    expect(plain).toContain('四大脚本 10，36计 2');
     const picked = buildContentPlanPrompt({ ...(base as object), pickedRoutes: ['tactic:反向操作'] } as never);
     expect(picked).toContain('这批只用下面这些打法');
     expect(picked).not.toContain('全部用 36 计');

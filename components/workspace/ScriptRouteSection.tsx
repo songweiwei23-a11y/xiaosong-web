@@ -12,6 +12,8 @@ export function ScriptRouteSection(props: {
   manual: boolean;
   onManual: (v: boolean) => void;
   share: number;
+  count: number;
+  monthly?: boolean;
   onShare: (v: number) => void;
   picked: string[];
   onPicked: (v: string[]) => void;
@@ -38,7 +40,7 @@ export function ScriptRouteSection(props: {
       {manual ? (
         <ScriptRoutePicker multi value={picked} onChange={(v) => onPicked(Array.isArray(v) ? v : [])} />
       ) : (
-        <TacticMixBar value={share} onChange={onShare} />
+        <TacticMixBar value={share} onChange={onShare} count={props.count} monthly={props.monthly} />
       )}
     </div>
   );

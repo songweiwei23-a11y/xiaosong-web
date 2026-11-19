@@ -33,7 +33,7 @@ import { buildContextBlock } from "@/lib/creator-context";
 import { resolveMix, mixPromptBlock, type MixSetting, type ResolvedMix } from "@/lib/content-mix";
 import { ContentMixBar, MixCheckLine } from "@/components/workspace/ContentMix";
 import { ScriptRouteSection } from "@/components/workspace/ScriptRouteSection";
-import { TacticMixBar } from "@/components/workspace/TacticMix";
+import { DEFAULT_SCRIPT_SHARE, normalizeScriptShare } from "@/lib/tactic-mix";
 import {
   CAPACITY, DEFAULT_DIRECTION_COUNT, DIRECTION_COUNT_MAX, DIRECTION_COUNT_MIN, DEPTHS, DIRECTION_TASK_TYPE, FORMATS, HORIZON, ON_CAMERA, PURPOSES,
   buildDirectionPrompt, clampDirectionCount, hasGoal, type Choice,
@@ -100,7 +100,7 @@ export default function DirectionPage() {
   const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
   const [mixUsed, setMixUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
   // 36 计与四大脚本的搭配比例（lib/tactic-mix）：0 = 全用 36 计，和以前一样
-  const [scriptsShare, setScriptsShare] = useState(0);
+  const [scriptsShare, setScriptsShare] = useState(DEFAULT_SCRIPT_SHARE);
   // 自己选脚本结构（开关）：打开就只用手选的打法，不按比例（两派只选一派，见 lib/script-route）
   const [routeManual, setRouteManual] = useState(false);
   const [pickedRoutes, setPickedRoutes] = useState<string[]>([]);
@@ -118,8 +118,12 @@ export default function DirectionPage() {
 
   const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
-  const restoreHistory = (item: HistoryItem) => {
+  const restoreHistory = (item: HistoryItem, automatic = false) => {
     const d = (item.input_data ?? {}) as Record<string, unknown>;
+    const legacyDefault = automatic && d.routeManual === undefined && d.scriptsShare === 0;
+    setScriptsShare(typeof d.scriptsShare === 'number' && !legacyDefault ? normalizeScriptShare(d.scriptsShare) : DEFAULT_SCRIPT_SHARE);
+    setRouteManual(d.routeManual === true);
+    setPickedRoutes(Array.isArray(d.pickedRoutes) ? d.pickedRoutes.filter((v): v is string => typeof v === 'string') : []);
     setIncomingSetup({ from: typeof d.expandFrom === 'string' ? d.expandFrom : '创作方向', sourceContent: typeof d.expandContent === 'string' ? d.expandContent : '', originContent: typeof d.originContent === 'string' ? d.originContent : '', settings: settingsFromInput(d) });
     setResult(item.result);
     if (Array.isArray(d.purposes)) setPurposes(d.purposes.map(String));
@@ -138,7 +142,7 @@ export default function DirectionPage() {
   useEffect(() => {
     if (!resultScope || !lastResult || !history[0] || restoredScope.current === resultScope) return;
     restoredScope.current = resultScope;
-    if (!incoming.current && !running && (!result || result === lastResult)) restoreHistory(history[0]);
+    if (!incoming.current && !running && (!result || result === lastResult)) restoreHistory(history[0], true);
   }, [resultScope, lastResult, history, running, result]);
   useRestoreLastResult(lastResult, setResult, resultScope);
 
@@ -157,6 +161,7 @@ export default function DirectionPage() {
   }, []);
 
   const start = async () => {
+    if (routeManual && !pickedRoutes.length) { notify("请先选择要用的脚本结构", "error"); return; }
     if (running) return;
     if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (ctxLoading) { notify("正在读取当前档案，稍等一秒再点"); return; }
@@ -169,7 +174,7 @@ export default function DirectionPage() {
     if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) { openUpgrade("direction"); setRunning(false); return; }
     setResult("");
-    const historyInput = { purposes, customGoal, ideas, expandFrom: expandContent.trim() ? handoffFrom : "", expandContent, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null, scriptsShare, creationSettings: currentSettings, originContent: [customGoal, ideas, selectedGoals].filter(Boolean).join('\n') };
+    const historyInput = { purposes, customGoal, ideas, expandFrom: expandContent.trim() ? handoffFrom : "", expandContent, formats, onCamera, capacity, horizon, count, depth, industry, profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: useMix ? resolvedMix.mix : null, routeManual, pickedRoutes, scriptsShare, creationSettings: currentSettings, originContent: [customGoal, ideas, selectedGoals].filter(Boolean).join('\n') };
     try {
       const historyId = createHistoryId();
       const requestId = createHistoryId();
@@ -273,7 +278,7 @@ export default function DirectionPage() {
               <ChoiceGrid items={DEPTHS} isOn={(id) => depth === id} onToggle={(id) => setDepth(id as "quick" | "full")} />
             </Field>
             <Field label="脚本打法（两派只选一派）" stacked hint="36 计管怎么拍，四大脚本管怎么讲；一个方向只用一派">
-              <ScriptRouteSection manual={routeManual} onManual={setRouteManual} share={scriptsShare} onShare={setScriptsShare} picked={pickedRoutes} onPicked={setPickedRoutes} />
+              <ScriptRouteSection count={count} manual={routeManual} onManual={setRouteManual} share={scriptsShare} onShare={setScriptsShare} picked={pickedRoutes} onPicked={setPickedRoutes} />
             </Field>
           </CollapsibleSection>
 

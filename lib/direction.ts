@@ -13,8 +13,8 @@ import { tacticsBlockedBy } from './creative-routes';
 // 2026-10-29 回到 10-21 的「工具 + 直接创作」：36 计清单用冻结的 10-21 原文（标【最适合的目的】）
 import { tacticIndex1021 as tacticIndex, KEPT_RULES_1021 } from './tool-first-1021';
 import { SCRIPT_FAMILIES } from './viral-elements';
-import { planRouteRule } from './script-route';
-import { SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
+import { planRouteRule, routeAllocationRule } from './script-route';
+import { routeCounts, SCRIPT_STRUCTURE_NAMES } from './tactic-mix';
 
 export const DIRECTION_TASK_TYPE = '创作方向';
 
@@ -99,7 +99,7 @@ export interface DirectionInput {
   industry?: string;
   /** 内容配比（lib/content-mix 的 mixPromptBlock，按方向个数换成条数）。有它就要求每个方向标明是哪种视频 */
   mixBlock?: string;
-  /** 页面还在传（2026-10-29 回到 10-21 后提示词不再用它，只保留类型，避免页面报错） */
+  /** 按方向个数分配的四大脚本占比；有手选清单时使用手选结构。 */
   scriptsShare?: number;
   /** 自己手选的打法（选项 key，见 lib/script-route）：有它就只用选中的，不按比例 */
   pickedRoutes?: string[];
@@ -130,15 +130,18 @@ export function buildDirectionPrompt(i: DirectionInput): string {
   ].filter(Boolean).join('\n');
 
   const full = i.depth === 'full';
+  const { scripts } = routeCounts(i.count, i.scriptsShare);
+  const routeSlots = i.pickedRoutes?.length ? '' : Array.from({ length: i.count }, (_, n) =>
+    `方向${n + 1}用${Math.round((n + 1) * scripts / i.count) > Math.round(n * scripts / i.count) ? '四大脚本' : '36计'}`).join('，');
   // 配比要求每个方向标明是哪种视频，代码才数得出来（lib/content-mix 的 countRoles 认「视频目的」这一行）
   const purposeField = i.mixBlock?.trim()
     ? `- **视频目的**：流量型 / 人设型 / 变现型，只写一个\n`
     : `- **对应目的**：这个方向主要服务上面哪个目的\n`;
-  const contentTypeField = `- **内容类型**：${planRouteRule({ share: i.scriptsShare, picked: i.pickedRoutes })} 36 计按这个方向的目的优先挑【】里对应的计；任何脚本结构配上爆款元素都是大流量；用户选了形式的，优先挑形式最接近的计。写成「36计·第N计 计名」或「四大脚本·结构名」（四大脚本的结构名只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}），二者只选一派\n`;
+  const contentTypeField = `- **内容类型**：${planRouteRule({ share: i.scriptsShare, picked: i.pickedRoutes })} 按本次配额使用相应派别，任何脚本结构配上爆款元素都可以做流量型。写成「36计·第N计 计名」或「四大脚本·结构名」（四大脚本的结构名只能从这些里选，一字不差：${SCRIPT_STRUCTURE_NAMES.join('、')}），二者只选一派\n`;
   const variabilityField = '- **裂变空间**：方向给共同的目的、范围和机制；不提供每期通用的标题句式、开场、人物轮换或固定事件顺序。每期从真实素材中另选观众问题、爆款元素、证据、镜头动作与表达框架；示例仅作灵感，禁止改名词照搬。若此方向天然容易被拍成同一个模板，写明哪些素材/元素/结构可用于打破模板。\n';
   // 视频任务：这张方向卡要让观众做到什么，选题和脚本都照它走（内容树的 task 字段，2026-10-30）
   const taskField = `- **视频任务**：一句话，写清这条视频要让观众做到什么（停下来、信你、关注、来店等），和上面的视频目的一致\n`;
-  const fields = purposeField + contentTypeField + variabilityField + taskField + (full
+  const fields = purposeField + contentTypeField + '- **爆款元素**：元素名及真实素材将如何兑现这个看点。\n' + variabilityField + taskField + (full
     ? `- **内容方向**：一两句话写议题范围和取材线索。拍摄建议单列在「怎么拍」，范围内不写统一节目流程。
 - **为什么能达到目的**：说清楚因果，结合这个账号的实际情况
 - **核心思路**：一两句话，别人一听就懂
@@ -177,9 +180,11 @@ ${goal}`;
     ? '## 📌 这个方向的思路\n三到五行：这个方向的核心是什么（主题、目的、为什么能起量），这个账号做它的最大优势和最大短板是什么。'
     : '## 📌 这个方向的思路\n三到五行：他的目的拆开是哪几件事、这个账号做这件事的最大优势和最大短板是什么，这一批方向怎么分工。';
   const scriptFamilies = SCRIPT_FAMILIES.map((s) => `- **${s.name}**（${s.purpose}）：${s.note}`).join('\n');
-  const tactics = `## 起号 36 计（小黄）：供选择的表达机制参考，不是每个方向的固定节目\n每一计的公式只是可选创意工具，不自动成为方向卡的标题、开场或每期事件骨架。不得因为方向选了地域差异就默认安排两地人物轮流做事、轮流解释或评论投票；只有用户本轮明确指定两地实测/直接对照时才可纳入一条。\n\n${tacticIndex({ exclude: tacticsBlockedBy(i.contextBlock) })}\n\n## 四大脚本（薛老师）：辅助，管话怎么讲\n${scriptFamilies}\n\n`;
+  const tacticNames = !i.pickedRoutes?.length && i.scriptsShare !== 100
+    ? tacticIndex({ exclude: tacticsBlockedBy(i.contextBlock), namesOnly: true }) : '';
+  const tactics = ['## 四大脚本（薛老师）与爆款元素', scriptFamilies, tacticNames].filter(Boolean).join('\n\n') + '\n\n';
   const mixTable = i.mixBlock?.trim()
-    ? `## 📊 配比一览\n| 目的 | 条数 | 主要用什么类型 |\n三行，流量型 / 人设型 / 变现型。**流量型那一行只写流量打法**（反向操作、冷知识、借势、地域差异、街头采访、整蛊等），不写教知识、行业干货、避坑；教知识只放变现型那一行。方向中的打法只作灵感，不将某个公式扩展为所有内容的固定叙述模板。\n\n`
+    ? `## 📊 配比一览\n| 目的 | 条数 | 主要用什么类型 |\n三行，流量型 / 人设型 / 变现型。表格按实际安排汇总，每种目的都能使用四大脚本搭配爆款元素。方向中的打法只作灵感，不将某个公式扩展为所有内容的固定叙述模板。\n\n`
     : '';
   const differ = ex
     ? `- ${i.count} 个方向都必须守住上面那个方向的主题、目的和核心角度——是它的不同切口、不同拍法、不同出镜方式，彼此要拉开；不许另起和它主题无关的方向，也不能只是把它换个说法
@@ -193,7 +198,7 @@ ${conditions}
 
 ${target}
 ${i.contextBlock?.trim() ? `\n${i.contextBlock.trim()}\n` : ''}${mix}
-${tactics}## 输出格式（Markdown，标题和字段名原样保留）
+${tactics}${routeAllocationRule(i.count, i.scriptsShare, false, i.pickedRoutes)}\n${routeSlots}\n\n## 输出格式（Markdown，标题和字段名原样保留）
 ${opening}
 
 ${mixTable}## 🧭 内容方向（勾选想做的方向，带去选题或脚本接着做）

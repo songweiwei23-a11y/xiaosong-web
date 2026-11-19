@@ -12,6 +12,7 @@ import { ResultPanel } from "@/components/workspace/ResultPanel";
 import { HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
 import { ContentMixBar } from "@/components/workspace/ContentMix";
 import { ScriptRouteSection } from "@/components/workspace/ScriptRouteSection";
+import { DEFAULT_SCRIPT_SHARE, normalizeScriptShare } from "@/lib/tactic-mix";
 import { notify } from "@/components/ui/feedback";
 import { useGenerationPage } from "@/hooks/useGenerationPage";
 import { useRestoreLastResult } from "@/hooks/useRestoreLastResult";
@@ -72,7 +73,7 @@ export default function ContentPlanPage() {
   const [mixOverride, setMixOverride] = useState<MixSetting | null>(null);
   const [planUsed, setPlanUsed] = useState<{ resolved: ResolvedMix; count: number } | null>(null);
   // 36 计与四大脚本的搭配比例（lib/tactic-mix）：0 = 全用 36 计，和以前一样
-  const [scriptsShare, setScriptsShare] = useState(0);
+  const [scriptsShare, setScriptsShare] = useState(DEFAULT_SCRIPT_SHARE);
   // 自己选脚本结构（开关）：打开就只用手选的打法，不按比例（两派只选一派，见 lib/script-route）
   const [routeManual, setRouteManual] = useState(false);
   const [pickedRoutes, setPickedRoutes] = useState<string[]>([]);
@@ -114,8 +115,12 @@ export default function ContentPlanPage() {
     if (!countTouched) setCount(suggestMonthCount(id));
   };
 
-  const restoreHistory = (item: HistoryItem) => {
+  const restoreHistory = (item: HistoryItem, automatic = false) => {
     const d = (item.input_data ?? {}) as Record<string, unknown>;
+    const legacyDefault = automatic && d.routeManual === undefined && d.scriptsShare === 0;
+    setScriptsShare(typeof d.scriptsShare === 'number' && !legacyDefault ? normalizeScriptShare(d.scriptsShare) : DEFAULT_SCRIPT_SHARE);
+    setRouteManual(d.routeManual === true);
+    setPickedRoutes(Array.isArray(d.pickedRoutes) ? d.pickedRoutes.filter((v): v is string => typeof v === 'string') : []);
     setResult(item.result);
     if (typeof d.lastMonth === "string" && LAST_MONTH_OPTIONS.some((o) => o.id === d.lastMonth)) setLastMonth(d.lastMonth as LastMonthId);
     if (typeof d.count === "number" && d.count > 0) { setCount(d.count); setCountTouched(true); }
@@ -131,12 +136,13 @@ export default function ContentPlanPage() {
   useEffect(() => {
     if (!resultScope || !lastResult || !history[0] || restoredScope.current === resultScope) return;
     restoredScope.current = resultScope;
-    if (!running && (!result || result === lastResult)) restoreHistory(history[0]);
+    if (!running && (!result || result === lastResult)) restoreHistory(history[0], true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultScope, lastResult, history, running, result]);
   useRestoreLastResult(lastResult, setResult, resultScope);
 
   const start = async () => {
+    if (routeManual && !pickedRoutes.length) { notify("请先选择要用的脚本结构", "error"); return; }
     if (running) return;
     if (finishing) { notify("上一份还在核对润色，几秒后再点"); return; }
     if (ctxLoading) { notify("正在读取当前档案，稍等一秒再点"); return; }
@@ -149,7 +155,7 @@ export default function ContentPlanPage() {
     if (!isCurrent()) { setRunning(false); return; }
     if (left !== null && left <= 0) { openUpgrade("direction"); setRunning(false); return; }
     setResult("");
-    const historyInput = { lastMonth, recordedLastMonth: recorded, count, focus, events, notes, mixOverride, month: monthLabel(), profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: resolvedMix.mix, scriptsShare };
+    const historyInput = { lastMonth, recordedLastMonth: recorded, count, focus, events, notes, mixOverride, month: monthLabel(), profileId: profile?.id ?? null, profileName: profile?.profile_name ?? null, contentMix: resolvedMix.mix, routeManual, pickedRoutes, scriptsShare };
     try {
       const historyId = createHistoryId();
       const requestId = createHistoryId();
@@ -230,7 +236,7 @@ export default function ContentPlanPage() {
               <ContentMixBar className="mt-1" profile={profile} override={mixOverride} onOverride={setMixOverride} count={count} goal={goalText} />
             </Field>
             <Field label="脚本打法（两派只选一派）" stacked hint="36 计管怎么拍，四大脚本管怎么讲；一条内容只用一派">
-              <ScriptRouteSection manual={routeManual} onManual={setRouteManual} share={scriptsShare} onShare={setScriptsShare} picked={pickedRoutes} onPicked={setPickedRoutes} />
+              <ScriptRouteSection count={count} monthly manual={routeManual} onManual={setRouteManual} share={scriptsShare} onShare={setScriptsShare} picked={pickedRoutes} onPicked={setPickedRoutes} />
             </Field>
           </CollapsibleSection>
 
