@@ -458,7 +458,7 @@ export async function POST(request: NextRequest) {
                   topicRequestCount ?? (splitTopicSections(answerText).length || 3), async (refill) => {
                     const conversationId = conversationIdFromResponse || difyPayload.conversation_id;
                     if (!conversationId) return '';
-                    const freshAngles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements) : [];
+                    const freshAngles = topicContext ? await planDirectionTopics(topicContext, refill.count, refill.avoid, undefined, refill.preferredElements, refill.blocked) : [];
                     if (topicContext && !freshAngles.length) return '';
                     const prompt = topicContext
                       ? [directionAnglesPrompt(topicContext, freshAngles, refill.count), topicRefillPrompt(refill, true), DIRECTION_TOPIC_DELIVERY].join('\n\n')

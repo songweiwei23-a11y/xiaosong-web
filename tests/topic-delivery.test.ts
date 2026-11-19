@@ -261,6 +261,42 @@ describe('选题交付前查重', () => {
     expect(splitTopicSections(result.text)).toEqual([a, b, c]);
   });
 
+  it('换元素、调换先后仍然在采访留下同一张照片的经过，只交付一次', async () => {
+    const ctx = directionTopicContext('小店搬迁', undefined, '旧照片和店主可拍')!;
+    const a = topic('开店那天拍的照片', '**爆款元素**：怀旧｜重看旧照\n**取材与内容推进**：店主讲述留下照片的经过\n**脚本结构**：拍取货小桌，采访店主讲搬店时的选择');
+    const b = topic('搬店时留下了什么', '**爆款元素**：人群｜问店主搬店经过\n**取材与内容推进**：店主讲述搬店时留下照片的实际经历\n**脚本结构**：采访店主讲搬店时的选择，穿插手机照片画面');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    expect((await finalizeTopicBatch(batch(a, b), [], 2, async () => '', { directionSeed: true, topicContext: ctx })).count).toBe(1);
+    expect((await finalizeTopicBatch(batch(b), [a], 1, async () => '', { directionSeed: true, topicContext: ctx })).count).toBe(0);
+  });
+  it('只有一只袋子时不能拍逐个挂袋测容量，可以重复测同一只袋子的取放时间', async () => {
+    const ctx = directionTopicContext('门店日常', undefined, '只有标签夹、一只空预订袋和手机可拍')!;
+    const a = topic('标签夹能挂多少袋', '**爆款元素**：成本｜测容量\n**脚本结构**：往标签夹上逐个挂空预订袋→数到挂满或开始掉落');
+    const b = topic('一个袋子取放花多久', '**爆款元素**：成本｜测操作时间\n**脚本结构**：把空预订袋挂上再取下，重复计时');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const checked = await finalizeTopicBatch(batch(a,b), [], 2, async () => '', { directionSeed: true, topicContext: ctx });
+    expect(splitTopicSections(checked.text)).toEqual([b]);
+  });
+  it('地基里的两地差异不能擅自变成一次要跑两座城市的实测', async () => {
+    const ctx = directionTopicContext('南乐和郑州开店差异', undefined, '一人全包，只能挤空档拍')!;
+    const travel = topic('一个月房租在另一地能撑几天', '**爆款元素**：成本｜拍租金\n**脚本结构**：先拍南乐某条街几家门面的报价，记下月租；再到郑州商业街拍同类铺位报价。');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const result = await finalizeTopicBatch(batch(travel), [], 1, async () => '', { directionSeed: true, topicContext: ctx });
+    expect(result.count).toBe(0);
+  });
+  it('工资、房租和电费三道查价题中补入不同的观众问题，换爆款标签也算同一拍法', async () => {
+    const ctx = directionTopicContext('实体门店的经营选择', undefined, '编导可独立走访')!;
+    const first = [topic('一个店员要给多少钱', '**爆款元素**：成本｜查工资'), topic('门面月租差多少', '**爆款元素**：成本｜查租金'),
+      topic('一天花多少电费', '**爆款元素**：反差｜查电费'), topic('门头背面留着什么', '**爆款元素**：怀旧｜看旧门头'),
+      topic('初次进店的人从哪里进门', '**爆款元素**：人群｜实走路线')];
+    const extra = topic('不开导航能认出店名吗', '**爆款元素**：反差｜走到路口再辨认');
+    vi.mocked(callAssistantLlm).mockResolvedValue(decision('{"duplicates":[],"invalid":[]}'));
+    const result = await finalizeTopicBatch(batch(...first), [], 5, async () => batch(extra), { directionSeed: true, topicContext: ctx });
+    expect(result.count).toBe(5);
+    expect(result.text).toContain(extra.title);
+    expect(result.text).not.toContain('一天花多少电费');
+  });
+
   it('原稿和各轮补题合计只留一条有授权的双城对照', async () => {
     const ctx = directionTopicContext('地域差异方向', '南北/地域差异', '本轮明确要求南乐和郑州两地按同一标准实测对比')!;
     const original = topic('南乐老板怎么记单，郑州老板怎么记单', '**爆款元素**：反差｜按同一标准拍两地老板');

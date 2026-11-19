@@ -28,6 +28,13 @@ const DIRECTION = [
 ].join('\n');
 
 describe('P1 方向只给种子：范围和切入角度，不给人群、讲法、标题、镜头', () => {
+  it('拆掉范围中的固定街访指令，同时保留城市、经营问题和后面的真实素材', () => {
+    const clean = cleanTopicReference('范围：南乐与郑州的开店经历，用地域反差制造看点。可以看怎么选址、怎么定价，每条问一件事。拍法：采访两地老板。店主保留了旧招牌。');
+    expect(clean).toContain('南乐与郑州的开店经历');
+    expect(clean).toContain('怎么选址、怎么定价');
+    expect(clean).toContain('店主保留了旧招牌');
+    expect(clean).not.toMatch(/制造看点|每条问|采访两地/);
+  });
   it('能识别方向块', () => {
     expect(isDirectionBlock(DIRECTION)).toBe(true);
     expect(isDirectionBlock('## 选题1：一条普通的选题')).toBe(false);

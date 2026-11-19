@@ -114,7 +114,6 @@ describe('流式接口：报错要说出来，不能一声不吭', () => {
     vi.spyOn(await import('@/lib/admin-auth'), 'getServiceSupabase').mockReturnValueOnce(null as never);
     const wrong = '### 方向1：店招怎么认\n- **内容类型**：36计·第35计 街头采访\n- **内容方向**：找人说说看招牌的经验。';
     const right = '### 方向1：找店要走几步\n- **内容类型**：四大脚本·晒过程·过程展示\n- **爆款元素**：成本｜实走从街口到门口的一段路\n- **内容方向**：跟随第一次到店的步行路线。';
-    expect(right).toContain('四大脚本·晒过程·过程展示');
     const stream = (answer: string) => difyStream([msg(answer), ev({ event: 'message_end', conversation_id: 'c1', message_id: 'm1' })]);
     mockDify(stream(wrong), stream('{"unsupported":[]}'), stream(right));
     const res = await POST(new Request('http://x/api/dify/stream', { method: 'POST', body: JSON.stringify({

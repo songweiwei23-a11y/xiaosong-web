@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  SCRIPT_STRUCTURE_NAMES, SCRIPT_SHARE_STEP, TACTIC_MIX_PRESETS,
-  normalizeScriptShare, tacticMixRule, tacticSplit,
+  SCRIPT_STRUCTURE_NAMES, SCRIPT_SHARE_STEP, TACTIC_MIX_PRESETS, DEFAULT_SCRIPT_SHARE,
+  normalizeScriptShare, routeCounts, tacticMixRule, tacticSplit,
 } from '@/lib/tactic-mix'
 import { buildDirectionPrompt } from '@/lib/direction'
 import { buildContentPlanPrompt, checkPlan, monthlyRepairPlan, parsePlanDirections } from '@/lib/content-plan'
@@ -28,6 +28,19 @@ describe('比例归一', () => {
     expect(normalizeScriptShare(250)).toBe(100)
     expect(normalizeScriptShare('abc')).toBe(0)
     expect(normalizeScriptShare(undefined)).toBe(0)
+  })
+
+  it('默认八成使用四大脚本，五个方向为四个四大脚本加一个36计', () => {
+    expect(DEFAULT_SCRIPT_SHARE).toBe(80)
+    expect(routeCounts(5)).toEqual({ scripts: 4, tactics: 1 })
+    expect(routeCounts(10)).toEqual({ scripts: 8, tactics: 2 })
+  })
+
+  it('用户选择的比例按整数名额严格兑现', () => {
+    expect(routeCounts(10, 100)).toEqual({ scripts: 10, tactics: 0 })
+    expect(routeCounts(10, 80)).toEqual({ scripts: 8, tactics: 2 })
+    expect(routeCounts(10, 50)).toEqual({ scripts: 5, tactics: 5 })
+    expect(routeCounts(10, 0)).toEqual({ scripts: 0, tactics: 10 })
   })
 
   it('36 计与四大脚本两边加起来是 100', () => {
@@ -120,6 +133,13 @@ describe('页面接入', () => {
     expect(planRouteIssue(repeats, 3, 0, false)).toContain('全部沿用同一计');
     expect(planRouteIssue(repeats, 3, 0, false, ['tactic:南北/地域差异'])).toBe('');
   });
+  it('地理差异不是默认主打法，默认比例规则要求四大脚本配爆款元素', () => {
+    const prompt = buildDirectionPrompt(base)
+    expect(prompt).toContain('四大脚本 4，36计 1')
+    expect(prompt).toContain('爆款元素')
+    expect(prompt).not.toContain('流量型那一行只写流量打法')
+  })
+
   it('方向配额已对时，单张卡补回真实看点，其余四大脚本和36计正文原样保留', () => {
     const head = '# 本轮方向\n';
     const first = '### 方向1：开店成本\n- **内容类型**：四大脚本·教知识·解题型\n- **爆款元素**：——\n- **内容方向**：核对一张已脱敏租约。\n';
